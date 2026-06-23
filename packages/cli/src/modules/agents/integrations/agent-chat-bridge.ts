@@ -4,7 +4,6 @@ import type { Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import type { RichSuspendPayload } from '../types';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type {
 	AgentChatIntegration,
@@ -327,8 +326,7 @@ export class AgentChatBridge {
 			return;
 		}
 
-		const payload = suspendPayload as RichSuspendPayload | Record<string, unknown> | undefined;
-		const cardPayload = buildSuspendCardPayload(payload);
+		const cardPayload = buildSuspendCardPayload(suspendPayload);
 		if (!cardPayload) return;
 
 		try {

@@ -92,7 +92,8 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
-			streamingPost = thread.post(iterable).catch((postError: unknown) => {
+			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
+				await this.options.postErrorToThread(thread, postError);
 				this.options.logger.error('[AgentChatBridge] Streaming post failed', {
 					error: postError instanceof Error ? postError.message : String(postError),
 				});

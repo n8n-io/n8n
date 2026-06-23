@@ -17,7 +17,6 @@ interface SlackThreadContext {
 	channelId: string;
 	threadTs: string;
 	hasRealThreadTs: boolean;
-	isDm: boolean;
 }
 
 interface SlackAssistantStatusAdapter {
@@ -83,23 +82,21 @@ async function startSlackThinkingStatus(
 
 	if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
 		const setStatus = setSlackAssistantStatus(slackThreadContext, options);
-		return slackThreadContext.isDm
-			? {
-					clearBeforeResponse: async () => {
-						// Cancel any pending status retry first: the retry waits out a
-						// delay before re-setting "Thinking...", and without this it could
-						// fire *after* we clear and leave a stale status behind.
-						statusRetry?.abort();
-						// Then wait for the set to settle. Aborting only cancels the
-						// retry's local wait — an *in-flight* "Thinking..." write can't
-						// be recalled, so we must let it land before we clear, otherwise
-						// its remote write could overwrite the clear and restore the
-						// stale status. (setStatus never rejects — it logs internally.)
-						await setStatus;
-						await clearSlackAssistantStatus(slackThreadContext, options);
-					},
-				}
-			: undefined;
+		return {
+			clearBeforeResponse: async () => {
+				// Cancel any pending status retry first: the retry waits out a
+				// delay before re-setting "Thinking...", and without this it could
+				// fire *after* we clear and leave a stale status behind.
+				statusRetry?.abort();
+				// Then wait for the set to settle. Aborting only cancels the
+				// retry's local wait — an *in-flight* "Thinking..." write can't
+				// be recalled, so we must let it land before we clear, otherwise
+				// its remote write could overwrite the clear and restore the
+				// stale status. (setStatus never rejects — it logs internally.)
+				await setStatus;
+				await clearSlackAssistantStatus(slackThreadContext, options);
+			},
+		};
 	}
 
 	try {
@@ -220,7 +217,6 @@ function getSlackThreadContext(
 	if (!isRecord(raw)) return undefined;
 
 	const channelId = stringValue(raw.channel);
-	const channelType = stringValue(raw.channel_type);
 	const realThreadTs = stringValue(raw.thread_ts);
 	const threadTs = realThreadTs ?? stringValue(raw.ts);
 	if (!channelId || !threadTs) return undefined;
@@ -229,7 +225,6 @@ function getSlackThreadContext(
 		channelId,
 		threadTs,
 		hasRealThreadTs: realThreadTs !== undefined,
-		isDm: channelType === 'im',
 	};
 }
 

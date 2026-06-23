@@ -283,6 +283,51 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
 		});
 
+		it('falls back to a default suspension card for malformed payloads', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-1',
+					toolCallId: 'tool-1',
+					toolName: 'approval',
+					suspendPayload: 'Approve?',
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(componentMapper.toCard).toHaveBeenCalledWith(
+				{
+					title: 'Action required — approve or deny?',
+					components: [
+						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
+						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
+					],
+				},
+				'run-1',
+				'tool-1',
+				undefined,
+				undefined,
+				'test-buffered',
+			);
+			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
+		});
+
 		it('does not post when the buffer is only whitespace', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -422,6 +467,34 @@ describe('AgentChatBridge — consumeStream', () => {
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
 			expect(received).toBe('Hello world');
 		});
+
+		it('posts an error message when the streaming post fails', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			thread.post.mockRejectedValueOnce(new Error('send failed')).mockResolvedValueOnce(undefined);
+			const agentExecutor = makeAgentExecutor([
+				{ type: 'text-delta', id: 't1', delta: 'Hello' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).toHaveBeenCalledTimes(2);
+			expect(thread.post).toHaveBeenNthCalledWith(
+				2,
+				'⚠️ Something went wrong while processing your request. Please try again.',
+			);
+		});
 	});
 
 	describe('Slack assistant status', () => {
@@ -465,7 +538,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
 		});
 
-		it('sets assistant status for top-level Slack channel mentions via the Slack adapter and buffers the response', async () => {
+		it('clears assistant status before responding to top-level Slack channel mentions', async () => {
 			const { bot, handlers } = makeBot();
 			const setAssistantStatus = jest.fn().mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
@@ -502,9 +575,17 @@ describe('AgentChatBridge — consumeStream', () => {
 			});
 
 			expect(thread.startTyping).not.toHaveBeenCalled();
-			expect(setAssistantStatus).toHaveBeenCalledWith('C123', '1779466577.518139', 'Thinking...', [
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(
+				1,
+				'C123',
+				'1779466577.518139',
 				'Thinking...',
-			]);
+				['Thinking...'],
+			);
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'C123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+				thread.post.mock.invocationCallOrder[0],
+			);
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 

@@ -1,8 +1,11 @@
 import { isRecord } from '@n8n/utils';
 
-import type { RichSuspendPayload } from '../types';
-
 const APPROVAL_INPUT_MAX_LENGTH = 1500;
+
+type SuspendCardPayload = {
+	title?: string;
+	components: Array<{ type: string; [key: string]: unknown }>;
+};
 
 interface ApprovalSuspendPayload {
 	type: 'approval';
@@ -27,6 +30,18 @@ function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPaylo
 		typeof value.toolName === 'string' &&
 		value.toolName.length > 0
 	);
+}
+
+function isSuspendCardComponent(value: unknown): value is SuspendCardPayload['components'][number] {
+	return isRecord(value) && typeof value.type === 'string' && value.type.length > 0;
+}
+
+function isSuspendCardPayload(value: unknown): value is SuspendCardPayload {
+	if (!isRecord(value) || !Array.isArray(value.components) || value.components.length === 0) {
+		return false;
+	}
+
+	return value.components.every(isSuspendCardComponent);
 }
 
 function truncateApprovalInput(value: string): string {
@@ -78,29 +93,21 @@ function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
 	};
 }
 
-export function buildSuspendCardPayload(
-	payload: RichSuspendPayload | Record<string, unknown> | undefined,
-): { title?: string; components: Array<{ type: string; [key: string]: unknown }> } | undefined {
+export function buildSuspendCardPayload(payload: unknown): SuspendCardPayload | undefined {
 	if (isIntegrationActionSuspendPayload(payload)) {
 		return undefined;
 	}
-
-	const hasComponents =
-		payload &&
-		'components' in payload &&
-		Array.isArray(payload.components) &&
-		payload.components.length > 0;
 
 	if (isApprovalSuspendPayload(payload)) {
 		return buildApprovalCardPayload(payload);
 	}
 
-	if (hasComponents) {
-		return payload as RichSuspendPayload;
+	if (isSuspendCardPayload(payload)) {
+		return payload;
 	}
 
 	const message =
-		payload && typeof payload === 'object' && 'message' in payload
+		isRecord(payload) && 'message' in payload
 			? String(payload.message)
 			: 'Action required — approve or deny?';
 
