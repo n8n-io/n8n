@@ -251,7 +251,7 @@ test.describe(
 				await n8n.templateCredentialSetup.getSkipLink().click();
 
 				await n8n.canvas.getSetupWorkflowCredentialsButton().click();
-				await expect(n8n.workflowCredentialSetupModal.getModal()).toBeVisible();
+				await expect(n8n.workflowCredentialSetupModal.container).toBeVisible();
 
 				await n8n.templatesComposer.fillDummyCredentialForApp('Shopify', {
 					fields: { shopSubdomain: 'test-shop', apiKey: 'test-token', password: 'test-key' },
@@ -266,7 +266,7 @@ test.describe(
 				await n8n.notifications.quickCloseAll();
 
 				await n8n.workflowCredentialSetupModal.clickContinue();
-				await expect(n8n.workflowCredentialSetupModal.getModal()).toBeHidden();
+				await expect(n8n.workflowCredentialSetupModal.container).toBeHidden();
 
 				const workflow = await n8n.canvasComposer.getWorkflowFromClipboard();
 

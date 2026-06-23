@@ -181,7 +181,7 @@ test.describe(
 				await notification.click();
 
 				// Verify versions modal opens
-				const versionsModal = n8n.versions.getVersionUpdatesPanel();
+				const versionsModal = n8n.versions.container;
 				await expect(versionsModal).toBeVisible();
 
 				// Verify security update badge exists for the new version

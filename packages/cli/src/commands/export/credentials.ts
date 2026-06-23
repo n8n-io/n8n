@@ -11,6 +11,7 @@ import z from 'zod';
 import type { ICredentialsDecryptedDb } from '@/interfaces';
 
 import { BaseCommand } from '../base-command';
+import '../../zod-alias-support';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all credentials').optional(),
@@ -21,6 +22,7 @@ const flagsSchema = z.object({
 		)
 		.optional(),
 	id: z.string().describe('The ID of the credential to export').optional(),
+	projectId: z.string().describe('Export all credentials in the specified project').optional(),
 	output: z
 		.string()
 		.alias('o')
@@ -46,6 +48,7 @@ const flagsSchema = z.object({
 	description: 'Export credentials',
 	examples: [
 		'--all',
+		'--projectId=Ox8O54VQrmBrb4qL',
 		'--id=5 --output=file.json',
 		'--all --output=backups/latest.json',
 		'--backup --output=backups/latest/',
@@ -64,13 +67,15 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			flags.separate = true;
 		}
 
-		if (!flags.all && !flags.id) {
-			this.logger.info('Either option "--all" or "--id" have to be set!');
+		const selectorCount = [flags.all, flags.id, flags.projectId].filter(Boolean).length;
+
+		if (selectorCount === 0) {
+			this.logger.info('One of "--all", "--id", or "--projectId" has to be set!');
 			return;
 		}
 
-		if (flags.all && flags.id) {
-			this.logger.info('You should either use "--all" or "--id" but never both!');
+		if (selectorCount > 1) {
+			this.logger.info('Use exactly one of "--all", "--id", or "--projectId".');
 			return;
 		}
 
@@ -112,16 +117,17 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			}
 		}
 
-		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).findBy(
-			flags.id ? { id: flags.id } : {},
-		);
+		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).find({
+			where: this.getWhereFilter(flags),
+			relations: ['shared.project'],
+		});
 
 		if (flags.decrypted) {
 			for (let i = 0; i < credentials.length; i++) {
 				const { name, type, data } = credentials[i];
 				const id = credentials[i].id;
 				const credential = new Credentials({ id, name }, type, data);
-				const plainData = credential.getData();
+				const plainData = await credential.getData();
 				(credentials[i] as ICredentialsDecryptedDb).data = plainData;
 			}
 		}
@@ -156,5 +162,17 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	async catch(error: Error) {
 		this.logger.error('Error exporting credentials. See log messages for details.');
 		this.logger.error(error.message);
+	}
+
+	private getWhereFilter(flags: z.infer<typeof flagsSchema>) {
+		if (flags.id) {
+			return { id: flags.id };
+		}
+
+		if (flags.projectId) {
+			return { shared: { projectId: flags.projectId } };
+		}
+
+		return {};
 	}
 }

@@ -17,8 +17,8 @@ on:
         description: 'Encryption key for n8n operations.'
         required: true
       CURRENTS_RECORD_KEY:
-        description: 'Currents record key for uploading test results.'
-        required: true
+        description: 'Currents record key for test reporting. Empty on fork PRs.'
+        required: false
 
 env:
   NODE_OPTIONS: --max-old-space-size=3072

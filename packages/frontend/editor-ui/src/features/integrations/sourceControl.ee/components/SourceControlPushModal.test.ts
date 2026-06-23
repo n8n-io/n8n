@@ -566,7 +566,7 @@ describe('SourceControlPushModal', () => {
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
 		mockRoute.name = VIEWS.WORKFLOW;
-		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
+		mockRoute.params = { workflowId: 'gTbbBkkYTnNyX1jD' };
 
 		const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
 			pinia,
@@ -1816,7 +1816,7 @@ describe('SourceControlPushModal', () => {
 			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
 			mockRoute.name = 'SOME_OTHER_VIEW';
-			mockRoute.params = { name: 'differentId' };
+			mockRoute.params = { workflowId: 'differentId' };
 
 			const { getByTestId, getAllByTestId, getByText } = renderModal({
 				pinia,

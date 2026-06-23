@@ -1,3 +1,5 @@
+import type { CredentialCheckResult } from 'n8n-workflow';
+
 import { MessageFormatter } from '../MessageFormatter';
 
 describe('MessageFormatter', () => {
@@ -169,12 +171,89 @@ describe('MessageFormatter', () => {
 			expect(result.content[0].text).toContain('CustomError: Custom error message');
 		});
 
-		it('should include stack trace when available', () => {
+		it('should not include stack trace in the response', () => {
 			const error = new Error('Test error');
+			error.stack =
+				'Error: Test error\n    at Context.<anonymous> (test.ts:1:1)\n    at /internal/path/node.js:100:5';
 			const result = MessageFormatter.formatError(error);
 
-			expect(result.content[0].text).toContain('Error: Test error');
-			expect(result.content[0].text).toContain('at ');
+			expect(result.content[0].text).toBe('Error: Test error');
+			expect(result.content[0].text).not.toContain('internal/path');
+		});
+	});
+
+	describe('formatCredentialGate', () => {
+		it('should list each missing credential with its connection URL and flag an error', () => {
+			const gateResult: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-1',
+						credentialName: 'My Slack',
+						credentialType: 'slackOAuth2Api',
+						resolverId: 'n8n',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/rest/credentials/cred-1/authorize?resolverId=n8n',
+					},
+				],
+			};
+
+			const result = MessageFormatter.formatCredentialGate(gateResult);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			// The URL is emitted raw on its own line (not wrapped in prose).
+			expect(result.content[0].text.split('\n')).toContain(
+				'https://n8n.test/rest/credentials/cred-1/authorize?resolverId=n8n',
+			);
+			// The structured field carries the full result (raw URLs) for programmatic clients.
+			expect(result.credentialGate).toEqual(gateResult);
+		});
+
+		it('should only list credentials that are not configured', () => {
+			const gateResult: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-ok',
+						credentialName: 'Connected Cred',
+						credentialType: 'githubOAuth2Api',
+						resolverId: 'n8n',
+						status: 'configured',
+					},
+					{
+						credentialId: 'cred-missing',
+						credentialName: 'Missing Cred',
+						credentialType: 'notionOAuth2Api',
+						resolverId: 'n8n',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize',
+					},
+				],
+			};
+
+			const text = MessageFormatter.formatCredentialGate(gateResult).content[0].text;
+
+			expect(text).toContain('Missing Cred (notionOAuth2Api)');
+			expect(text).not.toContain('Connected Cred');
+		});
+
+		it('should describe a missing credential without an authorization URL as not connected', () => {
+			const gateResult: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-2',
+						credentialName: 'No URL Cred',
+						credentialType: 'httpHeaderAuth',
+						status: 'missing',
+					},
+				],
+			};
+
+			const text = MessageFormatter.formatCredentialGate(gateResult).content[0].text;
+
+			expect(text).toContain('No URL Cred (httpHeaderAuth): not connected');
 		});
 	});
 });

@@ -1,3 +1,4 @@
+import { binaryToBuffer } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
@@ -5,7 +6,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ObjectStoreService } from './object-store/object-store.service.ee';
 import type { BinaryData } from './types';
-import { binaryToBuffer } from './utils';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
@@ -36,8 +36,8 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		return await this.objectStoreService.get(fileId, { mode: 'buffer' });
 	}
 
-	async getAsStream(fileId: string) {
-		return await this.objectStoreService.get(fileId, { mode: 'stream' });
+	async getAsStream(fileId: string, chunkSize?: number) {
+		return await this.objectStoreService.get(fileId, { mode: 'stream', chunkSize });
 	}
 
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {

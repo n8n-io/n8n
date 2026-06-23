@@ -17,11 +17,13 @@ import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import type { OwnershipService } from '../ownership.service';
+import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
 import type { RoleService } from '../role.service';
 import { JwtService } from '../jwt.service';
@@ -47,6 +49,7 @@ describe('UserService', () => {
 	const roleService = mock<RoleService>();
 	const mailer = mock<UserManagementMailer>();
 	const publicApiKeyService = mock<PublicApiKeyService>();
+	const projectService = mock<ProjectService>();
 	const jwtService = mockInstance(JwtService, {
 		sign: jest.fn().mockReturnValue('mock-jwt-token'),
 	});
@@ -62,6 +65,7 @@ describe('UserService', () => {
 		roleService,
 		globalConfig,
 		jwtService,
+		projectService,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -647,6 +651,36 @@ describe('UserService', () => {
 			const result = await userService.findSsoIdentity(userId);
 
 			expect(result).toEqual(samlIdentity);
+		});
+	});
+
+	describe('assertGetUsersAccess', () => {
+		it('should allow global member to list all users without project filter', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+
+			await expect(userService.assertGetUsersAccess(member)).resolves.toBeUndefined();
+
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		});
+
+		it('should allow non-admin members to list users by projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(mock<Project>());
+
+			await expect(userService.assertGetUsersAccess(member, 'project-1')).resolves.toBeUndefined();
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(member, 'project-1', [
+				'project:list',
+			]);
+		});
+
+		it('should throw NotFoundError when filtering by unknown projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(null);
+
+			await expect(userService.assertGetUsersAccess(member, 'unknown-project')).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 });

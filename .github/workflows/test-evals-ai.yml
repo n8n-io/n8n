@@ -110,6 +110,10 @@ jobs:
     steps:
       - name: Set configuration based on trigger
         id: config
+        env:
+          BRANCH: ${{ inputs.branch || 'master' }}
+          SPEC_REPETITIONS: ${{ inputs.spec_repetitions || '1' }}
+          SPEC_JUDGES: ${{ inputs.spec_judges || '1' }}
         run: |
           EVENT_NAME="${{ github.event_name }}"
 
@@ -124,9 +128,9 @@ jobs:
           else
             # Manual dispatch: use provided values for spec evals
             {
-              echo "branch=${{ inputs.branch || 'master' }}"
-              echo "spec_repetitions=${{ inputs.spec_repetitions || '1' }}"
-              echo "spec_judges=${{ inputs.spec_judges || '1' }}"
+              echo "branch=$BRANCH"
+              echo "spec_repetitions=$SPEC_REPETITIONS"
+              echo "spec_judges=$SPEC_JUDGES"
               echo "experiment_prefix=CI_manual"
             } >> "$GITHUB_OUTPUT"
           fi

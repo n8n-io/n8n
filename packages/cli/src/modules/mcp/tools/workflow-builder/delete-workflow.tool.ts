@@ -5,8 +5,12 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
+
+import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to archive'),
@@ -23,8 +27,10 @@ const outputSchema = {
  */
 export const createArchiveWorkflowTool = (
 	user: User,
+	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
+	collaborationService: CollaborationService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -47,11 +53,17 @@ export const createArchiveWorkflowTool = (
 		};
 
 		try {
+			await getMcpWorkflow(workflowId, user, ['workflow:delete'], workflowFinderService);
+
+			await collaborationService.ensureWorkflowEditable(workflowId);
+
 			const workflow = await workflowService.archive(user, workflowId, { skipArchived: true });
 
 			if (!workflow) {
 				throw new Error("Workflow not found or you don't have permission to archive it.");
 			}
+
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			telemetryPayload.results = {
 				success: true,

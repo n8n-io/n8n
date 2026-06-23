@@ -102,6 +102,22 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		}
 	}
 
+	/**
+	 * Drop the cached "running" state so the next `ensureRunning()`/`_start()`
+	 * re-runs the provider's `start()`. Used to recover when the remote sandbox
+	 * was stopped/deleted out from under us (the in-memory status is stale).
+	 * No-op once destroyed/destroying — those are terminal.
+	 *
+	 * Intentionally does NOT touch `startPromise`: clearing it would let a
+	 * concurrent caller bypass the single-flight start dedupe in `_start()` and
+	 * launch a second start. A start that is genuinely in flight will be awaited
+	 * (and deduped) by the next `_start()`.
+	 */
+	protected markNeedsStart(): void {
+		if (this.status === 'destroyed' || this.status === 'destroying') return;
+		this.status = 'pending';
+	}
+
 	async ensureRunning(): Promise<void> {
 		if (this.status === 'destroyed') {
 			throw new Error(`Sandbox "${this.name}" has been destroyed`);

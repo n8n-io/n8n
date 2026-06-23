@@ -106,21 +106,24 @@ export const matchRegex: IValidator<{ regex: RegExp; message: string }> = {
 	},
 };
 
-export const defaultPasswordRules: RuleGroup = {
+export const createPasswordRules = (minLength = 8): RuleGroup => ({
 	rules: [
 		{
 			rules: [
-				{ name: 'MIN_LENGTH', config: { minimum: 8 } },
+				{ name: 'MIN_LENGTH', config: { minimum: minLength } },
 				{ name: 'CONTAINS_NUMBER', config: { minimum: 1 } },
 				{ name: 'CONTAINS_UPPERCASE', config: { minimum: 1 } },
 			],
 			defaultError: {
 				messageKey: 'formInput.validator.defaultPasswordRequirements',
+				options: { minimum: minLength },
 			},
 		},
 		{ name: 'MAX_LENGTH', config: { maximum: 64 } },
 	],
-};
+});
+
+export const defaultPasswordRules: RuleGroup = createPasswordRules(8);
 
 export const VALIDATORS = {
 	REQUIRED: requiredValidator,

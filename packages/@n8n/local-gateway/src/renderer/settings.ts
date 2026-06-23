@@ -1,6 +1,4 @@
-import type { AppSettings, StatusSnapshot } from '../shared/types';
-
-type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug';
+import type { AppSettings, DaemonStatus, LogLevel, StatusSnapshot } from '../shared/types';
 
 declare global {
 	interface Window {
@@ -8,19 +6,17 @@ declare global {
 			getSettings: () => Promise<AppSettings>;
 			setSettings: (partial: Partial<AppSettings>) => Promise<{ ok: boolean; error?: string }>;
 			getDaemonStatus: () => Promise<StatusSnapshot>;
-			startDaemon: () => Promise<{ ok: boolean }>;
-			stopDaemon: () => Promise<{ ok: boolean }>;
+			disconnectGateway: () => Promise<{ ok: boolean }>;
 			onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
 		};
 	}
 }
 
-const STATUS_TEXT: Record<string, string> = {
+const STATUS_TEXT: Record<DaemonStatus, string> = {
 	connected: 'Connected',
-	waiting: 'Waiting',
-	starting: 'Starting',
+	connecting: 'Connecting',
 	disconnected: 'Disconnected',
-	stopped: 'Stopped',
+	error: 'Error',
 };
 
 function updateStatusBadge(snapshot: StatusSnapshot): void {
@@ -29,15 +25,46 @@ function updateStatusBadge(snapshot: StatusSnapshot): void {
 	if (!dot || !text) return;
 
 	dot.className = `status-dot ${snapshot.status}`;
-	const label =
-		snapshot.status === 'connected' && snapshot.connectedUrl
-			? `Connected to ${snapshot.connectedUrl}`
-			: (STATUS_TEXT[snapshot.status] ?? snapshot.status);
+	let label: string;
+	if (snapshot.status === 'connected' && snapshot.connectedUrl) {
+		label = `Connected to ${snapshot.connectedUrl}`;
+	} else if (snapshot.status === 'error') {
+		if (snapshot.lastError) {
+			const msg =
+				snapshot.lastError.length > 120
+					? `${snapshot.lastError.slice(0, 117)}...`
+					: snapshot.lastError;
+			label = `${STATUS_TEXT.error} · ${msg}`;
+		} else {
+			label = `${STATUS_TEXT.error} · see logs`;
+		}
+	} else {
+		label = STATUS_TEXT[snapshot.status];
+	}
 	text.textContent = label;
+	const disconnectBtn = document.getElementById('disconnectBtn') as HTMLButtonElement | null;
+	if (disconnectBtn) {
+		const sessionActive = snapshot.status === 'connected' || snapshot.status === 'connecting';
+		disconnectBtn.disabled = !sessionActive;
+		disconnectBtn.style.display = sessionActive ? 'inline-flex' : 'none';
+	}
+}
+
+function parseAllowedOriginsInput(raw: string): string[] {
+	return raw
+		.split(/[\n,]+/)
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
+function formatAllowedOriginsForForm(origins: string[]): string {
+	return origins.join('\n');
 }
 
 function readForm(): Partial<AppSettings> {
-	const port = parseInt((document.getElementById('port') as HTMLInputElement).value, 10);
+	const allowedOriginsRaw = (document.getElementById('allowedOrigins') as HTMLTextAreaElement)
+		.value;
+	const allowedOrigins = parseAllowedOriginsInput(allowedOriginsRaw);
 	const filesystemDir = (document.getElementById('filesystemDir') as HTMLInputElement).value.trim();
 	const filesystemEnabled = (document.getElementById('filesystemEnabled') as HTMLInputElement)
 		.checked;
@@ -47,28 +74,23 @@ function readForm(): Partial<AppSettings> {
 	const mouseKeyboardEnabled = (document.getElementById('mouseKeyboardEnabled') as HTMLInputElement)
 		.checked;
 	const browserEnabled = (document.getElementById('browserEnabled') as HTMLInputElement).checked;
-	const rawOrigins = (document.getElementById('allowedOrigins') as HTMLTextAreaElement).value;
-	const allowedOrigins = rawOrigins
-		.split('\n')
-		.map((s) => s.trim())
-		.filter(Boolean);
 	const logLevel = (document.getElementById('logLevel') as HTMLSelectElement).value as LogLevel;
 
 	return {
-		...(Number.isFinite(port) && port > 0 ? { port } : {}),
+		allowedOrigins,
 		filesystemDir,
 		filesystemEnabled,
 		shellEnabled,
 		screenshotEnabled,
 		mouseKeyboardEnabled,
 		browserEnabled,
-		allowedOrigins,
 		logLevel,
 	};
 }
 
 function populateForm(settings: AppSettings): void {
-	(document.getElementById('port') as HTMLInputElement).value = String(settings.port);
+	(document.getElementById('allowedOrigins') as HTMLTextAreaElement).value =
+		formatAllowedOriginsForForm(settings.allowedOrigins);
 	(document.getElementById('filesystemDir') as HTMLInputElement).value = settings.filesystemDir;
 	(document.getElementById('filesystemEnabled') as HTMLInputElement).checked =
 		settings.filesystemEnabled;
@@ -78,8 +100,6 @@ function populateForm(settings: AppSettings): void {
 	(document.getElementById('mouseKeyboardEnabled') as HTMLInputElement).checked =
 		settings.mouseKeyboardEnabled;
 	(document.getElementById('browserEnabled') as HTMLInputElement).checked = settings.browserEnabled;
-	(document.getElementById('allowedOrigins') as HTMLTextAreaElement).value =
-		settings.allowedOrigins.join('\n');
 	(document.getElementById('logLevel') as HTMLSelectElement).value = settings.logLevel;
 }
 
@@ -108,14 +128,13 @@ function isFormDirty(initial: AppSettings): boolean {
 	return (
 		JSON.stringify(current) !==
 		JSON.stringify({
-			port: initial.port,
+			allowedOrigins: initial.allowedOrigins,
 			filesystemDir: initial.filesystemDir,
 			filesystemEnabled: initial.filesystemEnabled,
 			shellEnabled: initial.shellEnabled,
 			screenshotEnabled: initial.screenshotEnabled,
 			mouseKeyboardEnabled: initial.mouseKeyboardEnabled,
 			browserEnabled: initial.browserEnabled,
-			allowedOrigins: initial.allowedOrigins,
 			logLevel: initial.logLevel,
 		})
 	);
@@ -133,23 +152,17 @@ async function init(): Promise<void> {
 
 	let initialSettings = { ...settings };
 
-	// Show restart notice and update buttons when form is dirty
 	const form = document.getElementById('settingsForm') as HTMLFormElement;
-	form.addEventListener('change', () => {
+	const updateDirtyState = (): void => {
 		const dirty = isFormDirty(initialSettings);
 		setRestartNotice(dirty);
 		setButtonsState(dirty);
-	});
-	form.addEventListener('input', () => {
-		const dirty = isFormDirty(initialSettings);
-		setRestartNotice(dirty);
-		setButtonsState(dirty);
-	});
+	};
+	form.addEventListener('change', updateDirtyState);
+	form.addEventListener('input', updateDirtyState);
 
-	// Browse button — user can type the path directly (dialog not exposed via preload)
-	document.getElementById('browseDirBtn')?.addEventListener('click', () => {
-		// Intentionally left as a no-op: Electron's dialog API is main-process only.
-		// A future improvement could add an IPC channel to open a native folder picker.
+	document.getElementById('disconnectBtn')?.addEventListener('click', () => {
+		void window.electronAPI.disconnectGateway();
 	});
 
 	// Apply button — save without closing

@@ -2,7 +2,7 @@ import { trigger } from '@n8n/workflow-sdk';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { PayloadSize, NodeOutputSize } from './types';
+import type { PayloadSize, NodeOutputSize, TriggerScenario } from './types';
 import { PAYLOAD_PROFILES, generatePayload } from './types';
 import { buildChainedWorkflow } from './workflow-builder';
 
@@ -20,6 +20,8 @@ export interface WebhookSetupContext {
 export interface WebhookHandle {
 	workflow: Partial<IWorkflowBase>;
 	payload: object;
+	/** Scenario shape — surfaced for harness reporting. */
+	scenario: TriggerScenario;
 }
 
 /**
@@ -62,5 +64,10 @@ export function setupWebhook(ctx: WebhookSetupContext): WebhookHandle {
 	return {
 		workflow,
 		payload,
+		scenario: {
+			nodeCount,
+			nodeOutputSize,
+			payloadSize,
+		},
 	};
 }

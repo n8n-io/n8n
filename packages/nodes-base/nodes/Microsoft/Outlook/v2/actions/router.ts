@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import * as calendar from './calendar';
@@ -30,7 +30,14 @@ export async function router(this: IExecuteFunctions) {
 		microsoftOutlook.resource === 'message' &&
 		microsoftOutlook.operation === SEND_AND_WAIT_OPERATION
 	) {
-		await message[microsoftOutlook.operation].execute.call(this, 0, items);
+		try {
+			await message[microsoftOutlook.operation].execute.call(this, 0, items);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				return [[{ json: { error: (error as JsonObject).message } }]];
+			}
+			throw error;
+		}
 
 		const waitTill = configureWaitTillDate(this);
 

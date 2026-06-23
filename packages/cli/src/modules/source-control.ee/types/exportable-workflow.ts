@@ -1,4 +1,4 @@
-import type { INode, IConnections, IWorkflowSettings } from 'n8n-workflow';
+import type { INode, IConnections, IWorkflowSettings, IWorkflowGroup } from 'n8n-workflow';
 
 import type { RemoteResourceOwner } from './resource-owner';
 
@@ -13,4 +13,5 @@ export interface ExportableWorkflow {
 	owner: RemoteResourceOwner;
 	parentFolderId: string | null;
 	isArchived: boolean;
+	nodeGroups: IWorkflowGroup[];
 }

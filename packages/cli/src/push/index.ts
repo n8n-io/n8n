@@ -1,5 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
-import { inProduction, Logger } from '@n8n/backend-common';
+import { inProduction, Logger, TypedEmitter } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -13,13 +13,19 @@ import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { TypedEmitter } from '@/typed-emitter';
 
 import { validateOriginHeaders } from './origin-validator';
+import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
-import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
+import {
+	type OnPushMessage,
+	type PushResponse,
+	type SSEPushRequest,
+	type WebSocketPushRequest,
+} from './types';
 import { WebSocketPush } from './websocket.push';
 
 type PushEvents = {
@@ -95,8 +101,15 @@ export class Push extends TypedEmitter<PushEvents> {
 			`/${restEndpoint}/push`,
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
-			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
-				this.handleRequest(req, res),
+			(req, res) => {
+				if (!isWebSocketPushRequest(req) && !isSSEPushRequest(req)) {
+					throw new BadRequestError('Request is not a PushRequest');
+				}
+				if (!isPushResponse(res)) {
+					throw new InternalServerError('Malformed response object');
+				}
+				return this.handleRequest(req, res);
+			},
 		);
 	}
 

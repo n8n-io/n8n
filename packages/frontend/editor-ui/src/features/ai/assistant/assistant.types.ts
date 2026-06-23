@@ -124,10 +124,7 @@ export namespace ChatRequest {
 	}
 
 	export interface BuilderFeatureFlags {
-		templateExamples?: boolean;
-		codeBuilder?: boolean;
 		pinData?: boolean;
-		planMode?: boolean;
 		mergeAskBuild?: boolean;
 	}
 

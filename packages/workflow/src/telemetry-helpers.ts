@@ -1,5 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
-
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -30,6 +28,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
+import { UnexpectedError } from './errors';
 import type { NodeApiError } from './errors/node-api.error';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import type {
@@ -62,6 +61,17 @@ export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
 
+function isTokenUsage(value: unknown): value is { promptTokens: number; completionTokens: number } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'promptTokens' in value &&
+		typeof value.promptTokens === 'number' &&
+		'completionTokens' in value &&
+		typeof value.completionTokens === 'number'
+	);
+}
+
 function resolveParameterValue(value: unknown): string | undefined {
 	if (typeof value === 'string') {
 		return value;
@@ -72,6 +82,32 @@ function resolveParameterValue(value: unknown): string | undefined {
 	}
 
 	return undefined;
+}
+
+function extractNodeTokenUsage(
+	nodeRunData: ITaskData[],
+): { input: number; output: number } | undefined {
+	let input = 0;
+	let output = 0;
+	for (const task of nodeRunData) {
+		const lmOutputs = task.data?.[NodeConnectionTypes.AiLanguageModel];
+		if (lmOutputs) {
+			// LM sub-nodes (connected to Agent/Chain) — token data from N8nLlmTracing
+			for (const branch of lmOutputs) {
+				for (const item of branch ?? []) {
+					const usage = item?.json?.tokenUsage ?? item?.json?.tokenUsageEstimate;
+					if (!isTokenUsage(usage)) continue;
+					input += usage.promptTokens;
+					output += usage.completionTokens;
+				}
+			}
+		} else if (task.metadata?.tokenUsage) {
+			// Standalone vendor nodes — token data captured via setMetadata before simplify
+			input += task.metadata.tokenUsage.inputTokens ?? 0;
+			output += task.metadata.tokenUsage.outputTokens ?? 0;
+		}
+	}
+	return input > 0 || output > 0 ? { input, output } : undefined;
 }
 
 const countPlaceholders = (text: string) => {
@@ -240,7 +276,7 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		if (!url.hostname) throw new ApplicationError('Malformed URL');
+		if (!url.hostname) throw new UnexpectedError('Malformed URL');
 
 		return sanitizeRoute(url.pathname);
 	} catch {
@@ -611,6 +647,18 @@ export function generateNodesGraph(
 			if (resolved) {
 				nodeItem.ai_model = resolved;
 			}
+		}
+
+		if (nodeItem.ai_model && runData?.[node.name]) {
+			const tokenUsage = extractNodeTokenUsage(runData[node.name]);
+			if (tokenUsage) {
+				nodeItem.ai_input_tokens = tokenUsage.input;
+				nodeItem.ai_output_tokens = tokenUsage.output;
+			}
+		}
+
+		if (Object.values(node.credentials ?? {}).some((cred) => cred.__aiGatewayManaged === true)) {
+			nodeItem.ai_gateway_credentials = true;
 		}
 
 		if (options?.isCloudDeployment === true) {

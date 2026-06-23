@@ -106,10 +106,7 @@ export class AiBuilderChatRequestDto extends Z.class({
 		}),
 		featureFlags: z
 			.object({
-				templateExamples: z.boolean().optional(),
-				codeBuilder: z.boolean().optional(),
 				pinData: z.boolean().optional(),
-				planMode: z.boolean().optional(),
 				mergeAskBuild: z.boolean().optional(),
 			})
 			.optional(),

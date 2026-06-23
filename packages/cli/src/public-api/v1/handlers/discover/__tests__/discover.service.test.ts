@@ -1,11 +1,12 @@
 import type { ApiKeyScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils';
 
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
 // Mock middleware factories before any handler is loaded via require()
 // The tagged wrapper must still have __apiKeyScope for introspection
 const createMockMiddleware = (_req: unknown, _res: unknown, next: unknown) => (next as Function)();
-jest.spyOn(middlewares, 'apiKeyHasScope').mockImplementation((scope: ApiKeyScope) => {
+jest.spyOn(middlewares, 'publicApiScope').mockImplementation((scope: ApiKeyScope) => {
 	return Object.assign(
 		(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
 		{ __apiKeyScope: scope },
@@ -233,7 +234,3 @@ describe('resource and operation filtering', () => {
 		).toBe(true);
 	});
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}

@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
@@ -88,7 +89,19 @@ class PostgresConfig {
 
 	/** Maximum time in milliseconds for a single query. Queries exceeding this are cancelled. Set to 0 to disable. */
 	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
-	statementTimeoutMs: number = 5 * 60 * 1000; // 5 minutes
+	statementTimeoutMs: number = 5 * Time.minutes.toMilliseconds;
+
+	/** Maximum lifetime in milliseconds of a pooled Postgres connection before it is recycled. Set to 0 to disable. */
+	@Env('DB_POSTGRESDB_MAX_CONNECTION_LIFETIME_MS')
+	maxConnectionLifetimeMs: number = 1 * Time.hours.toMilliseconds;
+
+	/** Whether to enable TCP keepalive on Postgres connections so dead peers are detected without waiting for a query. */
+	@Env('DB_POSTGRESDB_KEEP_ALIVE')
+	keepAlive: boolean = true;
+
+	/** Initial delay in milliseconds before the first TCP keepalive probe is sent. */
+	@Env('DB_POSTGRESDB_KEEP_ALIVE_INITIAL_DELAY_MS')
+	keepAliveInitialDelayMs: number = 10_000;
 
 	@Nested
 	ssl: PostgresSSLConfig;
@@ -118,6 +131,23 @@ export class SqliteConfig {
 const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
 type DbType = z.infer<typeof dbTypeSchema>;
 
+const DEFAULT_PING_TIMEOUT_MS = 5_000;
+
+function readLegacyPingTimeoutMs(): number {
+	const raw = process.env.N8N_DB_PING_TIMEOUT;
+	if (!raw) {
+		return DEFAULT_PING_TIMEOUT_MS;
+	}
+	const parsed = Number.parseInt(raw, 10);
+	if (Number.isNaN(parsed) || parsed <= 0) {
+		console.warn(
+			`Invalid N8N_DB_PING_TIMEOUT="${raw}", falling back to ${DEFAULT_PING_TIMEOUT_MS}ms. Prefer the supported DB_PING_TIMEOUT_MS env var.`,
+		);
+		return DEFAULT_PING_TIMEOUT_MS;
+	}
+	return parsed;
+}
+
 @Config
 export class DatabaseConfig {
 	/** Database type: `sqlite` or `postgresdb`. */
@@ -131,6 +161,74 @@ export class DatabaseConfig {
 	/** Interval in seconds between health-check pings to the database. */
 	@Env('DB_PING_INTERVAL_SECONDS')
 	pingIntervalSeconds: number = 2;
+
+	/**
+	 * Timeout in milliseconds for an individual database health-check ping.
+	 *
+	 * Falls back to the legacy `N8N_DB_PING_TIMEOUT` env var if set. The legacy
+	 * name is deprecated and may be removed in a future release.
+	 */
+	@Env('DB_PING_TIMEOUT_MS')
+	pingTimeoutMs: number = readLegacyPingTimeoutMs();
+
+	/**
+	 * How many consecutive health-check ping failures must occur before the
+	 * connection is considered lost and the DataSource is torn down and
+	 * reinitialized (full pool recovery).
+	 *
+	 * Recovery is disruptive (it destroys and recreates the connection pool),
+	 * so this guards against a single transient blip triggering it. With the
+	 * default `DB_PING_INTERVAL_SECONDS=2`, the default of 3 means recovery
+	 * fires only after roughly 6s of sustained ping failures.
+	 *
+	 * Raise this if you see recovery triggering on brief network hiccups
+	 * (false positives); lower it to react faster to genuinely dead connections.
+	 *
+	 * Must be >= 1: recovery fires only after at least one failed ping.
+	 */
+	@Env('DB_PING_MAX_FAILURES_BEFORE_RECOVERY', z.coerce.number().int().gte(1))
+	pingMaxFailuresBeforeRecovery: number = 3;
+
+	/**
+	 * Initial delay in milliseconds before retrying a failed recovery attempt.
+	 *
+	 * Recovery retries use exponential backoff: each failed attempt waits
+	 * `min(minRecoveryBackoffMs * 2 ** (attempt - 1), maxRecoveryBackoffMs)`.
+	 * This is the delay after the first failed attempt (the floor of the curve).
+	 *
+	 * Must be >= 1
+	 */
+	@Env('DB_RECOVERY_BACKOFF_MIN_MS', z.coerce.number().int().gte(1))
+	minRecoveryBackoffMs: number = 1 * Time.seconds.toMilliseconds;
+
+	/**
+	 * Maximum delay in milliseconds between recovery attempts.
+	 *
+	 * Caps the exponential backoff so retries never wait longer than this,
+	 * keeping recovery responsive once the database becomes reachable again.
+	 * Must be greater than or equal to `DB_RECOVERY_BACKOFF_MIN_MS`.
+	 *
+	 * Must be >= 1
+	 */
+	@Env('DB_RECOVERY_BACKOFF_MAX_MS', z.coerce.number().int().gte(1))
+	maxRecoveryBackoffMs: number = 30 * Time.seconds.toMilliseconds;
+
+	/**
+	 * Maximum time in milliseconds a query waits for an in-progress connection
+	 * recovery before failing fast.
+	 *
+	 * While recovery rebuilds the pool, every query that needs a connection parks
+	 * until recovery completes. During a short blip that wait is invisible and the
+	 * query succeeds against the fresh pool. During a long outage it would
+	 * otherwise pile up parked queries for the whole outage, so this bounds the
+	 * wait: once it elapses the query rejects with an `OperationalError` instead of
+	 * holding the request open indefinitely. The default (30s) comfortably covers
+	 * common-case recoveries while staying within typical HTTP gateway timeouts.
+	 *
+	 * Set to `0` to wait indefinitely (no timeout).
+	 */
+	@Env('DB_CONNECTION_ACQUISITION_TIMEOUT_MS', z.coerce.number().int().gte(0))
+	connectionAcquisitionTimeoutMs: number = 30 * Time.seconds.toMilliseconds;
 
 	@Nested
 	logging: LoggingConfig;

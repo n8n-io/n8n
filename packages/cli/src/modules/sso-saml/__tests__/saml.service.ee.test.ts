@@ -1,13 +1,11 @@
 import type { SamlPreferences } from '@n8n/api-types';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import type { UserRepository, Settings, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import axios from 'axios';
 import type express from 'express';
-import type { HttpProxyAgent } from 'http-proxy-agent';
-import type { HttpsProxyAgent } from 'https-proxy-agent';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
@@ -16,6 +14,7 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
@@ -25,9 +24,6 @@ import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error'
 import * as samlHelpers from '../saml-helpers';
 import { SamlValidator } from '../saml-validator';
 import { SamlService } from '../saml.service.ee';
-
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 const InvalidSamlSetting: Settings = {
 	loadOnStartup: true,
@@ -166,6 +162,9 @@ describe('SamlService', () => {
 	let userRepository: UserRepository;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
+	let cacheService: jest.Mocked<CacheService>;
+	let outboundHttp: jest.Mocked<OutboundHttp>;
+	let httpRequest: jest.Mock;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -214,8 +213,14 @@ describe('SamlService', () => {
 		});
 		provisioningService = mock<ProvisioningService>();
 		cipher = mock<Cipher>();
-		cipher.encrypt = jest.fn((data: string) => `encrypted:${data}`) as Cipher['encrypt'];
-		cipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		cipher.encryptV2 = jest.fn(async (data: string) => `encrypted:${data}`) as Cipher['encryptV2'];
+		cipher.decryptV2 = jest.fn(async (data: string) =>
+			data.replace('encrypted:', ''),
+		) as Cipher['decryptV2'];
+		cacheService = mock<CacheService>();
+		httpRequest = jest.fn();
+		outboundHttp = mock<OutboundHttp>();
+		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: httpRequest }));
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
@@ -231,6 +236,8 @@ describe('SamlService', () => {
 			instanceSettings,
 			provisioningService,
 			cipher,
+			cacheService,
+			outboundHttp,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -293,6 +300,7 @@ describe('SamlService', () => {
 					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
 					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
 				],
+				rawAttributes: {},
 			});
 
 			// ACT & ASSERT
@@ -326,20 +334,24 @@ describe('SamlService', () => {
 					n8nProjectRoles: ['projectRole1', 'projectRole2'],
 				},
 				missingAttributes: [],
+				rawAttributes: { email: 'test@test.com', role: 'admin' },
 			});
 
-			const attributes = await samlService.getAttributesFromLoginResponse(
+			const result = await samlService.getAttributesFromLoginResponse(
 				mock<express.Request>(),
 				'post',
 			);
 
-			expect(attributes).toEqual({
-				email: 'test@test.com',
-				firstName: 'test',
-				lastName: 'test',
-				userPrincipalName: 'test',
-				n8nInstanceRole: 'global:admin',
-				n8nProjectRoles: ['projectRole1', 'projectRole2'],
+			expect(result).toEqual({
+				mapped: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					n8nInstanceRole: 'global:admin',
+					n8nProjectRoles: ['projectRole1', 'projectRole2'],
+				},
+				raw: { email: 'test@test.com', role: 'admin' },
 			});
 		});
 	});
@@ -414,15 +426,14 @@ describe('SamlService', () => {
 	describe('handleSamlLogin', () => {
 		it('throws error for invalid email', async () => {
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: 'invalid',
-				firstName: '',
-				lastName: '',
-				userPrincipalName: '',
+				mapped: { email: 'invalid', firstName: '', lastName: '', userPrincipalName: '' },
+				raw: {},
 			});
 
-			await expect(
-				samlService.handleSamlLogin(mock<express.Request>(), 'post'),
-			).rejects.toThrowError(new BadRequestError('Invalid email format'));
+			const execution = samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Invalid email format');
 		});
 
 		it('logs in user that has already completed onboarding', async () => {
@@ -439,7 +450,10 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -447,6 +461,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -463,7 +478,10 @@ describe('SamlService', () => {
 				email: samlAttributes.email,
 				authIdentities: [],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 			jest.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
 
@@ -472,6 +490,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -484,7 +503,10 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 			};
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
 
@@ -493,6 +515,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: undefined,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -508,7 +531,10 @@ describe('SamlService', () => {
 			mockUser.firstName = '';
 			mockUser.lastName = '';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
@@ -518,6 +544,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -533,7 +560,10 @@ describe('SamlService', () => {
 			mockUser.firstName = 'Jane';
 			mockUser.lastName = 'Doe';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
@@ -543,6 +573,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -563,7 +594,10 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -576,6 +610,74 @@ describe('SamlService', () => {
 				mockUser.id,
 				samlAttributes.n8nProjectRoles,
 			);
+		});
+
+		it('calls provisionExpressionMappedRolesForUser when expression mapping is enabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: 'Foo',
+				lastName: 'Bar',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const rawAttributes = { email: 'foo@bar.com', department: 'engineering', role: 'admin' };
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(true);
+			provisioningService.provisionExpressionMappedRolesForUser = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: rawAttributes,
+			});
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionExpressionMappedRolesForUser).toHaveBeenCalledWith(
+				mockUser,
+				expect.objectContaining({ $provider: 'saml', $saml: { attributes: rawAttributes } }),
+			);
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningService.provisionProjectRolesForUser).not.toHaveBeenCalled();
+		});
+
+		it('falls through to direct-claim provisioning when expression mapping is disabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+				n8nInstanceRole: 'global:admin',
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(false);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
+				mockUser,
+				'global:admin',
+			);
+			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 		});
 	});
 
@@ -649,7 +751,7 @@ describe('SamlService', () => {
 		});
 
 		test('does throw `BadRequestError` when a metadata url is not returning correct metadata', async () => {
-			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			httpRequest.mockResolvedValue({ statusCode: 200, body: 'NOT VALID SAML METADATA' });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -663,7 +765,7 @@ describe('SamlService', () => {
 				metadataUrl: metadataUrlTestData,
 			});
 
-			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			httpRequest.mockResolvedValue({ statusCode: 200, body: 'NOT VALID SAML METADATA' });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -690,7 +792,7 @@ describe('SamlService', () => {
 		});
 
 		test('does throw `InvalidSamlMetadataUrlError` when the metadata url does not return success on http call', async () => {
-			mockedAxios.get.mockResolvedValue({ status: 400, data: '' });
+			httpRequest.mockResolvedValue({ statusCode: 400, body: '' });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -704,7 +806,7 @@ describe('SamlService', () => {
 				metadataUrl: metadataUrlTestData,
 			});
 
-			mockedAxios.get.mockResolvedValue({ status: 400 });
+			httpRequest.mockResolvedValue({ statusCode: 400 });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -867,7 +969,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
-				expect(cipher.encrypt).toHaveBeenCalledWith(RSA_TEST_PRIVATE_KEY);
+				expect(cipher.encryptV2).toHaveBeenCalledWith(RSA_TEST_PRIVATE_KEY);
 			});
 
 			it('should not expose plaintext private key via getter', async () => {
@@ -906,13 +1008,13 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				const decrypted = await samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
-			it('should return undefined when no signing key is stored', () => {
+			it('should return undefined when no signing key is stored', async () => {
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should return undefined when feature flag is disabled', async () => {
@@ -922,7 +1024,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should throw BadRequestError when decryption fails', async () => {
@@ -930,12 +1032,12 @@ describe('SamlService', () => {
 				await samlService.loadPreferencesWithoutValidation({
 					signingPrivateKey: 'corrupted-encrypted-data',
 				});
-				cipher.decrypt = jest.fn(() => {
+				cipher.decryptV2 = jest.fn(async () => {
 					throw new Error('Decryption failed');
-				});
+				}) as Cipher['decryptV2'];
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(() => samlService.getDecryptedSigningPrivateKey()).toThrow(
+				await expect(samlService.getDecryptedSigningPrivateKey()).rejects.toThrow(
 					'Failed to decrypt SAML signing private key',
 				);
 			});
@@ -970,7 +1072,7 @@ describe('SamlService', () => {
 
 				// The encrypted key should be stored as-is (not re-encrypted)
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedKey);
-				expect(cipher.encrypt).not.toHaveBeenCalled();
+				expect(cipher.encryptV2).not.toHaveBeenCalled();
 			});
 
 			it('should survive loadFromDbAndApplySamlPreferences after saving encrypted key', async () => {
@@ -1006,7 +1108,7 @@ describe('SamlService', () => {
 
 				// Step 5: Verify the key can still be decrypted back to the original PEM
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 		});
 
@@ -1077,7 +1179,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
-				expect(cipher.encrypt).toHaveBeenCalledWith(EC_TEST_PRIVATE_KEY);
+				expect(cipher.encryptV2).toHaveBeenCalledWith(EC_TEST_PRIVATE_KEY);
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(
 					`encrypted:${EC_TEST_PRIVATE_KEY}`,
 				);
@@ -1091,7 +1193,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				const decrypted = await samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(EC_TEST_PRIVATE_KEY);
 			});
 		});
@@ -1120,7 +1222,7 @@ describe('SamlService', () => {
 				// Key should remain unchanged
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedBefore);
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
 			it('should not trigger feature flag check for blanking value', async () => {
@@ -1160,7 +1262,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 
 				// Clear the key
 				await samlService.setSamlPreferences({
@@ -1170,7 +1272,7 @@ describe('SamlService', () => {
 
 				expect(samlService.samlPreferences.signingPrivateKey).toBeUndefined();
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should clear signing certificate when empty string is sent', async () => {
@@ -1419,201 +1521,145 @@ describe('SamlService', () => {
 		});
 	});
 
-	describe('proxy configuration', () => {
-		const originalEnv = process.env;
+	describe('fetchMetadataFromUrl', () => {
 		const validMetadataXml =
 			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>';
 
+		type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+
 		beforeEach(() => {
-			// Reset environment before each test
-			process.env = { ...originalEnv };
-			jest.restoreAllMocks();
 			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
 		});
 
-		afterEach(() => {
-			// Restore original environment after each test
-			process.env = originalEnv;
-		});
-
-		test('should use proxy when HTTP_PROXY environment variable is set for HTTP URLs', async () => {
-			// Set HTTP proxy environment variable
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTP_PROXY = proxyUrl;
-
-			// Use an HTTP metadata URL
-			const metadataUrl = 'http://saml.example.com/metadata';
-
-			// Mock the preferences to include a metadataUrl
-			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+		test('fetches metadata with SSRF protection disabled', async () => {
+			const metadataUrl = 'https://saml.example.com/metadata';
 			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
 				metadata: mockSamlConfig.metadata,
 				metadataUrl,
+				ignoreSSL: false,
 			} as SamlPreferences;
 
-			// Mock axios response
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadataXml,
-			});
-
-			// Mock validator
-			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+			httpRequest.mockResolvedValue({ statusCode: 200, body: validMetadataXml });
 
 			const result = await samlService.fetchMetadataFromUrl();
 
 			expect(result).toBe(validMetadataXml);
-
-			// Verify that axios.get was called with the correct URL and agents
-			expect(mockedAxios.get).toHaveBeenCalledWith(
-				metadataUrl,
-				expect.objectContaining({
-					httpAgent: expect.any(Object),
-					httpsAgent: expect.any(Object),
-				}),
-			);
-
-			// Get the actual call arguments to verify the agents
-			const callArgs = mockedAxios.get.mock.calls[0];
-			if (!callArgs?.[1]) {
-				throw new Error('Expected axios.get to be called with arguments');
-			}
-
-			const { httpAgent, httpsAgent } = callArgs[1];
-
-			// Verify that both agents are created
-			expect(httpAgent).toBeDefined();
-			expect(httpsAgent).toBeDefined();
-
-			// Verify the httpAgent has proxy configuration
-			expect(httpAgent).toHaveProperty('proxy');
-			const httpProxyAgent = httpAgent as unknown as HttpProxyAgent<string>;
-			expect(httpProxyAgent.proxy).toBeDefined();
-			expect(httpProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
-
-			// The httpsAgent should also have the proxy (both are created with same proxy)
-			expect(httpsAgent).toHaveProperty('proxy');
-			const httpsProxyAgent = httpsAgent as unknown as HttpsProxyAgent<string>;
-			expect(httpsProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
+			// The metadata URL is admin-configured, so SSRF protection is disabled.
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(httpRequest).toHaveBeenCalledWith({
+				url: metadataUrl,
+				method: 'GET',
+				skipSslCertificateValidation: false,
+				returnFullResponse: true,
+			});
 		});
 
-		test('should use proxy when HTTPS_PROXY environment variable is set for HTTPS URLs', async () => {
-			// Set HTTPS proxy environment variable
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
-
-			// Use an HTTPS metadata URL
+		test('skips SSL certificate validation when ignoreSSL is enabled', async () => {
 			const metadataUrl = 'https://saml.example.com/metadata';
-
-			// Mock the preferences to include a metadataUrl
-			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
 			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
 				metadata: mockSamlConfig.metadata,
 				metadataUrl,
 				ignoreSSL: true,
 			} as SamlPreferences;
 
-			// Mock axios response
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadataXml,
-			});
-
-			// Mock validator
-			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+			httpRequest.mockResolvedValue({ statusCode: 200, body: validMetadataXml });
 
 			const result = await samlService.fetchMetadataFromUrl();
 
 			expect(result).toBe(validMetadataXml);
-
-			// Verify that axios.get was called with the correct URL and agents
-			expect(mockedAxios.get).toHaveBeenCalledWith(
-				metadataUrl,
-				expect.objectContaining({
-					httpAgent: expect.any(Object),
-					httpsAgent: expect.any(Object),
-				}),
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ skipSslCertificateValidation: true }),
 			);
-
-			// Get the actual call arguments to verify the agents
-			const callArgs = mockedAxios.get.mock.calls[0];
-			if (!callArgs?.[1]) {
-				throw new Error('Expected axios.get to be called with arguments');
-			}
-
-			const { httpAgent, httpsAgent } = callArgs[1];
-
-			// Verify that both agents are created
-			expect(httpAgent).toBeDefined();
-			expect(httpsAgent).toBeDefined();
-
-			// Verify the httpsAgent has proxy configuration
-			expect(httpsAgent).toHaveProperty('proxy');
-			const httpsProxyAgent = httpsAgent as unknown as HttpsProxyAgent<string>;
-			expect(httpsProxyAgent.proxy).toBeDefined();
-			expect(httpsProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
-
-			// Verify that the httpsAgent has the correct rejectUnauthorized setting when ignoreSSL is true
-			// HttpsProxyAgent stores connection options in connectOpts, not options
-			const httpsAgentWithConnectOpts = httpsProxyAgent as unknown as {
-				connectOpts?: { rejectUnauthorized?: boolean };
-			};
-			expect(httpsAgentWithConnectOpts.connectOpts?.rejectUnauthorized).toBe(false);
-
-			// The httpAgent should also have the proxy (both are created with same proxy)
-			expect(httpAgent).toHaveProperty('proxy');
-			const httpProxyAgent = httpAgent as unknown as HttpProxyAgent<string>;
-			expect(httpProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
 		});
 
-		test('should work without proxy when no proxy environment variables are set', async () => {
-			// Ensure no proxy env vars are set
-			delete process.env.HTTP_PROXY;
-			delete process.env.HTTPS_PROXY;
-			delete process.env.ALL_PROXY;
-
-			// Mock the preferences to include a metadataUrl
-			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+		test('throws BadRequestError when no metadata URL is set', async () => {
 			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
 				metadata: mockSamlConfig.metadata,
-				metadataUrl: 'https://saml.example.com/metadata',
-				ignoreSSL: false,
+				metadataUrl: '',
 			} as SamlPreferences;
 
-			// Mock axios response
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadataXml,
+			await expect(samlService.fetchMetadataFromUrl()).rejects.toThrowError(BadRequestError);
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('pending test configs', () => {
+		test('storePendingTestConfig writes metadata to the cache under a random token with TTL', async () => {
+			const metadata = '<EntityDescriptor/>';
+
+			const token = await samlService.storePendingTestConfig(metadata);
+
+			expect(token).toMatch(/^[0-9a-f]+$/);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				`saml:pending-test-config:${token}`,
+				metadata,
+				10 * 60 * 1000,
+			);
+		});
+
+		test('consumePendingTestConfig returns metadata from the cache and deletes it', async () => {
+			const metadata = '<EntityDescriptor/>';
+			cacheService.get.mockResolvedValueOnce(metadata);
+
+			const result = await samlService.consumePendingTestConfig('abc123');
+
+			expect(result).toBe(metadata);
+			expect(cacheService.get).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+			expect(cacheService.delete).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+		});
+
+		test('consumePendingTestConfig returns undefined for unknown tokens and does not delete', async () => {
+			cacheService.get.mockResolvedValueOnce(undefined);
+
+			const result = await samlService.consumePendingTestConfig('unknown-token');
+
+			expect(result).toBeUndefined();
+			expect(cacheService.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getAttributesFromLoginResponse with metadataOverride', () => {
+		test('uses a temporary IdP built from the provided metadata instead of the stored one', async () => {
+			const overrideMetadata = '<EntityDescriptor override/>';
+			const overrideIdp = { id: 'override-idp' };
+			const getStoredIdp = jest
+				.spyOn(samlService, 'getIdentityProviderInstance')
+				.mockReturnValue(mock<IdentityProviderInstance>());
+			const createFromMetadata = jest
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(samlService as any, 'createIdentityProviderFromMetadata')
+				.mockResolvedValue(overrideIdp);
+
+			const serviceProviderInstance = mock<ServiceProviderInstance>();
+			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
+				samlContent: '',
+				extract: {},
+			});
+			jest
+				.spyOn(samlService, 'getServiceProviderInstance')
+				.mockReturnValue(serviceProviderInstance);
+
+			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+				},
+				missingAttributes: [],
+				rawAttributes: {},
 			});
 
-			// Mock validator
-			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+			const req = { body: {} } as express.Request;
+			await samlService.getAttributesFromLoginResponse(req, 'post', overrideMetadata);
 
-			const result = await samlService.fetchMetadataFromUrl();
-
-			expect(result).toBe(validMetadataXml);
-
-			// Verify that axios.get was called with agents
-			expect(mockedAxios.get).toHaveBeenCalledWith(
-				'https://saml.example.com/metadata',
-				expect.objectContaining({
-					httpAgent: expect.any(Object),
-					httpsAgent: expect.any(Object),
-				}),
-			);
-
-			// Get the actual call arguments to verify the agents are NOT proxy agents
-			const callArgs = mockedAxios.get.mock.calls[0];
-			if (!callArgs?.[1]) {
-				throw new Error('Expected axios.get to be called with arguments');
-			}
-
-			const { httpAgent, httpsAgent } = callArgs[1];
-
-			// When no proxy is configured, regular http/https Agents are created
-			// These should NOT have a proxy property
-			expect(httpAgent).not.toHaveProperty('proxy');
-			expect(httpsAgent).not.toHaveProperty('proxy');
+			expect(createFromMetadata).toHaveBeenCalledWith(overrideMetadata);
+			expect(getStoredIdp).not.toHaveBeenCalled();
+			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(overrideIdp, 'post', {
+				body: req.body,
+				query: req.query,
+			});
 		});
 	});
 });

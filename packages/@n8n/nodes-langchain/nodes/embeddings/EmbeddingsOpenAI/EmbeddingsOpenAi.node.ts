@@ -2,6 +2,7 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeProperties,
 	type INodeType,
@@ -11,7 +12,6 @@ import {
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { mergeCustomHeaders } from '@utils/helpers';
 import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
@@ -252,7 +252,13 @@ export class EmbeddingsOpenAi implements INodeType {
 			defaultHeaders,
 		};
 		if (options.baseURL) {
-			checkDomainRestrictions(this, credentials, options.baseURL);
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData: credentials,
+				url: options.baseURL,
+				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
+				surface: 'OpenAI',
+			});
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;

@@ -9,13 +9,12 @@
  * single batched command to minimize API round-trips.
  */
 
-import { createTool } from '@mastra/core/tools';
-import type { Workspace } from '@mastra/core/workspace';
+import { Tool } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
-import { runInSandbox } from '../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { runInSandbox, type SandboxWorkspace } from '../../workspace/sandbox-fs';
 
 const nodeRequestSchema = z.union([
 	z.string().describe('Simple node ID, e.g. "n8n-nodes-base.httpRequest"'),
@@ -43,35 +42,42 @@ function esc(s: string): string {
 	return s.replace(/'/g, "'\\''");
 }
 
-export function createMaterializeNodeTypeTool(context: InstanceAiContext, workspace: Workspace) {
-	return createTool({
-		id: 'materialize-node-type',
-		description:
+export const materializeNodeTypeInputSchema = z.object({
+	nodeIds: z
+		.array(nodeRequestSchema)
+		.min(1)
+		.max(5)
+		.describe('Node IDs to materialize definitions for (max 5)'),
+});
+
+export function createMaterializeNodeTypeTool(
+	context: InstanceAiContext,
+	workspace: SandboxWorkspace,
+) {
+	return new Tool('materialize-node-type')
+		.description(
 			'Get TypeScript type definitions for nodes. Returns the full definition content ' +
-			'AND writes the files to the sandbox so tsc can reference them. ' +
-			'Use after search-nodes to get exact schemas before writing workflow code. ' +
-			'No need to cat the files afterward — content is returned directly.',
-		inputSchema: z.object({
-			nodeIds: z
-				.array(nodeRequestSchema)
-				.min(1)
-				.max(5)
-				.describe('Node IDs to materialize definitions for (max 5)'),
-		}),
-		outputSchema: z.object({
-			definitions: z.array(
-				z.object({
-					nodeId: z.string(),
-					path: z.string(),
-					content: z.string(),
-					error: z.string().optional(),
-				}),
-			),
-		}),
-		execute: async ({ nodeIds }) => {
+				'AND writes the files to the sandbox so tsc can reference them. ' +
+				'Use after search-nodes to get exact schemas before writing workflow code. ' +
+				'No need to cat the files afterward — content is returned directly.',
+		)
+		.input(materializeNodeTypeInputSchema)
+		.output(
+			z.object({
+				definitions: z.array(
+					z.object({
+						nodeId: z.string(),
+						path: z.string(),
+						content: z.string(),
+						error: z.string().optional(),
+					}),
+				),
+			}),
+		)
+		.handler(async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
-					definitions: nodeIds.map((req) => ({
+					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
 						nodeId: typeof req === 'string' ? req : req.nodeId,
 						path: '',
 						content: '',
@@ -84,7 +90,7 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 
 			// 1. Resolve all definitions in parallel
 			const resolved = await Promise.all(
-				nodeIds.map(async (req) => {
+				nodeIds.map(async (req: z.infer<typeof nodeRequestSchema>) => {
 					const nodeId = typeof req === 'string' ? req : req.nodeId;
 					const options = typeof req === 'string' ? undefined : req;
 					const result = await context.nodeService.getNodeTypeDefinition!(nodeId, options);
@@ -105,7 +111,9 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 			);
 
 			// 2. Batch-write all successful definitions in a single shell script
-			const toWrite = resolved.filter((r) => r.content && !r.error);
+			const toWrite = resolved.filter(
+				(r: { content: string; error?: string }) => r.content && !r.error,
+			);
 			if (toWrite.length > 0) {
 				const lines: string[] = ['#!/bin/bash', 'set -e'];
 
@@ -137,6 +145,6 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 			}
 
 			return { definitions: resolved };
-		},
-	});
+		})
+		.build();
 }

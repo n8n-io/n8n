@@ -69,6 +69,30 @@ export class BrowserNotAvailableError extends McpBrowserError {
 	}
 }
 
+export type ConnectionLostReason =
+	| 'browser_closed'
+	| 'extension_disconnected'
+	| 'debugger_detached'
+	| 'network_error'
+	| 'heartbeat_timeout';
+
+const connectionLostMessages: Record<ConnectionLostReason, string> = {
+	browser_closed: 'The browser was closed',
+	extension_disconnected: 'The browser extension disconnected',
+	debugger_detached: 'The Chrome debugger was detached (banner dismissed or DevTools closed)',
+	network_error: 'The connection to the browser extension was lost',
+	heartbeat_timeout: 'The browser extension stopped responding',
+};
+
+export class ConnectionLostError extends McpBrowserError {
+	constructor(readonly reason: ConnectionLostReason) {
+		super(
+			`Browser connection lost: ${connectionLostMessages[reason]}`,
+			'Call browser_connect to reconnect.',
+		);
+	}
+}
+
 export class BrowserExecutableNotFoundError extends McpBrowserError {
 	constructor(readonly browser: string) {
 		super(
@@ -89,14 +113,14 @@ export class ExtensionNotConnectedError extends McpBrowserError {
 	) {
 		const phaseHint =
 			phase === 'browser_not_launched'
-				? 'The browser process may not have started.'
+				? 'The browser process may not have started. Check that the browser is installed and accessible.'
 				: phase === 'extension_missing'
-					? 'The browser opened but the n8n AI Browser Bridge extension did not connect.'
+					? 'The browser opened but the user did not confirm the browser connection in time. Ask the user to look for the n8n AI Browser Bridge extension popup in their browser and click Connect. If the user does not see the popup, the extension may not be installed.'
 					: 'The extension did not connect within the timeout period.';
 		const install = extensionInstructions ? `\n${extensionInstructions}` : '';
 		super(
 			`Extension connection timed out after ${timeoutMs}ms`,
-			`${phaseHint}${install}\nThen retry browser_connect.`,
+			`${phaseHint}${install}\nThen call browser_connect again.`,
 		);
 	}
 }

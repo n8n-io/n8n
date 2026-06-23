@@ -86,7 +86,7 @@ export function useExternalSecretsProvider(
 			setConnectionState('error');
 
 			if (options.showError) {
-				toast.showError(error, 'Error', error.response?.data?.data.error);
+				toast.showError(error, 'Error', { message: error.response?.data?.data.error });
 			}
 
 			return 'error';

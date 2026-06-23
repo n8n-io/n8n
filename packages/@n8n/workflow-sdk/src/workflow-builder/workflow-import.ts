@@ -7,6 +7,7 @@
 import { deepCopy } from 'n8n-workflow';
 
 import {
+	foldLegacyErrorConnections,
 	normalizeConnections,
 	generateUniqueName,
 	type WorkflowJSON,
@@ -74,8 +75,11 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 				notesInFlow: n8nNode.notesInFlow,
 				executeOnce: n8nNode.executeOnce,
 				retryOnFail: n8nNode.retryOnFail,
+				maxTries: n8nNode.maxTries,
+				waitBetweenTries: n8nNode.waitBetweenTries,
 				alwaysOutputData: n8nNode.alwaysOutputData,
 				onError: n8nNode.onError,
+				extendsCredential: n8nNode.extendsCredential,
 			},
 			update(config) {
 				return { ...this, config: { ...this.config, ...config } };
@@ -118,6 +122,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	if (json.connections) {
 		const connections = deepCopy(json.connections);
 		normalizeConnections(connections);
+		foldLegacyErrorConnections(connections, json.nodes);
 
 		for (const [sourceName, nodeConns] of Object.entries(connections)) {
 			const mapKey = nameToKey.get(sourceName);

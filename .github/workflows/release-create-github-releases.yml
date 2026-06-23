@@ -16,6 +16,9 @@ on:
       commit:
         required: true
         type: string
+      is_experimental:
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       track:
@@ -35,6 +38,9 @@ on:
         description: 'Commitish the release points to (e.g. branch name or SHA).'
         required: true
         type: string
+      is_experimental:
+        required: true
+        type: boolean
 
 permissions:
   contents: write
@@ -65,14 +71,15 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Create GitHub releases
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           RELEASE_TAG: ${{ inputs.version-tag }}
           BODY: ${{ inputs.body }}
-          IS_PRE_RELEASE: ${{ inputs.track == 'beta' }}
-          MAKE_LATEST: ${{ inputs.track == 'stable' }}
+          IS_PRE_RELEASE: ${{ inputs.track == 'beta' || inputs.is_experimental }}
+          MAKE_LATEST: ${{ inputs.track == 'stable' && !inputs.is_experimental }}
           COMMIT: ${{ inputs.commit }}
-          ADDITIONAL_TAGS: ${{ inputs.track }}
+          ADDITIONAL_TAGS: ${{ !inputs.is_experimental && inputs.track || '' }}
         run: node ./.github/scripts/create-github-release.mjs

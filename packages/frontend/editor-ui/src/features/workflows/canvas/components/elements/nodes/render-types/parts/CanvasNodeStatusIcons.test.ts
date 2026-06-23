@@ -8,6 +8,7 @@ import { VIEWS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
+import type { IPinData } from 'n8n-workflow';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
@@ -17,6 +18,22 @@ vi.mock('vue-router', async (importOriginal) => {
 	return {
 		...(actual as typeof actualVueRouter),
 		useRoute: vi.fn(),
+	};
+});
+
+const pinnedDataByNodeName: IPinData = {};
+const executionSimulationByNodeName: Record<string, { reason: string }> = {};
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({
+			value: actual.createEmptyCanvasRenderData({
+				pinnedDataByNodeName,
+				executionSimulationByNodeName,
+			}),
+		})),
 	};
 });
 
@@ -32,14 +49,22 @@ describe('CanvasNodeStatusIcons', () => {
 	beforeEach(() => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
+		for (const key of Object.keys(pinnedDataByNodeName)) {
+			delete pinnedDataByNodeName[key];
+		}
+		for (const key of Object.keys(executionSimulationByNodeName)) {
+			delete executionSimulationByNodeName[key];
+		}
 	});
 
 	it('should render correctly for a pinned node', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
-					...createCanvasNodeProvide({ data: { pinnedData: { count: 5, visible: true } } }),
+					...createCanvasNodeProvide(),
 				},
 			},
 		});
@@ -48,17 +73,56 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it('should not render pinned icon when disabled', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
 		const { queryByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
 					...createCanvasNodeProvide({
-						data: { disabled: true, pinnedData: { count: 5, visible: true } },
+						data: { disabled: true },
 					}),
 				},
 			},
 		});
 
+		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
+	});
+
+	it('should render the simulated icon for a node whose output was simulated', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Sends a message' };
+
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							execution: { status: 'success', running: false },
+							runData: { outputMap: {}, iterations: 1, visible: true },
+						},
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
+	});
+
+	it('should prefer the simulated icon over the pinned icon', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Sends a message' };
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
 		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
 	});
 

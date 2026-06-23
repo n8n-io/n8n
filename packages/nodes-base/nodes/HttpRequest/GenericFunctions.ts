@@ -1,10 +1,11 @@
 import FormData from 'form-data';
 import get from 'lodash/get';
+import type { Readable } from 'stream';
 import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
 	deepCopy,
-	NodeOperationError,
+	getCredentialAllowedDomains,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INode,
@@ -263,7 +264,7 @@ export const prepareRequestBody = async (
 			if (parameter.parameterType === 'formBinaryData') {
 				const entry = await defaultReducer({}, parameter);
 				const key = Object.keys(entry)[0];
-				const data = entry[key] as { value: Buffer; options: FormData.AppendOptions };
+				const data = entry[key] as { value: Buffer | Readable; options: FormData.AppendOptions };
 				formData.append(key, data.value, data.options);
 				continue;
 			}
@@ -311,25 +312,5 @@ export const updadeQueryParameterConfig = (version: number) => {
 export const getAllowedDomains = (
 	node: INode,
 	credentialData: ICredentialDataDecryptedObject,
-): string | undefined => {
-	if (credentialData.allowedHttpRequestDomains === 'none') {
-		throw new NodeOperationError(
-			node,
-			'This credential is configured to prevent use within an HTTP Request node',
-		);
-	}
-
-	if (credentialData.allowedHttpRequestDomains === 'domains') {
-		const allowedDomains = credentialData.allowedDomains as string;
-		if (!allowedDomains || allowedDomains.trim() === '') {
-			throw new NodeOperationError(
-				node,
-				'No allowed domains specified. Configure allowed domains or change restriction setting.',
-			);
-		}
-
-		return allowedDomains;
-	}
-
-	return undefined;
-};
+): string | undefined =>
+	getCredentialAllowedDomains({ node, credentialData, surface: 'HTTP Request' });

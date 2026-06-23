@@ -2,6 +2,11 @@ import { BasePage } from './BasePage';
 import { AddResource } from './components/AddResource';
 
 export class DataTableView extends BasePage {
+	async goto(projectId?: string) {
+		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
+		await this.page.goto(url);
+	}
+
 	readonly addResource = new AddResource(this.page);
 
 	getEmptyStateActionBox() {

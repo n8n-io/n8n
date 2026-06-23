@@ -1,4 +1,4 @@
-import { McpConnection } from '../runtime/mcp-connection';
+import { McpConnection } from '../runtime/mcp/mcp-connection';
 import type { McpServerConfig, McpVerifyResult } from '../types/sdk/mcp';
 import type { BuiltTool } from '../types/sdk/tool';
 
@@ -39,10 +39,8 @@ export class McpClient {
 	/**
 	 * @param configs - Server configurations. Each must have either `url` or `command`.
 	 *   Duplicate names within the list are rejected.
-	 * @param requireToolApproval - When true, every tool from every server is wrapped
-	 *   with a human-approval gate (requires `.checkpoint()` on the Agent).
 	 */
-	constructor(configs: McpServerConfig[], requireToolApproval = false) {
+	constructor(configs: McpServerConfig[]) {
 		for (const cfg of configs) {
 			if (!cfg.url && !cfg.command) {
 				throw new Error(
@@ -63,7 +61,15 @@ export class McpClient {
 		}
 
 		this.configs = configs;
-		this.connections = configs.map((cfg) => new McpConnection(cfg, requireToolApproval));
+		this.connections = configs.map((cfg) => new McpConnection(cfg));
+	}
+
+	/**
+	 * Returns the names of all configured MCP servers. Does NOT require a
+	 * network connection — safe to call before `listTools()` or `connect()`.
+	 */
+	get serverNames(): string[] {
+		return this.configs.map((cfg) => cfg.name);
 	}
 
 	/**

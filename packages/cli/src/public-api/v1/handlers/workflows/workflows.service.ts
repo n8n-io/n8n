@@ -1,17 +1,18 @@
 import { GlobalConfig } from '@n8n/config';
-import type { Project, User } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import {
-	WorkflowEntity,
 	WorkflowTagMapping,
-	SharedWorkflow,
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { License } from '@/license';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -43,7 +44,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role.slug) && { userId: user.id }),
+			...(!hasGlobalScope(user, ['workflow:read']) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [
@@ -60,27 +61,23 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 }
 
 export async function createWorkflow(
-	workflow: WorkflowEntity,
 	user: User,
-	personalProject: Project,
-	role: WorkflowSharingRole,
+	body: WorkflowEntity & { projectId?: string },
 ): Promise<WorkflowEntity> {
-	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
-	return await dbManager.transaction(async (transactionManager) => {
-		const newWorkflow = new WorkflowEntity();
-		Object.assign(newWorkflow, workflow);
-		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+	const { projectId, ...rest } = body;
+	const workflow = createWorkflowEntityFromPayload(rest);
 
-		const newSharedWorkflow = new SharedWorkflow();
-		Object.assign(newSharedWorkflow, {
-			role,
-			user,
-			project: personalProject,
-			workflow: savedWorkflow,
-		});
-		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+	// A policy supplied via the API is explicit intent, so a below-floor value is
+	// rejected (422) rather than silently seeded up to the floor — matching the
+	// update endpoint. An absent policy is left for WorkflowCreationService to seed.
+	await Container.get(RedactionEnforcementService).assertNewPolicyAllowed(
+		workflow.settings?.redactionPolicy,
+	);
 
-		return savedWorkflow;
+	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
+		projectId,
+		publicApi: true,
+		source: 'api',
 	});
 }
 

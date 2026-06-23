@@ -6,13 +6,15 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
+import {
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	TELEMETRY_EVENTS,
+} from '@/app/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-const EVENTS = {
-	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
-};
+const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
@@ -25,13 +27,33 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
+	const pendingFeatureFlagsEvaluation = ref(false);
 
 	const overrides: Ref<Record<string, string | boolean>> = ref({});
+	let featureFlagsWaitPromise: Promise<FeatureFlags | null> | null = null;
+	let resolveFeatureFlagsWait: ((flags: FeatureFlags | null) => void) | null = null;
+
+	const clearFeatureFlagsWait = () => {
+		featureFlagsWaitPromise = null;
+		resolveFeatureFlagsWait = null;
+	};
+
+	const resolveFeatureFlagsWaiters = (flags: FeatureFlags | null) => {
+		pendingFeatureFlagsEvaluation.value = false;
+
+		if (resolveFeatureFlagsWait) {
+			resolveFeatureFlagsWait(flags);
+		}
+
+		clearFeatureFlagsWait();
+	};
 
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
 		trackedDemoExp.value = {};
+		pendingFeatureFlagsEvaluation.value = false;
+		clearFeatureFlagsWait();
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
@@ -47,6 +69,22 @@ export const usePostHog = defineStore('posthog', () => {
 	 */
 	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
 		return getVariant(experiment) === true;
+	};
+
+	const hasPendingFeatureFlags = () => pendingFeatureFlagsEvaluation.value;
+
+	const waitForFeatureFlags = async () => {
+		if (!pendingFeatureFlagsEvaluation.value) {
+			return featureFlags.value;
+		}
+
+		if (!featureFlagsWaitPromise) {
+			featureFlagsWaitPromise = new Promise((resolve) => {
+				resolveFeatureFlagsWait = resolve;
+			});
+		}
+
+		return await featureFlagsWaitPromise;
 	};
 
 	if (!window.featureFlags) {
@@ -78,22 +116,26 @@ export const usePostHog = defineStore('posthog', () => {
 		};
 	}
 
+	const groupIdentify = (groupKey: string, instanceId: string) => {
+		window.posthog?.group?.(groupKey, instanceId);
+	};
+
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
+		if (!user) return;
+
 		const versionCli = rootStore.versionCli;
 		const traits: Record<string, string | number> = {
 			instance_id: instanceId,
 			version_cli: versionCli,
 		};
 
-		if (user && typeof user.createdAt === 'string') {
+		if (typeof user.createdAt === 'string') {
 			traits.created_at_timestamp = new Date(user.createdAt).getTime();
 		}
 
-		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
-		const id = user ? `${instanceId}#${user.id}` : instanceId;
-		window.posthog?.identify?.(id, traits);
+		window.posthog?.identify?.(`${instanceId}#${user.id}`, traits);
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
@@ -102,7 +144,7 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		telemetry.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+		telemetry.track(TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});
@@ -145,22 +187,33 @@ export const usePostHog = defineStore('posthog', () => {
 			},
 		};
 
-		window.posthog?.init(config.apiKey, options);
-		identify();
+		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
+			options.bootstrap = {
+				distinctID: distinctId,
+				featureFlags: evaluatedFeatureFlags,
+			};
+		}
+
+		window.posthog?.init(config.apiKey, {
+			...options,
+			loaded: () => {
+				identify();
+				groupIdentify(POSTHOG_GROUP_TYPE_INSTANCE, instanceId);
+			},
+		});
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
-			options.bootstrap = {
-				distinctId,
-				featureFlags: evaluatedFeatureFlags,
-			};
+			resolveFeatureFlagsWaiters(featureFlags.value);
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
+			pendingFeatureFlagsEvaluation.value = true;
 			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
 				featureFlags.value = map;
+				resolveFeatureFlagsWaiters(featureFlags.value);
 
 				// must be debounced because it is called multiple times by posthog
 				trackExperimentsDebounced(featureFlags.value);
@@ -179,7 +232,7 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
-	const capture = (event: string, properties: IDataObject) => {
+	const capture = (event: string, properties: IDataObject = {}) => {
 		if (typeof window.posthog?.capture === 'function') {
 			window.posthog.capture(event, properties);
 		}
@@ -190,8 +243,11 @@ export const usePostHog = defineStore('posthog', () => {
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
+		hasPendingFeatureFlags,
+		waitForFeatureFlags,
 		reset,
 		identify,
+		groupIdentify,
 		setMetadata,
 		capture,
 		overrides,

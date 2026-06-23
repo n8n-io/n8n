@@ -13,6 +13,10 @@ properties:
   name:
     type: string
     example: Workflow 1
+  description:
+    type: string
+    description: Description of the workflow
+    example: My workflow description
   active:
     type: boolean
     readOnly: true
