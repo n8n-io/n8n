@@ -10,7 +10,6 @@ import {
 	OperationalError,
 	UserError,
 } from 'n8n-workflow';
-import { ProxyAgent } from 'undici';
 import { parseString } from 'xml2js';
 
 import { getAwsDomain, regions, type AWSRegion } from './regions';
@@ -20,9 +19,8 @@ import type {
 	AwsAssumeRoleCredentialsType,
 	AwsSecurityHeaders,
 } from './types';
+import type { Request } from 'aws4';
 import { sign } from 'aws4';
-
-import { getSystemCredentials } from './system-credentials-utils';
 
 /**
  * Checks if a request body value should be JSON stringified for AWS requests.
