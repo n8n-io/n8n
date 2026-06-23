@@ -15,7 +15,6 @@ const props = withDefaults(
 		showAttach?: boolean;
 		acceptedMimeTypes?: string;
 		autosize?: boolean | { minRows: number; maxRows: number };
-		// Optional text label for the send button (default: icon-only).
 		buttonLabel?: string;
 		// Send button turns active only while focused with text (default: follows canSubmit).
 		activeRequiresFocus?: boolean;

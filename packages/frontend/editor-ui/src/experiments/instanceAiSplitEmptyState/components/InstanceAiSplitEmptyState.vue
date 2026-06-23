@@ -37,19 +37,13 @@ const isWideViewport = useMediaQuery('(min-width: 1024px)');
 
 const EXAMPLES = INSTANCE_AI_SPLIT_EMPTY_STATE_EXAMPLES;
 
-// Auto-cycle the examples: canvas, placeholder and list highlight advance together.
 const cycle = useCyclingExamples(EXAMPLES.length, {
 	intervalMs: INSTANCE_AI_SPLIT_EMPTY_STATE_CYCLE_MS,
 });
 
-// While editing an example's prompt, keep its preview instead of the loader.
 const editingExample = ref(false);
-
-// Editing an example stops the cycle for good; the canvas then rests on it
-// (`anchorIndex`), previewing others only on hover.
 const cycleStopped = ref(false);
 const anchorIndex = ref(0);
-
 const hoveredIndex = ref<number | null>(null);
 
 // One source of truth for the rotation: advance only while idle (not writing,
@@ -60,7 +54,6 @@ watch(
 	{ immediate: true },
 );
 
-// Drop the editing flag once the composer clears.
 watch(
 	() => props.writing,
 	(w) => {
@@ -80,7 +73,6 @@ function handleHover(index: number) {
 	hoveredIndex.value = index;
 }
 
-// On leave, resume the cycle from the previewed example (unless it's stopped).
 function handleHoverEnd() {
 	if (hoveredIndex.value !== null && !cycleStopped.value) {
 		cycle.activeIndex.value = hoveredIndex.value;
@@ -88,7 +80,6 @@ function handleHoverEnd() {
 	hoveredIndex.value = null;
 }
 
-// Pencil edit: pin the canvas to this example and stop the cycle.
 function handleEdit(payload: SplitEmptyStateSuggestionSubmitPayload) {
 	editingExample.value = true;
 	cycleStopped.value = true;
@@ -97,7 +88,6 @@ function handleEdit(payload: SplitEmptyStateSuggestionSubmitPayload) {
 	emit('insert-suggestion', payload);
 }
 
-// Composing a from-scratch prompt → loader; cycling or editing an example → preview.
 const canvasMode = computed<'preview' | 'loader'>(() =>
 	props.writing && !editingExample.value ? 'loader' : 'preview',
 );
@@ -150,7 +140,6 @@ const canvasMode = computed<'preview' | 'loader'>(() =>
 // Must match the useMediaQuery threshold in the script block.
 $breakpoint: 1024px;
 
-// Base layout (narrow / no-canvas): a single centred chat column.
 .split {
 	display: grid;
 	flex: 1;
@@ -175,10 +164,8 @@ $breakpoint: 1024px;
 	flex-shrink: 0;
 }
 
-// The chat (title + input) grows to fill the column and centres itself, which
-// pushes the examples to the bottom. Both stay IN FLOW (never absolutely
-// pinned), so a short viewport scrolls instead of overlapping. The header slot
-// stays flush at the top; only the content below it is inset.
+// Chat and examples stay in flow (never absolutely pinned), so a short viewport
+// scrolls instead of overlapping; the header slot stays flush at the top.
 .chatCenter {
 	flex: 1 0 auto;
 	display: flex;
@@ -201,8 +188,7 @@ $breakpoint: 1024px;
 	padding-bottom: var(--spacing--lg);
 }
 
-// Wide viewport: chat column on the left, canvas on the right (~2/3). The chat
-// column min-width keeps the title on one line.
+// Chat column min-width keeps the title on one line.
 .withCanvas {
 	@media (min-width: $breakpoint) {
 		grid-template:
@@ -211,10 +197,6 @@ $breakpoint: 1024px;
 	}
 }
 
-// Wide: the same stack spanning the sidebar width (no 680px cap, no horizontal
-// centring) with a roomier inset. The examples stay in flow at the bottom of
-// the sidebar — never absolutely pinned — so they can't overlap the chat. The
-// header toolbar stays flush at the top.
 .withCanvas .chatCenter {
 	@media (min-width: $breakpoint) {
 		max-width: none;
@@ -233,11 +215,8 @@ $breakpoint: 1024px;
 	}
 }
 
-// Tall wide viewport: take the header and examples OUT of flow (pinned to the
-// top and bottom) so the chat fills the column and centres at its true middle,
-// aligning vertically with the workflow that the canvas centres in the same
-// height. Gated on min-height so shorter viewports keep the in-flow stack
-// (which scrolls instead of overlapping).
+// Tall viewports only: pin the header + examples out of flow so the chat centres
+// in the full column, aligned with the workflow (short viewports keep the stack).
 @media (min-width: $breakpoint) and (min-height: 760px) {
 	.withCanvas .headerSlot {
 		position: absolute;

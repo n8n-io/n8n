@@ -47,13 +47,9 @@ const props = withDefaults(
 		placeholderKey?: BaseTextKey;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState. Locks the
-		// textarea to a constant row count so placeholder previews and typing
-		// never resize the composer (content below it stays put).
+		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		fixedRows?: number | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState. Text label for
-		// the send button (e.g. "Build with AI") and whether its active colour
-		// requires the composer to be focused with text.
+		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
 	}>(),
@@ -98,8 +94,6 @@ const activePreviewPromptKey = computed(
 );
 
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
-// Type the preview prompt out character-by-character so the cycling examples
-// read as if someone is composing them in the input.
 const typedPreview = ref('');
 const TYPEWRITER_SPEED_MS = 9;
 let typewriterTimer: ReturnType<typeof setInterval> | null = null;
@@ -192,9 +186,7 @@ const placeholder = computed(() => {
 		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
 	}
 	if (activePreviewPromptKey.value && isInputVisuallyEmpty.value) {
-		// Experiment cleanup: remove with instanceAiSplitEmptyState — the split
-		// preview prompt types in (typedPreview); the suggestion hover ghost
-		// shows instantly.
+		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		return props.previewPromptKey
 			? typedPreview.value
 			: i18n.baseText(activePreviewPromptKey.value);
@@ -375,8 +367,7 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 }
 
 const resizable = computed(() => {
-	// Experiment cleanup: remove with instanceAiSplitEmptyState. A locked row
-	// count keeps the composer size stable while previews swap the placeholder.
+	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	if (props.fixedRows) {
 		return { minRows: props.fixedRows, maxRows: props.fixedRows };
 	}

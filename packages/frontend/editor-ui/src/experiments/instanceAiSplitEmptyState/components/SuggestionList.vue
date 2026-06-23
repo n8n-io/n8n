@@ -176,7 +176,6 @@ function handleSeeMoreClick() {
 }
 
 .rowMain {
-	/* The clickable prompt — a bounded button; the edit action sits OUTSIDE it. */
 	position: relative;
 	overflow: hidden;
 	display: inline-flex;
@@ -192,7 +191,6 @@ function handleSeeMoreClick() {
 	text-align: left;
 	cursor: pointer;
 
-	/* Inactive row hover: highlight the prompt button only. */
 	.row:not(.rowActive) &:hover {
 		background-color: var(--color--background--light-1);
 	}
@@ -203,12 +201,10 @@ function handleSeeMoreClick() {
 	}
 }
 
-/* Active example: highlight the prompt button (pencil stays outside it). */
 .rowActive .rowMain {
 	background-color: color-mix(in srgb, var(--color--primary) 12%, transparent);
 }
 
-/* Trailing arrow on the highlighted row — makes the prompt read as clickable. */
 .rowArrow {
 	margin-left: auto;
 	flex: 0 0 auto;
@@ -216,7 +212,6 @@ function handleSeeMoreClick() {
 }
 
 .rowEdit {
-	/* A separate in-flow action beside the prompt — NOT overlapping it. */
 	flex: 0 0 auto;
 	margin-right: var(--spacing--2xs);
 	display: inline-flex;
@@ -228,7 +223,6 @@ function handleSeeMoreClick() {
 	background: transparent;
 	color: var(--color--text--tint-1);
 	cursor: pointer;
-	/* Hidden until the row is hovered; a distinct action once revealed. */
 	opacity: 0;
 	transition:
 		opacity 0.12s ease,
@@ -240,7 +234,6 @@ function handleSeeMoreClick() {
 		opacity: 1;
 	}
 
-	/* Distinct hover state on the button itself: filled chip + darker icon. */
 	&:hover {
 		opacity: 1;
 		background-color: var(--color--foreground--base);
@@ -253,7 +246,6 @@ function handleSeeMoreClick() {
 	}
 }
 
-/* Loading bar: thin stripe at the bottom of the active row */
 .loadingBar {
 	position: absolute;
 	bottom: 0;

@@ -29,7 +29,6 @@ const MAX_SCALE = 1;
 
 export type NodeAnimationState = 'idle' | 'running' | 'success';
 
-// Dark fill that reads on the light node background.
 const ICON_DARK = '#383838';
 const NEUTRAL_FILLS = new Set([
 	'none',
@@ -206,8 +205,6 @@ const effectiveCanvasHeight = computed(() =>
 // fallback before ResizeObserver fires would flash an oversized workflow.
 const isMeasured = computed(() => canvasRenderedWidth.value > 0 && canvasRenderedHeight.value > 0);
 
-// Uniform scale across every example: derived from the fixed reference extents,
-// NOT this workflow's bounds. Keeps node size constant as the canvas cycles.
 const scale = computed(() => {
 	const availableWidth = effectiveCanvasWidth.value - 2 * CANVAS_INNER_PADDING;
 	const availableHeight = effectiveCanvasHeight.value - 2 * CANVAS_INNER_PADDING;
@@ -216,7 +213,6 @@ const scale = computed(() => {
 	return Math.max(0.2, Math.min(scaleX, scaleY, MAX_SCALE));
 });
 
-// Centre this workflow (its own bounds) within the panel, both axes.
 const canvasMarginLeft = computed(
 	() => (effectiveCanvasWidth.value - bounds.value.width * scale.value) / 2,
 );
