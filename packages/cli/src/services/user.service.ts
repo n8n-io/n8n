@@ -14,6 +14,7 @@ import {
 import { Service } from '@n8n/di';
 import {
 	getGlobalScopes,
+	isBuiltInRole,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
@@ -322,7 +323,13 @@ export class UserService {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
-		if (!this.roleService.isRoleLicensed(newRole.newRoleName)) {
+		// Only custom roles are license-gated here; built-in roles are assignable on every
+		// entry point (SSO/SCIM provisioning, token exchange, REST). The REST endpoint
+		// separately gates advanced permissions for built-in admin.
+		if (
+			!isBuiltInRole(newRole.newRoleName) &&
+			!this.roleService.isRoleLicensed(newRole.newRoleName)
+		) {
 			throw new ForbiddenError(
 				`The role "${newRole.newRoleName}" is not available in your current license.`,
 			);
