@@ -314,8 +314,51 @@ describe('Webhook Utils', () => {
 		it('should throw an error if response mode is not "responseNode" but a Respond to Webhook node is found', () => {
 			const context: Partial<IWebhookFunctions> = {
 				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
-				getChildNodes: vi.fn().mockReturnValue([{ type: 'n8n-nodes-base.respondToWebhook' }]),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' }]),
 				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should not throw when the Respond to Webhook node belongs to a downstream Wait node that resumes via webhook', () => {
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+				getChildNodes: vi.fn().mockImplementation((nodeName: string) => {
+					if (nodeName === 'Webhook') {
+						return [
+							{ name: 'Wait', type: 'n8n-nodes-base.wait', parameters: { resume: 'webhook' } },
+							{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+						];
+					}
+					if (nodeName === 'Wait') {
+						return [{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' }];
+					}
+					return [];
+				}),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).not.toThrow();
+		});
+
+		it('should still throw when a downstream Wait node does not resume via webhook', () => {
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+				getChildNodes: vi.fn().mockImplementation((nodeName: string) => {
+					if (nodeName === 'Webhook') {
+						return [
+							{ name: 'Wait', type: 'n8n-nodes-base.wait', parameters: { resume: 'timeInterval' } },
+							{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+						];
+					}
+					return [];
+				}),
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);

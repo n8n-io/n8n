@@ -203,10 +203,30 @@ const getAllowList = (allowlist: string[]) => {
 
 export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
-	const connectedNodes = context.getChildNodes(context.getNode().name);
+	const connectedNodes = context.getChildNodes(context.getNode().name, {
+		includeNodeParameters: true,
+	});
+
+	// A Wait node that resumes via its own webhook takes over the HTTP response,
+	// so any Respond to Webhook node downstream of such a Wait responds to the
+	// Wait, not to this Webhook node. Exclude those so they aren't reported as
+	// "unused" against this Webhook.
+	const respondNodesOwnedByWait = new Set(
+		connectedNodes
+			.filter(
+				(node) => node.type === 'n8n-nodes-base.wait' && node.parameters?.resume === 'webhook',
+			)
+			.flatMap((waitNode) =>
+				context
+					.getChildNodes(waitNode.name)
+					.filter((node) => node.type === 'n8n-nodes-base.respondToWebhook')
+					.map((node) => node.name),
+			),
+	);
 
 	const isRespondToWebhookConnected = connectedNodes.some(
-		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
+		(node) =>
+			node.type === 'n8n-nodes-base.respondToWebhook' && !respondNodesOwnedByWait.has(node.name),
 	);
 
 	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
