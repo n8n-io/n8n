@@ -5,7 +5,7 @@
     "2. dryRun=false, only=@n8n/crdt   — prove POST->ledger, verify rows land",
     "3. dryRun=false, only=''          — full ~8.5k-file sweep"
   ],
-  "only": "@n8n/crdt",
+  "only": "",
   "dryRun": false,
   "shardSize": 50
 }
