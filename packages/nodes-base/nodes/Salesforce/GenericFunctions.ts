@@ -164,6 +164,23 @@ export async function salesforceApiRequestAllItems(
 }
 
 /**
+ * Owner fields accept two shapes for backward compatibility: a legacy `options`
+ * field stored its value as a raw string, while the current `resourceLocator`
+ * field stores `{ __rl, mode, value }`. This normalises both to the string id,
+ * or `undefined` when empty/missing.
+ */
+export function getResourceLocatorValue(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value === 'string') return value;
+	if (typeof value === 'object' && '__rl' in value) {
+		const inner = (value as { value?: unknown }).value;
+		if (inner === undefined || inner === null || inner === '') return undefined;
+		return String(inner);
+	}
+	return undefined;
+}
+
+/**
  * Sorts the given options alphabetically
  *
  */
