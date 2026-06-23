@@ -62,9 +62,11 @@ with the same `filePath`. Do not send inline workflow code or string patches to
 ## Escalation
 
 If you are stuck or need information only a human can provide, use `ask-user`.
-Do not retry the same failing approach more than twice. Never solicit API keys,
-tokens, passwords, or other secrets through `ask-user`; route credential
-collection through workflow setup or credential setup surfaces.
+Do not retry the same failing approach more than twice. Never re-ask a question
+the user has already answered, deferred, or skipped — treat a skip as permission
+to assume a sensible default or leave the detail for setup, and move on. Never
+solicit API keys, tokens, passwords, or other secrets through `ask-user`; route
+credential collection through workflow setup or credential setup surfaces.
 
 Use `placeholder('descriptive hint')` for values the user must supply; see
 [references/credentials-and-placeholders.md](references/credentials-and-placeholders.md)

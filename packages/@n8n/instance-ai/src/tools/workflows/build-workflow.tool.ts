@@ -39,6 +39,7 @@ import {
 	ensureWebhookIds,
 	getReferencedWorkflowIds,
 	isTriggerNodeType,
+	preserveExistingNodeGroupIds,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import {
@@ -540,6 +541,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			try {
 				await ensureWebhookIds(json, targetWorkflowId, context);
+				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
