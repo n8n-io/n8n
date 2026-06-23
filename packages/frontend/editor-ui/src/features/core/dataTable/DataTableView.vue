@@ -87,7 +87,7 @@ const addDataTableDisabled = computed(
 
 const addDataTableDisabledTooltip = computed(() =>
 	readOnlyEnv.value
-		? i18n.baseText('readOnlyEnv.cantAdd.dataTable')
+		? i18n.baseText('readOnlyEnv.cantAdd.any')
 		: i18n.baseText('dataTable.empty.button.disabled.tooltip'),
 );
 
