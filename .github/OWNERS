@@ -169,7 +169,7 @@ packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/project-roles/ @n8n-io/iam
-packages/frontend/editor-ui/src/features/integrations/  @n8n-io/nodes
+packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
 
 packages/frontend/@n8n/design-system/                   @n8n-io/design
 packages/frontend/@n8n/stores/                          @n8n-io/frontend
