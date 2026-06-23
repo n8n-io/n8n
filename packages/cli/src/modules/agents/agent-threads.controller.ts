@@ -5,11 +5,11 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentExecutionService } from './agent-execution.service';
 
-@RestController('/projects/:projectId/agents/v2')
+@RestController('/projects/:projectId/agent-threads/v2')
 export class AgentThreadsController {
 	constructor(private readonly agentExecutionService: AgentExecutionService) {}
 
-	@Get('/threads')
+	@Get('/')
 	@ProjectScope('agent:read')
 	async listThreads(
 		req: AuthenticatedRequest<
@@ -28,7 +28,7 @@ export class AgentThreadsController {
 		);
 	}
 
-	@Get('/threads/:threadId')
+	@Get('/:threadId')
 	@ProjectScope('agent:read')
 	async getThread(
 		req: AuthenticatedRequest<
@@ -49,7 +49,7 @@ export class AgentThreadsController {
 		return result;
 	}
 
-	@Delete('/threads/:threadId')
+	@Delete('/:threadId')
 	@ProjectScope('agent:update')
 	async deleteThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
 		const { projectId, threadId } = req.params;

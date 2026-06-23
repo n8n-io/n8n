@@ -86,7 +86,7 @@ export const listThreads = async (
 	return await makeRestApiRequest<ThreadsPage>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/threads?${params.toString()}`,
+		`/projects/${projectId}/agent-threads/v2?${params.toString()}`,
 	);
 };
 
@@ -100,7 +100,7 @@ export const getThreadDetail = async (
 	return await makeRestApiRequest<ThreadDetail>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/threads/${threadId}${params}`,
+		`/projects/${projectId}/agent-threads/v2/${threadId}${params}`,
 	);
 };
 
@@ -112,6 +112,6 @@ export const deleteThread = async (
 	return await makeRestApiRequest<{ success: boolean }>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/threads/${threadId}`,
+		`/projects/${projectId}/agent-threads/v2/${threadId}`,
 	);
 };

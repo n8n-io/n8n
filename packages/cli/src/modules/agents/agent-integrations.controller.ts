@@ -296,7 +296,7 @@ export class AgentIntegrationsController {
 			backgroundTasks.push(
 				task.catch((error: unknown) => {
 					console.warn(
-						'[AgentsController] Background task failed:',
+						'[AgentIntegrationsController] Background task failed:',
 						error instanceof Error ? error.message : String(error),
 					);
 				}),
