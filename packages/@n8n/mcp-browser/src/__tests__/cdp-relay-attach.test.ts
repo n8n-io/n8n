@@ -28,10 +28,10 @@ beforeEach(async () => {
 	);
 });
 
-afterEach(() => {
+afterEach(async () => {
 	relay.stop();
-	wss.close();
-	httpServer.close();
+	await new Promise<void>((resolve) => wss.close(() => resolve()));
+	await new Promise<void>((resolve) => httpServer.close(() => resolve()));
 });
 
 async function waitForOpen(ws: WebSocket): Promise<void> {
