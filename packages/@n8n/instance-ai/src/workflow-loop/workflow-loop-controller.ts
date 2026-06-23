@@ -19,6 +19,10 @@ import {
 	createRemediation,
 	remainingPostSubmitRemediations,
 } from './remediation';
+import {
+	buildRemediationForVerification,
+	shouldVerifyBeforeSetup,
+} from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	RemediationMetadata,
@@ -85,12 +89,8 @@ export function handleBuildOutcome(
 		MAX_POST_SUBMIT_REMEDIATION_SUBMITS - postSubmitRemediationSubmitsUsed,
 	);
 	const remediation = withRemainingSubmitFixes(outcome.remediation, remainingSubmitFixes);
-	const shouldVerifyBeforeSetup =
-		outcome.submitted && outcome.verificationReadiness?.status === 'ready';
-	const effectiveRemediation =
-		shouldVerifyBeforeSetup && remediation?.category === 'needs_setup' && !remediation.shouldEdit
-			? undefined
-			: remediation;
+	const shouldVerifyFirst = shouldVerifyBeforeSetup(outcome);
+	const effectiveRemediation = buildRemediationForVerification(outcome, remediation);
 	applyRemediationToAttempt(attempt, effectiveRemediation);
 
 	if (!outcome.submitted) {
@@ -188,7 +188,7 @@ export function handleBuildOutcome(
 		lastRemediation: effectiveRemediation,
 	};
 
-	if (outcome.needsUserInput && !shouldVerifyBeforeSetup) {
+	if (outcome.needsUserInput && !shouldVerifyFirst) {
 		return {
 			state: { ...updatedState, phase: 'blocked', status: 'blocked' },
 			action: { type: 'blocked', reason: outcome.blockingReason ?? 'Needs user input' },

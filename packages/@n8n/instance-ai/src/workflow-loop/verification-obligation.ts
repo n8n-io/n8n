@@ -1,3 +1,4 @@
+import { setupRemediationBlocksVerification } from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	WorkflowBuildOwner,
@@ -48,19 +49,6 @@ function hasPartialCoverageEvidence(outcome: WorkflowBuildOutcome): boolean {
 
 function hasFailedEvidence(outcome: WorkflowBuildOutcome): boolean {
 	return outcome.verification?.attempted === true && !outcome.verification.success;
-}
-
-function isNeedsSetupRemediation(remediation: WorkflowBuildOutcome['remediation']): boolean {
-	return remediation?.category === 'needs_setup' && !remediation.shouldEdit;
-}
-
-function setupRemediationBlocksVerification(
-	remediation: WorkflowBuildOutcome['remediation'],
-	outcome: WorkflowBuildOutcome,
-): boolean {
-	if (!isNeedsSetupRemediation(remediation)) return false;
-	if (outcome.verificationReadiness?.status !== 'ready') return true;
-	return outcome.verification?.attempted === true;
 }
 
 function hasSetupBlockingEvidence(
