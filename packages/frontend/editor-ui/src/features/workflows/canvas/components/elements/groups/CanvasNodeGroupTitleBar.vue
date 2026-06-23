@@ -11,7 +11,7 @@ import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.gr
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	CANVAS_NODE_GROUP_ID_PREFIX,
+	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
 
@@ -166,7 +166,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	if (selected.length === 0) return;
 
 	// Multi-select drag that includes this title bar → preserve the selection.
-	const myVueFlowId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.value.id}`;
+	const myVueFlowId = createCanvasGroupNodeId(group.value.id);
 	const isPartOfSelection = selected.some((n) => n.id === myVueFlowId);
 	if (isPartOfSelection) return;
 
