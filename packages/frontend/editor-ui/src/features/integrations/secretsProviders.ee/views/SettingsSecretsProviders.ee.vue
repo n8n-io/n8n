@@ -301,7 +301,6 @@ function goToUpgrade() {
 			</div>
 			<SecretsProvidersEmptyState
 				v-else-if="!hasActiveProviders"
-				:provider-types="secretsProviders.providerTypes.value"
 				:can-create="secretsProviders.canCreate.value"
 				@add-secrets-store="openConnectionModal()"
 			/>

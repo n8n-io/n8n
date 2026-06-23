@@ -6,15 +6,14 @@ import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '../components/ExternalSecretsProviderCard.ee.vue';
 import type { ExternalSecretsProvider } from '../externalSecrets.types';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { I18nT } from 'vue-i18n';
+import { useUpgradePrompt } from '@/app/composables/useUpgradePrompt';
 
-import { N8nActionBox, N8nCallout, N8nHeading } from '@n8n/design-system';
+import { N8nCallout, N8nEmptyState, N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
 const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const pageRedirectionHelper = usePageRedirectionHelper();
+const { ctaLabel, planName, goToUpgrade } = useUpgradePrompt('external-secrets');
 
 const sortedProviders = computed(() => {
 	return ([...externalSecretsStore.providers] as ExternalSecretsProvider[]).sort((a, b) => {
@@ -32,10 +31,6 @@ onMounted(() => {
 		toast.showError(error, i18n.baseText('error'));
 	}
 });
-
-function goToUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('external-secrets', 'upgrade-external-secrets');
-}
 </script>
 
 <template>
@@ -57,25 +52,20 @@ function goToUpgrade() {
 				:provider="provider"
 			/>
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
+			variant="gated"
 			class="mt-2xl mb-l"
 			data-test-id="external-secrets-content-unlicensed"
-			:button-text="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
-			@click="goToUpgrade"
-		>
-			<template #heading>
-				<span>{{ i18n.baseText('settings.externalSecrets.actionBox.title') }}</span>
-			</template>
-			<template #description>
-				<I18nT keypath="settings.externalSecrets.actionBox.description" scope="global">
-					<template #link>
-						<a href="https://docs.n8n.io/external-secrets/" target="_blank">
-							{{ i18n.baseText('settings.externalSecrets.actionBox.description.link') }}
-						</a>
-					</template>
-				</I18nT>
-			</template>
-		</N8nActionBox>
+			:icon-cluster="['key-round', 'circle-ellipsis', 'vault']"
+			:title="
+				i18n.baseText('settings.externalSecrets.upgrade.title', { interpolate: { planName } })
+			"
+			:description="i18n.baseText('settings.externalSecrets.upgrade.description')"
+			:learn-more-url="i18n.baseText('settings.externalSecrets.docs')"
+			:learn-more-text="i18n.baseText('generic.learnMore')"
+			:button-text="ctaLabel"
+			@click:button="goToUpgrade"
+		/>
 	</div>
 </template>
