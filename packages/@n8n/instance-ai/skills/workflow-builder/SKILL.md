@@ -381,6 +381,13 @@ column names.
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
   `channel`). Missing optional fields make expression-path validation fail.
+- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
+  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
+  expressions intentionally read `$json.json.*`. Correct:
+  `output: [{ daily: { precipitation_sum: [4.6] } }]`; wrong:
+  `output: [{ json: { daily: { precipitation_sum: [4.6] } } }]`.
+  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
+  this rule applies to SDK `node({ output: [...] })` mocks.
 
 Use this import shape unless the task needs fewer symbols:
 
