@@ -5,6 +5,7 @@
 [Task runner launcher](https://github.com/n8n-io/task-runner-launcher) that connects to a Task Broker
 running on the main n8n instance when running in `external` mode.  This image is to be launched as a sidecar
 container to the main n8n container.
+In queue-mode setups, each n8n process running in `external` mode needs a matching `n8nio/runners` sidecar. Processes without a sidecar should stay in `internal` mode.
 
 [Task runners](https://docs.n8n.io/hosting/configuration/task-runners/) are used to execute user-provided code
 in the [Code Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/), isolated from the n8n instance.
