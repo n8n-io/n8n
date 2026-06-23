@@ -2,18 +2,19 @@ import jwt from 'jsonwebtoken';
 import type { ICredentialDataDecryptedObject, IHttpRequestHelper } from 'n8n-workflow';
 
 import { GithubAppApi } from '../GithubAppApi.credentials';
+import type { Mock } from 'vitest';
 
-jest.mock('jsonwebtoken', () => ({
-	sign: jest.fn(),
+vi.mock('jsonwebtoken', () => ({
+	default: { sign: vi.fn() },
 }));
 
-jest.mock('@utils/utilities', () => ({
+vi.mock('@utils/utilities', () => ({
 	formatPrivateKey: (key: string) => key,
 }));
 
 describe('GithubAppApi Credential', () => {
 	const credential = new GithubAppApi();
-	const mockedSign = jwt.sign as unknown as jest.Mock;
+	const mockedSign = jwt.sign as unknown as Mock;
 	const baseCredentials: ICredentialDataDecryptedObject = {
 		server: 'https://api.github.com/',
 		appId: '12345',
@@ -36,7 +37,7 @@ describe('GithubAppApi Credential', () => {
 
 	describe('preAuthentication', () => {
 		it('should create app JWT and return installation access token', async () => {
-			const httpRequest = jest.fn().mockResolvedValue({ token: 'ghs_installation_token' });
+			const httpRequest = vi.fn().mockResolvedValue({ token: 'ghs_installation_token' });
 			const helper = {
 				helpers: { httpRequest },
 			} as unknown as IHttpRequestHelper;
@@ -64,7 +65,7 @@ describe('GithubAppApi Credential', () => {
 		});
 
 		it('should throw a clear error when JWT creation fails', async () => {
-			const httpRequest = jest.fn();
+			const httpRequest = vi.fn();
 			const helper = {
 				helpers: { httpRequest },
 			} as unknown as IHttpRequestHelper;
@@ -79,7 +80,7 @@ describe('GithubAppApi Credential', () => {
 		});
 
 		it('should include status code and API message when token request fails', async () => {
-			const httpRequest = jest.fn().mockRejectedValue({
+			const httpRequest = vi.fn().mockRejectedValue({
 				response: {
 					statusCode: 401,
 					body: { message: 'Bad credentials' },
@@ -95,7 +96,7 @@ describe('GithubAppApi Credential', () => {
 		});
 
 		it('should throw when GitHub response has no token', async () => {
-			const httpRequest = jest.fn().mockResolvedValue({});
+			const httpRequest = vi.fn().mockResolvedValue({});
 			const helper = {
 				helpers: { httpRequest },
 			} as unknown as IHttpRequestHelper;
