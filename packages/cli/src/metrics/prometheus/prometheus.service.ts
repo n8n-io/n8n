@@ -7,6 +7,7 @@ import { PrometheusActiveWorkflowMetricsService } from './active-workflow-metric
 import type { PrometheusMetricsCollector } from './base';
 import { PrometheusCacheMetricsService } from './cache-metrics.service';
 import { PrometheusDefaultMetricsService } from './default-metrics.service';
+import { PrometheusDistributedSchedulerMetricsService } from './distributed-scheduler-metrics.service';
 import { PrometheusDnsCacheMetricsService } from './dns-cache-metrics.service';
 import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
@@ -42,6 +43,7 @@ export class PrometheusMetricsService {
 		pss: PrometheusPssMetricsService,
 		version: PrometheusVersionMetricsService,
 		defaultMetrics: PrometheusDefaultMetricsService,
+		distributedScheduler: PrometheusDistributedSchedulerMetricsService,
 		tokenExchange: PrometheusTokenExchangeMetricsService,
 		ssrf: PrometheusSsrfMetricsService,
 		dnsCache: PrometheusDnsCacheMetricsService,
@@ -62,6 +64,7 @@ export class PrometheusMetricsService {
 			pss,
 			version,
 			defaultMetrics,
+			distributedScheduler,
 			tokenExchange,
 			ssrf,
 			dnsCache,

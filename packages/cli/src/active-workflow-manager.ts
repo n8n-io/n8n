@@ -10,7 +10,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import {
 	ActiveWorkflowTriggers,
@@ -47,6 +47,7 @@ import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { DistributedScheduleTriggerService } from '@/distributed-scheduler/distributed-schedule-trigger.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -941,6 +942,8 @@ export class ActiveWorkflowManager {
 	 * Stop running active, poll, and schedule triggers for a workflow.
 	 */
 	async removeNonWebhookTriggers(workflowId: WorkflowId) {
+		await Container.get(DistributedScheduleTriggerService).deregisterWorkflow(workflowId);
+
 		// `activeWorkflowTriggers.remove` is idempotent and always deregisters the workflow's
 		// crons, to ensure they stop running on a deactivated workflow
 		const wasRemoved = await this.activeWorkflowTriggers.remove(workflowId);
@@ -999,10 +1002,27 @@ export class ActiveWorkflowManager {
 			return false;
 		}
 
+		const distributedScheduleTriggerService = Container.get(DistributedScheduleTriggerService);
+		const inMemoryNodeIdsToAdd: string[] = [];
+		let addedDistributedScheduleTrigger = false;
+
+		for (const nodeId of nodeIdsToAdd) {
+			const node = workflow.getNode(nodeId);
+			if (node && (await distributedScheduleTriggerService.register(workflow, node))) {
+				addedDistributedScheduleTrigger = true;
+				continue;
+			}
+			inMemoryNodeIdsToAdd.push(nodeId);
+		}
+
+		if (inMemoryNodeIdsToAdd.length === 0) {
+			return addedDistributedScheduleTrigger;
+		}
+
 		await this.activeWorkflowTriggers.addTriggers(
 			workflow.id,
 			workflow,
-			nodeIdsToAdd,
+			inMemoryNodeIdsToAdd,
 			additionalData,
 			executionMode,
 			activationMode,

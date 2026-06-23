@@ -42,27 +42,37 @@ export function recurrenceCheck(
 	recurrenceRules: number[],
 	timezone: string,
 ): boolean {
-	if (!recurrence.activated) return true;
+	const lastExecution = recurrence.activated ? recurrenceRules[recurrence.index] : undefined;
+	const result = recurrenceCheckAt(recurrence, lastExecution, timezone, new Date());
+	if (recurrence.activated && result.shouldRun && result.nextLastValue !== null) {
+		recurrenceRules[recurrence.index] = result.nextLastValue;
+	}
+	return result.shouldRun;
+}
+
+export function recurrenceCheckAt(
+	recurrence: IRecurrenceRule,
+	lastExecution: number | undefined,
+	timezone: string,
+	referenceDate: Date,
+): { shouldRun: boolean; nextLastValue: number | null } {
+	if (!recurrence.activated) return { shouldRun: true, nextLastValue: null };
 
 	const intervalSize = recurrence.intervalSize;
-	if (!intervalSize) return false;
+	if (!intervalSize) return { shouldRun: false, nextLastValue: null };
 
-	const index = recurrence.index;
 	const typeInterval = recurrence.typeInterval;
-	const lastExecution = recurrenceRules[index];
 
-	const momentTz = moment.tz(timezone);
+	const momentTz = moment.tz(referenceDate, timezone);
 	if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
 		if (lastExecution === undefined || (hour - lastExecution + 24) % 24 >= intervalSize) {
-			recurrenceRules[index] = hour;
-			return true;
+			return { shouldRun: true, nextLastValue: hour };
 		}
 	} else if (typeInterval === 'days') {
 		const dayOfYear = momentTz.dayOfYear();
 		if (lastExecution === undefined || (dayOfYear - lastExecution + 365) % 365 >= intervalSize) {
-			recurrenceRules[index] = dayOfYear;
-			return true;
+			return { shouldRun: true, nextLastValue: dayOfYear };
 		}
 	} else if (typeInterval === 'weeks') {
 		const week = momentTz.week();
@@ -71,17 +81,15 @@ export function recurrenceCheck(
 			(week - lastExecution + 52) % 52 >= intervalSize || // not first time, but minimum interval has passed
 			week === lastExecution // Trigger on multiple days in the same week
 		) {
-			recurrenceRules[index] = week;
-			return true;
+			return { shouldRun: true, nextLastValue: week };
 		}
 	} else if (typeInterval === 'months') {
 		const month = momentTz.month();
 		if (lastExecution === undefined || (month - lastExecution + 12) % 12 >= intervalSize) {
-			recurrenceRules[index] = month;
-			return true;
+			return { shouldRun: true, nextLastValue: month };
 		}
 	}
-	return false;
+	return { shouldRun: false, nextLastValue: lastExecution ?? null };
 }
 
 /**

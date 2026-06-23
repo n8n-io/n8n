@@ -19,6 +19,7 @@ import type {
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
+import { DistributedScheduleTriggerService } from '@/distributed-scheduler/distributed-schedule-trigger.service';
 
 export interface NonWebhookTriggerRegistrationContext {
 	activationMode: WorkflowActivateMode;
@@ -46,6 +47,7 @@ export class NonWebhookTriggerRegistrar {
 		private readonly logger: Logger,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
+		private readonly distributedScheduleTriggerService: DistributedScheduleTriggerService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -120,6 +122,14 @@ export class NonWebhookTriggerRegistrar {
 		}: PreparedNonWebhookTriggerRegistration,
 		nodeId: INode['id'],
 	) {
+		const node = workflow.getNode(nodeId);
+		if (node && (await this.distributedScheduleTriggerService.register(workflow, node))) {
+			this.logger.debug(
+				`Added distributed schedule trigger "${nodeId}" for workflow ${formatWorkflow(dbWorkflow)}`,
+			);
+			return;
+		}
+
 		await this.activeWorkflowTriggers.addTriggers(
 			workflow.id,
 			workflow,
@@ -140,6 +150,8 @@ export class NonWebhookTriggerRegistrar {
 	 * Deregister one active, poll, or schedule trigger node from memory.
 	 */
 	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
+		if (await this.distributedScheduleTriggerService.deregister(workflowId, nodeId)) return;
+
 		await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
 	}
 }

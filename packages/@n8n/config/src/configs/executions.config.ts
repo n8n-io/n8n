@@ -158,4 +158,8 @@ export class ExecutionsConfig {
 	/** Whether scheduled executions receive a deduplication key enforced by a unique DB index. */
 	@Env('N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED')
 	scheduledExecutionDeduplicationEnabled: boolean = false;
+
+	/** Whether Schedule Trigger nodes use the DB-backed distributed scheduler PoC. */
+	@Env('N8N_DISTRIBUTED_SCHEDULER_ENABLED')
+	distributedSchedulerEnabled: boolean = false;
 }

@@ -4,15 +4,23 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflowTriggers } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
+import type { DistributedScheduleTriggerService } from '@/distributed-scheduler/distributed-schedule-trigger.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { createWorkflow, logger, node } from './trigger-test-utils';
 
 describe('NonWebhookTriggerRegistrar', () => {
+	const distributedScheduleTriggerService = mock<DistributedScheduleTriggerService>({
+		register: jest.fn().mockResolvedValue(false),
+		deregister: jest.fn().mockResolvedValue(false),
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
+		distributedScheduleTriggerService.register.mockResolvedValue(false);
+		distributedScheduleTriggerService.deregister.mockResolvedValue(false);
 	});
 
 	test('resolves trigger and poll node ids', () => {
@@ -20,6 +28,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			logger,
 			mock<ActiveWorkflowTriggers>(),
 			mock<TriggerExecutionContextFactory>(),
+			distributedScheduleTriggerService,
 		);
 		const workflow = createWorkflow([
 			node('trigger-a', 'trigger'),
@@ -37,7 +46,12 @@ describe('NonWebhookTriggerRegistrar', () => {
 		const getPollFunctions = jest.fn();
 		factory.getExecuteTriggerFunctions.mockReturnValue(getTriggerFunctions);
 		factory.getExecutePollFunctions.mockReturnValue(getPollFunctions);
-		const registrar = new NonWebhookTriggerRegistrar(logger, activeWorkflowTriggers, factory);
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			activeWorkflowTriggers,
+			factory,
+			distributedScheduleTriggerService,
+		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger'), node('poll-a', 'poll')]);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const dbWorkflow = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' });
@@ -70,6 +84,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			logger,
 			activeWorkflowTriggers,
 			mock<TriggerExecutionContextFactory>(),
+			distributedScheduleTriggerService,
 		);
 
 		await registrar.deregister('wf-1', 'poll-a');
@@ -77,12 +92,63 @@ describe('NonWebhookTriggerRegistrar', () => {
 		expect(activeWorkflowTriggers.removeTriggers).toHaveBeenCalledWith('wf-1', new Set(['poll-a']));
 	});
 
+	test('uses distributed registration when schedule trigger service handles the node', async () => {
+		distributedScheduleTriggerService.register.mockResolvedValue(true);
+		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			activeWorkflowTriggers,
+			mock<TriggerExecutionContextFactory>(),
+			distributedScheduleTriggerService,
+		);
+		const workflow = createWorkflow([node('trigger-a', 'trigger')]);
+		const registration = registrar.createRegistrationContext(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' }),
+			{
+				activationMode: 'update',
+				executionMode: 'trigger',
+				additionalData: mock<IWorkflowExecuteAdditionalData>(),
+				resolveWorkflowData: async () => mock<IWorkflowBase>(),
+				onTriggerFailure: jest.fn(),
+			},
+		);
+
+		await registrar.register(workflow, registration, 'trigger-a');
+
+		expect(distributedScheduleTriggerService.register).toHaveBeenCalledWith(
+			workflow,
+			workflow.getNode('trigger-a'),
+		);
+		expect(activeWorkflowTriggers.addTriggers).not.toHaveBeenCalled();
+	});
+
+	test('uses distributed deregistration when schedule trigger service handles the node', async () => {
+		distributedScheduleTriggerService.deregister.mockResolvedValue(true);
+		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			activeWorkflowTriggers,
+			mock<TriggerExecutionContextFactory>(),
+			distributedScheduleTriggerService,
+		);
+
+		await registrar.deregister('wf-1', 'trigger-a');
+
+		expect(distributedScheduleTriggerService.deregister).toHaveBeenCalledWith('wf-1', 'trigger-a');
+		expect(activeWorkflowTriggers.removeTriggers).not.toHaveBeenCalled();
+	});
+
 	test('propagates activation errors', async () => {
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const factory = mock<TriggerExecutionContextFactory>();
 		factory.getExecuteTriggerFunctions.mockReturnValue(jest.fn());
 		factory.getExecutePollFunctions.mockReturnValue(jest.fn());
-		const registrar = new NonWebhookTriggerRegistrar(logger, activeWorkflowTriggers, factory);
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			activeWorkflowTriggers,
+			factory,
+			distributedScheduleTriggerService,
+		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger')]);
 		const context = {
 			activationMode: 'update' as const,

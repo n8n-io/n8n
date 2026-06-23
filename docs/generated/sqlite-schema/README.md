@@ -91,6 +91,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
+| [scheduled_job](scheduled_job.md) | 13 |  | table |
+| [scheduled_task](scheduled_task.md) | 17 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [settings](settings.md) | 3 |  | table |
@@ -242,6 +244,8 @@ erDiagram
 "role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "scope" : "FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
+"scheduled_job" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1065,6 +1069,40 @@ erDiagram
 "role_scope" {
   VARCHAR_128_ roleSlug PK
   VARCHAR_128_ scopeSlug PK
+}
+"scheduled_job" {
+  datetime_3_ createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  INTEGER id
+  datetime_3_ lastFiredAt
+  datetime_3_ nextRunAt
+  varchar_64_ nodeId
+  TEXT recurrence
+  INTEGER recurrenceLastValue
+  INTEGER ruleIndex
+  varchar_64_ timezone
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"scheduled_task" {
+  INTEGER attempts
+  varchar_64_ claimedBy
+  datetime_3_ createdAt
+  TEXT errorMessage
+  varchar_36_ executionId
+  datetime_3_ finishedAt
+  INTEGER id
+  INTEGER jobId FK
+  datetime_3_ leaseExpiresAt
+  INTEGER maxAttempts
+  varchar_64_ nodeId
+  datetime_3_ runAt
+  datetime_3_ scheduledFor
+  datetime_3_ startedAt
+  varchar_16_ status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
 }
 "scope" {
   TEXT description

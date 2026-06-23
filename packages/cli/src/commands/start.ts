@@ -243,6 +243,17 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
+		if (this.globalConfig.executions.distributedSchedulerEnabled) {
+			const { DistributedSchedulerService } = await import(
+				'@/distributed-scheduler/distributed-scheduler.service'
+			);
+			const { DistributedScheduleExecutorService } = await import(
+				'@/distributed-scheduler/distributed-schedule-executor.service'
+			);
+			Container.get(DistributedSchedulerService).init();
+			Container.get(DistributedScheduleExecutorService).init();
+		}
+
 		await this.initLicense();
 
 		if (isMultiMainEnabled) {

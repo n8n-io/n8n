@@ -1,7 +1,5 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { sendAt } from 'cron';
-import moment from 'moment-timezone';
 import type {
 	ITriggerFunctions,
 	INodeType,
@@ -11,12 +9,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { recurrenceCheck } from './GenericFunctions';
 import {
-	intervalToRecurrence,
-	recurrenceCheck,
-	toCronExpression,
-	validateInterval,
-} from './GenericFunctions';
+	buildScheduleDeduplicationKey,
+	buildScheduleTriggerData,
+	compileScheduleTriggerRules,
+	validateCompiledScheduleRule,
+} from './ScheduleTriggerHelpers';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
 export class ScheduleTrigger implements INodeType {
@@ -437,12 +436,6 @@ export class ScheduleTrigger implements INodeType {
 			staticData.recurrenceRules = [];
 		}
 
-		if (version >= 1.3) {
-			for (let i = 0; i < intervals.length; i++) {
-				validateInterval(this.getNode(), i, intervals[i]);
-			}
-		}
-
 		const workflowId = this.getWorkflow().id;
 		const nodeId = this.getNode().id;
 
@@ -462,53 +455,39 @@ export class ScheduleTrigger implements INodeType {
 				if (!shouldTrigger) return;
 			}
 
-			const momentTz = moment.tz(timezone);
-			const resultData = {
-				timestamp: momentTz.toISOString(true),
-				'Readable date': momentTz.format('MMMM Do YYYY, h:mm:ss a'),
-				'Readable time': momentTz.format('h:mm:ss a'),
-				'Day of week': momentTz.format('dddd'),
-				Year: momentTz.format('YYYY'),
-				Month: momentTz.format('MMMM'),
-				'Day of month': momentTz.format('DD'),
-				Hour: momentTz.format('HH'),
-				Minute: momentTz.format('mm'),
-				Second: momentTz.format('ss'),
-				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
-			};
-
 			const deduplicationKey =
 				dedupEnabled && scheduledTime
-					? `${workflowId}:${nodeId}:${scheduledTime.toISOString()}`
+					? buildScheduleDeduplicationKey({ workflowId: workflowId!, nodeId, scheduledTime })
 					: undefined;
 
 			this.emit(
-				[this.helpers.returnJsonArray([resultData])],
+				buildScheduleTriggerData(timezone, (items) => this.helpers.returnJsonArray(items)),
 				/* responsePromise= */ undefined,
 				/* donePromise= */ undefined,
 				deduplicationKey,
 			);
 		};
 
-		const nodeKey = `${workflowId ?? ''}:${nodeId}`;
-		const rules = intervals.map((interval, i) => ({
-			interval,
-			cronExpression: toCronExpression(interval, nodeKey),
-			recurrence: intervalToRecurrence(interval, i),
-		}));
+		const rules = compileScheduleTriggerRules({
+			node: this.getNode(),
+			rule: { interval: intervals },
+			version,
+			workflowId,
+		});
 
 		if (this.getMode() !== 'manual') {
-			for (const { interval, cronExpression, recurrence } of rules) {
+			for (const rule of rules) {
 				try {
+					validateCompiledScheduleRule(this.getNode(), rule);
 					const cron: Cron = {
-						expression: cronExpression,
-						recurrence,
+						expression: rule.cronExpression,
+						recurrence: rule.recurrence,
 					};
 					this.helpers.registerCron(cron, (scheduledTime: Date) =>
-						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),
+						executeTrigger(rule.recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),
 					);
 				} catch (error) {
-					if (interval.field === 'cronExpression') {
+					if (rule.interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
 							description: 'More information on how to build them at https://crontab.guru/',
 						});
@@ -520,17 +499,9 @@ export class ScheduleTrigger implements INodeType {
 			return {};
 		} else {
 			const manualTriggerFunction = async () => {
-				const { interval, cronExpression, recurrence } = rules[0];
-				if (interval.field === 'cronExpression') {
-					try {
-						sendAt(cronExpression);
-					} catch (error) {
-						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
-							description: 'More information on how to build them at https://crontab.guru/',
-						});
-					}
-				}
-				executeTrigger(recurrence, true);
+				const rule = rules[0];
+				validateCompiledScheduleRule(this.getNode(), rule);
+				executeTrigger(rule.recurrence, true);
 			};
 
 			return { manualTriggerFunction };

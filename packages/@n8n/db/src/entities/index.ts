@@ -28,6 +28,8 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
+import { ScheduledJob } from './scheduled-job';
+import { ScheduledTask, ScheduledTaskStatus } from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -76,6 +78,9 @@ export {
 	RoleMappingRule,
 	Role,
 	Scope,
+	ScheduledJob,
+	ScheduledTask,
+	ScheduledTaskStatus,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
@@ -147,6 +152,8 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ScheduledJob,
+	ScheduledTask,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

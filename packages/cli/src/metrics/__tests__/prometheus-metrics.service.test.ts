@@ -7,6 +7,7 @@ import promClient from 'prom-client';
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
+import type { PrometheusDistributedSchedulerMetricsService } from '../prometheus/distributed-scheduler-metrics.service';
 import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
@@ -41,6 +42,7 @@ describe('PrometheusMetricsService', () => {
 	let pss: jest.Mocked<PrometheusPssMetricsService>;
 	let version: jest.Mocked<PrometheusVersionMetricsService>;
 	let defaultMetrics: jest.Mocked<PrometheusDefaultMetricsService>;
+	let distributedScheduler: jest.Mocked<PrometheusDistributedSchedulerMetricsService>;
 	let tokenExchange: jest.Mocked<PrometheusTokenExchangeMetricsService>;
 	let ssrf: jest.Mocked<PrometheusSsrfMetricsService>;
 	let dnsCache: jest.Mocked<PrometheusDnsCacheMetricsService>;
@@ -64,6 +66,7 @@ describe('PrometheusMetricsService', () => {
 			pss,
 			version,
 			defaultMetrics,
+			distributedScheduler,
 			tokenExchange,
 			ssrf,
 			dnsCache,
@@ -94,6 +97,7 @@ describe('PrometheusMetricsService', () => {
 		pss = mock<PrometheusPssMetricsService>({ enabled: true });
 		version = mock<PrometheusVersionMetricsService>({ enabled: true });
 		defaultMetrics = mock<PrometheusDefaultMetricsService>({ enabled: true });
+		distributedScheduler = mock<PrometheusDistributedSchedulerMetricsService>({ enabled: true });
 		tokenExchange = mock<PrometheusTokenExchangeMetricsService>({ enabled: true });
 		ssrf = mock<PrometheusSsrfMetricsService>({ enabled: true });
 		dnsCache = mock<PrometheusDnsCacheMetricsService>({ enabled: true });
@@ -123,6 +127,7 @@ describe('PrometheusMetricsService', () => {
 			expect(pss.init).toHaveBeenCalledWith(app);
 			expect(version.init).toHaveBeenCalledWith(app);
 			expect(defaultMetrics.init).toHaveBeenCalledWith(app);
+			expect(distributedScheduler.init).toHaveBeenCalledWith(app);
 			expect(tokenExchange.init).toHaveBeenCalledWith(app);
 			expect(ssrf.init).toHaveBeenCalledWith(app);
 			expect(dnsCache.init).toHaveBeenCalledWith(app);

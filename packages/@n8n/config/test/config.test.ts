@@ -466,6 +466,7 @@ describe('GlobalConfig', () => {
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
 			scheduledExecutionDeduplicationEnabled: false,
+			distributedSchedulerEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -815,6 +816,20 @@ describe('GlobalConfig', () => {
 			};
 			const config = Container.get(ExecutionsConfig);
 			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
+		});
+
+		it('should default distributedSchedulerEnabled to false', () => {
+			process.env = {};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.distributedSchedulerEnabled).toBe(false);
+		});
+
+		it('should enable distributedSchedulerEnabled when env var is set to true', () => {
+			process.env = {
+				N8N_DISTRIBUTED_SCHEDULER_ENABLED: 'true',
+			};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.distributedSchedulerEnabled).toBe(true);
 		});
 	});
 });
