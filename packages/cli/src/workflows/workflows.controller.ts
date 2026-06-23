@@ -5,7 +5,6 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
-	ROLE,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 } from '@n8n/api-types';
@@ -32,7 +31,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import express from 'express';
@@ -662,7 +661,7 @@ export class WorkflowsController {
 	@Post('/with-node-types')
 	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
 		try {
-			const hasPermission = req.user.role.slug === ROLE.Owner || req.user.role.slug === ROLE.Admin;
+			const hasPermission = hasGlobalScope(req.user, ['workflow:read']);
 
 			if (!hasPermission) {
 				res.json({ data: [], count: 0 });
