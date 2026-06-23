@@ -1,10 +1,8 @@
 import { createTestNode } from '@/__tests__/mocks';
-import * as ndvStore from '@/features/ndv/shared/ndv.store';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import type { MockInstance } from 'vitest';
 import {
 	autocompletableNodeNames,
 	expressionWithFirstItem,
@@ -17,6 +15,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { NDVStore } from '@/features/ndv/shared/ndv.store';
 
 vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
@@ -36,9 +35,17 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	} as Partial<WorkflowDocumentStore> as WorkflowDocumentStore,
 }));
 
+const { mockNdvStore } = vi.hoisted(() => ({
+	mockNdvStore: { activeNode: null } as unknown as NDVStore,
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
 }));
 
 const editors: EditorView[] = [];
@@ -128,8 +135,7 @@ describe('completion utils', () => {
 				{ name: 'Node 1', depth: 2, indicies: [] },
 			]);
 
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
+			mockNdvStore.activeNode = nodes[2];
 
 			expect(autocompletableNodeNames('test@latest')).toEqual(['Node 2', 'Node 1']);
 		});
@@ -147,8 +153,7 @@ describe('completion utils', () => {
 				{ name: 'Normal Node', depth: 1, indicies: [] },
 			]);
 
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
+			mockNdvStore.activeNode = nodes[2];
 
 			expect(autocompletableNodeNames('test@latest')).toEqual(['Normal Node']);
 		});

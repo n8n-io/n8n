@@ -9,6 +9,7 @@ export type ProjectType = z.infer<typeof projectTypeSchema>;
 export const projectIconSchema = z.object({
 	type: z.enum(['emoji', 'icon']),
 	value: z.string().min(1),
+	color: z.string().optional(),
 });
 export type ProjectIcon = z.infer<typeof projectIconSchema>;
 

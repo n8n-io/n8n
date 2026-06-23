@@ -9,7 +9,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	user: { id: 'user-1' } as RedactionContext['user'],
 	redactExecutionData: undefined,
 	userCanReveal: false,
-	hasDynamicCredentials: false,
+	enforceDynCredRedaction: false,
 	memo: new Map(),
 	...overrides,
 });
@@ -198,7 +198,7 @@ describe('FullItemRedactionStrategy', () => {
 			expect(execution.data.redactionInfo?.reason).toBe('workflow_redaction_policy');
 		});
 
-		it('sets reason "dynamic_credentials" when hasDynamicCredentials is true', async () => {
+		it('sets reason "dynamic_credentials" when enforceDynCredRedaction is true', async () => {
 			const execution = makeExecution({
 				NodeA: [
 					{
@@ -212,7 +212,7 @@ describe('FullItemRedactionStrategy', () => {
 				],
 			});
 
-			await strategy.apply(execution, makeContext({ hasDynamicCredentials: true }));
+			await strategy.apply(execution, makeContext({ enforceDynCredRedaction: true }));
 
 			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
 			expect(item.redaction?.reason).toBe('dynamic_credentials');

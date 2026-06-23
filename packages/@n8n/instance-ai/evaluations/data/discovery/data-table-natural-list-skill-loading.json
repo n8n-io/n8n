@@ -1,0 +1,24 @@
+{
+	"id": "data-table-natural-list-skill-loading",
+	"userMessage": "What data tables do I have?",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["data-table-manager"]
+			},
+			{
+				"toolName": "data-tables",
+				"argsContainAny": ["list"]
+			}
+		],
+		"noneOf": [
+			"create-tasks",
+			"build-workflow",
+			"delegate",
+			"spawn_sub_agent:workflow-builder",
+			"spawn_sub_agent:delegate"
+		]
+	},
+	"rationale": "Regression coverage for natural standalone data-table requests. A plain request to list existing Data Tables should load the data-table-manager skill and use the direct data-tables list action, without routing through planning, workflow-building, or sub-agents."
+}

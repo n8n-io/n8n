@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
-import { searchProjects } from './GenericFunctions';
+import { authenticateServiceAccount, searchProjects } from './GenericFunctions';
 import { objectFields, objectOperations } from './ObjectDescription';
 
 export class GoogleCloudStorage implements INodeType {
@@ -27,8 +27,22 @@ export class GoogleCloudStorage implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+			},
+			{
 				name: 'googleCloudStorageOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 				testedBy: {
 					request: {
 						method: 'GET',
@@ -42,6 +56,30 @@ export class GoogleCloudStorage implements INodeType {
 			baseURL: 'https://storage.googleapis.com/storage/v1',
 		},
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Service Account (recommended)',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				// Runs for every declarative request: injects the service-account
+				// bearer token when that auth method is selected. No-op for OAuth2.
+				routing: {
+					send: {
+						preSend: [authenticateServiceAccount],
+					},
+				},
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

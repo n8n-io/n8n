@@ -31,6 +31,7 @@ export async function getRevisionFile(this: IPollFunctions, exportLink: string) 
 			encoding: null,
 			json: false,
 		},
+		'sheetV2Trigger',
 	);
 
 	return Buffer.from(response.body as string);

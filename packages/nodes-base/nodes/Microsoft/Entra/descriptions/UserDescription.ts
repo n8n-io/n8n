@@ -10,6 +10,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { ignoreHttpStatusErrorsConfig } from './common';
 import { handleErrorPostReceive, microsoftApiRequest } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -32,7 +33,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '=/groups/{{ $parameter["group"] }}/members/$ref',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -56,7 +57,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/users',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -72,7 +73,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'DELETE',
 						url: '=/users/{{ $parameter["user"] }}',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -96,7 +97,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '=/users/{{ $parameter["user"] }}',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -112,7 +113,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '/users',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -137,7 +138,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'DELETE',
 						url: '=/groups/{{ $parameter["group"] }}/members/{{ $parameter["user"] }}/$ref',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [
@@ -161,7 +162,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'PATCH',
 						url: '=/users/{{ $parameter["user"] }}',
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
 						postReceive: [

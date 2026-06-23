@@ -15,8 +15,13 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
+	provideWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { defineComponent, h } from 'vue';
+import { mount } from '@vue/test-utils';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -58,6 +63,10 @@ describe('workflowDocument.store orchestration', () => {
 			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 		});
 		workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
+		workflowDocumentStore.createGroup(
+			[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+			'Group 1',
+		);
 
 		// Verify all are populated
 		expect(workflowDocumentStore.allNodes).toHaveLength(2);
@@ -70,6 +79,7 @@ describe('workflowDocument.store orchestration', () => {
 		expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		expect(workflowDocumentStore.connectionsBySourceNode).toEqual({});
 		expect(workflowDocumentStore.pinnedDataByNodeName).toEqual({});
+		expect(workflowDocumentStore.allGroups).toHaveLength(0);
 	});
 
 	it('disposeWorkflowDocumentStore disposes the instance and clears scoped state', () => {
@@ -260,6 +270,10 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
 			workflowDocumentStore.setTags(['tag-1', 'tag-2']);
+			workflowDocumentStore.createGroup(
+				[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+				'Group 1',
+			);
 
 			const data = workflowDocumentStore.serialize();
 
@@ -268,6 +282,9 @@ describe('workflowDocument.store orchestration', () => {
 			expect(data.connections).toHaveProperty('A');
 			expect(data.pinData).toHaveProperty('A');
 			expect(data.tags).toEqual(['tag-1', 'tag-2']);
+			expect(data.nodeGroups).toEqual([
+				expect.objectContaining({ name: 'Group 1', nodeIds: expect.any(Array) }),
+			]);
 			expect(data.id).toBe('wf-42');
 		});
 
@@ -319,10 +336,11 @@ describe('workflowDocument.store orchestration', () => {
 				isArchived: false,
 				createdAt: '2026-04-01T00:00:00.000Z',
 				updatedAt: '2026-04-02T00:00:00.000Z',
-				nodes: [createNode({ name: 'A' }), createNode({ name: 'B' })],
+				nodes: [createNode({ name: 'A', id: 'node-a' }), createNode({ name: 'B', id: 'node-b' })],
 				connections: {
 					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 				},
+				nodeGroups: [{ id: 'group-1', name: 'Group A', nodeIds: ['node-a', 'node-b'] }],
 				settings: { executionOrder: 'v1', timezone: 'UTC' },
 				tags: ['tag-1', 'tag-2'],
 				pinData: { A: [{ json: { foo: 'bar' } }] },
@@ -371,6 +389,9 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.allNodes).toHaveLength(2);
 			expect(store.connectionsBySourceNode).toHaveProperty('A');
 			expect(store.pinnedDataByNodeName).toEqual({ A: [{ json: { foo: 'bar' } }] });
+			expect(store.allGroups).toEqual([
+				{ id: 'group-1', name: 'Group A', nodeIds: ['node-a', 'node-b'] },
+			]);
 		});
 
 		it('applies safe defaults for missing optional fields', () => {
@@ -662,7 +683,37 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
 			expect(store.pinnedDataByNodeName).toEqual({});
+			expect(store.allGroups).toEqual([]);
 			expect(store.viewport).toBeNull();
 		});
+	});
+});
+
+describe('provideWorkflowDocumentStore', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('re-provides a resolved store so a descendant injectNDVStore() resolves with no workflow loaded', () => {
+		useWorkflowsStore().setWorkflowId('wf-host');
+
+		let childNdvStore: ReturnType<typeof useNDVStore> | undefined;
+		const Child = defineComponent({
+			setup() {
+				childNdvStore = injectNDVStore().value;
+				return () => null;
+			},
+		});
+		const Host = defineComponent({
+			setup() {
+				// No WorkflowDocumentStoreKey is provided above Host, so this resolves
+				// via the document-store workflowId fallback and re-provides it to Child.
+				provideWorkflowDocumentStore();
+				return () => h(Child);
+			},
+		});
+
+		expect(() => mount(Host)).not.toThrow();
+		expect(childNdvStore).toBe(useNDVStore(createWorkflowDocumentId('wf-host')));
 	});
 });

@@ -19,9 +19,17 @@
  *       workflow.ts                   # agent writes main workflow here
  *     chunks/
  *       *.ts                          # reusable node/workflow modules
+ *     knowledge-base/
+ *       index.json                    # combined catalog of guides and templates
+ *       best-practices/
+ *         index.json                  # technique guide catalog
+ *         *.md                        # guide content per technique
+ *       templates/
+ *         index.json                  # curated template catalog
+ *         *.ts                        # SDK workflow examples
  */
 
-import { getExampleFiles, type ExampleFile } from '@n8n/workflow-sdk/examples-loader';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
@@ -38,21 +46,17 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import { joinWorkspacePath } from './workspace-paths';
+import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 
 const hostRequire = createRequire(__filename);
-const NOOP_LOGGER: Logger = {
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-	debug: () => {},
-};
 
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
 	| 'read-initialization-marker'
 	| 'list-node-types'
 	| 'write-workspace-files'
-	| 'write-curated-examples'
+	| 'materialize-knowledge-base'
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
@@ -78,14 +82,6 @@ async function setupStep<T>(step: SandboxWorkspaceSetupStep, action: () => Promi
 		throw new SandboxWorkspaceSetupError(step, error);
 	}
 }
-
-export const WORKSPACE_DIR = 'workspace';
-
-/** Default home directory inside the n8n sandbox service container. */
-export const N8N_SANDBOX_HOME = '/home/user';
-
-/** Absolute workspace root for n8n sandbox service Dockerfile steps (build-time). */
-export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
 
 /**
  * Resolve a dependency's installed version from the host's node_modules.
@@ -141,35 +137,6 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 
-function assertSafeWorkspaceRelativePath(path: string): void {
-	const segments = path.split('/');
-	if (
-		path.length === 0 ||
-		path.startsWith('/') ||
-		path.includes('\\') ||
-		path.includes('\0') ||
-		segments.some((segment) => segment === '..')
-	) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-}
-
-function joinWorkspacePath(root: string, path: string): string {
-	assertSafeWorkspaceRelativePath(path);
-
-	const normalizedRoot = root.replace(/\/+$/, '') || '/';
-	const normalizedPath = path
-		.split('/')
-		.filter((segment) => segment.length > 0 && segment !== '.')
-		.join('/');
-
-	if (normalizedPath.length === 0) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-
-	return normalizedRoot === '/' ? `/${normalizedPath}` : `${normalizedRoot}/${normalizedPath}`;
-}
-
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
@@ -206,52 +173,16 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-/**
- * Return the absolute on-disk path of a host-installed package, or `null`
- * if it can't be resolved. Used by the local provider to point the sandbox
- * at the workspace SDK via a `file:` reference instead of the npm registry.
- */
-function resolveHostDepPath(name: string): string | null {
-	try {
-		const pkgPath = hostRequire.resolve(`${name}/package.json`);
-		return pkgPath.slice(0, pkgPath.length - '/package.json'.length);
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Build a PACKAGE_JSON that points `@n8n/workflow-sdk` at its host-resolved
- * location via `file:` — so the local provider picks up workspace SDK
- * changes after `pnpm build` without needing a publish.
- *
- * Falls back to the registry-pinned PACKAGE_JSON if the SDK can't be
- * resolved on disk (e.g. a stripped-down test harness).
- */
-function buildLocalProviderPackageJson(): string {
-	const sdkPath = resolveHostDepPath('@n8n/workflow-sdk');
-	if (!sdkPath) return PACKAGE_JSON;
-	return buildPackageJson(`file:${sdkPath}`);
-}
-
-function getSandboxProvider(workspace: SandboxWorkspace): string | undefined {
-	return workspace.filesystem?.provider ?? workspace.sandbox?.provider;
-}
-
-function buildWorkspacePackageJson(workspace: SandboxWorkspace): string {
-	return getSandboxProvider(workspace) === 'local' ? buildLocalProviderPackageJson() : PACKAGE_JSON;
-}
-
 let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
 	root: string,
-	logger?: Logger,
+	logger: Logger,
 ): Promise<void> {
-	if (!isLinkWorkspaceSdkEnabled() || getSandboxProvider(workspace) === 'local') return;
+	if (!isLinkWorkspaceSdkEnabled()) return;
 
-	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
+	sdkTarballPromise ??= packWorkspaceSdk(logger).catch((error: unknown) => {
 		sdkTarballPromise = null;
 		throw error;
 	});
@@ -276,14 +207,14 @@ export async function linkWorkspaceSdkIfEnabled(
 		root,
 	);
 	if (install.exitCode !== 0) {
-		logger?.error('Failed to link workspace SDK into sandbox', {
+		logger.error('Failed to link workspace SDK into sandbox', {
 			exitCode: install.exitCode,
 			stderr: install.stderr,
 		});
 		throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
 	}
 
-	logger?.info('Linked workspace SDK into sandbox', {
+	logger.info('Linked workspace SDK into sandbox', {
 		version: packed.version,
 		sdkPath: packed.sdkPath,
 	});
@@ -435,93 +366,36 @@ async function writeWorkspaceFile(
 	}
 }
 
-/**
- * Resolve the absolute workspace root by querying $HOME from the sandbox.
- * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
- */
-const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
-
-function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
-	const filesystem = workspace.filesystem;
-	if (!filesystem) return null;
-
-	const provider = filesystem.provider;
-	if (provider !== 'local' && provider !== 'lazy') return null;
-
-	const basePath = Reflect.get(filesystem, 'basePath');
-	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
-}
-
-async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<void> {
-	const filesystem = workspace.filesystem;
-	if (filesystem?.provider !== 'lazy') return;
-
-	await filesystem.init?.();
-}
-
-export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
-	const cached = workspaceRootCache.get(workspace);
-	if (cached) return cached;
-
-	const localRoot = getLocalFilesystemRoot(workspace);
-	if (localRoot) {
-		workspaceRootCache.set(workspace, localRoot);
-		return localRoot;
-	}
-
-	await initializeLazyFilesystem(workspace);
-	const initializedLocalRoot = getLocalFilesystemRoot(workspace);
-	if (initializedLocalRoot) {
-		workspaceRootCache.set(workspace, initializedLocalRoot);
-		return initializedLocalRoot;
-	}
-
-	const result = await runInSandbox(workspace, 'echo $HOME');
-	const home = result.stdout.trim() || '/home/daytona';
-	const root = `${home}/${WORKSPACE_DIR}`;
-	workspaceRootCache.set(workspace, root);
-	return root;
-}
-
-/**
- * Write the curated workflow examples bundle into `${root}/examples/`.
- *
- * Used by `setupSandboxWorkspace` (local provider) and by the Daytona /
- * n8n-sandbox factory paths, which skip the full setup but still need the
- * curated reference material the builder agent greps against.
- *
- * No-op when the loader returns an empty bundle (e.g. running against a
- * workspace where the manifest hasn't been fetched).
- */
-export async function writeCuratedExamples(
+async function readWorkspaceFile(
 	workspace: SandboxWorkspace,
-	logger?: Logger,
+	path: string,
+): Promise<string | null> {
+	const filesystem = workspace.filesystem;
+	if (filesystem?.readFile) {
+		try {
+			const content = await filesystem.readFile(path, { encoding: 'utf-8' });
+			return typeof content === 'string' ? content : content.toString('utf-8');
+		} catch {
+			if (!workspace.sandbox) return null;
+		}
+	}
+
+	return await readFileViaSandbox(workspace, path);
+}
+
+async function materializeKnowledgeBaseStep(
+	workspace: SandboxWorkspace,
+	root: string,
+	context: InstanceAiContext,
 ): Promise<void> {
-	const start = Date.now();
-	// Examples are nice-to-have — never block the build when loading them fails.
-	let exampleFiles: ExampleFile[];
-	let indexTxt: string;
-	try {
-		({ files: exampleFiles, indexTxt } = getExampleFiles());
-	} catch (error) {
-		logger?.warn('[sandbox-setup] curated examples unavailable, continuing without', {
-			error: error instanceof Error ? error.message : String(error),
+	await setupStep('materialize-knowledge-base', async () => {
+		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+		await materializeKnowledgeBaseIntoWorkspace({
+			workspace,
+			root,
+			logger: context.logger,
+			templatesArchive: templatesBundle?.archive ?? null,
 		});
-		return;
-	}
-	if (exampleFiles.length === 0) return;
-
-	const root = await getWorkspaceRoot(workspace);
-	const fileMap = new Map<string, string>();
-	fileMap.set('examples/index.txt', indexTxt);
-	for (const example of exampleFiles) {
-		fileMap.set(`examples/${example.filename}`, example.content);
-	}
-	await writeWorkspaceFiles(workspace, root, fileMap);
-
-	logger?.debug('[sandbox-setup] prepared curated examples', {
-		count: exampleFiles.length,
-		durationMs: Date.now() - start,
 	});
 }
 
@@ -546,19 +420,18 @@ export async function setupSandboxWorkspace(
 	// Check marker file for idempotency
 	const marker = await setupStep(
 		'read-initialization-marker',
-		async () => await readFileViaSandbox(workspace, markerFile),
+		async () => await readWorkspaceFile(workspace, markerFile),
 	);
-	if (marker !== null) return false;
+	if (marker !== null) {
+		await materializeKnowledgeBaseStep(workspace, root, context);
+		return false;
+	}
 
 	// ── Collect all files ──────────────────────────────────────────────────
 
 	const files = new Map<string, string>();
 
-	// Config files. Local provider runs on the dev host, so point the SDK at
-	// its workspace location via `file:` — this makes SDK changes visible in
-	// the sandbox after `pnpm build`, without a publish. Daytona/n8n-sandbox
-	// stay on the registry-pinned PACKAGE_JSON (they can't see the host FS).
-	files.set('package.json', buildWorkspacePackageJson(workspace));
+	files.set('package.json', PACKAGE_JSON);
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
 
@@ -594,10 +467,7 @@ export async function setupSandboxWorkspace(
 		'write-workspace-files',
 		async () => await writeWorkspaceFiles(workspace, root, files),
 	);
-	await setupStep(
-		'write-curated-examples',
-		async () => await writeCuratedExamples(workspace, context.logger),
-	);
+	await materializeKnowledgeBaseStep(workspace, root, context);
 
 	// npm install (must run after package.json is in place)
 	await setupStep('install-dependencies', async () => {

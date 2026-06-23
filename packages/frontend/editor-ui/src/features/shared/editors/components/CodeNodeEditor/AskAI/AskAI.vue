@@ -61,12 +61,14 @@ const isSubmitEnabled = computed(() => {
 		hasExecutionData.value
 	);
 });
-const hasExecutionData = computed(() => (ndvStore.ndvInputDataWithPinnedData || []).length > 0);
+const hasExecutionData = computed(
+	() => (ndvStore.value.ndvInputDataWithPinnedData || []).length > 0,
+);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
 const isEachItemMode = computed(() => {
-	const mode = ndvStore.activeNode?.parameters.mode as CodeExecutionMode;
+	const mode = ndvStore.value.activeNode?.parameters.mode as CodeExecutionMode;
 
 	return mode === 'runOnceForEachItem';
 });
@@ -89,7 +91,7 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 }
 
 function getParentNodes() {
-	const activeNode = ndvStore.activeNode;
+	const activeNode = ndvStore.value.activeNode;
 
 	if (!activeNode) return [];
 
@@ -147,7 +149,7 @@ function stopLoading() {
 
 async function onSubmit() {
 	const { restApiContext } = useRootStore();
-	const { activeNode } = ndvStore;
+	const activeNode = ndvStore.value.activeNode;
 	const { showMessage } = useToast();
 	const { alert } = useMessage();
 	if (!activeNode) return;
@@ -175,7 +177,7 @@ async function onSubmit() {
 		context: {
 			schema: schemas.parentNodesSchemas,
 			inputSchema: schemas.inputSchema,
-			ndvPushRef: ndvStore.pushRef,
+			ndvPushRef: ndvStore.value.pushRef,
 			pushRef: rootStore.pushRef,
 		},
 		forNode: 'code',
@@ -190,7 +192,7 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
-		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.pushRef, {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.value.pushRef, {
 			prompt: prompt.value,
 			code,
 		});
@@ -204,7 +206,7 @@ async function onSubmit() {
 			),
 		});
 		stopLoading();
-		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.pushRef, {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.value.pushRef, {
 			prompt: prompt.value,
 			code: '',
 			hasError: true,
@@ -239,7 +241,7 @@ function triggerLoadingChange() {
 }
 
 function getSessionStoragePrompt() {
-	const codeNodeName = (ndvStore.activeNode?.name as string) ?? '';
+	const codeNodeName = (ndvStore.value.activeNode?.name as string) ?? '';
 	const hashedCode = snakeCase(codeNodeName);
 
 	return useSessionStorage(`ask_ai_prompt__${hashedCode}`, '');

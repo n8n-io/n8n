@@ -1,17 +1,20 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => ({
-	getTimezones: jest.fn(),
-	googleApiRequest: jest.fn(),
-	googleApiRequestAllItems: jest.fn(),
-	addTimezoneToDate: jest.fn(),
-	addNextOccurrence: jest.fn(),
-	encodeURIComponentOnce: jest.fn(),
+vi.mock('../../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../GenericFunctions')),
+	getTimezones: vi.fn(),
+	googleApiRequest: vi.fn(),
+	googleApiRequestAllItems: vi.fn(),
+	addTimezoneToDate: vi.fn(),
+	addNextOccurrence: vi.fn(),
+	encodeURIComponentOnce: vi.fn(),
 }));
 
 describe('Google Calendar Node', () => {
@@ -21,18 +24,18 @@ describe('Google Calendar Node', () => {
 	beforeEach(() => {
 		googleCalendar = new GoogleCalendar();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
-			getInputData: jest.fn(),
-			getNode: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getTimezone: jest.fn(),
+			getInputData: vi.fn(),
+			getNode: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getTimezone: vi.fn(),
 			helpers: {
-				constructExecutionMetaData: jest.fn().mockReturnValue([]),
+				constructExecutionMetaData: vi.fn().mockReturnValue([]),
 			},
 		});
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Google Calendar > Event > Update', () => {
@@ -104,7 +107,7 @@ describe('Google Calendar Node', () => {
 					},
 				},
 			});
-			(genericFunctions.googleApiRequest as jest.Mock).mockResolvedValueOnce({
+			(genericFunctions.googleApiRequest as Mock).mockResolvedValueOnce({
 				attendees: [{ email: 'email2@mail.com' }],
 			});
 

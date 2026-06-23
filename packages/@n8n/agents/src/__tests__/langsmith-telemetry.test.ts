@@ -3,70 +3,72 @@ type MockExportResult = { code: number; error?: Error };
 type MockExportCallback = (result: MockExportResult) => void;
 type MockExporter = {
 	type: 'exporter';
-	export: jest.Mock<void, [unknown[], MockExportCallback]>;
-	shutdown: jest.Mock<Promise<void>, []>;
+	export: Mock<(...args: [unknown[], MockExportCallback]) => void>;
+	shutdown: Mock<(...args: []) => Promise<void>>;
 };
 const mockExporterInstances: MockExporter[] = [];
 const mockBatchProcessorInputs: unknown[] = [];
 const mockBatchProcessorInstances: Array<{
-	forceFlush: jest.Mock<Promise<void>, []>;
-	onStart: jest.Mock<void, [unknown, unknown]>;
-	onEnd: jest.Mock<void, [unknown]>;
-	shutdown: jest.Mock<Promise<void>, []>;
+	forceFlush: Mock<(...args: []) => Promise<void>>;
+	onStart: Mock<(...args: [unknown, unknown]) => void>;
+	onEnd: Mock<(...args: [unknown]) => void>;
+	shutdown: Mock<(...args: []) => Promise<void>>;
 }> = [];
 const mockProviderConfigs: unknown[] = [];
-const mockAwaitPendingTraceBatches = jest.fn(async () => await Promise.resolve());
-const mockTracer = { startSpan: jest.fn() };
+const mockAwaitPendingTraceBatches = vi.fn(async () => await Promise.resolve());
+const mockTracer = { startSpan: vi.fn() };
 const mockProvider = {
-	getTracer: jest.fn(() => mockTracer),
-	register: jest.fn(),
-	forceFlush: jest.fn(),
-	shutdown: jest.fn(),
+	getTracer: vi.fn(() => mockTracer),
+	register: vi.fn(),
+	forceFlush: vi.fn(),
+	shutdown: vi.fn(),
 };
 
-jest.mock('langsmith/experimental/otel/exporter', () => ({
-	LangSmithOTLPTraceExporter: jest.fn((config: unknown) => {
+vi.mock('langsmith/experimental/otel/exporter', () => ({
+	LangSmithOTLPTraceExporter: vi.fn(function (config: unknown) {
 		mockExporterConfigs.push(config);
 		const exporter: MockExporter = {
 			type: 'exporter',
-			export: jest.fn((_: unknown[], resultHandler: MockExportCallback) => {
+			export: vi.fn((_: unknown[], resultHandler: MockExportCallback) => {
 				resultHandler({ code: 0 });
 			}),
-			shutdown: jest.fn(async () => await Promise.resolve()),
+			shutdown: vi.fn(async () => await Promise.resolve()),
 		};
 		mockExporterInstances.push(exporter);
 		return exporter;
 	}),
 }));
 
-jest.mock('@opentelemetry/sdk-trace-base', () => ({
-	BatchSpanProcessor: jest.fn((exporter: unknown) => {
+vi.mock('@opentelemetry/sdk-trace-base', () => ({
+	BatchSpanProcessor: vi.fn(function (exporter: unknown) {
 		mockBatchProcessorInputs.push(exporter);
 		const processor = {
-			forceFlush: jest.fn(async () => await Promise.resolve()),
-			onStart: jest.fn(),
-			onEnd: jest.fn(),
-			shutdown: jest.fn(async () => await Promise.resolve()),
+			forceFlush: vi.fn(async () => await Promise.resolve()),
+			onStart: vi.fn(),
+			onEnd: vi.fn(),
+			shutdown: vi.fn(async () => await Promise.resolve()),
 		};
 		mockBatchProcessorInstances.push(processor);
 		return processor;
 	}),
 }));
 
-jest.mock('langsmith', () => ({
+vi.mock('langsmith', () => ({
 	RunTree: {
-		getSharedClient: jest.fn(() => ({
+		getSharedClient: vi.fn(() => ({
 			awaitPendingTraceBatches: mockAwaitPendingTraceBatches,
 		})),
 	},
 }));
 
-jest.mock('@opentelemetry/sdk-trace-node', () => ({
-	NodeTracerProvider: jest.fn((config: unknown) => {
+vi.mock('@opentelemetry/sdk-trace-node', () => ({
+	NodeTracerProvider: vi.fn(function (config: unknown) {
 		mockProviderConfigs.push(config);
 		return mockProvider;
 	}),
 }));
+
+import type { Mock } from 'vitest';
 
 import { LangSmithTelemetry } from '../integrations/langsmith';
 
@@ -131,8 +133,8 @@ describe('LangSmithTelemetry', () => {
 	});
 
 	it('resolves function headers for every export request', async () => {
-		const getHeaders = jest
-			.fn<Promise<Record<string, string>>, []>()
+		const getHeaders = vi
+			.fn<(...args: []) => Promise<Record<string, string>>>()
 			.mockResolvedValueOnce({ Authorization: 'Bearer proxy-token-1' })
 			.mockResolvedValueOnce({ Authorization: 'Bearer proxy-token-2' });
 
@@ -186,8 +188,8 @@ describe('LangSmithTelemetry', () => {
 
 	it('reports export failure when function headers reject', async () => {
 		const refreshError = new Error('could not refresh headers');
-		const getHeaders = jest
-			.fn<Promise<Record<string, string>>, []>()
+		const getHeaders = vi
+			.fn<(...args: []) => Promise<Record<string, string>>>()
 			.mockRejectedValueOnce(refreshError);
 
 		await new LangSmithTelemetry({

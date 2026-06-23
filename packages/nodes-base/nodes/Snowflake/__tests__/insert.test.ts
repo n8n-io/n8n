@@ -1,15 +1,10 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import snowflake from 'snowflake-sdk';
 
-const mockExecute = jest.fn();
-const mockConnect = jest.fn();
-const mockDestroy = jest.fn();
+const mockExecute = vi.fn();
+const mockConnect = vi.fn();
+const mockDestroy = vi.fn();
 const mockConnection = { connect: mockConnect, execute: mockExecute, destroy: mockDestroy };
-const mockCreateConnection = jest.fn().mockReturnValue(mockConnection);
-
-jest.mock('snowflake-sdk', () => ({
-	configure: jest.fn(),
-	createConnection: mockCreateConnection,
-}));
 
 const snowflakeCredentials = {
 	authentication: 'password',
@@ -23,21 +18,28 @@ const snowflakeCredentials = {
 	password: 'pass',
 };
 
-afterEach(() => jest.clearAllMocks());
-
-describe('Test Snowflake, insert - parameter binding without origin hostname', () => {
+// The harness loads the node from dist via require(), so vi.mock cannot intercept its
+// `snowflake-sdk` import. The module is externalized, so the test and the node share the same
+// instance — spy on it instead. Re-applied per test since restoreMocks resets spies.
+beforeEach(() => {
+	vi.spyOn(snowflake, 'configure').mockImplementation(() => ({}) as never);
+	vi.spyOn(snowflake, 'createConnection').mockReturnValue(mockConnection as never);
 	mockConnect.mockImplementation((callback: (err: null) => void) => callback(null));
 	mockDestroy.mockImplementation((callback: (err: null) => void) => callback(null));
 	mockExecute.mockImplementation(
 		({ complete }: { complete: (err: null, stmt: undefined, rows: unknown[]) => void }) =>
 			complete(null, undefined, []),
 	);
+});
 
+afterEach(() => vi.clearAllMocks());
+
+describe('Test Snowflake, insert - parameter binding without origin hostname', () => {
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['insert.workflow.json'],
 		credentials: { snowflake: snowflakeCredentials },
 		customAssertions() {
-			expect(mockCreateConnection).toHaveBeenCalledWith({
+			expect(snowflake.createConnection).toHaveBeenCalledWith({
 				account: 'test-account',
 				database: 'TEST_DB',
 				schema: 'PUBLIC',
@@ -59,13 +61,6 @@ describe('Test Snowflake, insert - parameter binding without origin hostname', (
 });
 
 describe('Test Snowflake, insert - parameter binding with origin hostname', () => {
-	mockConnect.mockImplementation((callback: (err: null) => void) => callback(null));
-	mockDestroy.mockImplementation((callback: (err: null) => void) => callback(null));
-	mockExecute.mockImplementation(
-		({ complete }: { complete: (err: null, stmt: undefined, rows: unknown[]) => void }) =>
-			complete(null, undefined, []),
-	);
-
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['insert.workflow.json'],
 		credentials: {
@@ -75,7 +70,7 @@ describe('Test Snowflake, insert - parameter binding with origin hostname', () =
 			},
 		},
 		customAssertions() {
-			expect(mockCreateConnection).toHaveBeenCalledWith({
+			expect(snowflake.createConnection).toHaveBeenCalledWith({
 				account: 'test-account',
 				database: 'TEST_DB',
 				schema: 'PUBLIC',

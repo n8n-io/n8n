@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { basename, join } from 'path';
 
+import { WorkflowTestCaseSchema } from './schema';
 import type { WorkflowTestCase } from '../../types';
 
 export interface WorkflowTestCaseWithFile {
@@ -11,13 +12,25 @@ export interface WorkflowTestCaseWithFile {
 
 function parseTestCaseFile(filePath: string): WorkflowTestCase {
 	const content = readFileSync(filePath, 'utf-8');
+
+	let raw: unknown;
 	try {
-		return JSON.parse(content) as WorkflowTestCase;
+		raw = JSON.parse(content);
 	} catch (error) {
 		throw new Error(
 			`Failed to parse test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
+
+	const parsed = WorkflowTestCaseSchema.safeParse(raw);
+	if (!parsed.success) {
+		const issues = parsed.error.issues
+			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
+			.join('\n');
+		throw new Error(`Invalid test case ${filePath}:\n${issues}`);
+	}
+
+	return parsed.data as WorkflowTestCase;
 }
 
 /** Split a comma-separated CLI value into a normalized list of substring tokens. */
@@ -58,9 +71,20 @@ function getJsonFiles(filter?: string, exclude?: string): string[] {
 export function loadWorkflowTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
+	tier?: string,
 ): WorkflowTestCaseWithFile[] {
-	return getJsonFiles(filter, exclude).map((f) => ({
+	const cases = getJsonFiles(filter, exclude).map((f) => ({
 		testCase: parseTestCaseFile(f),
 		fileSlug: basename(f, '.json'),
 	}));
+	if (!tier) return cases;
+
+	const matched = cases.filter(({ testCase }) => testCase.datasets.includes(tier));
+	if (matched.length === 0) {
+		const known = [...new Set(cases.flatMap(({ testCase }) => testCase.datasets))].sort();
+		throw new Error(
+			`No test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
+		);
+	}
+	return matched;
 }

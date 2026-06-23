@@ -12,6 +12,13 @@ import type {
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
+const mockLogger = {
+	info: jest.fn(),
+	warn: jest.fn(),
+	error: jest.fn(),
+	debug: jest.fn(),
+} as never;
+
 // Vendor-SDK traffic enters the wire server through the rewritten URL, the
 // wire server calls the mock handler with the inbound messages array, the
 // handler's content reaches the OpenAI envelope, and each turn is attributed
@@ -39,6 +46,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			updateCredentials: jest.fn(),
 			updateCredentialsOauthTokenData: jest.fn(),
 			getCredentialsProperties: jest.fn().mockReturnValue([]),
+			isCredentialUsableByNode: jest.fn().mockReturnValue(true),
 		} as ICredentialsHelper;
 	}
 
@@ -81,6 +89,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 		const intercepts: InterceptedTurn[] = [];
 
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([[rootName, subNode]]),
 			onIntercept: (t) => intercepts.push(t),
@@ -91,7 +100,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([['OpenAI Chat Model', rootName]]),
 			);
 
@@ -137,6 +146,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			});
 
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([[rootName, subNode]]),
 		});
@@ -146,7 +156,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([['OpenAI Chat Model', rootName]]),
 			);
 
@@ -205,6 +215,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 		const intercepts: InterceptedTurn[] = [];
 
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([[rootName, subNode]]),
 			onIntercept: (t) => intercepts.push(t),
@@ -215,7 +226,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([['OpenAI Chat Model', rootName]]),
 			);
 
@@ -254,6 +265,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 
 		const intercepts: InterceptedTurn[] = [];
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([
 				['Agent A', subNodeA],
@@ -267,7 +279,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([
 					['OpenAI A', 'Agent A'],
 					['OpenAI B', 'Agent B'],

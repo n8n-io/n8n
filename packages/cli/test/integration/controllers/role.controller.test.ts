@@ -809,6 +809,41 @@ describe('RoleController', () => {
 			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
 		});
 
+		it('should create a global custom role with valid data as owner', async () => {
+			//
+			// ARRANGE
+			//
+			const createRoleDto: CreateRoleDto = {
+				displayName: 'Custom Global Role',
+				description: 'A custom global role',
+				roleType: 'global',
+				scopes: ['workflow:read'],
+			};
+
+			const mockCreatedRole: Role = {
+				slug: 'global:custom-global-role',
+				displayName: createRoleDto.displayName,
+				description: createRoleDto.description ?? null,
+				systemRole: false,
+				roleType: createRoleDto.roleType,
+				scopes: createRoleDto.scopes,
+				licensed: true,
+			};
+
+			roleService.createCustomRole.mockResolvedValue(mockCreatedRole);
+
+			//
+			// ACT
+			//
+			const response = await ownerAgent.post('/roles').send(createRoleDto).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response.body).toEqual({ data: mockCreatedRole });
+			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
+		});
+
 		it('should create role without description', async () => {
 			//
 			// ARRANGE

@@ -48,7 +48,7 @@ const i18n = useI18n();
 
 	& g,
 	& path {
-		color: var(--color--text--tint-1);
+		color: var(--icon-color);
 		stroke-width: 2.5;
 	}
 }

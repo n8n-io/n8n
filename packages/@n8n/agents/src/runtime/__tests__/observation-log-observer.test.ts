@@ -1,16 +1,35 @@
+import type * as AiImport from 'ai';
+
 import type { AgentDbMessage } from '../../types/sdk/message';
-import { InMemoryMemory } from '../memory-store';
+import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogObserverPrompt,
+	createObservationLogObserveFn,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
-} from '../observation-log-defaults';
+} from '../memory/observation-log-defaults';
 import {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
-} from '../observation-log-observer';
+} from '../memory/observation-log-observer';
+
+type GenerateTextCall = Record<string, unknown>;
+type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
+
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
+	return {
+		...actual,
+		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
+			await mockGenerateText(call),
+	};
+});
 
 function message(
 	id: string,
@@ -27,6 +46,10 @@ function message(
 }
 
 describe('observation-log observer defaults', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+	});
+
 	it('keeps default policy and threshold configuration in the SDK', () => {
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(500);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
@@ -48,13 +71,41 @@ describe('observation-log observer defaults', () => {
 			transcriptTokenCount: 42,
 			observationLogTail: [],
 			renderedObservationLogTail:
-				'## Memory\n\n* CRITICAL (14:28) User is rebuilding observational memory.',
+				'<observations>\n* CRITICAL (14:28) User is rebuilding observational memory.\n</observations>',
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T14:30:00.000Z');
 		expect(prompt).toContain('* CRITICAL (14:28) User is rebuilding observational memory.');
 		expect(prompt).toContain('Remember daily-report-prod.');
 		expect(prompt).toContain('Unobserved transcript tokens: 42');
+	});
+
+	it('counts observer generation tokens when usage is available', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '* CRITICAL (14:30) User asked to remember project context.',
+			usage: { totalTokens: 17 },
+		});
+		const counter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		const result = await createObservationLogObserveFn('openai/gpt-4o-mini')({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: 'user:\nRemember the project context.',
+			transcriptTokenCount: 10,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+			executionCounter: counter,
+		});
+
+		expect(result).toContain('CRITICAL');
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(17);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 });
 
@@ -200,7 +251,7 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'short turn', new Date(2026, 4, 12, 14, 30))],
 		});
 
-		const observe = jest.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
+		const observe = vi.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
 
 		const result = await runObservationLogObserver({
 			memory: store,
@@ -241,7 +292,7 @@ describe('runObservationLogObserver', () => {
 				),
 		});
 
-		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2 });
+		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2, cursorAdvanced: true });
 		const observations = await store.getActiveObservationLog({
 			observationScopeId: 'thread-1',
 		});
@@ -260,5 +311,38 @@ describe('runObservationLogObserver', () => {
 		expect(await store.getCursor('thread-1')).toMatchObject({
 			lastObservedMessageId: 'm1',
 		});
+	});
+
+	it('does not advance the cursor when observe yields no parseable observations', async () => {
+		// A cursor advanced without persisted observations orphans the delta
+		// messages from future history loads, causing mid-thread amnesia.
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'I need this remembered.', new Date(2026, 4, 12, 14, 30))],
+		});
+
+		const result = await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observerThresholdTokens: 1,
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 31),
+			// Empty / unparseable observe output (e.g. a failed or no-op generation).
+			observe: async () => await Promise.resolve('   \nnot a bullet line\n'),
+		});
+
+		expect(result).toMatchObject({
+			status: 'ran',
+			observationsWritten: 0,
+			cursorAdvanced: false,
+		});
+		// Cursor stays put so the delta is re-observed next time and remains in
+		// raw history in the meantime.
+		expect(await store.getCursor('thread-1')).toBeNull();
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
 });

@@ -11,7 +11,6 @@ import {
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
-import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
 import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
@@ -53,8 +52,15 @@ export const createFilter = (filter: string, userFilter: string) => {
 };
 
 export const escapeFilter = (filter: string): string => {
-	//@ts-ignore
-	return new Filter().escape(filter); /* eslint-disable-line */
+	return (
+		filter
+			.replace(/\\/g, '\\5c')
+			.replace(/\*/g, '\\2a')
+			.replace(/\(/g, '\\28')
+			.replace(/\)/g, '\\29')
+			// eslint-disable-next-line no-control-regex
+			.replace(/\x00/g, '\\00')
+	);
 };
 
 /**

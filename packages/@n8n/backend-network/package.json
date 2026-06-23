@@ -1,0 +1,80 @@
+{
+  "name": "@n8n/backend-network",
+  "version": "1.2.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "require": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./src/testing.ts",
+      "require": "./dist/testing.js"
+    },
+    "./transport": {
+      "types": "./dist/transport.d.ts",
+      "import": "./src/transport.ts",
+      "require": "./dist/transport.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "testing": [
+        "dist/testing.d.ts"
+      ],
+      "transport": [
+        "dist/transport.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "axios": "catalog:",
+    "cache-manager": "catalog:",
+    "form-data": "catalog:",
+    "http-proxy-agent": "catalog:",
+    "https-proxy-agent": "catalog:",
+    "iconv-lite": "catalog:",
+    "n8n-workflow": "workspace:*",
+    "proxy-from-env": "catalog:",
+    "qs": "catalog:",
+    "reflect-metadata": "catalog:",
+    "undici": "catalog:undici-v7",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/proxy-from-env": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "nock": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

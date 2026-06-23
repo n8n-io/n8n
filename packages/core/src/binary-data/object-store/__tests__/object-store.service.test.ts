@@ -9,16 +9,17 @@ import {
 	PutObjectCommand,
 	type S3Client,
 } from '@aws-sdk/client-s3';
-import { captor, mock } from 'jest-mock-extended';
+import type { Logger } from '@n8n/backend-common';
 import { PassThrough, Readable } from 'stream';
+import { captor, mock } from 'vitest-mock-extended';
 
 import type { ObjectStoreConfig } from '../object-store.config';
 import { ObjectStoreService } from '../object-store.service.ee';
 
-const mockS3Send = jest.fn();
+const mockS3Send = vi.fn();
 const s3Client = mock<S3Client>({ send: mockS3Send });
-jest.mock('@aws-sdk/client-s3', () => ({
-	...jest.requireActual('@aws-sdk/client-s3'),
+vi.mock('@aws-sdk/client-s3', async (importActual) => ({
+	...(await importActual()),
 	S3Client: class {
 		constructor() {
 			return s3Client;
@@ -50,15 +51,17 @@ describe('ObjectStoreService', () => {
 	});
 
 	let objectStoreService: ObjectStoreService;
+	const logger = mock<Logger>();
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
-	jest.useFakeTimers({ now });
+	vi.useFakeTimers({ now });
 
 	beforeEach(async () => {
-		objectStoreService = new ObjectStoreService(mock(), s3Config);
+		objectStoreService = new ObjectStoreService(logger, s3Config);
 		await objectStoreService.init();
 		mockS3Send.mockClear();
-		jest.restoreAllMocks();
+		logger.error.mockClear();
+		vi.restoreAllMocks();
 	});
 
 	describe('getClientConfig()', () => {
@@ -443,7 +446,7 @@ describe('ObjectStoreService', () => {
 				},
 			];
 
-			objectStoreService.list = jest.fn().mockResolvedValue(mockList);
+			objectStoreService.list = vi.fn().mockResolvedValue(mockList);
 			mockS3Send.mockResolvedValueOnce({});
 
 			await objectStoreService.deleteMany(prefix);
@@ -461,7 +464,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should not send a deletion request if no prefix match', async () => {
-			objectStoreService.list = jest.fn().mockResolvedValue([]);
+			objectStoreService.list = vi.fn().mockResolvedValue([]);
 
 			const result = await objectStoreService.deleteMany('non-matching-prefix');
 
@@ -470,12 +473,90 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			objectStoreService.list = jest.fn().mockResolvedValue([{ key: 'file.txt' }]);
+			objectStoreService.list = vi.fn().mockResolvedValue([{ key: 'file.txt' }]);
 			mockS3Send.mockRejectedValueOnce(mockError);
 
 			const promise = objectStoreService.deleteMany('test-dir/');
 
 			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+	});
+
+	describe('deleteByKeys()', () => {
+		it('should send a DELETE request for the given keys', async () => {
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.deleteByKeys(['file-1.txt', 'file-2.txt']);
+
+			const commandCaptor = captor<DeleteObjectsCommand>();
+			expect(mockS3Send).toHaveBeenCalledTimes(1);
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(DeleteObjectsCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Delete: {
+					Objects: [{ Key: 'file-1.txt' }, { Key: 'file-2.txt' }],
+				},
+			});
+		});
+
+		it('should batch requests of more than 1000 keys', async () => {
+			mockS3Send.mockResolvedValue({});
+			const keys = Array.from({ length: 1500 }, (_, i) => `file-${i}.txt`);
+
+			await objectStoreService.deleteByKeys(keys);
+
+			expect(mockS3Send).toHaveBeenCalledTimes(2);
+			const [first, second] = mockS3Send.mock.calls.map(
+				(call) => (call[0] as DeleteObjectsCommand).input.Delete?.Objects?.length,
+			);
+			expect(first).toBe(1000);
+			expect(second).toBe(500);
+		});
+
+		it('should not send a request for an empty array', async () => {
+			await objectStoreService.deleteByKeys([]);
+
+			expect(mockS3Send).not.toHaveBeenCalled();
+		});
+
+		it('should throw an error on request failure', async () => {
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.deleteByKeys(['file.txt']);
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+
+		it('should throw an error when the response reports per-key failures', async () => {
+			mockS3Send.mockResolvedValueOnce({
+				Errors: [{ Key: 'file-1.txt', Code: 'AccessDenied', Message: 'Access Denied' }],
+			});
+
+			const promise = objectStoreService.deleteByKeys(['file-1.txt', 'file-2.txt']);
+
+			await expect(promise).rejects.toThrowError(
+				'Failed to delete 1 of 2 objects: file-1.txt (AccessDenied: Access Denied)',
+			);
+		});
+
+		it('should log the full failure set even when the thrown summary is truncated', async () => {
+			const errors = Array.from({ length: 8 }, (_, i) => ({
+				Key: `file-${i}.txt`,
+				Code: 'AccessDenied',
+				Message: 'Access Denied',
+			}));
+			mockS3Send.mockResolvedValueOnce({ Errors: errors });
+
+			await expect(objectStoreService.deleteByKeys(errors.map((e) => e.Key))).rejects.toThrowError(
+				'Failed to delete 8 of 8 objects',
+			);
+
+			expect(logger.error).toHaveBeenCalledWith('Failed to delete objects from S3', {
+				bucket: 'test-bucket',
+				failures: errors.map((e) => ({ key: e.Key, code: e.Code, message: e.Message })),
+			});
 		});
 	});
 
@@ -488,7 +569,7 @@ describe('ObjectStoreService', () => {
 				isTruncated: false,
 			};
 
-			objectStoreService.getListPage = jest.fn().mockResolvedValue(mockListPage);
+			objectStoreService.getListPage = vi.fn().mockResolvedValue(mockListPage);
 
 			const result = await objectStoreService.list(prefix);
 
@@ -509,7 +590,7 @@ describe('ObjectStoreService', () => {
 				isTruncated: false,
 			};
 
-			objectStoreService.getListPage = jest
+			objectStoreService.getListPage = vi
 				.fn()
 				.mockResolvedValueOnce(mockFirstListPage)
 				.mockResolvedValueOnce(mockSecondListPage);
@@ -520,7 +601,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			objectStoreService.getListPage = jest.fn().mockRejectedValueOnce(mockError);
+			objectStoreService.getListPage = vi.fn().mockRejectedValueOnce(mockError);
 
 			const promise = objectStoreService.list('test-dir/');
 

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalSecretsProxy, type IExternalSecretsManager } from '../external-secrets-proxy';
 
@@ -7,7 +7,7 @@ describe('ExternalSecretsProxy', () => {
 	const manager = mock<IExternalSecretsManager>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		proxy = new ExternalSecretsProxy();
 	});
 

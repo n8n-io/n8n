@@ -45,7 +45,7 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import {
@@ -81,9 +81,9 @@ export const useExpressionEditor = ({
 	initialCursorPosition?: number | 'lastExpression' | 'end';
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
-	const ndvStore = useNDVStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowsStore = useWorkflowsStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
@@ -391,7 +391,7 @@ export const useExpressionEditor = ({
 				});
 			} else if (
 				isCredentialsModalOpen() ||
-				(!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined)
+				(!ndvStore.value.activeNode && toValue(targetNodeParameterContext) === undefined)
 			) {
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
@@ -402,13 +402,13 @@ export const useExpressionEditor = ({
 				};
 				if (
 					toValue(targetNodeParameterContext) === undefined &&
-					ndvStore.isInputParentOfActiveNode
+					ndvStore.value.isInputParentOfActiveNode
 				) {
 					opts = {
 						targetItem: target ?? undefined,
-						inputNodeName: ndvStore.ndvInputNodeName,
-						inputRunIndex: ndvStore.ndvInputRunIndex,
-						inputBranchIndex: ndvStore.ndvInputBranchIndex,
+						inputNodeName: ndvStore.value.ndvInputNodeName,
+						inputRunIndex: ndvStore.value.ndvInputRunIndex,
+						inputBranchIndex: ndvStore.value.ndvInputBranchIndex,
 					};
 				}
 				result.resolved = await workflowHelpers.resolveExpression(
@@ -419,8 +419,8 @@ export const useExpressionEditor = ({
 			}
 		} catch (error) {
 			const hasRunData =
-				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
-					ndvStore.activeNode?.name ?? ''
+				!!workflowExecutionStateStore.value.activeExecutionRunData?.[
+					ndvStore.value.activeNode?.name ?? ''
 				];
 			result.resolved = `[${getExpressionErrorMessage(error, workflowDocumentStore.value.getPinDataSnapshot(), hasRunData)}]`;
 			result.error = true;
@@ -438,7 +438,7 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
+	const targetItem = computed<TargetItem | null>(() => ndvStore.value.expressionTargetItem);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');
@@ -524,7 +524,10 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => workflowExecutionStateStore.value.activeExecution,
+			() => workflowExecutionStateStore.value.activeExecutionRunData,
+		],
 		debouncedUpdateSegments,
 	);
 

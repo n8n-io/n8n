@@ -5,6 +5,7 @@ import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	getParentNodes,
@@ -35,7 +36,7 @@ const props = defineProps<Props>();
 const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const i18n = useI18n();
 
@@ -44,7 +45,7 @@ const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
 const textareaRowsData = ref<TextareaRowData | null>(null);
 
-const hasExecutionData = computed(() => (ndvStore.ndvInputData || []).length > 0);
+const hasExecutionData = computed(() => (ndvStore.value.ndvInputData || []).length > 0);
 const hasInputField = computed(() => props.parameter.typeOptions?.buttonConfig?.hasInputField);
 const inputFieldMaxLength = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.inputFieldMaxLength,
@@ -52,7 +53,13 @@ const inputFieldMaxLength = computed(
 const buttonLabel = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.label ?? props.parameter.displayName,
 );
+const { askAi } = useEditorContext();
+const isAiTransformButton = computed(() => {
+	const action = props.parameter.typeOptions?.buttonConfig?.action;
+	return typeof action === 'object' && action?.type === 'askAiCodeGeneration';
+});
 const isSubmitEnabled = computed(() => {
+	if (isAiTransformButton.value && !askAi.value) return false;
 	if (!hasExecutionData.value || !prompt.value || props.isReadOnly) return false;
 
 	const maxlength = inputFieldMaxLength.value;
@@ -110,8 +117,9 @@ async function onSubmit() {
 					prompt.value,
 					getPath(target as string),
 					workflowDocumentStore.value.documentId,
-					ndvStore.activeNode,
-					ndvStore.pushRef,
+					ndvStore.value.activeNode,
+					ndvStore.value.pushRef,
+					askAi.value,
 					5,
 				);
 				if (!updateInformation) return;
@@ -125,7 +133,7 @@ async function onSubmit() {
 					value: prompt.value,
 				});
 
-				useTelemetry().trackAiTransform('generationFinished', ndvStore.pushRef, {
+				useTelemetry().trackAiTransform('generationFinished', ndvStore.value.pushRef, {
 					prompt: prompt.value,
 					code: updateInformation.value,
 				});
@@ -141,7 +149,7 @@ async function onSubmit() {
 
 		stopLoading();
 	} catch (error) {
-		useTelemetry().trackAiTransform('generationFinished', ndvStore.pushRef, {
+		useTelemetry().trackAiTransform('generationFinished', ndvStore.value.pushRef, {
 			prompt: prompt.value,
 			code: '',
 			hasError: true,
@@ -164,7 +172,10 @@ function onPromptInput(inputValue: string) {
 }
 
 onMounted(() => {
-	parentNodes.value = getParentNodes(workflowDocumentStore.value.documentId, ndvStore.activeNode);
+	parentNodes.value = getParentNodes(
+		workflowDocumentStore.value.documentId,
+		ndvStore.value.activeNode,
+	);
 });
 
 function cleanTextareaRowsData() {

@@ -1,6 +1,7 @@
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
 const { resolve } = require('path');
+const coverageExcludes = require('./jest.coverage-excludes');
 
 /** @type {import('ts-jest').TsJestTransformerOptions} */
 const tsJestOptions = {
@@ -80,6 +81,12 @@ const config = {
 		'^@n8n/utils$': resolve(__dirname, 'packages/@n8n/utils/dist/index.cjs'),
 		// jest-resolve@29 doesn't honor `./lib/*` subpath patterns in @anthropic-ai/sdk's exports map
 		'^@anthropic-ai/sdk/lib/(.*)$': '@anthropic-ai/sdk/lib/$1.js',
+		// Core uses vitest-mock-extended (ESM-only) for its own tests; route the
+		// shim to a CJS-friendly variant for Jest-based consumers (nodes-base, cli).
+		'^(\\./|\\.\\./nodes-testing/)mock-extended$': resolve(
+			__dirname,
+			'packages/core/nodes-testing/mock-extended.jest.cjs',
+		),
 		...(compilerOptions?.paths
 			? pathsToModuleNameMapper(compilerOptions.paths, {
 					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
@@ -87,15 +94,16 @@ const config = {
 			: {}),
 	},
 	setupFilesAfterEnv: ['jest-expect-message'],
+	restoreMocks: true,
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
 	workerIdleMemoryLimit: '1MB',
 };
 
 if (process.env.CI === 'true') {
-	config.collectCoverageFrom = ['src/**/*.ts'];
+	config.collectCoverageFrom = ['src/**/*.ts', ...coverageExcludes];
 	config.reporters = ['default', 'jest-junit'];
-	config.coverageReporters = ['cobertura'];
+	config.coverageReporters = ['lcov'];
 }
 
 module.exports = config;

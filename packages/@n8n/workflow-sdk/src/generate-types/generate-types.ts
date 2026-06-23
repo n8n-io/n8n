@@ -269,6 +269,35 @@ export interface ParameterBuilderHint {
 	placeholderSupported?: boolean;
 }
 
+export interface NodePropertyOption {
+	name: string;
+	value?: string | number | boolean;
+	description?: string;
+	displayName?: string;
+	builderHint?: ParameterBuilderHint;
+	values?: NodeProperty[];
+	type?: string;
+	default?: unknown;
+	required?: boolean;
+	options?: NodePropertyOption[];
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+	disabledOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+	typeOptions?: Record<string, unknown>;
+	noDataExpression?: boolean;
+	modes?: Array<{
+		name: string;
+		displayName?: string;
+		type?: string;
+		typeOptions?: Record<string, unknown>;
+	}>;
+}
+
 export interface NodeProperty {
 	name: string;
 	displayName: string;
@@ -278,14 +307,7 @@ export interface NodeProperty {
 	builderHint?: ParameterBuilderHint;
 	default?: unknown;
 	required?: boolean;
-	options?: Array<{
-		name: string;
-		value?: string | number | boolean;
-		description?: string;
-		displayName?: string;
-		builderHint?: ParameterBuilderHint;
-		values?: NodeProperty[];
-	}>;
+	options?: NodePropertyOption[];
 	displayOptions?: {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
@@ -2965,18 +2987,23 @@ export function planSplitVersionFiles(
 }
 
 /**
- * Check if node is a trigger (no main input)
+ * Check if node is a trigger.
+ *
+ * Triggers produce main data without consuming any: they emit on the `main`
+ * output and have no `main` input. AI sub-tool nodes (mcpClientTool,
+ * `*Tool` variants, etc.) also have no `main` input, but they emit on
+ * `ai_tool` rather than `main` — so a heuristic that only inspects inputs
+ * misclassifies them. Check outputs explicitly.
  */
 function isTriggerNode(node: NodeTypeDescription): boolean {
-	const inputs = node.inputs;
-	if (Array.isArray(inputs)) {
-		if (inputs.length === 0) return true;
-		if (typeof inputs[0] === 'string') {
-			return !(inputs as string[]).includes('main');
-		}
-		return !inputs.some((i) => typeof i === 'object' && i.type === 'main');
-	}
-	return false;
+	return hasMainConnection(node.outputs) && !hasMainConnection(node.inputs);
+}
+
+function hasMainConnection(connections: NodeTypeDescription['inputs']): boolean {
+	if (!Array.isArray(connections)) return false;
+	return connections.some((connection) =>
+		typeof connection === 'string' ? connection === 'main' : connection.type === 'main',
+	);
 }
 
 /**
