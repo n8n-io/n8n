@@ -28,7 +28,6 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
-	continueInstanceAiTraceContext,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -48,7 +47,6 @@ import {
 	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
-	submitLangsmithUserFeedback,
 	resumeAgentRun,
 	RunStateRegistry,
 	RunDebugBuffer,
@@ -94,7 +92,6 @@ import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
@@ -106,6 +103,7 @@ import { Telemetry } from '@/telemetry';
 
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -139,10 +137,6 @@ import {
 } from './planned-task-action-runner';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
-import {
-	buildInstanceAiRunTraceMetadata,
-	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
@@ -154,7 +148,11 @@ import {
 	type ResumableOrphan,
 } from './suspended-run-restorer.service';
 import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
-import { TraceReplayState } from './trace-replay-state';
+import {
+	InstanceAiTracingService,
+	type MessageTraceFinalization,
+	type OrchestratorResumeReason,
+} from './tracing';
 import {
 	parseWorkflowBuildOutcome,
 	WorkflowVerificationObligationService,
@@ -316,10 +314,6 @@ function getAbortReason(signal: AbortSignal): string {
 	return typeof reason === 'string' ? reason : 'user_cancelled';
 }
 
-// Stable UUID namespace for deterministic feedback IDs. Submitting the same
-// (key, responseId) pair twice produces the same feedback UUID so LangSmith
-// upserts the record (thumbs-down → later text comment = one record, not two).
-const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
 function stringifyForContextValue(value: unknown): string {
@@ -379,25 +373,6 @@ function buildPlannedTaskConversationContext(
 
 	return parts.join('\n');
 }
-
-interface MessageTraceFinalization {
-	status: 'completed' | 'cancelled' | 'error' | 'suspended';
-	outputText?: string;
-	reason?: string;
-	modelId?: ModelConfig;
-	outputs?: Record<string, unknown>;
-	metadata?: Record<string, unknown>;
-	error?: string;
-}
-
-type OrchestratorResumeReason =
-	| 'approval'
-	| 'background_task_completed'
-	| 'workflow_verification'
-	| 'workflow_setup'
-	| 'planned_checkpoint'
-	| 'replan'
-	| 'synthesize';
 
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
@@ -470,16 +445,9 @@ export class InstanceAiService {
 
 	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
 
-	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
-	private readonly traceContextsByRunId = new Map<
-		string,
-		{
-			threadId: string;
-			messageGroupId?: string;
-			tracing: InstanceAiTraceContext;
-			traceSlug?: string;
-		}
-	>();
+	/** Owns the LangSmith trace-context lifecycle for orchestration runs. */
+	private readonly tracing: InstanceAiTracingService;
+
 	/** Errors already sent to Sentry, so a granular boundary report wins over the outer run catch. */
 	private readonly reportedErrors = new WeakSet<object>();
 	/** Owns the per-thread runtime sandbox/workspace lifecycle. */
@@ -515,9 +483,6 @@ export class InstanceAiService {
 	private readonly suspendedThreads: SuspendedThreadPersistenceService;
 
 	private readonly suspendedRunRestorer: SuspendedRunRestorer;
-
-	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
-	private readonly traceReplay = new TraceReplayState();
 
 	private readonly runDebugBuffer = new RunDebugBuffer();
 
@@ -600,6 +565,7 @@ export class InstanceAiService {
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
+		private readonly creditService: InstanceAiCreditService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -644,6 +610,13 @@ export class InstanceAiService {
 			onPendingConfirmationRejected: (requestId) => {
 				void this.suspendedThreads.dropPendingConfirmation(requestId);
 			},
+		});
+		this.tracing = new InstanceAiTracingService({
+			logger: this.logger,
+			eventBus: this.eventBus,
+			runState: this.runState,
+			dbSnapshotStorage: this.dbSnapshotStorage,
+			aiService: this.aiService,
 		});
 		this.sandboxService = new InstanceAiSandboxService({
 			config: this.instanceAiConfig,
@@ -818,36 +791,6 @@ export class InstanceAiService {
 		};
 	}
 
-	private storeTraceContext(
-		runId: string,
-		threadId: string,
-		tracing: InstanceAiTraceContext,
-		messageGroupId?: string,
-	): void {
-		const existing = this.traceContextsByRunId.get(runId);
-		if (
-			existing?.tracing.traceWriter &&
-			existing.traceSlug &&
-			existing.tracing.traceWriter !== tracing.traceWriter
-		) {
-			this.traceReplay.preserveWriterEvents(
-				existing.traceSlug,
-				existing.tracing.traceWriter.getEvents(),
-			);
-		}
-
-		this.traceContextsByRunId.set(runId, {
-			threadId,
-			messageGroupId,
-			tracing,
-			traceSlug: this.traceReplay.getActiveSlug(),
-		});
-	}
-
-	private getTraceContext(runId: string): InstanceAiTraceContext | undefined {
-		return this.traceContextsByRunId.get(runId)?.tracing;
-	}
-
 	private reportInstanceAiError(
 		error: unknown,
 		context: { component: string } & InstanceAiObservabilityContext,
@@ -898,6 +841,9 @@ export class InstanceAiService {
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
+			// Recover token usage from raw provider events so a stopped/errored run
+			// is still billed for the tokens consumed before the stop.
+			recoverUsageOnAbort: true,
 			persistence: {
 				resourceId: user.id,
 				threadId,
@@ -924,6 +870,8 @@ export class InstanceAiService {
 		return {
 			runId: agentRunId,
 			toolCallId,
+			// Keep billing stopped/errored resumed runs (see stream-options builder).
+			recoverUsageOnAbort: true,
 			persistence: { resourceId: user.id, threadId },
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
@@ -946,293 +894,8 @@ export class InstanceAiService {
 		}));
 	}
 
-	private getTraceContextForContinuation(
-		threadId: string,
-		messageGroupId?: string,
-	): InstanceAiTraceContext | undefined {
-		const entries = [...this.traceContextsByRunId.values()].reverse();
-		const sameGroup =
-			messageGroupId === undefined
-				? undefined
-				: entries.find(
-						(entry) => entry.threadId === threadId && entry.messageGroupId === messageGroupId,
-					)?.tracing;
-		return sameGroup ?? entries.find((entry) => entry.threadId === threadId)?.tracing;
-	}
-
-	private async createOrchestratorResumeTraceContext(options: {
-		baseTracing?: InstanceAiTraceContext;
-		threadId: string;
-		messageId: string;
-		messageGroupId?: string;
-		runId: string;
-		userId: string;
-		modelId?: ModelConfig;
-		input: Record<string, unknown>;
-		proxyConfig?: ServiceProxyConfig;
-		resumeReason: OrchestratorResumeReason;
-		metadata?: Record<string, unknown>;
-	}): Promise<InstanceAiTraceContext | undefined> {
-		const baseTracing =
-			options.baseTracing ??
-			this.getTraceContextForContinuation(options.threadId, options.messageGroupId);
-		if (!baseTracing) return undefined;
-
-		const tracing = await continueInstanceAiTraceContext(baseTracing, {
-			threadId: options.threadId,
-			messageId: options.messageId,
-			messageGroupId: options.messageGroupId,
-			runId: options.runId,
-			userId: options.userId,
-			modelId: options.modelId,
-			input: options.input,
-			proxyConfig: options.proxyConfig ?? baseTracing?.proxyConfig,
-			metadata: {
-				resume_reason: options.resumeReason,
-				agent_id: ORCHESTRATOR_AGENT_ID,
-				...options.metadata,
-			},
-			n8nVersion: N8N_VERSION,
-			workflowSdkVersion: WORKFLOW_SDK_VERSION,
-		});
-
-		if (tracing) {
-			await this.configureTraceReplayMode(tracing);
-			this.storeTraceContext(options.runId, options.threadId, tracing, options.messageGroupId);
-			this.runState.attachTracing(options.threadId, tracing);
-		}
-
-		return tracing;
-	}
-
-	private async configureTraceReplayMode(tracing: InstanceAiTraceContext): Promise<void> {
-		await this.traceReplay.configureReplayMode(tracing);
-	}
-
-	private async finalizeMessageTraceRoot(
-		runId: string,
-		tracing: InstanceAiTraceContext,
-		options: MessageTraceFinalization,
-	): Promise<void> {
-		if (tracing.rootRun.endTime) return;
-
-		const outputs = options.outputs ?? {
-			status: options.status,
-			runId,
-			...(options.outputText ? { response: options.outputText } : {}),
-			...(options.reason ? { reason: options.reason } : {}),
-		};
-		const metadata = {
-			final_status: options.status,
-			...(options.modelId !== undefined ? { model_id: options.modelId } : {}),
-			...options.metadata,
-		};
-
-		try {
-			await tracing.finishRun(tracing.rootRun, {
-				outputs,
-				metadata,
-				...(options.error
-					? { error: options.error }
-					: options.status === 'error' && options.reason
-						? { error: options.reason }
-						: {}),
-			});
-		} catch (error) {
-			this.logger.warn('Failed to finalize Instance AI message trace root', {
-				runId,
-				threadId: tracing.rootRun.metadata?.thread_id,
-				error: getErrorMessage(error),
-			});
-		} finally {
-			releaseTraceClient(tracing.rootRun.traceId);
-		}
-	}
-
-	private async maybeFinalizeRunTraceRoot(
-		runId: string,
-		options: MessageTraceFinalization,
-	): Promise<void> {
-		const tracing = this.getTraceContext(runId);
-		if (!tracing) return;
-		await this.finalizeMessageTraceRoot(runId, tracing, options);
-	}
-
-	private buildMessageTraceMetadata(
-		threadId: string,
-		runId: string,
-		options: InstanceAiRunTraceMetadataOptions,
-	): Record<string, unknown> {
-		const traceOptions = {
-			status: options.status,
-			...(options.cancellationReason !== undefined
-				? { cancellationReason: options.cancellationReason }
-				: {}),
-			...(options.runTimeout !== undefined ? { runTimeout: options.runTimeout } : {}),
-		};
-
-		return {
-			completion_source: 'orchestrator',
-			...buildInstanceAiRunTraceMetadata(
-				this.eventBus.getEventsForRun(threadId, runId),
-				traceOptions,
-			),
-		};
-	}
-
-	private async finalizeRemainingMessageTraceRoots(
-		threadId: string,
-		options: MessageTraceFinalization,
-	): Promise<void> {
-		const finalizedMessageRuns = new Set<string>();
-
-		for (const [runId, entry] of this.traceContextsByRunId) {
-			if (entry.threadId !== threadId) continue;
-			if (finalizedMessageRuns.has(entry.tracing.rootRun.id)) continue;
-
-			finalizedMessageRuns.add(entry.tracing.rootRun.id);
-			await this.finalizeMessageTraceRoot(runId, entry.tracing, options);
-		}
-	}
-
-	private deleteTraceContextsForThread(threadId: string): void {
-		for (const [runId, entry] of this.traceContextsByRunId) {
-			if (entry.threadId === threadId) {
-				releaseTraceClient(entry.tracing.rootRun.traceId);
-				// Preserve recorded trace events in the slug-scoped store
-				// so the test fixture teardown can still retrieve them via GET.
-				if (entry.tracing.traceWriter && entry.traceSlug) {
-					this.traceReplay.preserveWriterEvents(
-						entry.traceSlug,
-						entry.tracing.traceWriter.getEvents(),
-					);
-				}
-				this.traceContextsByRunId.delete(runId);
-			}
-		}
-	}
-
-	private deleteTraceContextsForSlug(slug: string): void {
-		for (const [runId, entry] of this.traceContextsByRunId) {
-			if (entry.traceSlug === slug) {
-				releaseTraceClient(entry.tracing.rootRun.traceId);
-				this.traceContextsByRunId.delete(runId);
-			}
-		}
-	}
-
 	clearTraceContextsForTest(): void {
-		for (const entry of this.traceContextsByRunId.values()) {
-			releaseTraceClient(entry.tracing.rootRun.traceId);
-		}
-		this.traceContextsByRunId.clear();
-	}
-
-	private async finalizeDetachedTraceRun(
-		taskId: string,
-		traceContext: InstanceAiTraceContext | undefined,
-		options: {
-			status: 'completed' | 'failed' | 'cancelled';
-			outputs?: Record<string, unknown>;
-			error?: string;
-			metadata?: Record<string, unknown>;
-		},
-	): Promise<void> {
-		if (!traceContext) return;
-
-		try {
-			if (
-				traceContext.actorRun.id !== traceContext.rootRun.id &&
-				traceContext.actorRun.endTime === undefined
-			) {
-				await traceContext.finishRun(traceContext.actorRun, {
-					outputs: {
-						status: options.status,
-						...options.outputs,
-					},
-					metadata: {
-						final_status: options.status,
-						...options.metadata,
-					},
-					...(options.error ? { error: options.error } : {}),
-				});
-			}
-			await traceContext.finishRun(traceContext.rootRun, {
-				outputs: {
-					status: options.status,
-					...options.outputs,
-				},
-				metadata: {
-					final_status: options.status,
-					...options.metadata,
-				},
-				...(options.error ? { error: options.error } : {}),
-			});
-		} catch (error) {
-			this.logger.warn('Failed to finalize Instance AI detached trace run', {
-				taskId,
-				traceRunId: traceContext.rootRun.id,
-				error: getErrorMessage(error),
-			});
-		} finally {
-			releaseTraceClient(traceContext.rootRun.traceId);
-		}
-	}
-
-	private async finalizeRunTracing(
-		runId: string,
-		tracing: InstanceAiTraceContext | undefined,
-		options: MessageTraceFinalization,
-	): Promise<void> {
-		if (!tracing) return;
-		if (tracing.actorRun.endTime) return;
-
-		const outputs = options.outputs ?? {
-			status: options.status,
-			runId,
-			...(options.outputText ? { response: options.outputText } : {}),
-			...(options.reason ? { reason: options.reason } : {}),
-		};
-
-		const metadata = {
-			final_status: options.status,
-			...(options.modelId !== undefined ? { model_id: options.modelId } : {}),
-			...options.metadata,
-		};
-
-		try {
-			await tracing.finishRun(tracing.actorRun, {
-				outputs,
-				metadata,
-				...(options.status === 'error' && options.reason ? { error: options.reason } : {}),
-			});
-		} catch (error) {
-			this.logger.warn('Failed to finalize Instance AI run tracing', {
-				runId,
-				threadId: tracing.actorRun.metadata?.thread_id,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private async finalizeBackgroundTaskTracing(
-		task: ManagedBackgroundTask,
-		status: 'completed' | 'failed' | 'cancelled',
-	): Promise<void> {
-		await this.finalizeDetachedTraceRun(task.taskId, task.traceContext, {
-			status,
-			outputs: {
-				taskId: task.taskId,
-				agentId: task.agentId,
-				role: task.role,
-				...(task.result ? { result: task.result } : {}),
-			},
-			...(status === 'failed' && task.error ? { error: task.error } : {}),
-			metadata: {
-				...(task.plannedTaskId ? { planned_task_id: task.plannedTaskId } : {}),
-				...(task.workItemId ? { work_item_id: task.workItemId } : {}),
-			},
-		});
+		this.tracing.clearTraceContextsForTest();
 	}
 
 	async submitLangsmithFeedback(
@@ -1241,65 +904,7 @@ export class InstanceAiService {
 		responseId: string,
 		payload: { rating: 'up' | 'down'; comment?: string },
 	): Promise<void> {
-		const anchor = await this.dbSnapshotStorage.findLangsmithAnchor(threadId, responseId);
-		if (!anchor) {
-			this.logger.debug('No LangSmith anchor for feedback; skipping annotation', {
-				threadId,
-				responseId,
-			});
-			return;
-		}
-
-		let tracingProxyConfig: ServiceProxyConfig | undefined;
-		if (this.aiService.isProxyEnabled()) {
-			try {
-				const client = await this.aiService.getClient();
-				const baseUrl = client.getApiProxyBaseUrl();
-				const manager = new ProxyTokenManager(
-					async () =>
-						await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
-				);
-				tracingProxyConfig = {
-					apiUrl: baseUrl + '/langsmith',
-					getAuthHeaders: async () => await manager.getAuthHeaders(),
-				};
-			} catch (error) {
-				this.logger.warn('Failed to build LangSmith proxy config for feedback', {
-					threadId,
-					responseId,
-					error: getErrorMessage(error),
-				});
-				return;
-			}
-		}
-
-		const key = 'user_score';
-		const feedbackId = uuidv5(`${key}:${responseId}`, INSTANCE_AI_FEEDBACK_NAMESPACE);
-
-		try {
-			await submitLangsmithUserFeedback({
-				langsmithRunId: anchor.langsmithRunId,
-				langsmithTraceId: anchor.langsmithTraceId,
-				key,
-				score: payload.rating === 'up' ? 1 : 0,
-				value: payload.rating,
-				comment: payload.comment,
-				feedbackId,
-				sourceInfo: {
-					thread_id: threadId,
-					response_id: responseId,
-					user_id: user.id,
-					rating: payload.rating,
-				},
-				proxyConfig: tracingProxyConfig,
-			});
-		} catch (error) {
-			this.logger.warn('Failed to submit LangSmith feedback', {
-				threadId,
-				responseId,
-				error: getErrorMessage(error),
-			});
-		}
+		await this.tracing.submitLangsmithFeedback(user, threadId, responseId, payload);
 	}
 
 	startRun(
@@ -1385,7 +990,7 @@ export class InstanceAiService {
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
-			void this.finalizeBackgroundTaskTracing(task, 'cancelled');
+			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 			this.eventBus.publish(threadId, {
 				type: 'agent-completed',
 				runId: task.runId,
@@ -1452,7 +1057,7 @@ export class InstanceAiService {
 		const task = this.backgroundTasks.cancelTask(threadId, taskId);
 		if (!task) return;
 
-		void this.finalizeBackgroundTaskTracing(task, 'cancelled');
+		void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 		this.eventBus.publish(threadId, {
 			type: 'agent-completed',
 			runId: task.runId,
@@ -1483,7 +1088,7 @@ export class InstanceAiService {
 	cancelAllBackgroundTasks(): number {
 		const cancelled = this.backgroundTasks.cancelAll();
 		for (const task of cancelled) {
-			void this.finalizeBackgroundTaskTracing(task, 'cancelled');
+			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 		}
 		return cancelled.length;
 	}
@@ -1620,17 +1225,15 @@ export class InstanceAiService {
 	// ── Test-only trace replay API ───────────────────────────────────────────
 
 	loadTraceEvents(slug: string, events: unknown[]): void {
-		this.traceReplay.loadEvents(slug, events);
+		this.tracing.loadTraceEvents(slug, events);
 	}
 
 	getTraceEvents(slug: string): unknown[] {
-		return this.traceReplay.getEventsWithWriterFallback(slug, this.traceContextsByRunId.values());
+		return this.tracing.getTraceEvents(slug);
 	}
 
 	hasRunningWorkForTest(): boolean {
-		const threadIds = new Set(
-			[...this.traceContextsByRunId.values()].map((entry) => entry.threadId),
-		);
+		const threadIds = new Set(this.tracing.getTrackedThreadIds());
 
 		for (const threadId of threadIds) {
 			if (this.runState.getActiveRunId(threadId)) return true;
@@ -1641,12 +1244,11 @@ export class InstanceAiService {
 	}
 
 	activateTraceSlug(slug: string): void {
-		this.traceReplay.activateSlug(slug);
+		this.tracing.activateTraceSlug(slug);
 	}
 
 	clearTraceEvents(slug: string): void {
-		this.deleteTraceContextsForSlug(slug);
-		this.traceReplay.clearEvents(slug);
+		this.tracing.clearTraceEvents(slug);
 	}
 
 	/**
@@ -1661,14 +1263,14 @@ export class InstanceAiService {
 		const { active, suspended } = this.runState.clearThread(threadId);
 		if (active) {
 			active.abortController.abort();
-			await this.finalizeRunTracing(active.runId, active.tracing, {
+			await this.tracing.finalizeRunTracing(active.runId, active.tracing, {
 				status: 'cancelled',
 				reason: 'thread_cleared',
 			});
 		}
 		if (suspended) {
 			suspended.abortController.abort();
-			await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
+			await this.tracing.finalizeRunTracing(suspended.runId, suspended.tracing, {
 				status: 'cancelled',
 				reason: 'thread_cleared',
 			});
@@ -1677,22 +1279,21 @@ export class InstanceAiService {
 		// Cancel background tasks belonging to this thread
 		for (const task of this.backgroundTasks.cancelThread(threadId)) {
 			task.abortController.abort();
-			await this.finalizeBackgroundTaskTracing(task, 'cancelled');
+			await this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 		}
-		await this.finalizeRemainingMessageTraceRoots(threadId, {
+		await this.tracing.finalizeRemainingMessageTraceRoots(threadId, {
 			status: 'cancelled',
 			reason: 'thread_cleared',
 			metadata: { completion_source: 'service_cleanup' },
 		});
 
-		this.modelService.clearThread(threadId);
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
-		this.deleteTraceContextsForThread(threadId);
+		this.tracing.deleteTraceContextsForThread(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
@@ -1717,7 +1318,7 @@ export class InstanceAiService {
 			// a `status: 'cancelled'` tree before the user has a chance to see
 			// it on reload.
 			if (threadsWithPendingHitl.has(run.threadId)) {
-				await this.finalizeRunTracing(run.runId, run.tracing, {
+				await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 					status: 'cancelled',
 					reason: 'service_shutdown',
 				});
@@ -1738,7 +1339,7 @@ export class InstanceAiService {
 			// the process is gone.
 			this.publishRunFinish(run.threadId, run.runId, 'cancelled', 'service_shutdown');
 			await this.persistShutdownSnapshot(run.threadId, run.runId, run.messageGroupId);
-			await this.finalizeRunTracing(run.runId, run.tracing, {
+			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
@@ -1749,7 +1350,7 @@ export class InstanceAiService {
 			// confirmation index, so leave the run-finish unpublished and the
 			// snapshot untouched. We only need to abort the in-process stream;
 			// the DB rows are intentionally preserved across restart.
-			await this.finalizeRunTracing(run.runId, run.tracing, {
+			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
@@ -1757,7 +1358,7 @@ export class InstanceAiService {
 		}
 		for (const task of this.backgroundTasks.cancelAll()) {
 			task.abortController.abort();
-			await this.finalizeBackgroundTaskTracing(task, 'cancelled');
+			await this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 		}
 
 		// Drain the now-aborted executeRun / processResumedStream promises
@@ -1769,11 +1370,9 @@ export class InstanceAiService {
 		// a hung agent can't block n8n's own graceful-shutdown deadline.
 		await this.drainInFlightExecutions(INSTANCE_AI_SHUTDOWN_DRAIN_TIMEOUT_MS);
 
-		const threadsWithTraces = new Set(
-			[...this.traceContextsByRunId.values()].map((entry) => entry.threadId),
-		);
+		const threadsWithTraces = new Set(this.tracing.getTrackedThreadIds());
 		for (const threadId of threadsWithTraces) {
-			await this.finalizeRemainingMessageTraceRoots(threadId, {
+			await this.tracing.finalizeRemainingMessageTraceRoots(threadId, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 				metadata: { completion_source: 'service_cleanup' },
@@ -1789,7 +1388,7 @@ export class InstanceAiService {
 		// teardown paths.
 
 		this.domainAccessTrackersByThread.clear();
-		this.traceContextsByRunId.clear();
+		this.tracing.clear();
 
 		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
@@ -2247,7 +1846,7 @@ export class InstanceAiService {
 		this.runState.cancelThread(args.threadId);
 		void this.suspendedThreads.dropPendingConfirmationsForThread(args.threadId);
 		args.abortController.abort();
-		await this.finalizeRunTracing(args.runId, args.tracing, {
+		await this.tracing.finalizeRunTracing(args.runId, args.tracing, {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
 		});
@@ -2261,7 +1860,7 @@ export class InstanceAiService {
 		return {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
-			metadata: this.buildMessageTraceMetadata(args.threadId, args.runId, {
+			metadata: this.tracing.buildMessageTraceMetadata(args.threadId, args.runId, {
 				status: 'error',
 			}),
 		};
@@ -2959,7 +2558,7 @@ export class InstanceAiService {
 				this.collectWorkflowIds(task.outcome, ids);
 			}
 
-			const tracing = this.getTraceContextForContinuation(threadId);
+			const tracing = this.tracing.getTraceContextForContinuation(threadId);
 			for (const workflowId of [...ids]) {
 				const remappedWorkflowId = tracing?.idRemapper?.remapOutput(workflowId);
 				if (typeof remappedWorkflowId === 'string' && remappedWorkflowId.length > 0) {
@@ -3425,7 +3024,7 @@ export class InstanceAiService {
 			graph.messageGroupId,
 			this.threadPushRef.get(threadId),
 		);
-		environment.orchestrationContext.tracing = this.getTraceContext(graph.planRunId);
+		environment.orchestrationContext.tracing = this.tracing.getTraceContext(graph.planRunId);
 		return environment.orchestrationContext;
 	}
 
@@ -3534,7 +3133,7 @@ export class InstanceAiService {
 
 			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
 			if (resumeReason) {
-				tracing = await this.createOrchestratorResumeTraceContext({
+				tracing = await this.tracing.createOrchestratorResumeTraceContext({
 					threadId,
 					messageId,
 					messageGroupId,
@@ -3703,10 +3302,10 @@ export class InstanceAiService {
 
 			if (tracing) {
 				orchestrationContext.tracing = tracing;
-				if (this.getTraceContext(runId) !== tracing) {
-					await this.configureTraceReplayMode(tracing);
+				if (this.tracing.getTraceContext(runId) !== tracing) {
+					await this.tracing.configureTraceReplayMode(tracing);
 					this.runState.attachTracing(threadId, tracing);
-					this.storeTraceContext(runId, threadId, tracing, messageGroupId);
+					this.tracing.storeTraceContext(runId, threadId, tracing, messageGroupId);
 				}
 			}
 
@@ -3973,7 +3572,7 @@ export class InstanceAiService {
 						: {}),
 					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
 				};
-				await this.finalizeRunTracing(runId, tracing, {
+				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
 					metadata: {
@@ -4036,7 +3635,7 @@ export class InstanceAiService {
 					plannedBuild?.isPlannedBuildFollowUp === true,
 			});
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
-			await this.finalizeRunTracing(runId, tracing, {
+			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: finalStatus,
 				outputText,
 				modelId,
@@ -4045,7 +3644,7 @@ export class InstanceAiService {
 				status: finalStatus,
 				outputText,
 				modelId,
-				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
+				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
 			};
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				threadId,
@@ -4061,9 +3660,17 @@ export class InstanceAiService {
 				usage: result.usage,
 			});
 
-			// Count credits on first completed run per thread
+			// Bill token usage for every terminal outcome (completed / cancelled / errored),
+			// deduped per run segment. `result.agentRunId` is the segment id; fall back to runId.
+			await this.creditService.claimRunUsage(
+				user,
+				threadId,
+				result.agentRunId || runId,
+				result.usage?.usage ?? [],
+				result.status,
+			);
+
 			if (result.status === 'completed') {
-				await this.modelService.countCreditsIfFirst(user, threadId, runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
 					message: outputText,
@@ -4094,14 +3701,14 @@ export class InstanceAiService {
 					messageGroupId,
 					correlationId: messageId,
 				});
-				await this.finalizeRunTracing(runId, tracing, {
+				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'cancelled',
 					reason: cancellationReason,
 				});
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: this.buildMessageTraceMetadata(threadId, runId, {
+					metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -4148,14 +3755,14 @@ export class InstanceAiService {
 				correlationId: messageId,
 				errorMessage: userFacingErrorMessage,
 			});
-			await this.finalizeRunTracing(runId, tracing, {
+			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: 'error',
 				reason: errorMessage,
 			});
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
+				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
 			};
 
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
@@ -4190,7 +3797,7 @@ export class InstanceAiService {
 			// startRun overwrites it; thread-cleanup deletes it on dispose.
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			if (messageTraceFinalization) {
-				await this.maybeFinalizeRunTraceRoot(runId, messageTraceFinalization);
+				await this.tracing.maybeFinalizeRunTraceRoot(runId, messageTraceFinalization);
 				if (messageTraceFinalization.status !== 'cancelled') {
 					this.liveness.consumeRunTimeout(runId);
 				}
@@ -4669,7 +4276,7 @@ export class InstanceAiService {
 			...(data.scope ? { scope: data.scope } : {}),
 		};
 
-		const resumeTracing = await this.createOrchestratorResumeTraceContext({
+		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
 			baseTracing: tracing,
 			threadId,
 			messageId: nanoid(),
@@ -4796,7 +4403,7 @@ export class InstanceAiService {
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {
-					const resumeMessageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+					const resumeMessageGroupId = this.tracing.getMessageGroupId(opts.runId);
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
 						agentRunId: result.agentRunId,
@@ -4836,7 +4443,7 @@ export class InstanceAiService {
 					});
 				}
 
-				const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+				const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 				const waitingDecision = this.evaluateWaitingResponse(
 					opts.threadId,
 					opts.runId,
@@ -4872,7 +4479,7 @@ export class InstanceAiService {
 						: {}),
 					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
 				};
-				await this.finalizeRunTracing(opts.runId, opts.tracing, {
+				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
 					metadata: {
@@ -4909,7 +4516,7 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
-			const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			if (result.status === 'errored') {
 				this.reportInstanceAiError(
 					result.error ?? new Error('Instance AI resumed stream errored'),
@@ -4932,14 +4539,14 @@ export class InstanceAiService {
 					opts.plannedBuild?.isPlannedBuildFollowUp === true,
 			});
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
-			await this.finalizeRunTracing(opts.runId, opts.tracing, {
+			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,
 				outputText,
 			});
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
-				metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: finalStatus,
 				}),
 			};
@@ -4955,8 +4562,16 @@ export class InstanceAiService {
 				usage: result.usage,
 			});
 
+			// Bill token usage for every terminal outcome, deduped per run segment.
+			await this.creditService.claimRunUsage(
+				opts.user,
+				opts.threadId,
+				result.agentRunId || opts.runId,
+				result.usage?.usage ?? [],
+				result.status,
+			);
+
 			if (result.status === 'completed') {
-				await this.modelService.countCreditsIfFirst(opts.user, opts.threadId, opts.runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,
@@ -4970,7 +4585,7 @@ export class InstanceAiService {
 				if (this.shouldPreserveHitlOnShutdown(opts.runId)) {
 					return;
 				}
-				const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+				const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 				const runTimeout = this.liveness.consumeRunTimeout(opts.runId);
 				const cancellationReason = runTimeout.timedOut
 					? INSTANCE_AI_RUN_TIMEOUT_REASON
@@ -4981,14 +4596,14 @@ export class InstanceAiService {
 				this.evaluateTerminalResponse(opts.threadId, opts.runId, 'cancelled', {
 					messageGroupId,
 				});
-				await this.finalizeRunTracing(opts.runId, opts.tracing, {
+				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'cancelled',
 					reason: cancellationReason,
 				});
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -5014,7 +4629,7 @@ export class InstanceAiService {
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
-			const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			const errCtx: InstanceAiObservabilityContext = {
 				threadId: opts.threadId,
 				runId: opts.runId,
@@ -5032,14 +4647,14 @@ export class InstanceAiService {
 				messageGroupId,
 				errorMessage: userFacingErrorMessage,
 			});
-			await this.finalizeRunTracing(opts.runId, opts.tracing, {
+			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: 'error',
 				reason: errorMessage,
 			});
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: 'error',
 				}),
 			};
@@ -5066,7 +4681,7 @@ export class InstanceAiService {
 			// See note in executeRun's finally — keep threadPushRef alive for
 			// post-run planned-task dispatch.
 			if (messageTraceFinalization) {
-				await this.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
+				await this.tracing.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
 				if (messageTraceFinalization.status !== 'cancelled') {
 					this.liveness.consumeRunTimeout(opts.runId);
 				}
@@ -5117,7 +4732,7 @@ export class InstanceAiService {
 			parentCheckpointId: opts.parentCheckpointId,
 			run: opts.run,
 			onLimitReached: async (errorMessage) => {
-				await this.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
+				await this.tracing.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
 					status: 'failed',
 					outputs: {
 						taskId: opts.taskId,
@@ -5142,7 +4757,7 @@ export class InstanceAiService {
 				});
 			},
 			onCompleted: async (task) => {
-				await this.finalizeBackgroundTaskTracing(task, 'completed');
+				await this.tracing.finalizeBackgroundTaskTracing(task, 'completed');
 				this.eventBus.publish(opts.threadId, {
 					type: 'agent-completed',
 					runId,
@@ -5156,7 +4771,7 @@ export class InstanceAiService {
 				}
 			},
 			onFailed: async (task) => {
-				await this.finalizeBackgroundTaskTracing(task, 'failed');
+				await this.tracing.finalizeBackgroundTaskTracing(task, 'failed');
 				this.reportInstanceAiError(new Error(task.error ?? 'Instance AI background task failed'), {
 					component: 'instance-ai-background-task',
 					threadId: opts.threadId,
@@ -5298,7 +4913,7 @@ export class InstanceAiService {
 			// a phantom sub-agent node in the event stream and an unfinished trace
 			// root. Compensate the same way `onLimitReached` does so the agent tree
 			// snapshot doesn't keep a ghost child and the trace client is released.
-			void this.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
+			void this.tracing.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
 				status: 'cancelled',
 				outputs: {
 					taskId: opts.taskId,
@@ -5407,7 +5022,7 @@ export class InstanceAiService {
 		if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
 			this.liveness.publishRunTimeoutNotice(suspended.threadId, suspended.runId);
 		}
-		await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
+		await this.tracing.finalizeRunTracing(suspended.runId, suspended.tracing, {
 			status: 'cancelled',
 			reason,
 		});
@@ -5434,10 +5049,10 @@ export class InstanceAiService {
 			this.dbSnapshotStorage,
 			true,
 		);
-		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
+		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason,
-			metadata: this.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
+			metadata: this.tracing.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
 				status: 'cancelled',
 				cancellationReason: reason,
 				...(runTimeout ? { runTimeout } : {}),
@@ -5540,7 +5155,7 @@ export class InstanceAiService {
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 
-			const baseTracing = this.getTraceContextForContinuation(threadId);
+			const baseTracing = this.tracing.getTraceContextForContinuation(threadId);
 			const titleTracing = await createInternalOperationTraceContext({
 				threadId,
 				conversationId: threadId,
@@ -5664,7 +5279,7 @@ export class InstanceAiService {
 			}
 			const agentTree = buildAgentTreeFromEvents(events);
 
-			const tracing = this.traceContextsByRunId.get(runId)?.tracing;
+			const tracing = this.tracing.getTraceContext(runId);
 			const saveOptions = {
 				messageGroupId,
 				runIds: groupRunIds,

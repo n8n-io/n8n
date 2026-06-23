@@ -212,9 +212,11 @@ type BackgroundTaskFollowUpServiceInternals = {
 	eventBus: {
 		publish: jest.MockedFunction<(threadId: string, event: InstanceAiEvent) => void>;
 	};
-	finalizeBackgroundTaskTracing: jest.MockedFunction<
-		(task: ManagedBackgroundTask, status: 'completed' | 'failed' | 'cancelled') => Promise<void>
-	>;
+	tracing: {
+		finalizeBackgroundTaskTracing: jest.MockedFunction<
+			(task: ManagedBackgroundTask, status: 'completed' | 'failed' | 'cancelled') => Promise<void>
+		>;
+	};
 	handlePlannedTaskSettlement: jest.MockedFunction<
 		(
 			user: User,
@@ -307,9 +309,11 @@ function createBackgroundTaskFollowUpService({
 	};
 	service.eventBus = { publish: jest.fn((_threadId: string, _event: InstanceAiEvent) => {}) };
 	service.taskProjector = { syncFromBackgroundTask: jest.fn(async () => {}) };
-	service.finalizeBackgroundTaskTracing = jest.fn(
-		async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
-	);
+	service.tracing = {
+		finalizeBackgroundTaskTracing: jest.fn(
+			async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
+		),
+	};
 	service.handlePlannedTaskSettlement = jest.fn(
 		async (
 			_user: User,
@@ -490,16 +494,23 @@ type ShutdownServiceInternals = {
 		>;
 	};
 	backgroundTasks: { cancelAll: jest.MockedFunction<() => ManagedBackgroundTask[]> };
-	traceContextsByRunId: Map<string, { threadId: string }>;
-	finalizeRunTracing: jest.MockedFunction<
-		(runId: string, tracing: InstanceAiTraceContext | undefined, options: unknown) => Promise<void>
-	>;
-	finalizeBackgroundTaskTracing: jest.MockedFunction<
-		(task: ManagedBackgroundTask, status: 'cancelled') => Promise<void>
-	>;
-	finalizeRemainingMessageTraceRoots: jest.MockedFunction<
-		(threadId: string, options: unknown) => Promise<void>
-	>;
+	tracing: {
+		finalizeRunTracing: jest.MockedFunction<
+			(
+				runId: string,
+				tracing: InstanceAiTraceContext | undefined,
+				options: unknown,
+			) => Promise<void>
+		>;
+		finalizeBackgroundTaskTracing: jest.MockedFunction<
+			(task: ManagedBackgroundTask, status: 'cancelled') => Promise<void>
+		>;
+		finalizeRemainingMessageTraceRoots: jest.MockedFunction<
+			(threadId: string, options: unknown) => Promise<void>
+		>;
+		getTrackedThreadIds: jest.MockedFunction<() => string[]>;
+		clear: jest.MockedFunction<() => void>;
+	};
 	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: jest.MockedFunction<() => void> };
 	domainAccessTrackersByThread: Map<string, unknown>;
@@ -617,14 +628,17 @@ type TerminalGuardOrderServiceInternals = {
 		outputRedactionPii: string;
 		outputRedactionPlaceholder: string;
 	};
-	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
+	tracing: {
+		finalizeRunTracing: jest.Mock;
+		maybeFinalizeRunTraceRoot: jest.Mock;
+		buildMessageTraceMetadata: jest.Mock;
+		getMessageGroupId: jest.Mock;
+	};
 	threadPushRef: Map<string, string>;
-	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	temporaryWorkflowService: { reapForRun: jest.Mock };
-	modelService: { countCreditsIfFirst: jest.Mock };
-	maybeFinalizeRunTraceRoot: jest.Mock;
+	creditService: { claimRunUsage: jest.Mock };
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
 	processResumedStream: (
@@ -664,7 +678,7 @@ type SnapshotServiceInternals = {
 		getEventsForRun: jest.Mock;
 		getEventsForRuns: jest.Mock;
 	};
-	traceContextsByRunId: Map<string, { tracing?: { rootRun: { id: string; traceId: string } } }>;
+	tracing: { getTraceContext: jest.Mock };
 	logger: { warn: jest.Mock };
 };
 
@@ -701,16 +715,17 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		outputRedactionPii: 'credit-card',
 		outputRedactionPlaceholder: '[REDACTED]',
 	};
-	service.traceContextsByRunId = new Map([
-		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
-	]);
+	service.tracing = {
+		finalizeRunTracing: jest.fn(async () => {}),
+		maybeFinalizeRunTraceRoot: jest.fn(async () => {}),
+		buildMessageTraceMetadata: jest.fn(() => ({})),
+		getMessageGroupId: jest.fn((runId: string) => (runId === 'run-1' ? 'group-1' : undefined)),
+	};
 	service.threadPushRef = new Map();
-	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: jest.fn(async () => []) };
-	service.modelService = { countCreditsIfFirst: jest.fn(async () => {}) };
-	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
+	service.creditService = { claimRunUsage: jest.fn(async () => {}) };
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
 	return service;
@@ -726,7 +741,7 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRun: jest.fn(() => []),
 		getEventsForRuns: jest.fn(() => []),
 	};
-	service.traceContextsByRunId = new Map();
+	service.tracing = { getTraceContext: jest.fn(() => undefined) };
 	service.logger = { warn: jest.fn() };
 	return service;
 }
@@ -999,16 +1014,23 @@ describe('InstanceAiService — shutdown', () => {
 			shutdown: jest.fn(() => ({ activeRuns: [], suspendedRuns: [] })),
 		};
 		service.backgroundTasks = { cancelAll: jest.fn(() => []) };
-		service.traceContextsByRunId = new Map();
-		service.finalizeRunTracing = jest.fn(
-			async (_runId: string, _tracing: InstanceAiTraceContext | undefined, _options: unknown) => {},
-		);
-		service.finalizeBackgroundTaskTracing = jest.fn(
-			async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
-		);
-		service.finalizeRemainingMessageTraceRoots = jest.fn(
-			async (_threadId: string, _options: unknown) => {},
-		);
+		service.tracing = {
+			finalizeRunTracing: jest.fn(
+				async (
+					_runId: string,
+					_tracing: InstanceAiTraceContext | undefined,
+					_options: unknown,
+				) => {},
+			),
+			finalizeBackgroundTaskTracing: jest.fn(
+				async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
+			),
+			finalizeRemainingMessageTraceRoots: jest.fn(
+				async (_threadId: string, _options: unknown) => {},
+			),
+			getTrackedThreadIds: jest.fn(() => []),
+			clear: jest.fn(),
+		};
 		service.gatewayService = { disconnectAll: jest.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
@@ -1542,7 +1564,7 @@ type SuspendedRunResumeServiceInternals = {
 	};
 	logger: { warn: jest.Mock };
 	dbSnapshotStorage: unknown;
-	createOrchestratorResumeTraceContext: jest.Mock;
+	tracing: { createOrchestratorResumeTraceContext: jest.Mock };
 	processResumedStream: jest.Mock;
 	suspendedThreads: { dropPendingConfirmation: jest.Mock };
 	trackInFlightExecution: jest.Mock;
@@ -1574,7 +1596,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	};
 	service.logger = { warn: jest.fn() };
 	service.dbSnapshotStorage = {};
-	service.createOrchestratorResumeTraceContext = jest.fn(async () => undefined);
+	service.tracing = { createOrchestratorResumeTraceContext: jest.fn(async () => undefined) };
 	service.processResumedStream = jest.fn();
 	return service;
 }
@@ -2335,7 +2357,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 	});
 
-	it('counts credits when a resumed run completes', async () => {
+	it('claims credits when a resumed run completes', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
 		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
@@ -2360,10 +2382,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		expect(service.modelService.countCreditsIfFirst).toHaveBeenCalledWith(
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
 			fakeUser,
 			'thread-a',
-			'run-1',
+			'agent-run-1',
+			[],
+			'completed',
 		);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',

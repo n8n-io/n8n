@@ -35,19 +35,17 @@ import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
-import { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor';
-import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
 	getIntegrationToolConnectionDescriptors,
+	type IntegrationToolConnectionDescriptor,
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -68,6 +66,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
@@ -94,13 +93,38 @@ export interface ReconstructAgentRuntimeParams {
 	credentialIntegrations?: AgentIntegrationConfig[];
 }
 
+async function getChatIntegrationToolServices() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { IntegrationMessageContextService } = await import(
+		'./integrations/integration-message-context.service'
+	);
+	// eslint-disable-next-line import-x/no-cycle
+	const { ChatIntegrationActionExecutor } = await import(
+		'./integrations/integration-action-executor'
+	);
+	// eslint-disable-next-line import-x/no-cycle
+	const { ChatIntegrationContextQueryExecutor } = await import(
+		'./integrations/integration-context-query-executor'
+	);
+
+	return {
+		messageContextStore: Container.get(IntegrationMessageContextService),
+		actionExecutor: Container.get(ChatIntegrationActionExecutor),
+		queryExecutor: Container.get(ChatIntegrationContextQueryExecutor),
+	};
+}
+
+async function getWorkflowRunner(): Promise<WorkflowRunner> {
+	const { WorkflowRunner } = await import('@/workflow-runner');
+	return Container.get(WorkflowRunner);
+}
+
 @Service()
 export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
-		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userRepository: UserRepository,
@@ -259,7 +283,11 @@ export class AgentRuntimeReconstructionService {
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
 
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(configuredAgents, projectId)) {
+		for (const { agentId, agent } of await resolveUniqueSubAgents({
+			refs: configuredAgents,
+			projectId,
+			agentRepository: this.agentRepository,
+		})) {
 			if (!agent?.activeVersionId) continue;
 
 			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
@@ -271,23 +299,6 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		return { sourcesById, availableSubAgents };
-	}
-
-	private async fetchUniqueSubAgents(
-		refs: Array<{ agentId: string }>,
-		projectId: string,
-	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
-		const seen = new Set<string>();
-		const resolved: Array<{ agentId: string; agent: Agent | null }> = [];
-		for (const { agentId } of refs) {
-			if (seen.has(agentId)) continue;
-			seen.add(agentId);
-			resolved.push({
-				agentId,
-				agent: await this.agentRepository.findByIdAndProjectId(agentId, projectId),
-			});
-		}
-		return resolved;
 	}
 
 	private getMemoryFactory(agentId: string): MemoryFactory {
@@ -311,7 +322,7 @@ export class AgentRuntimeReconstructionService {
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
-					workflowRunner: this.workflowRunner,
+					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
 					workflowFinderService: this.workflowFinderService,
 					userRepository: this.userRepository,
@@ -386,29 +397,32 @@ export class AgentRuntimeReconstructionService {
 
 			if (credentialIntegrations.length > 0 || includeN8nChat) {
 				const integrationRegistry = Container.get(ChatIntegrationRegistry);
-				const messageContextStore = Container.get(IntegrationMessageContextService);
-				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
-				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
+				const { messageContextStore, actionExecutor, queryExecutor } =
+					await getChatIntegrationToolServices();
 
-				const descriptors = getIntegrationToolConnectionDescriptors(
-					credentialIntegrations,
-					agentId,
-					(integrationConfig) => {
-						const integrationDef = integrationRegistry.get(integrationConfig.type);
-						return {
-							contextQueries: integrationDef?.contextQueries,
-							actions: integrationDef?.actions,
-						};
-					},
-				);
+				const descriptors: IntegrationToolConnectionDescriptor[] =
+					getIntegrationToolConnectionDescriptors(
+						credentialIntegrations,
+						agentId,
+						(integrationConfig) => {
+							const integrationDef = integrationRegistry.get(integrationConfig.type);
+							return {
+								contextQueries: integrationDef?.contextQueries,
+								actions: integrationDef?.actions,
+							};
+						},
+					);
 
 				if (includeN8nChat) {
 					// Implicit in-app chat channel: credential-less, per-run, fixed
 					// tool names (exactly one n8n_chat per run — no suffixing).
 					const n8nChat = integrationRegistry.require(N8N_CHAT_INTEGRATION_TYPE);
+					const n8nChatIntegration = {
+						type: N8N_CHAT_INTEGRATION_TYPE,
+					} as unknown as IntegrationToolConnectionDescriptor['integration'];
 					descriptors.push({
 						agentId,
-						integration: { type: N8N_CHAT_INTEGRATION_TYPE },
+						integration: n8nChatIntegration,
 						integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
 						contextToolName: N8N_CHAT_CONTEXT_TOOL_NAME,
 						actionToolName: N8N_CHAT_ACTION_TOOL_NAME,

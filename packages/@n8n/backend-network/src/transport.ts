@@ -17,6 +17,7 @@
 export {
 	buildDispatcher,
 	createSsrfInterceptor,
+	createAuthorizationInterceptor,
 	createDispatcherTransport,
 	dispatchedFetch,
 } from './http/undici/transport';
@@ -24,6 +25,7 @@ export type {
 	CustomFetch,
 	DispatcherTransport,
 	CreateDispatcherTransportOptions,
+	RequestAuthorizer,
 	TransportTimeoutOptions,
 } from './http/undici/transport';
 export type { ProxyOption, ProxyUrl, SsrfOption } from './http/node-agents';

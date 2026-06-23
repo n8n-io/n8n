@@ -315,7 +315,6 @@ export class CanvasPage extends BasePage {
 	async openShareModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-share');
-		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -475,6 +474,24 @@ export class CanvasPage extends BasePage {
 
 	async clickProductionChecklistIgnoreAll(): Promise<void> {
 		await this.getProductionChecklistIgnoreAllButton().click();
+	}
+
+	async ignoreProductionChecklistAction(index = 0): Promise<void> {
+		await this.getProductionChecklistActionItem().nth(index).getByTitle('Ignore').click();
+	}
+
+	getProductionChecklistActionCompletedIcon(index = 0): Locator {
+		return this.getProductionChecklistActionItem()
+			.nth(index)
+			.locator('svg[data-icon="circle-check"]');
+	}
+
+	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
+		await expect(this.page.locator('.el-message-box')).toBeVisible();
+		await this.page
+			.locator('.el-message-box__btns button')
+			.filter({ hasText: /ignore for all workflows/i })
+			.click();
 	}
 
 	async duplicateNode(nodeName: string): Promise<void> {
