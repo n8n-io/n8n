@@ -181,8 +181,11 @@ export class DirectedGraph {
 		const fromExists = this.nodes.get(from.name) === from;
 		const toExists = this.nodes.get(to.name) === to;
 
-		a.ok(fromExists);
-		a.ok(toExists);
+		a.ok(
+			fromExists,
+			`Cannot add connection: source node "${from.name}" is not part of this graph.`,
+		);
+		a.ok(toExists, `Cannot add connection: target node "${to.name}" is not part of this graph.`);
 
 		const connection: GraphConnection = {
 			...connectionInput,
