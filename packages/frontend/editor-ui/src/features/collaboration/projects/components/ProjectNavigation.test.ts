@@ -110,7 +110,18 @@ describe('ProjectsNavigation', () => {
 	it('should show Instance AI above Home when enabled', () => {
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-		settingsStore.moduleSettings = { 'instance-ai': { enabled: true } };
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				cloudManaged: false,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
 
 		const { getByTestId } = renderComponent({
 			props: {
