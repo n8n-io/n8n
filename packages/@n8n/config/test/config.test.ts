@@ -221,7 +221,7 @@ describe('GlobalConfig', () => {
 			publicationOutboxLeaseSeconds: 120,
 			publicationOutboxCompletedRetentionHours: 1,
 			publicationOutboxFailedRetentionHours: 168,
-			publicationOutboxCleanupIntervalMs: 3_600_000,
+			publicationOutboxCleanupIntervalSeconds: 1200,
 			publicationOutboxCleanupBatchSize: 1000,
 			autosaveDisabled: false,
 		},

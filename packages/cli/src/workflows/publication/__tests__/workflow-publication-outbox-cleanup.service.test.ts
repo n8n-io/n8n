@@ -9,7 +9,7 @@ import { WorkflowPublicationOutboxCleanupService } from '../workflow-publication
 const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
 const config = mock<WorkflowsConfig>({
 	useWorkflowPublicationService: true,
-	publicationOutboxCleanupIntervalMs: 30_000,
+	publicationOutboxCleanupIntervalSeconds: 30,
 	publicationOutboxCompletedRetentionHours: 1,
 	publicationOutboxFailedRetentionHours: 168,
 	publicationOutboxCleanupBatchSize: 1000,

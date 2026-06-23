@@ -41,10 +41,13 @@ export class WorkflowPublicationOutboxCleanupService {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
 		if (this.isShuttingDown || this.cleanupInterval) return;
 
-		const intervalMs = this.workflowsConfig.publicationOutboxCleanupIntervalMs;
-		this.cleanupInterval = setInterval(async () => await this.cleanup(), intervalMs);
+		const intervalSeconds = this.workflowsConfig.publicationOutboxCleanupIntervalSeconds;
+		this.cleanupInterval = setInterval(
+			async () => await this.cleanup(),
+			intervalSeconds * Time.seconds.toMilliseconds,
+		);
 
-		this.logger.debug(`Outbox cleanup scheduled every ${intervalMs}ms`);
+		this.logger.debug(`Outbox cleanup scheduled every ${intervalSeconds}s`);
 	}
 
 	@OnLeaderStepdown()
@@ -66,11 +69,11 @@ export class WorkflowPublicationOutboxCleanupService {
 			this.workflowsConfig.publicationOutboxFailedRetentionHours * Time.hours.toSeconds;
 		const batchSize = this.workflowsConfig.publicationOutboxCleanupBatchSize;
 
-		try {
-			await this.tracing.startSpan(
-				{ name: 'Publication outbox cleanup', op: 'publication.outbox.cleanup' },
-				async (span) => {
-					let totalDeleted = 0;
+		await this.tracing.startSpan(
+			{ name: 'Publication outbox cleanup', op: 'publication.outbox.cleanup' },
+			async (span) => {
+				let totalDeleted = 0;
+				try {
 					let deleted: number;
 					// Stop looping if a shutdown begins mid-cleanup; the next leader picks up
 					// the rest on its next cycle.
@@ -83,7 +86,6 @@ export class WorkflowPublicationOutboxCleanupService {
 						totalDeleted += deleted;
 					} while (deleted >= batchSize && !this.isShuttingDown);
 
-					span.setAttribute('n8n.publication.records_deleted', totalDeleted);
 					span.setStatus({ code: SpanStatus.ok });
 
 					if (totalDeleted > 0) {
@@ -91,10 +93,13 @@ export class WorkflowPublicationOutboxCleanupService {
 							count: totalDeleted,
 						});
 					}
-				},
-			);
-		} catch (error) {
-			this.logger.error('Failed to clean up workflow publication outbox records', { error });
-		}
+				} catch (error) {
+					span.setStatus({ code: SpanStatus.error });
+					this.logger.error('Failed to clean up workflow publication outbox records', { error });
+				} finally {
+					span.setAttribute('n8n.publication.records_deleted', totalDeleted);
+				}
+			},
+		);
 	}
 }
