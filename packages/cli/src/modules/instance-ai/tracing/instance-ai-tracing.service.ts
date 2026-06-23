@@ -1,4 +1,3 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -8,18 +7,22 @@ import {
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
 	type ModelConfig,
+	type RunStateRegistry,
 	type ServiceProxyConfig,
 } from '@n8n/instance-ai';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import type { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
+import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from '../run-trace-metadata';
+import type { DbSnapshotStorage } from '../storage/db-snapshot-storage';
 import { TraceReplayState } from '../trace-replay-state';
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
@@ -52,33 +55,15 @@ export type OrchestratorResumeReason =
 	| 'replan'
 	| 'synthesize';
 
-export type InstanceAiTracingEventBus = {
-	getEventsForRun: (threadId: string, runId: string) => InstanceAiEvent[];
-};
+// The slice of each collaborator the tracing service actually uses. Anchored to
+// the concrete types via `Pick` so the signatures stay in sync with the source.
+export type InstanceAiTracingEventBus = Pick<InProcessEventBus, 'getEventsForRun'>;
 
-export type InstanceAiTracingRunState = {
-	attachTracing: (threadId: string, tracing: InstanceAiTraceContext) => void;
-};
+export type InstanceAiTracingRunState = Pick<RunStateRegistry<User>, 'attachTracing'>;
 
-export type InstanceAiTracingSnapshotStorage = {
-	findLangsmithAnchor: (
-		threadId: string,
-		responseId: string,
-	) => Promise<{ langsmithRunId: string; langsmithTraceId: string } | undefined>;
-};
+export type InstanceAiTracingSnapshotStorage = Pick<DbSnapshotStorage, 'findLangsmithAnchor'>;
 
-export type InstanceAiTracingProxyClient = {
-	getApiProxyBaseUrl: () => string;
-	getBuilderApiProxyToken: (
-		user: { id: string },
-		options: { userMessageId: string },
-	) => Promise<{ accessToken: string; tokenType: string }>;
-};
-
-export type InstanceAiTracingAiService = {
-	isProxyEnabled: () => boolean;
-	getClient: () => Promise<InstanceAiTracingProxyClient>;
-};
+export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'getClient'>;
 
 export type InstanceAiTracingServiceOptions = {
 	logger: Logger;
