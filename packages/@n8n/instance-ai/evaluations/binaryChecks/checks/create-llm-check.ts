@@ -5,7 +5,8 @@ import type { WorkflowResponse } from '../../clients/n8n-client';
 import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
 import type { BinaryCheck, BinaryCheckContext, CheckDimension } from '../types';
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+// Headroom for the multi-turn honesty check, which reasons over every claim across all turns.
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 interface LlmCheckOptions {
 	name: string;
