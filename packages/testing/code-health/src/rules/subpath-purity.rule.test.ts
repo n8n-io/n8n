@@ -20,6 +20,24 @@ describe('SubpathPurityRule — import parser', () => {
 		]);
 	});
 
+	it('treats inline type-only imports / re-exports as erased', () => {
+		expect(parse("import { type Foo } from './foo';")).toEqual([
+			{ specifier: './foo', typeOnly: true },
+		]);
+		expect(parse("export { type Foo } from './foo';")).toEqual([
+			{ specifier: './foo', typeOnly: true },
+		]);
+	});
+
+	it('treats a mixed inline-type import / re-export as runtime', () => {
+		expect(parse("import { type Foo, bar } from './foo';")).toEqual([
+			{ specifier: './foo', typeOnly: false },
+		]);
+		expect(parse("export { type Foo, bar } from './foo';")).toEqual([
+			{ specifier: './foo', typeOnly: false },
+		]);
+	});
+
 	it('treats static value imports and re-exports as runtime', () => {
 		expect(parse("import { foo } from './foo';")).toEqual([
 			{ specifier: './foo', typeOnly: false },
@@ -91,6 +109,16 @@ describe('SubpathPurityRule', () => {
 		);
 		// Points at the file that actually imports it, not the entry.
 		expect(violations[0].file).toBe(path.join(rootDir, 'src/client.ts'));
+	});
+
+	it('reports a forbidden package once, not also as an unexpected external', () => {
+		write('src/transport.ts', "export { send } from './client';");
+		write('src/client.ts', "import { Container } from '@n8n/di';\nexport const send = Container;");
+
+		const messages = analyze(SPEC).map((v) => v.message);
+
+		expect(messages).toEqual([expect.stringContaining('forbidden runtime dependency "@n8n/di"')]);
+		expect(messages).not.toContainEqual(expect.stringContaining('unexpected runtime dependency'));
 	});
 
 	it('ignores a forbidden package imported only as a type', () => {

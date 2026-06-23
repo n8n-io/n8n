@@ -140,6 +140,11 @@ export const NoUncentralizedHttpRule = ESLintUtils.RuleCreator.withoutDocs<Optio
 				report(node, module, context);
 			},
 
+			// Dynamic/runtime module loads (`import()`, `require`, `import =`) only restrict
+			// RESTRICTED_MODULES, not node:http/https: a runtime load returns the whole module,
+			// so blocking `Agent` would also block `createServer`, the same accepted gap as the
+			// namespace/default static import above.
+			//
 			// Dynamic `import('axios')` loads the whole client at runtime.
 			ImportExpression(node) {
 				if (node.source.type !== 'Literal' || typeof node.source.value !== 'string') {

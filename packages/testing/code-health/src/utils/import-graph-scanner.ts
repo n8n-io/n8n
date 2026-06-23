@@ -16,6 +16,37 @@ export interface ExternalRef {
 	line: number;
 }
 
+function isTypeOnlyExport(node: ts.ExportDeclaration): boolean {
+	return (
+		node.isTypeOnly ||
+		(node.exportClause !== undefined &&
+			ts.isNamedExports(node.exportClause) &&
+			node.exportClause.elements.length > 0 &&
+			node.exportClause.elements.every((element) => element.isTypeOnly))
+	);
+}
+
+function isTypeOnlyImport(node: ts.ImportDeclaration): boolean {
+	const clause = node.importClause;
+	if (!clause) {
+		// bare side-effect import runs at runtime
+		return false;
+	}
+	if (clause.isTypeOnly) {
+		return true;
+	}
+	if (clause.name) {
+		return false; // default binding
+	}
+	const bindings = clause.namedBindings;
+	return (
+		bindings !== undefined &&
+		ts.isNamedImports(bindings) &&
+		bindings.elements.length > 0 &&
+		bindings.elements.every((element) => element.isTypeOnly)
+	);
+}
+
 /**
  * Extract module specifiers from a source file via the TypeScript AST. Covers
  * static `import`/`export ... from`, bare side-effect imports, and the runtime
@@ -33,7 +64,7 @@ export function parseImports(fileName: string, source: string): ImportRef[] {
 		if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
 			refs.push({
 				specifier: node.moduleSpecifier.text,
-				typeOnly: node.importClause?.isTypeOnly ?? false,
+				typeOnly: isTypeOnlyImport(node),
 				line: lineOf(node),
 			});
 		}
@@ -45,7 +76,7 @@ export function parseImports(fileName: string, source: string): ImportRef[] {
 		) {
 			refs.push({
 				specifier: node.moduleSpecifier.text,
-				typeOnly: node.isTypeOnly,
+				typeOnly: isTypeOnlyExport(node),
 				line: lineOf(node),
 			});
 		}

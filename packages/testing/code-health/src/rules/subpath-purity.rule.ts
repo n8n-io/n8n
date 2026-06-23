@@ -82,15 +82,21 @@ export class SubpathPurityRule extends BaseRule<CodeHealthContext> {
 			const allowed = new Set(subpath.allowedExternals);
 			for (const ref of externals.values()) {
 				if (allowed.has(ref.specifier)) continue;
-				violations.push(
-					this.createViolation(
-						ref.file,
-						ref.line,
-						1,
-						`"${subpath.name}" pulls in unexpected runtime dependency "${ref.specifier}".`,
-						`Allowed runtime externals are: ${subpath.allowedExternals.join(', ')}. Add this specifier to the allowlist only if it is genuinely safe for the DI-less subpath.`,
-					),
+				// Forbidden specifiers are already reported above with a clearer message.
+				const isForbidden = subpath.forbidden.some(
+					(forbidden) => ref.specifier === forbidden || ref.specifier.startsWith(`${forbidden}/`),
 				);
+				if (!isForbidden) {
+					violations.push(
+						this.createViolation(
+							ref.file,
+							ref.line,
+							1,
+							`"${subpath.name}" pulls in unexpected runtime dependency "${ref.specifier}".`,
+							`Allowed runtime externals are: ${subpath.allowedExternals.join(', ')}. Add this specifier to the allowlist only if it is genuinely safe for the DI-less subpath.`,
+						),
+					);
+				}
 			}
 		}
 
