@@ -81,6 +81,29 @@ describe('CustomDirectoryLoader hot reload (NODE-5225)', () => {
 		expect(loadedVersion(loader)).toBe(2);
 	});
 
+	it('serves the recompiled node after reset + loadAll (symlinked scoped dev node)', async () => {
+		// Scoped community node (`@scope/n8n-nodes-foo`): the package is symlinked
+		// one level deeper, under `node_modules/@scope/<pkg>`.
+		const projectDir = path.join(tmpRoot, 'my-scoped-node-project');
+		const nodeFile = writeNode(path.join(projectDir, 'dist', 'nodes'), 1);
+
+		const scopeDir = path.join(customDir, 'node_modules', '@scope');
+		fs.mkdirSync(scopeDir, { recursive: true });
+		fs.symlinkSync(projectDir, path.join(scopeDir, 'n8n-nodes-reloadable'));
+
+		const loader = new CustomDirectoryLoader(customDir);
+
+		await loader.loadAll();
+		expect(loadedVersion(loader)).toBe(1);
+
+		fs.writeFileSync(nodeFile, nodeSource(2));
+
+		loader.reset();
+		await loader.loadAll();
+
+		expect(loadedVersion(loader)).toBe(2);
+	});
+
 	it('serves the recompiled node after reset + loadAll (node placed directly in custom dir)', async () => {
 		// Classic `~/.n8n/custom` layout: no `node_modules`, no symlink.
 		const nodeFile = writeNode(path.join(customDir, 'Reloadable'), 1);

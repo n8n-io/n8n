@@ -564,14 +564,49 @@ export abstract class DirectoryLoader implements NodeLoader {
 			if (!entry.isSymbolicLink() && !entry.isDirectory()) continue;
 
 			const entryPath = path.join(nodeModulesDir, entry.name);
-			try {
-				const realPath = realpathSync(entryPath);
-				if (realPath !== entryPath) roots.push(realPath);
-			} catch {
-				// Broken symlink - skip.
+
+			// Scoped packages (`@scope/pkg`) symlink one level deeper: `@scope` is a
+			// real directory, so descend into it and resolve each scoped package.
+			if (entry.name.startsWith('@') && entry.isDirectory()) {
+				roots.push(...this.resolveSymlinkedRoots(entryPath));
+				continue;
 			}
+
+			this.pushResolvedRoot(roots, entryPath);
 		}
 
 		return roots;
+	}
+
+	/** Resolves symlinked packages directly under `scopeDir` to their real paths. */
+	private resolveSymlinkedRoots(scopeDir: string): string[] {
+		let entries;
+		try {
+			entries = readdirSync(scopeDir, { withFileTypes: true });
+		} catch {
+			return [];
+		}
+
+		if (!Array.isArray(entries)) return [];
+
+		const roots: string[] = [];
+		for (const entry of entries) {
+			if (entry.name.startsWith('.')) continue;
+			if (!entry.isSymbolicLink() && !entry.isDirectory()) continue;
+
+			this.pushResolvedRoot(roots, path.join(scopeDir, entry.name));
+		}
+
+		return roots;
+	}
+
+	/** Adds `entryPath`'s real path to `roots` when it resolves through a symlink. */
+	private pushResolvedRoot(roots: string[], entryPath: string) {
+		try {
+			const realPath = realpathSync(entryPath);
+			if (realPath !== entryPath) roots.push(realPath);
+		} catch {
+			// Broken symlink - skip.
+		}
 	}
 }
