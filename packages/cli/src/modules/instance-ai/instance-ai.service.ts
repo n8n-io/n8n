@@ -1735,6 +1735,7 @@ export class InstanceAiService {
 
 		const adminSettings = this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
+		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -1758,9 +1759,9 @@ export class InstanceAiService {
 		// is currently used
 		const gatewayMcpServer =
 			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
-		const browserMcpServer = localGatewayDisabledGlobally
-			? undefined
-			: this.browserSessionService.findMcpServer(user.id);
+		const browserMcpServer = browserUseEnabledGlobally
+			? this.browserSessionService.findMcpServer(user.id)
+			: undefined;
 		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
@@ -1806,9 +1807,7 @@ export class InstanceAiService {
 
 		// Compute gateway status for the system prompt. The direct browser
 		// session contributes a `browser` capability even without the daemon.
-		if (localGatewayDisabledGlobally) {
-			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else if (gatewayMcpServer || browserMcpServer) {
+		if (gatewayMcpServer || browserMcpServer) {
 			const capabilities = new Set<string>();
 			if (gatewayMcpServer) {
 				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
@@ -1826,6 +1825,8 @@ export class InstanceAiService {
 				status: 'connected',
 				capabilities: [...capabilities],
 			};
+		} else if (localGatewayDisabledGlobally && !browserUseEnabledGlobally) {
+			context.localGatewayStatus = { status: 'disabledGlobally' };
 		} else {
 			context.localGatewayStatus = {
 				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',

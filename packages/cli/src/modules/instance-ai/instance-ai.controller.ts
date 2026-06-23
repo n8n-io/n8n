@@ -476,6 +476,10 @@ export class InstanceAiController {
 		const result = await this.settingsService.updateAdminSettings(payload);
 		await this.moduleRegistry.refreshModuleSettings('instance-ai');
 
+		if (payload.enabled === false || payload.browserUseEnabled === false) {
+			await this.browserSessionService.shutdown();
+		}
+
 		if (payload.enabled === false || payload.localGatewayDisabled === true) {
 			const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
 			if (disconnectedUserIds.length > 0) {
@@ -980,8 +984,8 @@ export class InstanceAiController {
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	private assertBrowserChannelEnabled(): void {
-		if (this.settingsService.getAdminSettings().localGatewayDisabled) {
-			throw new ForbiddenError('Local gateway is disabled');
+		if (!this.settingsService.getAdminSettings().browserUseEnabled) {
+			throw new ForbiddenError('Browser Use is disabled');
 		}
 	}
 
