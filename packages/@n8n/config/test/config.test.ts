@@ -371,6 +371,7 @@ describe('GlobalConfig', () => {
 			workerPool: {
 				enabled: false,
 				name: '',
+				effectiveName: '',
 			},
 		},
 		taskRunners: {
