@@ -1,10 +1,12 @@
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { extractInlineRunReports } from './sizing-matrix-aggregate';
+import { extractInlineRunReports, findRunReports, loadReport } from './sizing-matrix-aggregate';
+import { DEFAULT_MAPPING } from './sizing-matrix-topologies';
 import { RunReportBuilder } from '../utils/benchmark/run-report';
+import { aggregate, type HardwareInfo } from '../utils/benchmark/sizing-matrix';
 
 function makeReport(spec: string) {
 	return new RunReportBuilder(
@@ -125,5 +127,56 @@ describe('extractInlineRunReports', () => {
 		writeFileSync(join(root, 'test-results.json'), '{ not valid json');
 
 		expect(extractInlineRunReports(root)).toBe(0);
+	});
+});
+
+// End-to-end against a REAL captured benchmark artifact (not RunReportBuilder
+// mocks). The mocks set scenario.spec to a spec path and so always mapped; the
+// real harness emits a human-title scenario, so the only thing that routes a
+// report to a cell is the extracted filename carrying the spec-file stem. Two
+// regressions shipped green because no test exercised the real shape — this is
+// that test. Fixture provenance: scripts/__fixtures__/sizing-matrix/README.md.
+describe('sizing-matrix aggregation over a real captured fixture (DEVP-531)', () => {
+	const FIXTURE_DIR = resolve(__dirname, '__fixtures__/sizing-matrix');
+	const HARDWARE: HardwareInfo = { runner: 'test', vcpu: 8, ramGb: 16 };
+
+	it('routes real run-reports to cells and emits a populated matrix with concurrency', () => {
+		// Copy out of the repo: extraction writes loose files next to the source.
+		const tmp = mkdtempSync(join(tmpdir(), 'sizing-fixture-'));
+		cpSync(FIXTURE_DIR, tmp, { recursive: true });
+
+		const extracted = extractInlineRunReports(tmp);
+		expect(extracted).toBeGreaterThan(0);
+
+		const reports = findRunReports(tmp)
+			.map(loadReport)
+			.filter((r): r is Exclude<typeof r, undefined> => r !== undefined);
+		expect(reports.length).toBeGreaterThan(0);
+
+		const matrix = aggregate({
+			reports,
+			mapping: DEFAULT_MAPPING,
+			hardware: HARDWARE,
+			n8nVersion: 'test',
+			commitSha: 'deadbeef',
+			runDate: '2026-01-01T00:00:00.000Z',
+		});
+
+		// The regression that shipped twice was a green run producing zero cells.
+		expect(matrix.cells.length).toBeGreaterThan(0);
+
+		for (const cell of matrix.cells) {
+			expect(typeof cell.topology.concurrency).toBe('number');
+			for (const shape of Object.values(cell.shapes)) {
+				if (!shape) continue;
+				for (const source of shape.sourceRuns) {
+					// Reports carry no commit of their own; falls back to the run sha.
+					expect(source.commitSha).toBe('deadbeef');
+				}
+			}
+		}
+
+		// The four captured lanes span the mid-tier queue-mode cell.
+		expect(matrix.cells.map((c) => c.scale)).toContain('S1');
 	});
 });

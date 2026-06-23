@@ -139,6 +139,18 @@ export function aggregate(input: AggregateInput): SizingMatrix {
 		.map(([key, entries]) => buildCell(key, entries))
 		.sort(byScale);
 
+	// Run-reports don't carry their own commit (it's not in scenario.dimensions),
+	// so attribute each source to the aggregate run's commit instead of 'unknown'.
+	if (input.commitSha) {
+		for (const cell of cells) {
+			for (const shape of Object.values(cell.shapes)) {
+				for (const source of shape?.sourceRuns ?? []) {
+					if (source.commitSha === 'unknown') source.commitSha = input.commitSha;
+				}
+			}
+		}
+	}
+
 	return {
 		schemaVersion: 1,
 		n8nVersion: input.n8nVersion,
