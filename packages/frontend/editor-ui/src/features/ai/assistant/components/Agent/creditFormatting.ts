@@ -1,4 +1,4 @@
-/** Round a (possibly decimal) credit value to 1 decimal place for display (req #5). */
-export function round1(value: number): number {
-	return Math.round(value * 10) / 10;
+/** Round a (possibly decimal) credit value to 2 decimal places for display. */
+export function round2(value: number): number {
+	return Math.round(value * 100) / 100;
 }

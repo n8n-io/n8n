@@ -28,16 +28,16 @@ function mountOpen(props: {
 }
 
 describe('CreditsSettingsDropdown', () => {
-	it('rounds creditsRemaining to one decimal place', async () => {
+	it('rounds creditsRemaining to two decimal places', async () => {
 		const wrapper = mountOpen({
-			creditsRemaining: 97.30000001,
+			creditsRemaining: 97.357,
 			creditsQuota: 100,
 			isLowCredits: false,
 		});
 		await wrapper.vm.$nextTick();
 
 		const text = wrapper.get('[data-test-id="credits-dropdown"]').text();
-		expect(text).toContain('"count":"97.3"');
+		expect(text).toContain('"count":"97.36"');
 	});
 
 	it('clamps a negative creditsRemaining to 0 in the credits-left text', async () => {
@@ -67,19 +67,19 @@ describe('CreditsSettingsDropdown', () => {
 		expect(fill.attributes('style')).toContain('width: 0%');
 	});
 
-	it('shows the per-thread credits-used line when creditsUsed is provided', async () => {
+	it('shows the per-thread credits-used line rounded to two decimals', async () => {
 		const wrapper = mountOpen({
 			creditsRemaining: 50,
 			creditsQuota: 100,
 			isLowCredits: false,
-			creditsUsed: 2.46,
+			creditsUsed: 2.468,
 		});
 		await wrapper.vm.$nextTick();
 
 		const line = wrapper.find('[data-test-id="credits-thread-used"]');
 		expect(line.exists()).toBe(true);
 		expect(line.text()).toContain('aiAssistant.builder.settings.threadCreditsUsed');
-		expect(line.text()).toContain('"count":"2.5"');
+		expect(line.text()).toContain('"count":"2.47"');
 	});
 
 	it('omits the per-thread line when creditsUsed is undefined', async () => {
@@ -87,6 +87,19 @@ describe('CreditsSettingsDropdown', () => {
 			creditsRemaining: 50,
 			creditsQuota: 100,
 			isLowCredits: false,
+		});
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.find('[data-test-id="credits-thread-used"]').exists()).toBe(false);
+	});
+
+	it('omits the per-thread line when creditsUsed rounds to 0', async () => {
+		// A tiny usage that rounds to 0 would read "used 0 credits so far" — show nothing.
+		const wrapper = mountOpen({
+			creditsRemaining: 50,
+			creditsQuota: 100,
+			isLowCredits: false,
+			creditsUsed: 0.004,
 		});
 		await wrapper.vm.$nextTick();
 

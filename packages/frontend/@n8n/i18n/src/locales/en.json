@@ -373,7 +373,7 @@
 	"aiAssistant.builder.settings.creditsLeft": "{count} left",
 	"aiAssistant.builder.settings.threadCreditsUsed": "This thread has used {count} credits so far",
 	"aiAssistant.builder.settings.getMoreCredits": "Get more credits",
-	"aiAssistant.builder.settings.creditsTooltip": "One credit = one message. Credits renew on {renewalDate}. Unused credits expire on {expiryDate}.",
+	"aiAssistant.builder.settings.creditsTooltip": "Credits are based on token usage. Credits renew on {renewalDate}. Unused credits expire on {expiryDate}.",
 	"aiAssistant.builder.creditBanner.text": "{remaining}/{total} monthly credits left",
 	"aiAssistant.builder.creditBanner.getMore": "Get more",
 	"aiAssistant.builder.upgradeWhileStreaming.title": "AI Builder is still working",

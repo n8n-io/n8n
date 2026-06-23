@@ -16,13 +16,13 @@ vi.mock('@n8n/i18n', () => {
 });
 
 describe('CreditWarningBanner', () => {
-	it('rounds remaining and total credits to one decimal place', () => {
+	it('rounds remaining and total credits to two decimal places', () => {
 		const wrapper = mount(CreditWarningBanner, {
-			props: { creditsRemaining: 2.46, creditsQuota: 100.04 },
+			props: { creditsRemaining: 2.468, creditsQuota: 100.04 },
 		});
 
 		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
-		expect(text).toContain('"remaining":"2.5"');
-		expect(text).toContain('"total":"100"');
+		expect(text).toContain('"remaining":"2.47"');
+		expect(text).toContain('"total":"100.04"');
 	});
 });

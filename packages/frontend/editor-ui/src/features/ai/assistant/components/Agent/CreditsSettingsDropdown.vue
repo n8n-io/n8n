@@ -4,7 +4,7 @@ import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { ButtonSize } from '@n8n/design-system/types';
-import { round1 } from './creditFormatting';
+import { round2 } from './creditFormatting';
 
 const props = withDefaults(
 	defineProps<{
@@ -48,14 +48,19 @@ const creditsRemainingDisplay = computed(() => Math.max(0, props.creditsRemainin
 const creditsLeftText = computed(() => {
 	if (props.creditsRemaining === undefined) return '';
 	return i18n.baseText('aiAssistant.builder.settings.creditsLeft', {
-		interpolate: { count: String(round1(creditsRemainingDisplay.value)) },
+		interpolate: { count: String(round2(creditsRemainingDisplay.value)) },
 	});
 });
+
+// Hide the line when usage rounds to 0 — "used 0 credits so far" is noise.
+const showThreadCreditsUsed = computed(
+	() => props.creditsUsed !== undefined && round2(props.creditsUsed) > 0,
+);
 
 const threadCreditsUsedText = computed(() => {
 	if (props.creditsUsed === undefined) return '';
 	return i18n.baseText('aiAssistant.builder.settings.threadCreditsUsed', {
-		interpolate: { count: String(round1(props.creditsUsed)) },
+		interpolate: { count: String(round2(props.creditsUsed)) },
 	});
 });
 
@@ -124,7 +129,7 @@ function onGetMoreCredits() {
 						/>
 					</div>
 					<span
-						v-if="props.creditsUsed !== undefined"
+						v-if="showThreadCreditsUsed"
 						:class="$style.threadCreditsUsed"
 						data-test-id="credits-thread-used"
 					>
