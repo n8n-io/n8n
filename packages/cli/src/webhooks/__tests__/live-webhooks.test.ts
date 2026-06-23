@@ -298,7 +298,7 @@ describe('LiveWebhooks', () => {
 				nodes: activeNodes,
 				connections: {},
 			});
-			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue({
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
 				workflow: workflowEntity,
 				publishedVersion,
 			});

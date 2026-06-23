@@ -424,7 +424,7 @@ describe('TriggerExecutionContextFactory', () => {
 			const publishedConnections: IConnections = {};
 			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
 
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+			workflowPublishedDataService.getCachedPublishedWorkflowData.mockResolvedValue({
 				workflow: mock<WorkflowEntity>(),
 				publishedVersion: {
 					nodes: publishedNodes,
@@ -440,7 +440,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		test('throws UnexpectedError when the service returns null', async () => {
 			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
+			workflowPublishedDataService.getCachedPublishedWorkflowData.mockResolvedValue(null);
 
 			await expect(factory.loadPublishedWorkflowData(initialWorkflowData)).rejects.toThrow(
 				UnexpectedError,

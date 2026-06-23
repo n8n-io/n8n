@@ -50,10 +50,9 @@ describe('WorkflowPublishedDataService', () => {
 	}
 
 	describe('getPublishedWorkflowData', () => {
-		// Verifies that we hit the repository and return the data it provides.
-		test('returns published data from the database on a cache miss', async () => {
+		// The default read goes straight to the database, never the cache.
+		test('returns published data from the repository', async () => {
 			const { record, nodes, connections } = makeRecord();
-			cacheService.get.mockResolvedValue(undefined);
 			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
 
 			const result = await service.getPublishedWorkflowData('wf-1');
@@ -62,44 +61,10 @@ describe('WorkflowPublishedDataService', () => {
 			expect(result!.workflow.name).toBe('Workflow Name');
 			expect(result!.publishedVersion.nodes).toBe(nodes);
 			expect(result!.publishedVersion.connections).toBe(connections);
-		});
-
-		test('does not populate the cache on a miss', async () => {
-			const { record } = makeRecord();
-			cacheService.get.mockResolvedValue(undefined);
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
-
-			await service.getPublishedWorkflowData('wf-1');
-
-			expect(cacheService.set).not.toHaveBeenCalled();
-		});
-
-		test('returns the cached value without touching the repository on a hit', async () => {
-			const cached = mock<PublishedWorkflowData>();
-			cacheService.get.mockResolvedValue(cached);
-
-			const result = await service.getPublishedWorkflowData('wf-1');
-
-			expect(result).toBe(cached);
-			expect(
-				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
-			).not.toHaveBeenCalled();
-		});
-
-		test('falls back to the database when the cache read fails', async () => {
-			const { record } = makeRecord();
-			cacheService.get.mockRejectedValueOnce(new Error('redis down'));
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
-
-			const result = await service.getPublishedWorkflowData('wf-1');
-
-			expect(result).not.toBeNull();
-			expect(result!.workflow.name).toBe('Workflow Name');
-			expect(logger.warn).toHaveBeenCalled();
+			expect(cacheService.get).not.toHaveBeenCalled();
 		});
 
 		test('returns null when no record exists', async () => {
-			cacheService.get.mockResolvedValue(undefined);
 			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(null);
 
 			const result = await service.getPublishedWorkflowData('wf-1');
@@ -112,7 +77,6 @@ describe('WorkflowPublishedDataService', () => {
 			// Simulate unloaded relation — TypeORM returns undefined for unloaded relations
 			Object.defineProperty(record, 'publishedVersion', { value: undefined });
 			Object.defineProperty(record, 'workflow', { value: { name: 'Workflow Name' } });
-			cacheService.get.mockResolvedValue(undefined);
 			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
 
 			const result = await service.getPublishedWorkflowData('wf-1');
@@ -121,24 +85,40 @@ describe('WorkflowPublishedDataService', () => {
 		});
 	});
 
-	describe('getPublishedWorkflowDataFromDb', () => {
-		test('reads straight from the repository without consulting the cache', async () => {
+	describe('getCachedPublishedWorkflowData', () => {
+		test('returns the cached value without touching the repository on a hit', async () => {
+			const cached = mock<PublishedWorkflowData>();
+			cacheService.get.mockResolvedValue(cached);
+
+			const result = await service.getCachedPublishedWorkflowData('wf-1');
+
+			expect(result).toBe(cached);
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
+			).not.toHaveBeenCalled();
+		});
+
+		test('reads from the database on a miss without populating the cache', async () => {
 			const { record } = makeRecord();
+			cacheService.get.mockResolvedValue(undefined);
 			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
 
-			const result = await service.getPublishedWorkflowDataFromDb('wf-1');
+			const result = await service.getCachedPublishedWorkflowData('wf-1');
+
+			expect(result).not.toBeNull();
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		test('falls back to the database when the cache read fails', async () => {
+			const { record } = makeRecord();
+			cacheService.get.mockRejectedValueOnce(new Error('redis down'));
+			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+
+			const result = await service.getCachedPublishedWorkflowData('wf-1');
 
 			expect(result).not.toBeNull();
 			expect(result!.workflow.name).toBe('Workflow Name');
-			expect(cacheService.get).not.toHaveBeenCalled();
-		});
-
-		test('returns null when no record exists', async () => {
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(null);
-
-			const result = await service.getPublishedWorkflowDataFromDb('wf-1');
-
-			expect(result).toBeNull();
+			expect(logger.warn).toHaveBeenCalled();
 		});
 	});
 

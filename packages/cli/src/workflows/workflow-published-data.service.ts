@@ -29,38 +29,15 @@ export class WorkflowPublishedDataService {
 	}
 
 	/**
-	 * Cached resolution of a workflow's published version, for the in-memory
-	 * (non-webhook) trigger path. The entry is refreshed only when a new version
-	 * is published, mirroring how registered triggers hold their definition in
-	 * memory today.
+	 * Resolves a workflow's published version from the database: the workflow
+	 * entity and the `WorkflowHistory` row that the `workflow_published_version`
+	 * mapping currently points at, or `null` when there is no published version.
 	 *
-	 * We read from the cache if it's present, else the database. The cache is not
-	 * written on a miss; workflow publication is responsible for populating it
-	 * (see {@link refreshCache}). On-demand execution paths (webhooks, sub-workflow,
-	 * error workflow, MCP) must read fresh from the database via
-	 * {@link getPublishedWorkflowDataFromDb} instead.
+	 * This is the default read, used by every on-demand execution path (webhooks,
+	 * sub-workflow, error workflow, MCP) that loads fresh today. The in-memory
+	 * trigger path opts into {@link getCachedPublishedWorkflowData} instead.
 	 */
 	async getPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
-		try {
-			const cached = await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
-			if (cached) return cached;
-		} catch (error) {
-			// The cache is only an optimization on the hot trigger path; a transient
-			// outage must fall through to the database rather than fail resolution.
-			this.logger.warn('Failed to read published-version cache; falling back to the database', {
-				workflowId,
-				error: ensureError(error).message,
-			});
-		}
-		return await this.getPublishedWorkflowDataFromDb(workflowId);
-	}
-
-	/**
-	 * Uncached resolution straight from the database. Used by on-demand execution
-	 * paths that load the workflow fresh today (webhooks, sub-workflow, error
-	 * workflow, MCP), so they never serve stale `staticData` or relations.
-	 */
-	async getPublishedWorkflowDataFromDb(workflowId: string): Promise<PublishedWorkflowData | null> {
 		const record =
 			await this.workflowPublishedVersionRepository.getPublishedVersionWithRelations(workflowId);
 
@@ -69,6 +46,27 @@ export class WorkflowPublishedDataService {
 		}
 
 		return { workflow: record.workflow, publishedVersion: record.publishedVersion };
+	}
+
+	/**
+	 * Cached variant for the in-memory (non-webhook) trigger path. The entry is
+	 * refreshed only when a new version is published (see {@link refreshCache}),
+	 * mirroring how registered triggers hold their definition in memory today.
+	 *
+	 * Falls back to {@link getPublishedWorkflowData} on a miss or a cache outage —
+	 * the cache is only an optimization and must never fail resolution.
+	 */
+	async getCachedPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
+		try {
+			const cached = await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
+			if (cached) return cached;
+		} catch (error) {
+			this.logger.warn('Failed to read published-version cache; falling back to the database', {
+				workflowId,
+				error: ensureError(error).message,
+			});
+		}
+		return await this.getPublishedWorkflowData(workflowId);
 	}
 
 	/**
@@ -85,14 +83,13 @@ export class WorkflowPublishedDataService {
 	}
 
 	/**
-	 * Repopulates the cached entry from current database state.
-	 *
-	 * Reloads via the same query the read path uses, so the cached value carries
-	 * the workflow's shared/project relations and matches a cache-miss result exactly.
+	 * Repopulates the cached entry from current database state, so the trigger path
+	 * serves the newly published version. Reuses {@link getPublishedWorkflowData}
+	 * so the cached value matches a fresh read exactly.
 	 */
 	async refreshCache(workflowId: string): Promise<void> {
 		const key = cacheKey(workflowId);
-		const data = await this.getPublishedWorkflowDataFromDb(workflowId);
+		const data = await this.getPublishedWorkflowData(workflowId);
 		if (data) {
 			await this.cacheService.set(key, data, NO_EXPIRY);
 		} else {

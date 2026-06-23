@@ -642,7 +642,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('getPublishedWorkflowData', () => {
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
-			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockClear();
+			workflowPublishedDataService.getPublishedWorkflowData.mockClear();
 		});
 
 		it('should load and use active version when workflow is active', async () => {
@@ -823,7 +823,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			];
 			const mappingConnections = { 'Mapping Node': {} };
-			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue({
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
 				workflow: mock<WorkflowEntity>({ id: 'workflow-123', name: 'Test Workflow' }),
 				publishedVersion: mock<WorkflowHistory>({
 					nodes: mappingNodes,
@@ -833,7 +833,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			const result = await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
-			expect(workflowPublishedDataService.getPublishedWorkflowDataFromDb).toHaveBeenCalledWith(
+			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith(
 				'workflow-123',
 			);
 			// Single query: the workflow is not loaded separately under the flag.
@@ -844,7 +844,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		it('throws when there is no published version (flag on)', async () => {
 			workflowsConfig.useWorkflowPublicationService = true;
-			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue(null);
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			await expect(
 				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),

@@ -994,7 +994,7 @@ describe('execute-workflow MCP tool', () => {
 			const workflow = createWorkflow({ activeVersionId: uuid(), nodes: [relationTrigger] });
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
-			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue({
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
 				workflow,
 				publishedVersion: createWorkflowHistoryVersion({
 					workflowId: 'wf-1',
@@ -1015,9 +1015,7 @@ describe('execute-workflow MCP tool', () => {
 				'production',
 			);
 
-			expect(workflowPublishedDataService.getPublishedWorkflowDataFromDb).toHaveBeenCalledWith(
-				'wf-1',
-			);
+			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
 			const runCall = (workflowRunner.run as jest.Mock).mock
 				.calls[0][0] as IWorkflowExecutionDataProcess;
 			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
@@ -1039,7 +1037,7 @@ describe('execute-workflow MCP tool', () => {
 			const workflow = createWorkflow({ activeVersionId: null });
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
-			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue({
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
 				workflow,
 				publishedVersion: createWorkflowHistoryVersion({
 					workflowId: 'wf-1',
@@ -1069,7 +1067,7 @@ describe('execute-workflow MCP tool', () => {
 			workflowsConfig.useWorkflowPublicationService = true;
 			const workflow = createWorkflow({ activeVersionId: uuid() });
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-			workflowPublishedDataService.getPublishedWorkflowDataFromDb.mockResolvedValue(null);
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			await expect(
 				executeWorkflow(

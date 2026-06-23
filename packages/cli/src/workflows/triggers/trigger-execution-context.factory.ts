@@ -280,7 +280,7 @@ export class TriggerExecutionContextFactory {
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
 	async loadPublishedWorkflowData(initialWorkflowData: IWorkflowDb): Promise<IWorkflowBase> {
-		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+		const publishedData = await this.workflowPublishedDataService.getCachedPublishedWorkflowData(
 			initialWorkflowData.id,
 		);
 

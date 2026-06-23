@@ -332,7 +332,7 @@ export class WorkflowExecutionService {
 			// workflow_published_version mapping. A null result means the workflow
 			// has no published version (not found or not published) — not active.
 			const publishedData =
-				await this.workflowPublishedDataService.getPublishedWorkflowDataFromDb(workflowId);
+				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
 			if (publishedData === null) {
 				this.logger.error(notActiveError, { workflowId });
 				return null;
