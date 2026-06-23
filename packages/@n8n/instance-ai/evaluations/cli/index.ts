@@ -264,9 +264,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
 	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
-	// Build-expectation verdicts, judged once per build and merged the same way —
-	// fired during getOrBuild, awaited before reshapeLangSmithRuns.
-	const buildExpectationsByThreadId = new Map<string, Promise<BuildExpectationResult[]>>();
+	// Build-expectation verdicts, judged once per build and merged by the build-cache
+	// key (`iteration:fileSlug`) rather than threadId — so prebuilt/MCP builds, which
+	// have no threadId, still get their outcome expectations judged and counted.
+	// Fired during getOrBuild, awaited before reshapeLangSmithRuns.
+	const buildExpectationsByKey = new Map<string, Promise<BuildExpectationResult[]>>();
 	const runDebugByThreadId = new Map<string, Promise<InstanceAiRunDebugResponse[]>>();
 
 	// LangSmith dataset rows carry only per-scenario fields. The build-side
@@ -385,7 +387,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
@@ -416,7 +418,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build);
 				stashRunDebug(lane.runner.client, build);
 				return { build, lane, buildDurationMs };
 			} finally {
@@ -438,22 +440,28 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		runDebugByThreadId.set(build.threadId, captureThreadRunDebug(client, build.threadId, logger));
 	}
 
-	// Judge build expectations once per build (off the scenario critical path);
-	// reshapeLangSmithRuns awaits and merges the verdicts by threadId.
-	function stashBuildExpectations(fileSlug: string, build: BuildResult): void {
+	// Judge author expectations once per build (off the scenario critical path);
+	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key.
+	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
+	// builds (no transcript) judge only outcome expectations against the workflow,
+	// with the authored conversation as request context — mirroring the direct loop.
+	function stashBuildExpectations(key: string, fileSlug: string, build: BuildResult): void {
 		const testCase = testCaseByFileSlug.get(fileSlug);
-		const expectations = testCase ? collectExpectations(testCase) : [];
-		// Judge whenever there's a transcript — even on build failure, matching the
-		// direct-loop runner; the judge prompt handles the "no workflow produced" case.
-		// Prebuilt builds have no transcript/threadId here, so outcome expectations for
-		// the LangSmith prebuilt path are out of scope (LangSmith + MCP is discouraged).
-		if (!build.threadId || expectations.length === 0 || !build.transcript?.length) {
-			return;
-		}
-		buildExpectationsByThreadId.set(
-			build.threadId,
+		if (!testCase) return;
+		const hasTranscript = (build.transcript?.length ?? 0) > 0;
+		const expectations = hasTranscript
+			? collectExpectations(testCase)
+			: build.success
+				? (testCase.outcomeExpectations ?? [])
+				: [];
+		if (expectations.length === 0) return;
+		const transcript: TranscriptTurn[] = hasTranscript
+			? build.transcript!
+			: [{ userMessage: conversationUserTurnsAsText(testCase.conversation), steps: [] }];
+		buildExpectationsByKey.set(
+			key,
 			verifyBuildExpectations(expectations, {
-				transcript: build.transcript,
+				transcript,
 				workflowJson: build.workflowJsons[0],
 				metrics: build.conversationMetrics,
 			}).catch((error: unknown) =>
@@ -670,8 +678,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		await lsClient.awaitPendingTraceBatches();
 
 		const buildExpectationsResolved = new Map<string, BuildExpectationResult[]>();
-		for (const [threadId, verdictsPromise] of buildExpectationsByThreadId) {
-			buildExpectationsResolved.set(threadId, await verdictsPromise);
+		for (const [key, verdictsPromise] of buildExpectationsByKey) {
+			buildExpectationsResolved.set(key, await verdictsPromise);
 		}
 		const runDebugResolved = new Map<string, InstanceAiRunDebugResponse[]>();
 		for (const [threadId, runDebugPromise] of runDebugByThreadId) {
