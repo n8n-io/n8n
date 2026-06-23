@@ -40,6 +40,24 @@ describe('n8n-packages export', () => {
 			expect(service.exportWorkflows).toHaveBeenCalledWith({
 				user,
 				workflowIds: ['wf-a', 'wf-b'],
+				folderIds: undefined,
+			});
+		});
+
+		it('forwards folder ids and defaults missing workflow ids to an empty array', async () => {
+			const service = mock<N8nPackagesService>();
+			service.exportWorkflows.mockResolvedValue(new PassThrough());
+
+			const controller = new N8nPackagesController(service);
+			const user = { id: 'user-1' };
+			const req = { user } as unknown as AuthenticatedRequest;
+
+			await controller.exportWorkflows(req, mock<Response>(), { folderIds: ['fld-1'] });
+
+			expect(service.exportWorkflows).toHaveBeenCalledWith({
+				user,
+				workflowIds: [],
+				folderIds: ['fld-1'],
 			});
 		});
 	});
