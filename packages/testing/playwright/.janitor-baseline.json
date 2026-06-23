@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-22T18:19:25.965Z",
-	"totalViolations": 164,
+	"generated": "2026-06-23T08:21:33.897Z",
+	"totalViolations": 157,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -341,50 +341,6 @@
 				"line": 90,
 				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
 				"hash": "31695787251c"
-			}
-		],
-		"tests/e2e/node-creator/categories.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 27,
-				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Triggers').locato...",
-				"hash": "606eea72385e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 30,
-				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
-				"hash": "c101ff91c020"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 36,
-				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
-				"hash": "c101ff91c020"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 51,
-				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
-				"hash": "c101ff91c020"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 57,
-				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
-				"hash": "c101ff91c020"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 63,
-				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Triggers').locato...",
-				"hash": "606eea72385e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 68,
-				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Triggers').locato...",
-				"hash": "606eea72385e"
 			}
 		],
 		"tests/e2e/nodes/form-trigger-node.spec.ts": [
