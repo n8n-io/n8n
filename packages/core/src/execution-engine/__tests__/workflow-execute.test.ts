@@ -1157,14 +1157,14 @@ describe('WorkflowExecute', () => {
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
 		});
 
-		//   XX PD                   ►►
+		//   XX                       ►►
 		// ┌──────────┐1     ┌─────────────┐
 		// │  source  ├─────►│ destination │
 		// └──────────┘      └─────────────┘
-		// `source` is the destination's only parent, but it is disabled, so
-		// filterDisabledNodes drops it from the subgraph. Its run data is cleared, but its
-		// pinned data is not, so it stays "not dirty"; before the fix the subgraph search
-		// looked it up and tripped a membership assertion. The guard now throws a UserError.
+		// `source` is the destination's only parent and it is disabled. The start-node
+		// fallback skips it and finds no enabled parent with run data, so it throws a
+		// UserError. Before the fix the disabled `source` (it has run data) was elected as
+		// the start node and the subgraph search tripped a membership assertion.
 		test('throws a user error when the only resolvable start node is disabled', async () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
@@ -1180,14 +1180,11 @@ describe('WorkflowExecute', () => {
 			const runData: IRunData = {
 				[source.name]: [toITaskData([{ data: { name: source.name } }])],
 			};
-			const pinData: IPinData = {
-				[source.name]: [{ json: { name: source.name } }],
-			};
 
 			// runPartialWorkflow2 is non-async; the user error is thrown synchronously.
 			let error: unknown;
 			try {
-				await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, [], {
+				await workflowExecute.runPartialWorkflow2(workflow, runData, {}, [], {
 					nodeName: destination.name,
 					mode: 'inclusive',
 				});
@@ -1247,8 +1244,9 @@ describe('WorkflowExecute', () => {
 		// ┌─────────────┐1   ┌─────────────┐
 		// │manualTrigger├───►│ destination │
 		// └─────────────┘    └─────────────┘
-		// The destination itself is disabled, so it is dropped from the subgraph. The guard
-		// catches the missing destination and throws a UserError rather than asserting.
+		// The destination itself is disabled. The guard detects this before the subgraph
+		// search and throws a UserError; without it the search would trip a membership
+		// assertion on the (filtered-out) destination.
 		test('throws a user error when the destination node is disabled', async () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
