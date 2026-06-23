@@ -24,6 +24,7 @@ describe('TestRunner', () => {
 			timezone: 'America/New_York',
 			taskTimeout: 60,
 			gracefulShutdownTimeout: 30,
+			shutdownForceKillMargin: 10,
 			healthcheckServer: {
 				enabled: false,
 				host: 'localhost',

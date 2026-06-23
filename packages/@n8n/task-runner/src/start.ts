@@ -99,10 +99,12 @@ void (async function start() {
 		await healthCheckServer.start(host, port);
 	}
 
-	// Hard backstop if the graceful stop hangs; must outlast the grace period. The external
-	// launcher force-kills after a larger buffer (runnerGraceBufferSeconds in
-	// task-runner-launcher) — keep that buffer > this +10 so it can't kill a draining runner.
-	const forceExitTimeoutInS = Math.max(0, config.baseRunnerConfig.gracefulShutdownTimeout) + 10;
+	// Hard backstop if the graceful stop hangs: force-exit one margin past the grace period.
+	// In external mode the launcher force-kills at grace + 2 × margin (see launcherShutdownTimeout
+	// in task-runner-launcher), so it always outlasts this and can't kill a draining runner.
+	const { gracefulShutdownTimeout, shutdownForceKillMargin } = config.baseRunnerConfig;
+	const forceExitTimeoutInS =
+		Math.max(0, gracefulShutdownTimeout) + Math.max(0, shutdownForceKillMargin);
 	process.on('SIGINT', createSignalHandler('SIGINT', { timeoutInS: forceExitTimeoutInS }));
 	process.on('SIGTERM', createSignalHandler('SIGTERM', { timeoutInS: forceExitTimeoutInS }));
 })().catch((e) => {
