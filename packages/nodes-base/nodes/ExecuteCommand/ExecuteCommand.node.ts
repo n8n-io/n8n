@@ -19,6 +19,11 @@ export interface IExecReturnData {
 }
 
 const SIGKILL_GRACE_MS = 5000;
+const MAX_OUTPUT_SIZE = 10 * 1024 * 1024;
+
+function appendCapped(current: string, data: string): string {
+	return (current + data).slice(-MAX_OUTPUT_SIZE);
+}
 
 async function execPromise(command: string, abortSignal?: AbortSignal): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
@@ -38,8 +43,14 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 
 		child.stdout.setEncoding('utf8');
 		child.stderr.setEncoding('utf8');
-		child.stdout.on('data', (data: string) => (returnData.stdout += data));
-		child.stderr.on('data', (data: string) => (returnData.stderr += data));
+		child.stdout.on(
+			'data',
+			(data: string) => (returnData.stdout = appendCapped(returnData.stdout, data)),
+		);
+		child.stderr.on(
+			'data',
+			(data: string) => (returnData.stderr = appendCapped(returnData.stderr, data)),
+		);
 
 		child.on('error', (error) => {
 			returnData.error = error;
@@ -57,9 +68,16 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 		});
 
 		const kill = (signal: NodeJS.Signals) => {
+			if (!child.pid) {
+				child.kill(signal);
+				return;
+			}
+			if (process.platform === 'win32') {
+				spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F']);
+				return;
+			}
 			try {
-				if (child.pid) process.kill(-child.pid, signal);
-				else child.kill(signal);
+				process.kill(-child.pid, signal);
 			} catch {
 				child.kill(signal);
 			}
