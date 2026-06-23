@@ -73,8 +73,7 @@ const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
 
 /**
  * Runtime shape for `type: 'workflowSelector'` and `type: 'agentSelector'` properties.
- * Both hardcode two modes (`list` and `id`); see useWorkflowResourceLocatorModes.ts
- * and useAgentResourceLocatorModes.ts.
+ * Both hardcode two modes (`list` and `id`); see useResourceLocatorModes.ts.
  * Stored as an INodeParameterResourceLocator, or as an Expression string.
  */
 const WORKFLOW_SELECTOR_TS_TYPE =

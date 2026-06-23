@@ -16,7 +16,7 @@ import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '../ParameterIssues.vue';
 import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
-import { useAgentResourceLocatorModes } from '../../composables/useAgentResourceLocatorModes';
+import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -109,7 +109,7 @@ const {
 } = useAgentResourcesLocator(projectId, resolveProjectName);
 
 const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
-	useAgentResourceLocatorModes(
+	useResourceLocatorModes(
 		computed(() => props.modelValue),
 		getAgentName,
 	);
