@@ -56,7 +56,8 @@ export function computeExperimentPrefix(): string {
 function computeCIExperimentName(): string | undefined {
 	if (process.env.GITHUB_ACTIONS !== 'true') return undefined;
 
-	const branch = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME;
+	const branch =
+		process.env.LANGSMITH_BRANCH ?? process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME;
 	const sha = process.env.GITHUB_SHA;
 	if (!branch || !sha) return undefined;
 

@@ -40,28 +40,42 @@ const nodeTypesStore = useNodeTypesStore();
 const latestVerifiedVersion = ref<string>();
 const currVersion = computed(() => props.communityPackage?.installedVersion || '');
 
+const isManagedByEnv = computed(
+	(): boolean => settingsStore.settings.communityNodesManagedByEnv ?? false,
+);
+
 const hasUnverifiedPackagesUpdate = computed(() => {
-	return settingsStore.isUnverifiedPackagesEnabled && props.communityPackage?.updateAvailable;
+	return (
+		!isManagedByEnv.value &&
+		settingsStore.isUnverifiedPackagesEnabled &&
+		props.communityPackage?.updateAvailable
+	);
 });
 
 const hasVerifiedPackageUpdate = computed(() => {
+	if (isManagedByEnv.value) return false;
 	const canUpdate =
 		latestVerifiedVersion.value && semver.gt(latestVerifiedVersion.value || '', currVersion.value);
 
 	return settingsStore.isCommunityNodesFeatureEnabled && canUpdate;
 });
 
-const packageActions: Array<UserAction<IUser>> = [
-	{
-		label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
-		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
-		type: 'external-link',
-	},
-	{
-		label: i18n.baseText('settings.communityNodes.uninstallAction.label'),
-		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
-	},
-];
+const packageActions = computed<Array<UserAction<IUser>>>(() => {
+	const actions: Array<UserAction<IUser>> = [
+		{
+			label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
+			value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
+			type: 'external-link',
+		},
+	];
+	if (!isManagedByEnv.value) {
+		actions.push({
+			label: i18n.baseText('settings.communityNodes.uninstallAction.label'),
+			value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
+		});
+	}
+	return actions;
+});
 
 async function onAction(value: string) {
 	if (!props.communityPackage) return;
@@ -163,7 +177,7 @@ watch(
 					</template>
 					<N8nIcon icon="circle-check" color="text-light" size="large" />
 				</N8nTooltip>
-				<div :class="$style.cardActions">
+				<div v-if="packageActions.length > 0" :class="$style.cardActions">
 					<N8nActionToggle :actions="packageActions" @action="onAction"></N8nActionToggle>
 				</div>
 			</div>

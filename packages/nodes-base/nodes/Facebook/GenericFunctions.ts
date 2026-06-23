@@ -22,17 +22,25 @@ export async function facebookApiRequest(
 	uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
-	let credentials;
+	const isTrigger = this.getNode().name.includes('Trigger');
+	const authType = this.getNodeParameter('authType', 0, 'accessToken') as string;
+	const isOAuth2 = authType === 'oAuth2';
 
-	if (this.getNode().name.includes('Trigger')) {
-		credentials = await this.getCredentials('facebookGraphAppApi');
-	} else {
-		credentials = await this.getCredentials('facebookGraphApi');
+	const credentialName = isTrigger
+		? isOAuth2
+			? 'facebookGraphAppOAuth2Api'
+			: 'facebookGraphAppApi'
+		: isOAuth2
+			? 'facebookGraphApiOAuth2Api'
+			: 'facebookGraphApi';
+
+	const credentials = await this.getCredentials(credentialName);
+
+	if (!isOAuth2) {
+		qs.access_token = credentials.accessToken;
 	}
 
-	qs.access_token = credentials.accessToken;
-
-	if (credentials.appSecret) {
+	if (!isOAuth2 && credentials.appSecret) {
 		const appsecretTime = Math.floor(Date.now() / 1000);
 		qs.appsecret_proof = createHmac('sha256', credentials.appSecret as string)
 			.update(`${credentials.accessToken as string}|${appsecretTime}`)
@@ -53,6 +61,9 @@ export async function facebookApiRequest(
 	};
 
 	try {
+		if (isOAuth2) {
+			return await this.helpers.requestWithAuthentication.call(this, credentialName, options);
+		}
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

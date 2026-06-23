@@ -1,16 +1,11 @@
 import * as schemaPreviewApi from './schemaPreview.api';
-import { createResultError, createResultOk, type Result } from 'n8n-workflow';
+import { createResultError, createResultOk, type INode, type Result } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { computed, reactive } from 'vue';
+import { reactive } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { JSONSchema7 } from 'json-schema';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import { generateJsonSchema } from '@/app/utils/json-schema';
 
 export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
@@ -22,10 +17,6 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 
 	const rootStore = useRootStore();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
 
 	function getSchemaPreviewKey({
 		nodeType,
@@ -55,15 +46,11 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 		}
 	}
 
-	async function trackSchemaPreviewExecution(pushEvent: PushPayload<'nodeExecuteAfterData'>) {
-		if (schemaPreviews.size === 0 || pushEvent.data.executionStatus !== 'success') {
-			return;
-		}
-
-		const node = workflowDocumentStore.value.getNodeByName(pushEvent.nodeName) ?? null;
-
-		if (!node) return;
-
+	async function trackSchemaPreviewExecution(
+		workflowId: string,
+		node: INode,
+		pushEvent: PushPayload<'nodeExecuteAfterData'>,
+	) {
 		const {
 			id,
 			type,
@@ -84,7 +71,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 			node_operation: operation,
 			schema_preview: JSON.stringify(result.result),
 			output_schema: JSON.stringify(generateJsonSchema(pushEvent.data.data?.main?.[0]?.[0]?.json)),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId,
 		});
 	}
 

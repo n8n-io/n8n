@@ -26,6 +26,7 @@ export class InsightsRawRepository extends Repository<InsightsRaw> {
 			)
 			.addSelect('timestamp', 'periodStart')
 			.orderBy('timestamp', 'ASC')
+			.addOrderBy('id', 'ASC')
 			.limit(compactionBatchSize);
 
 		return batchQuery;

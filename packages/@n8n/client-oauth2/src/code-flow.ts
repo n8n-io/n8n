@@ -10,6 +10,7 @@ interface CodeFlowBody {
 	grant_type: 'authorization_code';
 	redirect_uri?: string;
 	client_id?: string;
+	resource?: string;
 }
 
 /**
@@ -37,6 +38,7 @@ export class CodeFlow {
 			redirect_uri: options.redirectUri,
 			response_type: 'code',
 			state: options.state,
+			...(options.resource ? { resource: options.resource } : {}),
 			...(options.scopes ? { scope: options.scopes.join(options.scopesSeparator ?? ' ') } : {}),
 		};
 
@@ -96,6 +98,7 @@ export class CodeFlow {
 			code: data.code,
 			grant_type: 'authorization_code',
 			redirect_uri: options.redirectUri,
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
 		// `client_id`: REQUIRED, if the client is not authenticating with the

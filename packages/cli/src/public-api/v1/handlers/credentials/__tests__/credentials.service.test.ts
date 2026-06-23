@@ -2,7 +2,8 @@ import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/d
 import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Cipher, CipherAes256GCM, CipherAes256CBC } from 'n8n-core';
+import { validate, type Schema } from 'jsonschema';
+import { Cipher, CipherAes256GCM, CipherAes256CBC, EncryptionKeyProxy } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
@@ -19,6 +20,7 @@ const cipher = new Cipher(
 	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 	new CipherAes256GCM(),
 	new CipherAes256CBC(),
+	new EncryptionKeyProxy(),
 );
 Container.set(Cipher, cipher);
 
@@ -119,6 +121,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'secret',
 					type: 'string',
+					required: true,
 					displayName: 'Secret',
 					default: '',
 					displayOptions: {
@@ -130,6 +133,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'privateKey',
 					type: 'string',
+					required: true,
 					displayName: 'Private Key',
 					default: '',
 					displayOptions: {
@@ -141,6 +145,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'publicKey',
 					type: 'string',
+					required: true,
 					displayName: 'Public Key',
 					default: '',
 					displayOptions: {
@@ -234,6 +239,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'username',
 					type: 'string',
+					required: true,
 					displayName: 'Username',
 					default: '',
 					displayOptions: {
@@ -245,6 +251,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'password',
 					type: 'string',
+					required: true,
 					displayName: 'Password',
 					default: '',
 					displayOptions: {
@@ -256,6 +263,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'clientId',
 					type: 'string',
+					required: true,
 					displayName: 'Client ID',
 					default: '',
 					displayOptions: {
@@ -296,6 +304,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'createField',
 					type: 'string',
+					required: true,
 					displayName: 'Create Field',
 					default: '',
 					displayOptions: {
@@ -307,6 +316,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'updateField',
 					type: 'string',
+					required: true,
 					displayName: 'Update Field',
 					default: '',
 					displayOptions: {
@@ -318,6 +328,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'deleteField',
 					type: 'string',
+					required: true,
 					displayName: 'Delete Field',
 					default: '',
 					displayOptions: {
@@ -368,6 +379,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'field3',
 					type: 'string',
+					required: true,
 					displayName: 'Field 3',
 					default: '',
 					displayOptions: {
@@ -407,10 +419,68 @@ describe('CredentialsService', () => {
 
 			// then block requires field3 when field2 === false
 			expect(condition.then?.allOf.some((req: any) => req.required?.includes('field3'))).toBe(true);
-			// else block forbids field3 when field2 !== false
-			expect(
-				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
-			).toBe(true);
+			// no else block: hidden fields are optional, not forbidden
+			expect((condition as any).else).toBeUndefined();
+		});
+
+		it('should not forbid conditional fields belonging to inactive conditions', () => {
+			// Mirrors the mongoDb scenario: two fields depend on the same options field
+			// but with different values. A payload that includes both the active
+			// and the inactive conditional field must validate.
+			const properties: INodeProperties[] = [
+				{
+					name: 'configurationType',
+					type: 'options',
+					options: [
+						{ value: 'connectionString', name: 'Connection String' },
+						{ value: 'values', name: 'Values' },
+					],
+					displayName: 'Configuration Type',
+					default: 'values',
+				},
+				{
+					name: 'connectionString',
+					type: 'string',
+					required: true,
+					displayName: 'Connection String',
+					default: '',
+					displayOptions: { show: { configurationType: ['connectionString'] } },
+				},
+				{
+					name: 'host',
+					type: 'string',
+					required: true,
+					displayName: 'Host',
+					default: '',
+					displayOptions: { show: { configurationType: ['values'] } },
+				},
+			];
+
+			const schema = toJsonSchema(properties);
+
+			// No `not: { required }` anywhere in the generated schema
+			expect(JSON.stringify(schema)).not.toContain('"not"');
+
+			// A payload using connectionString but also carrying the inactive `host` field
+			// must be accepted.
+			const connectionStringPayload = {
+				configurationType: 'connectionString',
+				connectionString: 'mongodb://localhost:27017/mydb',
+				host: 'localhost',
+			};
+			expect(validate(connectionStringPayload, schema as unknown as Schema).valid).toBe(true);
+
+			// And the reverse direction.
+			const valuesPayload = {
+				configurationType: 'values',
+				host: 'localhost',
+				connectionString: 'mongodb://localhost:27017/mydb',
+			};
+			expect(validate(valuesPayload, schema as unknown as Schema).valid).toBe(true);
+
+			// Required fields are still enforced via the `then` block.
+			const missingRequired = { configurationType: 'values' };
+			expect(validate(missingRequired, schema as unknown as Schema).valid).toBe(false);
 		});
 	});
 
@@ -437,12 +507,13 @@ describe('CredentialsService', () => {
 			mock(), // credentialsHelper
 			mock(), // externalSecretsConfig
 			mock(), // externalSecretsProviderAccessCheckService
+			mock(), // connectionStatusProxy
 		);
-
-		jest.spyOn(credentialsService, 'decrypt');
 
 		beforeEach(() => {
 			credentialsRepository = mock<CredentialsRepository>();
+
+			jest.spyOn(credentialsService, 'decrypt');
 
 			jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 				if (serviceClass === CredentialsService) {
@@ -493,7 +564,7 @@ describe('CredentialsService', () => {
 				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 				// mock credential that doesn't have secret expression yet
-				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-secret' });
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-secret' });
 
 				await expect(
 					updateCredential(existingCredential, memberUser, {
@@ -518,7 +589,7 @@ describe('CredentialsService', () => {
 				// Mock credential that already has secret expression
 				jest
 					.mocked(credentialsService.decrypt)
-					.mockReturnValue({ apiKey: '{{ $secrets.vault.oldKey }}' });
+					.mockResolvedValue({ apiKey: '{{ $secrets.vault.oldKey }}' });
 
 				await expect(
 					updateCredential(existingCredential, memberUser, {
@@ -541,7 +612,7 @@ describe('CredentialsService', () => {
 
 				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
-				jest.mocked(credentialsService.decrypt).mockReturnValue({
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({
 					apiKey: 'currentPlainTextValue',
 				});
 				jest
@@ -573,7 +644,7 @@ describe('CredentialsService', () => {
 				// Mock credential that has existing secret expression
 				jest
 					.mocked(credentialsService.decrypt)
-					.mockReturnValue({ apiKey: '{{ $secrets.vault.myKey }}' });
+					.mockResolvedValue({ apiKey: '{{ $secrets.vault.myKey }}' });
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
@@ -595,7 +666,7 @@ describe('CredentialsService', () => {
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
 				// Mock credential not using any external secret expressions
-				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
@@ -615,7 +686,7 @@ describe('CredentialsService', () => {
 				});
 				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
-				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
 				jest
 					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
 					.mockResolvedValue(true);

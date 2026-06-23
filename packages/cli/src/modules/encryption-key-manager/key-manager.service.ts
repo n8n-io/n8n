@@ -1,4 +1,10 @@
-import { DeploymentKeyRepository, type DeploymentKey } from '@n8n/db';
+import type { ListEncryptionKeysQueryDto } from '@n8n/api-types';
+import {
+	DeploymentKeyRepository,
+	type DeploymentKey,
+	type DeploymentKeySortDirection,
+	type DeploymentKeySortField,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, type CipherAlgorithm } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
@@ -48,26 +54,68 @@ export class KeyManagerService {
 	}
 
 	/**
-	 * Seeds the legacy aes-256-cbc key as active if no active encryption key exists.
-	 * Race-safe across concurrent mains: the DB's partial unique index serializes
-	 * insert attempts, and losers are silently ignored.
+	 * Seeds an inactive aes-256-cbc key from the instance encryption key if none exists.
+	 * The value is wrapped with the instance key via AES-256-GCM before storage.
 	 */
-	async bootstrapLegacyKey(value: string): Promise<void> {
-		const existing = await this.deploymentKeyRepository.findActiveByType('data_encryption');
+	async bootstrapLegacyCbcKey(instanceEncryptionKey: string): Promise<void> {
+		const existing = await this.deploymentKeyRepository.findOne({
+			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+		});
 		if (existing) return;
 
+		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(instanceEncryptionKey);
+		const entity = this.deploymentKeyRepository.create({
+			type: 'data_encryption',
+			value: encryptedValue,
+			algorithm: 'aes-256-cbc',
+			status: 'inactive',
+		});
+		await this.deploymentKeyRepository.save(entity);
+	}
+
+	/**
+	 * Seeds an active aes-256-gcm key if no active GCM key exists.
+	 * Race-safe across concurrent mains: the DB's partial unique index on
+	 * (type, status='active') serializes inserts, and losers are silently ignored.
+	 */
+	async bootstrapGcmKey(): Promise<void> {
+		const existing = await this.deploymentKeyRepository.findOne({
+			where: { type: 'data_encryption', algorithm: 'aes-256-gcm', status: 'active' },
+		});
+		if (existing) return;
+
+		const rawKey = randomBytes(32).toString('hex');
+		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(rawKey);
 		await this.deploymentKeyRepository.insertOrIgnore({
 			type: 'data_encryption',
-			value,
+			value: encryptedValue,
+			algorithm: 'aes-256-gcm',
 			status: 'active',
-			algorithm: 'aes-256-cbc',
 		});
 	}
 
-	/** Lists encryption keys, optionally filtered by type. */
-	async listKeys(type?: string): Promise<DeploymentKey[]> {
-		if (type) return await this.deploymentKeyRepository.findAllByType(type);
-		return await this.deploymentKeyRepository.find();
+	/**
+	 * Lists encryption keys with pagination, optional filtering by type and
+	 * activation date, and an optional `sortBy` of the form `field:direction`.
+	 * Defaults to `createdAt:desc` when no `sortBy` is provided.
+	 */
+	async listKeys(
+		query: ListEncryptionKeysQueryDto,
+	): Promise<{ items: DeploymentKey[]; count: number }> {
+		const [field, direction] = (query.sortBy ?? 'createdAt:desc').split(':') as [
+			DeploymentKeySortField,
+			'asc' | 'desc',
+		];
+
+		return await this.deploymentKeyRepository.findAndCountForList({
+			type: query.type,
+			sortField: field,
+			sortDirection: direction.toUpperCase() as DeploymentKeySortDirection,
+			skip: query.skip,
+			take: query.take,
+			createdAtFrom: query.activatedFrom ? new Date(query.activatedFrom) : undefined,
+			createdAtTo: query.activatedTo ? new Date(query.activatedTo) : undefined,
+		});
 	}
 
 	/**
@@ -93,7 +141,7 @@ export class KeyManagerService {
 		algorithm: CipherAlgorithm,
 		setAsActive = false,
 	): Promise<DeploymentKey> {
-		const encryptedValue = this.cipher.encryptWithInstanceKey(plaintextValue);
+		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(plaintextValue);
 
 		if (!setAsActive) {
 			const entity = this.deploymentKeyRepository.create({

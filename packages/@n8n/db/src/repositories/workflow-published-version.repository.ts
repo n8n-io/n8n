@@ -24,4 +24,21 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 		});
 		return record?.publishedVersionId ?? null;
 	}
+
+	/**
+	 * Loads the published version record with the related workflow entity
+	 * (including shared/project relations) and the workflow history version
+	 * (which contains the published nodes/connections).
+	 */
+	async getPublishedVersionWithRelations(
+		workflowId: string,
+	): Promise<WorkflowPublishedVersion | null> {
+		return await this.findOne({
+			where: { workflowId },
+			relations: {
+				workflow: { shared: { project: true } },
+				publishedVersion: true,
+			},
+		});
+	}
 }

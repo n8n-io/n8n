@@ -10,6 +10,7 @@ import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
@@ -22,6 +23,7 @@ export class OidcController {
 	constructor(
 		private readonly oidcService: OidcService,
 		private readonly authService: AuthService,
+		private readonly eventService: EventService,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -137,6 +139,10 @@ export class OidcController {
 		const user = await this.oidcService.loginUser(callbackUrl, state, nonce);
 
 		this.authService.issueCookie(res, user, true, req.browserId);
+		this.eventService.emit('user-logged-in', {
+			user,
+			authenticationMethod: 'oidc',
+		});
 
 		return res.redirect('/');
 	}

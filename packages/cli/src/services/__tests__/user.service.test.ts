@@ -17,7 +17,6 @@ import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
@@ -656,15 +655,12 @@ describe('UserService', () => {
 	});
 
 	describe('assertGetUsersAccess', () => {
-		it('should allow project admin to list all users', async () => {
+		it('should allow global member to list all users without project filter', async () => {
 			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['project-1']);
 
 			await expect(userService.assertGetUsersAccess(member)).resolves.toBeUndefined();
 
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(member, [
-				'project:update',
-			]);
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
 		});
 
 		it('should allow non-admin members to list users by projectId', async () => {
@@ -676,13 +672,6 @@ describe('UserService', () => {
 			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(member, 'project-1', [
 				'project:list',
 			]);
-		});
-
-		it('should throw ForbiddenError for member without project admin scope', async () => {
-			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce([]);
-
-			await expect(userService.assertGetUsersAccess(member)).rejects.toThrow(ForbiddenError);
 		});
 
 		it('should throw NotFoundError when filtering by unknown projectId', async () => {

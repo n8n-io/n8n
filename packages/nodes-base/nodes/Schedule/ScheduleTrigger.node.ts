@@ -63,7 +63,7 @@ export class ScheduleTrigger implements INodeType {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message:
+							propertyHint:
 								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
 						},
 						values: [
@@ -441,7 +441,14 @@ export class ScheduleTrigger implements INodeType {
 			}
 		}
 
-		const executeTrigger = (recurrence: IRecurrenceRule, skipRecurrenceCheck = false) => {
+		const workflowId = this.getWorkflow().id;
+		const nodeId = this.getNode().id;
+
+		const executeTrigger = (
+			recurrence: IRecurrenceRule,
+			skipRecurrenceCheck = false,
+			scheduledTime?: Date,
+		) => {
 			if (!skipRecurrenceCheck) {
 				const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
 				if (!shouldTrigger) return;
@@ -462,12 +469,25 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
 			};
 
-			this.emit([this.helpers.returnJsonArray([resultData])]);
+			// The workflowId should always be defined, but if it isn't we skip
+			// the deduplication key.
+			const deduplicationKey =
+				workflowId && scheduledTime
+					? `${workflowId}:${nodeId}:${scheduledTime.toISOString()}`
+					: undefined;
+
+			this.emit(
+				[this.helpers.returnJsonArray([resultData])],
+				/* responsePromise= */ undefined,
+				/* donePromise= */ undefined,
+				deduplicationKey,
+			);
 		};
 
+		const nodeKey = `${workflowId ?? ''}:${nodeId}`;
 		const rules = intervals.map((interval, i) => ({
 			interval,
-			cronExpression: toCronExpression(interval),
+			cronExpression: toCronExpression(interval, nodeKey),
 			recurrence: intervalToRecurrence(interval, i),
 		}));
 
@@ -478,7 +498,9 @@ export class ScheduleTrigger implements INodeType {
 						expression: cronExpression,
 						recurrence,
 					};
-					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
+					this.helpers.registerCron(cron, (scheduledTime: Date) =>
+						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),
+					);
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {

@@ -351,7 +351,7 @@ describe('test Set2, validateEntry', () => {
 describe('test Set2, resolveRawData', () => {
 	const createMockExecuteFunctionForResolve = (returnValue: any) => {
 		return {
-			evaluateExpression: jest.fn().mockReturnValue(returnValue),
+			evaluateExpression: vi.fn().mockReturnValue(returnValue),
 		} as unknown as IExecuteFunctions;
 	};
 
@@ -399,7 +399,7 @@ describe('test Set2, resolveRawData', () => {
 
 	it('should handle multiple expressions with special patterns', () => {
 		const mockFunction = {
-			evaluateExpression: jest.fn().mockReturnValueOnce('hello $&').mockReturnValueOnce('world $`'),
+			evaluateExpression: vi.fn().mockReturnValueOnce('hello $&').mockReturnValueOnce('world $`'),
 		} as unknown as IExecuteFunctions;
 
 		const input = 'start {{ expr1 }} middle {{ expr2 }} end';

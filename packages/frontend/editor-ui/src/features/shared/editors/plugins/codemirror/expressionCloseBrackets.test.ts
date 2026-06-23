@@ -8,6 +8,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
 describe('expressionCloseBrackets', () => {
+	const editors: EditorView[] = [];
 	const createEditor = () => {
 		const parent = document.createElement('div');
 		document.body.appendChild(parent);
@@ -15,11 +16,16 @@ describe('expressionCloseBrackets', () => {
 			parent,
 			extensions: [expressionCloseBrackets(), n8nLang(), n8nAutocompletion()],
 		});
+		editors.push(editor);
 		return editor;
 	};
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+	});
+
+	afterEach(() => {
+		editors.splice(0).forEach((editor) => editor.destroy());
 	});
 
 	it('should complete {{| to {{ | }} and open autocomplete', async () => {

@@ -1,0 +1,36 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to build a Telegram chatbot for my family. It should be an AI assistant that can answer questions."
+		},
+		{
+			"role": "assistant",
+			"text": "What model should the AI Agent use, and should the bot remember prior messages in the conversation?"
+		},
+		{
+			"role": "user",
+			"text": "OpenAI chat model. Yes, it should remember the last few messages — but the memory needs to be separate per Telegram chat, so that if my sister and my mum both talk to it, they each get their own thread."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: Telegram Trigger → AI Agent (OpenAI chat model + memory) → Telegram send back to the same chat. Memory will be scoped by the trigger's chat id. Good?"
+		},
+		{
+			"role": "user",
+			"text": "Yes."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "telegram", "chatbot", "ai-agent", "memory", "expressions"],
+	"datasets": ["pr", "full"],
+	"executionScenarios": [
+		{
+			"name": "distinct-telegram-chat",
+			"description": "A Telegram message from one chat is answered with memory scoped to that chat id",
+			"dataSetup": "The Telegram Trigger receives a text message from chat id 123456 with text 'What is on the family calendar today?' from user 'Alex'. The AI Agent returns a short helpful answer. The Telegram sendMessage call returns a success response.",
+			"successCriteria": "The workflow executes without errors. It contains a Telegram Trigger, an AI Agent, a chat model, and a memory node connected to the agent. The memory node scopes conversation history by Telegram chat id using an explicit source-node reference to the Telegram Trigger chat id, not $json. The final Telegram response is sent back to chat id 123456 and contains the AI Agent answer."
+		}
+	]
+}

@@ -73,9 +73,9 @@ describe('DeprecationService', () => {
 		});
 
 		describe('when executions.mode is not queue', () => {
-			test.each([['main'], ['worker'], ['webhook']])(
+			test.each<[InstanceType]>([['main'], ['worker'], ['webhook']])(
 				'should not warn for instanceType %s',
-				(instanceType: InstanceType) => {
+				(instanceType) => {
 					process.env[envVar] = 'false';
 					const service = new DeprecationService(
 						logger,

@@ -1,4 +1,4 @@
-import { TSESTree } from '@typescript-eslint/types';
+import { TSESTree } from '@typescript-eslint/utils';
 import type { TSESLint } from '@typescript-eslint/utils';
 
 import { createRule } from '../utils/index.js';

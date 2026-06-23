@@ -66,6 +66,7 @@ export const query = {
 						assignee {
 							id
 							displayName
+							email
 						}
 						state {
 							id
@@ -75,6 +76,11 @@ export const query = {
 						creator {
 							id
 							displayName
+							email
+						}
+						team {
+							id
+							name
 						}
 						description
 						dueDate
@@ -103,7 +109,8 @@ export const query = {
 				archivedAt,
 				assignee {
 					id,
-					displayName
+					displayName,
+					email
 				}
 				state {
 					id
@@ -113,6 +120,11 @@ export const query = {
 				creator {
 					id
 					displayName
+					email
+				}
+				team {
+					id
+					name
 				}
 				description
 				dueDate
@@ -144,6 +156,7 @@ export const query = {
 						assignee {
 							id
 							displayName
+							email
 						}
 						state {
 							id
@@ -153,6 +166,11 @@ export const query = {
 						creator {
 							id
 							displayName
+							email
+						}
+						team {
+							id
+							name
 						}
 						description
 						dueDate
@@ -198,6 +216,7 @@ export const query = {
 					assignee {
 						id
 						displayName
+						email
 					}
 					state {
 						id
@@ -207,6 +226,11 @@ export const query = {
 					creator {
 						id
 						displayName
+						email
+					}
+					team {
+						id
+						name
 					}
 					description
 					dueDate

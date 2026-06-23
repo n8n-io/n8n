@@ -2,19 +2,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { LmChatMoonshot } from '../LmChatMoonshot.node';
 
-jest.mock('@langchain/openai');
-jest.mock('@n8n/ai-utilities');
+vi.mock('@langchain/openai');
+vi.mock('@n8n/ai-utilities');
 
-const MockedChatOpenAI = jest.mocked(ChatOpenAI);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+const MockedChatOpenAI = vi.mocked(ChatOpenAI);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 describe('LmChatMoonshot', () => {
 	let node: LmChatMoonshot;
@@ -33,28 +33,27 @@ describe('LmChatMoonshot', () => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			nodeDef,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
-		ctx.getCredentials = jest.fn().mockResolvedValue({
+		ctx.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-moonshot-key',
 			url: 'https://api.moonshot.ai/v1',
 		});
-		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
-		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
+		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 			if (paramName === 'model') return 'kimi-k2.6';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return ctx;
 	};
 
 	beforeEach(() => {
 		node = new LmChatMoonshot();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
@@ -101,7 +100,7 @@ describe('LmChatMoonshot', () => {
 
 		it('should pass options to ChatOpenAI', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'moonshot-v1-128k';
 				if (paramName === 'options')
 					return {
@@ -134,7 +133,7 @@ describe('LmChatMoonshot', () => {
 
 		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'kimi-k2.6';
 				if (paramName === 'options') return { responseFormat: 'json_object' };
 				return undefined;
@@ -177,7 +176,7 @@ describe('LmChatMoonshot', () => {
 
 		it('should configure proxy agent with custom timeout', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'kimi-k2.6';
 				if (paramName === 'options') return { timeout: 120000 };
 				return undefined;
