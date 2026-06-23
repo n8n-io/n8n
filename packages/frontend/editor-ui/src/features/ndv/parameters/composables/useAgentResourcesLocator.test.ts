@@ -135,6 +135,33 @@ describe('useAgentResourcesLocator', () => {
 		expect(agentsResources.value).toEqual([{ name: 'Newer', value: 'newer' }]);
 	});
 
+	it('ignores a stale error from a request a newer search superseded', async () => {
+		let rejectFirst: (reason?: unknown) => void = () => {};
+		const firstResponse = new Promise((_resolve, reject) => (rejectFirst = reject));
+
+		listAgentsPage.mockReturnValueOnce(firstResponse).mockResolvedValueOnce({
+			count: 1,
+			data: [{ id: 'newer', name: 'Newer', projectId: 'proj-1' }],
+		});
+
+		const { onSearchFilter, agentsResources, loadError } = useAgentResourcesLocator(
+			ref('proj-1'),
+			noProjectName,
+		);
+
+		const stale = onSearchFilter('a');
+		await onSearchFilter('ab');
+
+		// The older request rejects last; its generation is stale, so it must not
+		// flip the dropdown into the error view over the newer results.
+		rejectFirst(new Error('boom'));
+		await stale;
+		await flushPromises();
+
+		expect(loadError.value).toBeNull();
+		expect(agentsResources.value).toEqual([{ name: 'Newer', value: 'newer' }]);
+	});
+
 	it('surfaces loadMore errors via loadError without throwing', async () => {
 		listAgentsPage.mockResolvedValueOnce({
 			count: 100,

@@ -59,11 +59,18 @@ export function useAgentResourcesLocator(
 		return await listAgentsPage(rootStore.restApiContext, projectId.value, options);
 	}
 
-	async function populateNextAgentsPage(reset = false) {
+	// Loads one page. A monotonic `loadGeneration` (bumped on every reset) gates
+	// all post-await writes — results, error, and the loading flag — so a slow
+	// request from an older query can't clobber a newer one's state, whether it
+	// resolves or rejects.
+	async function loadPage(reset: boolean) {
 		if (reset) {
 			currentPage.value = 0;
 			loadGeneration++;
+			isLoadingResources.value = true;
+			loadError.value = null;
 		}
+		const generation = loadGeneration;
 
 		// No resolvable project scope: surface an empty catalog rather than fall
 		// back to a cross-project list the workflow owner can't execute against.
@@ -71,6 +78,7 @@ export function useAgentResourcesLocator(
 			if (reset) {
 				agentsResources.value = [];
 				totalCount.value = 0;
+				isLoadingResources.value = false;
 			}
 			return;
 		}
@@ -79,54 +87,43 @@ export function useAgentResourcesLocator(
 		// can't read the same page and append a duplicate.
 		const skip = currentPage.value * PAGE_SIZE;
 		currentPage.value++;
-		const generation = loadGeneration;
 
-		const { count, data } = await fetchPage(skip);
-
-		// A newer reset (e.g. a fresh search) superseded this request.
-		if (generation !== loadGeneration) {
-			return;
-		}
-
-		totalCount.value = count;
-
-		const mapped = data.map(agentToResourceMapper);
-		if (reset) {
-			agentsResources.value = mapped;
-		} else {
-			agentsResources.value.push(...mapped);
-		}
-	}
-
-	async function loadResources(reset: boolean) {
-		isLoadingResources.value = true;
-		loadError.value = null;
 		try {
-			await populateNextAgentsPage(reset);
+			const { count, data } = await fetchPage(skip);
+			// A newer reset (e.g. a fresh search) superseded this request.
+			if (generation !== loadGeneration) return;
+
+			totalCount.value = count;
+			const mapped = data.map(agentToResourceMapper);
+			if (reset) {
+				agentsResources.value = mapped;
+			} else {
+				agentsResources.value.push(...mapped);
+			}
 		} catch (error) {
+			// Ignore failures from a request a newer reset already superseded.
+			if (generation !== loadGeneration) return;
 			loadError.value = error;
 		} finally {
-			isLoadingResources.value = false;
+			// Only the current generation's reset owns the loading flag.
+			if (reset && generation === loadGeneration) {
+				isLoadingResources.value = false;
+			}
 		}
 	}
 
 	async function setAgentsResources() {
-		await loadResources(true);
+		await loadPage(true);
 	}
 
 	async function onSearchFilter(filter: string) {
 		searchFilter.value = filter;
-		await loadResources(true);
+		await loadPage(true);
 	}
 
-	// Appends the next page on scroll. Guarded so a failed page surfaces the
-	// error view (recoverable via retry) instead of an unhandled rejection.
+	// Appends the next page on scroll.
 	async function loadMore() {
-		try {
-			await populateNextAgentsPage();
-		} catch (error) {
-			loadError.value = error;
-		}
+		await loadPage(false);
 	}
 
 	return {
