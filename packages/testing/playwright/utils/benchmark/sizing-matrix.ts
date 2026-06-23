@@ -19,6 +19,12 @@ export interface Topology {
 	mains: number;
 	webhookProcs: number;
 	workers: number;
+	/**
+	 * Total in-flight job slots across the queue workers — `workers ×` the
+	 * per-worker `--concurrency`. `0` when there are no dedicated workers
+	 * (single-main topologies run executions in-process).
+	 */
+	concurrency: number;
 	mainVcpu: number;
 	mainRamGb: number;
 	workerVcpu?: number;

@@ -161,6 +161,7 @@ import {
 
 import { UserError } from 'n8n-workflow';
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 import type { InstanceAiConfig } from '@n8n/config';
@@ -830,6 +831,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
 			domainAccessTrackersByThread: Map<string, unknown>;
+			threadGrantRepo: { findKeys: jest.Mock };
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -878,6 +881,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
 		service.domainAccessTrackersByThread = new Map();
+		service.threadGrantRepo = { findKeys: jest.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
 			logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
@@ -893,6 +897,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			},
 			aiService: { isProxyEnabled: jest.fn(() => false), getClient: jest.fn() },
 		});
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {

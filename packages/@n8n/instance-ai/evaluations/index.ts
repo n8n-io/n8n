@@ -14,8 +14,8 @@ export { loadWorkflowTestCasesWithFiles } from './data/workflows';
 export type { WorkflowTestCaseWithFile } from './data/workflows';
 
 // -- Credentials --
-export { seedCredentials, cleanupCredentials } from './credentials/seeder';
-export type { SeedResult } from './credentials/seeder';
+export { createDeclaredCredentials, cleanupCredentials } from './credentials/seeder';
+export type { CreatedCredential } from './credentials/seeder';
 
 // -- MCP Registry --
 export { seedMcpRegistry } from './mcp-registry/seeder';

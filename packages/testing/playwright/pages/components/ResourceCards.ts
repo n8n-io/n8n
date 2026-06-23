@@ -33,6 +33,10 @@ export class ResourceCards {
 		});
 	}
 
+	getCredentialGlobalBadge(name: string): Locator {
+		return this.getCredential(name).getByTestId('credential-global-badge');
+	}
+
 	getCardActionToggle(card: Locator): Locator {
 		return card
 			.getByTestId('card-append')

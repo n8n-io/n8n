@@ -224,7 +224,14 @@ export class RuntimeContextBuilder {
 			case 'anthropic': {
 				const cfg = thinking as AnthropicThinkingConfig;
 				if (cfg.mode === 'adaptive') {
-					return { anthropic: { thinking: { type: 'adaptive' } } };
+					return {
+						anthropic: {
+							thinking: {
+								type: 'adaptive',
+								display: cfg.display ?? 'summarized',
+							},
+						},
+					};
 				}
 				return {
 					anthropic: {
