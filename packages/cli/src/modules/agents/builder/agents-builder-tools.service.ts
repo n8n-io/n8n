@@ -19,6 +19,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -111,10 +112,6 @@ function rejectIfUnsupportedNativeWebSearch(
 
 type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
 type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
 	return tool?.type === 'node';

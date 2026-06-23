@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { McpToolCallResult } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
+
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultTable from './ToolResultTable.vue';
 import ToolResultCode from './ToolResultCode.vue';
@@ -19,10 +21,6 @@ type McpContentItem = McpToolCallResult['content'][number];
 
 function isAction(family: string, action: string): boolean {
 	return props.toolName === family && props.toolArgs?.action === action;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function normalizeImageContentItem(item: Record<string, unknown>): McpContentItem | null {
