@@ -43,27 +43,37 @@ describe('observational memory integration', () => {
 			].join('\n'),
 			{ persistence: { threadId, resourceId } },
 		);
-		await agent.close();
+		const agent = new Agent('observational-memory-test')
+			.model(getModel('anthropic'))
+			.instructions('You are a concise assistant. Acknowledge durable facts briefly.')
+			.memory(memoryConfig)
+			.memoryTaskObserver((event) => events.push(event));
 
-		const observations = await memory.getActiveObservationLog({ observationScopeId: threadId });
-		expect(observations.length).toBeGreaterThan(0);
-		const observationText = normalizedText(observations.map((entry) => entry.text).join('\n'));
-		expect(observationText).toContain(normalizedText('Orion Basin'));
-		expect(observationText).toContain(normalizedText('Tier 3 Support'));
+		try {
+			await agent.generate(
+				[
+					'IMPORTANT durable context for future turns.',
+					'Customer: Orion Basin.',
+					'Durable marker exactly: OBSERVATION_MARKER_ORION.',
+					'Routing rule exactly: Orion Basin escalations go to Tier 3 Support.',
+					'Remember this for future conversations.',
+				].join('\n'),
+				{ persistence: { threadId, resourceId } },
+			);
 
-		const observerEventTypes = events
-			.filter((event) => event.task.taskKind === 'observer')
-			.map((event) => event.type);
-		expect(observerEventTypes).toEqual(expect.arrayContaining(['queued', 'started', 'completed']));
-	});
-});
+			const observations = await memory.getActiveObservationLog({ observationScopeId: threadId });
+			expect(observations.length).toBeGreaterThan(0);
+			const observationText = normalizedText(observations.map((entry) => entry.text).join('\n'));
+			expect(observationText).toContain(normalizedText('Orion Basin'));
+			expect(observationText).toContain(normalizedText('Tier 3 Support'));
 
-function uniqueId(prefix: string): string {
-	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function normalizedText(value: string): string {
-	return value
+			const observerEventTypes = events
+				.filter((event) => event.task.taskKind === 'observer')
+				.map((event) => event.type);
+			expect(observerEventTypes).toEqual(expect.arrayContaining(['queued', 'started', 'completed']));
+		} finally {
+			await agent.close();
+		}
 		.toLowerCase()
 		.replace(/[^a-z0-9#]+/g, ' ')
 		.replace(/\s+/g, ' ')
