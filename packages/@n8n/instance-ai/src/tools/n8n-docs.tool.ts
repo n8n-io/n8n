@@ -62,7 +62,12 @@ const STOPWORDS = new Set([
 const intentSchema = z.enum(['credential-setup', 'node-help', 'hosting', 'api', 'general']);
 
 const sharedLookupFields = {
-	query: z.string().describe('Docs lookup query. Include the product area, service, and task.'),
+	query: z
+		.string()
+		.optional()
+		.describe(
+			'Docs lookup query. Include the product area, service, and task. Optional when credential or node context is provided.',
+		),
 	intent: intentSchema.optional().describe('The kind of n8n docs answer needed.'),
 	credentialType: z
 		.string()
@@ -234,6 +239,22 @@ function inferGoogleCredential(tokens: string[]): boolean {
 	return tokens.some((token) => GOOGLE_SERVICE_TOKENS.has(token));
 }
 
+function getLookupQuery(
+	input: Pick<
+		LookupInput | SearchInput,
+		'query' | 'credentialDisplayName' | 'credentialType' | 'documentationUrl' | 'nodeType'
+	>,
+): string {
+	return (
+		input.query ??
+		input.credentialDisplayName ??
+		input.credentialType ??
+		input.nodeType ??
+		input.documentationUrl ??
+		''
+	);
+}
+
 export function normalizeDocsUrl(rawUrl: string): string | undefined {
 	let parsed: URL;
 	try {
@@ -323,7 +344,8 @@ function scoreEntry(
 		reasons.push('documentation URL match');
 	}
 
-	const queryTokens = tokenize(input.query);
+	const query = getLookupQuery(input);
+	const queryTokens = tokenize(query);
 	const credentialTokens = tokenize(input.credentialType, input.credentialDisplayName);
 	const nodeTokens = tokenize(input.nodeType);
 	const allTokens = [...new Set([...queryTokens, ...credentialTokens, ...nodeTokens])];
@@ -336,7 +358,7 @@ function scoreEntry(
 		if (path.includes(token)) score += 5;
 	}
 
-	const normalizedQuery = normalizeTokenSource(input.query).trim();
+	const normalizedQuery = normalizeTokenSource(query).trim();
 	if (normalizedQuery && title.includes(normalizedQuery)) {
 		score += 40;
 		reasons.push('title phrase match');
@@ -515,7 +537,7 @@ async function getRegistry(context: ToolContext): Promise<RegistryResult> {
 
 function emptyLookupResult(input: LookupInput | SearchInput, registry: RegistryResult) {
 	return {
-		query: input.query,
+		query: getLookupQuery(input),
 		intent: input.intent ?? 'general',
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: registry.registry?.fetchedAt ?? '',
@@ -550,7 +572,7 @@ async function handleSearch(context: ToolContext, input: SearchInput) {
 	const matches = rankN8nDocsEntries(registry.registry.entries, input).slice(0, maxResults);
 
 	return {
-		query: input.query,
+		query: getLookupQuery(input),
 		intent: input.intent ?? 'general',
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: registry.registry.fetchedAt,
@@ -588,7 +610,7 @@ async function handleLookup(context: ToolContext, input: LookupInput) {
 	].filter((hint): hint is string => typeof hint === 'string' && hint.length > 0);
 
 	return {
-		query: input.query,
+		query: getLookupQuery(input),
 		intent: input.intent ?? 'general',
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: registry.registry.fetchedAt,

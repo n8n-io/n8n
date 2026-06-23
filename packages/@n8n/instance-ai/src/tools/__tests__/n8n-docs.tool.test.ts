@@ -20,12 +20,15 @@ const REGISTRY = `# n8n Docs
 - [Create and edit](https://docs.n8n.io/credentials/add-edit-credentials/index.md)
 - [Gmail](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/index.md)
 - [Google: OAuth2 single service](https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/index.md)
+- [Microsoft credentials](https://docs.n8n.io/integrations/builtin/credentials/microsoft/index.md)
 - [Slack credentials](https://docs.n8n.io/integrations/builtin/credentials/slack/index.md)
 - [2.x](https://docs.n8n.io/release-notes/index.md)
 `;
 
 const GOOGLE_OAUTH_URL =
 	'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/index.md';
+const MICROSOFT_CREDENTIALS_URL =
+	'https://docs.n8n.io/integrations/builtin/credentials/microsoft/index.md';
 const CREATE_EDIT_URL = 'https://docs.n8n.io/credentials/add-edit-credentials/index.md';
 const GMAIL_NODE_URL =
 	'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/index.md';
@@ -94,7 +97,7 @@ describe('n8n-docs tool', () => {
 	it('parses markdown registry links from llms.txt', () => {
 		const registry = parseN8nDocsRegistry(REGISTRY, '2026-06-23T08:00:00.000Z');
 
-		expect(registry.entries).toHaveLength(5);
+		expect(registry.entries).toHaveLength(6);
 		expect(registry.entries[0]).toEqual({
 			title: 'Create and edit',
 			url: CREATE_EDIT_URL,
@@ -159,6 +162,30 @@ describe('n8n-docs tool', () => {
 		expect(result.documents?.some((doc) => doc.url === CREATE_EDIT_URL)).toBe(true);
 		expect(result.documents?.[0].content).toContain('<untrusted_data');
 		expect(result.documents?.[0].content).toContain('OAuth Redirect URL');
+	});
+
+	it('lookup derives the query from credential context when query is omitted', async () => {
+		stubFetchWithMap({
+			[N8N_DOCS_REGISTRY_URL]: REGISTRY,
+			[MICROSOFT_CREDENTIALS_URL]:
+				'# Microsoft credentials\n\nCopy the OAuth Callback URL from your n8n credential.',
+			[CREATE_EDIT_URL]: '# Create and edit credentials\n\nCredential setup modal guidance.',
+		});
+		const tool = createN8nDocsTool(createMockContext());
+
+		const result = await executeTool<N8nDocsToolResult>(tool, {
+			action: 'lookup',
+			intent: 'credential-setup',
+			credentialType: 'microsoftOutlookOAuth2Api',
+			credentialDisplayName: 'Microsoft Outlook OAuth2 API',
+			documentationUrl: 'https://docs.n8n.io/integrations/builtin/credentials/microsoft/',
+			oauthRedirectUrl: 'http://localhost:5678/rest/oauth2-credential/callback',
+		});
+
+		expect(result.query).toBe('Microsoft Outlook OAuth2 API');
+		expect(result.documents?.[0].url).toBe(MICROSOFT_CREDENTIALS_URL);
+		expect(result.documents?.[0].content).toContain('OAuth Callback URL');
+		expect(result.documents?.some((document) => document.url === CREATE_EDIT_URL)).toBe(true);
 	});
 
 	it('read rejects URLs outside docs.n8n.io', async () => {
