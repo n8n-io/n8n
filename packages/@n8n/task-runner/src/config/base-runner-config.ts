@@ -42,6 +42,8 @@ export class BaseRunnerConfig {
 	/**
 	 * How long (in seconds) the runner keeps offering and serving tasks after being asked
 	 * to shut down, before it commits to draining. Mirrors n8n's graceful-shutdown period.
+	 * In external mode the orchestrator's termination grace (e.g. k8s
+	 * terminationGracePeriodSeconds) must exceed this, or the runner is killed mid-drain.
 	 */
 	@Env('N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;
