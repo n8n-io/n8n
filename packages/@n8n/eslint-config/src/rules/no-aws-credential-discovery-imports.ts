@@ -3,6 +3,18 @@
 // resolution stays routed through getSystemCredentials() and the
 // awsSystemCredentialsAccess setting.
 //
+// Scope (intentional): only the aggregate "find credentials anywhere" resolvers are
+// banned (`fromNodeProviderChain`, `defaultProvider`). Single-source providers (`fromEnv`,
+// `fromIni`, `fromInstanceMetadata`, `fromTokenFile`, ...) stay importable on purpose; the
+// follow-up credential migration composes a curated chain from the safe ones, so banning
+// them here would block it. The sensitive single-source providers (`fromIni`/`fromSSO`/
+// `fromProcess`) are gated at runtime by getSystemCredentials()'s per-provider allow-list
+// behind the awsSystemCredentialsAccess setting (off by default), not by this import ban.
+// This rule guards the omission case (a client built with no credentials falls back to the
+// aggregate chain); whether an explicit provider value is itself a host-discovery provider
+// (e.g. `credentials: fromIni()`) is owned by that runtime gate and is not inspected by the
+// companion presence-only client-credentials test.
+//
 // The only legitimate import from these modules is a specific allowed name
 // (`fromTemporaryCredentials`, `createCredentialChain`, `fromEnv`, …) selected via a
 // named import or a named destructure. Every wholesale form — namespace import,

@@ -45,7 +45,10 @@ export interface ScanResult {
 
 // Phase-0 scope is presence-only: a `credentials` / `masterCredentials` key must be
 // present. Validating the identity value behind it (e.g. rejecting discovery providers) is
-// deferred. Match the key by name and ignore `shorthand` so `{ region, credentials }` counts.
+// deferred. An explicit discovery-provider value such as `credentials: fromIni()` is
+// intentionally NOT inspected here; that case is owned by the runtime
+// awsSystemCredentialsAccess gate in getSystemCredentials(), not by this presence scan.
+// Match the key by name and ignore `shorthand` so `{ region, credentials }` counts.
 function hasObjectKey(objectExpression: TSESTree.ObjectExpression, keyName: string): boolean {
 	return objectExpression.properties.some(
 		(prop) =>
