@@ -1609,6 +1609,114 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('agent run telemetry context', () => {
+		const schema: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			skills: [{ type: 'skill', id: 'summarize' }],
+		};
+
+		beforeEach(() => {
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: new Map() } as never);
+		});
+
+		it('marks draft chat and manual task runs as test', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema }));
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					userId,
+					memory: { threadId: 'thread-1', resourceId: userId },
+				})
+				.next();
+			await service
+				.executeForTaskNow({
+					agentId,
+					projectId,
+					userId,
+					message: 'run task',
+					memory: { threadId: 'thread-2', resourceId: 'task-run' },
+					taskId: 'task-1',
+				})
+				.next();
+
+			expect(streamSpy).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					telemetry: expect.objectContaining({
+						runType: 'test',
+						configuration: expect.objectContaining({
+							model: 'anthropic/claude-sonnet-4-5',
+							num_skills: 1,
+						}),
+					}),
+				}),
+			);
+			expect(streamSpy).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					telemetry: expect.objectContaining({ runType: 'test' }),
+				}),
+			);
+		});
+
+		it('marks published chat and scheduled task runs as production', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema,
+					activeVersionId: versionId,
+					activeVersion: makeAgentHistory({ schema, publishedById: 'publisher-user' }),
+				}),
+			);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+				})
+				.next();
+			await service
+				.executeForTaskPublished({
+					agentId,
+					projectId,
+					message: 'run task',
+					memory: { threadId: 'thread-2', resourceId: 'task-run' },
+					taskId: 'task-1',
+					taskVersionId: versionId,
+				})
+				.next();
+
+			expect(streamSpy).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					telemetry: expect.objectContaining({ runType: 'production' }),
+				}),
+			);
+			expect(streamSpy).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					telemetry: expect.objectContaining({ runType: 'production' }),
+				}),
+			);
+		});
+	});
+
 	describe('integration runtime tools', () => {
 		beforeEach(() => {
 			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
@@ -2005,6 +2113,62 @@ describe('AgentsService', () => {
 				message_count: 1,
 			});
 		});
+
+		it.each([
+			{ useDraftVersion: true, expectedRunType: 'test' },
+			{ useDraftVersion: false, expectedRunType: 'production' },
+		] as const)(
+			'passes $expectedRunType telemetry context when useDraftVersion is $useDraftVersion',
+			async ({ useDraftVersion, expectedRunType }) => {
+				const schema: AgentJsonConfig = {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+				};
+				const agent = makeAgent({
+					schema,
+					activeVersionId: versionId,
+					activeVersion: makeAgentHistory({ schema, publishedById: 'publisher-user' }),
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				Container.set(CredentialsService, mock<CredentialsService>());
+
+				const stream = jest.fn().mockResolvedValue({
+					stream: {
+						getReader: () => ({
+							read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+							releaseLock: jest.fn(),
+						}),
+					},
+				});
+				jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+					ok: true,
+					agent: { name: 'Test Agent', stream },
+				} as never);
+
+				await service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					userId,
+					useDraftVersion,
+				);
+
+				expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						telemetry: expect.objectContaining({
+							runType: expectedRunType,
+							configuration: expect.objectContaining({
+								model: 'anthropic/claude-sonnet-4-5',
+							}),
+						}),
+					}),
+				);
+			},
+		);
 
 		it('applies a per-call output schema to the compiled agent', async () => {
 			const schema: AgentJsonConfig = {
@@ -3246,6 +3410,73 @@ describe('AgentsService', () => {
 				message_count: 1,
 			});
 		});
+
+		it.each([
+			{ usePublishedVersion: true, expectedRunType: 'production', userIdForResume: undefined },
+			{ usePublishedVersion: false, expectedRunType: 'test', userIdForResume: userId },
+		] as const)(
+			'passes $expectedRunType telemetry context when usePublishedVersion is $usePublishedVersion',
+			async ({ usePublishedVersion, expectedRunType, userIdForResume }) => {
+				const n8nPublisherId = 'n8n-user-publisher';
+				const runId = 'run-abc';
+				const toolCallId = 'tool-xyz';
+				const schema: AgentJsonConfig = {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+				};
+				const agent = makeAgent({
+					schema,
+					activeVersionId: versionId,
+					activeVersion: makeAgentHistory({ schema, publishedById: n8nPublisherId }),
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				n8nCheckpointStorage.getStatus.mockResolvedValue({
+					status: 'ok',
+					checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+				} as never);
+
+				const mockAgentInstance = {
+					name: 'Test Agent',
+					resume: jest.fn().mockResolvedValue({
+						stream: {
+							getReader: () => ({
+								read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+								releaseLock: jest.fn(),
+							}),
+						},
+					}),
+				};
+
+				jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+				jest
+					.spyOn(service as never, 'reconstructFromConfig')
+					.mockResolvedValue({ agent: mockAgentInstance, toolRegistry: new Map() } as never);
+
+				await service
+					.resumeForChat({
+						agentId,
+						projectId,
+						runId,
+						toolCallId,
+						resumeData: { value: 'yes' },
+						usePublishedVersion,
+						...(userIdForResume ? { userId: userIdForResume } : {}),
+					})
+					.next();
+
+				expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						telemetry: expect.objectContaining({
+							runType: expectedRunType,
+							configuration: expect.objectContaining({
+								model: 'anthropic/claude-sonnet-4-5',
+							}),
+						}),
+					}),
+				);
+			},
+		);
 	});
 
 	describe('delete — chat cleanup', () => {
