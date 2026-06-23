@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-22T15:28:50.204Z",
-	"totalViolations": 175,
+	"generated": "2026-06-22T18:19:25.965Z",
+	"totalViolations": 164,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -232,21 +232,9 @@
 		"tests/e2e/ai/hitl-for-tools.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 37,
-				"message": "Chained locator call in test: n8n.ndv.getParameterInput(parameterName).locator('.cm-con...",
-				"hash": "1c9a5881c088"
-			},
-			{
-				"rule": "selector-purity",
 				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByTestId('add-connection-button')",
 				"hash": "dd2f0028a100"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 117,
-				"message": "Chained locator call in test: n8n.ndv.getParameterInput('description').locator('textarea')",
-				"hash": "08d968591187"
 			},
 			{
 				"rule": "selector-purity",
@@ -265,26 +253,6 @@
 				"line": 143,
 				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat')",
 				"hash": "ffd406dce67d"
-			}
-		],
-		"tests/e2e/ai/langchain-memory.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 107,
-				"message": "Chained locator call in test: n8n.ndv.getAiOutputModeToggle().locator('[role=\"radio\"]')",
-				"hash": "96a750e297fc"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 115,
-				"message": "Chained locator call in test: n8n.ndv.getOutputPanel().getByTestId('node-error-message')",
-				"hash": "6534d00a617a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 118,
-				"message": "Chained locator call in test: n8n.ndv.getOutputPanel().getByTestId('node-error-message')",
-				"hash": "6534d00a617a"
 			}
 		],
 		"tests/e2e/ai/langchain-vectorstores.spec.ts": [
@@ -699,38 +667,12 @@
 				"hash": "85fbb93e65c9"
 			}
 		],
-		"tests/e2e/workflows/editor/ndv/ndv-core.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 121,
-				"message": "Chained locator call in test: n8n.ndv.container.getByText('Webhook URLs').locator('..')",
-				"hash": "2d90b69679a1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 121,
-				"message": "Chained locator call in test: n8n.ndv.container.getByText('Webhook URLs')",
-				"hash": "acfb445f29c7"
-			}
-		],
 		"tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": [
 			{
 				"rule": "selector-purity",
 				"line": 64,
 				"message": "Chained locator call in test: objectValueItem.locator('.toggle')",
 				"hash": "39445370e293"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 121,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTableRow(1).locator('mark')",
-				"hash": "a1511d93e913"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 148,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTableRow(1).locator('mark')",
-				"hash": "a1511d93e913"
 			}
 		],
 		"tests/e2e/workflows/editor/ndv/paired-item.spec.ts": [
@@ -739,18 +681,6 @@
 				"line": 96,
 				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
 				"hash": "e8fc423eeeb7"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 105,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.getTable().locator('text=1000')",
-				"hash": "c5bd431c0244"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 114,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.getTable().locator('text=1111')",
-				"hash": "b10f5de1b09d"
 			}
 		],
 		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [

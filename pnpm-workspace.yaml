@@ -36,7 +36,7 @@ catalog:
   '@codemirror/search': 6.5.11
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
-  '@daytonaio/sdk': 0.175.0
+  '@daytona/sdk': 0.187.0
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
   '@joplin/turndown-plugin-gfm': 1.0.64
@@ -252,4 +252,3 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
-  - 'eslint-plugin-n8n-nodes-base'

@@ -52,7 +52,7 @@
     }
   },
   "dependencies": {
-    "@daytonaio/sdk": "catalog:",
+    "@daytona/sdk": "catalog:",
     "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/anthropic": "catalog:",
     "@mozilla/readability": "catalog:",

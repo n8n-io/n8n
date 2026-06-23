@@ -127,7 +127,7 @@
     "@chat-adapter/slack": "catalog:",
     "@chat-adapter/state-memory": "catalog:",
     "@chat-adapter/telegram": "catalog:",
-    "@daytonaio/sdk": "catalog:",
+    "@daytona/sdk": "catalog:",
     "@google-cloud/secret-manager": "5.6.0",
     "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/core": "catalog:",
