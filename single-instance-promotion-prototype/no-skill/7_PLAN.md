@@ -47,7 +47,7 @@ Each session should start by reading `6_PLAN.md` for full context, then the file
 **Scope (full vertical slice):**
 
 **Backend:**
-- Migration: `workflow_published_environment_version` table (int PK autoincrement; `workflowId` FK→`workflow_entity` CASCADE; `environmentId` FK→`project_environment` CASCADE; `publishedVersionId` varchar(36) — RESTRICT FK to `workflow_history.versionId` via raw SQL, NOT a TypeORM decorator; UNIQUE `(workflowId, environmentId)`). Add to the same migration file as Task 1, OR a new migration file `1790000000002-CreateWorkflowPublishedEnvironmentVersion.ts`
+- Migration: new file `packages/@n8n/db/src/migrations/common/1790000000002-CreateWorkflowPublishedEnvironmentVersion.ts` — `workflow_published_environment_version` table (int PK autoincrement; `workflowId` FK→`workflow_entity` CASCADE; `environmentId` FK→`project_environment` CASCADE; `publishedVersionId` varchar(36) — RESTRICT FK to `workflow_history.versionId` via raw SQL, NOT a TypeORM decorator; UNIQUE `(workflowId, environmentId)`); register in postgres + sqlite index files
 - Entity: `WorkflowPublishedEnvironmentVersion` in `packages/@n8n/db/src/entities/workflow-published-environment-version.ts`; export from index
 - Repository: `WorkflowPublishedEnvironmentVersionRepository` — `getPublishedVersionId`, `setPublishedVersion` (upsert), `removePublishedVersion`
 - Interface: add `environmentId?: string` to `IWorkflowExecuteAdditionalData` in `packages/workflow/src/interfaces.ts` (near `projectId?: string`)
