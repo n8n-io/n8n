@@ -9,6 +9,7 @@ import { InstanceSettings } from 'n8n-core';
 export class AgentsModule implements ModuleInterface {
 	async init() {
 		await import('./agents.controller');
+		await import('./agent-sandbox.controller');
 		await import('./agents-list.controller');
 		await import('./builder/agents-builder-settings.controller');
 
@@ -37,10 +38,12 @@ export class AgentsModule implements ModuleInterface {
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
+		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(N8nChatIntegration));
 
 		// Reconnect Chat and Task services on startup so this main resumes its
 		// integrations and tasks for the role it currently holds.

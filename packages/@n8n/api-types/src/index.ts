@@ -269,6 +269,7 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	buildRunWorkflowSessionGrantKey,
 	instanceAiEventTypeSchema,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -314,6 +315,7 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,

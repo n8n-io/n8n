@@ -142,11 +142,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Workflow
 
 	@Redactable()
-	private workflowsImported({
-		user,
-		matchedCredentialIds: _matchedCredentialIds,
-		...rest
-	}: RelayEventMap['workflows-imported']) {
+	private workflowsImported({ user, ...rest }: RelayEventMap['workflows-imported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.imported',
 			payload: { ...user, ...rest },

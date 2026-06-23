@@ -104,7 +104,9 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -137,6 +139,7 @@ import {
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
@@ -407,7 +410,7 @@ type OrchestratorResumeReason =
 function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
-			return { approved: request.approved, userInput: request.userInput };
+			return { approved: request.approved, userInput: request.userInput, scope: request.scope };
 		case 'domainAccessApprove':
 			return { approved: true, domainAccessAction: request.domainAccessAction };
 		case 'domainAccessDeny':
@@ -581,6 +584,7 @@ export class InstanceAiService {
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly aiService: AiService,
+		private readonly threadGrantRepo: InstanceAiThreadGrantRepository,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
@@ -594,8 +598,10 @@ export class InstanceAiService {
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
+		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
+		private readonly creditService: InstanceAiCreditService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -724,6 +730,44 @@ export class InstanceAiService {
 	 */
 	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
 		return await this.modelService.resolveAgentModelConfig(user);
+	}
+
+	/**
+	 * Read the user's persisted "always allow" grants for a thread (keys like `executions:run`).
+	 * Persisted in `instance_ai_thread_grants` so they survive reload/navigation and are visible
+	 * across mains. Returns an empty set on any read error — a missing grant just re-asks, which
+	 * is safe.
+	 */
+	private async loadThreadSessionGrants(threadId: string, userId: string): Promise<Set<string>> {
+		try {
+			return await this.threadGrantRepo.findKeys(threadId, userId);
+		} catch (error) {
+			this.logger.warn('Failed to load Instance AI session grants', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			return new Set();
+		}
+	}
+
+	/**
+	 * Persist a per-user, thread-level "always allow" grant. Idempotent across mains via the
+	 * composite PK. Best-effort — a failed write just means the user is re-asked next run.
+	 */
+	private async persistThreadSessionGrant(
+		threadId: string,
+		userId: string,
+		key: string,
+	): Promise<void> {
+		try {
+			await this.threadGrantRepo.grant(threadId, userId, key);
+		} catch (error) {
+			this.logger.warn('Failed to persist Instance AI session grant', {
+				threadId,
+				key,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -856,6 +900,9 @@ export class InstanceAiService {
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
+			// Recover token usage from raw provider events so a stopped/errored run
+			// is still billed for the tokens consumed before the stop.
+			recoverUsageOnAbort: true,
 			persistence: {
 				resourceId: user.id,
 				threadId,
@@ -882,6 +929,8 @@ export class InstanceAiService {
 		return {
 			runId: agentRunId,
 			toolCallId,
+			// Keep billing stopped/errored resumed runs (see stream-options builder).
+			recoverUsageOnAbort: true,
 			persistence: { resourceId: user.id, threadId },
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
@@ -1643,9 +1692,9 @@ export class InstanceAiService {
 			metadata: { completion_source: 'service_cleanup' },
 		});
 
-		this.modelService.clearThread(threadId);
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
+		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
@@ -2528,6 +2577,7 @@ export class InstanceAiService {
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
+			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 		});
 		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
@@ -2545,6 +2595,18 @@ export class InstanceAiService {
 		}
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
+
+		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
+		// reload/navigation and are visible across mains. Load once per run; a tool resuming
+		// from a `scope: 'session'` approval persists new grants via `grantSessionToolApproval`.
+		// Keep the mutable set so a grant approved mid-run is honored by later calls in the same
+		// run — the next run reloads it from the DB anyway.
+		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
+		context.sessionApprovedToolKeys = sessionGrants;
+		context.grantSessionToolApproval = async (key: string) => {
+			await this.persistThreadSessionGrant(threadId, user.id, key);
+			sessionGrants.add(key);
+		};
 		if (this.isRunDebugEnabled()) {
 			context.recordWorkflowCodeSnapshot = (snapshot) => {
 				this.runDebugBuffer.ensure(runId, threadId);
@@ -3539,19 +3601,21 @@ export class InstanceAiService {
 			}
 
 			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = await this.withSetupBoundary(
-				'instance-ai-mcp-setup',
-				{
-					threadId,
-					runId,
-					tracing,
-					agentId: ORCHESTRATOR_AGENT_ID,
-					userId: user.id,
-					messageGroupId,
-					messageId,
-				},
-				async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-			);
+			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
+				? await this.withSetupBoundary(
+						'instance-ai-mcp-setup',
+						{
+							threadId,
+							runId,
+							tracing,
+							agentId: ORCHESTRATOR_AGENT_ID,
+							userId: user.id,
+							messageGroupId,
+							messageId,
+						},
+						async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+					)
+				: [];
 			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);
@@ -3807,6 +3871,7 @@ export class InstanceAiService {
 				memory,
 				checkpointStore: this.checkpointStore,
 				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
@@ -4002,9 +4067,17 @@ export class InstanceAiService {
 				usage: result.usage,
 			});
 
-			// Count credits on first completed run per thread
+			// Bill token usage for every terminal outcome (completed / cancelled / errored),
+			// deduped per run segment. `result.agentRunId` is the segment id; fall back to runId.
+			await this.creditService.claimRunUsage(
+				user,
+				threadId,
+				result.agentRunId || runId,
+				result.usage?.usage ?? [],
+				result.status,
+			);
+
 			if (result.status === 'completed') {
-				await this.modelService.countCreditsIfFirst(user, threadId, runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
 					message: outputText,
@@ -4497,6 +4570,7 @@ export class InstanceAiService {
 				memory: environment.memory,
 				checkpointStore: this.checkpointStore,
 				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
+				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
@@ -4606,6 +4680,7 @@ export class InstanceAiService {
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+			...(data.scope ? { scope: data.scope } : {}),
 		};
 
 		const resumeTracing = await this.createOrchestratorResumeTraceContext({
@@ -4894,8 +4969,16 @@ export class InstanceAiService {
 				usage: result.usage,
 			});
 
+			// Bill token usage for every terminal outcome, deduped per run segment.
+			await this.creditService.claimRunUsage(
+				opts.user,
+				opts.threadId,
+				result.agentRunId || opts.runId,
+				result.usage?.usage ?? [],
+				result.status,
+			);
+
 			if (result.status === 'completed') {
-				await this.modelService.countCreditsIfFirst(opts.user, opts.threadId, opts.runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,

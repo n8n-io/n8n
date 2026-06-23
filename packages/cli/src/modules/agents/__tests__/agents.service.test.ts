@@ -22,6 +22,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 
@@ -46,6 +47,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -98,6 +100,7 @@ function makeRuntimeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
+		mock<AgentFileRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
@@ -112,6 +115,7 @@ function makeRuntimeReconstructionService(
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		outboundHttp,
+		mock<AgentKnowledgeSandboxService>(),
 	);
 }
 
@@ -216,6 +220,7 @@ describe('AgentsService', () => {
 			telemetry,
 			chatIntegrationService,
 			agentKnowledgeService,
+			mock(),
 			mock(),
 		);
 	});
@@ -1542,6 +1547,65 @@ describe('AgentsService', () => {
 
 			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
 			expect(streamConfig.userId).toBe(userId);
+		});
+
+		it('records a suspended execution when the consumer stops at the suspension event', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({ schema });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const chunks = [
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'chat_action', input: {} },
+				{
+					type: 'tool-call-suspended',
+					toolCallId: 'tc-1',
+					toolName: 'chat_action',
+					runId: 'run-1',
+					suspendPayload: { type: 'integration_action' },
+				},
+			];
+			const runtimeAgent = {
+				name: 'Test Agent',
+				stream: jest.fn().mockResolvedValue({
+					stream: new ReadableStream({
+						start(controller) {
+							for (const chunk of chunks) controller.enqueue(chunk);
+							controller.close();
+						},
+					}),
+				}),
+			};
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: runtimeAgent, toolRegistry: new Map() } as never);
+
+			// Mimic the SSE pump: stop consuming as soon as the suspension arrives.
+			// This abandons the generator mid-yield — recording must still happen.
+			for await (const chunk of service.executeForChat({
+				agentId,
+				projectId,
+				message: 'show me a card',
+				userId,
+				memory: { threadId: 'thread-1', resourceId: userId },
+			})) {
+				if (chunk.type === 'tool-call-suspended') break;
+			}
+			// recordMessage is fired-and-forgotten from a finally block — flush microtasks.
+			await new Promise(process.nextTick);
+
+			expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-1',
+					userMessage: 'show me a card',
+					hitlStatus: 'suspended',
+				}),
+			);
 		});
 	});
 

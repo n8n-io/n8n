@@ -7,6 +7,7 @@ import {
 	kindColorToken,
 	formatDuration,
 	IDLE_THRESHOLD_MS,
+	flattenExecutionsToTimelineItems,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -144,7 +145,6 @@ describe('builtinToolLabelKey', () => {
 	});
 });
 
-import { flattenExecutionsToTimelineItems } from '../session-timeline.utils';
 import type {
 	AgentExecution,
 	AgentExecutionTimelineEvent,
@@ -184,6 +184,45 @@ function withTimeline(
 }
 
 describe('flattenExecutionsToTimelineItems', () => {
+	it('marks the resumed record of a suspended tool call as user feedback', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-1',
+						input: { action: 'respond' },
+						startTime: 100,
+					},
+					{ type: 'suspension', toolName: 'chat_action', toolCallId: 'tc-1', timestamp: 110 },
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-1',
+						output: { type: 'button', value: 'approve' },
+						startTime: 200,
+					},
+				],
+				{ id: 'e-resumed', hitlStatus: 'resumed' },
+			),
+		]);
+
+		const toolItems = items.filter((item) => item.kind === 'tool');
+		expect(toolItems).toHaveLength(2);
+		// The original card-creating call is a normal tool call…
+		expect(toolItems[0].isUserFeedback).toBeUndefined();
+		// …the post-suspension record carries the user's answer.
+		expect(toolItems[1].isUserFeedback).toBe(true);
+	});
+
 	it('emits a user item from userMessage using execution startedAt', () => {
 		const items = flattenExecutionsToTimelineItems([exec({ userMessage: 'hello' })]);
 		expect(items[0]).toMatchObject({
