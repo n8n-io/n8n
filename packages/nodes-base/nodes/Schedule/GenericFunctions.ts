@@ -39,7 +39,7 @@ export function validateInterval(node: INode, itemIndex: number, interval: Sched
 
 export function recurrenceCheck(
 	recurrence: IRecurrenceRule,
-	recurrenceRules: number[],
+	recurrenceRules: Array<number | undefined | null>,
 	timezone: string,
 ): boolean {
 	if (!recurrence.activated) return true;
@@ -49,7 +49,9 @@ export function recurrenceCheck(
 
 	const index = recurrence.index;
 	const typeInterval = recurrence.typeInterval;
-	const lastExecution = recurrenceRules[index];
+	// A reset slot reads back as null once persisted (JSON turns undefined into null);
+	// treat both as "no prior run".
+	const lastExecution = recurrenceRules[index] ?? undefined;
 
 	const momentTz = moment.tz(timezone);
 	if (typeInterval === 'hours') {
@@ -75,9 +77,11 @@ export function recurrenceCheck(
 			return true;
 		}
 	} else if (typeInterval === 'months') {
-		const month = momentTz.month();
-		if (lastExecution === undefined || (month - lastExecution + 12) % 12 >= intervalSize) {
-			recurrenceRules[index] = month;
+		// Absolute month count (not the 0-11 index other branches use) so it stays
+		// monotonic and `intervalSize >= 12` works, which `% 12` could never reach.
+		const absoluteMonth = momentTz.year() * 12 + momentTz.month();
+		if (lastExecution === undefined || absoluteMonth - lastExecution >= intervalSize) {
+			recurrenceRules[index] = absoluteMonth;
 			return true;
 		}
 	}
@@ -136,7 +140,11 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 	// Cap at 29 (exclusive) so jitter yields 1-28: any higher day would silently
 	// skip months that don't contain it (e.g. day 30 skips February every year).
 	const dayOfMonth = interval.triggerAtDayOfMonth ?? stableInt(nodeKey, 'dayOfMonth', 1, 29);
-	return `${second} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
+	const months = interval.monthsInterval;
+	if (12 % months === 0) return `${second} ${minute} ${hour} ${dayOfMonth} */${months} *`;
+	// `*/${months}` only spaces evenly when months divides 12; otherwise fire every month
+	// and let recurrenceCheck enforce the gap (mirrors the hours handling above).
+	return `${second} ${minute} ${hour} ${dayOfMonth} * *`;
 };
 
 export function intervalToRecurrence(interval: ScheduleInterval, index: number) {
@@ -191,4 +199,31 @@ export function intervalToRecurrence(interval: ScheduleInterval, index: number) 
 	}
 
 	return recurrence;
+}
+
+/**
+ * Clears stored recurrence state when a schedule is edited, keyed by a per-index
+ * `type:size` signature. A stale or wrong-unit value from a previous config (or a
+ * missing signature pre-upgrade) would otherwise permanently block the trigger.
+ */
+export function resetStaleRecurrence(
+	staticData: {
+		recurrenceRules: Array<number | undefined>;
+		recurrenceRuleSignatures: Array<string | undefined>;
+	},
+	rules: Array<{ recurrence: IRecurrenceRule }>,
+): void {
+	rules.forEach(({ recurrence }, index) => {
+		const signature = recurrence.activated
+			? `${recurrence.typeInterval}:${recurrence.intervalSize}`
+			: undefined;
+		if (staticData.recurrenceRuleSignatures[index] !== signature) {
+			staticData.recurrenceRules[index] = undefined;
+			staticData.recurrenceRuleSignatures[index] = signature;
+		}
+	});
+
+	// Drop entries left by a previous config with more intervals.
+	staticData.recurrenceRules.length = rules.length;
+	staticData.recurrenceRuleSignatures.length = rules.length;
 }
