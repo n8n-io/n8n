@@ -249,14 +249,16 @@ function buildShapeResult(group: CellGroupEntry[]): ShapeResult {
 	const bottleneck = detectBottleneck(headroom, latP99);
 	const verdict = scoreVerdict(headroom, latP99, group.length);
 
-	// Median of per-run green projections, capped at observed ceiling.
-	const ceilingMax = execs.length ? Math.max(...execs) : 0;
+	// Median of per-run green projections, capped at the representative (p50)
+	// ceiling — never the max, or a cell whose runs vary widely would report a
+	// "sustained" figure above its own typical saturation point.
+	const ceiling = summarise(execs);
 	const perRunGreens = perRun.map((r) => r.greenProjection).filter((v) => v > 0);
 	const greenMedian = perRunGreens.length ? median(perRunGreens) : 0;
-	const greenSustainedExecPerSec = Math.min(greenMedian, ceilingMax);
+	const greenSustainedExecPerSec = Math.min(greenMedian, ceiling.p50);
 
 	return {
-		ceilingExecPerSec: summarise(execs),
+		ceilingExecPerSec: ceiling,
 		tailExecPerSec: tailExecs.length ? summarise(tailExecs) : undefined,
 		reqPerSec: reqs.length ? summarise(reqs) : undefined,
 		latency: { p50: latP50, p975: latP975, p99: latP99 },
@@ -540,8 +542,8 @@ export function renderMarkdown(matrix: SizingMatrix): string {
 	lines.push(
 		'Cells are aggregated by the substrate at `packages/testing/playwright/utils/benchmark/sizing-matrix.ts` from per-run `run-report.json` files. ' +
 			'The headline **ceiling** is the p50 `execPerSec` across cold runs; the full p50/p95/max is in cell detail. ' +
-			'**sustained** is a headroom-derived figure (throughput at which main CPU < 75%, PG CPU < 70%, event-loop lag < 25 ms would hold). ' +
-			'It is a raw computed signal, not a vetted recommendation — on cells that aggregate dissimilar scenarios it can sit near or above the ceiling p50; reconciling that is tracked separately. ' +
+			'**sustained** is a headroom-derived figure (throughput at which main CPU < 75%, PG CPU < 70%, event-loop lag < 25 ms would hold), capped at the ceiling p50. ' +
+			'It is a raw computed signal, not a vetted recommendation. ' +
 			'**Workload IOPS** is `pg_stat_io` `client backend` reads+writes+extends per second; ' +
 			'**overhead factor** is `(workload + bgwriter + checkpointer + walwriter + autovacuum) / workload`. ' +
 			'WAL is reported separately (`MB/s`, `records/s`).',

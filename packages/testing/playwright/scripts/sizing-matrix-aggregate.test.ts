@@ -169,6 +169,10 @@ describe('sizing-matrix aggregation over a real captured fixture (DEVP-531)', ()
 			expect(typeof cell.topology.concurrency).toBe('number');
 			for (const shape of Object.values(cell.shapes)) {
 				if (!shape) continue;
+				// Sustained must never exceed the representative (p50) ceiling.
+				expect(shape.greenSustainedExecPerSec).toBeLessThanOrEqual(
+					shape.ceilingExecPerSec.p50,
+				);
 				for (const source of shape.sourceRuns) {
 					// Reports carry no commit of their own; falls back to the run sha.
 					expect(source.commitSha).toBe('deadbeef');
