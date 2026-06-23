@@ -118,20 +118,34 @@ n8n-assistant leaves a comment on every community PR containing `This PR has bee
 
 If no n8n-assistant comment exists (older PRs that predate the automation), `linearTicket` is `null`.
 
-## Step 5b — Find Linear tickets for issues this PR claims to fix
+## Step 5b — Find related issue tickets and detect duplicates
 
-The PR body often says `Fixes #NNNN` / `Closes #NNNN` / `Resolves #NNNN` (or links to `https://github.com/n8n-io/n8n/issues/NNNN`). Each of those issues usually has its own GHC ticket (or has already been triaged to a team). Surface those so the assign action can cross-reference them.
+The PR body often says `Fixes #NNNN` / `Closes #NNNN` / `Resolves #NNNN` (or links to `https://github.com/n8n-io/n8n/issues/NNNN`). Each of those issues usually has its own GHC ticket (or has already been triaged to a team). When a PR references an issue, that **issue ticket** becomes the source of truth: the action paths link the PR onto it and (when ready) cancel the PR's own review ticket. Surface the related tickets and any duplicate PRs here so the action paths can act on them.
+
+### Related issue tickets
 
 1. Extract every issue number from the PR body matching `\b(?:fix(?:es)?|close[sd]?|resolve[sd]?)\s+#?(\d+)\b` (case-insensitive) **or** URLs matching `github\.com/n8n-io/n8n/issues/(\d+)`. Deduplicate.
 2. For each issue number, search Linear with the available Linear MCP issue-search tool (query `github.com/n8n-io/n8n/issues/<num>`, limit 50) and filter the result to issues whose `description` contains the exact URL `https://github.com/n8n-io/n8n/issues/<num>`. The n8n-assistant bot embeds that URL in the description of every community-issue ticket it creates, so the match is reliable. Use the default limit of 50 (not a smaller value): the `query` is a substring search ordered by `updatedAt`, so `issues/<num>` also matches longer issue numbers (e.g. searching `123` matches `1234`) and the exact ticket can sit anywhere in the result set — a tight limit would silently drop it. If 50 results come back full, paginate with `cursor` until the exact match is found or results are exhausted.
-3. Collect the matching ticket IDs (e.g. `GHC-1234`, or wherever they've been routed since — `NODE-5678`, `CAT-3338`). Include cancelled/duplicate tickets too — the comment is still useful for traceability.
+3. Collect the matching ticket IDs (e.g. `GHC-1234`, or wherever they've been routed since — `NODE-5678`, `CAT-3338`). Include cancelled/duplicate tickets too — the link is still useful for traceability.
 
-Emit the result as `relatedIssueTickets` in the JSON. During the `assign` action the cross-reference is posted **both ways** so both ends carry the link:
+Emit the result as `relatedIssueTickets` in the JSON. If no `Fixes/Closes/Resolves` references exist, return `relatedIssueTickets: []`. The linking action itself lives in step 7 (see "Linking a PR to its issue ticket").
 
-- On each related issue ticket — *"FYI, [community PR #<pr>](https://github.com/n8n-io/n8n/pull/<pr>) claims to fix the issue tracked here; routed to <team> as <linearTicket>."*
-- On the PR's own ticket (`linearTicket`), when it is non-null — a note pointing back to each related issue ticket.
+### Duplicate PRs
 
-If no `Fixes/Closes/Resolves` references exist, return `relatedIssueTickets: []`.
+When a PR references an issue, another contributor may already have an open PR for the same issue. Gather candidate duplicates from three signals — any hit means the action path should ask whether to close this PR (path D, duplicate template). Run for each referenced issue number:
+
+```bash
+# Other open PRs mentioning the same issue
+gh pr list --repo n8n-io/n8n --state open \
+  --search "#<num> in:body" --json number,title,author
+
+# PRs cross-referenced / linked on the GitHub issue itself
+gh api --paginate "repos/n8n-io/n8n/issues/<num>/timeline" \
+  --jq '[.[] | select(.event=="cross-referenced") | .source.issue
+         | select(.pull_request) | {number, title}]'
+```
+
+Also inspect the matched Linear issue ticket (from the search above) for an already-attached PR link in its `links`/attachments. Exclude the PR under review from every signal, deduplicate by PR number, and emit the result as `duplicatePRs` in the JSON (`[]` when none).
 
 ## Step 6 — Output JSON
 
@@ -142,6 +156,7 @@ If no `Fixes/Closes/Resolves` references exist, return `relatedIssueTickets: []`
   "team": "<Linear team name (from reference/teams.md), or 'Engineering' as fallback>",
   "linearTicket": "<GHC-XXXX or null>",
   "relatedIssueTickets": [<"GHC-1234" | "NODE-5678" | ...>],
+  "duplicatePRs": [<{ "number": <int>, "title": "<string>" }, ...>],
   "checks": {
     "AutoReject": <"typo-only" | "new-node" | null>,
     "CLA": <bool>,
@@ -162,6 +177,23 @@ Emit the JSON first, then take the appropriate action path below.
 
 Ask the user for each prompt (presented as the listed options). Sub-agents called for analysis only should stop after step 6 and let the caller drive step 7.
 
+### Linking a PR to its issue ticket
+
+Invoked from **B** and **C** whenever `relatedIssueTickets` is non-empty. The referenced **issue ticket** becomes the source of truth; the PR is attached to it via Linear's link feature. For each ticket in `relatedIssueTickets`, call the Linear MCP issue-update tool:
+
+```text
+id    = <issue ticket>
+links = [{ url: "https://github.com/n8n-io/n8n/pull/<pr>",
+           title: "Community PR #<pr>" }]   # append-only — existing links are preserved
+```
+
+Then post a comment (Linear MCP comment tool, `issueId = <issue ticket>`) whose wording depends on whether the PR is ready:
+
+- **ready + assign (path B):** *"The linked community PR #<pr> may resolve this issue."*
+- **not ready (path C):** *"A community PR (#<pr>) is in progress that may resolve this, but it is still being triaged."*
+
+State and ticket-closure handling differ by path and are described in **B** and **C** below.
+
 ### A — Minor title fix
 
 A title issue is **minor** if it can be repaired by a deterministic transformation:
@@ -181,11 +213,26 @@ Then re-evaluate `Title` (now passes) and continue to **B** or **C**. Non-minor 
 
 ### B — Triage to team (`readyForReview === true`)
 
-Ask: *"PR is ready for review. Assign Linear ticket `<linearTicket>` to team `<team>` and move to <destination state>?"* Options: `Yes, assign and triage` / `No, leave as-is`.
+**Duplicate guard first.** If `duplicatePRs` is non-empty, surface them (number + title) and ask whether to close this PR as a duplicate. On `Yes`, go to **D** (duplicate template). On `No`, continue with B below.
 
-Destination state: `Review` for NODES, `Triage` for every other team. Label composition: see `reference/teams.md`.
+Destination state: `Review` for NODES, `Triage` for every other team — keyed off the PR's resolved owner `team`. Label composition: see `reference/teams.md`.
 
-On `Yes`:
+**If `relatedIssueTickets` is non-empty — the issue ticket is the source of truth.** Ask: *"PR is ready for review. Link it onto issue ticket(s) `<relatedIssueTickets>`, move them to <destination state>, and cancel the PR's own ticket `<linearTicket>`?"* Options: `Yes, link and triage` / `No, leave as-is`. On `Yes`:
+
+1. Run "Linking a PR to its issue ticket" (ready variant) for each related ticket.
+2. Move **each** related issue ticket's state via the Linear MCP issue-update tool (`id = <issue ticket>`, `state = <destination>`) — `Review` for NODES, `Triage` otherwise.
+3. Cancel the PR's own review ticket: Linear MCP issue-update with `id = linearTicket`, `state = "Canceled"` (skip if `linearTicket` is `null`).
+4. Apply the GitHub PR labels (only if the Linear updates succeeded), so reviewers still find the PR:
+   ```bash
+   gh pr edit <number> --repo n8n-io/n8n \
+     --remove-label "triage:in-progress" \
+     --remove-label "status:pending-assignment" \
+     --add-label "team:<slug>" \
+     --add-label "status:team-assigned" \
+     --add-label "triage:complete"
+   ```
+
+**Otherwise (no related issue ticket) — classic path, unchanged.** Ask: *"PR is ready for review. Assign Linear ticket `<linearTicket>` to team `<team>` and move to <destination state>?"* Options: `Yes, assign and triage` / `No, leave as-is`. On `Yes`:
 
 ```bash
 # 1. Linear — call the available Linear MCP issue-update tool with:
@@ -202,9 +249,11 @@ gh pr edit <number> --repo n8n-io/n8n \
   --add-label "triage:complete"
 ```
 
-If `linearTicket` is `null`, ask whether to create a new Linear ticket before triaging (older PRs predating n8n-assistant). Otherwise skip B and ask the user.
+The PR's own review ticket is **not** canceled in the classic path — it remains the tracking ticket. If `linearTicket` is `null`, ask whether to create a new Linear ticket before triaging (older PRs predating n8n-assistant). Otherwise skip B and ask the user.
 
 ### C — Post contributor comment (`readyForReview === false`, no auto-reject)
+
+If `relatedIssueTickets` is non-empty, run "Linking a PR to its issue ticket" (not-ready variant): add the PR link and post the "in progress, still being triaged" comment. **Leave each issue ticket's state unchanged and do not cancel the PR's own review ticket** — the PR isn't ready yet, so we only flag the in-progress work. (Optionally surface `duplicatePRs` to the user, but do not close here — closing is a path-D action driven from B.)
 
 Show `messageForUser` and ask `Post as-is / Edit before posting / Skip`. On post:
 
@@ -221,7 +270,7 @@ Skip C entirely if A already handled the only failing check and the PR is now re
 Used when the PR should be closed rather than reviewed. Three common triggers:
 
 1. **Auto-rejection** (`AutoReject` set) — typo-only or unsanctioned new node.
-2. **Duplicate** — another open PR addresses the same change.
+2. **Duplicate** — `duplicatePRs` is non-empty (another open PR addresses the same change), confirmed via the duplicate guard in path B. Use `#<other-pr>` from `duplicatePRs` in the template.
 3. **Out of scope / bundled** — multiple unrelated fixes that should be split, or scope n8n team has declined.
 
 Ask `Close + comment / Edit before closing / Skip`. Templates below; pick one and adapt to the contributor and specifics.
