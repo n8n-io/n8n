@@ -162,9 +162,11 @@ test.describe(
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest');
 			await n8n.ndv.close();
 
-			await n8n.canvas.openNode('Function');
+			// Cron is a hidden, non-deprecated node — used to verify the NDV
+			// renders the "Deprecated" label for hidden node types.
+			await n8n.canvas.openNode('Cron');
 			await n8n.ndv.openSettings();
-			await expect(n8n.ndv.getNodeVersion()).toContainText('Function node version 1');
+			await expect(n8n.ndv.getNodeVersion()).toContainText('Cron node version 1');
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Deprecated');
 			await n8n.ndv.close();
 		});
