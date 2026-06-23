@@ -259,7 +259,7 @@ export class WorkflowExecute {
 			}
 
 			if (!startNode) {
-				throw new UserError('Connect a trigger to run this node');
+				throw new UserError("Connect a trigger and make sure it's enabled to run this node");
 			}
 
 			trigger = startNode;
@@ -268,11 +268,12 @@ export class WorkflowExecute {
 		// 2. Find the Subgraph
 		const filteredGraph = filterDisabledNodes(graph);
 
-		// The trigger and destination must survive disabled-node filtering. If either was
-		// removed (i.e. it is disabled), the subgraph search below would look it up and fail
-		// an internal invariant. Raise a clear user error instead.
-		if (!filteredGraph.hasNode(trigger.name) || !filteredGraph.hasNode(destination.name)) {
-			throw new UserError('Connect a trigger to run this node');
+		// A disabled destination is removed by filterDisabledNodes, which would make the
+		// subgraph search below fail an internal membership assertion. Raise a clear user
+		// error instead. The trigger is always enabled here (both findTriggerForPartialExecution
+		// and the fallback above skip disabled nodes), so only the destination needs checking.
+		if (destination.disabled) {
+			throw new UserError('Cannot execute a disabled node');
 		}
 
 		graph = findSubgraph({ graph: filteredGraph, destination, trigger });

@@ -29,6 +29,8 @@ test.describe(
 			const { containerConfig } = testInfo.project.use as {
 				containerConfig?: { workers?: number };
 			};
+			// In queue mode the partial run is handled by a worker, so the UserError never
+			// reaches the main-process UI as a toast. Only assert it in direct (main-only) mode.
 			test.skip(
 				Boolean(containerConfig?.workers),
 				'Toast is only shown when the run executes on a main',
@@ -49,7 +51,9 @@ test.describe(
 			await n8n.ndv.clickExecuteStep();
 
 			await expect(
-				n8n.notifications.getNotificationByContent(/Connect a trigger to run this node/).first(),
+				n8n.notifications
+					.getNotificationByContent(/Connect a trigger and make sure it's enabled/)
+					.first(),
 			).toBeVisible();
 		});
 
