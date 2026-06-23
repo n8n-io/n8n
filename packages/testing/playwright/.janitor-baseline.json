@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T08:21:33.897Z",
-	"totalViolations": 157,
+	"generated": "2026-06-23T11:25:37.690Z",
+	"totalViolations": 148,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -497,62 +497,6 @@
 				"line": 109,
 				"message": "Raw API call detected: request.get(",
 				"hash": "7fcb046dd97c"
-			}
-		],
-		"tests/e2e/workflows/checklist/production-checklist.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 68,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "dcfe3de9f694"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 69,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-error-workflow')",
-				"hash": "e577a775be00"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 86,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "dcfe3de9f694"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 98,
-				"message": "Chained locator call in test: n8n.canvas.getProductionChecklistActionItem().first().get...",
-				"hash": "9dd8a54c4eb2"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 101,
-				"message": "Direct page locator call: n8n.page.locator('body').click({ position: { x: 0, y: 0 } })",
-				"hash": "4d45ef0d0614"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 101,
-				"message": "Direct page locator call: n8n.page.locator('body')",
-				"hash": "977cc8c274c9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 139,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "dcfe3de9f694"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 145,
-				"message": "Chained locator call in test: n8n.canvas .getProductionChecklistActionItem() .first() ....",
-				"hash": "b461f186b890"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 162,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
-				"hash": "daa8dd6de062"
 			}
 		],
 		"tests/e2e/workflows/editor/tags.spec.ts": [
