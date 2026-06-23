@@ -474,6 +474,7 @@ describe('GlobalConfig', () => {
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
+			maxDisplaySize: 100 * 1024 * 1024,
 		},
 		diagnostics: {
 			enabled: true,
