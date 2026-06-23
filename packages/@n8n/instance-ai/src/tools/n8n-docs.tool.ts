@@ -96,11 +96,17 @@ async function handleLookup(context: Pick<InstanceAiContext, 'logger'>, input: N
 	const documents: N8nDocsDocument[] = [];
 	const readErrors: string[] = [];
 
-	for (const match of pagesToRead) {
-		try {
-			documents.push(await readN8nDocsEntry(match, maxContentLength));
-		} catch (error) {
-			readErrors.push(`${match.title}: ${getFetchErrorMessage(error)}`);
+	const readResults = await Promise.allSettled(
+		pagesToRead.map(async (match) => await readN8nDocsEntry(match, maxContentLength)),
+	);
+
+	for (const [index, result] of readResults.entries()) {
+		const match = pagesToRead[index];
+		if (!match) continue;
+		if (result.status === 'fulfilled') {
+			documents.push(result.value);
+		} else {
+			readErrors.push(`${match.title}: ${getFetchErrorMessage(result.reason)}`);
 		}
 	}
 

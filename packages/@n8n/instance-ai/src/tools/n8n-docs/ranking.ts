@@ -2,42 +2,6 @@ import { normalizeDocsUrl, type N8nDocsRegistryEntry } from './registry';
 import type { N8nDocsLookupInput, N8nDocsSearchInput } from './schemas';
 
 const CREDENTIAL_SETUP_DOC_PATH = '/credentials/add-edit-credentials/index.md';
-const GOOGLE_SERVICE_TOKENS = new Set([
-	'gmail',
-	'google',
-	'calendar',
-	'contacts',
-	'docs',
-	'drive',
-	'sheets',
-	'slides',
-	'tasks',
-	'workspace',
-	'gsuite',
-]);
-const STOPWORDS = new Set([
-	'a',
-	'an',
-	'and',
-	'api',
-	'for',
-	'how',
-	'i',
-	'in',
-	'is',
-	'it',
-	'n8n',
-	'of',
-	'on',
-	'or',
-	'set',
-	'setup',
-	'the',
-	'to',
-	'up',
-	'use',
-	'with',
-]);
 
 type LookupLikeInput = Pick<
 	N8nDocsLookupInput | N8nDocsSearchInput,
@@ -68,7 +32,7 @@ function tokenize(...values: Array<string | undefined>): string[] {
 	for (const value of values) {
 		if (!value) continue;
 		for (const token of normalizeTokenSource(value).match(/[a-z0-9]+/g) ?? []) {
-			if (token.length < 2 || STOPWORDS.has(token) || seen.has(token)) continue;
+			if (token.length < 2 || seen.has(token)) continue;
 			seen.add(token);
 			tokens.push(token);
 		}
@@ -86,10 +50,6 @@ function pathStartsWith(entry: N8nDocsRegistryEntry, prefix: string): boolean {
 
 function isCredentialSetupIntent(intent: string | undefined): boolean {
 	return intent === 'credential-setup';
-}
-
-function inferGoogleCredential(tokens: string[]): boolean {
-	return tokens.some((token) => GOOGLE_SERVICE_TOKENS.has(token));
 }
 
 export function getLookupQuery(input: LookupLikeInput): string {
@@ -158,12 +118,6 @@ function scoreEntry(entry: N8nDocsRegistryEntry, input: RankInput): N8nDocsMatch
 
 		if (pathStartsWith(entry, '/integrations/builtin/app-nodes/')) {
 			score -= 25;
-		}
-
-		const googleCredential = inferGoogleCredential([...queryTokens, ...credentialTokens]);
-		if (googleCredential && path.includes('/credentials/google/')) {
-			score += 110;
-			reasons.push('Google credential setup docs');
 		}
 
 		if (credentialTokens.includes('oauth') || credentialTokens.includes('oauth2')) {
