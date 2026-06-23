@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -8,6 +9,8 @@ import {
 } from '@/workflows/workflow-published-data.service';
 
 describe('WorkflowPublishedDataService', () => {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const cacheService = mock<CacheService>();
 	let service: WorkflowPublishedDataService;
@@ -16,7 +19,11 @@ describe('WorkflowPublishedDataService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		service = new WorkflowPublishedDataService(workflowPublishedVersionRepository, cacheService);
+		service = new WorkflowPublishedDataService(
+			logger,
+			workflowPublishedVersionRepository,
+			cacheService,
+		);
 	});
 
 	function makeRecord() {
@@ -77,6 +84,18 @@ describe('WorkflowPublishedDataService', () => {
 			expect(
 				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
 			).not.toHaveBeenCalled();
+		});
+
+		test('falls back to the database when the cache read fails', async () => {
+			const { record } = makeRecord();
+			cacheService.get.mockRejectedValueOnce(new Error('redis down'));
+			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+
+			const result = await service.getPublishedWorkflowData('wf-1');
+
+			expect(result).not.toBeNull();
+			expect(result!.workflow.name).toBe('Workflow Name');
+			expect(logger.warn).toHaveBeenCalled();
 		});
 
 		test('returns null when no record exists', async () => {

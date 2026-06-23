@@ -1,9 +1,11 @@
+import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublishedVersionRepository,
 	type WorkflowEntity,
 	type WorkflowHistory,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -19,9 +21,12 @@ const cacheKey = (workflowId: string) => `workflow-published-data:${workflowId}`
 @Service()
 export class WorkflowPublishedDataService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly cacheService: CacheService,
-	) {}
+	) {
+		this.logger = this.logger.scoped('workflow-publication');
+	}
 
 	/**
 	 * Resolves a workflow's published version: returns the workflow entity and the
@@ -33,8 +38,26 @@ export class WorkflowPublishedDataService {
 	 * (see {@link refreshCache}).
 	 */
 	async getPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
-		const cached = await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
+		const cached = await this.readFromCache(workflowId);
 		return cached ?? (await this.loadFromDb(workflowId));
+	}
+
+	/**
+	 * Reads the cached entry, degrading to a miss if the cache is unavailable.
+	 * This runs on the hot trigger/webhook path, so a transient cache outage must
+	 * fall through to the database rather than fail published-workflow resolution
+	 * — the cache is only an optimization on top of the source of truth.
+	 */
+	private async readFromCache(workflowId: string): Promise<PublishedWorkflowData | undefined> {
+		try {
+			return await this.cacheService.get<PublishedWorkflowData>(cacheKey(workflowId));
+		} catch (error) {
+			this.logger.warn('Failed to read published-version cache; falling back to the database', {
+				workflowId,
+				error: ensureError(error).message,
+			});
+			return undefined;
+		}
 	}
 
 	/**
