@@ -1,12 +1,7 @@
+import { parseImports } from '@n8n/rules-engine/ast';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import ts from 'typescript';
-
-export interface ImportRef {
-	specifier: string;
-	typeOnly: boolean;
-	line: number;
-}
+import { Project } from 'ts-morph';
 
 /** Where a bare specifier first enters the runtime graph. */
 export interface ExternalRef {
@@ -14,87 +9,6 @@ export interface ExternalRef {
 	/** Absolute path of the file that imports it. */
 	file: string;
 	line: number;
-}
-
-function isTypeOnlyExport(node: ts.ExportDeclaration): boolean {
-	return (
-		node.isTypeOnly ||
-		(node.exportClause !== undefined &&
-			ts.isNamedExports(node.exportClause) &&
-			node.exportClause.elements.length > 0 &&
-			node.exportClause.elements.every((element) => element.isTypeOnly))
-	);
-}
-
-function isTypeOnlyImport(node: ts.ImportDeclaration): boolean {
-	const clause = node.importClause;
-	if (!clause) {
-		// bare side-effect import runs at runtime
-		return false;
-	}
-	if (clause.isTypeOnly) {
-		return true;
-	}
-	if (clause.name) {
-		return false; // default binding
-	}
-	const bindings = clause.namedBindings;
-	return (
-		bindings !== undefined &&
-		ts.isNamedImports(bindings) &&
-		bindings.elements.length > 0 &&
-		bindings.elements.every((element) => element.isTypeOnly)
-	);
-}
-
-/**
- * Extract module specifiers from a source file via the TypeScript AST. Covers
- * static `import`/`export ... from`, bare side-effect imports, and the runtime
- * forms a regex would miss: dynamic `import('<s>')` and `require('<s>')`.
- */
-export function parseImports(fileName: string, source: string): ImportRef[] {
-	const refs: ImportRef[] = [];
-	const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
-
-	const lineOf = (node: ts.Node): number =>
-		sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
-
-	const visit = (node: ts.Node): void => {
-		// `import ... from '<s>'` / `import '<s>'`
-		if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-			refs.push({
-				specifier: node.moduleSpecifier.text,
-				typeOnly: isTypeOnlyImport(node),
-				line: lineOf(node),
-			});
-		}
-		// `export ... from '<s>'` (re-exports; bare `export {}` has no specifier)
-		else if (
-			ts.isExportDeclaration(node) &&
-			node.moduleSpecifier &&
-			ts.isStringLiteral(node.moduleSpecifier)
-		) {
-			refs.push({
-				specifier: node.moduleSpecifier.text,
-				typeOnly: isTypeOnlyExport(node),
-				line: lineOf(node),
-			});
-		}
-		// Dynamic `import('<s>')` and `require('<s>')` — always runtime.
-		else if (ts.isCallExpression(node)) {
-			const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
-			const isRequire = ts.isIdentifier(node.expression) && node.expression.text === 'require';
-			const [arg] = node.arguments;
-			if ((isDynamicImport || isRequire) && arg && ts.isStringLiteral(arg)) {
-				refs.push({ specifier: arg.text, typeOnly: false, line: lineOf(node) });
-			}
-		}
-
-		ts.forEachChild(node, visit);
-	};
-
-	visit(sourceFile);
-	return refs;
 }
 
 function resolveRelative(fromFile: string, specifier: string): string | undefined {
@@ -114,20 +28,30 @@ function resolveRelative(fromFile: string, specifier: string): string | undefine
 export function collectRuntimeExternals(entry: string): Map<string, ExternalRef> {
 	const externals = new Map<string, ExternalRef>();
 	const visited = new Set<string>();
+	const project = new Project({
+		skipAddingFilesFromTsConfig: true,
+		skipFileDependencyResolution: true,
+	});
 
 	const visit = (file: string) => {
 		if (visited.has(file)) return;
 		visited.add(file);
 
-		const source = fs.readFileSync(file, 'utf8');
-		for (const { specifier, typeOnly, line } of parseImports(file, source)) {
-			if (typeOnly) continue; // erased at compile time — no runtime dependency
-			if (specifier.startsWith('.')) {
-				const resolved = resolveRelative(file, specifier);
-				if (resolved) visit(resolved);
-				continue;
+		const sourceFile = project.addSourceFileAtPath(file);
+		for (const { specifier, typeOnly, line } of parseImports(sourceFile)) {
+			// erased at compile time — no runtime dependency
+			if (!typeOnly) {
+				if (specifier.startsWith('.')) {
+					const resolved = resolveRelative(file, specifier);
+					if (resolved) {
+						visit(resolved);
+					}
+					continue;
+				}
+				if (!externals.has(specifier)) {
+					externals.set(specifier, { specifier, file, line });
+				}
 			}
-			if (!externals.has(specifier)) externals.set(specifier, { specifier, file, line });
 		}
 	};
 
