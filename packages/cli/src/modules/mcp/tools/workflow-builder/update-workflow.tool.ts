@@ -14,6 +14,7 @@ import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
 import {
 	applyOperations,
+	findOverlappingStickyNotes,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
 	type PartialUpdateOperation,
@@ -404,6 +405,10 @@ export const createUpdateWorkflowTool = (
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
 			} as unknown as WorkflowJSON);
+
+			// Flag overlapping sticky notes so the agent can drop obsolete ones or
+			// reposition them on the next call.
+			validationWarnings.push(...findOverlappingStickyNotes(workflowUpdateData.nodes));
 
 			let tagIds: string[] | undefined;
 			if (result.tagNames !== undefined) {

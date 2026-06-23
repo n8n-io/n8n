@@ -6,7 +6,7 @@ import type {
 	IWorkflowBase,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -388,6 +388,99 @@ const fail = (opIndex: number, message: string): ApplyOperationsFailure => ({
 	opIndex,
 });
 
+// Nominal sizes used for sticky-note placement. The update path has no rendered
+// canvas, so we approximate node footprints to keep new stickies clear of
+// existing content. These mirror the SDK layout defaults closely enough.
+const GRID_SIZE = 16;
+const NOMINAL_NODE_WIDTH = GRID_SIZE * 6; // 96
+const NOMINAL_NODE_HEIGHT = GRID_SIZE * 6; // 96
+const DEFAULT_STICKY_WIDTH = GRID_SIZE * 15; // 240
+const DEFAULT_STICKY_HEIGHT = GRID_SIZE * 10; // 160
+const STICKY_GAP = GRID_SIZE * 4; // 64
+
+interface Box {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+const snapToGrid = (value: number): number => Math.round(value / GRID_SIZE) * GRID_SIZE;
+
+const toNumber = (value: unknown): number | undefined =>
+	typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+/** Approximate the on-canvas footprint of a node. Sticky notes carry their own size. */
+const nodeBox = (node: INode): Box => {
+	const [x, y] = node.position ?? [0, 0];
+	if (node.type === STICKY_NODE_TYPE) {
+		const params = (node.parameters ?? {}) as Record<string, unknown>;
+		return {
+			x,
+			y,
+			width: toNumber(params.width) ?? DEFAULT_STICKY_WIDTH,
+			height: toNumber(params.height) ?? DEFAULT_STICKY_HEIGHT,
+		};
+	}
+	return { x, y, width: NOMINAL_NODE_WIDTH, height: NOMINAL_NODE_HEIGHT };
+};
+
+const boxesOverlap = (a: Box, b: Box): boolean =>
+	a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+/**
+ * Compute a position for a new sticky note that does not overlap existing
+ * content. The sticky is placed below the bounding box of all existing nodes.
+ * Stickies added earlier in the same batch are already part of `existingNodes`,
+ * so successive stickies stack cleanly below one another.
+ */
+const placeStickyBelowContent = (existingNodes: INode[]): [number, number] => {
+	if (existingNodes.length === 0) return [0, 0];
+
+	let minX = Infinity;
+	let maxY = -Infinity;
+	for (const node of existingNodes) {
+		const box = nodeBox(node);
+		minX = Math.min(minX, box.x);
+		maxY = Math.max(maxY, box.y + box.height);
+	}
+
+	return [snapToGrid(minX), snapToGrid(maxY + STICKY_GAP)];
+};
+
+export interface StickyOverlapWarning {
+	code: string;
+	message: string;
+	nodeName?: string;
+}
+
+/**
+ * Detect sticky notes whose footprints overlap, so the update tool can surface
+ * a warning and the agent can self-correct (e.g. remove duplicates next call).
+ */
+export function findOverlappingStickyNotes(nodes: INode[]): StickyOverlapWarning[] {
+	const stickies = nodes.filter((n) => n.type === STICKY_NODE_TYPE);
+	const warnings: StickyOverlapWarning[] = [];
+	const seen = new Set<number>();
+
+	for (let i = 0; i < stickies.length; i++) {
+		for (let j = i + 1; j < stickies.length; j++) {
+			if (!boxesOverlap(nodeBox(stickies[i]), nodeBox(stickies[j]))) continue;
+			for (const idx of [i, j]) {
+				if (seen.has(idx)) continue;
+				seen.add(idx);
+				warnings.push({
+					code: 'overlapping_sticky_notes',
+					message: `Sticky note '${stickies[idx].name}' overlaps another sticky note. Remove obsolete sticky notes or reposition them so each is readable.`,
+					nodeName: stickies[idx].name,
+				});
+			}
+		}
+	}
+
+	return warnings;
+}
+
 /**
  * Apply a sequence of partial-update operations to a workflow slice atomically.
  * Returns the mutated clone on success, or the first failure with the offending op index.
@@ -441,12 +534,20 @@ export function applyOperations(
 				if (nodeByName.has(op.node.name)) {
 					return fail(i, `a node named '${op.node.name}' already exists`);
 				}
+				// Sticky notes added without a position would otherwise default to
+				// [0, 0] and stack at the origin (the update path runs no layout).
+				// Place them below existing content so they stay clear of nodes and
+				// each other.
+				let position: [number, number] = op.node.position ?? [0, 0];
+				if (op.node.position === undefined && op.node.type === STICKY_NODE_TYPE) {
+					position = placeStickyBelowContent(workflow.nodes);
+				}
 				const node: INode = {
 					id: op.node.id ?? uuid(),
 					name: op.node.name,
 					type: op.node.type,
 					typeVersion: op.node.typeVersion,
-					position: op.node.position ?? [0, 0],
+					position,
 					parameters: (sanitizeUnsafeKeys(op.node.parameters ?? {}) ?? {}) as INodeParameters,
 				};
 				if (op.node.credentials) {

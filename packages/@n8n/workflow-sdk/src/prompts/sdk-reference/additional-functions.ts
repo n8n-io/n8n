@@ -20,6 +20,7 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
   // All three must be added to the workflow:
   workflow('id', 'name').add(httpNode.to(setNode)).add(note);
   \`\`\`
+  On updates: when a workflow already has sticky notes, edit or replace the existing ones instead of adding new stickies next to them — otherwise old and new stickies pile up and overlap. Update the existing sticky's content/position, or remove the obsolete sticky before adding its replacement.
 
 - \`.output(n)\` — selects a specific output index for multi-output nodes. The index is **0-based**: \`.output(0)\` is the first output, \`.output(1)\` is the second. IF and Switch have dedicated methods (\`onTrue/onFalse\`, \`onCase\`), but \`.output(n)\` works as a generic alternative.
   Example: \`classifier.output(0).to(categoryA); classifier.output(1).to(categoryB)\`

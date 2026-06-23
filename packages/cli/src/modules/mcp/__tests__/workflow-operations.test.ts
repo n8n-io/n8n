@@ -2,9 +2,12 @@ import type { IConnections, INode } from 'n8n-workflow';
 
 import {
 	applyOperations,
+	findOverlappingStickyNotes,
 	partialUpdateOperationSchema,
 	type PartialUpdateOperation,
 } from '../tools/workflow-builder/workflow-operations';
+
+const STICKY_TYPE = 'n8n-nodes-base.stickyNote';
 
 const makeNode = (overrides: Partial<INode> = {}): INode => ({
 	id: 'node-id',
@@ -365,6 +368,81 @@ describe('applyOperations', () => {
 			expect(result.success).toBe(false);
 			if (result.success) return;
 			expect(result.error).toContain("a node named 'A' already exists");
+		});
+
+		test('places a position-less sticky below existing content, not at the origin', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'addNode', node: { name: 'Note', type: STICKY_TYPE, typeVersion: 1 } },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			// Base nodes A and B sit at y=0 (height 96); the sticky lands below them.
+			const note = result.workflow.nodes.find((n) => n.name === 'Note')!;
+			expect(note.position).toEqual([0, 160]);
+			expect(note.position).not.toEqual([0, 0]);
+		});
+
+		test('staggers multiple position-less stickies so they do not overlap', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'addNode', node: { name: 'Note 1', type: STICKY_TYPE, typeVersion: 1 } },
+				{ type: 'addNode', node: { name: 'Note 2', type: STICKY_TYPE, typeVersion: 1 } },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const stickies = result.workflow.nodes.filter((n) => n.type === STICKY_TYPE);
+			expect(findOverlappingStickyNotes(result.workflow.nodes)).toEqual([]);
+			expect(stickies[0].position).not.toEqual(stickies[1].position);
+		});
+
+		test('keeps an explicit position on a sticky', () => {
+			const ops: PartialUpdateOperation[] = [
+				{
+					type: 'addNode',
+					node: { name: 'Note', type: STICKY_TYPE, typeVersion: 1, position: [500, 500] },
+				},
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'Note')!.position).toEqual([500, 500]);
+		});
+
+		test('leaves a position-less non-sticky node at the origin', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'C')!.position).toEqual([0, 0]);
+		});
+	});
+
+	describe('findOverlappingStickyNotes', () => {
+		test('flags stickies that overlap', () => {
+			const nodes = [
+				makeNode({ name: 'Note 1', type: STICKY_TYPE, position: [0, 0] }),
+				makeNode({ name: 'Note 2', type: STICKY_TYPE, position: [0, 0] }),
+			];
+			const warnings = findOverlappingStickyNotes(nodes);
+			expect(warnings).toHaveLength(2);
+			expect(warnings.every((w) => w.code === 'overlapping_sticky_notes')).toBe(true);
+			expect(warnings.map((w) => w.nodeName).sort()).toEqual(['Note 1', 'Note 2']);
+		});
+
+		test('returns nothing when stickies are separated', () => {
+			const nodes = [
+				makeNode({ name: 'Note 1', type: STICKY_TYPE, position: [0, 0] }),
+				makeNode({ name: 'Note 2', type: STICKY_TYPE, position: [1000, 1000] }),
+			];
+			expect(findOverlappingStickyNotes(nodes)).toEqual([]);
+		});
+
+		test('ignores non-sticky nodes', () => {
+			const wf = baseWorkflow();
+			expect(findOverlappingStickyNotes(wf.nodes)).toEqual([]);
 		});
 	});
 

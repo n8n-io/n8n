@@ -620,6 +620,37 @@ describe('update-workflow MCP tool', () => {
 				]);
 			});
 
+			test('merges overlapping sticky-note warnings into the response', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'Note 1',
+								type: 'n8n-nodes-base.stickyNote',
+								typeVersion: 1,
+								position: [600, 600],
+							},
+						},
+						{
+							type: 'addNode',
+							node: {
+								name: 'Note 2',
+								type: 'n8n-nodes-base.stickyNote',
+								typeVersion: 1,
+								position: [600, 600],
+							},
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBeUndefined();
+				const warnings = response.validationWarnings as Array<{ code: string; nodeName?: string }>;
+				expect(warnings.filter((w) => w.code === 'overlapping_sticky_notes')).toHaveLength(2);
+			});
+
 			test('does not block save when validation produces warnings', async () => {
 				mockValidateJSON.mockReturnValue([
 					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
