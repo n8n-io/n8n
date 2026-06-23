@@ -5210,6 +5210,9 @@ importers:
       ssh2-sftp-client:
         specifier: 12.1.0
         version: 12.1.0
+      tar:
+        specifier: ^7.5.16
+        version: 7.5.16
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3

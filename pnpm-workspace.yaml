@@ -150,6 +150,7 @@ catalog:
   simple-git: 3.36.0
   source-map-support: 0.5.21
   stream-json: 1.9.1
+  tar: ^7.5.16
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
