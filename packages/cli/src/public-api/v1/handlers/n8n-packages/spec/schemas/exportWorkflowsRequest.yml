@@ -1,11 +1,11 @@
 type: object
 additionalProperties: false
-required:
-  - workflowIds
+description: >-
+  Selects what to export. Provide at least one of `workflowIds` or `folderIds`;
+  both may be supplied to export workflows and folders in a single package.
 properties:
   workflowIds:
     type: array
-    minItems: 1
     maxItems: 300
     description: IDs of the workflows to include in the exported package.
     items:
@@ -13,3 +13,14 @@ properties:
       minLength: 1
     example:
       - 2tUt1wbLX592XDdX
+  folderIds:
+    type: array
+    maxItems: 300
+    description: >-
+      IDs of the folders to include in the exported package. Each folder is
+      exported with its nested folders.
+    items:
+      type: string
+      minLength: 1
+    example:
+      - 9xKp2mNqRzAbCdEf
