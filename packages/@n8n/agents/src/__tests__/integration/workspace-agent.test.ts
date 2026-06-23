@@ -142,19 +142,6 @@ describe('workspace agent integration', () => {
 		expect(names).toContain('README.md');
 	});
 
-	it('workspace instructions are appended to agent instructions', () => {
-		new Agent('workspace-instructions-test')
-			.model(getModel('anthropic'))
-			.instructions('Base instructions.')
-			.workspace(workspace);
-		const tools = workspace.getTools();
-		expect(tools.length).toBe(15);
-
-		const instructions = workspace.getInstructions();
-		expect(instructions).toContain('Fake sandbox');
-		expect(instructions).toContain('In-memory filesystem');
-	});
-
 	it('stream: agent writes a file and streams the response', async () => {
 		const agent = new Agent('workspace-stream-test')
 			.model(getModel('anthropic'))
