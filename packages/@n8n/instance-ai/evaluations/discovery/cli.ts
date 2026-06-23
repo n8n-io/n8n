@@ -85,7 +85,7 @@ function parseArgs(argv: string[]): CliArgs {
 		trials: 3,
 		passThreshold: 2 / 3,
 		timeoutMs: 60_000,
-		maxSteps: 5,
+		maxSteps: 12,
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
 		failOnZeroPass: false,
@@ -173,7 +173,7 @@ async function runLocalMode(args: CliArgs): Promise<void> {
 						await runDiscoveryScenario({
 							scenario: testCase,
 							modelId: args.modelId,
-							maxSteps: args.maxSteps,
+							maxSteps: testCase.maxSteps ?? args.maxSteps,
 							timeoutMs: args.timeoutMs,
 							...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
 						}),

@@ -11,7 +11,8 @@
 // stubbed — when the orchestrator loads a runtime skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. maxSteps caps
-// the loop so an erroring tool can't drive API spend.
+// the loop so an erroring tool can't drive API spend. Workflow-build scenarios
+// need a few more steps than single-dispatch checks.
 // ---------------------------------------------------------------------------
 
 import { Memory } from '@n8n/agents';
@@ -22,6 +23,7 @@ import { runExpectedToolsInvokedCheck } from './expected-tools-invoked';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import type { DiscoveryCheckResult, DiscoveryTestCase } from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
+import { getDateTimeSection } from '../../src/agent/system-prompt';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { McpClientManager } from '../../src/mcp/mcp-client-manager';
@@ -45,6 +47,16 @@ import { createStubServices, defaultNodesJsonPath } from '../harness/stub-servic
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
 
+/** Matches production's per-turn clock injection so scheduling builds see timezone context. */
+export const DISCOVERY_EVAL_TIMEZONE = 'UTC';
+
+export function enrichDiscoveryUserMessage(
+	message: string,
+	timeZone = DISCOVERY_EVAL_TIMEZONE,
+): string {
+	return `${message}\n\n<current-date-time>${getDateTimeSection(timeZone).trim()}\n</current-date-time>`;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -54,7 +66,7 @@ export interface DiscoveryRunOptions {
 	modelId: ModelConfig;
 	/** Defaults to `defaultNodesJsonPath()`. */
 	nodesJsonPath?: string;
-	/** Hard cap on agent steps. Discovery scenarios are single-turn — 5 is plenty. */
+	/** Hard cap on agent steps. Most scenarios are single-dispatch; workflow builds need more. */
 	maxSteps?: number;
 	/** Per-trial timeout in ms. */
 	timeoutMs?: number;
@@ -76,7 +88,7 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.maxSteps ?? 5;
+	const maxSteps = options.maxSteps ?? options.scenario.maxSteps ?? 12;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
@@ -120,6 +132,7 @@ export async function runDiscoveryScenario(
 			eventBus,
 			threadId,
 			runId,
+			timeZone: DISCOVERY_EVAL_TIMEZONE,
 			abortSignal: abortController.signal,
 		});
 
@@ -137,7 +150,7 @@ export async function runDiscoveryScenario(
 		});
 
 		const streamSource = normalizeStreamSource(
-			await agent.stream(options.scenario.userMessage, {
+			await agent.stream(enrichDiscoveryUserMessage(options.scenario.userMessage), {
 				maxSteps,
 				abortSignal: abortController.signal,
 				providerOptions: {
@@ -245,6 +258,7 @@ interface StubOrchestrationContextOptions {
 	eventBus: InstanceAiEventBus;
 	threadId: string;
 	runId: string;
+	timeZone: string;
 	abortSignal: AbortSignal;
 }
 
@@ -271,6 +285,7 @@ function createStubOrchestrationContext(
 		userId: opts.context.userId,
 		orchestratorAgentId: 'n8n-instance-agent',
 		modelId: opts.modelId,
+		timeZone: opts.timeZone,
 		subAgentMaxSteps: 10,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),

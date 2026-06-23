@@ -3,7 +3,7 @@ import { WorkflowTechnique } from '../types';
 
 export class NotificationBestPractices implements BestPracticesDocument {
 	readonly technique = WorkflowTechnique.NOTIFICATION;
-	readonly version = '1.0.0';
+	readonly version = '1.1.0';
 
 	private readonly documentation = `# Best Practices: Notification Workflows
 
@@ -39,7 +39,10 @@ Result: Single workflow handles all channels efficiently with consistent logic
 
 Use IF nodes for simple checks without code. For complex conditions (multiple fields, array filtering), use Code nodes to script the logic and filter items that need alerts.
 
-Always include empty notification prevention - check that alert-worthy items exist (items.length > 0) before proceeding to notification nodes. Route the false branch to end the workflow or log "no alert needed".
+Decide empty-input behavior by notification shape — they are opposite:
+
+- **Alert** (notify only when something is wrong or a threshold is met): suppress on empty. Check that alert-worthy items exist (\`items.length > 0\`) before the notification nodes, and route the empty branch to end the workflow or log "no alert needed". Do not send empty alerts.
+- **Digest / summary / report** (a recurring message that reports the outcome regardless of count): the zero-result case is expected and MUST still send (e.g. "0 items today"). A digest aggregates many items into one message, so an empty upstream produces 0 items and the aggregating node never runs — the message is silently skipped. Walk upstream from the aggregator to the trigger and set \`alwaysOutputData: true\` on **every** node that can emit 0 items — not just the nearest one: the source/fetch node (a list endpoint returns \`[]\` = 0 items even on success — this is the one most often missed) AND any filter that can drop every row. Have the aggregator ignore the synthetic \`{}\` item and emit the "0 items" message. This applies even when the user did not explicitly ask for the empty case — a recurring digest is mandatory by shape.
 
 ## Message Construction
 

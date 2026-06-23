@@ -3245,6 +3245,96 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('validateIfHasOutgoingConnections', () => {
+		function createTerminalIfWorkflow(connectOutput = false): WorkflowJSON {
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'if-1',
+						name: 'Resolved?',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 2.2,
+						position: [200, 0],
+						parameters: {
+							conditions: {
+								options: {
+									caseSensitive: true,
+									leftValue: '',
+									typeValidation: 'strict',
+									version: 2,
+								},
+								conditions: [
+									{
+										leftValue: '={{ $json.resolved }}',
+										rightValue: true,
+										operator: { type: 'boolean', operation: 'true', singleValue: true },
+									},
+								],
+								combinator: 'and',
+							},
+						},
+					},
+					...(connectOutput
+						? [
+								{
+									id: 'action-1',
+									name: 'Send FAQ Answer',
+									type: 'n8n-nodes-base.noOp',
+									typeVersion: 1,
+									position: [400, 0] as [number, number],
+									parameters: {},
+								},
+							]
+						: []),
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Resolved?', type: 'main', index: 0 }]],
+					},
+					...(connectOutput
+						? {
+								'Resolved?': {
+									main: [[{ node: 'Send FAQ Answer', type: 'main', index: 0 }]],
+								},
+							}
+						: {}),
+				},
+			};
+		}
+
+		function getTerminalIfWarnings(workflowJson: WorkflowJSON) {
+			return validateWorkflow(workflowJson).warnings.filter(
+				(w) => w.code === 'IF_NO_OUTPUT_CONNECTIONS',
+			);
+		}
+
+		it('warns when an IF node has no outgoing branch connections', () => {
+			const warnings = getTerminalIfWarnings(createTerminalIfWorkflow());
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Resolved?');
+			expect(warnings[0].parameterPath).toBe('connections');
+			expect(warnings[0].message).toContain('has no outgoing connections');
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when at least one IF output is connected', () => {
+			const warnings = getTerminalIfWarnings(createTerminalIfWorkflow(true));
+
+			expect(warnings).toHaveLength(0);
+		});
+	});
+
 	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
 		const mockNodeTypesProviderWithPlaceholderOptOut = {
 			getByNameAndVersion: (_type: string, _version?: number) => ({

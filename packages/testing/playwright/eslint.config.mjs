@@ -6,6 +6,7 @@ export default [
 	playwrightPlugin.configs['flat/recommended'],
 	{
 		ignores: [
+			'.playwright-browsers/**/*',
 			'playwright-report/**/*',
 			'ms-playwright-cache/**/*',
 			'coverage/**/*',

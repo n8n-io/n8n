@@ -7,9 +7,16 @@ import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 
-vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
-}));
+vi.mock('../workflow-validation-warnings', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as object),
+		partitionWarnings: vi.fn((warnings: ValidationWarning[]) => ({
+			errors: [],
+			informational: warnings,
+		})),
+	};
+});
 
 const generatedWorkflow = {
 	name: 'Generated workflow',

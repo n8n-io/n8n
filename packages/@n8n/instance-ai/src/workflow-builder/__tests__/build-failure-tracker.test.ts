@@ -88,6 +88,32 @@ describe('BuildFailureTracker', () => {
 		expect(escalation).not.toContain('workflow-sdk-language.md');
 	});
 
+	it('adds documentId guidance when a plain string field got a resource-locator object', () => {
+		const tracker = new BuildFailureTracker();
+		const validationError = [
+			'[INVALID_PARAMETER] (Save Booking): Node "Save Booking": Field "parameters.documentId" has wrong type: expected string, got object.',
+		];
+		expect(tracker.record('wi_1', validationError)).toBeUndefined();
+		const escalation = tracker.record('wi_1', validationError);
+		expect(escalation).toContain('plain string field');
+		expect(escalation).toContain('type-definition');
+		expect(escalation).not.toContain('workflow-sdk-language.md');
+	});
+
+	it('adds resource-locator guidance when documentId got a bare string', () => {
+		const tracker = new BuildFailureTracker();
+		const validationError = [
+			'[INVALID_PARAMETER] (Save Booking): Node "Save Booking": Field "parameters.documentId" has wrong type: expected object, got string.',
+		];
+		expect(tracker.record('wi_1', validationError)).toBeUndefined();
+		const escalation = tracker.record('wi_1', validationError);
+		expect(escalation).toContain('resourceLocator field');
+		expect(escalation).toContain('__rl');
+		expect(escalation).toContain('placeholder');
+		expect(escalation).toContain('list mode');
+		expect(escalation).not.toContain('workflow-sdk-language.md');
+	});
+
 	it('does not loop: every repeat after the first keeps escalating', () => {
 		const tracker = new BuildFailureTracker();
 		tracker.record('wi_1', joinError, {

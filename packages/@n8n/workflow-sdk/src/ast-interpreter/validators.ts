@@ -2,7 +2,7 @@
  * Security validators for the AST interpreter.
  * Defines allowed SDK functions, methods, and detects dangerous patterns.
  */
-import type { Node, CallExpression, MemberExpression } from 'estree';
+import type { CallExpression, MemberExpression, Node } from 'estree';
 
 import { SecurityError, UnsupportedNodeError } from './errors';
 

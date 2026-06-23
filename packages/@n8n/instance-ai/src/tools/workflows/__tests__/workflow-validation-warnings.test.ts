@@ -13,4 +13,37 @@ describe('partitionWarnings', () => {
 			errors: [warnings[2]],
 		});
 	});
+
+	it('keeps incomplete router warnings informational on workflow updates', () => {
+		const warnings: ValidationWarning[] = [
+			{ code: 'IF_NO_OUTPUT_CONNECTIONS', message: 'IF has no outputs', nodeName: 'Route?' },
+			{
+				code: 'SWITCH_NO_OUTPUT_CONNECTIONS',
+				message: 'Switch has no outputs',
+				nodeName: 'Route',
+			},
+			{
+				code: 'SWITCH_FALLBACK_OUTPUT_DISABLED',
+				message: 'Switch fallback disabled',
+				nodeName: 'Route',
+			},
+			{ code: 'INVALID_PARAMETER', message: 'Bad parameter', nodeName: 'HTTP Request' },
+		];
+
+		expect(partitionWarnings(warnings, { isWorkflowUpdate: true })).toEqual({
+			informational: warnings.slice(0, 3),
+			errors: [warnings[3]],
+		});
+	});
+
+	it('blocks incomplete router warnings on new workflow creates', () => {
+		const routerWarnings: ValidationWarning[] = [
+			{ code: 'IF_NO_OUTPUT_CONNECTIONS', message: 'IF has no outputs', nodeName: 'Route?' },
+		];
+
+		expect(partitionWarnings(routerWarnings, { isWorkflowUpdate: false })).toEqual({
+			informational: [],
+			errors: routerWarnings,
+		});
+	});
 });

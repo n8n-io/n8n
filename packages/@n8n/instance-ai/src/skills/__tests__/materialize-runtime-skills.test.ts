@@ -154,6 +154,33 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(manifest).toEqual(bundle.manifest);
 	});
 
+	it('materializes workflow-builder linked reference files', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const root = '/home/daytona/workspace';
+
+		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
+		if (!bundle) throw new Error('Expected runtime skill bundle');
+
+		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/workflow-builder`;
+		const referencePaths = [
+			'references/sdk-patterns.md',
+			'references/credentials-and-placeholders.md',
+			'references/workflow-control-flow.md',
+			'references/expressions.md',
+		];
+
+		for (const referencePath of referencePaths) {
+			expect(bundle.files.get(`${skillDir}/${referencePath}`)).toBeDefined();
+		}
+
+		expect(bundle.files.get(`${skillDir}/references/sdk-patterns.md`)).toContain(
+			'isImportant.onTrue',
+		);
+		expect(bundle.files.get(`${skillDir}/references/credentials-and-placeholders.md`)).toContain(
+			"newCredential('Credential Name', 'credential-id')",
+		);
+	});
+
 	it('copies bundled skills and linked files into the builder workspace', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand } = createMockWorkspace();

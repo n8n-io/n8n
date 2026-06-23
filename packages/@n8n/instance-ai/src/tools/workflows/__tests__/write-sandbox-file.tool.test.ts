@@ -2,6 +2,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import type { MockedFunction } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import type * as SandboxFsMod from '../../../workspace/sandbox-fs';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import { writeFileViaSandbox } from '../../../workspace/sandbox-fs';
 import { createWriteSandboxFileTool } from '../write-sandbox-file.tool';
@@ -10,9 +11,13 @@ import { createWriteSandboxFileTool } from '../write-sandbox-file.tool';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('../../../workspace/sandbox-fs', () => ({
-	writeFileViaSandbox: vi.fn(),
-}));
+vi.mock('../../../workspace/sandbox-fs', async (importOriginal) => {
+	const actual = await importOriginal<typeof SandboxFsMod>();
+	return {
+		...actual,
+		writeFileViaSandbox: vi.fn(),
+	};
+});
 
 vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(),
