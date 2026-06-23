@@ -248,14 +248,18 @@ export class InsightsCollectionService {
 			return acc;
 		}, [] as InsightsMetadata[]);
 
-		this.logger.debug(`Saving ${metadataToUpsert.length} insights metadata for workflows`);
-		await this.insightsMetadataRepository.upsert(metadataToUpsert, ['workflowId']);
+		// Skip the write when nothing changed: a steady-state flush of already-cached
+		// workflows produces an empty array, and `upsert([])` is rejected by the DB.
+		if (metadataToUpsert.length > 0) {
+			this.logger.debug(`Saving ${metadataToUpsert.length} insights metadata for workflows`);
+			await this.insightsMetadataRepository.upsert(metadataToUpsert, ['workflowId']);
 
-		const upsertMetadata = await this.insightsMetadataRepository.findBy({
-			workflowId: In(metadataToUpsert.map((m) => m.workflowId)),
-		});
-		for (const metadata of upsertMetadata) {
-			this.cachedMetadata.set(metadata.workflowId, metadata);
+			const upsertMetadata = await this.insightsMetadataRepository.findBy({
+				workflowId: In(metadataToUpsert.map((m) => m.workflowId)),
+			});
+			for (const metadata of upsertMetadata) {
+				this.cachedMetadata.set(metadata.workflowId, metadata);
+			}
 		}
 
 		const events: InsightsRaw[] = [];
