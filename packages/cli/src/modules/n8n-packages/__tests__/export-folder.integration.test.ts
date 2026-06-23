@@ -123,4 +123,30 @@ describe('folder package export', () => {
 		expect(folderShell(entries, parentEntry.target).parentFolderId).toBeNull();
 		expect(folderShell(entries, childEntry.target).parentFolderId).toBe(parent.id);
 	});
+
+	it('disambiguates same-named sibling folders by creation order', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const older = await createFolder(project, {
+			name: 'in_progress',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		});
+		const newer = await createFolder(project, {
+			name: 'in_progress',
+			createdAt: new Date('2026-02-01T00:00:00.000Z'),
+		});
+
+		const stream = await service.exportWorkflows({
+			user: owner,
+			workflowIds: [],
+			folderIds: [older.id, newer.id],
+		});
+		const { manifest } = await readExport(stream);
+
+		const olderTarget = manifest.folders!.find((f) => f.id === older.id)!.target;
+		const newerTarget = manifest.folders!.find((f) => f.id === newer.id)!.target;
+		// Oldest keeps the bare slug; the allocator suffixes the newer one.
+		expect(olderTarget).toBe('folders/inprogress');
+		expect(newerTarget).toBe('folders/inprogress-2');
+	});
 });

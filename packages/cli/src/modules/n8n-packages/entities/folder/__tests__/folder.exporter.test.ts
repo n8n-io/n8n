@@ -15,6 +15,7 @@ function makeFolder(overrides: Partial<Folder> = {}): Folder {
 		id: 'fld-1',
 		name: 'to_production',
 		parentFolderId: null,
+		createdAt: new Date('2026-01-01T00:00:00.000Z'),
 		...overrides,
 	} as unknown as Folder;
 }
@@ -99,6 +100,27 @@ describe('FolderExporter', () => {
 		const { entries } = await exporter.export({ user, folderIds: ['child'], writer });
 
 		expect(readJson(writer, `${entries[0].target}/folder.json`).parentFolderId).toBeNull();
+	});
+
+	it('orders same-named siblings by createdAt so the oldest keeps the bare slug', async () => {
+		const older = makeFolder({
+			id: 'older',
+			name: 'in_progress',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		});
+		const newer = makeFolder({
+			id: 'newer',
+			name: 'in_progress',
+			createdAt: new Date('2026-02-01T00:00:00.000Z'),
+		});
+		// Finder returns them newest-first; the exporter must still sort oldest-first.
+		const { exporter } = makeExporter([newer, older]);
+		const writer = new CapturingWriter();
+
+		const { entries } = await exporter.export({ user, folderIds: ['older', 'newer'], writer });
+
+		expect(entries.find((e) => e.id === 'older')!.target).toBe('folders/inprogress');
+		expect(entries.find((e) => e.id === 'newer')!.target).toBe('folders/inprogress-2');
 	});
 
 	it('honors basePrefix so the tree composes under a project namespace', async () => {

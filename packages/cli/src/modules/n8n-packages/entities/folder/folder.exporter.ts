@@ -93,7 +93,7 @@ export class FolderExporter {
 	): void {
 		const allocator = new UniqueFilenameAllocator(parentDir, 'folder');
 
-		for (const folder of siblings) {
+		for (const folder of this.orderedByCreation(siblings)) {
 			const target = allocator.allocate(folder.name);
 			const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
 
@@ -108,6 +108,19 @@ export class FolderExporter {
 			const children = childrenByParent.get(folder.id) ?? [];
 			this.writeLevel(children, target, folder.id, childrenByParent, writer, entries);
 		}
+	}
+
+	/**
+	 * Sorts siblings oldest-first (tie-broken by id) so that when two folders in
+	 * the same parent share a name, the oldest keeps the bare slug and the
+	 * allocator suffixes the rest deterministically.
+	 */
+	private orderedByCreation(folders: Folder[]): Folder[] {
+		return [...folders].sort((a, b) => {
+			const byCreatedAt = a.createdAt.getTime() - b.createdAt.getTime();
+			if (byCreatedAt !== 0) return byCreatedAt;
+			return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+		});
 	}
 
 	private assertAllRequestedFoldersFound(
