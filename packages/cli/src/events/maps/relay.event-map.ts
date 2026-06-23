@@ -12,7 +12,10 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { ImportPackageEventOptions } from '@/modules/n8n-packages/n8n-packages.types';
+import type {
+	ImportAuditCredentialIds,
+	ImportPackageEventOptions,
+} from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 
 import type { AiEventMap } from './ai.event-map';
@@ -93,7 +96,7 @@ export type RelayEventMap = {
 		options: ImportPackageEventOptions;
 		packageSourceId: string;
 		packageVersion: string;
-		matchedCredentialIds: string[];
+		credentialIds: ImportAuditCredentialIds;
 	};
 
 	'workflow-deleted': {
