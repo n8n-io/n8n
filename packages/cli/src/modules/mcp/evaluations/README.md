@@ -297,6 +297,18 @@ the precondition:
 
 Prebuilt workflows are not deleted by default, so the same manifest can be
 reused for comparison runs. If the workflows are throwaway, add
-`--delete-prebuilt-workflows` to the `eval:instance-ai` command.
+`--delete-prebuilt-workflows` to the `eval:instance-ai` command. It only deletes
+workflows that were successfully used in the run.
 
-Alternatively, if you use `--project-id`, you can always just delete the project after workflows are not needed anymore.
+### Data tables and other build leftovers
+
+The manifest records only workflow IDs, so anything an MCP build creates on the
+side is invisible to `--delete-prebuilt-workflows` and is left behind. The most
+common case is **data tables**: cases like `workflow-data-table` need the MCP
+client to create a data table before the workflow can reference it (see
+[Build preconditions](#build-preconditions)), and those tables are not tracked
+in the manifest.
+
+For a clean slate, run the cohort against a throwaway project with `--project-id`
+and delete the whole project afterwards — that removes the workflows and the data
+tables they created in one step.
