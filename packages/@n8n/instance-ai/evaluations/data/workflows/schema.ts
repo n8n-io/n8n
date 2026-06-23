@@ -29,8 +29,12 @@ export const WorkflowTestCaseSchema = z.object({
 	triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 	executionScenarios: z.array(ExecutionScenarioSchema).min(1),
 	messageBudget: z.number().int().positive().optional(),
-	/** Optional NL assertions about the build conversation; LLM-judged, counted as units in the pass rate. */
-	buildExpectations: z.array(z.string().min(1)).optional(),
+	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
+	 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
+	processExpectations: z.array(z.string().min(1)).optional(),
+	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
+	 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
+	outcomeExpectations: z.array(z.string().min(1)).optional(),
 	/**
 	 * Credentials visible to this case's build. Created for real before the
 	 * build and pinned as the thread's entire credential view; omitted → the

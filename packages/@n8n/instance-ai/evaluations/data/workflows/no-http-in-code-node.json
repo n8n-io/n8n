@@ -10,7 +10,7 @@
 	"tags": ["behaviour", "code-node", "http-request"],
 	"triggerType": "manual",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"outcomeExpectations": [
 		"The network request was performed by an HTTP Request node, not by an HTTP/fetch call inside a Code node.",
 		"No Code node in the final workflow attempts a network/HTTP request (e.g. fetch, axios, http/https, $http)."
 	],

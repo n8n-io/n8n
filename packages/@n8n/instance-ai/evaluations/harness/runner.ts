@@ -27,6 +27,7 @@ import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
+import { collectExpectations } from '../build-expectations/collect';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
@@ -225,21 +226,31 @@ export async function runWorkflowTestCase(
 		result.workflowChecks = build.workflowChecks;
 	}
 
-	// Optional author build expectations — informational, judged concurrently with scenarios.
-	const wantsExpectations =
-		(testCase.buildExpectations?.length ?? 0) > 0 && (build.transcript?.length ?? 0) > 0;
-	const expectationsPromise: Promise<BuildExpectationResult[]> = wantsExpectations
-		? verifyBuildExpectations(testCase.buildExpectations!, {
-				transcript: build.transcript!,
-				workflowJson: build.workflowJsons[0],
-				metrics: build.conversationMetrics,
-			}).catch((error: unknown) => {
-				logger.warn(
-					`  Build expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
-				);
-				return allFailVerdicts(testCase.buildExpectations!, 'judge error');
-			})
-		: Promise.resolve<BuildExpectationResult[]>([]);
+	// Optional author expectations — informational, judged concurrently with scenarios.
+	// Full builds judge process + outcome against the real transcript; prebuilt/MCP builds
+	// (no transcript) judge only outcome expectations against the workflow, with the authored
+	// conversation supplied as request context.
+	const hasTranscript = (build.transcript?.length ?? 0) > 0;
+	const expectationsToJudge = hasTranscript
+		? collectExpectations(testCase)
+		: build.success
+			? (testCase.outcomeExpectations ?? [])
+			: [];
+	const expectationsPromise: Promise<BuildExpectationResult[]> =
+		expectationsToJudge.length > 0
+			? verifyBuildExpectations(expectationsToJudge, {
+					transcript: hasTranscript
+						? build.transcript!
+						: [{ userMessage: conversationUserTurnsAsText(testCase.conversation), steps: [] }],
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+				}).catch((error: unknown) => {
+					logger.warn(
+						`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return allFailVerdicts(expectationsToJudge, 'judge error');
+				})
+			: Promise.resolve<BuildExpectationResult[]>([]);
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;

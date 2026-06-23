@@ -28,6 +28,7 @@ import {
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
+import { collectExpectations } from '../build-expectations/collect';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
 import {
@@ -440,10 +441,13 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// Judge build expectations once per build (off the scenario critical path);
 	// reshapeLangSmithRuns awaits and merges the verdicts by threadId.
 	function stashBuildExpectations(fileSlug: string, build: BuildResult): void {
-		const expectations = testCaseByFileSlug.get(fileSlug)?.buildExpectations;
+		const testCase = testCaseByFileSlug.get(fileSlug);
+		const expectations = testCase ? collectExpectations(testCase) : [];
 		// Judge whenever there's a transcript — even on build failure, matching the
 		// direct-loop runner; the judge prompt handles the "no workflow produced" case.
-		if (!build.threadId || !expectations?.length || !build.transcript?.length) {
+		// Prebuilt builds have no transcript/threadId here, so outcome expectations for
+		// the LangSmith prebuilt path are out of scope (LangSmith + MCP is discouraged).
+		if (!build.threadId || expectations.length === 0 || !build.transcript?.length) {
 			return;
 		}
 		buildExpectationsByThreadId.set(
