@@ -4,6 +4,7 @@ import { flushPromises } from '@vue/test-utils';
 import RunDataJson from '@/features/ndv/runData/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useElementSize } from '@vueuse/core'; // Import the composable to mock
+import { Mock } from 'vitest';
 
 vi.mock('@vueuse/core', async () => {
 	const originalModule = await vi.importActual('@vueuse/core');
@@ -14,7 +15,7 @@ vi.mock('@vueuse/core', async () => {
 	};
 });
 
-(useElementSize as jest.Mock).mockReturnValue({
+(useElementSize as Mock).mockReturnValue({
 	height: 500, // Mocked height value
 	width: 300, // Mocked width value
 });
