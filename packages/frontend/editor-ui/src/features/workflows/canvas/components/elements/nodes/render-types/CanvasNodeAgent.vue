@@ -1,0 +1,399 @@
+<script setup lang="ts">
+import { computed, onMounted, useCssModule } from 'vue';
+import { useRouter } from 'vue-router';
+import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useCanvasNode } from '../../../../composables/useCanvasNode';
+import type { CanvasNodeAgentRender } from '../../../../canvas.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
+import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
+import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import {
+	AGENT_MODEL_PROVIDER_DEFINITIONS,
+	isAgentModelProvider,
+} from '@/features/agents/model-providers';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import AgentSelectorParameterInput from '@/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue';
+import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
+import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
+import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
+
+const emit = defineEmits<{
+	update: [parameters: Record<string, unknown>];
+	activate: [id: string, event: MouseEvent];
+	'open:contextmenu': [event: MouseEvent];
+}>();
+
+const $style = useCssModule();
+const i18n = useI18n();
+const router = useRouter();
+const projectsStore = useProjectsStore();
+const nodeTypesStore = useNodeTypesStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const { catalog: integrationsCatalog, ensureLoaded: ensureIntegrationsLoaded } =
+	useAgentIntegrationsCatalog();
+const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
+
+const {
+	id,
+	isReadOnly,
+	isSelected,
+	render,
+	executionStatus,
+	executionWaiting,
+	executionWaitingForNext,
+	executionRunning,
+	hasRunData,
+} = useCanvasNode();
+
+const renderOptions = computed(() => render.value.options as CanvasNodeAgentRender['options']);
+
+// Mirror CanvasNodeDefault's state classes so the card shows the same run
+// feedback as every other node (green border + check on success, animated
+// glow while running/waiting, red border on error).
+const classes = computed(() => ({
+	[$style.selected]: isSelected.value,
+	[$style.success]: Boolean(hasRunData.value && executionStatus.value === 'success'),
+	[$style.error]: executionStatus.value === 'error' || executionStatus.value === 'crashed',
+	[$style.running]: Boolean(executionRunning.value || executionWaitingForNext.value),
+	[$style.waiting]: Boolean(executionWaiting.value || executionStatus.value === 'waiting'),
+}));
+
+const agentResourceLocator = computed<INodeParameterResourceLocator>(
+	() => renderOptions.value.agentId ?? { __rl: true, mode: 'list', value: '' },
+);
+
+const agentId = computed(() => {
+	const value = agentResourceLocator.value.value;
+	return typeof value === 'string' ? value : String(value ?? '');
+});
+
+const isConfigured = computed(() => agentId.value !== '');
+
+// The canvas route is the workflow, not a project, so resolve the agent's
+// project the same way the picker does: current → workflow home → personal.
+const projectId = computed(
+	() =>
+		projectsStore.currentProjectId ??
+		workflowDocumentStore.value?.homeProject?.id ??
+		projectsStore.personalProject?.id ??
+		'',
+);
+
+const { summary, error } = useAgentCapabilitySummary(projectId, agentId);
+
+const agentName = computed(
+	() =>
+		summary.value?.name ??
+		agentResourceLocator.value.cachedResultName ??
+		i18n.baseText('agentNode.card.defaultName'),
+);
+
+const modelProvider = computed(() => {
+	const provider = summary.value?.model?.provider;
+	return provider && isAgentModelProvider(provider) ? provider : null;
+});
+
+const modelCredentialType = computed(() =>
+	modelProvider.value
+		? AGENT_MODEL_PROVIDER_DEFINITIONS[modelProvider.value].credentialTypes[0]
+		: null,
+);
+
+const modelName = computed(() => {
+	const model = summary.value?.model;
+	if (!model) return '';
+	// Mirror the edit page's model selector: resolve the friendly catalog name
+	// (e.g. "Claude Opus 4.8"), falling back to the raw id while the catalog
+	// loads or for an unknown model.
+	return modelCatalog.value[model.provider]?.models[model.model]?.name ?? model.model;
+});
+
+// Mirror the edit page: resolve a node tool's display name (" Tool" suffix
+// stripped) so same-node-type tools can group into "N {NodeType}". Returns
+// undefined when the node type isn't loaded, leaving the tool as an individual
+// humanized chip.
+function resolveNodeTypeLabel(nodeType: string, version?: number): string | undefined {
+	return nodeTypesStore.getNodeType(nodeType, version)?.displayName.replace(/ Tool$/, '');
+}
+
+const chips = computed(() =>
+	summary.value
+		? buildAgentCardChips(summary.value, integrationsCatalog.value, resolveNodeTypeLabel)
+		: [],
+);
+
+// The picker is NDV-parameter-input shaped; it only reads `parameter.name`, so a
+// minimal synthesized definition matching the node's `agentId` property is enough.
+const agentSelectorParameter: INodeProperties = {
+	displayName: i18n.baseText('agentNode.card.defaultName'),
+	name: 'agentId',
+	type: 'agentSelector',
+	default: { __rl: true, mode: 'list', value: '' },
+};
+
+function onPickAgent(value: INodeParameterResourceLocator) {
+	emit('update', { agentId: value });
+}
+
+function onActivate(event: MouseEvent) {
+	emit('activate', id.value, event);
+}
+
+function onOpenContextMenu(event: MouseEvent) {
+	emit('open:contextmenu', event);
+}
+
+function openAgent() {
+	if (!isConfigured.value || !projectId.value) return;
+	// Navigate to the leaf builder route (not the parent AGENT_VIEW): pushing the
+	// parent by name leaves its <RouterView> child unmatched, so the editor mounts
+	// empty until a full reload resolves the leaf from the URL.
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+	});
+}
+
+onMounted(() => {
+	if (!projectId.value) return;
+	void ensureIntegrationsLoaded(projectId.value).catch(() => {});
+	void ensureModelsLoaded(projectId.value).catch(() => {});
+});
+</script>
+
+<template>
+	<div
+		:class="[$style.card, classes]"
+		data-test-id="canvas-node-agent"
+		@dblclick.stop="onActivate"
+		@contextmenu="onOpenContextMenu"
+	>
+		<div :class="$style.surface">
+			<header :class="$style.header">
+				<div :class="$style.headerLabel">
+					<N8nIcon icon="bot" :size="20" :class="$style.agentIcon" />
+					<N8nText :bold="true" :class="$style.name">{{ agentName }}</N8nText>
+				</div>
+				<N8nTooltip
+					v-if="isConfigured"
+					:content="i18n.baseText('agentNode.card.openAgent')"
+					placement="top"
+				>
+					<button
+						type="button"
+						:class="[$style.openButton, 'nodrag']"
+						:aria-label="i18n.baseText('agentNode.card.openAgent')"
+						data-test-id="canvas-node-agent-open"
+						@click="openAgent"
+					>
+						<N8nIcon icon="arrow-right" :size="16" />
+					</button>
+				</N8nTooltip>
+			</header>
+
+			<div :class="$style.body">
+				<template v-if="isConfigured">
+					<div v-if="modelName" :class="$style.modelRow" data-test-id="canvas-node-agent-model">
+						<CredentialIcon
+							v-if="modelCredentialType"
+							:credential-type-name="modelCredentialType"
+							:size="16"
+						/>
+						<N8nText size="small" :class="$style.modelName">{{ modelName }}</N8nText>
+					</div>
+					<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+					<N8nText v-else-if="error" size="small" color="danger">
+						{{ i18n.baseText('agentNode.card.loadError') }}
+					</N8nText>
+				</template>
+				<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">
+					<AgentSelectorParameterInput
+						:parameter="agentSelectorParameter"
+						:model-value="agentResourceLocator"
+						path="parameters.agentId"
+						:is-read-only="isReadOnly"
+						input-size="medium"
+						@update:model-value="onPickAgent"
+					/>
+				</div>
+			</div>
+		</div>
+
+		<CanvasNodeStatusIcons :class="$style.statusIcons" />
+	</div>
+</template>
+
+<style lang="scss" module>
+@use './_canvasNodeStyles.scss' as styles;
+
+.card {
+	// Fixed card width matching the Figma "WF Agent Node" frame (424px less the
+	// handle gutters); no spacing token maps to this exact value.
+	--agent-card--border-color: var(--border-color);
+	// Hard-coded 12px per Figma. The matching token (--radius--sm) can't be used:
+	// the legacy theme globally overrides it to ~2px, which renders square.
+	--agent-card--radius: 12px;
+	position: relative;
+	width: 384px;
+	// Shapes the status/selected ring and the animated running glow on this
+	// (non-clipping) wrapper; the visible card lives in .surface.
+	border-radius: var(--agent-card--radius);
+}
+
+.surface {
+	// Transparent layout wrapper only — the header and body each carry their own
+	// border so the body's rounded top corners miter cleanly (a single shared
+	// border would force the body's top divider to taper at the corners).
+	display: flex;
+	flex-direction: column;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	// Extra bottom padding: the body overlaps up into it by one radius so its
+	// rounded top sits on the dotted header.
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--lg);
+	border: 2px solid var(--agent-card--border-color);
+	border-radius: var(--agent-card--radius) var(--agent-card--radius) 0 0;
+	// Solid surface base (never transparent) + a dot grid matching the canvas,
+	// faded toward the left/right edges by a surface sheen so the dots read
+	// strongest in the centre (matches the Figma "dotted header").
+	background-color: var(--background--surface);
+	background-image:
+		linear-gradient(
+			89deg,
+			var(--background--surface) 6.35%,
+			color-mix(in srgb, var(--background--surface) 19%, transparent) 26.93%,
+			color-mix(in srgb, var(--background--surface) 6%, transparent) 69.71%,
+			var(--background--surface) 90.29%
+		),
+		radial-gradient(oklch(from var(--canvas--dot--color) l c h / 0.5) 1px, transparent 1px);
+	background-repeat: no-repeat, repeat;
+	background-size:
+		100% 100%,
+		16px 16px;
+}
+
+.headerLabel {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.agentIcon {
+	flex-shrink: 0;
+	color: var(--text-color);
+}
+
+.name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-color);
+}
+
+.openButton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	padding: var(--spacing--4xs);
+	border: none;
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--icon-color--subtle, var(--text-color--subtle));
+	cursor: pointer;
+
+	&:hover {
+		background: var(--background--hover);
+		color: var(--text-color);
+	}
+}
+
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	// Tuck up into the header by one radius so the body's rounded top corners sit
+	// on the dotted header; its sides line up with the header's to read as one
+	// continuous outer border, and the full border keeps the top divider an even
+	// 2px as it curves (no corner thinning).
+	margin-top: calc(-1 * var(--agent-card--radius));
+	padding: var(--spacing--sm);
+	border: 2px solid var(--agent-card--border-color);
+	border-radius: var(--agent-card--radius);
+	background: var(--background--surface);
+}
+
+.modelRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.modelName {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-color--subtle);
+}
+
+.picker {
+	width: 100%;
+}
+
+.statusIcons {
+	// No z-index: connection handles (z-index 1) must stay above the card, and
+	// the status icons sit in the corner where they never overlap a handle.
+	position: absolute;
+	bottom: var(--spacing--2xs);
+	right: var(--spacing--2xs);
+}
+
+/**
+ * Execution state — mirrors CanvasNodeDefault. Border color carries
+ * success/error (composes with the selected ring); running/waiting add the
+ * animated glow.
+ */
+.selected {
+	box-shadow: 0 0 0 4px var(--canvas--color--selected);
+}
+
+.success {
+	--agent-card--border-color: var(--color--success);
+}
+
+.error {
+	--agent-card--border-color: var(--color--danger);
+}
+
+/* stylelint-disable */
+.running::after,
+.waiting::after {
+	@include styles.status-animated-after;
+	border-radius: var(--agent-card--radius);
+}
+
+.running::after {
+	@include styles.status-running-animation;
+}
+.waiting::after {
+	@include styles.status-waiting-animation;
+}
+
+@include styles.status-animation-definitions;
+/* stylelint-enable */
+</style>

@@ -164,7 +164,11 @@ describe('AgentsService', () => {
 						tools: [
 							{ type: 'custom', id: 'c1' },
 							{ type: 'workflow', workflow: 'wf-1', name: 'Lookup order' },
-							{ type: 'node', name: 'HTTP Request' },
+							{
+								type: 'node',
+								name: 'HTTP Request',
+								node: { nodeType: 'n8n-nodes-base.httpRequestTool', nodeTypeVersion: 1 },
+							},
 						],
 						skills: [{ type: 'skill', id: 's1' }],
 						tasks: [{ type: 'task', id: 't1', enabled: true }],
@@ -191,7 +195,12 @@ describe('AgentsService', () => {
 				tools: [
 					{ type: 'custom', name: 'Refund tool' },
 					{ type: 'workflow', name: 'Lookup order' },
-					{ type: 'node', name: 'HTTP Request' },
+					{
+						type: 'node',
+						name: 'HTTP Request',
+						nodeType: 'n8n-nodes-base.httpRequestTool',
+						nodeTypeVersion: 1,
+					},
 				],
 				skills: [{ id: 's1', name: 'Triage' }],
 				tasks: [{ id: 't1', name: 'Daily digest', enabled: true }],

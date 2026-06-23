@@ -220,6 +220,39 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 		expect(render?.type).toBe('n8n-nodes-base.stickyNote');
 	});
 
+	it('returns an agent render type threading the agentId for v2 AI Agent nodes', () => {
+		const agentId = { __rl: true, mode: 'list', value: 'agent-1', cachedResultName: 'My Agent' };
+		const { docId } = setupWorkflow('wf-fusion-agent', [
+			{
+				id: 'ag',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				parameters: { agentId },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('ag')?.value;
+		expect(render?.type).toBe('n8n-nodes-base.messageAnAgent');
+		expect(render && 'options' in render ? render.options : undefined).toEqual({ agentId });
+	});
+
+	it('uses the default render type for v1 AI Agent nodes (legacy picker)', () => {
+		const { docId } = setupWorkflow('wf-fusion-agent-v1', [
+			{
+				id: 'ag1',
+				name: 'Agent v1',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 1,
+				parameters: { agentId: { __rl: true, mode: 'list', value: 'agent-1' } },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.renderTypeByNodeId.get('ag1')?.value?.type).toBe('default');
+	});
+
 	it('assigns z-index entries only for sticky notes via additionalPropertiesByNodeId', () => {
 		const { docId } = setupWorkflow('wf-fusion-additional', [
 			{ id: 's1', name: 'Sticky1', type: 'n8n-nodes-base.stickyNote' },

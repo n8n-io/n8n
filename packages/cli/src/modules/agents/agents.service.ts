@@ -95,7 +95,14 @@ export class AgentsService {
 				case 'workflow':
 					return [{ type: 'workflow', name: tool.name ?? tool.workflow }];
 				case 'node':
-					return [{ type: 'node', name: tool.name }];
+					return [
+						{
+							type: 'node',
+							name: tool.name,
+							nodeType: tool.node.nodeType,
+							nodeTypeVersion: tool.node.nodeTypeVersion,
+						},
+					];
 				default:
 					// Unknown tool type from an unvalidated persisted config (import,
 					// history restore, version skew): drop it rather than emit an
