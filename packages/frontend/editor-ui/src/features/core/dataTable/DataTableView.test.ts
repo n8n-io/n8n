@@ -196,7 +196,7 @@ describe('DataTableView', () => {
 			dataTableStore.totalCount = 0;
 			dataTableStore.projectPermissions = {
 				dataTable: { create: true },
-			} as ReturnType<typeof dataTableStore.projectPermissions>;
+			} as typeof dataTableStore.projectPermissions;
 			sourceControlStore.preferences = {
 				branchReadOnly: false,
 			} as typeof sourceControlStore.preferences;
@@ -247,7 +247,7 @@ describe('DataTableView', () => {
 		it('should disable the create button and show a permission tooltip when user lacks create permission', async () => {
 			dataTableStore.projectPermissions = {
 				dataTable: { create: false },
-			} as ReturnType<typeof dataTableStore.projectPermissions>;
+			} as typeof dataTableStore.projectPermissions;
 
 			const { getByTestId } = renderWithInlineTooltip();
 			await waitAllPromises();
