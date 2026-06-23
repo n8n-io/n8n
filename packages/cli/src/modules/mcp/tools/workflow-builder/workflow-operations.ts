@@ -24,6 +24,16 @@ const credentialsSchema = z.record(
 	z.object({ id: z.string().optional(), name: z.string() }),
 );
 
+/** True when `tz` is an IANA zone the runtime accepts (validated via the Intl DB). */
+const isValidIanaTimezone = (tz: string): boolean => {
+	try {
+		Intl.DateTimeFormat('en-US', { timeZone: tz });
+		return true;
+	} catch {
+		return false;
+	}
+};
+
 /**
  * Curated subset of `IWorkflowSettings` that is safe and useful to set from MCP.
  * Each key is optional and only the keys provided are written; omitted keys are
@@ -41,6 +51,10 @@ export const workflowSettingsObjectSchema = z.object({
 		.optional(),
 	timezone: z
 		.string()
+		.refine((tz) => tz === 'DEFAULT' || isValidIanaTimezone(tz), {
+			message:
+				'timezone must be a valid IANA timezone (e.g. "America/New_York"), or "DEFAULT" to inherit the instance timezone',
+		})
 		.describe(
 			'IANA timezone used by Schedule Triggers and date/time operations, e.g. "America/New_York". Pass "DEFAULT" to inherit the instance timezone.',
 		)
