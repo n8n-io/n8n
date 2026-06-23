@@ -13,8 +13,10 @@ import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, type ExecuteAgentData, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
@@ -108,6 +110,10 @@ export interface StreamChatResponseConfig {
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
+	telemetry?: {
+		runType: AgentRunTelemetryType;
+		configuration: IAgentConfigurationTelemetryProperties;
+	};
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -228,6 +234,7 @@ export class AgentExecutionOrchestratorService {
 
 		const { agent: agentInstance, toolRegistry } = runtime;
 		const recorder = new ExecutionRecorder(toolRegistry);
+		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 
 		try {
 			const resultStream = await agentInstance.resume('stream', resumeData, {
@@ -258,6 +265,10 @@ export class AgentExecutionOrchestratorService {
 					userMessage: '',
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
+					telemetry: {
+						runType,
+						configuration: runtime.telemetryConfiguration,
+					},
 				})
 				.catch((error) => {
 					this.logger.warn('Failed to record resumed agent execution', {
@@ -298,6 +309,10 @@ export class AgentExecutionOrchestratorService {
 			message,
 			memory,
 			projectId: runtime.projectId,
+			telemetry: {
+				runType: 'test',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -326,6 +341,10 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			projectId: runtime.projectId,
 			source: integrationType,
+			telemetry: {
+				runType: 'production',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -355,6 +374,10 @@ export class AgentExecutionOrchestratorService {
 			source: 'task',
 			taskId,
 			taskVersionId,
+			telemetry: {
+				runType: 'production',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -381,6 +404,10 @@ export class AgentExecutionOrchestratorService {
 			projectId: runtime.projectId,
 			source: 'task',
 			taskId,
+			telemetry: {
+				runType: 'test',
+				configuration: runtime.telemetryConfiguration,
+			},
 		});
 	}
 
@@ -399,6 +426,7 @@ export class AgentExecutionOrchestratorService {
 			source,
 			taskId,
 			taskVersionId,
+			telemetry,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -447,6 +475,7 @@ export class AgentExecutionOrchestratorService {
 					source,
 					taskId,
 					taskVersionId,
+					telemetry,
 				})
 				.catch((error) => {
 					this.logger.warn('Failed to record agent execution', {
@@ -516,6 +545,7 @@ export class AgentExecutionOrchestratorService {
 		if (!useDraftVersion) {
 			agentData = getPublishedAgentSnapshot(agentEntity);
 		}
+		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
 
 		const compiled = await this.compileIsolated(
 			agentData,
@@ -575,6 +605,10 @@ export class AgentExecutionOrchestratorService {
 				userMessage: message,
 				record: messageRecord,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
+				telemetry: {
+					runType: useDraftVersion ? 'test' : 'production',
+					configuration: telemetryConfiguration,
+				},
 			})
 			.catch((error) => {
 				this.logger.warn('Failed to record agent execution from workflow', {

@@ -87,6 +87,14 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		toolRegistry: mock<ToolRegistry>(),
 		projectId,
 		agentId,
+		telemetryConfiguration: {
+			model: schema.model,
+			channels: [],
+			tool_types: [],
+			tool_count: 0,
+			num_skills: 0,
+			memory_type: 'none' as const,
+		},
 	};
 }
 
@@ -218,7 +226,14 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ source: undefined, taskId: undefined }),
+			expect.objectContaining({
+				source: undefined,
+				taskId: undefined,
+				telemetry: {
+					runType: 'test',
+					configuration: runtime.telemetryConfiguration,
+				},
+			}),
 		);
 	});
 
@@ -244,7 +259,13 @@ describe('AgentExecutionOrchestratorService', () => {
 			usePublishedVersion: true,
 		});
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ source: 'slack' }),
+			expect.objectContaining({
+				source: 'slack',
+				telemetry: {
+					runType: 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
+			}),
 		);
 	});
 
@@ -275,6 +296,10 @@ describe('AgentExecutionOrchestratorService', () => {
 				source: 'task',
 				taskId: 'task-1',
 				taskVersionId: 'version-1',
+				telemetry: {
+					runType: 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
 			}),
 		);
 	});
@@ -404,7 +429,15 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ threadId: 'thread-1', userMessage: '', hitlStatus: 'resumed' }),
+			expect.objectContaining({
+				threadId: 'thread-1',
+				userMessage: '',
+				hitlStatus: 'resumed',
+				telemetry: {
+					runType: 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
+			}),
 		);
 	});
 
@@ -442,7 +475,8 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes workflow runs with execution-scoped persistence and tool-call output', async () => {
-		const { service, agentRepository, reconstructionService, telemetry } = makeService();
+		const { service, agentRepository, reconstructionService, executionService, telemetry } =
+			makeService();
 		const runtime = makeRuntime([
 			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: { id: 1 } },
 			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', output: { ok: true } },
@@ -485,6 +519,16 @@ describe('AgentExecutionOrchestratorService', () => {
 			user_id: userId,
 			message_count: 1,
 		});
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				telemetry: expect.objectContaining({
+					runType: 'production',
+					configuration: expect.objectContaining({
+						model: 'anthropic/claude-sonnet-4-5',
+					}),
+				}),
+			}),
+		);
 	});
 
 	it('applies per-call structured output schema and improves empty-output errors', async () => {

@@ -8,10 +8,12 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TtlMap } from '@/utils/ttl-map';
 
+import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -33,6 +35,7 @@ export interface AgentRuntime {
 	agentId: string;
 	toolRegistry: ToolRegistry;
 	projectId: string;
+	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 }
 
 interface RuntimeInitialization {
@@ -53,10 +56,7 @@ export class AgentRuntimeCacheService {
 	 * Separating draft and published with explicit prefixes prevents a draft
 	 * runtime from being mistakenly returned to a published-agent execution.
 	 */
-	private readonly runtimes = new TtlMap<
-		string,
-		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
-	>(30 * Time.minutes.toMilliseconds);
+	private readonly runtimes = new TtlMap<string, AgentRuntime>(30 * Time.minutes.toMilliseconds);
 
 	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
 
@@ -219,6 +219,12 @@ export class AgentRuntimeCacheService {
 				integrationType,
 			);
 
-		return { agent: agentInstance, agentId, toolRegistry, projectId };
+		return {
+			agent: agentInstance,
+			agentId,
+			toolRegistry,
+			projectId,
+			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+		};
 	}
 }

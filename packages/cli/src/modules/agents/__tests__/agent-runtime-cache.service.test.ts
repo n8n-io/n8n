@@ -78,6 +78,12 @@ describe('AgentRuntimeCacheService', () => {
 		const second = await service.getRuntime({ agentId, projectId, n8nUserId: userId });
 
 		expect(first).toBe(second);
+		expect(first.telemetryConfiguration).toEqual(
+			expect.objectContaining({
+				model: 'openai:gpt-4o',
+				memory_type: 'none',
+			}),
+		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
 			agent,
