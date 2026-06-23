@@ -33,6 +33,7 @@ describe('classifyScope', () => {
 		['execution:retry', 'write'],
 		['securityAudit:generate', 'write'],
 		['sourceControl:pull', 'write'],
+		['sourceControl:push', 'write'],
 		['communityPackage:install', 'write'],
 		['dataTableRow:upsert', 'write'],
 	] as Array<[ApiKeyScope, string]>)('classifies %s as %s', (scope, expected) => {
