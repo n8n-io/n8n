@@ -284,11 +284,9 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 	/**
 	 * Delete terminal records older than their retention window, in a single batch.
-	 * `completed` rows have no diagnostic value once published, so they use the
-	 * shorter `completedRetentionSeconds`; `failed`/`partial_success` rows carry an
-	 * error message worth keeping longer, so they use `failedRetentionSeconds`.
-	 * Active (`pending`/`in_progress`) rows are never touched. Returns the number
-	 * deleted so the caller can loop until a batch comes back short.
+	 * `completed` and `failed`/`partial_success` have different retention configs.
+	 *
+	 * @returns number deleted so the caller can loop until a batch comes back short.
 	 */
 	async deleteTerminalOlderThan(
 		completedRetentionSeconds: number,
@@ -317,9 +315,6 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	): Promise<number> {
 		const tableName = this.getTableName('workflow_publication_outbox');
 
-		// Cutoff computed in SQL (not a bound JS `Date`) to match how the `timestamptz`
-		// `updatedAt` is compared in `claimNextPendingRecord`. The CTE deletes and counts
-		// in one statement.
 		const [row]: Array<{ count: string | number }> = await this.query(
 			`WITH deleted AS (
 				DELETE FROM ${tableName}
@@ -347,8 +342,6 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const completedModifier = `-${Math.round(completedRetentionSeconds)} seconds`;
 		const failedModifier = `-${Math.round(failedRetentionSeconds)} seconds`;
 
-		// Cutoff computed in SQL (not a bound JS `Date`), as in `claimNextPendingRecord`.
-		// SQLite's `DELETE` can't return a count, so read `changes()` in the same transaction.
 		return await this.manager.transaction(async (tx) => {
 			await tx.query(
 				`DELETE FROM ${tableName}
