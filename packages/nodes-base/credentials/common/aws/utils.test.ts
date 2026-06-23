@@ -749,6 +749,7 @@ describe('assertSupportedAwsRegion', () => {
 		['us-east-1'],
 		['eu-west-1'],
 		['ap-southeast-2'],
+		['ap-southeast-6'],
 		['cn-north-1'],
 		['us-gov-west-1'],
 		['eu-central-2'],
