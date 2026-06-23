@@ -20,9 +20,9 @@ env:
 jobs:
   workflow-script-tests:
     name: Run tests for workflow scripts
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.ref }}
 

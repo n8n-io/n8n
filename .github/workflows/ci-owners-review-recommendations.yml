@@ -22,6 +22,7 @@ jobs:
     #  - PRs from forks (no token to comment with)
     #  - Bot-authored PRs (Dependabot, Renovate, etc. — noise, not useful)
     if: |
+      github.repository == 'n8n-io/n8n' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest

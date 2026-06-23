@@ -20,12 +20,12 @@ jobs:
       github.event_name == 'pull_request' &&
       !github.event.pull_request.head.repo.fork &&
       github.repository == 'n8n-io/n8n'
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
       pull-requests: write
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: .github/scripts/post-qa-metrics-comment.mjs
           sparse-checkout-cone-mode: false

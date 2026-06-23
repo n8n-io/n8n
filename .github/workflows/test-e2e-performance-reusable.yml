@@ -28,7 +28,7 @@ jobs:
     # so gating PR runs on these would produce false-positive blockers.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build-and-test-performance
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:

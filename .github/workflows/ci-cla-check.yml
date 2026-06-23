@@ -67,9 +67,10 @@ jobs:
     name: Verify CLA signatures
     # Skip issue_comment unless it's on a PR and the body starts with /cla-check.
     if: >-
+      github.repository == 'n8n-io/n8n' && (
       github.event_name != 'issue_comment' ||
       (github.event.issue.pull_request != null &&
-       startsWith(github.event.comment.body, '/cla-check'))
+       startsWith(github.event.comment.body, '/cla-check')))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

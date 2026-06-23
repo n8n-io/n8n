@@ -32,6 +32,7 @@ jobs:
     #    opts in explicitly so a human-applied label can route its PRs to the
     #    owning team
     if: |
+      github.repository == 'n8n-io/n8n' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       (github.event.pull_request.user.type != 'Bot' ||
        github.event.pull_request.user.login == 'n8n-cat-bot[bot]')

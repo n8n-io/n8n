@@ -21,6 +21,7 @@ on:
 
 jobs:
   build:
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
