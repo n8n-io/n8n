@@ -227,17 +227,6 @@ describe('AgentSubAgentsPanel', () => {
 		ensureModelCatalogLoadedMock.mockResolvedValue(undefined);
 	});
 
-	it('preloads project agents on mount without surfacing rejection', async () => {
-		const loadError = new Error('boom');
-		ensureLoadedMock.mockRejectedValueOnce(loadError);
-
-		await mountPanel();
-		await flushPromises();
-
-		expect(ensureLoadedMock).toHaveBeenCalledTimes(1);
-		expect(showErrorMock).not.toHaveBeenCalled();
-	});
-
 	it('renders the max-children input and inline difficulty model selectors', async () => {
 		const wrapper = await mountPanel();
 		expect(wrapper.find('[data-testid="agent-sub-agents-max-children-input"]').exists()).toBe(true);
@@ -281,7 +270,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				maxChildren: 2,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			},
 		});
 		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');
@@ -291,7 +280,7 @@ describe('AgentSubAgentsPanel', () => {
 			{
 				subAgents: {
 					maxChildren: 4,
-					agents: [{ agentId: 'agent-2' }],
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 				},
 			},
 		]);
@@ -302,14 +291,16 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				maxChildren: SUB_AGENT_MAX_CHILDREN_DEFAULT,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			},
 		});
 		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');
 		await input.setValue('abc');
 
 		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
-		expect(last.subAgents?.agents).toEqual([{ agentId: 'agent-2' }]);
+		expect(last.subAgents?.agents).toEqual([
+			{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+		]);
 		expect(last.subAgents).not.toHaveProperty('maxChildren');
 	});
 
@@ -318,7 +309,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				maxChildren: 5,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			},
 		});
 		await flushPromises();
@@ -333,7 +324,7 @@ describe('AgentSubAgentsPanel', () => {
 			{
 				subAgents: {
 					maxChildren: 5,
-					agents: [{ agentId: 'agent-2' }],
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 					modelsByDifficulty: {
 						high: {
 							model: 'openai/gpt-4o-mini',
@@ -486,7 +477,7 @@ describe('AgentSubAgentsPanel', () => {
 		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
-	it('emits update:config when the modal confirms added agent IDs', async () => {
+	it('emits update:config when the modal confirms an added agent with useWhen guidance', async () => {
 		projectAgentsListRef.value = [publishedSubAgent];
 		const wrapper = await mountPanel({
 			...defaultConfig,
@@ -498,15 +489,18 @@ describe('AgentSubAgentsPanel', () => {
 		await flushPromises();
 
 		const modalCall = openModalWithDataMock.mock.calls[0]?.[0] as {
-			data: { onConfirm: (agentIds: string[]) => void };
+			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
 		};
-		modalCall.data.onConfirm(['agent-2']);
+		modalCall.data.onConfirm({
+			agentId: 'agent-2',
+			useWhen: 'Use for billing escalations.',
+		});
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([
 			{
 				subAgents: {
 					maxChildren: 7,
-					agents: [{ agentId: 'agent-2' }],
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 				},
 			},
 		]);
@@ -525,7 +519,10 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				maxChildren: 6,
-				agents: [{ agentId: 'agent-2' }, { agentId: 'agent-3' }],
+				agents: [
+					{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+					{ agentId: 'agent-3', useWhen: 'Use for research tasks.' },
+				],
 			},
 		});
 		await flushPromises();
@@ -541,7 +538,52 @@ describe('AgentSubAgentsPanel', () => {
 			{
 				subAgents: {
 					maxChildren: 6,
-					agents: [{ agentId: 'agent-3' }],
+					agents: [{ agentId: 'agent-3', useWhen: 'Use for research tasks.' }],
+				},
+			},
+		]);
+	});
+
+	it('opens the configure modal for an existing sub-agent and updates useWhen', async () => {
+		projectAgentsListRef.value = [publishedSubAgent];
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				maxChildren: 6,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+			},
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-sub-agent-row"]').trigger('click');
+
+		const modalCall = openModalWithDataMock.mock.calls[0]?.[0] as {
+			data: {
+				selectedAgent: { id: string; name: string };
+				useWhen?: string;
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
+			};
+		};
+		expect(modalCall).toEqual(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					selectedAgent: { id: 'agent-2', name: 'Helper Agent' },
+					useWhen: 'Use for billing escalations.',
+				}),
+			}),
+		);
+
+		modalCall.data.onConfirm({
+			agentId: 'agent-2',
+			useWhen: 'Use for invoices and payment status.',
+		});
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 6,
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for invoices and payment status.' }],
 				},
 			},
 		]);

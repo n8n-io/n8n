@@ -122,11 +122,12 @@ const availableSubAgents = computed(() =>
 	),
 );
 const selectedSubAgents = computed(() =>
-	selectedSubAgentIds.value.map((agentId) => {
+	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
 		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
 		return {
 			id: agentId,
 			name: agent?.name ?? agentId,
+			...(useWhen !== undefined ? { useWhen } : {}),
 		};
 	}),
 );
@@ -281,15 +282,37 @@ async function onOpenAddSubAgentsModal() {
 				id,
 				name,
 			})),
-			onConfirm: (agentIds: string[]) => {
-				const newAgentRefs = agentIds
-					.filter((agentId) => !selectedSubAgentIdSet.value.has(agentId))
-					.map((agentId) => ({ agentId }));
+			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
+				if (selectedSubAgentIdSet.value.has(agentId)) return;
 
-				if (newAgentRefs.length === 0) return;
-
-				emitSubAgentsAgents([...selectedSubAgentRefs.value, ...newAgentRefs]);
+				emitSubAgentsAgents([
+					...selectedSubAgentRefs.value,
+					{ agentId, ...(useWhen ? { useWhen } : {}) },
+				]);
 			},
+		},
+	});
+}
+
+function onOpenEditSubAgentModal(subAgent: { id: string; name: string; useWhen?: string }) {
+	if (props.disabled) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_SUB_AGENTS_MODAL_KEY,
+		data: {
+			selectedAgent: {
+				id: subAgent.id,
+				name: subAgent.name,
+			},
+			...(subAgent.useWhen ? { useWhen: subAgent.useWhen } : {}),
+			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
+				emitSubAgentsAgents(
+					selectedSubAgentRefs.value.map((ref) =>
+						ref.agentId === agentId ? { agentId, ...(useWhen ? { useWhen } : {}) } : ref,
+					),
+				);
+			},
+			onRemove: onRemoveSubAgent,
 		},
 	});
 }
@@ -432,6 +455,7 @@ function onRemoveSubAgent(agentId: string) {
 						:key="subAgent.id"
 						:class="$style.row"
 						data-testid="agent-sub-agent-row"
+						@click="onOpenEditSubAgentModal(subAgent)"
 					>
 						<template #prepend>
 							<N8nIcon icon="bot" size="medium" :class="$style.itemIcon" />
@@ -462,7 +486,7 @@ function onRemoveSubAgent(agentId: string) {
 										})
 									"
 									data-testid="agent-sub-agent-remove"
-									@click="onRemoveSubAgent(subAgent.id)"
+									@click.stop="onRemoveSubAgent(subAgent.id)"
 								/>
 							</N8nTooltip>
 						</template>
@@ -606,6 +630,7 @@ function onRemoveSubAgent(agentId: string) {
 .row {
 	--card--append--width: auto;
 	flex-shrink: 0;
+	cursor: pointer;
 }
 
 .itemIcon {

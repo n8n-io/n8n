@@ -278,13 +278,17 @@ describe('AgentConfigService', () => {
 				...baseConfig,
 				subAgents: {
 					maxChildren: 3,
-					agents: [{ agentId: 'missing-agent' }, { agentId: 'agent-2' }, { agentId: 'agent-2' }],
+					agents: [
+						{ agentId: 'missing-agent', useWhen: 'Use for missing work.' },
+						{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+						{ agentId: 'agent-2', useWhen: 'Use for duplicate work.' },
+					],
 				},
 			});
 
 			expect((agentRepository.save.mock.calls[0][0] as Agent).schema?.subAgents).toEqual({
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			});
 			expect(
 				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-2'),
@@ -293,14 +297,16 @@ describe('AgentConfigService', () => {
 			await expect(
 				service.updateConfig(agentId, projectId, {
 					...baseConfig,
-					subAgents: { agents: [{ agentId: 'agent-3' }] },
+					subAgents: {
+						agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
+					},
 				}),
 			).rejects.toThrow('must be published');
 
 			await expect(
 				service.updateConfig(agentId, projectId, {
 					...baseConfig,
-					subAgents: { agents: [{ agentId }] },
+					subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
 				}),
 			).rejects.toThrow('cannot use itself');
 		});
