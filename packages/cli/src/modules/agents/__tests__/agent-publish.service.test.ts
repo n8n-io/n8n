@@ -24,7 +24,6 @@ const user = { id: 'user-1', firstName: 'Ada', lastName: 'Lovelace' } as User;
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	description: 'Published description',
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Help users',
 };
@@ -34,7 +33,6 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		id: agentId,
 		projectId,
 		name: 'Support Agent',
-		description: null,
 		versionId,
 		activeVersionId: null,
 		activeVersion: null,
@@ -277,7 +275,6 @@ describe('AgentPublishService', () => {
 		});
 		const agent = makeAgent({
 			name: 'Draft Agent',
-			description: 'Draft description',
 			versionId: 'draft-v2',
 			activeVersionId: 'published-v1',
 			activeVersion,
@@ -294,7 +291,6 @@ describe('AgentPublishService', () => {
 
 		expect(agent.schema).toEqual(schema);
 		expect(agent.name).toBe(schema.name);
-		expect(agent.description).toBe(schema.description);
 		expect(agent.versionId).toBe('published-v1');
 		expect(agent.tools).toEqual(activeVersion.tools);
 		expect(agent.skills).toEqual(activeVersion.skills);

@@ -1,4 +1,8 @@
-const { resolveMockWorkspaceRoot } = vi.hoisted(() => ({
+const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot } = vi.hoisted(() => ({
+	packWorkspaceSdkMockState: {
+		isEnabled: false,
+		packWorkspaceSdk: vi.fn(),
+	},
 	resolveMockWorkspaceRoot: async (workspace: {
 		filesystem?: { basePath?: string };
 	}): Promise<string> => {
@@ -10,6 +14,11 @@ const { resolveMockWorkspaceRoot } = vi.hoisted(() => ({
 
 		return '/home/daytona/workspace';
 	},
+}));
+
+vi.mock('../pack-workspace-sdk', () => ({
+	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
+	packWorkspaceSdk: packWorkspaceSdkMockState.packWorkspaceSdk,
 }));
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => {
@@ -27,10 +36,13 @@ import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builde
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
-import type { setupSandboxWorkspace as setupSandboxWorkspaceFunction } from '../sandbox-setup';
-import { formatNodeCatalogLine } from '../sandbox-setup';
+import type {
+	formatNodeCatalogLine as formatNodeCatalogLineFunction,
+	setupSandboxWorkspace as setupSandboxWorkspaceFunction,
+} from '../sandbox-setup';
 
 type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
+type FormatNodeCatalogLine = typeof formatNodeCatalogLineFunction;
 type LinkWorkspaceSdkIfEnabled = (
 	workspace: SandboxWorkspace,
 	root: string,
@@ -42,6 +54,15 @@ type RunInSandboxMock = Mock<
 	) => Promise<{ exitCode: number; stdout: string; stderr: string }>
 >;
 type ReadFileViaSandboxMock = Mock<(...args: [SandboxWorkspace, string]) => Promise<string | null>>;
+const LINK_WORKSPACE_SDK_ENV = 'N8N_INSTANCE_AI_SANDBOX_LINK_SDK';
+
+function restoreLinkWorkspaceSdkEnv(value: string | undefined): void {
+	if (value === undefined) {
+		delete process.env[LINK_WORKSPACE_SDK_ENV];
+	} else {
+		process.env[LINK_WORKSPACE_SDK_ENV] = value;
+	}
+}
 
 function createSetupContext(
 	templatesBundle: BuilderTemplatesBundle | null = null,
@@ -132,6 +153,8 @@ async function loadSetupSandboxWorkspaceWithFsMocks(
 	runInSandbox: RunInSandboxMock,
 	readFileViaSandbox: ReadFileViaSandboxMock,
 ): Promise<SetupSandboxWorkspace> {
+	packWorkspaceSdkMockState.isEnabled = false;
+	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	vi.resetModules();
 	vi.doMock('../sandbox-fs', () => ({
 		runInSandbox,
@@ -156,11 +179,10 @@ async function loadLinkWorkspaceSdkWithMocks(
 	packWorkspaceSdk: Mock,
 	runInSandbox: RunInSandboxMock,
 ): Promise<LinkWorkspaceSdkIfEnabled> {
+	packWorkspaceSdkMockState.isEnabled = true;
+	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
+	packWorkspaceSdkMockState.packWorkspaceSdk.mockImplementation(packWorkspaceSdk);
 	vi.resetModules();
-	vi.doMock('../pack-workspace-sdk', () => ({
-		isLinkWorkspaceSdkEnabled: () => true,
-		packWorkspaceSdk,
-	}));
 	vi.doMock('../sandbox-fs', () => ({
 		runInSandbox,
 		readFileViaSandbox: vi.fn(),
@@ -183,6 +205,8 @@ async function loadSandboxPackageJson(linkSdk: boolean): Promise<{
 	// import, then re-import sandbox-setup so its env-dependent PACKAGE_JSON constant
 	// is re-evaluated. Using `await import` (rather than `vi.importActual`) keeps the
 	// module-cache interaction consistent with the doMock-based loaders above.
+	packWorkspaceSdkMockState.isEnabled = linkSdk;
+	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	vi.doUnmock('../sandbox-fs');
 	vi.resetModules();
 	if (linkSdk) {
@@ -205,11 +229,9 @@ describe('PACKAGE_JSON', () => {
 
 	afterEach(() => {
 		vi.resetModules();
-		if (originalLinkSdk === undefined) {
-			delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
-		} else {
-			process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK = originalLinkSdk;
-		}
+		packWorkspaceSdkMockState.isEnabled = false;
+		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
+		restoreLinkWorkspaceSdkEnv(originalLinkSdk);
 	});
 
 	it('should include a registry SDK dependency when workspace SDK linking is disabled', async () => {
@@ -230,6 +252,8 @@ describe('setupSandboxWorkspace', () => {
 	afterEach(() => {
 		vi.doUnmock('../sandbox-fs');
 		vi.resetModules();
+		packWorkspaceSdkMockState.isEnabled = false;
+		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	});
 
 	it('writes the initialized marker only after workspace files and npm install succeed', async () => {
@@ -504,17 +528,22 @@ describe('setupSandboxWorkspace', () => {
 					throw new Error('primary write failed');
 				}
 			});
+		const workspace = createFilesystemWorkspace(writeFile);
+		const executeCommand = workspace.sandbox?.executeCommand;
+		if (!executeCommand) throw new Error('Expected test workspace to include a sandbox');
+		vi.mocked(executeCommand).mockImplementation(async (command: string) => {
+			await Promise.resolve();
+			return command.includes('.sandbox-initialized')
+				? { exitCode: 1, stdout: '', stderr: 'fallback failed' }
+				: mockDaytonaExecuteCommand(command);
+		});
 
-		await expect(
-			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
-		).rejects.toThrow(
+		await expect(setupSandboxWorkspace(workspace, createSetupContext())).rejects.toThrow(
 			/Sandbox workspace setup failed during write-initialization-marker[\s\S]*primary write failed[\s\S]*command fallback failed/,
 		);
 	});
 
 	it('retries packing the workspace SDK after a null pack result', async () => {
-		const originalLinkSdk = process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
-		process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK = '1';
 		const tarball = Buffer.from('sdk');
 		const packWorkspaceSdk = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
 			filename: 'workflow-sdk.tgz',
@@ -551,18 +580,10 @@ describe('setupSandboxWorkspace', () => {
 		} as unknown as SandboxWorkspace;
 
 		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
-		try {
-			await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
-				'workspace SDK could not be packed',
-			);
-			await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
-		} finally {
-			if (originalLinkSdk === undefined) {
-				delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
-			} else {
-				process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK = originalLinkSdk;
-			}
-		}
+		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
+			'workspace SDK could not be packed',
+		);
+		await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 
 		expect(packWorkspaceSdk).toHaveBeenCalledTimes(2);
 		expect(writeFile).toHaveBeenCalledWith('/workspace/workflow-sdk.tgz', tarball, {
@@ -571,6 +592,16 @@ describe('setupSandboxWorkspace', () => {
 	});
 });
 describe('formatNodeCatalogLine', () => {
+	let formatNodeCatalogLine: FormatNodeCatalogLine;
+
+	beforeAll(async () => {
+		vi.doUnmock('../sandbox-fs');
+		packWorkspaceSdkMockState.isEnabled = false;
+		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
+		vi.resetModules();
+		({ formatNodeCatalogLine } = await import('../sandbox-setup'));
+	});
+
 	it('should format a basic node with a string version', () => {
 		const node: SearchableNodeDescription = {
 			name: 'n8n-nodes-base.httpRequest',

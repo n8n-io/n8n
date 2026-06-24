@@ -255,6 +255,9 @@ catalogs:
     cron:
       specifier: 4.4.0
       version: 4.4.0
+    cross-env:
+      specifier: ^7.0.3
+      version: 7.0.3
     csv-parse:
       specifier: 6.2.1
       version: 6.2.1
@@ -367,8 +370,8 @@ catalogs:
       specifier: 6.0.1
       version: 6.0.1
     sanitize-html:
-      specifier: 2.12.1
-      version: 2.12.1
+      specifier: 2.17.4
+      version: 2.17.4
     sass-embedded:
       specifier: ^1.98.0
       version: 1.98.0
@@ -880,6 +883,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      cross-env:
+        specifier: 'catalog:'
+        version: 7.0.3
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -920,6 +929,9 @@ importers:
       '@langchain/textsplitters':
         specifier: 1.0.1
         version: 1.0.1(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -932,9 +944,6 @@ importers:
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
-      https-proxy-agent:
-        specifier: 'catalog:'
-        version: 7.0.6
       js-tiktoken:
         specifier: 'catalog:'
         version: 1.0.21
@@ -950,9 +959,6 @@ importers:
       pdf-parse:
         specifier: 2.4.5
         version: 2.4.5
-      proxy-from-env:
-        specifier: 'catalog:'
-        version: 1.1.0
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
@@ -1065,9 +1071,6 @@ importers:
       picocolors:
         specifier: 'catalog:'
         version: 1.0.1
-      proxy-from-env:
-        specifier: 'catalog:'
-        version: 1.1.0
       turndown:
         specifier: 'catalog:'
         version: 7.2.2
@@ -2801,7 +2804,7 @@ importers:
         version: 4.6.14
       sanitize-html:
         specifier: 'catalog:'
-        version: 2.12.1
+        version: 2.17.4
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
@@ -2854,6 +2857,9 @@ importers:
       '@types/temp':
         specifier: ^0.9.1
         version: 0.9.4
+      '@typescript-eslint/typescript-estree':
+        specifier: ^8.35.0
+        version: 8.35.0(typescript@6.0.2)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
@@ -3347,9 +3353,6 @@ importers:
       aws4:
         specifier: 1.11.0
         version: 1.11.0
-      axios:
-        specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -3584,9 +3587,6 @@ importers:
       turndown:
         specifier: 'catalog:'
         version: 7.2.2
-      undici:
-        specifier: catalog:undici-v7
-        version: 7.28.0
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -3708,6 +3708,9 @@ importers:
       '@vvo/tzdb':
         specifier: ^6.141.0
         version: 6.141.0
+      axios:
+        specifier: 1.18.0
+        version: 1.18.0(debug@4.4.3)
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
@@ -3807,9 +3810,6 @@ importers:
       '@sentry/profiling-node':
         specifier: catalog:sentry
         version: 10.55.0(@opentelemetry/exporter-trace-otlp-http@0.217.0(@opentelemetry/api@1.9.0))
-      axios:
-        specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -3913,6 +3913,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      axios:
+        specifier: 1.18.0
+        version: 1.18.0(debug@4.4.3)
       jest-mock-extended:
         specifier: ^3.0.4
         version: 3.0.4(jest@29.7.0(@types/node@20.19.41)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)))(typescript@6.0.2)
@@ -4170,7 +4173,7 @@ importers:
         version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
         specifier: 'catalog:'
-        version: 2.12.1
+        version: 2.17.4
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -4185,8 +4188,8 @@ importers:
         version: 1.0.15
     devDependencies:
       '@iconify/json':
-        specifier: ^2.2.349
-        version: 2.2.354
+        specifier: ^2.2.488
+        version: 2.2.488
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
@@ -4769,7 +4772,7 @@ importers:
         version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
         specifier: 'catalog:'
-        version: 2.12.1
+        version: 2.17.4
       semver:
         specifier: 7.7.3
         version: 7.7.3
@@ -4850,8 +4853,8 @@ importers:
         specifier: ^8.0.2
         version: 8.4.1
       '@iconify/json':
-        specifier: ^2.2.349
-        version: 2.2.354
+        specifier: ^2.2.488
+        version: 2.2.488
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
@@ -5191,7 +5194,7 @@ importers:
         version: 3.13.0
       sanitize-html:
         specifier: 'catalog:'
-        version: 2.12.1
+        version: 2.17.4
       semver:
         specifier: 7.7.3
         version: 7.7.3
@@ -7617,8 +7620,8 @@ packages:
   '@iconify-json/mdi@1.1.63':
     resolution: {integrity: sha512-b07dRM5LYdwJqd/lm+1+JDNDNSWHvpZ7ujb73oJxx3lmK1J0giDS0BSc4yia0hixNV0Z2q/4GyxAu/A8XqDnbg==}
 
-  '@iconify/json@2.2.354':
-    resolution: {integrity: sha512-I7sYXaLfvGw0msuc5p2VdQJ4nthbsqLW8IF9j1jaekUcs/xwGVgs3SHO5lEiFglv0odlkCu26CMbboZMvwkTcw==}
+  '@iconify/json@2.2.488':
+    resolution: {integrity: sha512-W2MfGS0n1GugWhQn7SLgRKNH1JonVsKG/O9vO/htP7j3k1bGt54R1mbN9uaZlQ99uCCu65IR5UgQM66E8Cm+Fw==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -7978,7 +7981,6 @@ packages:
   '@langchain/community@1.1.27':
     resolution: {integrity: sha512-s2U3w7QV7QpkFtY1eZMni4poz+nKLFclpDi3a7hUbZ67ttsGaU9WkZ2BiLuzLIs+IFaUvON/KcGkE8EqAl9aPA==}
     engines: {node: '>=20'}
-    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.2.0
       '@aws-crypto/sha256-js': ^5.0.0
@@ -14199,8 +14201,8 @@ packages:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
-  entities@7.0.0:
-    resolution: {integrity: sha512-FDWG5cmEYf2Z00IkYRhbFrwIwvdFKH07uV8dvNy0omp/Qb1xcyCWp2UDtcwJF4QZZvk0sLudP6/hAu42TaqVhQ==}
+  entities@7.0.1:
+    resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
     engines: {node: '>=0.12'}
 
   env-paths@2.2.1:
@@ -15348,6 +15350,9 @@ packages:
   htmlparser2@10.0.0:
     resolution: {integrity: sha512-TwAZM+zE5Tq3lrEHvOlvwgj1XLWQCtaaibSN11Q+gGBAS7Y1uZSWwXXRe4iF6OXnaq1riyQAPFOBtYc77Mxq0g==}
 
+  htmlparser2@10.1.0:
+    resolution: {integrity: sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==}
+
   htmlparser2@5.0.1:
     resolution: {integrity: sha512-vKZZra6CSe9qsJzh0BjBGXo8dvzNsq/oGvsjfRdOrrryfeD9UOBEEQdeoqCRmKZchF5h2zOBMQ6YuQ0uRUmdbQ==}
 
@@ -16338,6 +16343,9 @@ packages:
         optional: true
       ws:
         optional: true
+
+  launder@1.7.1:
+    resolution: {integrity: sha512-mU6WRz5EusL9ZZuiZ5SO4Y6C0P9PAUR9iwdb6bzj4KDihm28DiHFw+/yk9DBH4f+Pv1wuzQ4e2jV3oQ7mkIqvw==}
 
   lazy-ass@1.6.0:
     resolution: {integrity: sha512-cc8oEVoctTvsFZ/Oje/kGnHbpWHYBe8IAJe4C0QNc3t8uM/0Y8+erSz/7Y1ALuXTEZTMvxXwO6YbX1ey3ujiZw==}
@@ -18226,9 +18234,6 @@ packages:
     resolution: {integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==}
     engines: {node: '>=8'}
 
-  pathe@1.1.2:
-    resolution: {integrity: sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==}
-
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
@@ -18803,7 +18808,6 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -19315,8 +19319,8 @@ packages:
   sanitize-filename@1.6.4:
     resolution: {integrity: sha512-9ZyI08PsvdQl2r/bBIGubpVdR3RR9sY6RDiWFPreA21C/EFlQhmgo20UZlNjZMMZNubusLhAQozkA0Od5J21Eg==}
 
-  sanitize-html@2.12.1:
-    resolution: {integrity: sha512-Plh+JAn0UVDpBRP/xEjsk+xDCoOvMBwQUf/K+/cBAVuTbtX8bj2VB7S1sL1dssVpykqp0/KPSesHrqXtokVBpA==}
+  sanitize-html@2.17.4:
+    resolution: {integrity: sha512-2HW7v2ol/uAM7sX4hbD8Z59OGWmAPrvjL8E71UWlBcj6m+kcF6ilQBLny+cIgY214QJeJT5tQuxKKqX0SQqjGQ==}
 
   sass-embedded-all-unknown@1.98.0:
     resolution: {integrity: sha512-6n4RyK7/1mhdfYvpP3CClS3fGoYqDvRmLClCESS6I7+SAzqjxvGG6u5Fo+cb1nrPNbbilgbM4QKdgcgWHO9NCA==}
@@ -21372,7 +21376,7 @@ packages:
     engines: {node: '>=18'}
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz:
-    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
+    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
     version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
@@ -23007,12 +23011,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@azure/core-http-compat@2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.20.0)':
-    dependencies:
-      '@azure/abort-controller': 2.1.2
-      '@azure/core-client': 1.10.2
-      '@azure/core-rest-pipeline': 1.20.0
-
   '@azure/core-http-compat@2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)':
     dependencies:
       '@azure/abort-controller': 2.1.2
@@ -23103,7 +23101,7 @@ snapshots:
       '@azure/core-client': 1.10.2
       '@azure/core-http-compat': 1.3.0
       '@azure/core-lro': 2.4.0
-      '@azure/core-paging': 1.3.0
+      '@azure/core-paging': 1.6.2
       '@azure/core-rest-pipeline': 1.24.0
       '@azure/core-tracing': 1.3.1
       '@azure/core-util': 1.13.1
@@ -23188,9 +23186,9 @@ snapshots:
       '@azure/abort-controller': 2.1.2
       '@azure/core-auth': 1.10.1
       '@azure/core-client': 1.10.2
-      '@azure/core-http-compat': 2.1.2
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)
       '@azure/core-lro': 2.4.0
-      '@azure/core-paging': 1.3.0
+      '@azure/core-paging': 1.6.2
       '@azure/core-rest-pipeline': 1.24.0
       '@azure/core-tracing': 1.3.1
       '@azure/core-util': 1.13.1
@@ -23206,11 +23204,11 @@ snapshots:
       '@azure/abort-controller': 2.1.2
       '@azure/core-auth': 1.10.1
       '@azure/core-client': 1.10.2
-      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.20.0)
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)
       '@azure/core-lro': 2.4.0
       '@azure/core-paging': 1.6.2
-      '@azure/core-rest-pipeline': 1.20.0
-      '@azure/core-tracing': 1.2.0
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
       '@azure/core-util': 1.13.1
       '@azure/core-xml': 1.4.5
       '@azure/logger': 1.3.0
@@ -24874,10 +24872,10 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify/json@2.2.354':
+  '@iconify/json@2.2.488':
     dependencies:
       '@iconify/types': 2.0.0
-      pathe: 1.1.2
+      pathe: 2.0.3
 
   '@iconify/types@2.0.0': {}
 
@@ -29654,7 +29652,7 @@ snapshots:
     dependencies:
       '@babel/parser': 7.29.2
       '@vue/shared': 3.5.26
-      entities: 7.0.0
+      entities: 7.0.1
       estree-walker: 2.0.2
       source-map-js: 1.2.1
 
@@ -30949,7 +30947,7 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.2.2
       encoding-sniffer: 0.2.0
-      htmlparser2: 10.0.0
+      htmlparser2: 10.1.0
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
@@ -32236,7 +32234,7 @@ snapshots:
 
   entities@6.0.1: {}
 
-  entities@7.0.0: {}
+  entities@7.0.1: {}
 
   env-paths@2.2.1: {}
 
@@ -33782,6 +33780,13 @@ snapshots:
       domutils: 3.2.2
       entities: 6.0.1
 
+  htmlparser2@10.1.0:
+    dependencies:
+      domelementtype: 2.3.0
+      domhandler: 5.0.3
+      domutils: 3.2.2
+      entities: 7.0.1
+
   htmlparser2@5.0.1:
     dependencies:
       domelementtype: 2.3.0
@@ -35055,6 +35060,10 @@ snapshots:
       '@opentelemetry/sdk-trace-base': 2.7.1(@opentelemetry/api@1.9.0)
       openai: 6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       ws: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+
+  launder@1.7.1:
+    dependencies:
+      dayjs: 1.11.10
 
   lazy-ass@1.6.0: {}
 
@@ -37326,8 +37335,6 @@ snapshots:
 
   path-type@4.0.0: {}
 
-  pathe@1.1.2: {}
-
   pathe@2.0.3: {}
 
   pathval@2.0.0: {}
@@ -38657,12 +38664,13 @@ snapshots:
     dependencies:
       truncate-utf8-bytes: 1.0.2
 
-  sanitize-html@2.12.1:
+  sanitize-html@2.17.4:
     dependencies:
       deepmerge: 4.3.1
       escape-string-regexp: 4.0.0
-      htmlparser2: 8.0.2
+      htmlparser2: 10.1.0
       is-plain-object: 5.0.0
+      launder: 1.7.1
       parse-srcset: 1.0.2
       postcss: 8.5.10
 
