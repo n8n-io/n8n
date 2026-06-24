@@ -21,6 +21,7 @@ export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
+	options: { isCredential: boolean } = { isCredential: false },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 
@@ -41,7 +42,7 @@ export function getAdditionalKeys(
 				: undefined,
 		},
 		$vars: additionalData.variables,
-		$secrets: getSecretsProxy(additionalData),
+		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
 
 		// deprecated
 		$executionId: executionId,
@@ -55,9 +56,10 @@ export function getAdditionalKeys(
  * */
 export function getNonWorkflowAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
+	options: { secretsEnabled: boolean } = { secretsEnabled: false },
 ): IWorkflowDataProxyAdditionalKeys {
 	return {
 		$vars: additionalData.variables,
-		$secrets: getSecretsProxy(additionalData),
+		$secrets: options.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
 	};
 }
