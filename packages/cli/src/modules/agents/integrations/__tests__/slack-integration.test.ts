@@ -38,9 +38,22 @@ describe('SlackIntegration', () => {
 	});
 
 	it('buffers resume responses because Slack action events lack reliable thread context', async () => {
-		await expect(integration.createResumeExecutionContext()).resolves.toEqual({
-			forceBuffered: true,
+		const thread = {
+			startTyping: jest.fn().mockResolvedValue(undefined),
+		};
+
+		const context = await integration.createResumeExecutionContext({
+			chat: {
+				getAdapter: jest.fn().mockReturnValue(undefined),
+			} as unknown as ChatInstance,
+			thread: thread as never,
+			logger: { warn: jest.fn() } as never,
+			agentId: 'agent-1',
 		});
+
+		expect(context.forceBuffered).toBe(true);
+		expect(context.statusHandle).toBeUndefined();
+		expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 	});
 
 	describe('handleUnauthenticatedWebhook', () => {

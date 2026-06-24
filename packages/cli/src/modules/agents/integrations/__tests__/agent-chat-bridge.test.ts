@@ -816,7 +816,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
 
-		it('buffers the response when resuming a Slack action', async () => {
+		it('sets a thinking status and buffers the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
@@ -852,7 +852,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				adapter: { deleteMessage: jest.fn().mockResolvedValue(undefined) },
 			});
 
-			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(thread.startTyping.mock.invocationCallOrder[0]).toBeLessThan(
+				thread.post.mock.invocationCallOrder[0],
+			);
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Approved response' });
 			expect(agentExecutor.resumeForChat).toHaveBeenCalled();
 		});
