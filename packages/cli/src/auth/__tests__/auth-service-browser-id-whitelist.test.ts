@@ -29,6 +29,7 @@ describe('AuthService Browser ID Whitelist', () => {
 			userRepository,
 			invalidAuthTokenRepository,
 			mfaService,
+			mock(),
 		);
 	});
 

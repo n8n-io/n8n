@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { ROLE, type Role } from '@n8n/api-types';
+import { ROLE, type Role, type LoginSession } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -24,6 +24,9 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
 import { confirmPasswordEventBus } from '../auth.eventBus';
+import { useLoginSessionsStore } from '../loginSessions.store';
+import LoginSessionsTable from '../components/LoginSessionsTable.vue';
+import RevokeSessionConfirmModal from '../components/RevokeSessionConfirmModal.vue';
 
 import {
 	N8nAvatar,
@@ -86,6 +89,12 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
+const loginSessionsStore = useLoginSessionsStore();
+
+const revokeModalOpen = ref(false);
+const revokeMode = ref<'single' | 'all'>('single');
+const sessionToRevoke = ref<LoginSession | null>(null);
+const isRevoking = ref(false);
 
 const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
@@ -159,8 +168,13 @@ const roles = computed<Record<Role, RoleContent>>(() => ({
 
 const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
 
-onMounted(() => {
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
+	try {
+		await loginSessionsStore.fetchSessions();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.personal.loginSessions.error.fetch'));
+	}
 	formInputs.value = [
 		{
 			name: 'firstName',
@@ -208,6 +222,34 @@ function onInput() {
 
 function onReadyToSubmit(ready: boolean) {
 	readyToSubmit.value = ready;
+}
+
+function onRevokeSession(session: LoginSession) {
+	sessionToRevoke.value = session;
+	revokeMode.value = 'single';
+	revokeModalOpen.value = true;
+}
+
+function onRevokeAllOtherSessions() {
+	sessionToRevoke.value = null;
+	revokeMode.value = 'all';
+	revokeModalOpen.value = true;
+}
+
+async function onConfirmRevoke() {
+	isRevoking.value = true;
+	try {
+		if (revokeMode.value === 'all') {
+			await loginSessionsStore.revokeAllOtherSessions();
+		} else if (sessionToRevoke.value) {
+			await loginSessionsStore.revokeSession(sessionToRevoke.value.id);
+		}
+		revokeModalOpen.value = false;
+	} catch (error) {
+		showError(error, i18n.baseText('settings.personal.loginSessions.error.revoke'));
+	} finally {
+		isRevoking.value = false;
+	}
 }
 
 /** Saves users basic info and personalization settings */
@@ -438,6 +480,25 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 		</div>
+		<div data-test-id="login-sessions-section">
+			<div :class="$style.loginSessionsHeader">
+				<N8nHeading size="large">{{
+					i18n.baseText('settings.personal.loginSessions.title')
+				}}</N8nHeading>
+				<N8nButton
+					v-if="loginSessionsStore.hasOtherSessions"
+					type="secondary"
+					size="small"
+					:label="i18n.baseText('settings.personal.loginSessions.revokeAll.button')"
+					data-test-id="revoke-all-sessions-button"
+					@click="onRevokeAllOtherSessions"
+				/>
+			</div>
+			<N8nText color="text-light" size="small" tag="p" class="mb-s">
+				{{ i18n.baseText('settings.personal.loginSessions.description') }}
+			</N8nText>
+			<LoginSessionsTable :sessions="loginSessionsStore.sessions" @revoke="onRevokeSession" />
+		</div>
 		<div>
 			<div class="mb-s">
 				<N8nHeading size="large">{{
@@ -474,6 +535,13 @@ onBeforeUnmount(() => {
 				@click="onSaveClick"
 			/>
 		</div>
+		<RevokeSessionConfirmModal
+			v-model:open="revokeModalOpen"
+			:mode="revokeMode"
+			:loading="isRevoking"
+			@confirm="onConfirmRevoke"
+			@cancel="revokeModalOpen = false"
+		/>
 	</div>
 </template>
 
@@ -484,6 +552,13 @@ onBeforeUnmount(() => {
 	> * {
 		margin-bottom: var(--spacing--2xl);
 	}
+}
+
+.loginSessionsHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing--2xs);
 }
 
 .header {

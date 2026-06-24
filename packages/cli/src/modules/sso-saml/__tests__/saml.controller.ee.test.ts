@@ -257,7 +257,15 @@ describe('SAML Login Flow', () => {
 		await controller.acsPost(req, res, { RelayState: '/' });
 
 		// Verify that issueCookie was called with MFA flag set to true
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(
+			res,
+			user,
+			true,
+			'test-browser-id',
+			undefined,
+			undefined,
+			undefined,
+		);
 		expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
 			user,
 			authenticationMethod: 'saml',
@@ -279,7 +287,15 @@ describe('SAML Login Flow', () => {
 		await controller.acsPost(req, res, { RelayState: '/' });
 
 		// Verify that issueCookie was called with MFA flag set to true
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(
+			res,
+			user,
+			true,
+			'test-browser-id',
+			undefined,
+			undefined,
+			undefined,
+		);
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/saml/onboarding');
 	});
 
@@ -297,7 +313,15 @@ describe('SAML Login Flow', () => {
 
 		await controller.acsPost(req, res, { RelayState: customRelayState });
 
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(
+			res,
+			user,
+			true,
+			'test-browser-id',
+			undefined,
+			undefined,
+			undefined,
+		);
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/custom/redirect');
 	});
 

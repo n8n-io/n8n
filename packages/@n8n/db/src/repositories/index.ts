@@ -30,6 +30,7 @@ export { FolderRepository } from './folder.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
+export { UserLoginSessionRepository } from './user-login-session.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
