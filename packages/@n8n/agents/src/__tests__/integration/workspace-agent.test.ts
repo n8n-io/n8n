@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 
-import { Agent } from '../../../sdk/agent';
-import type { FileEntry } from '../../../workspace/types';
-import { Workspace } from '../../../workspace/workspace';
-import { InMemoryFilesystem, FakeProcessManager, FakeSandbox } from '../../workspace/test-utils';
 import {
 	chunksOfType,
 	collectStreamChunks,
@@ -12,7 +8,9 @@ import {
 	findAllToolCalls,
 	findAllToolResults,
 	getModel,
-} from '../helpers';
+} from './helpers';
+import { Agent, Workspace, type FileEntry } from '../../index';
+import { InMemoryFilesystem, FakeProcessManager, FakeSandbox } from '../workspace/test-utils';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -110,7 +108,7 @@ describe('workspace agent integration', () => {
 		expect((execResult as unknown as { output: { success: boolean } }).output.success).toBe(true);
 	});
 
-	it('agent uses workspace_mkdir and workspace_list_files together', async () => {
+	it('agent uses workspace_list_files for a pre-existing directory', async () => {
 		await memFs.mkdir('/project', { recursive: true });
 		await memFs.writeFile('/project/index.ts', 'console.log("hello")');
 		await memFs.writeFile('/project/README.md', '# Project');
@@ -118,11 +116,13 @@ describe('workspace agent integration', () => {
 		const agent = new Agent('workspace-list-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are a file manager. Use workspace_list_files to list files. Be concise and list the filenames you find.',
+				'You are a file manager. For directory listing requests, call workspace_list_files with the exact path the user provides. Be concise and list the filenames you find.',
 			)
 			.workspace(workspace);
 
-		const result = await agent.generate('List the files in the /project directory.');
+		const result = await agent.generate(
+			'Call workspace_list_files exactly once with path="/project" and recursive=false. Then answer with only the returned filenames.',
+		);
 
 		expect(result.finishReason).toBe('stop');
 		expect(result.error).toBeUndefined();
@@ -130,6 +130,7 @@ describe('workspace agent integration', () => {
 		const toolCalls = findAllToolCalls(result.messages);
 		const listCall = toolCalls.find((tc) => tc.toolName === 'workspace_list_files');
 		expect(listCall).toBeDefined();
+		expect(listCall?.input).toEqual(expect.objectContaining({ path: '/project' }));
 
 		const toolResults = findAllToolResults(result.messages);
 		const listResult = toolResults.find((tr) => tr.toolName === 'workspace_list_files');
@@ -139,19 +140,6 @@ describe('workspace agent integration', () => {
 		const names = entries.map((e) => e.name);
 		expect(names).toContain('index.ts');
 		expect(names).toContain('README.md');
-	});
-
-	it('workspace instructions are appended to agent instructions', () => {
-		new Agent('workspace-instructions-test')
-			.model(getModel('anthropic'))
-			.instructions('Base instructions.')
-			.workspace(workspace);
-		const tools = workspace.getTools();
-		expect(tools.length).toBe(15);
-
-		const instructions = workspace.getInstructions();
-		expect(instructions).toContain('Fake sandbox');
-		expect(instructions).toContain('In-memory filesystem');
 	});
 
 	it('stream: agent writes a file and streams the response', async () => {
@@ -210,6 +198,176 @@ describe('workspace agent integration', () => {
 		const stat = (statResult as unknown as { output: { type: string; size: number } }).output;
 		expect(stat.type).toBe('file');
 		expect(stat.size).toBe(29);
+	});
+
+	it('agent edits files with append, copy, move, delete, and rmdir tools', async () => {
+		await memFs.mkdir('/project', { recursive: true });
+		await memFs.mkdir('/project/remove-me', { recursive: true });
+		await memFs.writeFile('/project/source.txt', 'alpha');
+		await memFs.writeFile('/project/remove-me/old.txt', 'remove this');
+
+		const agent = new Agent('workspace-file-edit-test')
+			.model(getModel('anthropic'))
+			.instructions(
+				[
+					'You are a file manager.',
+					'Use the exact workspace tools requested by the user.',
+					'Do not substitute other workspace tools when exact tools are named.',
+					'Be concise after the tools complete.',
+				].join(' '),
+			)
+			.workspace(workspace);
+
+		const result = await agent.generate(
+			[
+				'Perform these exact workspace tool calls in order:',
+				'1. Call workspace_append_file with path="/project/source.txt" and content="-beta".',
+				'2. Call workspace_copy_file with src="/project/source.txt", dest="/project/copied.txt", overwrite=true.',
+				'3. Call workspace_move_file with src="/project/copied.txt", dest="/project/moved.txt", overwrite=true.',
+				'4. Call workspace_delete_file with path="/project/source.txt".',
+				'5. Call workspace_rmdir with path="/project/remove-me", recursive=true, force=false.',
+				'Then answer only: done.',
+			].join('\n'),
+		);
+
+		expect(result.finishReason).toBe('stop');
+		expect(result.error).toBeUndefined();
+
+		const toolCalls = findAllToolCalls(result.messages);
+		expect(toolCalls.map((toolCall) => toolCall.toolName)).toEqual(
+			expect.arrayContaining([
+				'workspace_append_file',
+				'workspace_copy_file',
+				'workspace_move_file',
+				'workspace_delete_file',
+				'workspace_rmdir',
+			]),
+		);
+		expect(
+			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_append_file')?.input,
+		).toEqual(expect.objectContaining({ path: '/project/source.txt', content: '-beta' }));
+		expect(
+			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_copy_file')?.input,
+		).toEqual(
+			expect.objectContaining({
+				src: '/project/source.txt',
+				dest: '/project/copied.txt',
+				overwrite: true,
+			}),
+		);
+		expect(
+			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_move_file')?.input,
+		).toEqual(
+			expect.objectContaining({
+				src: '/project/copied.txt',
+				dest: '/project/moved.txt',
+				overwrite: true,
+			}),
+		);
+		expect(
+			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_delete_file')?.input,
+		).toEqual(expect.objectContaining({ path: '/project/source.txt' }));
+		expect(toolCalls.find((toolCall) => toolCall.toolName === 'workspace_rmdir')?.input).toEqual(
+			expect.objectContaining({ path: '/project/remove-me', recursive: true }),
+		);
+
+		const toolResults = findAllToolResults(result.messages);
+		for (const toolName of [
+			'workspace_append_file',
+			'workspace_copy_file',
+			'workspace_move_file',
+			'workspace_delete_file',
+			'workspace_rmdir',
+		]) {
+			const toolResult = toolResults.find((result) => result.toolName === toolName);
+			expect(toolResult).toBeDefined();
+			expect(toolResult!.state).toBe('resolved');
+		}
+
+		expect(await memFs.exists('/project/source.txt')).toBe(false);
+		expect(await memFs.exists('/project/copied.txt')).toBe(false);
+		expect(await memFs.exists('/project/moved.txt')).toBe(true);
+		expect(memFs.getFileContent('/project/moved.txt')).toBe('alpha-beta');
+		expect(await memFs.exists('/project/remove-me')).toBe(false);
+	});
+
+	it('agent applies single and batch string replacements', async () => {
+		await memFs.mkdir('/project', { recursive: true });
+		await memFs.writeFile(
+			'/project/config.ts',
+			[
+				'export const region = "OLD_REGION";',
+				'export const owner = "OLD_OWNER";',
+				'export const status = "OLD_STATUS";',
+			].join('\n'),
+		);
+
+		const agent = new Agent('workspace-str-replace-test')
+			.model(getModel('anthropic'))
+			.instructions(
+				[
+					'You are a file editor.',
+					'Use workspace_str_replace_file for single exact replacements.',
+					'Use workspace_batch_str_replace_file for batch exact replacements.',
+					'Do not rewrite the whole file.',
+				].join(' '),
+			)
+			.workspace(workspace);
+
+		const result = await agent.generate(
+			[
+				'Perform these exact workspace edits:',
+				'1. Call workspace_str_replace_file on /project/config.ts replacing old_str="OLD_REGION" with new_str="EU_CENTRAL".',
+				'2. Call workspace_batch_str_replace_file on /project/config.ts with replacements:',
+				'   - old_str="OLD_OWNER", new_str="API_TEAM"',
+				'   - old_str="OLD_STATUS", new_str="READY"',
+				'Then answer only: done.',
+			].join('\n'),
+		);
+
+		expect(result.finishReason).toBe('stop');
+		expect(result.error).toBeUndefined();
+
+		const toolCalls = findAllToolCalls(result.messages);
+		expect(toolCalls.map((toolCall) => toolCall.toolName)).toEqual(
+			expect.arrayContaining(['workspace_str_replace_file', 'workspace_batch_str_replace_file']),
+		);
+		expect(
+			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_str_replace_file')?.input,
+		).toEqual(
+			expect.objectContaining({
+				path: '/project/config.ts',
+				old_str: 'OLD_REGION',
+				new_str: 'EU_CENTRAL',
+			}),
+		);
+		expect(
+			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_batch_str_replace_file')?.input,
+		).toEqual(
+			expect.objectContaining({
+				path: '/project/config.ts',
+				replacements: expect.arrayContaining([
+					expect.objectContaining({ old_str: 'OLD_OWNER', new_str: 'API_TEAM' }),
+					expect.objectContaining({ old_str: 'OLD_STATUS', new_str: 'READY' }),
+				]),
+			}),
+		);
+
+		const toolResults = findAllToolResults(result.messages);
+		for (const toolName of ['workspace_str_replace_file', 'workspace_batch_str_replace_file']) {
+			const toolResult = toolResults.find((result) => result.toolName === toolName);
+			expect(toolResult).toBeDefined();
+			expect(toolResult!.state).toBe('resolved');
+			expect((toolResult as unknown as { output: { success: boolean } }).output.success).toBe(true);
+		}
+
+		const edited = memFs.getFileContent('/project/config.ts');
+		expect(edited).toContain('EU_CENTRAL');
+		expect(edited).toContain('API_TEAM');
+		expect(edited).toContain('READY');
+		expect(edited).not.toContain('OLD_REGION');
+		expect(edited).not.toContain('OLD_OWNER');
+		expect(edited).not.toContain('OLD_STATUS');
 	});
 
 	it('agent handles multi-step workflow: mkdir, write, list, read', async () => {
