@@ -83,7 +83,7 @@ export const descriptions: INodeProperties[] = [
 		required: true,
 		builderHint: {
 			propertyHint:
-				"Default to mode: 'list' which is easier for users to set up. Never invent a spreadsheet ID: when no credential or explored resource provides a real one, use mode: 'id' with an empty value and a cachedResultName placeholder. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
+				"Default to mode: 'list' which is easier for users to set up — it gives users the From-list picker at setup. When no credential or explored resource provides a real spreadsheet ID, still use mode: 'list' with an empty value and a cachedResultName placeholder (e.g. the sheet name from the prompt). Never invent a spreadsheet ID and never fall back to mode: 'id' with a made-up value; use mode: 'id' only when the user pasted a concrete ID. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
 		},
 		modes: [
 			{
