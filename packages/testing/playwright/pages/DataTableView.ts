@@ -1,5 +1,6 @@
 import { BasePage } from './BasePage';
 import { AddResource } from './components/AddResource';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class DataTableView extends BasePage {
 	async goto(projectId?: string) {
@@ -50,11 +51,11 @@ export class DataTableView extends BasePage {
 	}
 
 	getDeleteDataTableModal() {
-		return this.page.locator('.el-message-box').filter({ hasText: 'Delete Data table' });
+		return new MessageBox(this.page).root.filter({ hasText: 'Delete Data table' });
 	}
 
 	getDeleteDataTableConfirmButton() {
-		return this.getDeleteDataTableModal().locator('.btn--confirm');
+		return new MessageBox(this.getDeleteDataTableModal()).confirmButton;
 	}
 
 	getDataTablePageSizeSelect() {

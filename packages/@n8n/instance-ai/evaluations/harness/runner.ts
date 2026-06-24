@@ -21,6 +21,14 @@ import {
 	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
+import {
+	loadConversationSeed,
+	remapSeedWorkflowIds,
+	seedFromProse,
+	transcriptPrefixFromSeed,
+	type ConversationSeed,
+} from './conversation-seed';
+import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { buildWorkflowContextBlock } from './workflow-context';
@@ -90,7 +98,7 @@ function slugifyArtifactSegment(value: string, fallback: string): string {
 }
 
 function deriveTestCaseArtifactName(testCase: WorkflowTestCase): string {
-	return slugifyArtifactSegment(testCase.conversation[0]?.text ?? '', 'workflow');
+	return slugifyArtifactSegment(testCase.conversation?.[0]?.text ?? '', 'workflow');
 }
 
 async function writeScenarioVerificationSnapshot(input: {
@@ -190,6 +198,9 @@ export async function runWorkflowTestCase(
 				conversation: testCase.conversation,
 				messageBudget: testCase.messageBudget,
 				credentials: testCase.credentials,
+				seedFile: testCase.seedFile,
+				priorConversation: testCase.priorConversation,
+				seedThread: testCase.seedThread,
 				createdCredentialIds: config.createdCredentialIds,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
@@ -395,23 +406,30 @@ export interface BuildResult {
 	workflowChecks?: CheckOutcome[];
 	/** False when the backend lacks the credential-pin endpoint and the build ran unpinned. */
 	credentialViewPinned?: boolean;
+	/** True when the build failed while setting up the conversation seed (trace
+	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
+	 *  not an agent build failure. Routed to `framework_issue`. */
+	seedingFailed?: boolean;
 }
 
 export interface BuildWorkflowConfig {
 	client: N8nClient;
-	/**
-	 * Hand-authored conversation. ≥1 turn, first turn must be `user`.
-	 *
-	 * - One user turn, no assistant turns → auto-approve all confirmations.
-	 * - Anything else → UserProxyLlm engages.
-	 */
-	conversation: ConversationTurn[];
+	/** Hand-authored conversation (≥1 turn, first `user`; one user turn →
+	 *  auto-approve, more → proxy). Optional when `seedThread` derives the live turn. */
+	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
+	/** Synthetic seed file (path) restored before the live message. */
+	seedFile?: string;
+	/** Prose turns seeded as plain-text history. */
+	priorConversation?: ConversationTurn[];
+	/** Reproduce a real conversation from its LangSmith trace (seed = before the
+	 *  last user message, live = that message). */
+	seedThread?: SeedThreadRef;
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
@@ -441,8 +459,7 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
-	const { client, conversation, logger } = config;
-	const openingMessage = conversation[0]?.text ?? '';
+	const { client, logger } = config;
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -453,9 +470,51 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
 	const followUpMessages: string[] = [];
 	let credentialViewPinned = true;
+	let restoredWorkflowIds: string[] = [];
+	let restoredDataTableIds: string[] = [];
+	let seededTranscript: TranscriptTurn[] = [];
+	let seedingFailed = false;
 
 	try {
 		const buildStart = Date.now();
+
+		// `seedThread` derives both seed and live turn from a trace; otherwise the
+		// seed (if any) is a file/prose prelude and the conversation is authored.
+		let seed: ConversationSeed | undefined;
+		let conversation = config.conversation ?? [];
+		try {
+			if (config.seedThread) {
+				const reconstructed = await reconstructSeedFromThread(config.seedThread);
+				seed = reconstructed.seed;
+				// The trace's last user message is the live opening; any authored
+				// `conversation` continues from there (proxy-driven follow-ups).
+				conversation = [
+					{ role: 'user', text: reconstructed.liveTurn },
+					...(config.conversation ?? []),
+				];
+				const contSuffix =
+					(config.conversation?.length ?? 0) > 0
+						? ` + ${String(config.conversation!.length)} continuation turn(s)`
+						: '';
+				const wsLabel = reconstructed.sourceWorkspace
+					? `${reconstructed.sourceWorkspace}/${reconstructed.sourceProject}`
+					: reconstructed.sourceProject;
+				logger.info(
+					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
+				);
+			} else if (config.seedFile) {
+				seed = loadConversationSeed(config.seedFile);
+			} else if (config.priorConversation && config.priorConversation.length > 0) {
+				seed = seedFromProse(config.priorConversation);
+			}
+		} catch (error: unknown) {
+			// A seed that can't be resolved is a harness/framework problem, not an
+			// agent build failure — tag it and fail before spending a live turn.
+			seedingFailed = true;
+			throw new Error(`Seeding failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+
+		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
 			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
@@ -488,6 +547,35 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			logger.info(
 				`  Credential-pin endpoint unavailable, building unpinned${config.laneTag ?? ''}`,
 			);
+		}
+
+		// Restore the seed before the first live message. No degraded mode: a
+		// seeded case can't run unseeded, so any restore failure fails the build.
+		if (seed) {
+			try {
+				const remapped = remapSeedWorkflowIds(seed);
+				const restoreResult = await client.restoreThread(
+					threadId,
+					remapped.messages,
+					remapped.workflows,
+					remapped.dataTables,
+				);
+				restoredWorkflowIds = restoreResult.workflowIds;
+				restoredDataTableIds = restoreResult.dataTableIds;
+				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
+				const dtSuffix =
+					restoredDataTableIds.length > 0
+						? `, ${String(restoredDataTableIds.length)} data table(s)`
+						: '';
+				logger.info(
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${config.laneTag ?? ''}`,
+				);
+			} catch (error: unknown) {
+				seedingFailed = true;
+				throw new Error(
+					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
 		}
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
@@ -530,12 +618,15 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		await ssePromise.catch(() => {});
 
 		const conversationMetrics = buildConversationMetrics(events);
-		const transcript = buildTranscriptFromEvents({
-			events,
-			openingMessage,
-			followUpMessages,
-			proxyResponses,
-		});
+		const transcript = [
+			...seededTranscript,
+			...buildTranscriptFromEvents({
+				events,
+				openingMessage,
+				followUpMessages,
+				proxyResponses,
+			}),
+		];
 
 		let threadMessages;
 		try {
@@ -546,7 +637,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
-		const threadWorkflowIds = [...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds])];
+		// Restored workflows keep a seeded build scoreable/cleanable even if the
+		// live turn touches no workflow tool; live ids stay first (primary artifact).
+		const threadWorkflowIds = [
+			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
+		];
 		const buildTrace: BuildTrace = {
 			finalText: eventOutcome.finalText,
 			toolCalls: eventOutcome.toolCalls,
@@ -599,14 +694,15 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				error: buildError,
 				workflowJsons: [],
 				buildTrace,
-				createdWorkflowIds: [],
-				createdDataTableIds: outcome.dataTablesCreated,
+				createdWorkflowIds: restoredWorkflowIds,
+				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				conversationMetrics,
 				events,
 				threadId,
 				proxyDecisionStats,
 				transcript,
 				credentialViewPinned,
+				seedingFailed,
 			};
 		}
 
@@ -631,7 +727,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			workflowJsons: outcome.workflowJsons,
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
-			createdDataTableIds: outcome.dataTablesCreated,
+			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			conversationMetrics,
 			events,
 			threadId,
@@ -648,12 +744,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 			workflowJsons: [],
-			createdWorkflowIds: [],
-			createdDataTableIds: [],
+			createdWorkflowIds: restoredWorkflowIds,
+			createdDataTableIds: restoredDataTableIds,
 			conversationMetrics,
 			events,
 			threadId,
 			credentialViewPinned,
+			seedingFailed,
 		};
 	}
 }

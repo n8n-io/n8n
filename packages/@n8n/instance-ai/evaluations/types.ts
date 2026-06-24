@@ -185,14 +185,12 @@ export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
 	/**
-	 * Hand-authored conversation that drives the build. Must have ≥1 turn,
-	 * and the first turn must be `user`.
-	 *
-	 * - One user turn, no assistant turns → auto-approve mode (single-prompt build).
-	 * - Anything else → multi-turn UserProxyLlm engages (answers clarifications,
-	 *   sends follow-ups consuming `messageBudget`).
+	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
+	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
+	 * Required unless `seedThread` is set, in which case it's optional and
+	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
-	conversation: ConversationTurn[];
+	conversation?: ConversationTurn[];
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
@@ -212,6 +210,17 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
+	/** Synthetic seed file (messages + workflows) restored before the live turn.
+	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
+	seedFile?: string;
+	/** Prose turns seeded as plain-text history (no tool calls/workflows).
+	 *  Mutually exclusive with `seedFile`. */
+	priorConversation?: ConversationTurn[];
+	/** Reproduce a real conversation from its LangSmith trace at run time: restore
+	 *  up to the last user message, send that live. Commits only the thread id
+	 *  (workspace auto-discovered; `project` overrides the source project).
+	 *  Supplies the live turn, so `conversation` is optional. Transient (~14d). */
+	seedThread?: { threadId: string; project?: string };
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -274,6 +283,9 @@ export interface TranscriptTurn {
 	userMessage?: string;
 	/** Agent narration and tool interactions, interleaved in the order they occurred. */
 	steps: TranscriptStep[];
+	/** True for turns restored from a conversation seed — context that predates
+	 *  the evaluated run, as opposed to behaviour captured live. */
+	seeded?: boolean;
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

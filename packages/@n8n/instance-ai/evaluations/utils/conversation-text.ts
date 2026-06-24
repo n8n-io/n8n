@@ -1,6 +1,22 @@
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
 /**
+ * Human-readable prompt label for a test case. Authored cases use their first
+ * turn; seedThread cases carry no authored conversation, so fall back to the
+ * live (non-seeded) user turn captured in the transcript, then to the thread id.
+ */
+export function caseDisplayPrompt(
+	testCase: { conversation?: ConversationTurn[]; seedThread?: { threadId: string } },
+	transcript?: TranscriptTurn[],
+): string {
+	const authored = testCase.conversation?.[0]?.text;
+	if (authored) return authored;
+	const liveTurn = transcript?.find((t) => !t.seeded && t.userMessage)?.userMessage;
+	if (liveTurn) return liveTurn;
+	return testCase.seedThread ? `[seeded] thread ${testCase.seedThread.threadId.slice(0, 8)}` : '';
+}
+
+/**
  * User-side turns from a captured transcript, flattened as a text block for
  * prompt-aware checks. Single-turn → plain text; multi-turn → numbered prefix.
  */
@@ -35,7 +51,12 @@ export function conversationUserTurnsAsText(conversation: ConversationTurn[]): s
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			const lines: string[] = [`### Turn ${String(i + 1)}`];
+			// Seeded turns are restored prior context — they predate the evaluated
+			// run, and judges must not score them as live behaviour.
+			const seededSuffix = turn.seeded
+				? ' (seeded prior context — predates the evaluated run)'
+				: '';
+			const lines: string[] = [`### Turn ${String(i + 1)}${seededSuffix}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);
