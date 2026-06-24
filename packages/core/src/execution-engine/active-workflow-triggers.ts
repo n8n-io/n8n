@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
-	CronContext,
 	INode,
 	IPollFunctions,
 	ITriggerResponse,
@@ -24,12 +23,19 @@ import { ErrorReporter } from '@/errors/error-reporter';
 import { SpanStatus, Tracing } from '@/observability';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
-import { ScheduledTaskManager } from './scheduled-task-manager';
+import { ScheduledTaskManager, type ScheduledTaskGroup } from './scheduled-task-manager';
 import { TriggersAndPollers } from './triggers-and-pollers';
 import {
 	type TriggerRegistrationToken,
 	WorkflowActiveTriggersState,
 } from './workflow-active-triggers-state';
+
+const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
+
+const workflowScheduleGroup = (workflowId: string): ScheduledTaskGroup => ({
+	type: WORKFLOW_SCHEDULE_GROUP_TYPE,
+	id: workflowId,
+});
 
 /**
  * Holds the in-memory state of which non-webhook triggers (active, schedule
@@ -80,7 +86,7 @@ export class ActiveWorkflowTriggers {
 		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
 
 		return new Set([
-			...this.scheduledTaskManager.getCronNodeIds(workflowId),
+			...this.scheduledTaskManager.getTargetIds(workflowScheduleGroup(workflowId)),
 			...(triggers?.nodeIds ?? []),
 		]);
 	}
@@ -165,7 +171,9 @@ export class ActiveWorkflowTriggers {
 					registeredNodeIds.add(triggerNode.id);
 
 					this.logTriggerActivation(workflow, triggerNode);
-				} else if (this.scheduledTaskManager.hasCronForNode(workflowId, triggerNode.id)) {
+				} else if (
+					this.scheduledTaskManager.hasTarget(workflowScheduleGroup(workflowId), triggerNode.id)
+				) {
 					triggers.addScheduledTrigger(triggerNode.id);
 					registeredNodeIds.add(triggerNode.id);
 
@@ -242,16 +250,17 @@ export class ActiveWorkflowTriggers {
 	 * canonical trigger registrations remain for it.
 	 */
 	async removeTriggers(workflowId: string, nodeIds: Set<INode['id']>) {
+		const group = workflowScheduleGroup(workflowId);
 		const activeTriggers = this.activeTriggersByWorkflowId.get(workflowId);
 		if (!activeTriggers) {
 			for (const nodeId of nodeIds) {
-				this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+				this.scheduledTaskManager.deregisterTarget(group, nodeId);
 			}
 			return;
 		}
 
 		for (const nodeId of nodeIds) {
-			this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+			this.scheduledTaskManager.deregisterTarget(group, nodeId);
 
 			const response = activeTriggers.get(nodeId);
 			if (response) {
@@ -278,10 +287,12 @@ export class ActiveWorkflowTriggers {
 		attemptedNodeIds: Iterable<string>,
 		registeredNodeIds: Iterable<string>,
 	) {
+		const group = workflowScheduleGroup(workflowId);
+
 		// Stop the crons first: deregistration is synchronous and is what actually
 		// prevents the failed activation from continuing to fire.
 		for (const nodeId of attemptedNodeIds) {
-			this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+			this.scheduledTaskManager.deregisterTarget(group, nodeId);
 		}
 
 		for (const nodeId of registeredNodeIds) {
@@ -342,16 +353,17 @@ export class ActiveWorkflowTriggers {
 				throw new UserError('The polling interval is too short. It has to be at least a minute.');
 			}
 
-			const ctx: CronContext = {
-				workflowId,
-				timezone: workflow.timezone,
-				nodeId: node.id,
-				expression,
-			};
-
-			this.scheduledTaskManager.registerCron(ctx, () => {
-				void executePollTrigger();
-			});
+			this.scheduledTaskManager.register(
+				{
+					group: workflowScheduleGroup(workflowId),
+					targetId: node.id,
+					timezone: workflow.timezone,
+					expression,
+				},
+				() => {
+					void executePollTrigger();
+				},
+			);
 		}
 	}
 
@@ -360,7 +372,9 @@ export class ActiveWorkflowTriggers {
 	 */
 	async remove(workflowId: string) {
 		// Ensure crons are deregistered to prevent executions on inactive workflows
-		const hadRegisteredCrons = this.scheduledTaskManager.deregisterCrons(workflowId);
+		const hadRegisteredCrons = this.scheduledTaskManager.deregisterGroup(
+			workflowScheduleGroup(workflowId),
+		);
 
 		if (!this.isActive(workflowId)) {
 			if (hadRegisteredCrons) {
@@ -394,7 +408,7 @@ export class ActiveWorkflowTriggers {
 		return Array.from(
 			new Set([
 				...this.activeTriggersByWorkflowId.keys(),
-				...this.scheduledTaskManager.getWorkflowIdsWithCrons(),
+				...this.scheduledTaskManager.getGroupIds(WORKFLOW_SCHEDULE_GROUP_TYPE),
 			]),
 		);
 	}

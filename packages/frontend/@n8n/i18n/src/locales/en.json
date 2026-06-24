@@ -6748,8 +6748,6 @@
 	"agents.builder.tools.title": "Tools",
 	"agents.builder.tools.count": "{count} tool configured | {count} tools configured",
 	"agents.builder.tools.add": "Add tool",
-	"agents.builder.tools.builtIn.title": "Built-in node tools",
-	"agents.builder.tools.builtIn.hint": "Let the agent search the n8n node catalog and execute nodes on demand.",
 	"agents.builder.tools.empty": "No tools added yet.",
 	"agents.builder.tools.type.workflow": "Workflow",
 	"agents.builder.tools.type.custom": "Custom tool",

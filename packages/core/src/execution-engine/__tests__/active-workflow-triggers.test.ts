@@ -24,9 +24,12 @@ import type { PollContext } from '../node-execution-context';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
 
+const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
+
 describe('ActiveWorkflowTriggers', () => {
 	const workflowId = 'test-workflow-id';
 	const workflow = mock<Workflow>();
+	const workflowGroup = (id = workflowId) => ({ type: WORKFLOW_SCHEDULE_GROUP_TYPE, id });
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 	const mode: WorkflowExecuteMode = 'trigger';
 	const activation: WorkflowActivateMode = 'init';
@@ -58,9 +61,10 @@ describe('ActiveWorkflowTriggers', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		scheduledTaskManager.getCronNodeIds.mockReturnValue([]);
-		scheduledTaskManager.getWorkflowIdsWithCrons.mockReturnValue([]);
-		scheduledTaskManager.hasCronForNode.mockReturnValue(false);
+		workflow.id = workflowId;
+		scheduledTaskManager.getGroupIds.mockReturnValue([]);
+		scheduledTaskManager.getTargetIds.mockReturnValue([]);
+		scheduledTaskManager.hasTarget.mockReturnValue(false);
 		acquireIsolate = vi.fn().mockResolvedValue(undefined);
 		releaseIsolate = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
@@ -158,7 +162,7 @@ describe('ActiveWorkflowTriggers', () => {
 				workflow.getTriggerNodes.mockReturnValue([triggerNode]);
 				workflow.getPollNodes.mockReturnValue([]);
 				triggersAndPollers.runTriggerFunction.mockResolvedValue(undefined);
-				scheduledTaskManager.hasCronForNode.mockReturnValue(true);
+				scheduledTaskManager.hasTarget.mockReturnValue(true);
 
 				await activeWorkflowTriggers.addAllTriggers(
 					workflowId,
@@ -179,8 +183,8 @@ describe('ActiveWorkflowTriggers', () => {
 
 				await activeWorkflowTriggers.removeTriggers(workflowId, new Set([triggerNode.id]));
 
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
 					triggerNode.id,
 				);
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
@@ -196,7 +200,7 @@ describe('ActiveWorkflowTriggers', () => {
 					new Set([pollNode.id]),
 				);
 				expect(workflow.getPollNodes).toHaveBeenCalled();
-				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
+				expect(scheduledTaskManager.register).toHaveBeenCalled();
 			});
 
 			it('with both trigger function and poll trigger nodes', async () => {
@@ -213,7 +217,7 @@ describe('ActiveWorkflowTriggers', () => {
 					mode,
 					activation,
 				);
-				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
+				expect(scheduledTaskManager.register).toHaveBeenCalled();
 				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
 					workflow,
 					pollNode,
@@ -236,7 +240,10 @@ describe('ActiveWorkflowTriggers', () => {
 				await activeWorkflowTriggers.removeTriggers(workflowId, new Set([hybridNode.id]));
 
 				expect(triggerResponse.closeFunction).toHaveBeenCalled();
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, hybridNode.id);
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
+					hybridNode.id,
+				);
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 			});
 		});
@@ -273,7 +280,7 @@ describe('ActiveWorkflowTriggers', () => {
 					'The polling interval is too short. It has to be at least a minute.',
 				);
 
-				expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+				expect(scheduledTaskManager.register).not.toHaveBeenCalled();
 			});
 
 			it('should not throw for a 5-field cron expression with step values in minutes field', async () => {
@@ -290,7 +297,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 				await expect(addWorkflow({ pollNodes: [pollNode], pollTimes })).resolves.toBeUndefined();
 
-				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
+				expect(scheduledTaskManager.register).toHaveBeenCalled();
 			});
 		});
 
@@ -317,12 +324,12 @@ describe('ActiveWorkflowTriggers', () => {
 				).rejects.toThrow(WorkflowActivationError);
 
 				expect(firstResponse.closeFunction).toHaveBeenCalled();
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
 					triggerNode.id,
 				);
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
 					failingTriggerNode.id,
 				);
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
@@ -354,11 +361,14 @@ describe('ActiveWorkflowTriggers', () => {
 				).rejects.toThrow(WorkflowActivationError);
 
 				expect(responseWithClose.closeFunction).toHaveBeenCalled();
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
 					triggerNode.id,
 				);
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, pollNode.id);
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
+					pollNode.id,
+				);
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 			});
 
@@ -392,12 +402,12 @@ describe('ActiveWorkflowTriggers', () => {
 				expect(reportedError).toBeInstanceOf(Error);
 				expect((reportedError as Error).message).toContain(closeError.message);
 				expect(meta).toEqual({ extra: { workflowId } });
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
 					triggerNode.id,
 				);
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
+				expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+					workflowGroup(),
 					failingTriggerNode.id,
 				);
 			});
@@ -417,7 +427,7 @@ describe('ActiveWorkflowTriggers', () => {
 				releaseIsolate.mockClear();
 				triggersAndPollers.runPollFunction.mockClear();
 
-				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const registerCronCall = scheduledTaskManager.register.mock.calls[0];
 				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
 
 				await executeScheduledPoll();
@@ -463,7 +473,7 @@ describe('ActiveWorkflowTriggers', () => {
 				acquireIsolate.mockClear();
 				releaseIsolate.mockClear();
 
-				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const registerCronCall = scheduledTaskManager.register.mock.calls[0];
 				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
 
 				await executeScheduledPoll();
@@ -488,7 +498,7 @@ describe('ActiveWorkflowTriggers', () => {
 				acquireIsolate.mockRejectedValueOnce(acquireError);
 				triggersAndPollers.runPollFunction.mockClear();
 
-				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const registerCronCall = scheduledTaskManager.register.mock.calls[0];
 				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
 
 				await executeScheduledPoll();
@@ -510,7 +520,7 @@ describe('ActiveWorkflowTriggers', () => {
 				acquireIsolate.mockClear();
 				releaseIsolate.mockClear();
 
-				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const registerCronCall = scheduledTaskManager.register.mock.calls[0];
 				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
 
 				await executeScheduledPoll();
@@ -548,7 +558,7 @@ describe('ActiveWorkflowTriggers', () => {
 				await addWorkflow({ pollNodes: [pollNode] });
 
 				// Get the executeTrigger function that was registered
-				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const registerCronCall = scheduledTaskManager.register.mock.calls[0];
 				const executeTrigger = registerCronCall[1] as () => Promise<void>;
 
 				// Execute the trigger function to simulate a regular poll
@@ -580,7 +590,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 			await addWorkflow({ pollNodes: [pollNode] });
 
-			const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+			const registerCronCall = scheduledTaskManager.register.mock.calls[0];
 			const executeScheduledPoll = registerCronCall[1] as () => void;
 
 			// A cron tick fires and the poll() begins awaiting (e.g. a Gmail API call).
@@ -615,7 +625,7 @@ describe('ActiveWorkflowTriggers', () => {
 				); // scheduled poll that hangs in flight
 
 			await addWorkflow({ pollNodes: [pollNode] });
-			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			const executeScheduledPoll = scheduledTaskManager.register.mock.calls[0][1] as () => void;
 
 			executeScheduledPoll();
 			await flushPromises();
@@ -637,7 +647,7 @@ describe('ActiveWorkflowTriggers', () => {
 			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null); // initial activation test poll
 
 			await addWorkflow({ pollNodes: [pollNode] });
-			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			const executeScheduledPoll = scheduledTaskManager.register.mock.calls[0][1] as () => void;
 
 			// Workflow is removed before the cron ticks
 			await activeWorkflowTriggers.remove(workflowId);
@@ -669,7 +679,7 @@ describe('ActiveWorkflowTriggers', () => {
 				); // v1 scheduled poll: hangs in flight
 
 			await addWorkflow({ pollNodes: [pollNode] });
-			const executeStalePoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			const executeStalePoll = scheduledTaskManager.register.mock.calls[0][1] as () => void;
 
 			executeStalePoll();
 			await flushPromises();
@@ -681,7 +691,7 @@ describe('ActiveWorkflowTriggers', () => {
 				.mockResolvedValueOnce([[{ json: { fresh: true } }]]); // v2 scheduled poll
 
 			await addWorkflow({ pollNodes: [pollNode] });
-			const executeFreshPoll = scheduledTaskManager.registerCron.mock.calls[1][1] as () => void;
+			const executeFreshPoll = scheduledTaskManager.register.mock.calls[1][1] as () => void;
 
 			// The superseded v1 poll resolves now; it must be dropped.
 			resolveStalePoll([[{ json: { stale: true } }]]);
@@ -707,7 +717,7 @@ describe('ActiveWorkflowTriggers', () => {
 				); // scheduled poll that hangs in flight
 
 			await addWorkflow({ triggerNodes: [triggerNode], pollNodes: [pollNode] });
-			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			const executeScheduledPoll = scheduledTaskManager.register.mock.calls[0][1] as () => void;
 
 			executeScheduledPoll();
 			await flushPromises();
@@ -735,7 +745,7 @@ describe('ActiveWorkflowTriggers', () => {
 				); // scheduled poll that hangs in flight
 
 			await addWorkflow({ triggerNodes: [triggerNode], pollNodes: [pollNode] });
-			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			const executeScheduledPoll = scheduledTaskManager.register.mock.calls[0][1] as () => void;
 
 			executeScheduledPoll();
 			await flushPromises();
@@ -763,7 +773,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 			expect(result).toBe(true);
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
-			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+			expect(scheduledTaskManager.deregisterGroup).toHaveBeenCalledWith(workflowGroup());
 			expect(triggerResponse.closeFunction).toHaveBeenCalled();
 		});
 
@@ -773,7 +783,9 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(result).toBe(false);
 			// Crons are deregistered unconditionally, even for a workflow
 			// not tracked as active; such a cron can always be stopped.
-			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith('non-existent');
+			expect(scheduledTaskManager.deregisterGroup).toHaveBeenCalledWith(
+				workflowGroup('non-existent'),
+			);
 		});
 
 		it('should not warn when removing a workflow not active in memory', async () => {
@@ -830,7 +842,7 @@ describe('ActiveWorkflowTriggers', () => {
 	describe('getRegisteredTriggerNodeIds()', () => {
 		it('unions canonical registrations with registered cron node ids', async () => {
 			await addWorkflow({ triggerNodes: [mock<INode>({ id: 'trigger-a' })] });
-			scheduledTaskManager.getCronNodeIds.mockReturnValue(['poll-a']);
+			scheduledTaskManager.getTargetIds.mockReturnValue(['poll-a']);
 
 			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
 				new Set(['poll-a', 'trigger-a']),
@@ -846,7 +858,7 @@ describe('ActiveWorkflowTriggers', () => {
 		});
 
 		it('returns only cron node ids when the workflow has no canonical registrations', () => {
-			scheduledTaskManager.getCronNodeIds.mockReturnValue(['poll-a']);
+			scheduledTaskManager.getTargetIds.mockReturnValue(['poll-a']);
 
 			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds('other-wf')).toEqual(
 				new Set(['poll-a']),
@@ -871,7 +883,7 @@ describe('ActiveWorkflowTriggers', () => {
 			await activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
 
 			expect(activeWorkflowTriggers.allActiveWorkflows()).toEqual([]);
-			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+			expect(scheduledTaskManager.deregisterGroup).toHaveBeenCalledWith(workflowGroup());
 		});
 	});
 
@@ -958,7 +970,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 			expect(responseA.closeFunction).toHaveBeenCalled();
 			expect(responseB.closeFunction).not.toHaveBeenCalled();
-			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, 'a');
+			expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(workflowGroup(), 'a');
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
 		});
 
@@ -1019,7 +1031,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['p']));
 
-			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, 'p');
+			expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(workflowGroup(), 'p');
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
 	});
@@ -1031,8 +1043,13 @@ describe('ActiveWorkflowTriggers', () => {
 		let activeWorkflowTriggersReal: ActiveWorkflowTriggers;
 
 		const registerStrandedCron = (id: string, nodeId = 'schedule-node') =>
-			realScheduledTaskManager.registerCron(
-				{ workflowId: id, nodeId, timezone: 'GMT', expression: hourly },
+			realScheduledTaskManager.register(
+				{
+					group: workflowGroup(id),
+					targetId: nodeId,
+					timezone: 'GMT',
+					expression: hourly,
+				},
 				vi.fn(),
 			);
 
@@ -1043,7 +1060,6 @@ describe('ActiveWorkflowTriggers', () => {
 			realScheduledTaskManager = new ScheduledTaskManager(
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
-				mock(),
 				mock(),
 			);
 			activeWorkflowTriggersReal = new ActiveWorkflowTriggers(
@@ -1056,7 +1072,7 @@ describe('ActiveWorkflowTriggers', () => {
 		});
 
 		afterEach(() => {
-			realScheduledTaskManager.deregisterAllCrons();
+			realScheduledTaskManager.deregisterGroups(WORKFLOW_SCHEDULE_GROUP_TYPE);
 			vi.useRealTimers();
 		});
 
@@ -1064,13 +1080,13 @@ describe('ActiveWorkflowTriggers', () => {
 			// A cron registered in the ScheduledTaskManager while the workflow is not
 			// tracked as active in memory must still be stoppable via remove().
 			registerStrandedCron(workflowId);
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(true);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup())).toBe(true);
 			expect(activeWorkflowTriggersReal.isActive(workflowId)).toBe(false);
 
 			const result = await activeWorkflowTriggersReal.remove(workflowId);
 
 			expect(result).toBe(false);
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup())).toBe(false);
 		});
 
 		it('should warn when it deregisters a cron for a workflow not active in memory', async () => {
@@ -1089,11 +1105,11 @@ describe('ActiveWorkflowTriggers', () => {
 			// removeAll must also stop crons whose workflow is no longer tracked as active.
 			registerStrandedCron('orphan-workflow');
 			expect(activeWorkflowTriggersReal.isActive('orphan-workflow')).toBe(false);
-			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(true);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('orphan-workflow'))).toBe(true);
 
 			await activeWorkflowTriggersReal.removeAllNonWebhookTriggerWorkflows();
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(false);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('orphan-workflow'))).toBe(false);
 		});
 
 		it('should leave no registered cron when a later trigger node fails activation', async () => {
@@ -1106,8 +1122,13 @@ describe('ActiveWorkflowTriggers', () => {
 			workflow.getPollNodes.mockReturnValue([]);
 			triggersAndPollers.runTriggerFunction
 				.mockImplementationOnce(async () => {
-					realScheduledTaskManager.registerCron(
-						{ workflowId, nodeId: 'trigger-node', timezone: 'GMT', expression: hourly },
+					realScheduledTaskManager.register(
+						{
+							group: workflowGroup(),
+							targetId: 'trigger-node',
+							timezone: 'GMT',
+							expression: hourly,
+						},
 						vi.fn(),
 					);
 					return triggerResponse;
@@ -1126,7 +1147,7 @@ describe('ActiveWorkflowTriggers', () => {
 				),
 			).rejects.toThrow(WorkflowActivationError);
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup())).toBe(false);
 		});
 
 		it('should leave no registered cron when a later poll node fails activation', async () => {
@@ -1159,7 +1180,7 @@ describe('ActiveWorkflowTriggers', () => {
 				),
 			).rejects.toThrow(WorkflowActivationError);
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup())).toBe(false);
 		});
 
 		it('should tear down a lingering cron before re-adding so reactivation does not leave a duplicate', async () => {
@@ -1167,14 +1188,19 @@ describe('ActiveWorkflowTriggers', () => {
 			// must be torn down before the new one registers
 			// otherwise both would coexist and fire, duplicating executions.
 			registerStrandedCron(workflowId, 'stale-node');
-			expect(realScheduledTaskManager.cronsByWorkflow.get(workflowId)?.size).toBe(1);
+			expect(realScheduledTaskManager.getTargetIds(workflowGroup())).toEqual(['stale-node']);
 
 			workflow.id = workflowId;
 			workflow.getTriggerNodes.mockReturnValue([mock<INode>({ id: 'fresh-node' })]);
 			workflow.getPollNodes.mockReturnValue([]);
 			triggersAndPollers.runTriggerFunction.mockImplementationOnce(async () => {
-				realScheduledTaskManager.registerCron(
-					{ workflowId, nodeId: 'fresh-node', timezone: 'GMT', expression: hourly },
+				realScheduledTaskManager.register(
+					{
+						group: workflowGroup(),
+						targetId: 'fresh-node',
+						timezone: 'GMT',
+						expression: hourly,
+					},
 					vi.fn(),
 				);
 				return triggerResponse;
@@ -1191,9 +1217,7 @@ describe('ActiveWorkflowTriggers', () => {
 			);
 
 			// Only the newly registered cron remains; the stale one was removed
-			const crons = realScheduledTaskManager.cronsByWorkflow.get(workflowId);
-			expect(crons?.size).toBe(1);
-			expect(Array.from(crons!.values())[0].ctx.nodeId).toBe('fresh-node');
+			expect(realScheduledTaskManager.getTargetIds(workflowGroup())).toEqual(['fresh-node']);
 		});
 	});
 });
