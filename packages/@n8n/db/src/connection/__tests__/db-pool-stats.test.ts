@@ -31,9 +31,9 @@ describe('readPoolStats', () => {
 		expect(readPoolStats(dataSource)).toEqual(stats);
 	});
 
-	it('returns undefined when the driver does not expose getPoolStats', () => {
+	it('returns undefined for an unsupported driver type', () => {
 		const dataSource = {
-			options: { type: 'sqlite-pooled' },
+			options: { type: 'sqlite' },
 			driver: {},
 		} as unknown as DataSource;
 
