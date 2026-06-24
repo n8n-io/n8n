@@ -16,7 +16,7 @@ import { ALL_INSTANCE_SCOPES } from './instanceRoleScopes';
 
 const rolesStore = useRolesStore();
 const router = useRouter();
-const { showMessage } = useToast();
+const { showMessage, showError } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
