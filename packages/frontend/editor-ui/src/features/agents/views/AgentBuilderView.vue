@@ -222,7 +222,6 @@ function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
 	agent.value = {
 		...agent.value,
 		name: c.name,
-		description: c.description ?? null,
 	};
 }
 
@@ -673,9 +672,6 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (updates.name !== undefined) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
-	}
-	if (updates.description !== undefined && agent.value) {
-		agent.value = { ...agent.value, description: updates.description ?? null };
 	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
@@ -1240,6 +1236,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:is-builder-configured="isBuilderConfigured"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
+					:is-build-chat-streaming="isBuildChatStreaming"
 					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
 					@build-done="onBuildDone"

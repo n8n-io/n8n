@@ -1,13 +1,11 @@
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
-	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UserError, type INodeParameters } from 'n8n-workflow';
 
@@ -34,14 +32,9 @@ export class AgentConfigService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentSkillsService: AgentSkillsService,
-		private readonly agentsConfig: AgentsConfig,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 	) {}
-
-	private isNodeToolsModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('node-tools-searcher');
-	}
 
 	/**
 	 * Get the JSON config for an agent.
@@ -73,14 +66,6 @@ export class AgentConfigService {
 		}
 
 		const config = parsed.data;
-
-		if (isNodeToolsEnabled(config.config) && !this.isNodeToolsModuleEnabled()) {
-			return {
-				valid: false,
-				error:
-					'config.nodeTools.enabled requires the node-tools-searcher agents module to be enabled.',
-			};
-		}
 
 		try {
 			this.validateNodeToolExpressions(config);
@@ -151,7 +136,6 @@ export class AgentConfigService {
 		const integrationsProvided = result.config.integrations !== undefined;
 		const toolsProvided = result.config.tools !== undefined;
 		const skillsProvided = result.config.skills !== undefined;
-		const descriptionProvided = result.config.description !== undefined;
 		const credentialProvided = result.config.credential !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
 		const subAgentsProvided = result.config.subAgents !== undefined;
@@ -165,11 +149,10 @@ export class AgentConfigService {
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
 
 		const nextSchema: AgentJsonConfig = {
-			...(previousSchema ?? ({} as AgentJsonConfig)),
+			...omitLegacyAgentDescription(previousSchema),
 			name: decomposedSchema.name,
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
-			...(descriptionProvided ? { description: decomposedSchema.description } : {}),
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
@@ -183,7 +166,6 @@ export class AgentConfigService {
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
-		if (descriptionProvided) entity.description = result.config.description ?? null;
 		entity.integrations = nextIntegrations;
 		markAgentDraftDirty(entity);
 
@@ -331,4 +313,13 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
 
 	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
+}
+
+function omitLegacyAgentDescription(config: AgentJsonConfig | null): Partial<AgentJsonConfig> {
+	if (!config) return {};
+
+	const { description: _description, ...rest } = config as AgentJsonConfig & {
+		description?: unknown;
+	};
+	return rest;
 }

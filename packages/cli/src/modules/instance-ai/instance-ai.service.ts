@@ -455,27 +455,6 @@ export class InstanceAiService {
 	 */
 	private readonly preserveHitlOnShutdown = new Set<string>();
 
-	/**
-	 * Restart-recovery metadata for runs that haven't yet been persisted by the
-	 * SDK's end-of-turn save. Registered by the run entry point with the chosen
-	 * `messageId` + raw text; consumed by:
-	 *   1. `executeRun`'s streamInput builder, to tag the SDK's message with
-	 *      our id so its eventual end-of-turn save upserts the same row.
-	 *   2. `persistUserMessageOnFirstSuspend`, called from `waitForConfirmation`
-	 *      so an inline HITL that pauses the turn before the SDK can save
-	 *      still leaves the user's prompt in `instance_ai_messages` for
-	 *      restart recovery.
-	 *
-	 * Entries are removed on confirmed DB save and cleared unconditionally in
-	 * `executeRun`'s finally — the SDK's end-of-turn save handles the success
-	 * path, and a mid-turn error means we deliberately don't want a
-	 * half-saved row.
-	 */
-	private readonly userMessagePersistenceByRun = new Map<
-		string,
-		{ userId: string; message: { id: string; text: string } }
-	>();
-
 	constructor(
 		logger: Logger,
 		globalConfig: GlobalConfig,
@@ -521,7 +500,6 @@ export class InstanceAiService {
 			logger: this.logger,
 			config: this.instanceAiConfig,
 			pendingConfirmationRepo: this.pendingConfirmationRepo,
-			agentMemory: this.agentMemory,
 		});
 		this.suspendedRunRestorer = new SuspendedRunRestorer({
 			logger: this.logger,
@@ -886,17 +864,6 @@ export class InstanceAiService {
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
 		}
-
-		// Stable id for the user-typed message. Coordinated with the SDK's
-		// end-of-turn save (see executeRun's streamInput construction) so we
-		// end up with exactly one user-message row per turn — and so a save
-		// triggered by `waitForConfirmation` on a suspended HITL turn uses the
-		// same id the SDK would have used for completion.
-		const userMessageId = nanoid();
-		this.userMessagePersistenceByRun.set(runId, {
-			userId: user.id,
-			message: { id: userMessageId, text: message },
-		});
 
 		this.startExecuteRun(
 			user,
@@ -1416,24 +1383,6 @@ export class InstanceAiService {
 		return this.preserveHitlOnShutdown.has(runId);
 	}
 
-	/**
-	 * Idempotent first-suspend persistence. The first `waitForConfirmation`
-	 * for a run consumes the pending entry; later HITLs are no-ops because
-	 * the entry has been removed. If the DB write fails the entry stays in
-	 * the map so the next HITL retries — see `persistUserMessageOnSuspend`'s
-	 * success-boolean return for the retry contract.
-	 */
-	private async persistUserMessageOnFirstSuspend(threadId: string, runId: string): Promise<void> {
-		const entry = this.userMessagePersistenceByRun.get(runId);
-		if (!entry) return;
-		const ok = await this.suspendedThreads.persistUserMessageOnSuspend(
-			threadId,
-			entry.userId,
-			entry.message,
-		);
-		if (ok) this.userMessagePersistenceByRun.delete(runId);
-	}
-
 	private async drainInFlightExecutions(timeoutMs: number): Promise<void> {
 		if (this.inFlightExecutions.size === 0) return;
 
@@ -1937,14 +1886,6 @@ export class InstanceAiService {
 			formBaseUrl: this.formBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
 				this.runState.touchActiveRun(threadId);
-				// First HITL on this run: persist the original user message to
-				// memory so it survives a restart-while-suspended. The SDK only
-				// commits the turn delta on a clean loop completion, and inline
-				// HITL never reaches that point. Doing this *now* (rather than
-				// at executeRun start) avoids polluting the agent's prompt —
-				// the SDK has already loaded its memory snapshot for this run.
-				void this.persistUserMessageOnFirstSuspend(threadId, runId);
-
 				return await new Promise<ConfirmationData>((resolve) => {
 					this.runState.registerPendingConfirmation(requestId, {
 						resolve,
@@ -1981,9 +1922,6 @@ export class InstanceAiService {
 			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
-			persistInFlightUserMessage: async () => {
-				await this.persistUserMessageOnFirstSuspend(threadId, runId);
-			},
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
 			workspaceRoot,
@@ -2691,10 +2629,6 @@ export class InstanceAiService {
 		resumeReason?: OrchestratorResumeReason,
 		plannedBuild?: PlannedBuildFollowUp,
 	): Promise<void> {
-		// Read once at the top so the streamInput builder + (if any later
-		// retry) see the same view of restart-recovery metadata.
-		const userMessagePersistence = this.userMessagePersistenceByRun.get(runId)?.message;
-
 		// Split the message's attachments by kind once, here at the agent
 		// boundary: files feed the parse-file / content-block path, workflow
 		// references feed a context block the agent resolves with its tools.
@@ -2988,12 +2922,10 @@ export class InstanceAiService {
 				: undefined;
 			let streamInput: string | Message[];
 			try {
-				// When this is a user-initiated turn, build the input as an
-				// explicit message object carrying our chosen id. The SDK
-				// preserves the id on its end-of-turn save so the row matches
-				// any user-message row we may have written from inside
-				// `waitForConfirmation`.
-				if (nonStructuredAttachments.length > 0 || userMessagePersistence) {
+				// Attachments need the explicit message-object shape (text + file blocks);
+				// a plain prompt goes through as a string. The SDK assigns the message id
+				// and persists the input on receipt.
+				if (nonStructuredAttachments.length > 0) {
 					const baseContent = [
 						{ type: 'text' as const, text: fullMessage },
 						...nonStructuredAttachments.map((attachment) => ({
@@ -3004,7 +2936,6 @@ export class InstanceAiService {
 					];
 					streamInput = [
 						{
-							...(userMessagePersistence ? { id: userMessagePersistence.id } : {}),
 							role: 'user' as const,
 							content: baseContent,
 						},
@@ -3386,10 +3317,6 @@ export class InstanceAiService {
 			}
 		} finally {
 			this.runState.clearActiveRun(threadId);
-			// Drop any unconsumed first-suspend persistence intent. SDK
-			// end-of-turn save handles the success path; a mid-turn error
-			// means we deliberately don't want a half-saved row.
-			this.userMessagePersistenceByRun.delete(runId);
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
 			// checkpoint verifications) dispatch later in this same finally and
 			// later still in the post-run scheduler — they need the pushRef to

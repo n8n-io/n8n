@@ -309,7 +309,16 @@ const filteredMenu = computed(() => {
 
 function openNewCredential(credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
-		uiStore.openNewCredential(credentialType, false, false, createCredentialProjectId.value);
+		uiStore.openNewCredential(
+			credentialType,
+			false,
+			false,
+			createCredentialProjectId.value,
+			undefined,
+			undefined,
+			undefined,
+			{ hideAskAssistant: true },
+		);
 	}
 }
 

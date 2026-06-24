@@ -8,9 +8,10 @@
  * the checkpoint. Without upsert-by-id, a second row would be inserted for
  * the same message, breaking the thread ordering contract.
  *
- * Note: messages with state:'pending' are transient and are NOT written to
- * memory during suspension — they only live in the checkpoint. Memory only
- * receives the final settled state after resume completes.
+ * Note: the inbound user message is persisted eagerly on receipt, but assistant
+ * messages with a state:'pending' tool-call are transient and are NOT written to
+ * memory during suspension — they only live in the checkpoint. The settled
+ * assistant state is written after resume completes.
  */
 import { afterEach, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -201,8 +202,12 @@ describe('tool-call upsert via suspend/resume (in-memory storage)', () => {
 		expect(r1.finishReason).toBe('tool-calls');
 		const { runId, toolCallId } = r1.pendingSuspend![0];
 
-		// No messages in memory yet
-		expect(await memory.getMessages(threadId)).toHaveLength(0);
+		// The inbound user message is persisted eagerly on receipt, so it survives
+		// even though the turn suspended before completing. No assistant message yet
+		// (the suspended turn never reached its end-of-turn save).
+		const afterSuspend = await memory.getMessages(threadId);
+		expect(filterLlmMessages(afterSuspend)).toHaveLength(1);
+		expect((afterSuspend[0] as Message).role).toBe('user');
 
 		// Resume: completes
 		const r2 = await agent.resume('generate', { yes: true }, { runId, toolCallId });

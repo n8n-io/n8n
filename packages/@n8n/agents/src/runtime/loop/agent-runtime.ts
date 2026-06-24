@@ -453,6 +453,13 @@ export class AgentRuntime {
 		const list = new AgentMessageList();
 		await this.memory.loadInto(list, options);
 		list.addInput(input);
+
+		// Persist input now (after history load, so the prompt isn't polluted) so it
+		// survives an abort or abandoned HITL suspend that never reaches finishComplete.
+		// Best-effort: persistInputMessages swallows failures — the end-of-turn save
+		// is authoritative for completed turns, so this must not abort the turn.
+		await this.memory.persistInputMessages(list, options);
+
 		return list;
 	}
 
