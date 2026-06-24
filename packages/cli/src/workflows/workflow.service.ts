@@ -10,6 +10,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedEnvironmentVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	ProjectRepository,
@@ -58,6 +59,7 @@ import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { ProjectEnvironmentService } from '@/services/project-environment.service';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -89,12 +91,14 @@ export class WorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
+		private readonly workflowPublishedEnvVersionRepository: WorkflowPublishedEnvironmentVersionRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly projectEnvironmentService: ProjectEnvironmentService,
 	) {}
 
 	async getMany(
@@ -758,6 +762,7 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			environmentId?: string;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
@@ -799,6 +804,28 @@ export class WorkflowService {
 				throw new NotFoundError('Version not found');
 			}
 			throw error;
+		}
+
+		// Environment-scoped publish: validate credential bindings, then record the published version.
+		// Does NOT change workflow_entity.activeVersionId or trigger the active workflow manager.
+		if (options?.environmentId) {
+			const validation = await this.projectEnvironmentService.validateEnvironmentBindingsForPublish(
+				options.environmentId,
+				versionToActivate.nodes,
+			);
+			if (!validation.valid) {
+				const names = validation.missingBindings.map((b) => b.credentialName).join(', ');
+				throw new BadRequestError(
+					`Cannot publish to environment: credentials without bindings: ${names}`,
+				);
+			}
+
+			await this.workflowPublishedEnvVersionRepository.setPublishedVersion(
+				workflowId,
+				options.environmentId,
+				versionIdToActivate,
+			);
+			return workflow;
 		}
 
 		if (options?.expectedChecksum) {

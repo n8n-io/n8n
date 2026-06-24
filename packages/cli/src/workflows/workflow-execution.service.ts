@@ -118,6 +118,7 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 		n8nAuthCookie?: string,
+		environmentId?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(workflowData.id);
@@ -164,6 +165,7 @@ export class WorkflowExecutionService {
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
 						userId: user.id,
 						workflowId: workflowData.id,
+						environmentId,
 					}),
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
@@ -181,6 +183,7 @@ export class WorkflowExecutionService {
 				pushRef,
 				workflowData,
 				userId: user.id,
+				environmentId,
 				triggerToStartFrom: payload.triggerToStartFrom,
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
@@ -203,6 +206,7 @@ export class WorkflowExecutionService {
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
 						userId: user.id,
 						workflowId: workflowData.id,
+						environmentId,
 					}),
 					pushRef,
 					destinationNode: payload.destinationNode,
@@ -218,6 +222,7 @@ export class WorkflowExecutionService {
 				pushRef,
 				workflowData,
 				userId: user.id,
+				environmentId,
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,

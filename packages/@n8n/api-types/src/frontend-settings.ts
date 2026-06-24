@@ -67,6 +67,7 @@ export interface IEnterpriseSettings {
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
 	otelCustomSpanAttributes: boolean;
+	environments: boolean;
 }
 
 export interface FrontendSettings {

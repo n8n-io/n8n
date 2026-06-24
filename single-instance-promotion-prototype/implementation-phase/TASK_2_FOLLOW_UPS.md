@@ -1,0 +1,2 @@
+- Make publishing to an env actually invoke the ActiveWorkflowManager to talk to a workflow
+- Think about how to encode the currently viewed env in the url, which is needed to enable easy sharing of urls of edited workflows.

@@ -17,7 +17,7 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
-| id | varchar(36) |  | false | [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [shared_credentials](shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [environment_credential_binding](environment_credential_binding.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [shared_credentials](shared_credentials.md) |  |  |
 | isGlobal | boolean | 0 | false |  |  |  |
 | isManaged | boolean | 0 | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -52,6 +52,8 @@ erDiagram
 "credential_dependency" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (targetCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (sourceCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -121,6 +123,14 @@ erDiagram
   varchar_16_ resolverId PK
   datetime_3_ updatedAt
   varchar userId PK
+}
+"environment_credential_binding" {
+  datetime_3_ createdAt
+  varchar_36_ environmentId FK
+  INTEGER id
+  varchar_36_ sourceCredentialId FK
+  varchar_36_ targetCredentialId FK
+  datetime_3_ updatedAt
 }
 "instance_ai_mcp_registry_connections" {
   datetime_3_ createdAt

@@ -47,6 +47,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.dynamic_credential_entry](public.dynamic_credential_entry.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) | 6 |  | BASE TABLE |
+| [public.environment_credential_binding](public.environment_credential_binding.md) | 6 |  | BASE TABLE |
 | [public.evaluation_collection](public.evaluation_collection.md) | 9 |  | BASE TABLE |
 | [public.evaluation_config](public.evaluation_config.md) | 12 |  | BASE TABLE |
 | [public.event_destinations](public.event_destinations.md) | 4 |  | BASE TABLE |
@@ -86,6 +87,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 4 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
+| [public.project_environment](public.project_environment.md) | 5 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
 | [public.role](public.role.md) | 7 |  | BASE TABLE |
@@ -114,6 +116,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
+| [public.workflow_published_environment_version](public.workflow_published_environment_version.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
@@ -203,6 +206,9 @@ erDiagram
 "public.dynamic_credential_user_entry" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;targetCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;sourceCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.project_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES project_environment(id) ON DELETE CASCADE"
 "public.evaluation_collection" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.evaluation_collection" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.evaluation_collection" }o--|| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE CASCADE"
@@ -251,6 +257,7 @@ erDiagram
 "public.oauth_user_consents" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.project_environment" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug)"
@@ -285,6 +292,9 @@ erDiagram
 "public.workflow_publish_history" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_publish_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_publish_history" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.workflow_published_environment_version" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_published_environment_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
+"public.workflow_published_environment_version" }o--|| "public.project_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES project_environment(id) ON DELETE CASCADE"
 "public.workflow_published_version" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -685,6 +695,14 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }
+"public.environment_credential_binding" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ environmentId FK
+  integer id
+  varchar_36_ sourceCredentialId FK
+  varchar_36_ targetCredentialId FK
+  timestamp_3__with_time_zone updatedAt
+}
 "public.evaluation_collection" {
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
@@ -1049,6 +1067,13 @@ erDiagram
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
+"public.project_environment" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_255_ name
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+}
 "public.project_relation" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ projectId FK
@@ -1304,6 +1329,14 @@ erDiagram
   integer id
   uuid userId FK
   varchar_36_ versionId FK
+  varchar_36_ workflowId FK
+}
+"public.workflow_published_environment_version" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ environmentId FK
+  integer id
+  varchar_36_ publishedVersionId FK
+  timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }
 "public.workflow_published_version" {

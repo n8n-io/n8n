@@ -6,6 +6,7 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
+export { EnvironmentCredentialBindingRepository } from './environment-credential-binding.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,
@@ -31,6 +32,7 @@ export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
+export { ProjectEnvironmentRepository } from './project-environment.repository';
 export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
 export { RoleRepository } from './role.repository';
@@ -48,6 +50,7 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
+export { WorkflowPublishedEnvironmentVersionRepository } from './workflow-published-environment-version.repository';
 export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {

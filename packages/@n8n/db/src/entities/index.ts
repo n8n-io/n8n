@@ -10,6 +10,7 @@ import {
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { EnvironmentCredentialBinding } from './environment-credential-binding';
 import { DeploymentKey } from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
@@ -23,6 +24,7 @@ import { FolderTagMapping } from './folder-tag-mapping';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
+import { ProjectEnvironment } from './project-environment';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -47,6 +49,7 @@ import {
 	WorkflowPublicationOutboxStatus,
 } from './workflow-publication-outbox';
 import { WorkflowPublishHistory } from './workflow-publish-history';
+import { WorkflowPublishedEnvironmentVersion } from './workflow-published-environment-version';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
@@ -54,6 +57,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 export {
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
+	EnvironmentCredentialBinding,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -72,6 +76,7 @@ export {
 	EvaluationConfig,
 	Folder,
 	Project,
+	ProjectEnvironment,
 	ProjectRelation,
 	RoleMappingRule,
 	Role,
@@ -89,6 +94,7 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublishedEnvironmentVersion,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -107,6 +113,7 @@ export {
 export const entities = {
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
+	EnvironmentCredentialBinding,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -121,6 +128,7 @@ export const entities = {
 	EvaluationConfig,
 	Folder,
 	Project,
+	ProjectEnvironment,
 	ProjectRelation,
 	RoleMappingRule,
 	Scope,
@@ -136,6 +144,7 @@ export const entities = {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublishedEnvironmentVersion,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,

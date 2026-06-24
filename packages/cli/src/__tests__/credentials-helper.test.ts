@@ -3,6 +3,7 @@ import {
 	CredentialsEntity,
 	type SecretsProviderConnectionRepository,
 	type CredentialsRepository,
+	type EnvironmentCredentialBindingRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
@@ -83,6 +84,7 @@ describe('CredentialsHelper', () => {
 		licenseState,
 		externalSecretsConfig,
 		mock<AiGatewayService>(),
+		mock<EnvironmentCredentialBindingRepository>(),
 	);
 
 	describe('getCredentials', () => {
@@ -685,6 +687,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				aiGatewayService,
+				mock<EnvironmentCredentialBindingRepository>(),
 			);
 
 			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
@@ -730,6 +733,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				aiGatewayService,
+				mock<EnvironmentCredentialBindingRepository>(),
 			);
 
 			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
@@ -777,6 +781,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				aiGatewayService,
+				mock<EnvironmentCredentialBindingRepository>(),
 			);
 
 			const syntheticCred = {
@@ -1009,6 +1014,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				mock<EnvironmentCredentialBindingRepository>(),
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
@@ -1269,6 +1275,7 @@ describe('CredentialsHelper', () => {
 				mock<LicenseState>(),
 				mock<ExternalSecretsConfig>(),
 				mock<AiGatewayService>(),
+				mock<EnvironmentCredentialBindingRepository>(),
 			);
 
 		// The loader sets the class's `supportedNodes` to short names (e.g. "restrictedConsumer");

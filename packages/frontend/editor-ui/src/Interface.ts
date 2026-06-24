@@ -204,6 +204,7 @@ export interface IStartRunData {
 			name: NodeParameterValueType;
 		};
 	};
+	environmentId?: string;
 }
 
 export interface ITableData {
@@ -980,7 +981,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
 	| 'CustomRoles'
-	| 'DataRedaction';
+	| 'DataRedaction'
+	| 'Environments';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

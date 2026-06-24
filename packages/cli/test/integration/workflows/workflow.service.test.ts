@@ -84,12 +84,14 @@ beforeAll(async () => {
 		Container.get(WorkflowFinderService),
 		workflowPublishHistoryRepository,
 		outboxRepository,
+		mock(), // workflowPublishedEnvVersionRepository
 		workflowValidationService,
 		nodeTypes,
 		webhookServiceMock,
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
+		mock(), // projectEnvironmentService
 	);
 });
 

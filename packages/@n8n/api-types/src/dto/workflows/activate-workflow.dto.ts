@@ -11,4 +11,5 @@ export class ActivateWorkflowDto extends Z.class({
 	name: workflowVersionNameSchema,
 	description: workflowVersionDescriptionSchema,
 	expectedChecksum: z.string().optional(),
+	environmentId: z.string().optional(),
 }) {}

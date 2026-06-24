@@ -47,6 +47,7 @@ export const LICENSE_FEATURES = {
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
+	ENVIRONMENTS: 'feat:environments',
 } as const;
 
 export const LICENSE_QUOTAS = {

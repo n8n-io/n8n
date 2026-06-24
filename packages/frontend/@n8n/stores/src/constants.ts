@@ -54,6 +54,7 @@ export const STORES = {
 	EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS: 'surfaceMcpToNewCloudUsers',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
+	ENVIRONMENTS: 'projectEnvironments',
 	FAVORITES: 'favorites',
 	AI_GATEWAY: 'aiGateway',
 	EVALUATIONS_WIZARD_SIDEPANEL: 'evaluationsWizardSidepanel',

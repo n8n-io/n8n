@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
-| id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.environment_credential_binding](public.environment_credential_binding.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
 | isGlobal | boolean | false | false |  |  |  |
 | isManaged | boolean | false | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -51,6 +51,8 @@ erDiagram
 "public.credential_dependency" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;targetCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;sourceCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
@@ -120,6 +122,14 @@ erDiagram
   varchar_16_ resolverId FK
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.environment_credential_binding" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ environmentId FK
+  integer id
+  varchar_36_ sourceCredentialId FK
+  varchar_36_ targetCredentialId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_mcp_registry_connections" {
   timestamp_3__with_time_zone createdAt

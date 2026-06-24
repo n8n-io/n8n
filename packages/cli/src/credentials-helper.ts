@@ -4,7 +4,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	EnvironmentCredentialBindingRepository,
+	SecretsProviderConnectionRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError } from '@n8n/typeorm';
@@ -93,6 +97,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly licenseState: LicenseState,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly environmentCredentialBindingRepository: EnvironmentCredentialBindingRepository,
 	) {
 		super();
 	}
@@ -393,7 +398,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 			});
 		}
 
-		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+		let credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		// Environment-scoped execution: swap to the bound target credential if one exists.
+		if (additionalData.environmentId) {
+			const targetId = await this.environmentCredentialBindingRepository.resolveTargetCredentialId(
+				additionalData.environmentId,
+				credentialsEntity.id,
+			);
+			if (targetId) {
+				credentialsEntity = await this.credentialsRepository.findOneByOrFail({ id: targetId });
+			}
+		}
+
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },
 			credentialsEntity.type,

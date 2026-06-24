@@ -13,7 +13,7 @@
 | nodeGroups | json | '[]'::json | false |  |  |  |
 | nodes | json |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| versionId | varchar(36) |  | false | [public.workflow_entity](public.workflow_entity.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) |  |  |
+| versionId | varchar(36) |  | false | [public.workflow_entity](public.workflow_entity.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_environment_version](public.workflow_published_environment_version.md) [public.workflow_published_version](public.workflow_published_version.md) |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
@@ -46,6 +46,7 @@ erDiagram
 
 "public.workflow_entity" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_publish_history" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.workflow_published_environment_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
@@ -90,6 +91,14 @@ erDiagram
   integer id
   uuid userId FK
   varchar_36_ versionId FK
+  varchar_36_ workflowId FK
+}
+"public.workflow_published_environment_version" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ environmentId FK
+  integer id
+  varchar_36_ publishedVersionId FK
+  timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }
 "public.workflow_published_version" {

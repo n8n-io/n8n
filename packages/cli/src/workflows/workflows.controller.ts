@@ -16,6 +16,7 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	WorkflowRepository,
+	WorkflowPublishedEnvironmentVersionRepository,
 	AuthenticatedRequest,
 } from '@n8n/db';
 import {
@@ -87,6 +88,7 @@ export class WorkflowsController {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly workflowPublishedEnvVersionRepository: WorkflowPublishedEnvironmentVersionRepository,
 	) {}
 
 	@Post('/')
@@ -446,13 +448,14 @@ export class WorkflowsController {
 			'activate',
 		);
 
-		const { versionId, name, description, expectedChecksum } = body;
+		const { versionId, name, description, expectedChecksum, environmentId } = body;
 
 		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
 			versionId,
 			name,
 			description,
 			expectedChecksum,
+			environmentId,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
@@ -516,6 +519,7 @@ export class WorkflowsController {
 			req.user,
 			req.headers['push-ref'],
 			n8nAuthCookie,
+			req.query.environmentId,
 		);
 
 		if ('executionId' in result) {
@@ -535,6 +539,16 @@ export class WorkflowsController {
 		}
 
 		return result;
+	}
+
+	@Get('/:workflowId/published-env-versions')
+	@ProjectScope('workflow:read')
+	async getPublishedEnvVersions(
+		@Param('workflowId') workflowId: string,
+	): Promise<Record<string, string>> {
+		return await this.workflowPublishedEnvVersionRepository.getPublishedVersionsForWorkflow(
+			workflowId,
+		);
 	}
 
 	@Licensed('feat:sharing')

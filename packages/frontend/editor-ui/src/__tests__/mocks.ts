@@ -295,6 +295,7 @@ export function createMockEnterpriseSettings(
 		personalSpacePolicy: false,
 		dataRedaction: false,
 		otelCustomSpanAttributes: false,
+		environments: false,
 		...overrides, // Override with any passed properties
 	};
 }

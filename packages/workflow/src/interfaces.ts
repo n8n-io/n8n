@@ -3227,6 +3227,7 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	environmentId?: string;
 	/**
 	 * Who initiated this run. Unset means a regular user-initiated run;
 	 * `'instance_ai'` when the AI assistant ran the workflow on the user's
@@ -3366,6 +3367,7 @@ export interface IWorkflowExecuteAdditionalData {
 	userId?: string;
 	workflowId?: string;
 	projectId?: string;
+	environmentId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
