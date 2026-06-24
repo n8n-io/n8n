@@ -1,3 +1,5 @@
+import type { SystemModelMessage } from 'ai';
+
 import { isLlmMessage } from '../../sdk/message';
 import type {
 	AgentDbMessage,
@@ -6,7 +8,6 @@ import type {
 	Message,
 } from '../../types/sdk/message';
 import { AgentMessageList, buildSystemMessages } from '../model/message-list';
-import type { SystemModelMessage } from 'ai';
 
 function flattenSystemContent(system: SystemModelMessage | SystemModelMessage[]): string {
 	if (Array.isArray(system)) {
