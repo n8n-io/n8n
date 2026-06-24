@@ -1240,6 +1240,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:is-builder-configured="isBuilderConfigured"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
+					:is-build-chat-streaming="isBuildChatStreaming"
 					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
 					@build-done="onBuildDone"
