@@ -151,9 +151,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 				expect(activeWorkflowTriggers.get(workflowId)).toBeUndefined();
-				expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
-					new Set(),
-				);
+				expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(new Set());
 			});
 
 			it('records trigger function nodes that return no response but register a cron', async () => {
@@ -230,9 +228,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
 				expect(activeWorkflowTriggers.get(workflowId)?.has(hybridNode.id)).toBe(true);
-				expect(activeWorkflowTriggers.get(workflowId)?.get(hybridNode.id)).toBe(
-					triggerResponse,
-				);
+				expect(activeWorkflowTriggers.get(workflowId)?.get(hybridNode.id)).toBe(triggerResponse);
 				expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
 					new Set([hybridNode.id]),
 				);
@@ -240,10 +236,7 @@ describe('ActiveWorkflowTriggers', () => {
 				await activeWorkflowTriggers.removeTriggers(workflowId, new Set([hybridNode.id]));
 
 				expect(triggerResponse.closeFunction).toHaveBeenCalled();
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
-					hybridNode.id,
-				);
+				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, hybridNode.id);
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 			});
 		});
@@ -365,10 +358,7 @@ describe('ActiveWorkflowTriggers', () => {
 					workflowId,
 					triggerNode.id,
 				);
-				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-					workflowId,
-					pollNode.id,
-				);
+				expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, pollNode.id);
 				expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 			});
 
