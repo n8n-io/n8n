@@ -21,6 +21,7 @@ export type WorkflowSourceCompileResult =
 	| {
 			success: true;
 			workflow: WorkflowJSON;
+			declaredOutputFixtures?: NonNullable<WorkflowJSON['pinData']>;
 			warnings: ValidationWarning[];
 			compiler: WorkflowSourceCompiler;
 	  }
@@ -35,6 +36,7 @@ export type WorkflowSourceCompileResult =
 interface SandboxWorkflowBuildOutput {
 	success: boolean;
 	workflow?: WorkflowJSON;
+	declaredOutputFixtures?: NonNullable<WorkflowJSON['pinData']>;
 	warnings?: ValidationWarning[];
 	errors?: string[];
 }
@@ -135,6 +137,31 @@ function parseSandboxErrors(value: unknown): string[] {
 	return value.filter((error): error is string => typeof error === 'string');
 }
 
+function isPinDataItem(
+	value: unknown,
+): value is NonNullable<WorkflowJSON['pinData']>[string][number] {
+	return isRecord(value);
+}
+
+function isPinDataItems(value: unknown): value is NonNullable<WorkflowJSON['pinData']>[string] {
+	return Array.isArray(value) && value.every(isPinDataItem);
+}
+
+function parseSandboxDeclaredOutputFixtures(
+	value: unknown,
+): NonNullable<WorkflowJSON['pinData']> | undefined {
+	if (!isRecord(value)) return undefined;
+
+	const fixtures: NonNullable<WorkflowJSON['pinData']> = {};
+	for (const [nodeName, items] of Object.entries(value)) {
+		if (isPinDataItems(items)) {
+			fixtures[nodeName] = items;
+		}
+	}
+
+	return Object.keys(fixtures).length > 0 ? fixtures : undefined;
+}
+
 function parseSandboxBuildOutput(stdout: string): SandboxWorkflowBuildOutput | undefined {
 	const lastJsonLine = stdout
 		.trim()
@@ -157,6 +184,7 @@ function parseSandboxBuildOutput(stdout: string): SandboxWorkflowBuildOutput | u
 	return {
 		success: parsed.success,
 		workflow: isWorkflowJson(parsed.workflow) ? parsed.workflow : undefined,
+		declaredOutputFixtures: parseSandboxDeclaredOutputFixtures(parsed.declaredOutputFixtures),
 		warnings: parseSandboxWarnings(parsed.warnings),
 		errors: parseSandboxErrors(parsed.errors),
 	};
@@ -247,6 +275,7 @@ async function compileTypeScriptWorkflowSource(
 	return {
 		success: true,
 		workflow: buildOutput.workflow,
+		declaredOutputFixtures: buildOutput.declaredOutputFixtures,
 		warnings: buildOutput.warnings ?? [],
 		compiler: 'sandbox-tsx',
 	};

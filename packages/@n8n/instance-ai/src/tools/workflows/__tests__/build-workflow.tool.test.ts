@@ -597,6 +597,67 @@ describe('createBuildWorkflowTool', () => {
 		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
 	});
 
+	it('routes source-declared node outputs through the simulation plan', async () => {
+		const onBuildOutcome = vi.fn<(outcome: WorkflowBuildOutcome) => void>();
+		const reportBuildOutcome = vi.fn(async () => await Promise.resolve(null));
+		const rainyOutput = [
+			{
+				daily: {
+					time: ['2026-06-23'],
+					precipitation_sum: [6.4],
+					precipitation_probability_max: [85],
+				},
+			},
+		];
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				...structuredClone(generatedWorkflow),
+				nodes: [
+					...structuredClone(generatedWorkflow.nodes),
+					{
+						id: 'weather-1',
+						name: 'Get Berlin Weather',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.4,
+						position: [240, 0],
+						parameters: { method: 'GET', url: 'https://api.open-meteo.com/v1/forecast' },
+					},
+				],
+			},
+			declaredOutputFixtures: { 'Get Berlin Weather': rainyOutput },
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			overrides: {
+				workflowBuildContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: { reportBuildOutcome } as unknown as NonNullable<
+						InstanceAiContext['workflowBuildContext']
+					>['workflowTaskService'],
+					onBuildOutcome,
+				},
+			},
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+		const outcome = onBuildOutcome.mock.calls[0]?.[0] as WorkflowBuildOutcome | undefined;
+		expect(outcome?.nodeSimulationPlan).toContainEqual({
+			nodeName: 'Get Berlin Weather',
+			verdict: 'simulate',
+			reason: 'Source declares verification output for this node',
+			confidence: 'high',
+			source: 'deterministic',
+		});
+		expect(outcome?.simulationFixtures).toEqual({ 'Get Berlin Weather': rainyOutput });
+		expect(outcome?.verificationPinData).toBeUndefined();
+	});
+
 	it('returns source file metadata on validation failures', async () => {
 		const { context, filePath } = makeContext({ source: 'invalid source' });
 		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
