@@ -626,6 +626,20 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
+	test('extracts successful verify-built-workflow result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-1', status: 'success' },
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
+	});
+
 	test('extracts error run-workflow result', () => {
 		const node = makeAgentNode({
 			toolCalls: [

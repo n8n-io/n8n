@@ -7,7 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isPlaceholderValue, isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -214,16 +214,6 @@ function classifyVerificationFailure(
 	status: string | undefined,
 	buildOutcome: WorkflowBuildOutcome,
 ): RemediationMetadata {
-	if (buildOutcome.hasUnresolvedPlaceholders) {
-		return createRemediation({
-			category: 'needs_setup',
-			shouldEdit: false,
-			reason: 'mocked_credentials_or_placeholders',
-			guidance:
-				'Workflow submitted successfully, but verification is blocked by unresolved setup values. Stop code edits and route to workflows(action="setup").',
-		});
-	}
-
 	if (status === 'waiting') {
 		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 		return createRemediation({
@@ -243,6 +233,16 @@ function classifyVerificationFailure(
 	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
 	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
 	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
+	if (isPlaceholderValue(error)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance:
+				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflows(action="setup").',
+		});
+	}
+
 	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
 		return createRemediation({
 			category: 'needs_setup',

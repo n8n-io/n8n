@@ -1,3 +1,4 @@
+import { setupRemediationBlocksVerification } from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	WorkflowBuildOwner,
@@ -50,17 +51,13 @@ function hasFailedEvidence(outcome: WorkflowBuildOutcome): boolean {
 	return outcome.verification?.attempted === true && !outcome.verification.success;
 }
 
-function isNeedsSetupRemediation(remediation: WorkflowBuildOutcome['remediation']): boolean {
-	return remediation?.category === 'needs_setup' && !remediation.shouldEdit;
-}
-
 function hasSetupBlockingEvidence(
 	state: WorkflowLoopState,
 	outcome: WorkflowBuildOutcome,
 ): boolean {
 	if (outcome.verificationReadiness?.status === 'needs_setup') return true;
-	if (isNeedsSetupRemediation(outcome.remediation)) return true;
-	if (isNeedsSetupRemediation(state.lastRemediation)) return true;
+	if (setupRemediationBlocksVerification(outcome.remediation, outcome)) return true;
+	if (setupRemediationBlocksVerification(state.lastRemediation, outcome)) return true;
 
 	return outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome);
 }
@@ -118,11 +115,11 @@ function deriveBlockingReason(
 		return outcome.verificationReadiness.guidance;
 	}
 	const outcomeRemediation = outcome.remediation;
-	if (outcomeRemediation?.category === 'needs_setup' && !outcomeRemediation.shouldEdit) {
+	if (outcomeRemediation && setupRemediationBlocksVerification(outcomeRemediation, outcome)) {
 		return outcomeRemediation.guidance;
 	}
 	const lastRemediation = state.lastRemediation;
-	if (lastRemediation?.category === 'needs_setup' && !lastRemediation.shouldEdit) {
+	if (lastRemediation && setupRemediationBlocksVerification(lastRemediation, outcome)) {
 		return lastRemediation.guidance;
 	}
 	if (outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome)) {

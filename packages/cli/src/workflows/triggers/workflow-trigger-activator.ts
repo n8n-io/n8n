@@ -127,6 +127,35 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
+	 * Returns the desired webhook trigger nodes of the given version whose webhooks
+	 * are not all registered in storage (the `webhook_entity` table). The webhook
+	 * counterpart to {@link getUnregisteredNonWebhookTriggerNodeIds}: it lets
+	 * publication reconcile a re-enqueued version whose webhooks were never (or only
+	 * partly) registered, e.g. after a crash that advanced the published version.
+	 */
+	async getNodesWithUnregisteredWebhooks(
+		dbWorkflow: WorkflowEntity,
+		version: WorkflowTriggerVersion,
+	): Promise<Set<INode['id']>> {
+		const desiredNodes = new Set(this.getEnabledTriggerNodes(version).map((node) => node.id));
+		if (desiredNodes.size === 0) return new Set();
+
+		this.applyVersionToDbWorkflow(dbWorkflow, version);
+		const workflow = this.createWorkflow(dbWorkflow);
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: dbWorkflow.settings,
+		});
+
+		return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
+			workflow,
+			additionalData,
+			desiredNodes,
+		);
+	}
+
+	/**
 	 * Filters the given nodes to the non-webhook trigger nodes (active, schedule
 	 * and poll triggers), matching the registration logic in
 	 * `NonWebhookTriggerRegistrar`.
