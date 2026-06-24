@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -52,7 +52,7 @@
     }
   },
   "dependencies": {
-    "@daytonaio/sdk": "catalog:",
+    "@daytona/sdk": "catalog:",
     "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/anthropic": "catalog:",
     "@mozilla/readability": "catalog:",

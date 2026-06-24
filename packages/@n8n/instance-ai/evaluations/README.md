@@ -539,7 +539,7 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the C
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, and `datasets` (default `["full"]`) are optional. A turn's `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One JSON file = one LangSmith split**, named from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
 
@@ -578,9 +578,88 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so "the workflow crashes on invalid input" is a legitimate finding, not a test-case failure.
 
-### Adding a new credential type
+### Credentials
 
-`credentials/seeder.ts` seeds every credential with a placeholder token on every run — execution is mocked at the wire level, so the value is never used. Set the matching `EVAL_*_ACCESS_TOKEN` to override a service with a real token for a live run. If your scenario needs a credential type that isn't seeded, add it to `seeder.ts`.
+By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
+
+A case that tests credential behaviour declares what should exist:
+
+```json
+"credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
+```
+
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+
+Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
+
+### Seeded cases (conversation pre-seeding)
+
+A seeded case starts **mid-conversation**: prior history is restored into the build thread before the live turn, so the eval drives only the turn under test. Use it to replicate a real misbehaviour — restore the conversation up to the moment it went wrong, re-drive that turn, and assert what should happen instead.
+
+Pick the lightest path that fits:
+
+| Situation | Path |
+|---|---|
+| Reproduce a real conversation (the common case) | `seedThread` — fetch + reconstruct its LangSmith trace at run time; nothing committed |
+| Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline |
+| A synthetic/sanitized fixture you want durable | `seedFile` — a committed seed JSON (no real conversation data) |
+| Shallow 2–3 turn prelude where the agent's live replies matter | Neither — a plain multi-turn `conversation` script re-drives it live |
+
+#### `seedThread` — reproduce a real conversation (no repo content)
+
+The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.
+
+```json
+"seedThread": { "threadId": "<thread-id>", "project": "instance-ai" }
+```
+
+No `conversation` field needed — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`). No conversation content lands in the repo — only the opaque thread id.
+
+**What's restored.** The workflows the seed references are recreated pinned to their ids (node credentials are stripped — the eval credential pin owns the credential view, so a pre-attached id would bypass it). Data tables those workflows reference are recreated **schema-only** — columns and a remapped id, **no rows**: an empty table is all a data-table node needs to resolve, and a real conversation's rows are the highest-PII payload, so they're never reconstructed, sent, or inserted (the same row values are also redacted out of the restored message history). The row content stays in the source trace and never reaches the eval instance.
+
+**Continuing past the live turn.** Add a `conversation` to keep driving *after* the trace's last message is replayed — the effective conversation becomes `[<trace live turn>, ...conversation]`, so the live turn is sent for real and your authored turns become proxy-driven follow-ups (multi-turn). Use it to push a reproduced conversation further (e.g. "now also add error handling", or pressure-test the next decision):
+
+```json
+"seedThread": { "threadId": "…", "project": "instance-ai" },
+"conversation": [
+  { "role": "assistant", "text": "Updated the schedule to every 30 minutes." },
+  { "role": "user", "text": "Now also send a copy to #ops." }
+]
+```
+
+(The first authored turn is typically the expected assistant reply as proxy reference; subsequent `user` turns are sent as follow-ups. Omit `conversation` to just send the live turn and stop.)
+
+**Cross-workspace, zero config (e.g. prod traces, staging eval).** A source thread can live in a different LangSmith **workspace** than the eval writes to. You don't declare which, and there are no extra env vars — the harness enumerates the workspaces your `LANGSMITH_API_KEY` can access and finds the one holding the thread (the workspace is selected per request via the `x-tenant-id` header; a personal access token typically spans staging/prod/feature). Reads use the ambient key; the eval still writes its own traces/datasets to its own workspace, so **nothing is ever written to the source workspace**. The resolved workspace is logged (`[Prod/instance-ai]`).
+
+`seedThread.project` overrides the source project name (default `instance-ai`); the same name is searched in every workspace, so if prod and staging share it you need nothing. ⚠️ Reconstructing a prod conversation pulls its content (incl. any PII) into the staging eval instance, the model, the staging traces and local report artifacts — handle per the source-side redaction decision and team data policy before using real customer threads.
+
+> **Transient.** LangSmith base-tier traces retain ~14 days, so a `seedThread` case is runnable only while its trace lives. Keep these out of CI datasets (tag them `["seeded"]`, not `full`/`pr`) until durable seed snapshots land; the resolver fails loudly when a trace has aged out. Durable snapshotting (e.g. materialising the reconstructed seed into a private LangSmith dataset on first resolve) is a planned follow-up.
+
+To find the thread id, open the conversation's trace in LangSmith (or read it from the instance the conversation happened on) and copy its `thread_id`.
+
+#### `priorConversation` — prose prelude
+
+```json
+"priorConversation": [
+  { "role": "user", "text": "We agreed: digests go to #growth, daily at 9am." },
+  { "role": "assistant", "text": "Noted — #growth, daily at 9am." }
+]
+```
+
+Paired with a normal `conversation` for the live turn. Plain text only — no tool calls, no restored workflows.
+
+#### `seedFile` — durable synthetic fixture
+
+For a **synthetic, sanitized** fixture you want pinned in git (never a real user's conversation): hand-author a `data/workflows/seeds/<name>.seed.json` (schema in `harness/conversation-seed.ts` — `messages` + optional `workflows`) and point `seedFile` at it. Real conversations belong in `seedThread`, which keeps their content out of the repo entirely. Paired with a normal `conversation` for the live turn.
+
+#### How restore works (all paths)
+
+At build time the seed is restored right after the credential pin: seeded workflows are recreated under **fresh ids** (every reference in the history is remapped, so parallel iterations never share a workflow row) with node credentials stripped, and the message log is written verbatim. Restore failures fail the build — a seeded case cannot meaningfully run unseeded. Seeded turns join the transcript marked as *seeded prior context*, visible to the expectations judge and prompt-aware checks but distinguishable from live behaviour.
+
+Rules of thumb:
+
+- **A seeded case is only worth shipping with `buildExpectations` that detect the misbehaviour recurring** — without them it passes vacuously. Sanity-check by running the case once with the seed removed: it should fail.
+- `seedThread`, `priorConversation` and `seedFile` are mutually exclusive; all order strictly before the live turn. `seedThread` provides its own live turn (omit `conversation`); the other two pair with `conversation`.
 
 ## Failure categories
 

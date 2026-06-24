@@ -13,8 +13,22 @@ import type {
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadStatusResponse,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
 import { z } from 'zod';
+
+// -- Conversation seeding response shapes -------------------------------------
+
+const RestoreThreadEnvelope = z.object({
+	data: z.object({
+		ok: z.literal(true),
+		threadId: z.string(),
+		restored: z.number(),
+		workflowIds: z.array(z.string()),
+		dataTableIds: z.array(z.string()).default([]),
+	}),
+});
 
 // ---------------------------------------------------------------------------
 // Computer-use gateway response shapes (Zod-validated to keep the client
@@ -95,6 +109,16 @@ export interface ExecutionDetail {
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
+
+/** Non-2xx API response; `status` lets callers branch on e.g. 404 (missing endpoint). */
+export class N8nApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+	) {
+		super(message);
+	}
+}
 
 export class N8nClient {
 	private sessionCookie?: string;
@@ -468,6 +492,38 @@ export class N8nClient {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
 	}
 
+	/**
+	 * Pin a build thread's credential view to exactly these IDs (empty array =
+	 * the thread sees no credentials).
+	 * POST /rest/instance-ai/eval/thread-credential-allowlist
+	 */
+	async setThreadCredentialAllowlist(threadId: string, credentialIds: string[]): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
+			method: 'POST',
+			body: { threadId, credentialIds },
+		});
+	}
+
+	/**
+	 * Seed an existing thread with a previously exported conversation: the
+	 * referenced workflows are recreated (node credentials stripped server-side)
+	 * and the native message log is written verbatim, so the thread continues
+	 * as if the conversation really happened.
+	 * POST /rest/instance-ai/eval/restore-thread
+	 */
+	async restoreThread(
+		threadId: string,
+		messages: Array<Record<string, unknown>>,
+		workflows: InstanceAiEvalSeedWorkflow[],
+		dataTables: InstanceAiEvalSeedDataTable[] = [],
+	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
+		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
+			method: 'POST',
+			body: { threadId, messages, workflows, dataTables },
+		});
+		return RestoreThreadEnvelope.parse(result).data;
+	}
+
 	// -- Data tables ---------------------------------------------------------
 
 	/**
@@ -591,7 +647,10 @@ export class N8nClient {
 
 		if (!res.ok) {
 			const text = await res.text();
-			throw new Error(`n8n API ${method} ${path} failed (${res.status}): ${text}`);
+			throw new N8nApiError(
+				`n8n API ${method} ${path} failed (${res.status}): ${text}`,
+				res.status,
+			);
 		}
 
 		// Capture auth cookie from login response
