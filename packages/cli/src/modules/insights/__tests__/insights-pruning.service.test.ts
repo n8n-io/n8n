@@ -1,4 +1,3 @@
-import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
@@ -11,20 +10,15 @@ describe('InsightsPruningService', () => {
 	let insightsConfig: InsightsConfig;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
 	let insightsPruningService: InsightsPruningService;
-	let licenseState: LicenseState;
 
 	beforeAll(() => {
 		insightsConfig = new InsightsConfig();
 		insightsConfig.maxAgeDays = 10;
 		insightsConfig.pruneCheckIntervalHours = 1;
 		insightsByPeriodRepository = mock<InsightsByPeriodRepository>();
-		licenseState = mock<LicenseState>({
-			getInsightsRetentionMaxAge: () => insightsConfig.maxAgeDays,
-		});
 		insightsPruningService = new InsightsPruningService(
 			insightsByPeriodRepository,
 			insightsConfig,
-			licenseState,
 			mockLogger(),
 		);
 	});
@@ -51,7 +45,6 @@ describe('InsightsPruningService', () => {
 			const insightsPruningService = new InsightsPruningService(
 				insightsByPeriodRepository,
 				insightsConfig,
-				licenseState,
 				mockLogger(),
 			);
 			const pruneSpy = jest.spyOn(insightsPruningService, 'pruneInsights');
@@ -75,7 +68,6 @@ describe('InsightsPruningService', () => {
 			const insightsPruningService = new InsightsPruningService(
 				insightsByPeriodRepository,
 				insightsConfig,
-				licenseState,
 				mockLogger(),
 			);
 

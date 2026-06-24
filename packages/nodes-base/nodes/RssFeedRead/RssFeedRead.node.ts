@@ -5,11 +5,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, sanitizeXmlName } from 'n8n-workflow';
-import Parser from 'rss-parser';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { URL } from 'url';
 
+import type Parser from 'rss-parser';
+
 import { generatePairedItemData } from '../../utils/utilities';
+import { parseFeedUrl } from './GenericFunctions';
 
 // Utility function
 
@@ -105,35 +107,13 @@ export class RssFeedRead implements INodeType {
 					});
 				}
 
-				const parserOptions: IDataObject = {
-					requestOptions: {
-						rejectUnauthorized: !ignoreSSL,
-					},
-					xml2js: {
-						tagNameProcessors: [sanitizeXmlName],
-						attrNameProcessors: [sanitizeXmlName],
-					},
-				};
-
-				if (nodeVersion >= 1.2) {
-					parserOptions.headers = {
-						Accept:
-							'application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4',
-					};
-				}
-
-				if (options.customFields) {
-					const customFields = options.customFields as string;
-					parserOptions.customFields = {
-						item: customFields.split(',').map((field) => field.trim()),
-					};
-				}
-
-				const parser = new Parser(parserOptions);
-
 				let feed: Parser.Output<IDataObject>;
 				try {
-					feed = await parser.parseURL(url);
+					feed = await parseFeedUrl(this.helpers, url, {
+						customFields: options.customFields as string | undefined,
+						ignoreSSL,
+						useRelaxedAcceptHeader: nodeVersion >= 1.2,
+					});
 				} catch (error) {
 					if (error.code === 'ECONNREFUSED') {
 						throw new NodeOperationError(

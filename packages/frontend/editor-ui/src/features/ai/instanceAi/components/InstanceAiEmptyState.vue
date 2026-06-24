@@ -1,14 +1,23 @@
 <script lang="ts" setup>
 import { N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 const i18n = useI18n();
+
+const props = withDefaults(
+	defineProps<{
+		titleKey?: BaseTextKey;
+	}>(),
+	{
+		titleKey: 'instanceAi.emptyState.title',
+	},
+);
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-empty-state">
 		<N8nText tag="h1" size="xlarge" bold :class="$style.title">
-			{{ i18n.baseText('instanceAi.emptyState.title') }}
+			{{ i18n.baseText(props.titleKey) }}
 		</N8nText>
 	</div>
 </template>

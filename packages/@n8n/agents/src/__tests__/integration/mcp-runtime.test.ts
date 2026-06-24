@@ -1,7 +1,7 @@
 /**
  * Integration tests for MCP lifecycle via McpClient and the Agent builder.
  * Covers: McpClient constructor validation, connect/listTools/close, tool merge,
- * name collision, requireToolApproval, and rich content handling.
+ * name collision, per-server approval, and rich content handling.
  *
  * Tests that don't require a real LLM run unconditionally.
  * Tests that call agent.generate() / agent.stream() are gated on ANTHROPIC_API_KEY.
@@ -17,7 +17,7 @@ import {
 	chunksOfType,
 } from './helpers';
 import { startSseServer, type TestServer } from './mcp-server-helpers';
-import { Agent, McpClient, Tool, isLlmMessage } from '../../index';
+import { Agent, McpClient, Tool } from '../../index';
 
 // ---------------------------------------------------------------------------
 // McpClient constructor validation — no MCP server required
@@ -234,13 +234,10 @@ describe_llm('agent stream() with MCP tool', () => {
 		const { stream } = await agent.stream('Echo "stream works" using tools_echo.');
 
 		const chunks = await collectStreamChunks(stream);
-		const messageChunks = chunksOfType(chunks, 'message');
-		const messages = messageChunks.map((c) => c.message);
-
-		const hasToolCall = messages.some(
-			(m) => isLlmMessage(m) && m.content.some((c) => c.type === 'tool-call'),
-		);
-		expect(hasToolCall).toBe(true);
+		// Tool calls now ride their own discrete `tool-call` chunks rather than
+		// being wrapped in `message` envelopes.
+		const toolCallChunks = chunksOfType(chunks, 'tool-call');
+		expect(toolCallChunks.length).toBeGreaterThan(0);
 
 		await client.close();
 	});
@@ -295,41 +292,6 @@ describe('MCP tool name collision detection', () => {
 		} finally {
 			await client.close();
 		}
-	});
-});
-
-// ---------------------------------------------------------------------------
-// requireToolApproval with MCP tools — requires ANTHROPIC_API_KEY
-// ---------------------------------------------------------------------------
-
-describe_llm('requireToolApproval() with MCP tools', () => {
-	let server: TestServer;
-
-	beforeAll(async () => {
-		server = await startSseServer();
-	});
-
-	afterAll(async () => {
-		await server.close();
-	});
-
-	it('suspends the MCP tool call when requireToolApproval is enabled', async () => {
-		const client = new McpClient([{ name: 'tools', url: server.url }]);
-		const agent = new Agent('approval-mcp-agent')
-			.model(getModel('anthropic'))
-			.instructions('Use tools_echo to echo messages. Be concise.')
-			.mcp(client)
-			.requireToolApproval()
-			.checkpoint('memory');
-
-		const { stream } = await agent.stream('Echo "needs approval" using tools_echo.');
-		const chunks = await collectStreamChunks(stream);
-
-		const suspendedChunks = chunksOfType(chunks, 'tool-call-suspended');
-		expect(suspendedChunks.length).toBeGreaterThanOrEqual(1);
-		expect(suspendedChunks[0].toolName).toBe('tools_echo');
-
-		await client.close();
 	});
 });
 

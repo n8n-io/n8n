@@ -55,15 +55,23 @@ export class LocalGatewayRegistry {
 
 	/** Resolve an API key (pairing token or session key) back to the owning userId. */
 	getUserIdForApiKey(key: string): string | undefined {
-		return this.apiKeyToUserId.get(key);
+		const userId = this.apiKeyToUserId.get(key);
+		if (!userId) return undefined;
+
+		const state = this.userGateways.get(userId);
+		if (state?.pairingToken?.token === key) {
+			if (Date.now() - state.pairingToken.createdAt > PAIRING_TOKEN_TTL_MS) {
+				this.apiKeyToUserId.delete(state.pairingToken.token);
+				state.pairingToken = null;
+				return undefined;
+			}
+		}
+		return userId;
 	}
 
 	/** Generate a one-time pairing token for UI-initiated connections. */
 	generatePairingToken(userId: string): string {
 		const state = this.getOrCreate(userId);
-		// If there's an active session key, return it so the daemon can reconnect
-		// without losing its authenticated session (e.g. after a page reload).
-		if (state.activeSessionKey) return state.activeSessionKey;
 
 		// Reuse existing valid token to prevent race conditions between concurrent callers.
 		const existing = this.getPairingToken(userId);
@@ -85,6 +93,15 @@ export class LocalGatewayRegistry {
 			return null;
 		}
 		return state.pairingToken.token;
+	}
+
+	/** Get the expiry time for an active pairing token. Session keys do not expire. */
+	getApiKeyExpiresAt(userId: string, key: string): Date | null {
+		const state = this.userGateways.get(userId);
+		if (!state?.pairingToken || state.pairingToken.token !== key) return null;
+		const token = this.getPairingToken(userId);
+		if (!token) return null;
+		return new Date(state.pairingToken.createdAt + PAIRING_TOKEN_TTL_MS);
 	}
 
 	/**

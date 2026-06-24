@@ -1,13 +1,27 @@
-import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
-import axios from 'axios';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { valid } from 'semver';
 import { execFile } from 'node:child_process';
+import { access } from 'node:fs/promises';
+import { dirname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
+
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 const asyncExecFile = promisify(execFile);
 
 const REQUEST_TIMEOUT = 30000;
+
+const WINDOWS_NPM_CLI_RELATIVE_PATH = 'node_modules/npm/bin/npm-cli.js';
+const WINDOWS_NPM_CLI_CANDIDATE_PATHS = [
+	WINDOWS_NPM_CLI_RELATIVE_PATH,
+	`../${WINDOWS_NPM_CLI_RELATIVE_PATH}`,
+];
+const WINDOWS_NPM_PREFIX_SCRIPT_RELATIVE_PATH = 'node_modules/npm/bin/npm-prefix.js';
+
+let cachedWindowsNpmCliPath: string | undefined;
 
 const NPM_ERROR_PATTERNS = {
 	PACKAGE_NOT_FOUND: [NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR],
@@ -63,6 +77,91 @@ function matchesErrorPattern(message: string, patterns: readonly string[]): bool
 	return patterns.some((pattern) => message.includes(pattern));
 }
 
+async function pathExists(path: string): Promise<boolean> {
+	try {
+		await access(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function stdoutToString(stdout: string | Buffer, trim = false): string {
+	const value = typeof stdout === 'string' ? stdout : stdout.toString();
+	return trim ? value.trim() : value;
+}
+
+async function resolveWindowsDefaultNpmCliPath(nodeDirectory: string): Promise<string | undefined> {
+	for (const relativePath of WINDOWS_NPM_CLI_CANDIDATE_PATHS) {
+		const candidatePath = join(nodeDirectory, relativePath);
+		if (await pathExists(candidatePath)) {
+			return candidatePath;
+		}
+	}
+
+	return undefined;
+}
+
+async function resolveWindowsPrefixNpmCliPath(nodeDirectory: string): Promise<string | undefined> {
+	const npmPrefixScriptPath = join(nodeDirectory, WINDOWS_NPM_PREFIX_SCRIPT_RELATIVE_PATH);
+	if (!(await pathExists(npmPrefixScriptPath))) {
+		return undefined;
+	}
+
+	try {
+		const { stdout } = await asyncExecFile(process.execPath, [npmPrefixScriptPath]);
+		const globalPrefix = stdoutToString(stdout, true);
+		if (!globalPrefix) {
+			return undefined;
+		}
+
+		const globalPrefixNpmCliPath = join(globalPrefix, WINDOWS_NPM_CLI_RELATIVE_PATH);
+		if (isAbsolute(globalPrefixNpmCliPath) && (await pathExists(globalPrefixNpmCliPath))) {
+			return globalPrefixNpmCliPath;
+		}
+	} catch {
+		// Skip if failed to get prefix
+	}
+
+	return undefined;
+}
+
+async function resolveWindowsNpmCliPath(): Promise<string> {
+	if (cachedWindowsNpmCliPath) {
+		return cachedWindowsNpmCliPath;
+	}
+
+	const nodeDirectory = dirname(process.execPath);
+	const prefixNpmCliPath = await resolveWindowsPrefixNpmCliPath(nodeDirectory);
+	if (prefixNpmCliPath) {
+		cachedWindowsNpmCliPath = prefixNpmCliPath;
+		return cachedWindowsNpmCliPath;
+	}
+
+	const defaultNpmCliPath = await resolveWindowsDefaultNpmCliPath(nodeDirectory);
+	if (defaultNpmCliPath) {
+		cachedWindowsNpmCliPath = defaultNpmCliPath;
+		return cachedWindowsNpmCliPath;
+	}
+
+	throw new UnexpectedError('Failed to locate npm CLI. Please ensure npm is installed.');
+}
+
+async function executeNpmCli(args: string[], cwd?: string): Promise<string> {
+	if (process.platform === 'win32') {
+		const npmCliPath = await resolveWindowsNpmCliPath();
+		const { stdout } = await asyncExecFile(
+			process.execPath,
+			[npmCliPath, ...args],
+			cwd ? { cwd } : undefined,
+		);
+		return stdoutToString(stdout);
+	}
+
+	const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
+	return stdoutToString(stdout);
+}
+
 function redactAuthTokens(text: string): string {
 	return text.replace(/_authToken=\S+/g, '_authToken=*****');
 }
@@ -100,8 +199,7 @@ export async function executeNpmCommand(
 	});
 
 	try {
-		const { stdout } = await asyncExecFile('npm', fullArgs, cwd ? { cwd } : undefined);
-		return typeof stdout === 'string' ? stdout : stdout.toString();
+		return await executeNpmCli(fullArgs, cwd);
 	} catch (error) {
 		if (authToken && error instanceof Error) {
 			error.message = redactAuthTokens(error.message);
@@ -151,7 +249,7 @@ export async function executeNpmCommand(
  * @param path - Path to append after the registry URL (e.g. `${encodeURIComponent(pkg)}/${version}`)
  * @param options - Optional authToken, extra headers, and timeout override
  * @returns Parsed response body
- * @throws The original axios error after logging, so callers can fall back to the npm CLI
+ * @throws The original request error after logging, so callers can fall back to the npm CLI
  */
 export async function executeNpmRequest<T = unknown>(
 	registryUrl: string,
@@ -169,10 +267,19 @@ export async function executeNpmRequest<T = unknown>(
 	LoggerProxy.debug('Executing npm registry request', { url, headers: redactedHeaders, timeout });
 
 	try {
-		const { data } = await axios.get<T>(url, {
-			timeout,
-			headers: Object.keys(headers).length > 0 ? headers : undefined,
-		});
+		const ssrfProtectionConfig = Container.get(SsrfProtectionConfig);
+		const data = (await Container.get(OutboundHttp)
+			.requests({
+				// User-configurable registry URL → SSRF on, gated on global config.
+				ssrf: ssrfProtectionConfig.enabled ? Container.get(SsrfProtectionService) : 'disabled',
+			})
+			.request({
+				url,
+				method: 'GET',
+				timeout,
+				headers: Object.keys(headers).length > 0 ? headers : undefined,
+				json: true,
+			})) as T;
 		return data;
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);

@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { captor, mock, type MockProxy } from 'jest-mock-extended';
 import type {
 	IRunExecutionData,
 	ContextType,
@@ -16,9 +15,11 @@ import type {
 	IExecuteWorkflowInfo,
 	IExecutionContext,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { UnexpectedError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 
 import type { BaseExecuteContext } from '../base-execute-context';
 
@@ -117,16 +118,18 @@ export const describeCommonTests = (
 	});
 
 	describe('onExecutionCancellation', () => {
-		const handler = jest.fn();
-		context.onExecutionCancellation(handler);
+		it('registers the handler and triggers it when the signal aborts', () => {
+			const handler = vi.fn();
+			context.onExecutionCancellation(handler);
 
-		const fnCaptor = captor<() => void>();
-		expect(abortSignal.addEventListener).toHaveBeenCalledWith('abort', fnCaptor);
-		expect(handler).not.toHaveBeenCalled();
+			const fnCaptor = captor<() => void>();
+			expect(abortSignal.addEventListener).toHaveBeenCalledWith('abort', fnCaptor);
+			expect(handler).not.toHaveBeenCalled();
 
-		fnCaptor.value();
-		expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
-		expect(handler).toHaveBeenCalled();
+			fnCaptor.value();
+			expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
+			expect(handler).toHaveBeenCalled();
+		});
 	});
 
 	describe('continueOnFail', () => {
@@ -158,7 +161,7 @@ export const describeCommonTests = (
 		it('should return the context object', () => {
 			const contextType: ContextType = 'node';
 			const expectedContext = mock<IContextObject>();
-			const getContextSpy = jest.spyOn(NodeHelpers, 'getContext');
+			const getContextSpy = vi.spyOn(NodeHelpers, 'getContext');
 			getContextSpy.mockReturnValue(expectedContext);
 
 			expect(context.getContext(contextType)).toEqual(expectedContext);
@@ -208,7 +211,7 @@ export const describeCommonTests = (
 		it('should throw an error if the source data is missing', () => {
 			executeData.source = null;
 
-			expect(() => context.getInputSourceData()).toThrow(ApplicationError);
+			expect(() => context.getInputSourceData()).toThrow(UnexpectedError);
 		});
 	});
 
@@ -231,7 +234,9 @@ export const describeCommonTests = (
 		it('should evaluate the expression correctly', () => {
 			const expression = '$json.test';
 			const expectedResult = 'data';
-			const resolveSimpleParameterValueSpy = jest.spyOn(
+			// Touch the lazy proxy property so vi.spyOn can find it.
+			void workflow.expression.resolveSimpleParameterValue;
+			const resolveSimpleParameterValueSpy = vi.spyOn(
 				workflow.expression,
 				'resolveSimpleParameterValue',
 			);
@@ -298,6 +303,100 @@ export const describeCommonTests = (
 			expect(additionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
 			expect(runExecutionData.waitTill).toEqual(WAIT_INDEFINITELY);
 			expect(result.waitTill).toBe(waitTill);
+		});
+
+		describe('execution context propagation to sub-workflows', () => {
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 123,
+				source: 'webhook',
+				credentials: 'encrypted-credential-data',
+			};
+
+			afterEach(() => {
+				vi.restoreAllMocks();
+			});
+
+			it('should inject the current execution context when the parent id matches', async () => {
+				additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
+				vi.spyOn(context, 'getExecutionId').mockReturnValue('current_execution_id');
+				vi.spyOn(context, 'getExecutionContext').mockReturnValue(executionContext);
+
+				const childParentExecution: RelatedExecution = {
+					executionId: 'current_execution_id',
+					workflowId: 'parent_workflow_id',
+				};
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, {
+					parentExecution: childParentExecution,
+				});
+
+				expect(childParentExecution.executionContext).toBe(executionContext);
+				expect(additionalData.executeWorkflow).toHaveBeenCalledWith(
+					workflowInfo,
+					additionalData,
+					expect.objectContaining({
+						parentExecution: expect.objectContaining({ executionContext }),
+					}),
+				);
+			});
+
+			// Regression for IAM-857: during a trigger's webhook phase (e.g. an MCP
+			// Trigger tool call) there is no execution id yet, so `getExecutionId()` is
+			// `undefined` while the parent id is the placeholder. Context must still propagate.
+			it('should inject the execution context when no execution id is assigned yet', async () => {
+				additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
+				vi.spyOn(context, 'getExecutionId').mockReturnValue(undefined as unknown as string);
+				vi.spyOn(context, 'getExecutionContext').mockReturnValue(executionContext);
+
+				const childParentExecution: RelatedExecution = {
+					executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
+					workflowId: 'parent_workflow_id',
+				};
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, {
+					parentExecution: childParentExecution,
+				});
+
+				expect(childParentExecution.executionContext).toBe(executionContext);
+			});
+
+			it('should not overwrite an execution context already set on the parent', async () => {
+				additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
+				const existingContext: IExecutionContext = { ...executionContext, establishedAt: 999 };
+				vi.spyOn(context, 'getExecutionId').mockReturnValue('current_execution_id');
+				const getExecutionContextSpy = vi.spyOn(context, 'getExecutionContext');
+
+				const childParentExecution: RelatedExecution = {
+					executionId: 'current_execution_id',
+					workflowId: 'parent_workflow_id',
+					executionContext: existingContext,
+				};
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, {
+					parentExecution: childParentExecution,
+				});
+
+				expect(childParentExecution.executionContext).toBe(existingContext);
+				expect(getExecutionContextSpy).not.toHaveBeenCalled();
+			});
+
+			it('should not inject context when the parent id refers to a different execution', async () => {
+				additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
+				vi.spyOn(context, 'getExecutionId').mockReturnValue('current_execution_id');
+				vi.spyOn(context, 'getExecutionContext').mockReturnValue(executionContext);
+
+				const childParentExecution: RelatedExecution = {
+					executionId: 'some_other_execution_id',
+					workflowId: 'parent_workflow_id',
+				};
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, {
+					parentExecution: childParentExecution,
+				});
+
+				expect(childParentExecution.executionContext).toBeUndefined();
+			});
 		});
 	});
 };

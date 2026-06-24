@@ -81,7 +81,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			// Step 1: Owner initiates OAuth flow (authenticated)
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [_, state] = csrfSpy.mock.results[0].value;
+			const [_, state] = await csrfSpy.mock.results[0].value;
 
 			// Step 2: Mock external OAuth provider response
 			nock('https://test.domain')
@@ -105,7 +105,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				credential,
 				credential.type,
 			);
-			expect(updatedCredential.getData()).toEqual({
+			expect(await updatedCredential.getData()).toEqual({
 				...credentialData,
 				oauthTokenData: { access_token: 'new_access_token' },
 			});
@@ -121,7 +121,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			// Step 1: Owner initiates OAuth flow
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [_, state] = csrfSpy.mock.results[0].value;
+			const [_, state] = await csrfSpy.mock.results[0].value;
 
 			// Step 2: Mock external OAuth provider response
 			nock('https://test.domain')
@@ -146,7 +146,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				credential,
 				credential.type,
 			);
-			expect(updatedCredential.getData()).toEqual({
+			expect(await updatedCredential.getData()).toEqual({
 				...credentialData,
 				oauthTokenData: { access_token: 'different_user_token' },
 			});
@@ -173,7 +173,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				scope: 'openid',
 			});
 
-			// Verify state is base64-encoded and contains expected structure
+			// Verify state is base64-encoded and contains expected structure. The CSRF
+			// payload now lives server-side in the per-flow cache, not in the URL state.
 			expect(queryParams.state).toBeDefined();
 			const decodedState = JSON.parse(
 				Buffer.from(queryParams.state as string, 'base64').toString(),
@@ -181,8 +182,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			expect(decodedState).toMatchObject({
 				token: expect.any(String),
 				createdAt: expect.any(Number),
-				data: expect.any(String), // Encrypted CSRF data
 			});
+			expect(decodedState.data).toBeUndefined();
 		});
 	});
 
@@ -216,7 +217,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			// Initiate OAuth flow
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [_, state] = csrfSpy.mock.results[0].value;
+			const [_, state] = await csrfSpy.mock.results[0].value;
 
 			// Mock OAuth provider returning an error
 			nock('https://test.domain').post('/oauth2/token').reply(400, {
@@ -250,7 +251,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			// Initiate OAuth flow to get a valid state
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-			const [__, state] = csrfSpy.mock.results[0].value;
+			const [__, state] = await csrfSpy.mock.results[0].value;
 
 			// Tamper with the state (decrypt, modify, re-encrypt would be needed)
 			// For this test, we'll use a completely different valid-looking but wrong state

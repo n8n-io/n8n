@@ -14,6 +14,17 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
+import type { Workflow } from 'n8n-workflow';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 // Mock canvas event bus - using hoisted to ensure proper initialization order
 const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
@@ -32,6 +43,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 // Mock workflowDocumentStore - using hoisted for proper initialization
 const mockDocumentStore = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
+	workflowId: 'test-workflow',
 	name: '',
 	setName: vi.fn(),
 	setNodes: vi.fn(),
@@ -42,19 +54,19 @@ const mockDocumentStore = vi.hoisted(() => ({
 	getNodeByName: vi.fn().mockReturnValue(null),
 	setNodeIssue: vi.fn(),
 	updateNodeProperties: vi.fn(),
+	cloneWorkflowObject: vi.fn().mockReturnValue({
+		nodes: {},
+		connectionsBySourceNode: {},
+		renameNode: vi.fn(),
+	}),
+	connectionsBySourceNode: {},
+	workflowTriggerNodes: [] as INodeUi[],
 })) as unknown as ReturnType<typeof useWorkflowDocumentStore>;
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
-}));
-
-// Mock useWorkflowState - using hoisted for proper initialization
-const mockWorkflowState = vi.hoisted(() => ({
-	touchParametersLastUpdatedAt: vi.fn(),
-}));
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => mockWorkflowState),
+	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockDocumentStore }),
 }));
 
 // Mock useCanvasOperations - using hoisted for proper initialization
@@ -69,8 +81,10 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn(() => mockCanvasOperations),
 }));
 
-// Mock nodeTypesUtils
-vi.mock('@/app/utils/nodeTypesUtils', () => ({
+// Mock nodeTypesUtils — keep real exports (e.g. getNodeSubtitle, used by
+// useNodeHelpers) and override only the auth helpers under test.
+vi.mock('@/app/utils/nodeTypesUtils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/utils/nodeTypesUtils')>()),
 	getMainAuthField: vi.fn(),
 	getAuthTypeForNodeCredential: vi.fn(),
 }));
@@ -107,18 +121,11 @@ describe('useWorkflowUpdate', () => {
 		vi.mocked(mockDocumentStore.setNodeIssue).mockClear();
 		vi.mocked(mockDocumentStore.updateNodeProperties).mockClear();
 		workflowsStore.workflowId = 'test-workflow';
-		workflowsStore.workflow = {
-			id: 'test-workflow',
-			name: DEFAULT_NEW_WORKFLOW_NAME,
-			nodes: [],
-			connections: {},
-		} as unknown as ReturnType<typeof useWorkflowsStore>['workflow'];
-		workflowsStore.workflowId = 'test-workflow';
-		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
+		vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue({
 			nodes: {},
 			connectionsBySourceNode: {},
 			renameNode: vi.fn(),
-		});
+		} as Partial<Workflow> as Workflow);
 		workflowsStore.nodesByName = {};
 
 		builderStore.setBuilderMadeEdits = vi.fn();
@@ -215,12 +222,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'Chat Trigger': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -257,12 +266,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'HTTP Request': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -296,12 +307,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'HTTP Request': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const newNode = createTestNode({
 					id: 'brand-new-id',
@@ -352,12 +365,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'Old Name': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -395,12 +410,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'HTTP Request': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -464,12 +481,14 @@ describe('useWorkflowUpdate', () => {
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				// After rename, cloneWorkflowObject returns node with new name
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'New Name': { ...existingNode, name: 'New Name' } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -502,12 +521,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'Same Name': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -541,12 +562,14 @@ describe('useWorkflowUpdate', () => {
 				mockCanvasOperations.renameNode.mockResolvedValueOnce(false);
 
 				// Workflow still has node under old name since rename failed
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'Old Name': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -582,12 +605,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'HTTP Request': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -617,12 +642,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'HTTP Request': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -777,12 +804,14 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const mockWorkflowObject = {
+				const mockWorkflowObject: Partial<Workflow> = {
 					nodes: { 'HTTP Request': { ...existingNode } },
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
 				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue(
+					mockWorkflowObject as Workflow,
+				);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -942,7 +971,7 @@ describe('useWorkflowUpdate', () => {
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const testError = new Error('Failed to clone workflow');
-				workflowsStore.cloneWorkflowObject = vi.fn().mockImplementation(() => {
+				vi.mocked(mockDocumentStore.cloneWorkflowObject).mockImplementation(() => {
 					throw testError;
 				});
 

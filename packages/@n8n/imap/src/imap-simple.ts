@@ -104,6 +104,11 @@ export class ImapSimple extends EventEmitter {
 				const fetchOnEnd = () => {
 					fetch.removeListener('message', fetchOnMessage);
 					fetch.removeListener('error', fetchOnError);
+					// Suppress any errors emitted after fetch end to prevent uncaught
+					// exceptions from crashing the process. The fetch object may still
+					// emit errors (e.g. ECONNRESET) after 'end' if the connection drops
+					// while async message handlers are still in-flight.
+					fetch.on('error', () => {});
 				};
 
 				fetch.on('message', fetchOnMessage);
@@ -147,6 +152,9 @@ export class ImapSimple extends EventEmitter {
 			const fetchOnEnd = () => {
 				fetch.removeListener('message', fetchOnMessage);
 				fetch.removeListener('error', fetchOnError);
+				// Suppress any errors emitted after fetch end to prevent uncaught
+				// exceptions from crashing the process.
+				fetch.on('error', () => {});
 			};
 
 			fetch.once('message', fetchOnMessage);

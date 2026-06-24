@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class SettingsLogStreamingPage extends BasePage {
 	async goto(): Promise<void> {
@@ -60,19 +61,23 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	getDropdownMenuItem(index: number): Locator {
-		return this.page.locator('.el-dropdown-menu__item').nth(index);
+		return this.page
+			.getByTestId('action-toggle-dropdown')
+			.filter({ visible: true })
+			.getByRole('menuitem')
+			.nth(index);
 	}
 
 	getConfirmationDialog(): Locator {
-		return this.page.locator('.el-message-box');
+		return new MessageBox(this.page).root;
 	}
 
 	getCancelButton(): Locator {
-		return this.page.locator('.btn--cancel');
+		return new MessageBox(this.page).cancelButton;
 	}
 
 	getConfirmButton(): Locator {
-		return this.page.locator('.btn--confirm');
+		return new MessageBox(this.page).confirmButton;
 	}
 
 	async addDestination(): Promise<void> {
@@ -132,7 +137,11 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async clickDestinationCardDropdown(index: number): Promise<void> {
-		await this.getDestinationCards().nth(index).locator('.el-dropdown').click();
+		await this.getDestinationCards()
+			.nth(index)
+			.getByTestId('action-toggle')
+			.getByRole('button')
+			.click();
 	}
 
 	async clickDropdownMenuItem(index: number): Promise<void> {

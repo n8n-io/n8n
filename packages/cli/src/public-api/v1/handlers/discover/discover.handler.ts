@@ -1,11 +1,19 @@
-import { ApiKeyRepository } from '@n8n/db';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type express from 'express';
+
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import { buildDiscoverResponse } from './discover.service';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 
 const API_KEY_AUDIENCE = 'public-api';
+
+type GetDiscoverRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{ include?: string; resource?: string; operation?: string }
+>;
 
 function firstString(value: unknown): string | undefined {
 	if (typeof value === 'string') return value;
@@ -13,20 +21,16 @@ function firstString(value: unknown): string | undefined {
 	return undefined;
 }
 
-export = {
+type DiscoverHandlers = {
+	getDiscover: PublicAPIEndpoint<GetDiscoverRequest>;
+};
+
+const discoverHandlers: DiscoverHandlers = {
 	getDiscover: [
-		async (
-			req: AuthenticatedRequest<
-				{},
-				{},
-				{},
-				{ include?: string; resource?: string; operation?: string }
-			>,
-			res: express.Response,
-		): Promise<express.Response> => {
+		async (req, res) => {
 			const apiKey = firstString(req.headers['x-n8n-api-key']);
 			if (!apiKey) {
-				return res.status(401).json({ message: 'Unauthorized' });
+				throw new UnauthenticatedError('Unauthorized');
 			}
 
 			const apiKeyRecord = await Container.get(ApiKeyRepository).findOne({
@@ -35,7 +39,7 @@ export = {
 			});
 
 			if (!apiKeyRecord) {
-				return res.status(401).json({ message: 'Unauthorized' });
+				throw new UnauthenticatedError('Unauthorized');
 			}
 
 			const includeSchemas = req.query.include === 'schemas';
@@ -48,3 +52,5 @@ export = {
 		},
 	],
 };
+
+export = discoverHandlers;

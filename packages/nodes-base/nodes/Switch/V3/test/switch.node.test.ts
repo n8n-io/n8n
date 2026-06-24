@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -7,11 +7,12 @@ import type {
 import { NodeOperationError, ApplicationError } from 'n8n-workflow';
 
 import { SwitchV3 } from '../SwitchV3.node';
+import type { Mocked } from 'vitest';
 
 describe('SwitchV3 Node', () => {
 	let switchNode: SwitchV3;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	const baseDescription: INodeTypeBaseDescription = {
 		displayName: 'Switch',
@@ -24,7 +25,7 @@ describe('SwitchV3 Node', () => {
 		switchNode = new SwitchV3(baseDescription);
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Version-specific behavior', () => {
@@ -66,6 +67,30 @@ describe('SwitchV3 Node', () => {
 		it('should include version 3.3 in supported versions', () => {
 			const switchNode = new SwitchV3(baseDescription);
 			expect(switchNode.description.version).toContain(3.3);
+		});
+
+		it('should document SDK-discoverable fallback output metadata', () => {
+			const switchNode = new SwitchV3(baseDescription);
+			const sdkExample = switchNode.description.builderHint?.extraTypeDefContent?.[0].content ?? '';
+			const optionsProperty = switchNode.description.properties.find(
+				(prop) => prop.name === 'options',
+			);
+			const optionParameters = (optionsProperty?.options ?? []) as Array<{
+				name: string;
+				builderHint?: { propertyHint?: string };
+			}>;
+			const fallbackOutput = optionParameters.find((option) => option.name === 'fallbackOutput');
+			const renameFallbackOutput = optionParameters.find(
+				(option) => option.name === 'renameFallbackOutput',
+			);
+
+			expect(sdkExample).toContain("fallbackOutput: 'extra'");
+			expect(sdkExample).toContain('.onCase(2, archive)');
+			expect(sdkExample).not.toContain('.onDefault(');
+			expect(sdkExample).not.toMatch(/\.onCase\(['"]/);
+			expect(fallbackOutput?.builderHint?.propertyHint).toContain('rules.values.length');
+			expect(fallbackOutput?.builderHint?.propertyHint).toContain('Numeric values');
+			expect(renameFallbackOutput?.builderHint?.propertyHint).toContain("fallbackOutput: 'extra'");
 		});
 	});
 

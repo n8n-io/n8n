@@ -1,11 +1,16 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRolesView from './ProjectRolesView.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
+
+const clickActionToggle = async (actionToggle: HTMLElement) => {
+	await userEvent.click(within(actionToggle).getByRole('button'));
+};
 
 // Mock vue-router
 const mockPush = vi.fn();
@@ -234,19 +239,19 @@ describe('ProjectRolesView', () => {
 			// Set up store with initial arrays
 			const initialProjectRoles = [mockRole];
 			rolesStore.processedProjectRoles = initialProjectRoles;
-			rolesStore.createProjectRole.mockResolvedValue(duplicatedRole);
+			rolesStore.createRole.mockResolvedValue(duplicatedRole);
 			rolesStore.roles.project = initialProjectRoles;
 
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			// Find and click the duplicate action
 			const duplicateButton = getByTestId('action-duplicate');
 			await userEvent.click(duplicateButton);
 
-			expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
+			expect(rolesStore.createRole).toHaveBeenCalledWith({
 				displayName: 'Copy of Custom Role 1',
 				description: 'Custom role for testing',
 				roleType: 'project',
@@ -274,18 +279,18 @@ describe('ProjectRolesView', () => {
 			};
 
 			rolesStore.processedProjectRoles = [mockRole];
-			rolesStore.createProjectRole.mockResolvedValue(duplicatedRole);
+			rolesStore.createRole.mockResolvedValue(duplicatedRole);
 			rolesStore.roles.project = [mockRole];
 
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const duplicateButton = getByTestId('action-duplicate');
 			await userEvent.click(duplicateButton);
 
-			expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
+			expect(rolesStore.createRole).toHaveBeenCalledWith({
 				displayName: 'Copy of Custom Role 1',
 				description: undefined,
 				roleType: 'project',
@@ -298,18 +303,18 @@ describe('ProjectRolesView', () => {
 			const error = new Error('Failed to duplicate role');
 
 			rolesStore.processedProjectRoles = [mockRole];
-			rolesStore.createProjectRole.mockRejectedValue(error);
+			rolesStore.createRole.mockRejectedValue(error);
 			rolesStore.roles.project = [mockRole];
 
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const duplicateButton = getByTestId('action-duplicate');
 			await userEvent.click(duplicateButton);
 
-			expect(rolesStore.createProjectRole).toHaveBeenCalled();
+			expect(rolesStore.createRole).toHaveBeenCalled();
 			expect(mockShowError).toHaveBeenCalledWith(error, 'Error duplicating role');
 			expect(rolesStore.roles.project).not.toContain(
 				expect.objectContaining({
@@ -324,13 +329,13 @@ describe('ProjectRolesView', () => {
 			const mockRole = mockCustomRoles[0];
 			rolesStore.processedProjectRoles = [mockRole];
 			rolesStore.roles.project = [mockRole];
-			rolesStore.deleteProjectRole.mockResolvedValue(mockRole);
+			rolesStore.deleteRole.mockResolvedValue(mockRole);
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
@@ -345,7 +350,7 @@ describe('ProjectRolesView', () => {
 				},
 			);
 
-			expect(rolesStore.deleteProjectRole).toHaveBeenCalledWith(mockRole.slug);
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug);
 			expect(rolesStore.roles.project).not.toContain(mockRole);
 			expect(mockShowMessage).toHaveBeenCalledWith({ title: 'Role deleted', type: 'success' });
 		});
@@ -360,13 +365,13 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
 
 			expect(mockConfirm).toHaveBeenCalled();
-			expect(rolesStore.deleteProjectRole).not.toHaveBeenCalled();
+			expect(rolesStore.deleteRole).not.toHaveBeenCalled();
 			expect(rolesStore.roles.project).toHaveLength(1);
 			expect(rolesStore.roles.project[0]).toStrictEqual(mockRole);
 			expect(mockShowMessage).not.toHaveBeenCalled();
@@ -379,18 +384,18 @@ describe('ProjectRolesView', () => {
 
 			rolesStore.processedProjectRoles = initialProjectRoles;
 			rolesStore.roles.project = initialProjectRoles;
-			rolesStore.deleteProjectRole.mockRejectedValue(error);
+			rolesStore.deleteRole.mockRejectedValue(error);
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
 
-			expect(rolesStore.deleteProjectRole).toHaveBeenCalledWith(mockRole.slug);
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug);
 			expect(mockShowError).toHaveBeenCalledWith(error, 'Error deleting role');
 			expect(rolesStore.roles.project).toHaveLength(1);
 			expect(rolesStore.roles.project[0]).toStrictEqual(mockRole);
@@ -405,18 +410,18 @@ describe('ProjectRolesView', () => {
 			rolesStore.processedProjectRoles = [nonExistentRole];
 			rolesStore.roles.project = initialProjectRoles;
 			// Role not in store
-			rolesStore.deleteProjectRole.mockResolvedValue(nonExistentRole);
+			rolesStore.deleteRole.mockResolvedValue(nonExistentRole);
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
 
-			expect(rolesStore.deleteProjectRole).toHaveBeenCalledWith('non-existent-role');
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith('non-existent-role');
 			expect(mockShowMessage).toHaveBeenCalledWith({ title: 'Role deleted', type: 'success' });
 			// Store should remain unchanged since role wasn't found
 			expect(rolesStore.roles.project).toHaveLength(1);

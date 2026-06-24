@@ -2,12 +2,12 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 import { zodToJsonSchema as zodToJsonSchemaImpl } from 'zod-to-json-schema';
 
-/** Type guard: returns true when a tool input schema is a Zod schema (as opposed to raw JSON Schema). */
-export function isZodSchema(schema: ZodType | JSONSchema7): schema is ZodType {
+/** Type guard: returns true when a value is a Zod schema (as opposed to raw JSON Schema or any other shape). */
+export function isZodSchema(schema: unknown): schema is ZodType {
 	return (
 		typeof schema === 'object' &&
 		schema !== null &&
-		typeof (schema as ZodType).safeParse === 'function'
+		typeof (schema as { safeParse?: unknown }).safeParse === 'function'
 	);
 }
 

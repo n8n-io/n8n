@@ -2,7 +2,9 @@ import type {
 	WorkflowTestCaseResult,
 	MultiRunEvaluation,
 	TestCaseAggregation,
-	ScenarioAggregation,
+	ExecutionScenarioAggregation,
+	BuildExpectationAggregation,
+	BuildExpectationResult,
 } from '../types';
 
 /**
@@ -23,7 +25,7 @@ function combinations(n: number, k: number): number {
  * Probability that at least 1 of k randomly chosen samples passes,
  * given n total samples of which c passed.
  */
-function passAtK(n: number, c: number, k: number): number {
+export function passAtK(n: number, c: number, k: number): number {
 	if (k > n) return 0;
 	const denominator = combinations(n, k);
 	if (denominator === 0) return 0;
@@ -35,7 +37,7 @@ function passAtK(n: number, c: number, k: number): number {
  * Probability that all k independent attempts pass,
  * given observed success rate p = c/n.
  */
-function passHatK(n: number, c: number, k: number): number {
+export function passHatK(n: number, c: number, k: number): number {
 	if (n === 0) return 0;
 	return Math.pow(c / n, k);
 }
@@ -65,14 +67,14 @@ export function aggregateResults(
 		const testCase = runs[0].testCase;
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
-		const scenarioCount = testCase.scenarios.length;
-		const scenarios: ScenarioAggregation[] = [];
+		const scenarioCount = testCase.executionScenarios.length;
+		const executionScenarios: ExecutionScenarioAggregation[] = [];
 
 		for (let sIdx = 0; sIdx < scenarioCount; sIdx++) {
-			const scenario = testCase.scenarios[sIdx];
+			const scenario = testCase.executionScenarios[sIdx];
 			const scenarioRuns = runs.map(
 				(r) =>
-					r.scenarioResults[sIdx] ?? {
+					r.executionScenarioResults[sIdx] ?? {
 						scenario,
 						success: false,
 						score: 0,
@@ -82,7 +84,7 @@ export function aggregateResults(
 			const passCount = scenarioRuns.filter((sr) => sr.success).length;
 			const { passAtKValues, passHatKValues } = computePassMetrics(totalRuns, passCount);
 
-			scenarios.push({
+			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
 				passCount,
@@ -92,7 +94,30 @@ export function aggregateResults(
 			});
 		}
 
-		testCases.push({ testCase, runs, buildSuccessCount, scenarios });
+		// Aggregate each build expectation as a measured unit alongside scenarios.
+		// `incomplete` verdicts are excluded from the count (denominator = evaluated runs).
+		const buildExpectations: BuildExpectationAggregation[] = (testCase.buildExpectations ?? []).map(
+			(expectation) => {
+				const expRuns = runs
+					.map((r) => (r.buildExpectationResults ?? []).find((e) => e.expectation === expectation))
+					.filter((e): e is BuildExpectationResult => e !== undefined);
+				const evaluated = expRuns.filter((e) => !e.incomplete);
+				const passCount = evaluated.filter((e) => e.pass).length;
+				const n = evaluated.length;
+				const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
+				return {
+					expectation,
+					runs: expRuns,
+					evaluatedCount: n,
+					passCount,
+					passRate: n > 0 ? passCount / n : 0,
+					passAtK: passAtKValues,
+					passHatK: passHatKValues,
+				};
+			},
+		);
+
+		testCases.push({ testCase, runs, buildSuccessCount, executionScenarios, buildExpectations });
 	}
 
 	return { totalRuns, testCases };

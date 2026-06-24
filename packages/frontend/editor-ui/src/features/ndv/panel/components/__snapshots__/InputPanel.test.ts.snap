@@ -8,6 +8,7 @@ exports[`InputPanel > should render 1`] = `
     data-v-5b5900d0=""
   >
     <!--v-if-->
+    <!--v-if-->
     <div
       class="header"
       data-v-5b5900d0=""
@@ -73,14 +74,13 @@ exports[`InputPanel > should render 1`] = `
         data-test-id="run-data-pane-header"
         data-v-5b5900d0=""
       >
-        <!--v-if-->
+        <!---->
         <!--v-if-->
         <div
           class="n8n-radio-buttons radioGroup"
           data-test-id="ndv-run-data-display-mode"
           data-v-5b5900d0=""
           role="radiogroup"
-          style="display: none;"
         >
           
           <label

@@ -1,0 +1,120 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "f1c5b6a8-1f5b-4a92-9bb2-3e6e8a8a0001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0001",
+							"name": "v",
+							"value": "1",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "b2e0f1a8-5b8f-4b2b-a0c2-9b3e2d2a0002",
+			"name": "Set A"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "553f50d9-5023-433f-8f62-eebc9c9e2269",
+							"leftValue": "={{ $json.v }}",
+							"rightValue": "1",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [440, 0],
+			"id": "e5f1a2b8-6c9f-4c2c-b0d2-aa4f3e3b0005",
+			"name": "If"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0002",
+							"name": "v",
+							"value": "true",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [660, -80],
+			"id": "c3f1a2b8-6c9f-4c2c-b0d2-aa4f3e3b0003",
+			"name": "Set B"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0003",
+							"name": "v",
+							"value": "false",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [660, 80],
+			"id": "d4f1a2b8-7c9f-4c2c-b0d2-bb5f3e3b0004",
+			"name": "Set C"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Set A", "type": "main", "index": 0 }]]
+		},
+		"Set A": {
+			"main": [[{ "node": "If", "type": "main", "index": 0 }]]
+		},
+		"If": {
+			"main": [
+				[{ "node": "Set B", "type": "main", "index": 0 }],
+				[{ "node": "Set C", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "canvas-node-groups-if-fixture"
+	}
+}

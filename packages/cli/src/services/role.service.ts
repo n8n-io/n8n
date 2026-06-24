@@ -21,6 +21,7 @@ import type {
 	Scope,
 	Role as RoleDTO,
 	AssignableProjectRole,
+	AssignableGlobalRole,
 	RoleNamespace,
 } from '@n8n/permissions';
 import {
@@ -352,11 +353,11 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole) {
+	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {
-			// This is a custom role, there for we need to check if
+			// This is a custom role, therefore we need to check if
 			// custom roles are licensed
 			return this.license.isCustomRolesLicensed();
 		}

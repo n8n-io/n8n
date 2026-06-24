@@ -56,6 +56,7 @@ export class TimeSaved implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					minValue: 0,
+					numberPrecision: 0,
 				},
 				description: 'Number of minutes saved by this workflow execution',
 			},

@@ -46,7 +46,7 @@ const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
 
-const { isInstanceOwner } = useUsersStore();
+const { isAdminOrOwner } = useUsersStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -182,6 +182,11 @@ watch(
 			...additionalOptions[selectedView],
 		};
 		pushViewStack(viewStack);
+
+		const pending = nodeCreatorStore.consumePendingInitialViewStack();
+		if (pending) {
+			pushViewStack(pending);
+		}
 	},
 	{ immediate: true },
 );
@@ -277,7 +282,7 @@ function onBackButton() {
 			<CommunityNodeFooter
 				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
 				:package-name="communityNodeDetails.packageName"
-				:show-manage="communityNodeDetails.installed && isInstanceOwner"
+				:show-manage="communityNodeDetails.installed && isAdminOrOwner"
 			/>
 		</aside>
 	</Transition>

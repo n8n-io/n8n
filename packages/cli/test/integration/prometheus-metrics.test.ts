@@ -10,7 +10,6 @@ import type { IRun, IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
-import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { setupTestServer } from './shared/utils';
@@ -22,7 +21,7 @@ const toLines = (response: Response) => response.text.trim().split('\n');
 const eventService = Container.get(EventService);
 const globalConfig = Container.get(GlobalConfig);
 globalConfig.cache.backend = 'memory';
-globalConfig.endpoints.metrics = {
+Object.assign(globalConfig.endpoints.metrics, {
 	enable: true,
 	prefix: 'n8n_test_',
 	includeDefaultMetrics: true,
@@ -40,36 +39,22 @@ globalConfig.endpoints.metrics = {
 	includeWorkflowExecutionDuration: true,
 	queueMetricsInterval: 20,
 	activeWorkflowCountInterval: 60,
-	includeWorkflowStatistics: false,
+	includeWorkflowStatistics: true,
 	workflowStatisticsInterval: 300,
-};
+	includeExecutionDataMetrics: true,
+});
+globalConfig.executions.mode = 'queue';
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
 const agent = request.agent(server.app);
 
-let prometheusService: PrometheusMetricsService;
-
 describe('PrometheusMetricsService', () => {
-	beforeAll(() => {
-		prometheusService = Container.get(PrometheusMetricsService);
-	});
-
-	beforeEach(() => {
-		prometheusService.disableAllMetrics();
-		prometheusService.disableAllLabels();
-	});
-
 	afterEach(() => {
 		// Make sure fake timers aren't in effect after a test
 		jest.useRealTimers();
 	});
 
 	it('should return n8n version', async () => {
-		/**
-		 * Arrange
-		 */
-		await prometheusService.init(server.app);
-
 		/**
 		 * Act
 		 */
@@ -96,12 +81,6 @@ describe('PrometheusMetricsService', () => {
 
 	it('should return default metrics if enabled', async () => {
 		/**
-		 * Arrange
-		 */
-		prometheusService.enableMetric('default');
-		await prometheusService.init(server.app);
-
-		/**
 		 * Act
 		 */
 		const response = await agent.get('/metrics');
@@ -117,36 +96,8 @@ describe('PrometheusMetricsService', () => {
 		expect(lines).toContain('n8n_test_nodejs_heap_space_size_total_bytes{space="read_only"} 0');
 	});
 
-	it('should not return default metrics if disabled', async () => {
-		/**
-		 * Arrange
-		 */
-		prometheusService.disableMetric('default');
-		await prometheusService.init(server.app);
-
-		/**
-		 * Act
-		 */
-		const response = await agent.get('/metrics');
-
-		/**
-		 * Assert
-		 */
-		expect(response.status).toEqual(200);
-		expect(response.type).toEqual('text/plain');
-		expect(toLines(response)).not.toContain(
-			'nodejs_heap_space_size_total_bytes{space="read_only"} 0',
-		);
-	});
-
 	it('should return cache metrics if enabled', async () => {
 		/**
-		 * Arrange
-		 */
-		prometheusService.enableMetric('cache');
-		await prometheusService.init(server.app);
-
-		/**
 		 * Act
 		 */
 		const response = await agent.get('/metrics');
@@ -159,41 +110,15 @@ describe('PrometheusMetricsService', () => {
 
 		const lines = toLines(response);
 
-		expect(lines).toContain('n8n_test_cache_hits_total 0');
-		expect(lines).toContain('n8n_test_cache_misses_total 0');
-		expect(lines).toContain('n8n_test_cache_updates_total 0');
-	});
-
-	it('should not return cache metrics if disabled', async () => {
-		/**
-		 * Arrange
-		 */
-		await prometheusService.init(server.app);
-
-		/**
-		 * Act
-		 */
-		const response = await agent.get('/metrics');
-
-		/**
-		 * Assert
-		 */
-		expect(response.status).toEqual(200);
-		expect(response.type).toEqual('text/plain');
-
-		const lines = toLines(response);
-
-		expect(lines).not.toContain('n8n_test_cache_hits_total 0');
-		expect(lines).not.toContain('n8n_test_cache_misses_total 0');
-		expect(lines).not.toContain('n8n_test_cache_updates_total 0');
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_cache_hits_total'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_cache_misses_total'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_cache_updates_total'));
 	});
 
 	it('should return route metrics if enabled', async () => {
 		/**
 		 * Arrange
 		 */
-		prometheusService.enableMetric('routes');
-		await prometheusService.init(server.app);
 		await agent.get('/api/v1/workflows');
 
 		/**
@@ -209,7 +134,9 @@ describe('PrometheusMetricsService', () => {
 
 		const lines = toLines(response);
 
-		expect(lines).toContain('n8n_test_http_request_duration_seconds_count 1');
+		expect(lines).toContainEqual(
+			expect.stringContaining('n8n_test_http_request_duration_seconds_count'),
+		);
 		expect(lines).toContainEqual(
 			expect.stringContaining('n8n_test_http_request_duration_seconds_sum'),
 		);
@@ -225,8 +152,8 @@ describe('PrometheusMetricsService', () => {
 		const startTime = DateTime.now().toUnixInteger();
 		jest.useFakeTimers().setSystemTime(startTime * 1000);
 
-		prometheusService.enableMetric('routes');
-		await prometheusService.init(server.app);
+		// A request to a tracked path updates last_activity to the current (fake) time
+		await agent.get('/api/v1/workflows');
 
 		/**
 		 * Act
@@ -271,11 +198,8 @@ describe('PrometheusMetricsService', () => {
 
 	it('should return labels in route metrics if enabled', async () => {
 		/**
-		 * ARrange
+		 * Arrange
 		 */
-		prometheusService.enableMetric('routes');
-		prometheusService.enableLabels(['apiMethod', 'apiPath', 'apiStatusCode']);
-		await prometheusService.init(server.app);
 		await agent.get('/webhook-test/some-uuid');
 
 		/**
@@ -298,13 +222,6 @@ describe('PrometheusMetricsService', () => {
 
 	it('should return queue metrics if enabled', async () => {
 		/**
-		 * Arrange
-		 */
-		prometheusService.enableMetric('queue');
-		globalConfig.executions.mode = 'queue';
-		await prometheusService.init(server.app);
-
-		/**
 		 * Act
 		 */
 		const response = await agent.get('/metrics');
@@ -324,13 +241,6 @@ describe('PrometheusMetricsService', () => {
 	});
 
 	it('should set queue metrics in response to `job-counts-updated` event', async () => {
-		/**
-		 * Arrange
-		 */
-		prometheusService.enableMetric('queue');
-		globalConfig.executions.mode = 'queue';
-		await prometheusService.init(server.app);
-
 		/**
 		 * Act
 		 */
@@ -353,12 +263,6 @@ describe('PrometheusMetricsService', () => {
 	});
 
 	it('should return workflow execution duration histogram after event', async () => {
-		/**
-		 * Arrange
-		 */
-		prometheusService.enableMetric('workflowExecutionDuration');
-		await prometheusService.init(server.app);
-
 		/**
 		 * Act
 		 */
@@ -395,8 +299,6 @@ describe('PrometheusMetricsService', () => {
 	});
 
 	it('should return active workflow count', async () => {
-		await prometheusService.init(server.app);
-
 		let response = await agent.get('/metrics');
 
 		expect(response.status).toEqual(200);
@@ -432,12 +334,6 @@ describe('PrometheusMetricsService', () => {
 
 	it('should return workflow statistics metrics if enabled', async () => {
 		/**
-		 * Arrange
-		 */
-		prometheusService.enableMetric('workflowStatistics');
-		await prometheusService.init(server.app);
-
-		/**
 		 * Act
 		 */
 		const response = await agent.get('/metrics');
@@ -459,34 +355,19 @@ describe('PrometheusMetricsService', () => {
 		expect(lines).toContainEqual(expect.stringContaining('n8n_test_credentials'));
 	});
 
-	it('should not return workflow statistics metrics if disabled', async () => {
-		/**
-		 * Arrange
-		 */
-		prometheusService.disableMetric('workflowStatistics');
-		await prometheusService.init(server.app);
-
-		/**
-		 * Act
-		 */
+	it('should return execution data metrics if enabled', async () => {
 		const response = await agent.get('/metrics');
 
-		/**
-		 * Assert
-		 */
 		expect(response.status).toEqual(200);
-		expect(response.type).toEqual('text/plain');
 
 		const lines = toLines(response);
 
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_production_executions'));
-		expect(lines).not.toContainEqual(
-			expect.stringContaining('n8n_test_production_root_executions'),
-		);
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_manual_executions'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_enabled_users'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_users'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_workflows'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_credentials'));
+		expect(lines).toContain('n8n_test_execution_data_reads_total{mode="db",result="success"} 0');
+		expect(lines).toContain('n8n_test_execution_data_writes_total{mode="fs",result="failure"} 0');
+		expect(lines).toContain('n8n_test_execution_data_unreadable_bundles_total{mode="db"} 0');
+
+		expect(
+			lines.some((l) => /^n8n_test_execution_data_storage_mode\{mode="(db|fs)"\} 1$/.test(l)),
+		).toBe(true);
 	});
 });

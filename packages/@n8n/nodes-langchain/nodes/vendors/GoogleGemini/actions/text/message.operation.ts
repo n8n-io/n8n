@@ -1,15 +1,17 @@
-import { getConnectedTools } from '@utils/helpers';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	NodeOperationError,
 	accumulateTokenUsage,
 	jsonParse,
 	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
+
+import { getConnectedTools } from '@utils/helpers';
 
 import type {
 	GenerateContentRequest,
@@ -18,6 +20,8 @@ import type {
 	Tool,
 	GenerateContentGenerationConfig,
 	BuiltInTools,
+	FunctionCallPart,
+	TextPart,
 } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
@@ -346,8 +350,16 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+function isFunctionCallPart(part: unknown): part is FunctionCallPart {
+	return !!part && typeof part === 'object' && 'functionCall' in part;
+}
+
+function isTextPart(part: unknown): part is TextPart {
+	return !!part && typeof part === 'object' && 'text' in part;
+}
+
 function getToolCalls(response: GenerateContentResponse) {
-	return response.candidates.flatMap((c) => c.content.parts).filter((p) => 'functionCall' in p);
+	return response.candidates.flatMap((c) => c?.content?.parts ?? []).filter(isFunctionCallPart);
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -498,7 +510,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const contents: Content[] = messages.map((m) => ({
+	const nonEmptyMessages = messages.filter((m) => m.content.trim() !== '');
+	if (!nonEmptyMessages.length) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
+	const contents: Content[] = nonEmptyMessages.map((m) => ({
 		parts: [{ text: m.content }],
 		role: m.role,
 	}));
@@ -543,7 +561,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		contents.push(...response.candidates.map((c) => c.content));
+		contents.push.apply(
+			contents,
+			response.candidates.map((c) => c.content),
+		);
 
 		for (const { functionCall } of toolCalls) {
 			let toolResponse;
@@ -580,9 +601,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const candidates = options.includeMergedResponse
 		? response.candidates.map((candidate) => ({
 				...candidate,
-				mergedResponse: candidate.content.parts
-					.filter((part) => 'text' in part)
-					.map((part) => (part as { text: string }).text)
+				mergedResponse: (candidate?.content?.parts ?? [])
+					.filter(isTextPart)
+					.map((part) => part.text)
 					.join(''),
 			}))
 		: response.candidates;

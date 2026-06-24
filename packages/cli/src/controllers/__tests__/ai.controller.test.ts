@@ -326,7 +326,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -406,7 +406,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -525,6 +525,51 @@ describe('AiController', () => {
 			workflowBuilderService.clearSession.mockRejectedValue(mockError);
 
 			await expect(controller.clearSession(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
+
+	describe('getSessions', () => {
+		it('should call workflowBuilderService.getSessions with correct parameters', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123' };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				undefined,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should forward the codeBuilder flag to the service', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123', codeBuilder: true as const };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				true,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = { workflowId: 'workflow123' };
+			const mockError = new Error('Database error');
+
+			workflowBuilderService.getSessions.mockRejectedValue(mockError);
+
+			await expect(controller.getSessions(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
 		});

@@ -39,6 +39,7 @@ export default defineConfig(
 			'import-x/no-extraneous-dependencies': 'warn',
 
 			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+			'@n8n/community-nodes/no-builder-hint-leakage': 'error',
 
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 			'@typescript-eslint/naming-convention': ['warn'],

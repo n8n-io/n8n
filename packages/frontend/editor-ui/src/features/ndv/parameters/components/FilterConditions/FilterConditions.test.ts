@@ -3,6 +3,7 @@ import { createComponentRenderer, type RenderOptions } from '@/__tests__/render'
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -14,6 +15,16 @@ import { getFilterOperator } from './utils';
 import { flushPromises } from '@vue/test-utils';
 
 vi.mock('vue-router');
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 const DEFAULT_OPTIONS: FilterOptionsValue = {
 	caseSensitive: true,
@@ -158,7 +169,7 @@ describe('FilterConditions.vue', () => {
 	});
 
 	it('renders parameter issues', async () => {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId(''));
 		vi.spyOn(ndvStore, 'activeNode', 'get').mockReturnValue({
 			...DEFAULT_SETUP.props.node,
 			issues: { parameters: { 'conditions.1': ['not a number sir'] } },

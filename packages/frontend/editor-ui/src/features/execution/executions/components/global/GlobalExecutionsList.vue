@@ -6,7 +6,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
@@ -48,11 +47,17 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
+
+const autoRefresh = computed({
+	get: () => executionsStore.autoRefresh,
+	set: (value: boolean) => {
+		executionsStore.autoRefresh = value;
+	},
+});
 
 const allVisibleSelected = ref(false);
 const allExistingSelected = ref(false);
@@ -268,7 +273,7 @@ async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolea
 	}
 
 	telemetry.track('User clicked retry execution button', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: '',
 		execution_id: execution.id,
 		retry_type: loadWorkflow ? 'current' : 'original',
 	});
@@ -351,7 +356,7 @@ const goToUpgrade = () => {
 			/>
 			<N8nCheckbox
 				v-else
-				v-model="executionsStore.autoRefresh"
+				v-model="autoRefresh"
 				data-test-id="execution-auto-refresh-checkbox"
 				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshToggle"
@@ -466,12 +471,12 @@ const goToUpgrade = () => {
 					</tbody>
 				</N8nTableBase>
 			</div>
+			<SelectedItemsInfo
+				:selected-count="selectedCount"
+				@delete-selected="handleDeleteSelected"
+				@clear-selection="handleClearSelection"
+			/>
 		</div>
-		<SelectedItemsInfo
-			:selected-count="selectedCount"
-			@delete-selected="handleDeleteSelected"
-			@clear-selection="handleClearSelection"
-		/>
 	</div>
 </template>
 

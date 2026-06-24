@@ -7,6 +7,7 @@ import type {
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest, pollTaskResult } from '../../transport';
 import type { IModelStudioRequestBody } from '../../helpers/interfaces';
+import { modelRLC } from '../descriptions';
 
 export const properties: INodeProperties[] = [
 	{
@@ -27,6 +28,15 @@ export const properties: INodeProperties[] = [
 		],
 		default: 'wan2.6-i2v-flash',
 		description: 'The model to use for image-to-video generation',
+		displayOptions: {
+			show: { '@version': [1] },
+		},
+	},
+	{
+		...modelRLC('imageToVideoModelSearch'),
+		displayOptions: {
+			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+		},
 	},
 	{
 		displayName: 'Input Type',
@@ -227,7 +237,11 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const model = this.getNodeParameter('modelId', itemIndex) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const model =
+		nodeVersion >= 1.1
+			? (this.getNodeParameter('modelId', itemIndex, '', { extractValue: true }) as string)
+			: (this.getNodeParameter('modelId', itemIndex) as string);
 	const imageInputType = this.getNodeParameter('inputType', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex, '') as string;
 	const resolution = this.getNodeParameter('resolution', itemIndex) as string;

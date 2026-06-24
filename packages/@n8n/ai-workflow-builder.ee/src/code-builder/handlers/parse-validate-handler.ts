@@ -9,6 +9,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { INodeTypes } from 'n8n-workflow';
 
 import type { ParseAndValidateResult, ValidationWarning } from '../types';
 import { stripImportStatements } from '../utils/extract-code';
@@ -31,6 +32,13 @@ export interface ParseValidateHandlerConfig {
 	logger?: Logger;
 	/** Whether to generate pin data for new nodes. Defaults to true. */
 	generatePinData?: boolean;
+	/**
+	 * Optional node-type provider used to unlock the provider-gated validators
+	 * in `validateWorkflow` (input-index checks, AI input-type support checks,
+	 * main-output index checks, etc.). Without it those validators silently
+	 * skip — agent-built workflows then pass validation despite real defects.
+	 */
+	nodeTypesProvider?: INodeTypes;
 }
 
 /**
@@ -51,10 +59,12 @@ interface ValidationIssue {
 export class ParseValidateHandler {
 	private logger?: Logger;
 	private generatePinData: boolean;
+	private nodeTypesProvider?: INodeTypes;
 
 	constructor(config: ParseValidateHandlerConfig = {}) {
 		this.logger = config.logger;
 		this.generatePinData = config.generatePinData ?? true;
+		this.nodeTypesProvider = config.nodeTypesProvider;
 	}
 
 	/**
@@ -124,6 +134,55 @@ export class ParseValidateHandler {
 	}
 
 	/**
+	 * Run the same graph + JSON validation passes that `parseAndValidate` runs,
+	 * but on a workflow that's already in JSON form (no parse step).
+	 *
+	 * Used by tools that mutate workflow JSON directly (e.g. partial update),
+	 * so the resulting state is checked against the same rules a code-rewrite
+	 * path would enforce. Does not throw — collects all issues into warnings.
+	 */
+	validateJSON(json: WorkflowJSON): ValidationWarning[] {
+		if (json.nodes.length === 0) {
+			return [];
+		}
+
+		const allWarnings: ValidationWarning[] = [];
+
+		const builder = workflow.fromJSON(json);
+		const graphValidation = builder.validate();
+		this.collectValidationIssues(
+			graphValidation.errors,
+			allWarnings,
+			'GRAPH VALIDATION ERRORS',
+			'warn',
+		);
+		this.collectValidationIssues(
+			graphValidation.warnings,
+			allWarnings,
+			'GRAPH VALIDATION WARNINGS',
+			'info',
+		);
+
+		const jsonValidation = validateWorkflow(json, {
+			nodeTypesProvider: this.nodeTypesProvider,
+		});
+		this.collectValidationIssues(
+			jsonValidation.errors,
+			allWarnings,
+			'JSON VALIDATION ERRORS',
+			'warn',
+		);
+		this.collectValidationIssues(
+			jsonValidation.warnings,
+			allWarnings,
+			'JSON VALIDATION WARNINGS',
+			'info',
+		);
+
+		return allWarnings;
+	}
+
+	/**
 	 * Parse TypeScript code to WorkflowJSON and validate.
 	 *
 	 * @param code - The TypeScript workflow code to parse
@@ -143,8 +202,13 @@ export class ParseValidateHandler {
 			this.logger?.debug('Parsing WorkflowCode', { codeLength: codeToParse.length });
 			const builder = parseWorkflowCodeToBuilder(codeToParse);
 
-			// Regenerate node IDs deterministically to ensure stable IDs across re-parses
-			builder.regenerateNodeIds();
+			// Preserve IDs of nodes that already exist (by name) so editing a workflow doesn't skew the diff.
+			const existingIdsByName = new Map(
+				(currentWorkflow?.nodes ?? [])
+					.filter((node): node is typeof node & { name: string } => Boolean(node.name))
+					.map((node) => [node.name, node.id]),
+			);
+			builder.regenerateNodeIds(existingIdsByName);
 
 			// Run graph + JSON validation
 			const allWarnings: ValidationWarning[] = [];
@@ -172,7 +236,9 @@ export class ParseValidateHandler {
 			const json = builder.toJSON();
 
 			// Run JSON-based validation for additional checks
-			const validationResult = validateWorkflow(json);
+			const validationResult = validateWorkflow(json, {
+				nodeTypesProvider: this.nodeTypesProvider,
+			});
 
 			// Collect JSON validation errors as warnings for agent self-correction
 			this.collectValidationIssues(
@@ -195,8 +261,14 @@ export class ParseValidateHandler {
 				builder.generatePinData({ beforeWorkflow: currentWorkflow });
 			}
 
-			// Convert to JSON
-			const workflowJson: WorkflowJSON = builder.toJSON();
+			// Preserve IDs of groups that already exist (by name) so editing a workflow doesn't
+			// skew the diff; new groups fall back to a deterministic ID.
+			const existingGroupIdsByName = new Map(
+				(currentWorkflow?.nodeGroups ?? []).map((group) => [group.name, group.id]),
+			);
+
+			// Convert to JSON with Dagre layout matching the FE's tidy-up
+			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,

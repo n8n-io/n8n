@@ -1,34 +1,48 @@
-import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
+import { createTestNode } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { NodeConnectionTypes } from 'n8n-workflow';
-import { computed, nextTick } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed, nextTick, shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import ExperimentalEmbeddedNdvMapper from './ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 describe('ExperimentalEmbeddedNdvMapper', () => {
 	const node = createTestNode({ name: 'n1' });
-	const workflow = createTestWorkflowObject({
-		nodes: [node],
-		connections: {
-			n0: {
-				[NodeConnectionTypes.Main]: [[{ index: 0, node: 'n0', type: NodeConnectionTypes.Main }]],
-			},
-		},
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
 
 	it('should open the popover on hover if visibleOnHover is true', async () => {
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
 			global: {
-				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
 				plugins: [createTestingPinia({ stubActions: false })],
 			},
 			props: {
-				workflow,
 				node,
 				inputNodeName: 'n0',
 				reference,
@@ -45,11 +59,15 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
 			global: {
-				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
 				plugins: [createTestingPinia({ stubActions: false })],
 			},
 			props: {
-				workflow,
 				node,
 				inputNodeName: 'n0',
 				reference,
@@ -68,11 +86,15 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
 			global: {
-				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
 				plugins: [pinia],
 			},
 			props: {
-				workflow,
 				node,
 				inputNodeName: 'n0',
 				reference,
@@ -91,11 +113,15 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
 			global: {
-				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
 				plugins: [createTestingPinia({ stubActions: false })],
 			},
 			props: {
-				workflow,
 				node,
 				inputNodeName: 'n0',
 				reference,

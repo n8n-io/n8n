@@ -115,6 +115,63 @@ export function createTracingMetadataWorkflowFixture() {
 	};
 }
 
+export function createSubWorkflowTriggerFixture() {
+	return {
+		nodes: [
+			{
+				parameters: {},
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				id: uuid(),
+				name: 'Execute Workflow Trigger',
+			},
+		],
+		connections: {},
+		pinData: {},
+	};
+}
+
+export function createParentWithSubWorkflowFixture(childWorkflowId: string) {
+	return {
+		nodes: [
+			{
+				parameters: {},
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				id: uuid(),
+				name: 'Trigger',
+			},
+			{
+				parameters: {
+					source: 'database',
+					workflowId: childWorkflowId,
+				},
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1,
+				position: [200, 0] as [number, number],
+				id: uuid(),
+				name: 'Execute Workflow',
+			},
+		],
+		connections: {
+			Trigger: {
+				main: [
+					[
+						{
+							node: 'Execute Workflow',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		pinData: {},
+	};
+}
+
 export function createSimpleWorkflowFixture() {
 	return {
 		nodes: [

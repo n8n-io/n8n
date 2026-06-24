@@ -9,8 +9,8 @@ const NPM_REGISTRY = 'https://registry.npmjs.org';
  * @param {string} token
  */
 async function setDistTag(name, version, tag, token) {
-	// Scoped package names need the slash encoded (e.g. @n8n/foo → @n8n%2ffoo)
-	const encodedName = name.replace('/', '%2f');
+	// Scoped package names need both @ and / encoded (e.g. @n8n/foo → %40n8n%2ffoo)
+	const encodedName = encodeURIComponent(name);
 	const url = `${NPM_REGISTRY}/-/package/${encodedName}/dist-tags/${tag}`;
 
 	return fetch(url, {
@@ -33,6 +33,7 @@ async function setLatestForMonorepoPackages() {
 
 	const publishedPackages = packages //
 		.filter((pkg) => !pkg.private)
+		.filter((pkg) => pkg.name.startsWith('@n8n/'))
 		.filter((pkg) => pkg.version);
 
 	const failures = [];

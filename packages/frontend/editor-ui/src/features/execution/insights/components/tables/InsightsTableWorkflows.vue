@@ -132,7 +132,7 @@ const emit = defineEmits<{
 const getWorkflowLink = (item: Item, query?: LocationQueryRaw): RouteLocationRaw => ({
 	name: VIEWS.WORKFLOW,
 	params: {
-		name: item.workflowId,
+		workflowId: item.workflowId,
 	},
 	query,
 });

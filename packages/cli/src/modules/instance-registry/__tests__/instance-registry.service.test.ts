@@ -1,12 +1,61 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
 import { InstanceRegistryService } from '../instance-registry.service';
-import type { MemoryInstanceStorage } from '../storage/memory-storage';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
+import type { InstanceStorage } from '../storage/instance-storage.interface';
+import type { MemoryInstanceStorage } from '../storage/memory-storage';
+import { RedisInstanceStorage } from '../storage/redis-instance-storage';
+
+jest.mock('../storage/redis-instance-storage', () => {
+	class MockRedisStorage implements InstanceStorage {
+		readonly kind = 'redis' as const;
+
+		private registrations = new Map<string, InstanceRegistration>();
+
+		// Match the real class's constructor shape so callers can instantiate
+		// without type juggling. Arguments are unused in the mock.
+		constructor(..._args: unknown[]) {}
+
+		async register(registration: InstanceRegistration) {
+			this.registrations.set(registration.instanceKey, registration);
+		}
+
+		async heartbeat(registration: InstanceRegistration) {
+			this.registrations.set(registration.instanceKey, registration);
+		}
+
+		async unregister(instanceKey: string) {
+			this.registrations.delete(instanceKey);
+		}
+
+		async getAllRegistrations() {
+			return [...this.registrations.values()];
+		}
+
+		async getRegistration(instanceKey: string) {
+			return this.registrations.get(instanceKey) ?? null;
+		}
+
+		async getLastKnownState() {
+			return new Map<string, InstanceRegistration>();
+		}
+
+		async saveLastKnownState() {}
+
+		async cleanupStaleMembers() {
+			return 0;
+		}
+
+		async destroy() {}
+	}
+
+	return { RedisInstanceStorage: MockRedisStorage };
+});
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -42,6 +91,7 @@ describe('InstanceRegistryService', () => {
 		try {
 			await service?.shutdown();
 		} catch {}
+		Container.reset();
 		jest.useRealTimers();
 		jest.restoreAllMocks();
 	});
@@ -71,6 +121,42 @@ describe('InstanceRegistryService', () => {
 			await service.init();
 
 			expect(service.storageBackend).toBe('memory');
+		});
+
+		describe('redis selection', () => {
+			const bindRedisStub = () => {
+				// The jest.mock above replaces RedisInstanceStorage with a stub
+				// class whose constructor accepts any args.
+				const MockCtor = RedisInstanceStorage as unknown as new () => RedisInstanceStorage;
+				Container.set(RedisInstanceStorage, new MockCtor());
+			};
+
+			it('should select redis storage when isMultiMain', async () => {
+				bindRedisStub();
+				service = createService({ isMultiMain: true }, 'regular');
+
+				await service.init();
+
+				expect(service.storageBackend).toBe('redis');
+			});
+
+			it('should select redis storage in queue mode even when not multi-main', async () => {
+				bindRedisStub();
+				service = createService({ isMultiMain: false }, 'queue');
+
+				await service.init();
+
+				expect(service.storageBackend).toBe('redis');
+			});
+
+			it('should select redis storage when multi-main and queue mode', async () => {
+				bindRedisStub();
+				service = createService({ isMultiMain: true }, 'queue');
+
+				await service.init();
+
+				expect(service.storageBackend).toBe('redis');
+			});
 		});
 	});
 
