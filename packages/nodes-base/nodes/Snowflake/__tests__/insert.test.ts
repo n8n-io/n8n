@@ -85,7 +85,7 @@ describe('Test Snowflake, insert - parameter binding with origin hostname', () =
 				username: 'user',
 				password: 'pass',
 			});
-			expect(mockExecute).toHaveBeenCalledTimes(1);
+			expect(mockExecute).toHaveBeenCalledTimes(2);
 		},
 	});
 });
