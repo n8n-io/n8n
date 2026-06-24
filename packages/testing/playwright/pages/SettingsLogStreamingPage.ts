@@ -1,9 +1,12 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { MessageBox } from './components/messageBoxLocators';
 
 export class SettingsLogStreamingPage extends BasePage {
+	readonly actionToggle = new ActionToggle(this.page);
+
 	async goto(): Promise<void> {
 		await this.page.goto('/settings/log-streaming');
 	}
@@ -61,11 +64,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	getDropdownMenuItem(index: number): Locator {
-		return this.page
-			.getByTestId('action-toggle-dropdown')
-			.filter({ visible: true })
-			.getByRole('menuitem')
-			.nth(index);
+		return this.actionToggle.getMenuItem(index);
 	}
 
 	getConfirmationDialog(): Locator {

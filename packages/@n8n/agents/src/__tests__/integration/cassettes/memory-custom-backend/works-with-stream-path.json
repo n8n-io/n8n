@@ -1,0 +1,142 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "The capital of France is Paris. Acknowledge."
+						}
+					]
+				}
+			],
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000abd54c18adb3010bde72bc49c9d25ceae29e8b64bd9f652d8b65028a5885969d6165124571aa7298bffbd28899bd89bb4bdb4be18bff746f366c623da906729d69412d6a41263e4994146299e817fb40412462414c337c8675807430e2468879da1798376d5cd6fe6d57cb95856e562514201d6e43352ad16e5cdbb375bf390de7ffa7c57556f5fdfdd860f1fafefa198648202627019c0946c62f439ad0e9ec933c82f5f0b481c5a150953f0207de7dc014af4ad23af69041a62b42e0d5837b8b7beed587158914f2097af0ad0a81b523a12b20d5e8d058b818f84e61237c4e6f3a96d684d119daad62ff547b66ca66c5f40e878e4ae804471633529b6144142ee8bc168728bfd13c55cb6aa2980041f58e106adc34747d0f76278fad98cf6133f74533dbaa057e7e77e46b2cb6568bb2ff894cff51ee298b659b87b498063f6b183d6fa7a92524006e1924b438ef1f72e779291cb3d3276f74b76f078ab573e7c77646a3247bfffddc69578c06893b049704342636b199d084fe23ea2d774b5f3767986a1fdd308437b626a5ae5b0e767eb1b917052cf681381bc51dc450f7fbd8ffd3f5bc8c90695d7fdd9fff078bdbdecdf2907fba89fb3f82b2632050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:22Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:22Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:22Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:22Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f12b7b26289c-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:39:22 GMT",
+			"request-id": "req_011CcHznkBTRXQMx2zs9KP72",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=0Tn6JHkVBMXv1WF5BDoyqOyLpmz3iIY_o8R9t1ybSU8-1782117562.160866-1.0.1.1-C68C.kfKKwH5QhLqpM1XoGc3Pv5foTnFrqnA_LcuGoU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-37eebf107cdba8b8268adbbe8d290652-935ded895295dfa9-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "The capital of France is Paris. Acknowledge."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Acknowledged. Paris is the capital of France."
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is the capital of France?"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75914d4fc3300c86ff4ae5738ada6965285760074e1c38815064126f8d963a257136d0b4ff8e3a6d7c8a53a4f7796cc5f61e86e82880061bb038aa7bf49b52cfebae9e35b3ae6d9a161478071a86bc364d3b7fd95ca5dbbbc7cbc56239ec76d7ab4237bc0505f23ed26451ceb8265090629802ccd96741165060230bb1807eda9f7da1b7891c1f0d0f3d5516472f18aab8aa9609d952e573758fc9e70b383c2bc8124793087364d040ec8c94c47002995e0bb125d05c4238858e047dc8e7ac1c7fa8f7e0792c62246e8833e8ae5160d1f6646c22141fd9fc143e792274ffb173edd49fc69e064a184c37fcf5bf68dbffa60705b1c8f7a86d14644a5b6fc988a7041aa6b53a4c6eba10af284d739b3545d0c0510c6ed1077c090487c307b96e2a0fe8010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:23Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:23Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:23Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:23Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f130cda6289c-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:23 GMT",
+			"request-id": "req_011CcHznooVXCU3C6aHkDNrP",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Qq_Q5KSN3yo7p1SwoozHLEM8_4JqyWSskH3g1kuWuko-1782117563.0091975-1.0.1.1-Si12tjFNa1ZMfdMFqu05AIijMwfg27TDsi5MvgJubd0; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-9e1458d67caefa39ee2824ffa21f87d7-9dd8354cf516aa09-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

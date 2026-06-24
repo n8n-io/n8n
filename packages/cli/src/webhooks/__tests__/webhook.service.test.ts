@@ -338,6 +338,18 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('getRegisteredWebhooks()', () => {
+		test('returns the webhooks registered for the workflow', async () => {
+			const rows = [createWebhook('GET', 'users'), createWebhook('POST', 'user/:id')];
+			webhookRepository.findBy.mockResolvedValue(rows);
+
+			const result = await webhookService.getRegisteredWebhooks('wf-1');
+
+			expect(result).toBe(rows);
+			expect(webhookRepository.findBy).toHaveBeenCalledWith({ workflowId: 'wf-1' });
+		});
+	});
+
 	describe('storeWebhook()', () => {
 		const buildWebhook = (overrides: Partial<WebhookEntity> = {}) =>
 			Object.assign(new WebhookEntity(), {
