@@ -1,3 +1,4 @@
+import type * as AwsCredentialsModule from 'n8n-nodes-base/aws-credentials';
 import { UserError, type ISupplyDataFunctions, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,7 +15,8 @@ vi.mock('@aws-sdk/credential-providers', () => ({
 	}),
 }));
 
-vi.mock('n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils', () => ({
+vi.mock('n8n-nodes-base/aws-credentials', async (importOriginal) => ({
+	...(await importOriginal<typeof AwsCredentialsModule>()),
 	getSystemCredentials: vi.fn(),
 }));
 
@@ -23,7 +25,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
-import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
+import { getSystemCredentials } from 'n8n-nodes-base/aws-credentials';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
 
 import { resolveAwsCredentials } from '../resolveAwsCredentials';
