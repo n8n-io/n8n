@@ -110,6 +110,12 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return typeVersion >= minVersion;
 	}
 
+	function isManagedHiddenParameter(nodeName: string, parameterName: string): boolean {
+		const params = config.value?.managedHiddenParameters?.[nodeName];
+		if (!params) return false;
+		return params.includes(parameterName);
+	}
+
 	return {
 		config,
 		balance,
@@ -125,5 +131,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		isNodeTypeVersionSupported,
 		isCredentialTypeSupported,
 		isActionSupported,
+		isManagedHiddenParameter,
 	};
 });

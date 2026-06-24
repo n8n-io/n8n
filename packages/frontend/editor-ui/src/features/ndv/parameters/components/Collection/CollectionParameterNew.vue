@@ -16,6 +16,7 @@ import get from 'lodash/get';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useI18n } from '@n8n/i18n';
 
 import {
@@ -53,6 +54,7 @@ const props = withDefaults(defineProps<Props>(), {
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
+const aiGatewayStore = useAiGatewayStore();
 
 const activeNode = computed(() => ndvStore.value.activeNode);
 
@@ -104,6 +106,16 @@ function displayNodeParameter(parameter: INodeProperties) {
 	);
 }
 
+function isHiddenByAiGateway(parameter: INodeProperties): boolean {
+	const node = activeNode.value;
+	if (!node?.credentials) return false;
+	const hasGatewayCredential = Object.values(node.credentials).some(
+		(cred) => cred.__aiGatewayManaged === true,
+	);
+	if (!hasGatewayCredential) return false;
+	return aiGatewayStore.isManagedHiddenParameter(node.type, parameter.name);
+}
+
 function getOptionProperties(
 	optionName: string,
 ): INodePropertyCollection | INodeProperties | INodePropertyOptions | undefined {
@@ -148,7 +160,7 @@ const filteredOptions = computed(() => {
 	return props.parameter.options.filter((option) => {
 		// Accept both INodeProperties and INodePropertyCollection
 		if (isINodeProperties(option)) {
-			return displayNodeParameter(option);
+			return displayNodeParameter(option) && !isHiddenByAiGateway(option);
 		}
 		if (isINodePropertyCollection(option)) {
 			return true; // Collections are always displayed

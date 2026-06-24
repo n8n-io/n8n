@@ -45,6 +45,9 @@ const MOCK_CONFIG = {
 			[OPERATION_ONLY]: ['AI Invoice Parser', 'Merge PDF'],
 		},
 	},
+	managedHiddenParameters: {
+		'n8n-nodes-browserbase.browserbase': ['modelSource'],
+	},
 };
 
 const MOCK_USAGE_PAGE_1 = [
@@ -369,6 +372,57 @@ describe('aiGateway.store', () => {
 					store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', undefined, 'message'),
 				).toBe(false);
 			});
+		});
+	});
+
+	describe('isManagedHiddenParameter()', () => {
+		it('should return true for a parameter listed for the node', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'modelSource'),
+			).toBe(true);
+		});
+
+		it('should return false for a parameter not listed for the node', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'driverModel'),
+			).toBe(false);
+		});
+
+		it('should return false for a node with no managedHiddenParameters entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isManagedHiddenParameter('@n8n/n8n-nodes-langchain.openAi', 'modelSource')).toBe(
+				false,
+			);
+		});
+
+		it('should return false when config has no managedHiddenParameters field', async () => {
+			const configWithout = { ...MOCK_CONFIG, managedHiddenParameters: undefined };
+			mockGetGatewayConfig.mockResolvedValue(configWithout);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'modelSource'),
+			).toBe(false);
+		});
+
+		it('should return false when config has not been loaded', () => {
+			const store = useAiGatewayStore();
+
+			expect(
+				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'modelSource'),
+			).toBe(false);
 		});
 	});
 

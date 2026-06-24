@@ -33,6 +33,9 @@ export function useAiGateway() {
 	const isNodeTypeVersionSupported = (nodeName: string, typeVersion: number): boolean =>
 		aiGatewayStore.isNodeTypeVersionSupported(nodeName, typeVersion);
 
+	const isManagedHiddenParameter = (nodeName: string, parameterName: string): boolean =>
+		aiGatewayStore.isManagedHiddenParameter(nodeName, parameterName);
+
 	async function fetchConfig(): Promise<void> {
 		if (!isEnabled.value) return;
 		await aiGatewayStore.fetchConfig();
@@ -52,6 +55,7 @@ export function useAiGateway() {
 		isCredentialTypeSupported,
 		isActionSupported,
 		isNodeTypeVersionSupported,
+		isManagedHiddenParameter,
 		saveAfterToggle,
 	};
 }
