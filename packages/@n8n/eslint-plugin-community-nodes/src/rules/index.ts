@@ -36,6 +36,7 @@ import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireCommunityNodeKeywordRule } from './require-community-node-keyword.js';
 import { RequireContinueOnFailRule } from './require-continue-on-fail.js';
+import { RequireMitLicenseRule } from './require-mit-license.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireParamDefaultRule } from './require-param-default.js';
@@ -85,6 +86,7 @@ export const rules = {
 	'n8n-object-validation': N8nObjectValidationRule,
 	'require-community-node-keyword': RequireCommunityNodeKeywordRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
+	'require-mit-license': RequireMitLicenseRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 	'require-param-default': RequireParamDefaultRule,
