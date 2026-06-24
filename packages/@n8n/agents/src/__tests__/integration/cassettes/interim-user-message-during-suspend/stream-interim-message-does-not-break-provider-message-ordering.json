@@ -1,0 +1,253 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete a file, use the delete_file tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please delete /tmp/interim-test.txt"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a file at the given path",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75514d4b033110fd2f73ceea6eb5a2b955a13db482540541248c9b6937349bacc9a45acafe774975912a1ee77df0decceca1f59a2c48a82d264d458366938af3625c8ccad1b82acb0a04180d12dab85665f5b4dced660f8b74dd4cefdf96cbc7d97d7337b90101bceb28ab28465c130808de6600633491d13108a8bd63720cf2793fe8d97bab52a42125cf4995d519bf3fdcee3e26de4d2fe71cef16977e3b7f05010edbecd3648949ad8c3d585d9718e41e3ae406249c72db9d1ac7144c5b30453ee10f865e408dd652c8caef7c6d02d50c7dff2220b2ef54208cde1d373b1091de12b99a40ba64ed37a889d1d83860e9b0bbdc7f1552ec37e422c88bd1558eae1b52752064e39d3a5694031f08f57fdce0cd01d435d45240abc6ed5ffd0f5b35bfd95e804f7c54af1210296c4d4d8a4d3e0fe48f690cfa70db1585bcb85a930709ceb3c22d1a8baf96a0ef3f01614ec59a43020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:19Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:19Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:19Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:19Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1167890016a-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:20 GMT",
+			"request-id": "req_011CcHznWg7GmLTAtGpM6jci",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=J2WdU_u5EFcGvJ0RCwf1I2r_4wjpBl1tY0OPa84N3zA-1782117558.7961817-1.0.1.1-oUiBbDsBDPNtr.w6KEMvxa3xEuVw.UmGi4ovQvBXd4c; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-30265b42ee25eb6c70d19b0878a74ced-6c6ddc2c47d5a604-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are helpful. Answer questions concisely."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 1 + 1?"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75914d4bc4301086ffcaf25e4da1edda3d04bc7854584410fc40426cc66ddc34a9c9645197fe77e9b2c52f3c05dee7992133b3471f0c3948b44e674345a7ed3617a74553d465dd54655941c01a48f469a3caea323537e9fee3fc6ed52fb72f17b7ebebab35f710e0f781268b52d21b82400c6e0a744a36b1f60c81367826cf900ffbd9677a9bc8e191a816278b6a71b6a8313e0a240e838aa453f090206f14e7e87104895e33f996207d76ee181a626d5d9ab37cf88bdcc3fa21b3e2b0259f20eb9540abdb8e541b49b30d5efd14ca9947d2e63f36d74efd69e8a8a7a89d6afabffe17adbadf74140899bf47d5522051dcd996145b8a909816687434d32dfc33c5696eb5a100091f58e99db64e3f39c2387e02d5ddd0cbd2010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:20Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:20Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:20Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:20Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f11e7aaf016a-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:20 GMT",
+			"request-id": "req_011CcHznbMdtxwiG6874kgeq",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=sGCDXhj1Plr_0.m07jHzTHHSgwoPmjFl0X9wGWCYmpk-1782117560.072228-1.0.1.1-cibLpWpoI2GKlBZBW1J9dpnmoCPj8CuF0xI56vvkeDI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e7f388f5a03e943245be3b85dca88673-b38848b6c88edf4f-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete a file, use the delete_file tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please delete /tmp/interim-test.txt"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_013twTMyxAonF8KtsPL8ovKb",
+							"name": "delete_file",
+							"input": {
+								"path": "/tmp/interim-test.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_013twTMyxAonF8KtsPL8ovKb",
+							"content": "{\"deleted\":true,\"path\":\"/tmp/interim-test.txt\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a file at the given path",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000abd53c18ed33010bdf72bcc9c93dda4da8ac557d0aa070e1c904042c83b8d671bab8e1dec4955b4cabf23b70d24dd14b8802f91df1be7bd79a3a13d3996a2a118714b2a32065e686494e219f87b4b2061424236dc413e43e33559905059ec34e5359a5d97dfe5ab7c592c576551949081d1e91f71ab8af2d3dd9b7bb3de2ddfeeeaf0b0fef0fe61ad0f9f3bc82e942083e06d02304613195d92adbc63720cf2cbd70c22fb5605c2e81d48d7597b86227debc855340135311a1b07ac1bdc1bd776acd8efc84590afcbfb0c2aac6a52552064e39d9a5614031f08f5356e789b04a8ada9a18056ad9a97f5bfd8b2be64fb0c7cc763a8cc2052d89b8a141b0a202105a331e894b17ba290fa565bf220c17956b84763716309fa5ea4d32f16741af7394ab5b1bedacd0f7da6e4a8a3e9706a76cca75ecfef980ea9f0f8910027e591746bdcf6424b4002e19a3d4d96f1f7f68e25137b27646aeb67d9d9dc3bef6830282e7dfe270fafc4c79ac493b1241e6fb9696f8d630aa6c99922dff0811f458d516c889cd0648949df4c3d5f9faa6fff3454df8e0c0b71258a61ff67439890306a7ab2a1404e2bee8283bfded3fedf2deac5662d8b7eb6dfb904c71cbc4cec07d3f489464f050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:20Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:20Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:20Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4799000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:20Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1232d4e016a-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:39:21 GMT",
+			"request-id": "req_011CcHzneURAYiUgh9yi2mhc",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=8eq2U4lUsvLW4fpwT9uX_117yvRUFMUog2XRsB5c1DQ-1782117560.8246238-1.0.1.1-15WC_7OsjlQo5ELNxqEsHL9wq9WcfCzkMWrBfBhNfv8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-225dc266edac7f98242f26287809938e-919b8a7dee3eab22-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

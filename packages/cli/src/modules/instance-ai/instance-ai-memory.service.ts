@@ -18,6 +18,7 @@ import {
 
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
@@ -36,6 +37,29 @@ function isAgentMessageLike(value: unknown): value is AgentDbMessage {
 		typeof (value as { id?: unknown }).id === 'string' &&
 		'role' in value
 	);
+}
+
+function isRestorableMessage(
+	value: Record<string, unknown> & { createdAt: Date },
+): value is AgentDbMessage & Record<string, unknown> {
+	if (typeof value.id !== 'string' || value.id.length === 0) return false;
+	if (value.type === 'custom') return typeof value.data === 'object' && value.data !== null;
+	return typeof value.role === 'string' && Array.isArray(value.content);
+}
+
+/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
+ *  AgentDbMessage, or undefined if it fails the structural contract. */
+function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
+	const rawCreatedAt = value.createdAt;
+	const createdAt =
+		rawCreatedAt instanceof Date
+			? rawCreatedAt
+			: typeof rawCreatedAt === 'string'
+				? new Date(rawCreatedAt)
+				: undefined;
+	if (!createdAt || Number.isNaN(createdAt.getTime())) return undefined;
+	const candidate = { ...value, createdAt };
+	return isRestorableMessage(candidate) ? candidate : undefined;
 }
 
 function messageCreatedAtMs(message: AgentDbMessage): number {
@@ -117,6 +141,34 @@ export class InstanceAiMemoryService {
 			thread: this.toThreadInfo(created),
 			created: true,
 		};
+	}
+
+	/** Eval-only: seed a thread with a native message log (id/role/content/createdAt
+	 *  preserved verbatim) so the runtime continues as if it really happened. The
+	 *  thread must exist; referenced artifacts are recreated by the caller. */
+	async restoreThreadMessages(
+		userId: string,
+		threadId: string,
+		messages: Array<Record<string, unknown>>,
+	): Promise<{ restored: number }> {
+		const restorable: AgentDbMessage[] = [];
+		for (const [index, raw] of messages.entries()) {
+			const message = toRestorableMessage(raw);
+			if (!message) {
+				throw new BadRequestError(
+					`Seed message at index ${index} is not a valid agent message (id, createdAt, and role+content or type:custom+data are required)`,
+				);
+			}
+			restorable.push(message);
+		}
+
+		await this.agentMemory.saveMessages({ threadId, resourceId: userId, messages: restorable });
+		return { restored: restorable.length };
+	}
+
+	/** Project a thread is bound to (undefined for legacy unbound threads). */
+	async getThreadProjectId(threadId: string): Promise<string | undefined> {
+		return (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined;
 	}
 
 	async getThreadMessages(

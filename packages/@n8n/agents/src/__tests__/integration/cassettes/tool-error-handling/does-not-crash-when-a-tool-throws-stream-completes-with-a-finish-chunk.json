@@ -1,0 +1,197 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use broken_tool to fetch data. If the tool fails, acknowledge the error in your response and explain what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch the data for id \"abc123\"."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "broken_tool",
+					"description": "Fetch data from a remote service",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID to fetch"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ac554cb6edb3010bcfb2b8c3dcb80e4c631c05b1f400a1439356d83d405b1163736238a54f9b0d31afaf782b665497ea4bd14d18d33bbdc995d6a6945dab36149cee182b8f368fd40a04736dc80ff551130e891903467601b288d20050c728541d06889b208a3abd164344ec7932c4d3348408a78875bf0349bdedfde65f37bf3a0353d7e7cfa24a7ebbbeb1b488e2a4102d6a808a073d279d4b16c6eb427ed817dff9180f3a6e296d0190d4c07a5f690a39f81744e3d509047a95c838546bdd455f0dc9b82b403767d95269063be249e5b422f8de6fd88036f09c525aec98d05a85a524916159f94a7f12d9b2d8fd93a01137c179a4c127064573227ee255960103b23d08ad864fd48361ae70b32c0401bcf718552e15c11d4753d18d06ed4fb36f2b93279717ee06742b625043def8c76f9e8739fe78d513c386a861ecf81a7d9b775f1b09c7eb8f95d7c79fbf5bdbb0debf0fcf91d24a0b18c79731b3df218bead53050f6c53c78e2a159d1e2a086929f750d7c3f66bad55522f8ebc0c218270c9be20e5f165fbdb909efd1dd28ada8deec9197d08aed07a896a0b020338aff755b46c6620c50cd8700638cfb3f19b56dc2b2b9b41dd6bd40b8ae26ffdb7576baa8e9efe65cd463b6bac4742c7486fe7741ffb3f6e9efaffad9e935d71b18fed323fed609783a3f43f228d45ce29060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:54Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:54Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:54Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:54Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f07c7d405855-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:38:54 GMT",
+			"request-id": "req_011CcHzkgV9qtXdJAnMGtUPS",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=LnLVfOivoV.yywkKrcLsP_Bxn9mM6Qlb0.hWx0VZ0.g-1782117534.1539006-1.0.1.1-De8gdgY_qHPbQrzAkb8y9hOuyLG6hvsiz1X3x597GW4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e2e1bcea339fdfbe572791e1cca2c112-e89a75f8cb974166-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use broken_tool to fetch data. If the tool fails, acknowledge the error in your response and explain what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch the data for id \"abc123\"."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01WwkZh7DGzkUAVCsMuwuxSB",
+							"name": "broken_tool",
+							"input": {
+								"id": "abc123"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01WwkZh7DGzkUAVCsMuwuxSB",
+							"content": "Error: Service unavailable: connection timeout",
+							"is_error": true
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "broken_tool",
+					"description": "Fetch data from a remote service",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID to fetch"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000abd54c16edb300cbdf72b085e76718ac45d36c01f3060976187753bac83c14a4c2c54a65c894e1314f9f7416ed2c669daedd2fa62f83d5aef3d4a22af58b4829653a225d74929ea9925a50aee51371d638523128bfd3756f7d806cb1e2b349e7acb9386dc4d3ff938994fca69399f4da7332cd0d9bc465ad6d359b931e5a5fd54aed7b7bfbee885b5fa932fbf6171a48405c6e0334029b9a42459d6045116c5eaf79f029386ae8e4c290856d27bbf8312dff62c8647a06525e7d31eebf7ee9d74bdd61a6e5812569fcb8b020d99866b1399d405a9c715d33d1f99ec4bdcfedf2cc05dc32d47f2f5bc7d5effc4ce9a63765b60e8f5102a0b4c1c57ce70ad8e2356981b6329dadc635970ccb9eb2507ac5082d6b422e7e9da336eb7303cdbb3337ed8ef5d2feb6b1fcccde95d3f513208595e3fa43de473d8dd7fcaeb5c38bc2ac49df4b181cec9f248113083f89249cb5ee9759343c9c8e4033236f758b6b3f815584ce84539b21dfb7da5676f66074880630c11ee1ae7194895db4e9d2c41032c584d035916162182b37085746d66e5c5159ec38f8621721b94617756c025307d8c2cea37d0cbe3a100db735e904689df3fad09226cf28501752d875e730c97a0659204da3c45b1ceca0785c8a90b62e1ce69e364a8e075c746d90e4bc02252cbe7f0dd3325068d1ba02539014fcab1801061c5d12d3607c9df3fb736a4a3742e41e8380eb383fcf9a3b9972f6de8fe7567437760ecd42eef47fbc99c23120f728d862fb2d85afb28f8df2378fb7633f86868ce3f6f4fe63dd5bc430e9f4f81bfacc378cb2a070000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:55Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:55Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:55Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:55Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f0824a205855-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:38:55 GMT",
+			"request-id": "req_011CcHzkkU1wZpnYhY2CyKHq",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=ll4BTnkwOOkl_TSWIaqSBqA4NxbhBUf1X1P27ivcuRQ-1782117535.0873432-1.0.1.1-BCblI5pGlTXtzR2NK0sb2fS0boHWoiBInQK014P8eSc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-1f59409874e72dc19a37529cdb56be9d-bc06440c60726761-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

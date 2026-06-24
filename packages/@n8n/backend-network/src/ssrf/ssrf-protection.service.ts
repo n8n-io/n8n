@@ -26,9 +26,7 @@ type SsrfAllowedPayload = { phase: SsrfPhase; durationMs: number };
 type SsrfPhase = 'pre_flight' | 'connect_time' | 'redirect';
 
 export type SsrfEventMap = {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'ssrf.blocked': SsrfBlockedPayload;
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'ssrf.allowed': SsrfAllowedPayload;
 };
 

@@ -1,3 +1,4 @@
+import { createRemediation } from '../remediation';
 import {
 	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
@@ -67,6 +68,32 @@ describe('deriveWorkflowVerificationObligation', () => {
 				updatedAt: '2026-01-01T00:00:00.000Z',
 			}),
 		);
+	});
+
+	it('does not let setup remediation preempt ready-to-verify builds', () => {
+		const setupRemediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance: 'Route through setup.',
+		});
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState({ lastRemediation: setupRemediation }),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({
+				hasUnresolvedPlaceholders: true,
+				remediation: setupRemediation,
+				setupRequirement: {
+					status: 'required',
+					reason: 'unresolved-placeholders',
+					guidance: 'Route through setup.',
+				},
+				verificationReadiness: { status: 'ready' },
+			}),
+		});
+
+		expect(obligation.status).toBe('ready_to_verify');
+		expect(obligation.blockingReason).toBeUndefined();
 	});
 
 	it('marks successful structured evidence as verified', () => {
