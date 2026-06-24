@@ -14,10 +14,7 @@ import {
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
 } from '@/features/ai/shared/agentsChat/messageMappers';
-import {
-	buildDisplayGroups,
-	isGroupable,
-} from '@/features/ai/shared/agentsChat/displayGroups';
+import { buildDisplayGroups, isGroupable } from '@/features/ai/shared/agentsChat/displayGroups';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 describe('rebuildInteractiveFromHistory', () => {
