@@ -25,7 +25,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
 export class AgentConfigService {
@@ -271,7 +271,7 @@ export class AgentConfigService {
 		config: AgentJsonConfig,
 		entity: Agent,
 		existingTaskIds: ReadonlySet<string>,
-	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+	): Promise<ResolvedSubAgentRef[]> {
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
 			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
@@ -292,22 +292,19 @@ export class AgentConfigService {
 				projectId: entity.projectId,
 				agentRepository: this.agentRepository,
 			});
-			const existingSubAgentIds = new Set(
-				resolvedSubAgents.filter(({ agent }) => agent !== null).map(({ agentId }) => agentId),
-			);
 			config.subAgents.agents = resolvedSubAgents
-				.filter(({ agentId }) => existingSubAgentIds.has(agentId))
-				.map(({ agentId }) => ({ agentId }));
+				.filter(({ agent }) => agent !== null)
+				.map(({ agentId, useWhen }) => ({
+					agentId,
+					...(useWhen ? { useWhen } : {}),
+				}));
 			return resolvedSubAgents;
 		}
 
 		return [];
 	}
 
-	private validateSubAgentRefs(
-		resolvedSubAgents: Array<{ agentId: string; agent: Agent | null }>,
-		entity: Agent,
-	) {
+	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
 		for (const { agentId, agent } of resolvedSubAgents) {
 			if (!agent) continue;
 			if (agentId === entity.id) {

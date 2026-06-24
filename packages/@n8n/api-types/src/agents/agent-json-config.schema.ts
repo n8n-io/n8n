@@ -69,9 +69,20 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
-const SubAgentConfigSchema = z.object({
-	agentId: z.string().trim().min(1),
-});
+export const SUB_AGENT_USE_WHEN_MIN_LENGTH = 20;
+export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
+
+const SubAgentConfigSchema = z
+	.object({
+		agentId: z.string().trim().min(1),
+		useWhen: z
+			.string()
+			.trim()
+			.min(SUB_AGENT_USE_WHEN_MIN_LENGTH)
+			.max(SUB_AGENT_USE_WHEN_MAX_LENGTH)
+			.optional(),
+	})
+	.strict();
 
 export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
 const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);

@@ -89,6 +89,7 @@ function makeReconstructionService(
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
+		agentRepository?: AgentRepository;
 		agentsConfig?: Partial<AgentsConfig>;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
 	} = {},
@@ -101,7 +102,7 @@ function makeReconstructionService(
 	outboundHttp.transport.mockReturnValue(transport);
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
-		mock<AgentRepository>(),
+		overrides.agentRepository ?? mock<AgentRepository>(),
 		mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
@@ -327,6 +328,18 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		return undefined;
 	}
 
+	function getInjectedAvailableSubAgents() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) {
+					return getInlineDelegateSubAgentToolOptions(tool)?.availableSubAgents;
+				}
+			}
+		}
+		return undefined;
+	}
+
 	function getInjectedInlineSubAgentModelsByDifficulty() {
 		for (const call of builtAgent.tool.mock.calls) {
 			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
@@ -380,6 +393,39 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: 2,
 		});
+	});
+
+	it('passes saved sub-agent useWhen guidance into delegate tool metadata', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-billing',
+			name: 'Billing Agent',
+			activeVersionId: 'version-billing',
+		} as Agent);
+		const service = makeReconstructionService(agentsToolsService, [], { agentRepository });
+		const entity = makeAgentEntity(undefined, {
+			subAgents: {
+				agents: [
+					{
+						agentId: 'agent-billing',
+						useWhen: 'Use for invoice investigations and payment status checks.',
+					},
+				],
+			},
+		});
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(getInjectedAvailableSubAgents()).toEqual([
+			{
+				id: 'agent-billing',
+				name: 'Billing Agent',
+				useWhen: 'Use for invoice investigations and payment status checks.',
+			},
+		]);
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {

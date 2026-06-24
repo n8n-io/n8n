@@ -99,6 +99,34 @@ describe('AgentJsonConfigSchema — subAgents', () => {
 		expect(parsed.success).toBe(true);
 	});
 
+	it('accepts saved agent references with useWhen routing guidance', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: {
+				agents: [
+					{
+						agentId: 'agent-1',
+						useWhen: 'Use for billing-policy questions and invoice investigations.',
+					},
+				],
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it.each(['', '   ', 'Too short', 'a'.repeat(513)])(
+		'rejects invalid useWhen value %p',
+		(useWhen) => {
+			const parsed = AgentJsonConfigSchema.safeParse({
+				...baseConfig,
+				subAgents: { agents: [{ agentId: 'agent-1', useWhen }] },
+			});
+
+			expect(parsed.success).toBe(false);
+		},
+	);
+
 	it('accepts an empty saved-agent reference list', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { agents: [] } }).success,
