@@ -528,10 +528,17 @@ describe('setupSandboxWorkspace', () => {
 					throw new Error('primary write failed');
 				}
 			});
+		const workspace = createFilesystemWorkspace(writeFile);
+		const executeCommand = workspace.sandbox?.executeCommand;
+		if (!executeCommand) throw new Error('Expected test workspace to include a sandbox');
+		vi.mocked(executeCommand).mockImplementation(async (command: string) => {
+			await Promise.resolve();
+			return command.includes('.sandbox-initialized')
+				? { exitCode: 1, stdout: '', stderr: 'fallback failed' }
+				: mockDaytonaExecuteCommand(command);
+		});
 
-		await expect(
-			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
-		).rejects.toThrow(
+		await expect(setupSandboxWorkspace(workspace, createSetupContext())).rejects.toThrow(
 			/Sandbox workspace setup failed during write-initialization-marker[\s\S]*primary write failed[\s\S]*command fallback failed/,
 		);
 	});
