@@ -48,7 +48,10 @@ function createFakeDeps() {
 		const node = nodesById.value.get(id);
 		if (!node) return false;
 		Object.assign(node, partial);
-		void onNodesChange.trigger({ action: CHANGE_ACTION.UPDATE, payload: { name: node.name } });
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.UPDATE,
+			payload: { name: node.name, id: node.id },
+		});
 		return true;
 	}
 	function removeNodeById(id: string) {
@@ -62,7 +65,6 @@ function createFakeDeps() {
 
 	const deps: Omit<WorkflowDocumentCollaborationDeps, 'docId'> = {
 		nodesById,
-		getNodeByName: (target) => [...nodesById.value.values()].find((n) => n.name === target),
 		connectionsBySourceNode: computed(() => connections.value),
 		getPinDataSnapshot: () => ({ ...pinData.value }),
 		name,

@@ -269,7 +269,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 					useWorkflowDocumentCollaboration({
 						docId: getWorkflowDocumentStoreId(id),
 						nodesById: workflowDocumentNodes.nodesById,
-						getNodeByName: workflowDocumentNodes.getNodeByName,
 						connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode,
 						getPinDataSnapshot: workflowDocumentPinData.getPinDataSnapshot,
 						name: workflowDocumentName.name,

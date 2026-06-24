@@ -50,10 +50,6 @@ function createHarness(doc: CRDTDoc) {
 	const onSettingsChange = createEventHook<SettingsChangeEvent>();
 	const onNameChange = createEventHook<NameChangeEvent>();
 
-	function getNodeByName(target: string) {
-		return [...nodesById.value.values()].find((n) => n.name === target);
-	}
-
 	function addNode(node: INodeUi) {
 		nodesById.value.set(node.id, node);
 		void onNodesChange.trigger({ action: CHANGE_ACTION.ADD, payload: { node } });
@@ -62,7 +58,10 @@ function createHarness(doc: CRDTDoc) {
 		const node = nodesById.value.get(id);
 		if (!node) return false;
 		Object.assign(node, partial);
-		void onNodesChange.trigger({ action: CHANGE_ACTION.UPDATE, payload: { name: node.name } });
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.UPDATE,
+			payload: { name: node.name, id: node.id },
+		});
 		return true;
 	}
 	function removeNodeById(id: string) {
@@ -110,7 +109,6 @@ function createHarness(doc: CRDTDoc) {
 	const mirror = useWorkflowDocumentCrdtMirror({
 		doc,
 		nodesById,
-		getNodeByName,
 		connectionsBySourceNode: computed(() => connections.value),
 		getPinDataSnapshot: () => ({ ...pinData.value }),
 		name,

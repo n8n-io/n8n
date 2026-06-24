@@ -29,7 +29,6 @@ export interface WorkflowDocumentCrdtMirrorDeps {
 	doc: CRDTDoc;
 	// Reads — used to seed the doc and resolve targeted write-throughs.
 	nodesById: ShallowRef<Map<string, INodeUi>>;
-	getNodeByName: (name: string) => INodeUi | undefined | null;
 	connectionsBySourceNode: ComputedRef<IConnections>;
 	getPinDataSnapshot: () => IPinData;
 	name: Readonly<Ref<string>>;
@@ -214,8 +213,11 @@ export function useWorkflowDocumentCrdtMirror(
 					break;
 				}
 				case CHANGE_ACTION.UPDATE: {
-					const { name } = event.payload as NodeUpdatedPayload;
-					const node = deps.getNodeByName(name);
+					// Resolve by the stable id (the nodesMap key), not by name — a
+					// rename changes the name, and the name index isn't rebuilt on
+					// updates, so a name lookup could miss and drop the write-through.
+					const { id } = event.payload as NodeUpdatedPayload;
+					const node = deps.nodesById.value.get(id);
 					if (node) nodesMap.set(node.id, deepCopy(node));
 					break;
 				}

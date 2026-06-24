@@ -93,6 +93,18 @@ describe('workflowDocument.store CRDT integration (flag on)', () => {
 		expect(store.collaboration!.doc.getMap('nodes').has(node.id)).toBe(false);
 	});
 
+	it('mirrors a single-node rename into the CRDT doc by id', () => {
+		const store = createStore();
+		const node = createNode({ name: 'A' });
+		store.addNode(node);
+		expect(store.collaboration!.doc.getMap('nodes').get(node.id)).toMatchObject({ name: 'A' });
+
+		// Rename via a single-node update: the UPDATE event must resolve by id, not
+		// by the (now-stale) name index, or the rename is dropped from the doc.
+		store.updateNodeById(node.id, { name: 'B' });
+		expect(store.collaboration!.doc.getMap('nodes').get(node.id)).toMatchObject({ name: 'B' });
+	});
+
 	it('applies a remote doc update back into the store via the mirror', () => {
 		const store = createStore();
 
