@@ -4747,6 +4747,8 @@
 	"agents.modelSelector.moreModels": "More {provider} models",
 	"agents.modelSelector.configureCredentials": "Configure credentials",
 	"agents.modelSelector.credentialsMissing": "Credentials missing",
+	"agents.modelSelector.freeCredits.label": "Use free OpenAI credits",
+	"agents.modelSelector.freeCredits.description": "Start with gpt-5-mini",
 	"agents.askLlm.chooseModel": "Choose a model",
 	"agents.builder.unconfigured.title": "Set up the agent builder",
 	"agents.builder.unconfigured.description.admin": "Choose a provider and credential so the agent builder can help you design agents.",

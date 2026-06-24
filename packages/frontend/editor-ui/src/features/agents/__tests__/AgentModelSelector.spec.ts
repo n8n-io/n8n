@@ -1,11 +1,27 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentModelsByProvider } from '../model-providers';
 
+type Credential = { id: string; name: string; type: string };
+type TestMenuItem = {
+	id: string;
+	label: string;
+	children?: TestMenuItem[];
+	data?: { description?: string };
+};
+
 const credentialsByType = vi.hoisted(() => ({
-	anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
+	value: {
+		anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
+	} as Record<string, Credential[]>,
+}));
+
+const freeAiCreditsState = vi.hoisted(() => ({
+	userCanClaimOpenAiCredits: { value: false },
+	claimingCredits: { value: false },
+	claimCreditsAndGetCredential: vi.fn(),
 }));
 const openNewCredential = vi.hoisted(() => vi.fn());
 
@@ -19,6 +35,8 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.modelSelector.noMatch': 'No match',
 				'agents.modelSelector.noModels': 'No models',
 				'agents.modelSelector.moreModels': 'More models',
+				'agents.modelSelector.freeCredits.label': 'Use free OpenAI credits',
+				'agents.modelSelector.freeCredits.description': 'Start with gpt-5-mini',
 				'generic.loadingEllipsis': 'Loading...',
 			})[key] ?? key,
 	}),
@@ -39,12 +57,16 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		getCredentialById: (id: string) =>
-			Object.values(credentialsByType)
+			Object.values(credentialsByType.value)
 				.flat()
 				.find((credential) => credential.id === id),
-		getCredentialsByType: (type: keyof typeof credentialsByType) => credentialsByType[type] ?? [],
+		getCredentialsByType: (type: string) => credentialsByType.value[type] ?? [],
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 	}),
+}));
+
+vi.mock('@/app/composables/useFreeAiCredits', () => ({
+	useFreeAiCredits: () => freeAiCreditsState,
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -109,17 +131,31 @@ async function mountSelector(credentials: Record<string, string | null>) {
 	});
 }
 
+function getDropdown(wrapper: VueWrapper) {
+	return wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
+}
+
+function getProviderItem(wrapper: VueWrapper, provider: string) {
+	return (getDropdown(wrapper).props('items') as TestMenuItem[]).find(
+		(item) => item.id === provider,
+	);
+}
+
 describe('AgentModelSelector', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		credentialsByType.value = {
+			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
+		};
+		freeAiCreditsState.userCanClaimOpenAiCredits.value = false;
+		freeAiCreditsState.claimingCredits.value = false;
+		freeAiCreditsState.claimCreditsAndGetCredential.mockReset();
 	});
 
 	it('surfaces a stale selected credential as missing', async () => {
 		const wrapper = await mountSelector({ anthropic: 'deleted-credential' });
-		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
-		const anthropicItem = (
-			dropdown.props('items') as Array<{ id: string; children?: unknown[] }>
-		).find((item) => item.id === 'anthropic');
+		const dropdown = getDropdown(wrapper);
+		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
 		expect(dropdown.props('credentialsMissing')).toBe(true);
 		expect(dropdown.props('selectedCredentialName')).toBeUndefined();
@@ -128,10 +164,8 @@ describe('AgentModelSelector', () => {
 
 	it('uses an available selected credential', async () => {
 		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
-		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
-		const anthropicItem = (
-			dropdown.props('items') as Array<{ id: string; children?: unknown[] }>
-		).find((item) => item.id === 'anthropic');
+		const dropdown = getDropdown(wrapper);
+		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
@@ -154,5 +188,55 @@ describe('AgentModelSelector', () => {
 			undefined,
 			{ hideAskAssistant: true },
 		);
+	});
+
+	it('offers free OpenAI credits when the user can claim and has no OpenAI credential', async () => {
+		credentialsByType.value = {};
+		freeAiCreditsState.userCanClaimOpenAiCredits.value = true;
+
+		const wrapper = await mountSelector({});
+		const openAiItem = getProviderItem(wrapper, 'openai');
+
+		expect(JSON.stringify(openAiItem?.children ?? [])).toContain('Use free OpenAI credits');
+		expect(JSON.stringify(openAiItem?.children ?? [])).toContain('Start with gpt-5-mini');
+	});
+
+	it('offers free OpenAI credits when a different model provider credential exists', async () => {
+		freeAiCreditsState.userCanClaimOpenAiCredits.value = true;
+
+		const wrapper = await mountSelector({});
+		const openAiItem = getProviderItem(wrapper, 'openai');
+
+		expect(JSON.stringify(openAiItem?.children ?? [])).toContain('Use free OpenAI credits');
+	});
+
+	it('does not offer free OpenAI credits when the user cannot claim credits', async () => {
+		credentialsByType.value = {};
+
+		const wrapper = await mountSelector({});
+		const openAiItem = getProviderItem(wrapper, 'openai');
+
+		expect(JSON.stringify(openAiItem?.children ?? [])).not.toContain('Use free OpenAI credits');
+	});
+
+	it('claims free OpenAI credits and selects gpt-5-mini', async () => {
+		credentialsByType.value = {};
+		freeAiCreditsState.userCanClaimOpenAiCredits.value = true;
+		freeAiCreditsState.claimCreditsAndGetCredential.mockResolvedValueOnce({
+			id: 'free-openai-credential',
+			name: 'n8n free OpenAI API credits',
+			type: 'openAiApi',
+		});
+
+		const wrapper = await mountSelector({});
+		getDropdown(wrapper).vm.$emit('select', 'openai::freeCredits::gpt-5-mini');
+		await flushPromises();
+
+		expect(freeAiCreditsState.claimCreditsAndGetCredential).toHaveBeenCalledWith(
+			'agentBuilderModelSelector',
+			'project-1',
+		);
+		expect(wrapper.emitted('selectCredential')).toEqual([['openai', 'free-openai-credential']]);
+		expect(wrapper.emitted('change')).toEqual([[{ provider: 'openai', model: 'gpt-5-mini' }]]);
 	});
 });
