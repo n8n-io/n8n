@@ -38,7 +38,11 @@ describe('TaskRunnerProcess', () => {
 
 	afterAll(async () => {
 		await taskRunnerServer.stop();
-		process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = originalGracefulShutdownTimeout;
+		if (originalGracefulShutdownTimeout === undefined) {
+			delete process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+		} else {
+			process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = originalGracefulShutdownTimeout;
+		}
 	});
 
 	afterEach(async () => {
