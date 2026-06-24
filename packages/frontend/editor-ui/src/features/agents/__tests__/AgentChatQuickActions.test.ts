@@ -86,6 +86,25 @@ describe('AgentChatQuickActions', () => {
 		).toBeUndefined();
 	});
 
+	it('disables add actions and does not open modals when disabled', async () => {
+		const wrapper = mount(AgentChatQuickActions, {
+			props: { ...defaultProps, disabled: true },
+			global: { stubs: globalStubs },
+		});
+
+		const addTool = wrapper.find('[data-testid="agent-quick-action-add-tool"]');
+		const addTrigger = wrapper.find('[data-testid="agent-quick-action-add-trigger"]');
+
+		expect(addTool.attributes('disabled')).toBeDefined();
+		expect(addTrigger.attributes('disabled')).toBeDefined();
+
+		await addTool.trigger('click');
+		await addTrigger.trigger('click');
+
+		expect(openModalWithData).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'AgentChannelModal' }).exists()).toBe(false);
+	});
+
 	it('Add tool opens the AgentToolsModal with current tools and ids', async () => {
 		const tools = [{ type: 'node', name: 'x' } as unknown as AgentJsonToolRef];
 		const wrapper = mount(AgentChatQuickActions, {

@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { Agent, Memory, Tool } from '../../../index';
-import { describeIf, findLastTextContent, findLastToolCallContent, getModel } from '../helpers';
+import { describeIf, findLastTextContent, findLastToolCallContent, getModel } from './helpers';
+import { Agent, Memory, Tool } from '../../index';
 
 const describe = describeIf('anthropic');
 

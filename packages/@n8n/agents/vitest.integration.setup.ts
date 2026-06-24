@@ -11,6 +11,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { brotliDecompressSync, gunzipSync } from 'zlib';
 
 import nock, { back as nockBack } from 'nock';
 import { afterEach, beforeEach } from 'vitest';
@@ -81,6 +82,14 @@ const MODELS_DEV_FIXTURE = {
 				cost: { input: 3, output: 15 },
 				limit: { context: 200000, output: 64000 },
 			},
+			'claude-sonnet-4-6': {
+				id: 'claude-sonnet-4-6',
+				name: 'Claude Sonnet 4.6',
+				reasoning: true,
+				tool_call: true,
+				cost: { input: 3, output: 15 },
+				limit: { context: 200000, output: 64000 },
+			},
 		},
 	},
 	openai: {
@@ -95,11 +104,28 @@ const MODELS_DEV_FIXTURE = {
 				cost: { input: 0.15, output: 0.6 },
 				limit: { context: 128000, output: 16384 },
 			},
+			'gpt-4.1-mini': {
+				id: 'gpt-4.1-mini',
+				name: 'GPT-4.1 mini',
+				reasoning: false,
+				tool_call: true,
+				cost: { input: 0.4, output: 1.6 },
+				limit: { context: 1047576, output: 32768 },
+			},
+			'gpt-5-mini': {
+				id: 'gpt-5-mini',
+				name: 'GPT-5 mini',
+				reasoning: true,
+				tool_call: true,
+				cost: { input: 0.25, output: 2 },
+				limit: { context: 400000, output: 128000 },
+			},
 		},
 	},
 };
 
 const SENSITIVE_RESPONSE_HEADERS = ['anthropic-organization-id'];
+const ENCODING_RESPONSE_HEADERS = ['content-encoding', 'content-length', 'transfer-encoding'];
 
 function sanitizeCassette(defs: nock.Definition[]): nock.Definition[] {
 	return defs
@@ -112,12 +138,34 @@ function sanitizeCassette(defs: nock.Definition[]): nock.Definition[] {
 		.map((def) => {
 			if (def.rawHeaders) {
 				const raw = def.rawHeaders as Record<string, string>;
+				decodeCompressedJsonResponse(def, raw);
 				for (const header of SENSITIVE_RESPONSE_HEADERS) {
 					delete raw[header];
 				}
 			}
 			return def;
 		});
+}
+
+function decodeCompressedJsonResponse(
+	def: nock.Definition,
+	rawHeaders: Record<string, string>,
+): void {
+	const contentType = rawHeaders['content-type'];
+	if (!contentType?.includes('application/json')) return;
+
+	const encoding = rawHeaders['content-encoding'];
+	if (encoding !== 'br' && encoding !== 'gzip') return;
+
+	if (!Array.isArray(def.response) || typeof def.response[0] !== 'string') return;
+
+	const compressed = Buffer.from(def.response[0], 'hex');
+	const decoded = encoding === 'br' ? brotliDecompressSync(compressed) : gunzipSync(compressed);
+	def.response = decoded.toString('utf8');
+
+	for (const header of ENCODING_RESPONSE_HEADERS) {
+		delete rawHeaders[header];
+	}
 }
 
 // Per-test nockBack hooks (only when recording or replaying)
