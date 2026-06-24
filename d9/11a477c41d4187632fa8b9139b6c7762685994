@@ -1,0 +1,14 @@
+single-instance-promotion-prototype/implementation-phase/TASK_2_FOLLOW_UPS.md
+  h_c63dce324dfc7b 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "d911a477c41d4187632fa8b9139b6c7762685994",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
