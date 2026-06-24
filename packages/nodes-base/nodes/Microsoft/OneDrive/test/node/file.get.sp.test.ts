@@ -1,7 +1,7 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { credentials } from '../../credentials';
+import { credentials } from '../credentials';
 
 // Smoke test that de-risks the imperative
 // requestWithAuthentication-through-NodeTestHarness path for the app-only Service

@@ -1,7 +1,7 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { credentials } from '../../credentials';
+import { credentials } from '../credentials';
 
 // Uploads via the text path under a Service Principal drive scope. Proves the
 // :/path:/content addressing survives scoping (no double /drive) end-to-end with

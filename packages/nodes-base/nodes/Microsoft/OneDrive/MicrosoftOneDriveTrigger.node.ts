@@ -114,12 +114,12 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ?? '/me'}/drive/root/delta`;
 
 		// Reset a persisted delta link that belongs to a different scope (auth switched,
-		// or the target id changed) — otherwise we would page a foreign drive's feed.
+		// or the target id changed) so polling stays on the currently-configured drive.
 		const persistedLastLink = workflowData.LastLink as string | undefined;
-		const lastLink: string =
-			persistedLastLink && persistedLastLink.startsWith(deltaRoot)
-				? persistedLastLink
-				: `${deltaRoot}?token=latest`;
+		const hasValidScope = persistedLastLink?.startsWith(deltaRoot) ?? false;
+		const lastLink: string = hasValidScope
+			? (persistedLastLink as string)
+			: `${deltaRoot}?token=latest`;
 
 		const now = DateTime.now().toUTC();
 		const start = DateTime.fromISO(workflowData.lastTimeChecked as string) || now;

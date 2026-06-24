@@ -1,7 +1,7 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { credentials } from '../../credentials';
+import { credentials } from '../credentials';
 
 // Proves Move for the common OAuth2 case: PATCH /me/drive/items/{id} with the
 // driveId omitted (same-drive move). Mirrors the Excel imperative-OAuth2 harness

@@ -1,7 +1,7 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { credentials } from '../../credentials';
+import { credentials } from '../credentials';
 
 describe('Test MicrosoftOneDrive, Service Principal file:move', () => {
 	describe('with an explicit destination driveId (single PATCH, no resolution GET)', () => {
