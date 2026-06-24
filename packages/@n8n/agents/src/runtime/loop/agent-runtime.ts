@@ -752,8 +752,9 @@ export class AgentRuntime {
 	}
 
 	/**
-	 * Persist a suspended run state and update the current state snapshot.
-	 * Returns the runtime's runId.
+	 * Persist a suspended run state and update the current state snapshot, and durably
+	 * save the turn-so-far to thread memory so a suspended turn that is later cancelled or
+	 * abandoned still leaves its assistant work behind. Returns the runtime's runId.
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
@@ -781,6 +782,8 @@ export class AgentRuntime {
 		};
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
+		await this.memory.persistTurnOnSuspend(list, options);
+
 		return this.runId;
 	}
 
