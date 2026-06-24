@@ -20,9 +20,10 @@ import type {
 
 // Compile-time: the shared button styles must remain valid Chat SDK
 // `ButtonStyle` values (api-types cannot depend on the chat package).
-export const richCardButtonStylesAreChatSdkStyles: (typeof RICH_CARD_BUTTON_STYLES)[number] extends ButtonStyle
+const _assertRichCardButtonStylesAreChatSdkStyles: (typeof RICH_CARD_BUTTON_STYLES)[number] extends ButtonStyle
 	? true
 	: never = true;
+void _assertRichCardButtonStylesAreChatSdkStyles;
 
 /**
  * Wire schemas for rich-card messages live in `@n8n/api-types`
@@ -249,14 +250,6 @@ export const DEFAULT_INTEGRATION_CONTEXT_TOOL_DEFINITIONS = GENERIC_CONTEXT_QUER
 
 export const DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS = GENERIC_ACTION_TOOL_DEFINITIONS;
 
-export const DEFAULT_INTEGRATION_CONTEXT_QUERIES = DEFAULT_INTEGRATION_CONTEXT_TOOL_DEFINITIONS.map(
-	(definition) => definition.name,
-);
-
-export const DEFAULT_INTEGRATION_ACTIONS = DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS.map(
-	(definition) => definition.name,
-);
-
 const ALL_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 	...GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS,
 	...LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
@@ -269,15 +262,17 @@ const ALL_ACTION_TOOL_DEFINITIONS = [
 ] satisfies IntegrationActionDefinition[];
 
 // Compile-time: every operation union member must have a matching definition.
-export const contextQueryDefinitionsAreExhaustive: IsExactUnion<
+const _assertContextQueryDefinitionsAreExhaustive: IsExactUnion<
 	(typeof ALL_CONTEXT_QUERY_TOOL_DEFINITIONS)[number]['name'],
 	IntegrationContextQuery
 > = true;
 
-export const actionDefinitionsAreExhaustive: IsExactUnion<
+const _assertActionDefinitionsAreExhaustive: IsExactUnion<
 	(typeof ALL_ACTION_TOOL_DEFINITIONS)[number]['name'],
 	IntegrationAction
 > = true;
+void _assertContextQueryDefinitionsAreExhaustive;
+void _assertActionDefinitionsAreExhaustive;
 
 const contextDefinitionsByName = toDefinitionMap(ALL_CONTEXT_QUERY_TOOL_DEFINITIONS);
 const actionDefinitionsByName = toDefinitionMap(ALL_ACTION_TOOL_DEFINITIONS);

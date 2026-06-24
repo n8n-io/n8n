@@ -46,9 +46,8 @@ export interface IntegrationToolCapabilities {
 	actionToolGuidance?: string[];
 }
 
-// Suspend payload accepts any action name so platforms can contribute their own
-// verbs (Linear `create_issue`, GitHub `create_pull_request`, …) without
-// widening a central enum every time.
+// Suspend payload is intentionally looser than tool input: the action name has
+// already been validated by the generated action schema before suspension.
 const actionSuspendSchema = z.object({
 	type: z.literal('integration_action'),
 	action: z.string(),
