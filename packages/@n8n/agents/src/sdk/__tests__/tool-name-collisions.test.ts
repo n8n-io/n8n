@@ -3,9 +3,9 @@ import { z } from 'zod';
 import {
 	createDelegateSubAgentTool,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
-} from '../../runtime/delegate-sub-agent-tool';
-import { isSdkOwnedBuiltInTool } from '../../runtime/sdk-owned-tool';
-import { createWriteTodosTool, WRITE_TODOS_TOOL_NAME } from '../../runtime/write-todos-tool';
+} from '../../runtime/tools/delegate-sub-agent-tool';
+import { isSdkOwnedBuiltInTool } from '../../runtime/tools/sdk-owned-tool';
+import { createWriteTodosTool, WRITE_TODOS_TOOL_NAME } from '../../runtime/tools/write-todos-tool';
 import { Agent } from '../agent';
 import { Tool } from '../tool';
 

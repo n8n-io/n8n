@@ -1,11 +1,12 @@
 import { highLevelApiRequest } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('GenericFunctions - highLevelApiRequest', () => {
 	let mockContext: any;
-	let mockHttpRequestWithAuthentication: jest.Mock;
+	let mockHttpRequestWithAuthentication: Mock;
 
 	beforeEach(() => {
-		mockHttpRequestWithAuthentication = jest.fn();
+		mockHttpRequestWithAuthentication = vi.fn();
 		mockContext = {
 			helpers: {
 				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,

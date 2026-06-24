@@ -315,10 +315,14 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		useSettingsStore().isAiGatewayEnabled &&
 		useAiGatewayStore().isNodeSupported(element.properties.name)
 	) {
-		element.properties.tag = {
-			text: i18n.baseText('generic.freeCredits'),
-			pill: true,
-		};
+		const versions = useNodeTypesStore().getNodeVersions(element.properties.name);
+		const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+		if (useAiGatewayStore().isNodeTypeVersionSupported(element.properties.name, latestVersion)) {
+			element.properties.tag = {
+				text: i18n.baseText('generic.freeCredits'),
+				pill: true,
+			};
+		}
 	}
 
 	return element;

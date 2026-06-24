@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: pull
+  x-required-scope: sourceControl:pull
   x-eov-operation-handler: v1/handlers/source-control/source-control.handler
   tags:
     - SourceControl

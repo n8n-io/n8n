@@ -205,6 +205,35 @@ describe('CredentialsService', () => {
 			});
 		});
 
+		it('should redact null password field values without throwing', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+
+			const decryptedData = {
+				clientId: 'abc123',
+				clientSecret: null, // null, not a string
+				oauthTokenData: null,
+				csrfSecret: null,
+			};
+
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			const redactedData = service.redact(
+				decryptedData as unknown as ICredentialDataDecryptedObject,
+				credential,
+			);
+
+			expect(redactedData).toEqual({
+				clientId: 'abc123',
+				clientSecret: CREDENTIAL_EMPTY_VALUE,
+				oauthTokenData: CREDENTIAL_EMPTY_VALUE,
+				csrfSecret: CREDENTIAL_EMPTY_VALUE,
+			});
+		});
+
 		it('should redact sensitive values in a fixed collection with multiple values', () => {
 			const fixedCollectionCredType = {
 				properties: [
@@ -2322,6 +2351,92 @@ describe('CredentialsService', () => {
 					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
 				).toHaveBeenCalledWith('validProvider', 'WHwt9vP3keCUvmB5');
 			});
+		});
+	});
+
+	describe('createStubCredential', () => {
+		const stubOpts = {
+			name: 'Missing GitHub',
+			type: 'githubApi',
+			projectId: 'project-1',
+		};
+
+		beforeEach(() => {
+			credentialsRepository.create.mockImplementation((data) => ({ ...data }) as CredentialsEntity);
+			sharedCredentialsRepository.create.mockImplementation((data) => data as SharedCredentials);
+			externalHooks.run.mockResolvedValue();
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+		});
+
+		it('creates an empty stub credential without field validation', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'Access Token',
+					name: 'accessToken',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: {},
+				},
+			] as never);
+			const checkCredentialDataSpy = jest.spyOn(service, 'checkCredentialData');
+
+			let credentialEntityInput: unknown;
+			const savedEntities: unknown[] = [];
+			credentialsRepository.create.mockImplementation((data) => {
+				credentialEntityInput = data;
+				return data as CredentialsEntity;
+			});
+			mockTransactionManager({
+				credentialId: 'stub-cred-id',
+				onSave: (entity) => {
+					savedEntities.push(entity);
+				},
+			});
+
+			const result = await service.createStubCredential(stubOpts, ownerUser);
+
+			expect(checkCredentialDataSpy).not.toHaveBeenCalled();
+			expect(credentialsHelper.getCredentialsProperties).not.toHaveBeenCalled();
+			expect(credentialEntityInput).toMatchObject({
+				name: 'Missing GitHub',
+				type: 'githubApi',
+				isManaged: false,
+				isResolvable: false,
+			});
+			expect(savedEntities[0]).toMatchObject({
+				isManaged: false,
+				isResolvable: false,
+			});
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(
+				ownerUser,
+				'project-1',
+				['credential:create'],
+				expect.anything(),
+			);
+			expect(result).toMatchObject({
+				id: 'stub-cred-id',
+				name: 'Missing GitHub',
+				type: 'githubApi',
+			});
+		});
+
+		it('rejects when user lacks credential:create on the target project', async () => {
+			projectService.getProjectWithScope.mockResolvedValue(null);
+			// @ts-expect-error - Mocking manager for testing
+			credentialsRepository.manager = {
+				transaction: jest.fn().mockImplementation(async (callback) => {
+					const mockManager = {
+						existsBy: jest.fn().mockResolvedValue(true),
+						save: jest.fn(),
+					};
+					return await callback(mockManager);
+				}),
+			};
+
+			await expect(service.createStubCredential(stubOpts, memberUser)).rejects.toThrow(
+				"You don't have the permissions to save the credential in this project.",
+			);
 		});
 	});
 

@@ -73,6 +73,8 @@ describe('WorkflowStatusController', () => {
 			const req = mock<Request>();
 			req.params = { workflowId: 'foreign-workflow' };
 			req.headers = { authorization: 'Bearer token-123' };
+			// in-app session caller carries a user (set as own prop, as auth middleware does)
+			(req as unknown as { user?: unknown }).user = { id: 'user-123' };
 			const res = mock<Response>();
 
 			await expect(controller.checkWorkflowForExecution(req, res)).rejects.toThrow(NotFoundError);

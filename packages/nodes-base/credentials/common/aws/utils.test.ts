@@ -1,33 +1,41 @@
-import { ApplicationError } from 'n8n-workflow';
-import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType, AWSRegion } from './types';
+import { OperationalError, UserError } from 'n8n-workflow';
+import type { AWSRegion } from './regions';
+import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType } from './types';
 
-global.fetch = jest.fn();
+// `assumeRole` now sends via @n8n/backend-network/transport's asCustomFetch(),
+// not the global fetch, so we mock the transport and assert on its fetch.
+const { mockFetch } = vi.hoisted(() => ({ mockFetch: vi.fn() }));
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('@n8n/backend-network/transport', () => ({
+	createDispatcherTransport: () => ({
+		asCustomFetch: () => mockFetch,
+	}),
 }));
 
-jest.mock('xml2js', () => ({
-	parseString: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
+}));
+
+vi.mock('xml2js', () => ({
+	parseString: vi.fn(),
 }));
 
 import { sign } from 'aws4';
 import { parseString } from 'xml2js';
 import { assertSupportedAwsRegion, assumeRole, awsGetSignInOptionsAndUpdateRequest } from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
+import type { MockedFunction, MockInstance } from 'vitest';
 
 describe('assumeRole', () => {
-	let mockFetch: jest.MockedFunction<typeof fetch>;
-	let mockSign: jest.MockedFunction<typeof sign>;
-	let mockParseString: jest.MockedFunction<typeof parseString>;
-	let consoleErrorSpy: jest.SpyInstance;
+	let mockSign: MockedFunction<typeof sign>;
+	let mockParseString: MockedFunction<typeof parseString>;
+	let consoleErrorSpy: MockInstance;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-		mockSign = sign as jest.MockedFunction<typeof sign>;
-		mockParseString = parseString as jest.MockedFunction<typeof parseString>;
-		consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+		vi.clearAllMocks();
+		mockSign = sign as MockedFunction<typeof sign>;
+		mockParseString = parseString as MockedFunction<typeof parseString>;
+		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		mockSign.mockImplementation((request: any) => request as any);
 	});
@@ -54,13 +62,13 @@ describe('assumeRole', () => {
 				source: 'environment' as const,
 			};
 
-			jest
-				.spyOn(systemCredentialsUtils, 'getSystemCredentials')
-				.mockResolvedValue(mockSystemCredentials);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
+				mockSystemCredentials,
+			);
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+				text: vi.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
 					<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
 						<AssumeRoleResult>
 							<Credentials>
@@ -131,13 +139,13 @@ describe('assumeRole', () => {
 				source: 'instanceMetadata' as const,
 			};
 
-			jest
-				.spyOn(systemCredentialsUtils, 'getSystemCredentials')
-				.mockResolvedValue(mockSystemCredentials);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
+				mockSystemCredentials,
+			);
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+				text: vi.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
 					<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
 						<AssumeRoleResult>
 							<Credentials>
@@ -201,9 +209,9 @@ describe('assumeRole', () => {
 				roleSessionName: 'test-session',
 			};
 
-			jest.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'System AWS credentials are required for role assumption',
 			);
@@ -225,13 +233,13 @@ describe('assumeRole', () => {
 				source: 'environment' as const,
 			};
 
-			jest
-				.spyOn(systemCredentialsUtils, 'getSystemCredentials')
-				.mockResolvedValue(mockSystemCredentials);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
+				mockSystemCredentials,
+			);
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -277,7 +285,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -332,7 +340,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -371,7 +379,7 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Access Key ID is required when not using system credentials',
 			);
@@ -389,7 +397,7 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Access Key ID is required when not using system credentials',
 			);
@@ -406,7 +414,7 @@ describe('assumeRole', () => {
 				stsAccessKeyId: 'sts-access-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Secret Access Key is required when not using system credentials',
 			);
@@ -424,7 +432,7 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: '   ',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Secret Access Key is required when not using system credentials',
 			);
@@ -445,7 +453,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -489,7 +497,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -516,6 +524,47 @@ describe('assumeRole', () => {
 			);
 		});
 
+		it('should use correct endpoint for GovCloud regions', async () => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-gov-west-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: false,
+				roleArn: 'arn:aws-us-gov:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
+			};
+
+			const mockResponse = {
+				ok: true,
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+			};
+
+			mockFetch.mockResolvedValue(mockResponse as any);
+
+			mockParseString.mockImplementation((_xml, _options, callback) => {
+				callback(null, {
+					AssumeRoleResponse: {
+						AssumeRoleResult: {
+							Credentials: {
+								AccessKeyId: 'assumed-access-key',
+								SecretAccessKey: 'assumed-secret-key',
+								SessionToken: 'assumed-session-token',
+							},
+						},
+					},
+				});
+			});
+
+			await assumeRole(credentials, 'us-gov-west-1');
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				'https://sts.us-gov-west-1.amazonaws.com',
+				expect.any(Object),
+			);
+		});
+
 		it('should use correct endpoint for standard regions', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'eu-west-1',
@@ -530,7 +579,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -575,7 +624,7 @@ describe('assumeRole', () => {
 				throw new Error('Signing failed');
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Failed to sign STS request',
 			);
@@ -597,12 +646,12 @@ describe('assumeRole', () => {
 				ok: false,
 				status: 403,
 				statusText: 'Forbidden',
-				text: jest.fn().mockResolvedValue('Access denied'),
+				text: vi.fn().mockResolvedValue('Access denied'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS AssumeRole failed: 403 Forbidden - Access denied',
 			);
@@ -622,7 +671,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('invalid xml'),
+				text: vi.fn().mockResolvedValue('invalid xml'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -648,7 +697,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -661,7 +710,7 @@ describe('assumeRole', () => {
 				});
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Invalid response from STS AssumeRole',
 			);
@@ -681,7 +730,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -692,7 +741,7 @@ describe('assumeRole', () => {
 				});
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Invalid response from STS AssumeRole',
 			);
@@ -713,7 +762,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -772,14 +821,14 @@ describe('assertSupportedAwsRegion', () => {
 		['169.254.169.254'],
 		['localhost'],
 	])('rejects unsupported region value %s', (region) => {
-		expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+		expect(() => assertSupportedAwsRegion(region)).toThrow(UserError);
 		expect(() => assertSupportedAwsRegion(region)).toThrow('Unsupported AWS region');
 	});
 
 	it.each([[undefined], [null], [0], [true], [{}], [['us-east-1']]])(
 		'rejects non-string region value %s',
 		(region) => {
-			expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+			expect(() => assertSupportedAwsRegion(region)).toThrow(UserError);
 		},
 	);
 });
@@ -839,20 +888,18 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 				'lambda',
 				region as any,
 			),
-		).toThrow(ApplicationError);
+		).toThrow(UserError);
 	});
 });
 
 describe('assumeRole region validation', () => {
-	let mockFetch: jest.MockedFunction<typeof fetch>;
-	let mockSign: jest.MockedFunction<typeof sign>;
-	let consoleErrorSpy: jest.SpyInstance;
+	let mockSign: MockedFunction<typeof sign>;
+	let consoleErrorSpy: MockInstance;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-		mockSign = sign as jest.MockedFunction<typeof sign>;
-		consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+		vi.clearAllMocks();
+		mockSign = sign as MockedFunction<typeof sign>;
+		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		mockSign.mockImplementation((request: any) => request as any);
 	});
 
@@ -872,7 +919,7 @@ describe('assumeRole region validation', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, region as any)).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, region as any)).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, region as any)).rejects.toThrow(
 				'Unsupported AWS region',
 			);

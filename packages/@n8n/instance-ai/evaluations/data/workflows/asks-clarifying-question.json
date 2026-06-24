@@ -1,0 +1,35 @@
+{
+	"description": "#6/#8: A vague request should make the builder ask a clarifying question via the structured question tool and wait for the answer before building.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, send my team a summary of yesterday's signups."
+		},
+		{
+			"role": "assistant",
+			"text": "Where should I send the summary — which service or channel?"
+		},
+		{
+			"role": "user",
+			"text": "[Don't bring up the channel unless the agent explicitly asks where to send the summary; then say 'Slack #growth.']"
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["behaviour", "clarification", "question-tool", "schedule", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"Before building, the agent asked which destination to send the summary to, since the request did not specify one.",
+		"The agent asked using the structured question tool, not by posing the question in plain assistant text.",
+		"The agent waited for the user's answer before building."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Signups source returns a few rows; a summary is posted to Slack",
+			"dataSetup": "The signups data source returns 3 rows for yesterday: names Ana, Ben, Cara. The Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.000100\" }.",
+			"successCriteria": "The workflow executes without errors and posts a summary mentioning the 3 signups (Ana, Ben, Cara) to Slack #growth."
+		}
+	]
+}

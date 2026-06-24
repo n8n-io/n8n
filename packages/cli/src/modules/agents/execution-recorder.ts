@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import { scrubSecretsInText } from '@n8n/utils';
+import { isRecord, scrubSecretsInText } from '@n8n/utils';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
@@ -139,6 +139,20 @@ function normaliseToolErrorOutput(output: unknown): unknown {
 	return output;
 }
 
+function normaliseStreamError(error: unknown): string {
+	if (error instanceof Error) {
+		return scrubSecretsInText(error.message || error.name || 'Agent execution failed');
+	}
+	if (typeof error === 'string') return scrubSecretsInText(error);
+
+	const sanitized = sanitizeExecutionLogValue(error);
+	try {
+		return scrubSecretsInText(JSON.stringify(sanitized));
+	} catch {
+		return scrubSecretsInText(String(error));
+	}
+}
+
 const REDACTED_VALUE = '[REDACTED]';
 const CIRCULAR_VALUE = '[Circular]';
 
@@ -219,10 +233,6 @@ export type TimelineEvent =
 			nodeParameters?: Record<string, unknown>;
 	  }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
 
 /**
  * Collects execution data from agent stream chunks.
@@ -323,8 +333,7 @@ export class ExecutionRecorder {
 				});
 				break;
 			case 'error': {
-				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-				this.error = errMsg;
+				this.error = normaliseStreamError(chunk.error);
 				break;
 			}
 		}

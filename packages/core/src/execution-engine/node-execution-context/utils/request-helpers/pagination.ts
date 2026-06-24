@@ -2,12 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
+import { binaryToString, tryParseUrl } from '@n8n/backend-network';
 import crypto from 'crypto';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
 import { NodeOperationError, jsonParse, sleep } from 'n8n-workflow';
 import type {
 	IAdditionalCredentialOptions,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IN8nHttpFullResponse,
@@ -19,9 +21,6 @@ import type {
 	PaginationOptions,
 } from 'n8n-workflow';
 import { Readable } from 'stream';
-
-import { binaryToString } from '../binary-helper-functions';
-import { tryParseUrl } from './axios-utils';
 
 /**
  * Resolves a (possibly expression) parameter value within the current execution
@@ -67,6 +66,7 @@ export async function requestWithAuthenticationPaginated(
 	node: INode,
 	credentialsType?: string,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
+	sanitizedRequest?: IDataObject,
 ): Promise<any[]> {
 	const responseData = [];
 	if (!requestOptions.qs) {
@@ -82,7 +82,7 @@ export async function requestWithAuthenticationPaginated(
 	const runIndex = 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$request: requestOptions,
+		$request: sanitizedRequest ?? requestOptions,
 		$response: {} as IN8nHttpFullResponse,
 		$version: node.typeVersion,
 		$pageCount: 0,

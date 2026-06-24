@@ -1,10 +1,12 @@
 import type {
 	ApiKeyAudience,
+	ApiKeyOwnerSummary,
 	CreateApiKeyRequestDto,
 	UnixTimestamp,
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
 import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -12,6 +14,7 @@ import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
+	In,
 	Raw,
 	type EntityManager,
 	type FindOptionsWhere,
@@ -19,7 +22,9 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
 
@@ -37,6 +42,8 @@ export class PublicApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
+		private readonly mailer: UserManagementMailer,
+		private readonly logger: Logger,
 	) {}
 
 	async createPublicApiKeyForUser(
@@ -64,6 +71,7 @@ export class PublicApiKeyService {
 			skip?: number;
 			ownership?: 'mine' | 'all';
 			label?: string;
+			ownerIds?: string[];
 			sortBy?: string;
 		} = {},
 	) {
@@ -77,39 +85,92 @@ export class PublicApiKeyService {
 					}),
 				}
 			: {};
+		// The owner filter only narrows the `all` view; it's meaningless for `mine`
+		// and ignored for callers who can't see other users' keys.
+		const ownerIds = includeOthers && options.ownerIds?.length ? options.ownerIds : undefined;
+		const ownerIdsFilter = ownerIds ? { userId: In(ownerIds) } : {};
 		const baseWhere = { audience: API_KEY_AUDIENCE, ...labelFilter };
+		const pageWhere = includeOthers
+			? { ...baseWhere, ...ownerIdsFilter }
+			: { ...baseWhere, ...ownFilter };
 
 		const qb = this.apiKeyRepository
 			.createQueryBuilder('apiKey')
 			.leftJoinAndSelect('apiKey.user', 'user')
-			.setFindOptions({ where: { ...baseWhere, ...(includeOthers ? {} : ownFilter) } });
+			.setFindOptions({ where: pageWhere });
 		this.applyApiKeyListSort(qb, options.sortBy);
 		qb.take(options.take);
 		qb.skip(options.skip);
 
 		const [apiKeys, count] = await qb.getManyAndCount();
-		const counts = await this.countApiKeys(caller, { ...baseWhere, ...ownFilter }, baseWhere, {
-			canSeeAll,
-			includeOthers,
-			pageCount: count,
-		});
-		// `totals` equal `counts` without a label filter; otherwise issue the
-		// unfiltered counts so tab badges + empty-state CTA can render against
-		// the true population.
-		const totals = options.label
-			? await this.countApiKeys(
-					caller,
-					{ audience: API_KEY_AUDIENCE, ...ownFilter },
-					{ audience: API_KEY_AUDIENCE },
-					{ canSeeAll, includeOthers, pageCount: undefined },
-				)
-			: counts;
+
+		// `totals` ignore the label and owner filters so tab badges + empty-state
+		// CTA render against the true population; recompute only when a filter is
+		// active, otherwise they equal `counts`. The counts, totals and owner list
+		// are independent reads, so run them together.
+		const hasNarrowing = !!options.label || !!ownerIds;
+		const [counts, narrowedTotals, owners] = await Promise.all([
+			this.countApiKeys(
+				caller,
+				{ ...baseWhere, ...ownFilter },
+				{ ...baseWhere, ...ownerIdsFilter },
+				{ canSeeAll, includeOthers, pageCount: count },
+			),
+			hasNarrowing
+				? this.countApiKeys(
+						caller,
+						{ audience: API_KEY_AUDIENCE, ...ownFilter },
+						{ audience: API_KEY_AUDIENCE },
+						{ canSeeAll, includeOthers, pageCount: undefined },
+					)
+				: Promise.resolve(null),
+			canSeeAll ? this.getApiKeyOwners() : Promise.resolve([]),
+		]);
 
 		return {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
 			counts,
-			totals,
+			totals: narrowedTotals ?? counts,
+			owners,
 		};
+	}
+
+	// Distinct owners holding at least one key in the `all` population, with
+	// their key counts, used to populate the owner filter. Ignores label/owner
+	// narrowing on purpose so the option list stays stable as the caller toggles
+	// the filter.
+	private async getApiKeyOwners(): Promise<ApiKeyOwnerSummary[]> {
+		// Aggregate in SQL rather than loading every key row to dedupe in JS.
+		// Lowercase aliases keep the raw result keys stable across Postgres and
+		// sqlite.
+		const rows = await this.apiKeyRepository
+			.createQueryBuilder('apiKey')
+			.innerJoin('apiKey.user', 'user')
+			.where('apiKey.audience = :audience', { audience: API_KEY_AUDIENCE })
+			.select('user.id', 'id')
+			.addSelect('user.firstName', 'first_name')
+			.addSelect('user.lastName', 'last_name')
+			.addSelect('user.email', 'email')
+			.addSelect('COUNT(apiKey.id)', 'key_count')
+			.groupBy('user.id')
+			.addGroupBy('user.firstName')
+			.addGroupBy('user.lastName')
+			.addGroupBy('user.email')
+			.getRawMany<{
+				id: string;
+				first_name: string | null;
+				last_name: string | null;
+				email: string;
+				key_count: string | number;
+			}>();
+
+		return rows.map((row) => ({
+			id: row.id,
+			firstName: row.first_name ?? null,
+			lastName: row.last_name ?? null,
+			email: row.email,
+			keyCount: Number(row.key_count),
+		}));
 	}
 
 	// For non-admins the two counts are identical; the page total can be reused
@@ -172,12 +233,32 @@ export class PublicApiKeyService {
 	// for the existence of another user's keys.
 	async deleteApiKey(caller: User, apiKeyId: string) {
 		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
-		const result = await this.apiKeyRepository.delete({
-			id: apiKeyId,
-			audience: API_KEY_AUDIENCE,
-			...(canDeleteAny ? {} : { userId: caller.id }),
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: {
+				id: apiKeyId,
+				audience: API_KEY_AUDIENCE,
+				...(canDeleteAny ? {} : { userId: caller.id }),
+			},
+			relations: { user: true },
 		});
+		if (!apiKey) throw new NotFoundError('API key not found');
+
+		const result = await this.apiKeyRepository.delete({ id: apiKey.id });
 		if (!result.affected) throw new NotFoundError('API key not found');
+
+		const isOwn = apiKey.userId === caller.id;
+
+		if (!isOwn) {
+			this.mailer.notifyApiKeyRevoked({ apiKey, revoker: caller }).catch((e) => {
+				this.logger.error('Failed to send API key revocation email', {
+					apiKeyId: apiKey.id,
+					ownerId: apiKey.userId,
+					error: e instanceof Error ? e.message : String(e),
+				});
+			});
+		}
+
+		return { isOwn };
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
@@ -198,6 +279,31 @@ export class PublicApiKeyService {
 		{ label, scopes }: UpdateApiKeyRequestDto,
 	) {
 		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
+	}
+
+	// Owner-only: re-issues the secret in place, keeping the same id, label, scopes
+	// and expiry. Replacing the stored token invalidates the previous one, since
+	// auth matches on the token string.
+	async rotateApiKey(user: User, apiKeyId: string) {
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: { id: apiKeyId, userId: user.id, audience: API_KEY_AUDIENCE },
+		});
+		if (!apiKey) throw new NotFoundError('API key not found');
+
+		const expiresAt = this.getApiKeyExpiration(apiKey.apiKey);
+		if (expiresAt !== null && expiresAt <= Math.floor(Date.now() / 1000)) {
+			throw new BadRequestError('Cannot rotate an expired API key');
+		}
+
+		const newApiKey = this.generateApiKey(user, expiresAt);
+		await this.apiKeyRepository.update(
+			{ id: apiKey.id, userId: user.id },
+			{ apiKey: newApiKey, lastUsedAt: null },
+		);
+
+		apiKey.apiKey = newApiKey;
+		apiKey.lastUsedAt = null;
+		return apiKey;
 	}
 
 	private toRedactedApiKey(apiKeyRecord: ApiKey) {
@@ -242,7 +348,7 @@ export class PublicApiKeyService {
 		);
 	}
 
-	private getApiKeyExpiration = (apiKey: string) => {
+	getApiKeyExpiration = (apiKey: string) => {
 		const decoded = this.jwtService.decode(apiKey);
 		return decoded?.exp ?? null;
 	};

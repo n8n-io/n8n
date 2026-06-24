@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.19.0",
+  "version": "0.21.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -93,7 +93,7 @@
     "@types/mime-types": "catalog:",
     "tsx": "catalog:",
     "axios": "catalog:",
-    "n8n-workflow": "workspace:*"
+    "nock": "catalog:"
   },
   "dependencies": {
     "zod": "catalog:",
@@ -104,19 +104,17 @@
     "@langchain/textsplitters": "1.0.1",
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
+    "lodash": "catalog:",
+    "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
-    "https-proxy-agent": "catalog:",
     "@thednp/dommatrix": "^2.0.12",
     "pdf-parse": "catalog:",
-    "proxy-from-env": "^1.1.0",
     "undici": "catalog:undici-v6"
-  },
-  "peerDependencies": {
-    "n8n-workflow": "*"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

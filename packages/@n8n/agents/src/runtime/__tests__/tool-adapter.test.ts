@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import type { BuiltTool } from '../../types';
-import { executeTool, toAiSdkTools } from '../tool-adapter';
+import { executeTool, toAiSdkTools } from '../tools/tool-adapter';
 
 // ---------------------------------------------------------------------------
 // Module mocks

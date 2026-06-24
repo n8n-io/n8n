@@ -4,7 +4,7 @@
  * Fetches test duration metrics from Currents API for test orchestration.
  *
  * Usage:
- *   CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=<id>
+ *   CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=nHHLA5
  *
  * Output: .github/test-metrics/playwright.json
  */
@@ -24,7 +24,7 @@ const DEFAULT_DURATION = 60000; // 1 minute default for new specs (accounts for 
 
 const PROJECT_ID = process.argv.find((a) => a.startsWith('--project='))?.split('=')[1];
 if (!PROJECT_ID) {
-	console.error('Usage: CURRENTS_API_KEY=<key> node fetch-currents-metrics.mjs --project=<id>');
+	console.error('Usage: CURRENTS_API_KEY=<key> node fetch-currents-metrics.mjs --project=nHHLA5');
 	process.exit(1);
 }
 

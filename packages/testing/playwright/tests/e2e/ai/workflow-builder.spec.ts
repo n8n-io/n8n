@@ -45,17 +45,15 @@ test.describe(
 		});
 
 		test('should show Build with AI button on empty canvas', async ({ n8n }) => {
-			await n8n.page.goto('/workflow/new');
+			await n8n.start.fromBlankCanvas();
 
-			await n8n.canvas.waitForBlankCanvasReady();
 			await n8n.aiBuilder.waitForCanvasBuildEntry();
 			await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
 		});
 
 		test('should open workflow builder and show suggestions', async ({ n8n }) => {
-			await n8n.page.goto('/workflow/new');
+			await n8n.start.fromBlankCanvas();
 
-			await n8n.canvas.waitForBlankCanvasReady();
 			await n8n.aiBuilder.waitForCanvasBuildEntry();
 			await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
 
@@ -71,7 +69,7 @@ test.describe(
 		// @AI team - investigated issues with this test, the replay of recorded events not working as expected
 		// doesn't appear to be matching in the correct order/some requests make it past the proxy leading to 401 error
 		test.fixme('should build workflow from suggested prompt', async ({ n8n }) => {
-			await n8n.page.goto('/workflow/new');
+			await n8n.start.fromBlankCanvas();
 			await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
 
 			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
@@ -90,7 +88,7 @@ test.describe(
 
 		// suffers from the same issue as test above
 		test.fixme('should display assistant messages during workflow generation', async ({ n8n }) => {
-			await n8n.page.goto('/workflow/new');
+			await n8n.start.fromBlankCanvas();
 			await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
 
 			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
@@ -104,7 +102,7 @@ test.describe(
 		});
 
 		test('should stop workflow generation and show task aborted message', async ({ n8n }) => {
-			await n8n.page.goto('/workflow/new');
+			await n8n.start.fromBlankCanvas();
 			await openBuilderAndClickSuggestion(n8n, 'Daily weather report');
 
 			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();

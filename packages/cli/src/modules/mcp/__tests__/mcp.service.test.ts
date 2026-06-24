@@ -1,6 +1,6 @@
 import { LicenseState, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	FolderRepository,
@@ -40,13 +40,16 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('McpService', () => {
@@ -93,8 +96,12 @@ describe('McpService', () => {
 			mockInstance(ExecutionService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
+			mockInstance(NodeResourceExplorerService),
+			mockInstance(TagService),
 			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
+			mockInstance(WorkflowsConfig),
+			mockInstance(WorkflowPublishedDataService),
 		);
 	});
 
@@ -135,8 +142,12 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -330,8 +341,12 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				opts.postHogClient,
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -433,8 +448,12 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -477,8 +496,12 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -545,8 +568,12 @@ describe('McpService', () => {
 					mockInstance(ExecutionService),
 					mockInstance(DataTableProxyService),
 					mockInstance(CollaborationService),
+					mockInstance(NodeResourceExplorerService),
+					mockInstance(TagService),
 					mockInstance(LicenseState),
 					postHogClient,
+					mockInstance(WorkflowsConfig),
+					mockInstance(WorkflowPublishedDataService),
 				);
 			};
 

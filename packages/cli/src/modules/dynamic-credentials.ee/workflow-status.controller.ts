@@ -1,7 +1,7 @@
 import { WorkflowExecutionStatus } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { AuthenticatedRequest } from '@n8n/db';
+import { isAuthenticatedRequest } from '@n8n/db';
 import { Get, Options, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
@@ -67,7 +67,7 @@ export class WorkflowStatusController {
 		}
 
 		// In-app callers carry a user and must have access; token-auth resolver callers don't
-		const user = (req as AuthenticatedRequest).user;
+		const user = isAuthenticatedRequest(req) ? req.user : undefined;
 		if (user) {
 			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 				'workflow:read',
@@ -80,6 +80,7 @@ export class WorkflowStatusController {
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
 			credentialContext,
+			user,
 		);
 
 		const isReady = status.every((s) => s.status === 'configured');

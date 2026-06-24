@@ -178,6 +178,11 @@ export {
 	type RoleProjectMember,
 	type RoleProjectMembersResponse,
 } from './roles/role-project-members-response.dto';
+export {
+	RoleMembersResponseDto,
+	type RoleMember,
+	type RoleMembersResponse,
+} from './roles/role-members-response.dto';
 
 export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
@@ -260,3 +265,6 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
+export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';

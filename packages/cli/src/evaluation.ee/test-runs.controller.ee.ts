@@ -99,8 +99,8 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Deleting mutates state — require workflow:update
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:update']);
+		// Deleting mutates run state — require workflow:execute
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
