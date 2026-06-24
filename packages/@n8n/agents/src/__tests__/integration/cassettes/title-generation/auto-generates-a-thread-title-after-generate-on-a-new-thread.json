@@ -1,0 +1,122 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Tell me about the history of Rome"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7555db6edc460cfd1562f2908db036f66ad77a731ce782b445e004c8435d2cb823ae34f588a3cc70d6560203fe07ffa1bfa4a076edb82dfab45a1ece903ce750fa61da509137a5b11e7345070dbaab7cb038581ecc26b3e57432999ab17195294d9bead5643a5ffc2a8b93d969f8babcdabcfdc49f37f163263336d277a4599412d61a88c16b0053724990c58c8d0d2cc462ca3f7e3ce60bdd2832fc94e605bc774942ec216ce022b474c997fce2057c69083e3aaeabd0c2e878397fb8bb5f4e4ee0f5d9f9ab4bd63c58538d0c980021b5e83d2412f1d4120b04066908beb83545b8705b8a87706a6d8895e31a2480a79ab81a8313b8c6049b90b9a20ad6bdf6907d4ee0188e97732d7838349220664f156416e70119ce25e66491a1ea1993f42f13481f91b987d461bca20a10226d8397c367435d5097d7de59182d27270f77f7b3e3e743d14d475ecb384970a5cd2257404970ed5d6af677ee6fb876d294977c0045711638659f8a4209b18da30dd00dd92c6e4b49534ea1283e13a3505128d51895761b5106f85dc42aa3d7fac8c90506b431a4041f047d3f34a184fe4695138a11999075a88fd4036d89250d8d9c05fe962952359c73c8d0113b6d0d157e431b42a10ace304a833529cb9f323b0b5f312618cd8e160f77f7d3c5d19e930338d786541ac712e05d24b2f4d4ceef8411ce3189667e60a1c8e8c106de78672581122901acdb3a0fd74385e964f29cf42759cedbce4582d10e79b8bb5f1c1fc1905214a7b9ce49b2b2bb268b2d0dc5372e26016a3b8a218e8178f0d653ada1c99c1a8a1a760cb3c9047ad226c2062279546da023b404a3e213dea8f590b17835d8e5bdab1befea66cfec05a155f95bbc716d6e41557012a21b44d31d03b57084a2f812f12fe4a280d1c92fcae6f418f6647ee04dc424315bc9914a8801ab3406fc96a9ca56f431dac6090db89ef8dc45c26abf9bc860b3576818cee3f5d0994ba409678d5aca213be961e4a946efbe5305f3e91c7e72fd86ac77bcbbe02d7a3f68bce33e75dec94e67d57448f94a4960343f593e8ef01ae31aa33acbf116d5a909aa613fdcae9c4aa3a7767ba14f147978b3c086bc572576d22a415ae709d67795e3ac3b96e075ff1df5ef9333767b3f5d2ce7c3287ae2a53aac46db97cac5183c729db1263543ed9806e9c7c31c75d8aa39d912a4063bda4da6a507c3b8ef282ef0a1b9fd736c92846e15095360531ae26a2539b2d90389be65624ba6e4ecfd3e5891a0f3e93196871772f9c338eeb2ac245c112753ce166363d5462b1b6928b8fa67c2e41157d1ff0f7b3cabf753d7504b11fd6ad9fe37ff273a6dfe8dde8e4dc8f23c345f1c8d4da2b8759656e2289ad2e867a4c258e91789371475f0554dc1948683ac708bcee3da93b9bdfd1b7118bc1dd8060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:54Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:57Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:53Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:54Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f0791ce9eeae-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:38:57 GMT",
+			"request-id": "req_011CcHzkeAG2WVBwaw8p3hTQ",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=GkkjeeeC6VPBrAa6ttl5cjm0uSsWSpwTF.PzZzfCMYA-1782117533.6190968-1.0.1.1-_N65.ub8SEjTSvrsDDJ.t5y_ctm83UbQ7Iy2_treti8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e4e7621d2084db1a43a779815a14b3d6-85e2c0869dfb2a69-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Generate a short title and a single emoji for a conversation based on the user message.\nRespond with ONLY a JSON object: {\"title\": \"...\", \"emoji\": \"...\"}\nRules:\n- Title: 2 to 6 words, max 50 characters, sentence case\n- Title must not contain emoji, quotes, colons, or markdown formatting\n- Emoji: exactly one emoji that represents the topic\n- Respond with the JSON object only, no other text"
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "\nHere's the conversation:\n<conversation>\nTell me about the history of Rome\n</conversation>"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7591414e23311045af12fdb523758764907c0084346c6005a291db691789137739d8653428ea33700016738db9151c013510c1309a5549effd52a9aaf6e8a3a3008d2ed8e268bab67e5ba6f3e9623aab668bbaaa6a2878078d3eaf4c551fd72774797eb25c9efbb31f9bab9faeccf93241411e7634a62867bb2228a418466073f6592c0b14bac8422cd0d7fb435ee8d768de8a46dbb69b1cb9e17d03f112a8819e3438f559627a98c4dbc945eca9819a34a03e6efcbb7ff9fdf8f4fce7b1c1d070dbb6186e14b2c49d4964736468103b2325313e44a6bb42dc113497103ea023b13ee4032b6f8be83d3cef8a18895be20c5d1fcd153adbadc97489acf8c8e6ef4475f089acfb9f3bf48e0368b7a69e920d66d1ff9bffb4f5fabb1d146291af68b650c894ee7d47463c25688ce77736b9f1937c4b695cdcac284283a3187b6f7db0cb401886575e63ec8010020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:58Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:58Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:57Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:58Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f0915f5ceeae-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:38:58 GMT",
+			"request-id": "req_011CcHzkvjuYXwNFnC8WiVHw",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=DIvq25X0xswP_xLmvkbBaLvuFiASKeeL4kVl5mVAsWc-1782117537.4988139-1.0.1.1-f.8Le4j0FweuXFpXWzIQTTqKr0q8P0OGhw1G.GJx1nE; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-24270ce28582b842d438b51a685ecb68-0a08a44dc6712a59-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

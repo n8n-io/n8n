@@ -54,8 +54,40 @@ const defaultRuleSettings: RuleSettingsMap = {
 				{
 					name: '@n8n/backend-network/transport',
 					entry: 'packages/@n8n/backend-network/src/transport.ts',
-					forbidden: ['@n8n/di', '@n8n/backend-common', '@n8n/config', 'cache-manager'],
+					forbidden: ['@n8n/di', '@n8n/backend-common', '@n8n/config', 'cache-manager', 'axios'],
 					allowedExternals: ['n8n-workflow', 'undici'],
+				},
+				{
+					name: '@n8n/backend-network/proxy',
+					entry: 'packages/@n8n/backend-network/src/proxy/index.ts',
+					forbidden: [
+						'@n8n/di',
+						'@n8n/backend-common',
+						'@n8n/config',
+						'cache-manager',
+						'axios',
+						'undici',
+					],
+					allowedExternals: [
+						'http',
+						'https',
+						'http-proxy-agent',
+						'https-proxy-agent',
+						'proxy-from-env',
+					],
+				},
+				{
+					// SSRF/DNS are the *guard* layers, not the transport layer. They may
+					// depend on DI/config/backend-common, but must never pull an HTTP
+					// client — that would mean the guard started doing the fetching.
+					name: '@n8n/backend-network/ssrf',
+					entry: 'packages/@n8n/backend-network/src/ssrf/index.ts',
+					forbidden: ['axios', 'undici'],
+				},
+				{
+					name: '@n8n/backend-network/dns',
+					entry: 'packages/@n8n/backend-network/src/dns/index.ts',
+					forbidden: ['axios', 'undici'],
 				},
 			],
 		},

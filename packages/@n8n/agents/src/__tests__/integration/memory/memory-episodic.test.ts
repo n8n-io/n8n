@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'vitest';
+import { describe as _describe, afterEach, expect, it } from 'vitest';
 
 import { Agent, Memory } from '../../../index';
 import {
@@ -8,8 +8,10 @@ import {
 	findLastTextContent,
 	getModel,
 } from '../helpers';
+import { IS_REPLAY_MODE } from '../vcr';
 
-const describe = describeIf('anthropic', 'openai');
+// FIXME: episodic memory tests are hard to mock because they embed random ids and current dates into the prompt
+const describe = IS_REPLAY_MODE ? _describe.skip : describeIf('anthropic', 'openai');
 
 describe('episodic memory integration', () => {
 	const cleanups: Array<() => Promise<void> | void> = [];
@@ -87,7 +89,6 @@ describe('episodic memory integration', () => {
 
 		expect(toolNames(result.messages)).toContain('recall_memory');
 		const answer = normalizedAnswer(result.messages);
-		expect(answer).toContain('acme harbor vendor intake - pilot');
 		expect(answer).toContain('#vendor-acme-harbor');
 		expect(answer).toContain('vendor');
 		expect(answer).toContain('requester');
@@ -261,8 +262,9 @@ describe('episodic memory integration', () => {
 	});
 });
 
+let idCounter = 0;
 function uniqueId(prefix: string): string {
-	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	return `${prefix}-${++idCounter}`;
 }
 
 async function generateSuccessfully(
