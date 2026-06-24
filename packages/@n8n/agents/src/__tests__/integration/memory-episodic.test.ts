@@ -1,24 +1,46 @@
-import { describe as _describe, afterEach, expect, it } from 'vitest';
+import { embed } from 'ai';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { Agent, Memory } from '../../../index';
 import {
 	createInMemoryAgentMemory,
 	describeIf,
 	findAllToolCalls,
 	findLastTextContent,
-	getModel,
-} from '../helpers';
-import { IS_REPLAY_MODE } from '../vcr';
+} from './helpers';
+import {
+	Agent,
+	createEmbeddingModel,
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+	Memory,
+} from '../../index';
 
-// FIXME: episodic memory tests are hard to mock because they embed random ids and current dates into the prompt
-const describe = IS_REPLAY_MODE ? _describe.skip : describeIf('anthropic', 'openai');
+const describe = describeIf('anthropic', 'openai');
+const EPISODIC_MEMORY_MODEL = 'anthropic/claude-sonnet-4-6';
+const EPISODIC_MEMORY_CAPTURE_DELAY_MS = 500;
+const EPISODIC_MEMORY_TEST_RECALL_LIMIT = 20;
+const FIXED_TEST_DATE = new Date('2026-06-01T12:00:00.000Z');
 
 describe('episodic memory integration', () => {
 	const cleanups: Array<() => Promise<void> | void> = [];
+	let idCounter = 0;
+	let uuidCounter = 0;
+
+	beforeEach(() => {
+		idCounter = 0;
+		uuidCounter = 0;
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(FIXED_TEST_DATE);
+		vi.spyOn(crypto, 'randomUUID').mockImplementation(() => deterministicUuid(++uuidCounter));
+	});
 
 	afterEach(async () => {
-		for (const cleanup of cleanups.splice(0)) {
-			await cleanup();
+		try {
+			for (const cleanup of cleanups.splice(0)) {
+				await cleanup();
+			}
+		} finally {
+			vi.restoreAllMocks();
+			vi.useRealTimers();
 		}
 	});
 
@@ -34,10 +56,10 @@ describe('episodic memory integration', () => {
 				reflectorThresholdTokens: 10_000,
 				observationLogTailLimit: 20,
 			})
-			.episodicMemory({ topK: 5 });
+			.episodicMemory({ topK: EPISODIC_MEMORY_TEST_RECALL_LIMIT });
 
 		const agent = new Agent(name)
-			.model(getModel('anthropic'))
+			.model(EPISODIC_MEMORY_MODEL)
 			.instructions(
 				[
 					'You are a concise assistant.',
@@ -45,6 +67,7 @@ describe('episodic memory integration', () => {
 					'Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result.',
 					'Use exact identifiers verbatim.',
 					'If no relevant prior memory is available, say you do not have saved prior memory for that request.',
+					'When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations.',
 				].join(' '),
 			)
 			.memory(memoryConfig);
@@ -57,6 +80,10 @@ describe('episodic memory integration', () => {
 		return { agent, memory };
 	}
 
+	function uniqueId(prefix: string): string {
+		return `${prefix}-${++idCounter}`;
+	}
+
 	it('recalls exact artifacts across threads when explicitly asked for prior context', async () => {
 		const { agent, memory } = createEpisodicAgent('episodic-cross-thread');
 		const resourceId = uniqueId('resource-cross-thread');
@@ -64,22 +91,27 @@ describe('episodic memory integration', () => {
 		await generateSuccessfully(
 			agent,
 			[
-				'These are final durable Acme Harbor details for future conversations.',
-				'Customer: Acme Harbor.',
-				'Tracker title exactly: Acme Harbor Vendor Intake - Pilot.',
-				'Slack channel exactly: #vendor-acme-harbor.',
-				'Final status Waiting on Vendor Info means the vendor or requester owes missing details.',
+				'IMPORTANT durable prior decision for future sessions.',
+				'Preserve this exact durable memory sentence for future recall:',
+				'Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.',
+				'This should be remembered for future conversations about Acme Harbor.',
 			].join('\n'),
 			{ persistence: { threadId: uniqueId('thread-acme-setup'), resourceId } },
 		);
+		await waitForEpisodicMemoryCapture();
 		await agent.close();
 
-		const entries = await memory.episodic.searchEntries(
-			scope(resourceId),
+		const entries = await searchEpisodicEntries(
+			memory,
+			resourceId,
 			'Acme Harbor Vendor Intake - Pilot #vendor-acme-harbor Waiting on Vendor Info',
-			{ topK: 5 },
 		);
 		expect(entries.length).toBeGreaterThan(0);
+		const storedText = entries.map((entry) => entry.content).join('\n');
+		expect(normalizedText(storedText)).toContain(
+			normalizedText('Acme Harbor Vendor Intake - Pilot'),
+		);
+		expect(storedText).toContain('#vendor-acme-harbor');
 
 		const result = await generateSuccessfully(
 			agent,
@@ -88,6 +120,13 @@ describe('episodic memory integration', () => {
 		);
 
 		expect(toolNames(result.messages)).toContain('recall_memory');
+		const recallOutput = resolvedToolOutput(result.messages, 'recall_memory');
+		const recalledText = JSON.stringify(recallOutput);
+		expect(normalizedText(recalledText)).toContain(
+			normalizedText('Acme Harbor Vendor Intake - Pilot'),
+		);
+		expect(recalledText).toContain('#vendor-acme-harbor');
+
 		const answer = normalizedAnswer(result.messages);
 		expect(answer).toContain('#vendor-acme-harbor');
 		expect(answer).toContain('vendor');
@@ -113,6 +152,7 @@ describe('episodic memory integration', () => {
 			].join('\n'),
 			{ persistence: { threadId: redwoodThreadId, resourceId } },
 		);
+		await waitForEpisodicMemoryCapture();
 		await agent.close();
 
 		await generateSuccessfully(
@@ -127,19 +167,20 @@ describe('episodic memory integration', () => {
 			].join('\n'),
 			{ persistence: { threadId: cedarThreadId, resourceId } },
 		);
+		await waitForEpisodicMemoryCapture();
 		await agent.close();
 
-		const redwoodEntries = await memory.episodic.searchEntries(
-			scope(resourceId),
+		const redwoodEntries = await searchEpisodicEntries(
+			memory,
+			resourceId,
 			'Redwood Clinic Intake Board #redwood-intake Clinic Ops',
-			{ topK: 5 },
 		);
 		expect(redwoodEntries.length).toBeGreaterThan(0);
 
-		const cedarEntries = await memory.episodic.searchEntries(
-			scope(resourceId),
+		const cedarEntries = await searchEpisodicEntries(
+			memory,
+			resourceId,
 			'Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance',
-			{ topK: 5 },
 		);
 		expect(cedarEntries.length).toBeGreaterThan(0);
 
@@ -169,11 +210,13 @@ describe('episodic memory integration', () => {
 			'Please remember this Orion Export setup for a future conversation: the initial tracker title is Orion Vendor Intake Draft. Repeat it back once.',
 			{ persistence: { threadId: uniqueId('thread-orion-setup'), resourceId } },
 		);
+		await waitForEpisodicMemoryCapture();
 		await generateSuccessfully(
 			agent,
 			'Correction for Orion Export: please remember that the final tracker title is exactly Orion Vendor Command Center. Orion Vendor Intake Draft is outdated and must not be treated as current. Repeat the corrected value once.',
 			{ persistence: { threadId: uniqueId('thread-orion-setup'), resourceId } },
 		);
+		await waitForEpisodicMemoryCapture();
 		await agent.close();
 
 		const result = await generateSuccessfully(
@@ -201,19 +244,20 @@ describe('episodic memory integration', () => {
 			`Please remember this Resource Alpha detail for a future conversation, then repeat it back once: the exact deployment codename is ${privateIdentifier}.`,
 			{ persistence: { threadId: uniqueId('thread-alpha'), resourceId: resourceA } },
 		);
+		await waitForEpisodicMemoryCapture();
 		await agent.close();
 
-		const alphaEntries = await memory.episodic.searchEntries(
-			scope(resourceA),
+		const alphaEntries = await searchEpisodicEntries(
+			memory,
+			resourceA,
 			'Resource Alpha deployment codename QUARTZ-RIVER-91',
-			{ topK: 5 },
 		);
 		expect(alphaEntries.length).toBeGreaterThan(0);
 
-		const betaEntries = await memory.episodic.searchEntries(
-			scope(resourceB),
+		const betaEntries = await searchEpisodicEntries(
+			memory,
+			resourceB,
 			'Resource Alpha deployment codename QUARTZ-RIVER-91',
-			{ topK: 5 },
 		);
 		expect(betaEntries).toEqual([]);
 
@@ -233,14 +277,17 @@ describe('episodic memory integration', () => {
 		await generateSuccessfully(
 			agent,
 			[
-				'These are final durable Lumen Trail details for future conversations.',
+				'IMPORTANT durable prior decision for future sessions.',
+				'Please remember these final Lumen Trail details for future conversations.',
 				'Customer: Lumen Trail.',
 				'Tracker title exactly: Lumen Trail Renewal Ledger.',
 				'Slack channel exactly: #lumen-renewals.',
 				'Owner rule exactly: Renewals Ops owns Renewal Review.',
+				'These exact details must remain source-backed to this thread.',
 			].join('\n'),
 			{ persistence: { threadId, resourceId } },
 		);
+		await waitForEpisodicMemoryCapture();
 		await agent.close();
 
 		const observations = await memory.getActiveObservationLog({
@@ -248,10 +295,10 @@ describe('episodic memory integration', () => {
 		});
 		expect(observations.length).toBeGreaterThan(0);
 
-		const entries = await memory.episodic.searchEntries(
-			scope(resourceId),
+		const entries = await searchEpisodicEntries(
+			memory,
+			resourceId,
 			'Lumen Trail Renewal Ledger #lumen-renewals Renewals Ops',
-			{ topK: 5 },
 		);
 		expect(entries.length).toBeGreaterThan(0);
 
@@ -261,11 +308,6 @@ describe('episodic memory integration', () => {
 		expect(sources.every((source) => source.evidenceText.trim().length > 0)).toBe(true);
 	});
 });
-
-let idCounter = 0;
-function uniqueId(prefix: string): string {
-	return `${prefix}-${++idCounter}`;
-}
 
 async function generateSuccessfully(
 	agent: Agent,
@@ -282,10 +324,49 @@ function scope(resourceId: string) {
 	return { resourceId };
 }
 
+async function searchEpisodicEntries(
+	memory: ReturnType<typeof createInMemoryAgentMemory>['memory'],
+	resourceId: string,
+	query: string,
+) {
+	const { embedding: queryEmbedding } = await embed({
+		model: createEmbeddingModel(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL),
+		value: query,
+	});
+	return await memory.episodic.searchEntries(scope(resourceId), query, {
+		topK: EPISODIC_MEMORY_TEST_RECALL_LIMIT,
+		queryEmbedding,
+	});
+}
+
 function toolNames(messages: Parameters<typeof findAllToolCalls>[0]): string[] {
 	return findAllToolCalls(messages).map((call) => call.toolName);
 }
 
+function resolvedToolOutput(messages: Parameters<typeof findAllToolCalls>[0], toolName: string) {
+	const toolCall = findAllToolCalls(messages).find((call) => call.toolName === toolName);
+	if (!toolCall || toolCall.state !== 'resolved') {
+		throw new Error(`${toolName} did not resolve`);
+	}
+	return toolCall.output;
+}
+
 function normalizedAnswer(messages: Parameters<typeof findLastTextContent>[0]): string {
 	return (findLastTextContent(messages) ?? '').toLowerCase();
+}
+
+function normalizedText(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9#]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+async function waitForEpisodicMemoryCapture(): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, EPISODIC_MEMORY_CAPTURE_DELAY_MS));
+}
+
+function deterministicUuid(value: number): `${string}-${string}-${string}-${string}-${string}` {
+	return `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`;
 }

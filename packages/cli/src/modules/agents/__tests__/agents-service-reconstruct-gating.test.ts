@@ -33,7 +33,6 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
-import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
@@ -85,7 +84,6 @@ function getInjectedToolNames(): string[] {
 }
 
 function makeReconstructionService(
-	agentsToolsService: AgentsToolsService,
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
@@ -112,7 +110,6 @@ function makeReconstructionService(
 		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
 		secureRuntime,
 		mock<EphemeralNodeExecutor>(),
-		agentsToolsService,
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{
@@ -145,79 +142,6 @@ function makeAgentEntity(
 	} as unknown as Agent;
 }
 
-describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — node tools gating', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-		builtAgent.hasCheckpointStorage.mockReturnValue(true);
-	});
-
-	function setup(options: { nodeToolsModuleEnabled?: boolean } = {}) {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
-		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(
-			agentsToolsService,
-			options.nodeToolsModuleEnabled ? ['node-tools-searcher'] : [],
-		);
-		return { service, agentsToolsService, credentialProvider };
-	}
-
-	it.each([
-		{
-			name: 'config.nodeTools is absent and the module is disabled',
-			nodeToolsModuleEnabled: false,
-			schemaConfig: undefined,
-			attaches: false,
-		},
-		{
-			name: 'config.nodeTools is absent and the module is enabled',
-			nodeToolsModuleEnabled: true,
-			schemaConfig: undefined,
-			attaches: false,
-		},
-		{
-			name: 'config.nodeTools.enabled is true but the module is disabled',
-			nodeToolsModuleEnabled: false,
-			schemaConfig: { nodeTools: { enabled: true } },
-			attaches: false,
-		},
-		{
-			name: 'config.nodeTools.enabled is true and the module is enabled',
-			nodeToolsModuleEnabled: true,
-			schemaConfig: { nodeTools: { enabled: true } },
-			attaches: true,
-		},
-		{
-			name: 'config.nodeTools.enabled is false and the module is disabled',
-			nodeToolsModuleEnabled: false,
-			schemaConfig: { nodeTools: { enabled: false } },
-			attaches: false,
-		},
-		{
-			name: 'config.nodeTools.enabled is false and the module is enabled',
-			nodeToolsModuleEnabled: true,
-			schemaConfig: { nodeTools: { enabled: false } },
-			attaches: false,
-		},
-	])('$name', async ({ nodeToolsModuleEnabled, schemaConfig, attaches }) => {
-		const { service, agentsToolsService, credentialProvider } = setup({
-			nodeToolsModuleEnabled,
-		});
-		const entity = makeAgentEntity(schemaConfig);
-
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
-
-		if (attaches) {
-			expect(agentsToolsService.getRuntimeTools).toHaveBeenCalledWith(
-				credentialProvider,
-				'project-1',
-			);
-		} else {
-			expect(agentsToolsService.getRuntimeTools).not.toHaveBeenCalled();
-		}
-	});
-});
-
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP wiring', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -234,10 +158,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 	});
 
 	function setup() {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService);
+		const service = makeReconstructionService();
 		return { service, credentialProvider };
 	}
 
@@ -285,10 +207,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	function setup() {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService);
+		const service = makeReconstructionService();
 		return { service, credentialProvider };
 	}
 
@@ -371,10 +291,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('uses the shared default maxChildren when config does not override it', async () => {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, []);
+		const service = makeReconstructionService();
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
@@ -384,10 +302,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('uses subAgents.maxChildren over the SDK default', async () => {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, []);
+		const service = makeReconstructionService();
 		const entity = makeAgentEntity(undefined, { subAgents: { maxChildren: 2 } });
 
 		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
@@ -398,8 +314,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('passes saved sub-agent useWhen guidance into delegate tool metadata', async () => {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
@@ -407,7 +321,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
 		} as Agent);
-		const service = makeReconstructionService(agentsToolsService, [], { agentRepository });
+		const service = makeReconstructionService([], { agentRepository });
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
 				agents: [
@@ -431,8 +345,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
 			if (credentialId === 'low-cred') {
@@ -443,7 +355,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			}
 			throw new Error(`unexpected credential ${credentialId}`);
 		});
-		const service = makeReconstructionService(agentsToolsService, []);
+		const service = makeReconstructionService();
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
 				modelsByDifficulty: {
@@ -469,8 +381,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('resolves inline child provider tools for the child model provider', async () => {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
 			if (credentialId === 'high-cred') {
@@ -478,7 +388,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			}
 			throw new Error(`unexpected credential ${credentialId}`);
 		});
-		const service = makeReconstructionService(agentsToolsService, []);
+		const service = makeReconstructionService();
 		const entity = makeAgentEntity(
 			{ webSearch: { enabled: true } },
 			{
@@ -505,10 +415,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('omits inlineSubAgentModelsByDifficulty when no difficulty mappings are configured', async () => {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, []);
+		const service = makeReconstructionService();
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
@@ -533,10 +441,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 	});
 
 	function setup() {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService);
+		const service = makeReconstructionService();
 		return { service, credentialProvider };
 	}
 
@@ -595,10 +501,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 		};
 		const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		n8nCheckpointStorage.getStorage.mockReturnValue(scopedStorage);
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, [], { n8nCheckpointStorage });
+		const service = makeReconstructionService([], { n8nCheckpointStorage });
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
@@ -615,10 +519,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 	});
 
 	it('does not inject top-level integration context/action tools', async () => {
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService);
+		const service = makeReconstructionService();
 
 		const config: AgentJsonConfig = {
 			name: 'Child',

@@ -9,9 +9,13 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from '@n8n/api-types';
 
-import type { AgentJsonConfig } from '../types';
+import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
+import type { AgentJsonConfig, AgentResource } from '../types';
 import type { AgentModelSelection } from '../model-providers';
 
+const ensureLoadedMock = vi.fn();
+const projectAgentsListRef = ref<AgentResource[] | null>([]);
+const openModalWithDataMock = vi.fn();
 const showErrorMock = vi.fn();
 const ensureModelCatalogLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
@@ -34,8 +38,11 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
-				'agents.builder.subAgents.settings.title': 'Sub-agent settings',
-				'agents.builder.subAgents.settings.description': 'Sub-agent settings description',
+				'agents.builder.subAgents.title': 'Sub-agents',
+				'agents.builder.subAgents.description': 'Sub-agents description',
+				'agents.builder.subAgents.add': 'Add agent',
+				'agents.builder.subAgents.loadError': 'Could not load project agents',
+				'agents.builder.subAgents.remove': 'Remove {name}',
 				'agents.builder.subAgents.maxChildren.label': 'Max parallel sub-agents',
 				'agents.builder.subAgents.maxChildren.hint': 'Max children hint',
 				'agents.builder.subAgents.modelsByDifficulty.title': 'Inline sub-agent models',
@@ -52,6 +59,13 @@ vi.mock('@n8n/i18n', () => ({
 				'credentials.noResults': 'No credentials',
 				error: 'Error',
 			})[key] ?? key,
+	}),
+}));
+
+vi.mock('../composables/useProjectAgentsList', () => ({
+	useProjectAgentsList: () => ({
+		list: projectAgentsListRef,
+		ensureLoaded: ensureLoadedMock,
 	}),
 }));
 
@@ -103,6 +117,10 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
 }));
 
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openModalWithData: openModalWithDataMock }),
+}));
+
 vi.mock('../components/AgentModelSelector.vue', () => ({
 	default: {
 		name: 'AgentModelSelector',
@@ -129,6 +147,11 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nCard: {
+		template: '<div><slot name="prepend" /><slot /><slot name="append" /></div>',
+		props: ['variant'],
+	},
+	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 	N8nIconButton: {
 		template: '<button :disabled="disabled" v-bind="$attrs"><slot /></button>',
 		props: ['disabled', 'ariaLabel', 'icon', 'variant', 'size', 'iconSize'],
@@ -139,9 +162,16 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<input :value="modelValue" :disabled="disabled" :min="min" :max="max" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
+	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
+
+const publishedSubAgent: AgentResource = {
+	id: 'agent-2',
+	name: 'Helper Agent',
+	activeVersionId: 'version-2',
+} as AgentResource;
 
 const defaultConfig: AgentJsonConfig = {
 	name: 'Agent',
@@ -159,6 +189,7 @@ async function mountPanel(
 			config,
 			disabled: options.disabled ?? false,
 			projectId: 'project-1',
+			agentId: 'agent-1',
 		},
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
@@ -187,10 +218,12 @@ describe('AgentSubAgentsPanel', () => {
 		vi.clearAllMocks();
 		agentModelSelectorChangeHandlers.clear();
 		agentModelSelectorCredentialHandlers.clear();
+		projectAgentsListRef.value = [];
 		credentialsByProviderRef.value = {
 			anthropic: 'anthropic-cred',
 			openai: 'openai-cred',
 		};
+		ensureLoadedMock.mockResolvedValue([]);
 		ensureModelCatalogLoadedMock.mockResolvedValue(undefined);
 	});
 
@@ -407,7 +440,81 @@ describe('AgentSubAgentsPanel', () => {
 		expect(selectCredentialMock).not.toHaveBeenCalled();
 	});
 
-	it('does not render selected sub-agent list controls in the settings panel', async () => {
+	it('opens the sub-agents modal after project agents load successfully', async () => {
+		projectAgentsListRef.value = [publishedSubAgent];
+		const wrapper = await mountPanel();
+		await flushPromises();
+		const callsAfterMount = ensureLoadedMock.mock.calls.length;
+
+		await wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').trigger('click');
+		await flushPromises();
+
+		expect(ensureLoadedMock.mock.calls.length).toBe(callsAfterMount + 1);
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					agents: [{ id: 'agent-2', name: 'Helper Agent' }],
+				}),
+			}),
+		);
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('shows an error toast and does not open the modal when project agents fail to load', async () => {
+		const wrapper = await mountPanel();
+		await flushPromises();
+		const callsAfterMount = ensureLoadedMock.mock.calls.length;
+
+		const loadError = new Error('network');
+		ensureLoadedMock.mockRejectedValueOnce(loadError);
+
+		await wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').trigger('click');
+		await flushPromises();
+
+		expect(ensureLoadedMock.mock.calls.length).toBe(callsAfterMount + 1);
+		expect(showErrorMock).toHaveBeenCalledWith(loadError, 'Could not load project agents');
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+	});
+
+	it('emits update:config when the modal confirms an added agent with useWhen guidance', async () => {
+		projectAgentsListRef.value = [publishedSubAgent];
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: { maxChildren: 7 },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').trigger('click');
+		await flushPromises();
+
+		const modalCall = openModalWithDataMock.mock.calls[0]?.[0] as {
+			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
+		};
+		modalCall.data.onConfirm({
+			agentId: 'agent-2',
+			useWhen: 'Use for billing escalations.',
+		});
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+				},
+			},
+		]);
+	});
+
+	it('removes a selected sub-agent and preserves the remaining refs and maxChildren', async () => {
+		projectAgentsListRef.value = [
+			publishedSubAgent,
+			{
+				id: 'agent-3',
+				name: 'Other Agent',
+				activeVersionId: 'version-3',
+			} as AgentResource,
+		];
 		const wrapper = await mountPanel({
 			...defaultConfig,
 			subAgents: {
@@ -420,10 +527,65 @@ describe('AgentSubAgentsPanel', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-sub-agent-row"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-sub-agent-remove"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-sub-agents-max-children-input"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(true);
+		const rows = wrapper.findAll('[data-testid="agent-sub-agent-row"]');
+		expect(rows).toHaveLength(2);
+
+		const removeButtons = wrapper.findAll('[data-testid="agent-sub-agent-remove"]');
+		expect(removeButtons).toHaveLength(2);
+		await removeButtons[0].trigger('click');
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 6,
+					agents: [{ agentId: 'agent-3', useWhen: 'Use for research tasks.' }],
+				},
+			},
+		]);
+	});
+
+	it('opens the configure modal for an existing sub-agent and updates useWhen', async () => {
+		projectAgentsListRef.value = [publishedSubAgent];
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				maxChildren: 6,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+			},
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-sub-agent-row"]').trigger('click');
+
+		const modalCall = openModalWithDataMock.mock.calls[0]?.[0] as {
+			data: {
+				selectedAgent: { id: string; name: string };
+				useWhen?: string;
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
+			};
+		};
+		expect(modalCall).toEqual(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					selectedAgent: { id: 'agent-2', name: 'Helper Agent' },
+					useWhen: 'Use for billing escalations.',
+				}),
+			}),
+		);
+
+		modalCall.data.onConfirm({
+			agentId: 'agent-2',
+			useWhen: 'Use for invoices and payment status.',
+		});
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 6,
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for invoices and payment status.' }],
+				},
+			},
+		]);
 	});
 });

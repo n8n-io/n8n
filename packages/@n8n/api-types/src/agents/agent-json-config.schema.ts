@@ -304,11 +304,6 @@ export const AgentJsonConfigSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
-			nodeTools: z
-				.object({
-					enabled: z.boolean(),
-				})
-				.optional(),
 		})
 		.optional(),
 });
@@ -361,8 +356,4 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
-}
-
-export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
-	return config?.nodeTools?.enabled === true;
 }

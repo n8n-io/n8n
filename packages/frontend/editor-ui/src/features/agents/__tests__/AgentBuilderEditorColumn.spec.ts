@@ -76,7 +76,7 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 	default: {
 		name: 'AgentSubAgentsPanel',
 		template: '<div data-testid="agent-sub-agents-panel-stub" />',
-		props: ['config', 'disabled', 'projectId'],
+		props: ['config', 'disabled', 'projectId', 'agentId'],
 		emits: ['update:config'],
 	},
 }));
@@ -157,5 +157,6 @@ describe('AgentBuilderEditorColumn', () => {
 		});
 		expect(panel.props('disabled')).toBe(false);
 		expect(panel.props('projectId')).toBe('project-1');
+		expect(panel.props('agentId')).toBe('agent-1');
 	});
 });

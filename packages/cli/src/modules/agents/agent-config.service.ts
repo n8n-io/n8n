@@ -1,13 +1,11 @@
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
-	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UserError, type INodeParameters } from 'n8n-workflow';
 
@@ -34,14 +32,9 @@ export class AgentConfigService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentSkillsService: AgentSkillsService,
-		private readonly agentsConfig: AgentsConfig,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 	) {}
-
-	private isNodeToolsModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('node-tools-searcher');
-	}
 
 	/**
 	 * Get the JSON config for an agent.
@@ -73,14 +66,6 @@ export class AgentConfigService {
 		}
 
 		const config = parsed.data;
-
-		if (isNodeToolsEnabled(config.config) && !this.isNodeToolsModuleEnabled()) {
-			return {
-				valid: false,
-				error:
-					'config.nodeTools.enabled requires the node-tools-searcher agents module to be enabled.',
-			};
-		}
 
 		try {
 			this.validateNodeToolExpressions(config);

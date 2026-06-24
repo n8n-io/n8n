@@ -70,6 +70,16 @@ export class PublicApiHelper {
 		return apiKeyData;
 	}
 
+	/** Delete an API key by id. Emits the `n8n.audit.user.api.deleted` audit event. */
+	async deleteApiKey(id: string): Promise<void> {
+		const response = await this.api.request.delete(`/rest/api-keys/${id}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to delete API key "${id}": ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
 	private async ensureApiKey(): Promise<string> {
 		if (!this.apiKey) {
 			await this.createApiKey();

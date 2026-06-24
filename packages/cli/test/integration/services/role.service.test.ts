@@ -19,7 +19,7 @@ import {
 	createTestScopes,
 	cleanupRolesAndScopes,
 } from '../shared/db/roles';
-import { createMember } from '../shared/db/users';
+import { createMember, createUser } from '../shared/db/users';
 
 let roleService: RoleService;
 let roleRepository: RoleRepository;
@@ -487,6 +487,56 @@ describe('RoleService', () => {
 			//
 			await expect(roleService.getRole(nonExistentSlug)).rejects.toThrow(NotFoundError);
 			await expect(roleService.getRole(nonExistentSlug)).rejects.toThrow('Role not found');
+		});
+	});
+
+	describe('getRoleMembers', () => {
+		it('should return members and total for a global role', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				roleType: 'global',
+				displayName: 'Global Members Role',
+			});
+			const user1 = await createUser({ role: globalRole });
+			const user2 = await createUser({ role: globalRole });
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRoleMembers(globalRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result.total).toBe(2);
+			expect(result.members).toEqual(
+				expect.arrayContaining(
+					[user1, user2].map((u) =>
+						expect.objectContaining({ userId: u.id, email: u.email, role: globalRole.slug }),
+					),
+				),
+			);
+		});
+
+		it('should throw NotFoundError when the role does not exist', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.getRoleMembers('non-existent-role')).rejects.toThrow(NotFoundError);
+		});
+
+		it('should throw BadRequestError when the role is not a global role', async () => {
+			//
+			// ARRANGE
+			//
+			const projectRole = await createRole({ roleType: 'project' });
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.getRoleMembers(projectRole.slug)).rejects.toThrow(BadRequestError);
 		});
 	});
 
