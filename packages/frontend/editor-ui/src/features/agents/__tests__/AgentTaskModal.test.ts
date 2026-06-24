@@ -229,12 +229,18 @@ describe('AgentTaskModal', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date('2026-01-01T13:00:00.000Z'));
 		rootStoreMock.timezone = 'America/New_York';
+		const browserTimezone = 'UTC';
+		const originalResolvedOptions = new Intl.DateTimeFormat().resolvedOptions();
+		vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
+			...originalResolvedOptions,
+			timeZone: browserTimezone,
+		});
 
 		const { getByText } = renderModal({ task: makeTask({ cronExpression: '0 9 * * *' }) });
 
 		const nextRunInUserTimezone = formatScheduleDateTime(
 			new Date('2026-01-01T14:00:00.000Z'),
-			Intl.DateTimeFormat().resolvedOptions().timeZone,
+			browserTimezone,
 		);
 		expect(
 			getByText(`agents.builder.tasks.schedule.nextOccurrence ${nextRunInUserTimezone}`),

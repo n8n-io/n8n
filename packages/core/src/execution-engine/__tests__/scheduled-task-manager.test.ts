@@ -58,8 +58,16 @@ describe('ScheduledTaskManager', () => {
 
 	it('should throw when cron expression is invalid', () => {
 		expect(() =>
-			//@ts-expect-error invalid cron expression is a type-error
-			scheduledTaskManager.registerCron(workflow, 'invalid-cron-expression', onTick),
+			scheduledTaskManager.registerCron(
+				{
+					workflowId: workflow.id,
+					nodeId: 'test-node-id',
+					timezone: workflow.timezone,
+					// @ts-expect-error invalid cron expression is a type-error
+					expression: 'invalid-cron-expression',
+				},
+				onTick,
+			),
 		).toThrow();
 	});
 

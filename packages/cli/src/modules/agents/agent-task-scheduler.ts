@@ -29,4 +29,20 @@ export class AgentTaskScheduler {
 	deregister(agentId: string, taskId: string): void {
 		this.cronRegistry.deregisterTarget(AGENT_TASK_CRON_NAMESPACE, agentId, taskId);
 	}
+
+	getTaskIds(agentId: string): string[] {
+		return this.cronRegistry.getTargetIds(AGENT_TASK_CRON_NAMESPACE, agentId);
+	}
+
+	hasTask(agentId: string, taskId: string): boolean {
+		return this.getTaskIds(agentId).includes(taskId);
+	}
+
+	deregisterAgent(agentId: string): boolean {
+		return this.cronRegistry.deregisterOwner(AGENT_TASK_CRON_NAMESPACE, agentId);
+	}
+
+	deregisterAll(): void {
+		this.cronRegistry.deregisterNamespace(AGENT_TASK_CRON_NAMESPACE);
+	}
 }

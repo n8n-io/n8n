@@ -36,6 +36,37 @@ describe('AgentTaskScheduler', () => {
 		expect(cronRegistry.deregisterTarget).toHaveBeenCalledWith('agent-task', 'agent-1', 'task-1');
 	});
 
+	it('gets task ids registered for an agent', () => {
+		cronRegistry.getTargetIds.mockReturnValue(['task-1', 'task-2']);
+
+		const taskIds = scheduler.getTaskIds('agent-1');
+
+		expect(taskIds).toEqual(['task-1', 'task-2']);
+		expect(cronRegistry.getTargetIds).toHaveBeenCalledWith('agent-task', 'agent-1');
+	});
+
+	it('checks whether a task is registered for an agent', () => {
+		cronRegistry.getTargetIds.mockReturnValue(['task-1']);
+
+		expect(scheduler.hasTask('agent-1', 'task-1')).toBe(true);
+		expect(scheduler.hasTask('agent-1', 'task-2')).toBe(false);
+	});
+
+	it('deregisters all task crons for an agent', () => {
+		cronRegistry.deregisterOwner.mockReturnValue(true);
+
+		const deregistered = scheduler.deregisterAgent('agent-1');
+
+		expect(deregistered).toBe(true);
+		expect(cronRegistry.deregisterOwner).toHaveBeenCalledWith('agent-task', 'agent-1');
+	});
+
+	it('deregisters all task crons in the agent-task namespace', () => {
+		scheduler.deregisterAll();
+
+		expect(cronRegistry.deregisterNamespace).toHaveBeenCalledWith('agent-task');
+	});
+
 	it('returns false when the cron registry skips a duplicate registration', () => {
 		cronRegistry.register.mockReturnValue(false);
 

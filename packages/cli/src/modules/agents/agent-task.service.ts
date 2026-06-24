@@ -46,9 +46,6 @@ const TASK_RUN_LOCK_RENEW_MS = 60 * 1000;
  */
 @Service()
 export class AgentTaskService {
-	/** Live task schedules keyed by taskId; the agentId is kept so a whole agent's schedules can be stopped. */
-	private readonly registeredTasks = new Map<string, { agentId: string }>();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
@@ -232,10 +229,12 @@ export class AgentTaskService {
 
 	/** Stop all cron jobs belonging to an agent — called on unpublish/agent delete. */
 	deregisterAgentTasks(agentId: string): void {
-		const taskIds = [...this.registeredTasks.entries()]
-			.filter(([, entry]) => entry.agentId === agentId)
-			.map(([taskId]) => taskId);
-		for (const taskId of taskIds) this.deregister(taskId);
+		const taskIds = this.agentTaskScheduler.getTaskIds(agentId);
+		if (!this.agentTaskScheduler.deregisterAgent(agentId)) return;
+
+		for (const taskId of taskIds) {
+			this.logger.info('[AgentTaskService] Deregistered task', { taskId });
+		}
 	}
 
 	@OnLeaderTakeover()
@@ -260,9 +259,7 @@ export class AgentTaskService {
 	@OnLeaderStepdown()
 	@OnShutdown()
 	stopAll(): void {
-		for (const taskId of [...this.registeredTasks.keys()]) {
-			this.deregister(taskId);
-		}
+		this.agentTaskScheduler.deregisterAll();
 	}
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
@@ -283,8 +280,8 @@ export class AgentTaskService {
 		);
 		const enabledIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
 
-		for (const [taskId, entry] of this.registeredTasks.entries()) {
-			if (entry.agentId === agent.id && !enabledIds.has(taskId)) this.deregister(taskId);
+		for (const taskId of this.agentTaskScheduler.getTaskIds(agent.id)) {
+			if (!enabledIds.has(taskId)) this.deregister(agent.id, taskId);
 		}
 
 		if (enabledIds.size === 0) return;
@@ -299,11 +296,11 @@ export class AgentTaskService {
 	private registerOrRefresh(taskId: string, agentId: string, cronExpression: string): void {
 		if (!isValidCronExpression(cronExpression)) {
 			this.logger.warn('[AgentTaskService] Skipping task with invalid cron', { taskId });
-			this.deregister(taskId);
+			this.deregister(agentId, taskId);
 			return;
 		}
 
-		this.deregister(taskId);
+		this.deregister(agentId, taskId);
 
 		const timezone = this.globalConfig.generic.timezone;
 		const registered = this.agentTaskScheduler.register(
@@ -312,12 +309,11 @@ export class AgentTaskService {
 			cronExpression,
 			timezone,
 			() => {
-				void this.runScheduledTask(taskId);
+				void this.runScheduledTask(agentId, taskId);
 			},
 		);
 		if (!registered) return;
 
-		this.registeredTasks.set(taskId, { agentId });
 		this.logger.info('[AgentTaskService] Registered task', {
 			taskId,
 			agentId,
@@ -326,23 +322,16 @@ export class AgentTaskService {
 		});
 	}
 
-	private deregister(taskId: string): void {
-		const existing = this.registeredTasks.get(taskId);
-		if (!existing) return;
-		this.agentTaskScheduler.deregister(existing.agentId, taskId);
-		this.registeredTasks.delete(taskId);
+	private deregister(agentId: string, taskId: string): void {
+		if (!this.agentTaskScheduler.hasTask(agentId, taskId)) return;
+
+		this.agentTaskScheduler.deregister(agentId, taskId);
 		this.logger.info('[AgentTaskService] Deregistered task', { taskId });
 	}
 
 	// ── Run ───────────────────────────────────────────────────────────────
 
-	private async runScheduledTask(taskId: string): Promise<void> {
-		const agentId = this.registeredTasks.get(taskId)?.agentId;
-		if (!agentId) {
-			await this.runTask(taskId);
-			return;
-		}
-
+	private async runScheduledTask(agentId: string, taskId: string): Promise<void> {
 		const holderId = randomUUID();
 		let lock: AgentTaskRunLockHandle | null = null;
 		let renewInterval: ReturnType<typeof setInterval> | undefined;
@@ -360,7 +349,7 @@ export class AgentTaskService {
 			}
 
 			renewInterval = this.startTaskRunLockRenewal(lock);
-			await this.runTask(taskId);
+			await this.runTask(agentId, taskId);
 		} catch (error) {
 			this.logger.error('[AgentTaskService] Scheduled task lock failed', {
 				taskId,
@@ -403,24 +392,16 @@ export class AgentTaskService {
 		}, TASK_RUN_LOCK_RENEW_MS);
 	}
 
-	private async runTask(taskId: string): Promise<void> {
-		// agentId comes from the live job entry (set at registration), so a task
-		// whose draft row was deleted but is still published keeps running.
-		const agentId = this.registeredTasks.get(taskId)?.agentId;
+	private async runTask(agentId: string, taskId: string): Promise<void> {
 		let projectId: string | undefined;
 
 		try {
-			if (!agentId) {
-				this.deregister(taskId);
-				return;
-			}
-
 			const agent = await this.agentRepository.findOne({
 				where: { id: agentId },
 				relations: { activeVersion: true },
 			});
 			if (!agent) {
-				this.deregister(taskId);
+				this.deregister(agentId, taskId);
 				return;
 			}
 			projectId = agent.projectId;
@@ -430,7 +411,7 @@ export class AgentTaskService {
 					taskId,
 					agentId,
 				});
-				this.deregister(taskId);
+				this.deregister(agentId, taskId);
 				return;
 			}
 			// Body comes from the PUBLISHED snapshot row, so name/objective/cron
@@ -444,7 +425,7 @@ export class AgentTaskService {
 					taskId,
 					agentId,
 				});
-				this.deregister(taskId);
+				this.deregister(agentId, taskId);
 				return;
 			}
 
