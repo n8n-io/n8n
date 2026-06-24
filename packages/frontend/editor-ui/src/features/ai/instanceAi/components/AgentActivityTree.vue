@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useElementHover } from '@vueuse/core';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
-import { computed, toRef, useTemplateRef } from 'vue';
+import { computed, toRef } from 'vue';
 import type { ArtifactInfo } from '../agentTimeline.utils';
 import { useThread } from '../instanceAi.store';
 import { useTimelineGrouping } from '../useTimelineGrouping';
@@ -13,6 +12,8 @@ import AgentTimeline from './AgentTimeline.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ResponseGroup from './ResponseGroup.vue';
+import TimelineStepButton from './TimelineStepButton.vue';
+import TimelineStepChevron from './TimelineStepChevron.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -28,8 +29,6 @@ const i18n = useI18n();
 const thread = useThread();
 
 const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
-const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
-const isHovered = useElementHover(triggerRef);
 
 const segments = useTimelineGrouping(toRef(props, 'agentNode'));
 
@@ -57,18 +56,17 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 	<!-- Reasoning (collapsible, root agent only) -->
 	<CollapsibleRoot v-if="isRoot && hasReasoning" v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
-			<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.reasoningTrigger">
+			<TimelineStepButton>
 				<template #icon>
-					<template v-if="isHovered">
-						<N8nIcon :icon="isOpen ? 'minus' : 'plus'" size="small" />
-					</template>
-					<N8nIcon v-else icon="brain" size="small" />
+					<TimelineStepChevron :open="isOpen" />
 				</template>
 				{{ i18n.baseText('instanceAi.message.reasoning') }}
-			</N8nButton>
+			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<AnimatedCollapsibleContent>
-			<N8nText tag="div" :class="$style.reasoningContent">{{ props.agentNode.reasoning }}</N8nText>
+		<AnimatedCollapsibleContent :class="$style.reasoningPanel">
+			<div :class="$style.reasoningScroll">
+				<span :class="$style.reasoningContent">{{ props.agentNode.reasoning }}</span>
+			</div>
 		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 
@@ -108,15 +106,6 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 </template>
 
 <style lang="scss" module>
-.reasoningTrigger {
-	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
-
-	padding-inline: 0;
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-2);
-}
-
 .artifactCard {
 	max-width: 90%;
 	margin: var(--spacing--sm) 0;
@@ -126,10 +115,32 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 	}
 }
 
+.reasoningPanel {
+	padding-left: var(--spacing--2xs);
+	border-left: var(--border);
+	margin-left: var(--spacing--xs);
+	max-width: 90%;
+	min-width: 0;
+	overflow-x: hidden;
+}
+
+.reasoningScroll {
+	margin-top: var(--spacing--2xs);
+	max-height: 200px;
+	overflow-x: hidden;
+	overflow-y: auto;
+	padding-bottom: var(--spacing--2xs);
+	scrollbar-width: thin;
+	scrollbar-color: light-dark(var(--color--neutral-300), var(--color--neutral-700)) transparent;
+}
+
 .reasoningContent {
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	border-left: 2px solid var(--color--foreground);
-	margin-left: var(--spacing--4xs);
-	color: var(--color--text--tint-2);
+	display: block;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	color: var(--color--text--tint-1);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 </style>
