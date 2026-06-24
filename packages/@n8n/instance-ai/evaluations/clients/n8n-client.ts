@@ -16,6 +16,7 @@ import type {
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
+import { Agent } from 'undici';
 import { z } from 'zod';
 
 // -- Conversation seeding response shapes -------------------------------------
@@ -29,6 +30,9 @@ const RestoreThreadEnvelope = z.object({
 		dataTableIds: z.array(z.string()).default([]),
 	}),
 });
+
+// undici's default 300s headersTimeout otherwise pre-empts our own per-call AbortSignal timeout on slow mock executions.
+const longExecDispatcher = new Agent({ headersTimeout: 0, bodyTimeout: 0 });
 
 // ---------------------------------------------------------------------------
 // Computer-use gateway response shapes (Zod-validated to keep the client
@@ -638,12 +642,17 @@ export class N8nClient {
 
 		const method = options.method ?? 'GET';
 
-		const res = await fetch(`${this.baseUrl}${path}`, {
+		const init: RequestInit = {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
-			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
-		});
+		};
+		if (options.timeoutMs) {
+			init.signal = AbortSignal.timeout(options.timeoutMs);
+			// undici 'dispatcher' extension (absent from RequestInit types here) disables its 300s headersTimeout so our AbortSignal is the real cap.
+			Object.assign(init, { dispatcher: longExecDispatcher });
+		}
+		const res = await fetch(`${this.baseUrl}${path}`, init);
 
 		if (!res.ok) {
 			const text = await res.text();
