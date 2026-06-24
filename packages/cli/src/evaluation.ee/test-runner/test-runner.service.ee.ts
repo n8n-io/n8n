@@ -290,6 +290,7 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
+			evaluationRunId: metadata.testRunId,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -305,6 +306,7 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
+					evaluationRunId: metadata.testRunId,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},

@@ -783,6 +783,7 @@ describe('TestRunnerService', () => {
 					},
 					userId: metadata.userId,
 					forceFullExecutionData: true,
+					evaluationRunId: metadata.testRunId,
 					triggerToStartFrom: {
 						name: triggerNodeName,
 					},
@@ -931,6 +932,7 @@ describe('TestRunnerService', () => {
 							},
 						},
 						userId: metadata.userId,
+						evaluationRunId: metadata.testRunId,
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
@@ -945,6 +947,7 @@ describe('TestRunnerService', () => {
 								},
 								manualData: {
 									userId: metadata.userId,
+									evaluationRunId: metadata.testRunId,
 									triggerToStartFrom: {
 										name: triggerNodeName,
 									},
