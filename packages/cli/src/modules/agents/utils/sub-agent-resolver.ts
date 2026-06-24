@@ -1,7 +1,7 @@
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-export type SubAgentConfigRef = { agentId: string; useWhen: string };
+export type SubAgentConfigRef = { agentId: string; useWhen?: string };
 
 export type ResolvedSubAgentRef = SubAgentConfigRef & { agent: Agent | null };
 
@@ -20,11 +20,14 @@ export async function resolveUniqueSubAgents({
 		const { agentId } = ref;
 		if (seen.has(agentId)) continue;
 		seen.add(agentId);
-		resolved.push({
+		const resolvedRef: ResolvedSubAgentRef = {
 			agentId,
-			useWhen: ref.useWhen,
 			agent: await agentRepository.findByIdAndProjectId(agentId, projectId),
-		});
+		};
+		if (ref.useWhen !== undefined) {
+			resolvedRef.useWhen = ref.useWhen;
+		}
+		resolved.push(resolvedRef);
 	}
 	return resolved;
 }

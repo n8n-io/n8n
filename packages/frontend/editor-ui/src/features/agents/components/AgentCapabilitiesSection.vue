@@ -111,20 +111,14 @@ const availableSubAgents = computed(() =>
 	),
 );
 const selectedSubAgents = computed(() =>
-	selectedSubAgentRefs.value
-		.map(({ agentId, useWhen }) => {
-			if (useWhen === undefined) return null;
-
-			const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
-			return {
-				id: agentId,
-				name: agent?.name ?? agentId,
-				useWhen,
-			};
-		})
-		.filter(
-			(subAgent): subAgent is { id: string; name: string; useWhen: string } => subAgent !== null,
-		),
+	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
+		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
+		return {
+			id: agentId,
+			name: agent?.name ?? agentId,
+			useWhen: useWhen ?? '',
+		};
+	}),
 );
 const hasSubAgents = computed(() => selectedSubAgents.value.length > 0);
 const taskBodies = ref<AgentTaskDto[]>([]);

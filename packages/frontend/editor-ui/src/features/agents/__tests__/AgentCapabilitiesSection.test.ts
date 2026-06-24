@@ -484,6 +484,67 @@ describe('AgentCapabilitiesSection', () => {
 		]);
 	});
 
+	it('keeps legacy sub-agent refs without useWhen editable and removable', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: '',
+			instructions: '',
+			tools: [],
+			subAgents: {
+				maxChildren: 7,
+				agents: [{ agentId: 'agent-2' }],
+			},
+		};
+		const wrapper = mountSection([], {}, config, [], [makeAgent()]);
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Helper Agent');
+		expect(wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]').length).toBe(1);
+
+		await wrapper.find('[data-testid="agent-capabilities-sub-agent-row"]').trigger('click');
+
+		expect(openModalWithDataSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					selectedAgent: { id: 'agent-2', name: 'Helper Agent' },
+					useWhen: '',
+				}),
+			}),
+		);
+
+		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
+			data: {
+				onConfirm: (payload: { agentId: string; useWhen: string }) => void;
+				onRemove: (agentId: string) => void;
+			};
+		};
+		modalCall.data.onConfirm({
+			agentId: 'agent-2',
+			useWhen: 'Use for billing support requests.',
+		});
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' }],
+				},
+			},
+		]);
+
+		modalCall.data.onRemove('agent-2');
+
+		expect(wrapper.emitted('update:config')?.[1]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [],
+				},
+			},
+		]);
+	});
+
 	it('renders task chips from task refs and fetched bodies', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeTask()]);
 

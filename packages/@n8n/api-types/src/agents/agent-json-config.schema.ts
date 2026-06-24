@@ -79,7 +79,8 @@ const SubAgentConfigSchema = z
 			.string()
 			.trim()
 			.min(SUB_AGENT_USE_WHEN_MIN_LENGTH)
-			.max(SUB_AGENT_USE_WHEN_MAX_LENGTH),
+			.max(SUB_AGENT_USE_WHEN_MAX_LENGTH)
+			.optional(),
 	})
 	.strict();
 

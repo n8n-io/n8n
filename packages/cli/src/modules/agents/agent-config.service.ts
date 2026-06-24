@@ -294,7 +294,10 @@ export class AgentConfigService {
 			});
 			config.subAgents.agents = resolvedSubAgents
 				.filter(({ agent }) => agent !== null)
-				.map(({ agentId, useWhen }) => ({ agentId, useWhen }));
+				.map(({ agentId, useWhen }) => ({
+					agentId,
+					...(useWhen ? { useWhen } : {}),
+				}));
 			return resolvedSubAgents;
 		}
 

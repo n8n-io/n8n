@@ -71,7 +71,7 @@ export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; useWhen: string }>;
+	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
 }
 
 export interface ReconstructAgentRuntimeParams {
@@ -301,7 +301,7 @@ export class AgentRuntimeReconstructionService {
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,
-				useWhen,
+				...(useWhen ? { useWhen } : {}),
 			});
 		}
 

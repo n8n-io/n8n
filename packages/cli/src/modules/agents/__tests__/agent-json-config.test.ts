@@ -91,12 +91,12 @@ describe('isNodeToolsEnabled', () => {
 });
 
 describe('AgentJsonConfigSchema — subAgents', () => {
-	it('rejects saved agent references without useWhen routing guidance', () => {
+	it('accepts legacy saved agent references without useWhen routing guidance', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			subAgents: { agents: [{ agentId: 'agent-1' }] },
 		});
-		expect(parsed.success).toBe(false);
+		expect(parsed.success).toBe(true);
 	});
 
 	it('accepts saved agent references with useWhen routing guidance', () => {
