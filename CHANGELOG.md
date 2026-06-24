@@ -1,3 +1,16 @@
+## [2.28.1](https://github.com/n8n-io/n8n/compare/n8n@2.28.0...n8n@2.28.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* **core:** Verify Instance AI workflows before setup ([#32918](https://github.com/n8n-io/n8n/issues/32918)) ([1fcd8e5](https://github.com/n8n-io/n8n/commit/1fcd8e5e23e8a72ccbb205df587462447cbe9fc9))
+
+
+### Features
+
+* **core:** Fix building incorrect chained nodes ([#32855](https://github.com/n8n-io/n8n/issues/32855)) ([a6a1aad](https://github.com/n8n-io/n8n/commit/a6a1aad22b4cbcd952da67dd809520ebae9112a1))
+
+
 # [2.28.0](https://github.com/n8n-io/n8n/compare/n8n@2.27.0...n8n@2.28.0) (2026-06-23)
 
 
