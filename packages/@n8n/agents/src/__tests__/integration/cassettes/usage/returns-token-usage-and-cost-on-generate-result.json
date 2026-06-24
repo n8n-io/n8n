@@ -1,0 +1,56 @@
+[
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-4o-mini",
+			"input": [
+				{
+					"role": "system",
+					"content": "Be concise."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Say hello"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1b2e06001c07762c637abeb1155cb64c57d37c994f4215a6f925582a4a45af414414fab68e42575fabdf4f6762a35c8471477fc3608115907a1720195790e82b5c6d9cad0e71de0d4a19845cecdf7ca3da0330f31208a55559cc8e95280ab688989958168977364da4148a6d9e4bcf98c45625328f109ea381665391af2ab32e9f92590191cb48883c55995c7de07688b8ce031773907c1545bf219f2a57ec392dc7c15c3caf01a931c41bc0ecdeeee352824333c6bbdc88d4e5e8ae80143af8c659501e398a9b6bed12e164ddde9c04930ce175ff9481992144bb95a4f12f00cab0be92f155e3e9179dadbf307f09098a99b9685c73ed91b6999f1069a090e277f64b394b706c109f1917c51c79efd1a4cec9a4a825ae115e1a7c203c9c4a2818d2e09873ce9bb6703148c5029482a2482f966ea7f0bb6e2cc33cda9518eb001fda6c3c609bfb35b44857d0ac0db290b56c44f1ba5fed775933ce8f85ff1670083d1101e4a9305e50ed27f3611efbb012b97c8c5abee4b399571e72de857a200252402813f9e230768049112849ee991985980005a4cc779f3ef0e1cbc588a34aab2c0f542c5b213417a19077b8142d38e2215c56fec26d4086ea5a4acceb9d9d673b2ef5baccc1a37bf82e4952de6615a6e6020803a0fc6c1d03c1a780829be0677fde065768792055b529640ea75f560fa5fe86c89e32f04738a892e02bdff81607772f835cc7b2e34d0315471de57e24f4b9a0a2f8605b12bed3f36abc598de7ed77"
+		],
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f200eb38bbcf-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "br",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:58 GMT",
+			"openai-organization": "n8n-1",
+			"openai-processing-ms": "1855",
+			"openai-project": "proj_QgifAq942u8NFReEIvfWVd00",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"set-cookie": "__cf_bm=v5tJv9lVMJeIv6poHT1ynJ5ng3nVA4WGLc4B1.BO84s-1782117596.3087962-1.0.1.1-vHiAAIh8KZWUj5h9nIMtejuQRwIwSLV7UN0J3X2pGZgE0vaqeR95QIaQu.ERAvT8mLgl9HoIzdF5dnqkUSpy6bHUzrtYv63niXpv_DBjmALYf3Nl9NgMF4u_f8Q.p9gs; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com; Expires=Mon, 22 Jun 2026 09:09:58 GMT",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"transfer-encoding": "chunked",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "30000",
+			"x-ratelimit-limit-tokens": "150000000",
+			"x-ratelimit-remaining-requests": "29999",
+			"x-ratelimit-remaining-tokens": "149999965",
+			"x-ratelimit-reset-requests": "2ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "req_478fdf102483497691bb0b6649ee5caf"
+		},
+		"responseIsBinary": false
+	}
+]

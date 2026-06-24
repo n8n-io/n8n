@@ -1,0 +1,240 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"output_config": {
+				"format": {
+					"type": "json_schema",
+					"schema": {
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"type": "object",
+						"properties": {
+							"action": {
+								"description": "The action that was performed",
+								"type": "string"
+							},
+							"city": {
+								"description": "The city affected",
+								"type": "string"
+							},
+							"success": {
+								"description": "Whether the action succeeded",
+								"type": "boolean"
+							}
+						},
+						"additionalProperties": false,
+						"required": ["action", "city", "success"]
+					}
+				}
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You manage geographic records. When asked to delete a record, use the delete_record tool. Always respond with the structured output schema."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Delete the record for Paris"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_record",
+					"description": "Delete a geographic record — requires confirmation",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"city": {
+								"type": "string",
+								"description": "City to delete"
+							}
+						},
+						"required": ["city"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75915b4b03311085ffcb3ca7b05b5b2f79144b0b5551510445c2984cb7a1d9a42613a52dfbdf25daaa557c9cf39de1cc65036d30e4408276980df5e66817b937e80d7bfdaa3facabaa0601d680843635aaaaaff021df8dcf4e6db8e9dfde37977a34ed8f0d08e0d5928a8b52c28640400cae0898924d8c9e41800e9ec933c8c7cdcecf21389513ed524a9d55554f8e676fd38b83e6f0f2767d325a4fd2e87a7cfe06023cb6a5cf90232615498758e2ad5f6606b9016d790512ae30da049d008dce512c649b686c24cdd0754f021287a58a8429f8fd593e40a2974c5e13489f9ddb8a8618ad4b3b2d7f6c2b379f03280e0bf209e4f15155a2f59c948e846c8357fb8e2f1e09cd7f6cd75b026839a796223a356cfffabf693dff4d3b0121f34f6938109028be5a4d8a6d390f941f19dcde7246b12cae1a0a20c10756f88ad6e1b323e8ba771e51ac2d35020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:36Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:36Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:22Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:36Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f12ddd29dd13-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:36 GMT",
+			"request-id": "req_011CcHznnXbpT8jcRYpm8aiH",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=r0dQa0I8bIjWLj7pjHNjiLSuMJH959W_h2vKVkTGAuk-1782117562.5330458-1.0.1.1-rwsNWUoyKK601zJnH56_myBQhPNhxAl_EPhfiHhJFRA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f1a8985c83ed54b8dd538778d58c1208-2613ba62ebda50aa-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"output_config": {
+				"format": {
+					"type": "json_schema",
+					"schema": {
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"type": "object",
+						"properties": {
+							"action": {
+								"description": "The action that was performed",
+								"type": "string"
+							},
+							"city": {
+								"description": "The city affected",
+								"type": "string"
+							},
+							"success": {
+								"description": "Whether the action succeeded",
+								"type": "boolean"
+							}
+						},
+						"additionalProperties": false,
+						"required": ["action", "city", "success"]
+					}
+				}
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You manage geographic records. When asked to delete a record, use the delete_record tool. Always respond with the structured output schema."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Delete the record for Paris"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01H8fwKM3g6NTz9EzHsEQGLw",
+							"name": "delete_record",
+							"input": {
+								"city": "Paris"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01H8fwKM3g6NTz9EzHsEQGLw",
+							"content": "{\"deleted\":true,\"city\":\"Paris\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_record",
+					"description": "Delete a geographic record — requires confirmation",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"city": {
+								"type": "string",
+								"description": "City to delete"
+							}
+						},
+						"required": ["city"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75914d6b02311445ffcb5d4798292a345bbb28859676e5a253c26bf2aac1988cc98b2832ffbd8c28fda2abc03937e4be9713b6c97180860d541d4fd6e43775329dcc2637cdcdac6d9a160ade41635b56a6699fa6bbe5e6e17e99934f8bc5fc70571ffb971d14e4d8f398e25268c550c8298c804af145280a146c8ac251a05f4fd7bcf06134e743e3d481acf8143be80e8e030b77501dac97e3993d53f6e58c4ab5964be9a025571e30bc291449bdc94c2545687074466a8eb888c2bbcad13274ac215ca063211fca95d5737b7d828f7d152369c3b140df4e670a96ec9a8dcd4c6345f333d15c7d6672ffb9ebddf101eed7bce54cc1ccb67ff35fb65dffb68342aaf21db57385c279ef2d1bf19ca131eedc5176e3f7c50fcee3e066c5091a3189a13df940ef81310c9f47415c1605020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:37Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:37Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:36Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:37Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1868ce8dd13-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:37 GMT",
+			"request-id": "req_011CcHzopTDDQhHgA7sjbDF5",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=OVfSGTkfVj0HUpuQ9OoK1T6dAjc7AoE1zJ1VMWZjWkw-1782117576.725301-1.0.1.1-TuHnn2THc7gzr6sfpMWmw5O2_8vlOAqg8THuiyQiZrA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e0b6f8edbc511280e6a7cd0d193f0161-c44e1c34ff105d5f-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

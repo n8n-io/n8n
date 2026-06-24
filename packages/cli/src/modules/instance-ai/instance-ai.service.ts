@@ -2699,7 +2699,9 @@ export class InstanceAiService {
 				source: 'direct',
 			});
 			const verificationConcluded =
-				obligation.status === 'verified' || obligation.status === 'needs_setup';
+				obligation.status === 'verified' ||
+				obligation.status === 'needs_setup' ||
+				obligation.status === 'not_verifiable';
 			if (!verificationConcluded) continue;
 			if (obligation.setupRequirement?.status !== 'required' || !obligation.workflowId) continue;
 

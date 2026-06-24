@@ -1,0 +1,122 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Answer math questions with just the number. No explanation."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 2 + 2?"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a7591cb4ec3301045ffe5ae1d29090d082fd9b06241c502819035b587c6d4b1831fa550e5df51aa56bcc4cad23d67469e993d8660d841423b2a86ab9eeca6548baaabdabaed9aba6e20600d2486b4567573f570adc7d5eaa6bdbb7c793bffb8bf5d9eed964b08e4f791678b53a235432006370794924d997c86800e3eb3cf908ffb939f793793c323b1c0f42490721855644ac14382bd51b9448f2348fc5ad86b86f4c5b96368389375e99495c31fe41ed68f25ab1c36ec13647b21a049f7ac7464ca3678f553a84f3c3299ffd8a976eecf63cf034772aa1bfefa5fb4e97fd3492094fc3dea0412c7add5acb2e50889796f86a2994fe09f39ce63ab350748f890156dc93a5a39c6347d021e5b6e6cc9010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:03Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:03Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:02Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4798000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:03Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f0add8afbf60-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:03 GMT",
+			"request-id": "req_011CcHzmGW3b7sXn1vhVtUxx",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=b2de7RKIdGQmvreEL3KkEJ7gsO43.TajHiPdioQg4FI-1782117542.055537-1.0.1.1-o2BqweIXj6aLiWPgxM0trnRnF7zNNmUKB9OlAIin8uI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-791bfafcac04d0a4b60cfd137079ce8d-6239083cbf066872-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an evaluation judge. Respond precisely as instructed."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "You are evaluating an AI assistant response for factual correctness.\n\nUser question: What is 2 + 2?\nExpected answer: 4\nActual answer: 4\n\nDoes the actual answer correctly address the question and match the expected answer?\nAnswer with pass or fail:\n- pass = the answer is correct and addresses the question\n- fail = the answer is incorrect, incomplete, or irrelevant\n\nRespond with ONLY a JSON object (no markdown fences): {\"pass\": true/false, \"reasoning\": \"<explanation>\"}"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75924d6fdb300c86ff8ac0b353d869020c3a0fc3066c97a23bcd83cc4aacad55965c914a9a05feef83ba04fbc24e02dee72128893cc39c1c05d0600316479b09fd53d9ec36fbcdb6ddeebbb6eda001ef40c3cca369bbcfef3fdd8eeff271a1bbe3ddf6e1f0d11ddede7f8706e4b450b58819478206720a354066cf8251a0019ba25014d05fce575fe8a592d743c3300cdf38c53e9e7b5890b907ad24176a540f999053f471ac610ff71329b45230288c7ca4acd2a3da29cf6a46996846f1164338299b72262b0aa3abc84ec44a2652f4b290157297f21bf54194f3550d2785ce6562bea8cf85587c8a6a494ceea687b58fc330c0fab50196b4989f77030d149d9192235c00d373a16809742c215c4247823ef0352baf1fa6cfe0e352c4487aa2c8a0bbdb370d58b413199b096b7ff3a7d15e792674ff63d7dada80968966ca18cc7efed7ff45bbe96fba36908afc1eedb60d30e583b764c453060d75cc0eb3ab1b131f29d7879b91126888490c1ed0077c0804ebfa032b306ca078020000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:04Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:04Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:04Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:04Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f0b66e9abf60-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:05 GMT",
+			"request-id": "req_011CcHzmPVjADQuS1Hyq2W5y",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Sy_t2rn1LBTqdW8f0Z2DD5iZ2AiGjxGpTm3Y9SPgk5w-1782117543.4298587-1.0.1.1-NXXk0IOseZPIP7UbDKRKgP1PWGTRAHDLG6A9YLiVnp8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-5680ea95258bf0f3e94a090338888ecf-0cc1577236cf7d9d-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

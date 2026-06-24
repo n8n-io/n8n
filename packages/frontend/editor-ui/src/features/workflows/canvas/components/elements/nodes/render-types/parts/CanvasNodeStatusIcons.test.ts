@@ -126,6 +126,29 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
 	});
 
+	it('should prefer the simulated icon over validation issues', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Source declares verification output' };
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							issues: {
+								validation: ['Parameter "Project" is required.'],
+								visible: true,
+							},
+						},
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
+		expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+	});
+
 	it('should render correctly for a node that ran successfully', () => {
 		const { getByTestId } = renderComponent({
 			global: {
