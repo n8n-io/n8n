@@ -53,6 +53,22 @@ describe('selectAuthorExpectations', () => {
 		expect(warnings).toEqual([]);
 	});
 
+	it('synthesizes an empty-prompt transcript for a seedThread-style case with no authored conversation', () => {
+		const { logger, warnings } = makeLogger();
+		const { expectations, transcript } = selectAuthorExpectations({
+			// seedThread cases carry no authored `conversation`; on the prebuilt/no-transcript
+			// path this must not crash (regression: conversationUserTurnsAsText(undefined)).
+			testCase: { outcomeExpectations: ['o1'] },
+			transcript: undefined,
+			buildSucceeded: true,
+			isPrebuilt: true,
+			logger,
+		});
+		expect(expectations).toEqual(['o1']);
+		expect(transcript).toEqual([{ userMessage: '', steps: [] }]);
+		expect(warnings).toEqual([]);
+	});
+
 	it('warns when a full (non-prebuilt) build has no transcript but declares process expectations', () => {
 		const { logger, warnings } = makeLogger();
 		const { expectations } = selectAuthorExpectations({
