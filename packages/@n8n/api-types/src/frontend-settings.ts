@@ -116,6 +116,9 @@ export interface FrontendSettings {
 	dynamicBanners: {
 		endpoint: string;
 		enabled: boolean;
+		filters: {
+			publishedWorkflowCount: number;
+		};
 	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
@@ -212,6 +215,9 @@ export interface FrontendSettings {
 	};
 	folders: {
 		enabled: boolean;
+	};
+	collaboration: {
+		crdt: 'off' | 'local' | 'server';
 	};
 	banners: {
 		dismissed: string[];

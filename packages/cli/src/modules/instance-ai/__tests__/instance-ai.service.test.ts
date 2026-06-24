@@ -161,6 +161,7 @@ import {
 
 import { UserError } from 'n8n-workflow';
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 import type { InstanceAiConfig } from '@n8n/config';
@@ -211,9 +212,11 @@ type BackgroundTaskFollowUpServiceInternals = {
 	eventBus: {
 		publish: jest.MockedFunction<(threadId: string, event: InstanceAiEvent) => void>;
 	};
-	finalizeBackgroundTaskTracing: jest.MockedFunction<
-		(task: ManagedBackgroundTask, status: 'completed' | 'failed' | 'cancelled') => Promise<void>
-	>;
+	tracing: {
+		finalizeBackgroundTaskTracing: jest.MockedFunction<
+			(task: ManagedBackgroundTask, status: 'completed' | 'failed' | 'cancelled') => Promise<void>
+		>;
+	};
 	handlePlannedTaskSettlement: jest.MockedFunction<
 		(
 			user: User,
@@ -306,9 +309,11 @@ function createBackgroundTaskFollowUpService({
 	};
 	service.eventBus = { publish: jest.fn((_threadId: string, _event: InstanceAiEvent) => {}) };
 	service.taskProjector = { syncFromBackgroundTask: jest.fn(async () => {}) };
-	service.finalizeBackgroundTaskTracing = jest.fn(
-		async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
-	);
+	service.tracing = {
+		finalizeBackgroundTaskTracing: jest.fn(
+			async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
+		),
+	};
 	service.handlePlannedTaskSettlement = jest.fn(
 		async (
 			_user: User,
@@ -489,16 +494,23 @@ type ShutdownServiceInternals = {
 		>;
 	};
 	backgroundTasks: { cancelAll: jest.MockedFunction<() => ManagedBackgroundTask[]> };
-	traceContextsByRunId: Map<string, { threadId: string }>;
-	finalizeRunTracing: jest.MockedFunction<
-		(runId: string, tracing: InstanceAiTraceContext | undefined, options: unknown) => Promise<void>
-	>;
-	finalizeBackgroundTaskTracing: jest.MockedFunction<
-		(task: ManagedBackgroundTask, status: 'cancelled') => Promise<void>
-	>;
-	finalizeRemainingMessageTraceRoots: jest.MockedFunction<
-		(threadId: string, options: unknown) => Promise<void>
-	>;
+	tracing: {
+		finalizeRunTracing: jest.MockedFunction<
+			(
+				runId: string,
+				tracing: InstanceAiTraceContext | undefined,
+				options: unknown,
+			) => Promise<void>
+		>;
+		finalizeBackgroundTaskTracing: jest.MockedFunction<
+			(task: ManagedBackgroundTask, status: 'cancelled') => Promise<void>
+		>;
+		finalizeRemainingMessageTraceRoots: jest.MockedFunction<
+			(threadId: string, options: unknown) => Promise<void>
+		>;
+		getTrackedThreadIds: jest.MockedFunction<() => string[]>;
+		clear: jest.MockedFunction<() => void>;
+	};
 	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: jest.MockedFunction<() => void> };
 	domainAccessTrackersByThread: Map<string, unknown>;
@@ -616,14 +628,17 @@ type TerminalGuardOrderServiceInternals = {
 		outputRedactionPii: string;
 		outputRedactionPlaceholder: string;
 	};
-	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
+	tracing: {
+		finalizeRunTracing: jest.Mock;
+		maybeFinalizeRunTraceRoot: jest.Mock;
+		buildMessageTraceMetadata: jest.Mock;
+		getMessageGroupId: jest.Mock;
+	};
 	threadPushRef: Map<string, string>;
-	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	temporaryWorkflowService: { reapForRun: jest.Mock };
-	countCreditsIfFirst: jest.Mock;
-	maybeFinalizeRunTraceRoot: jest.Mock;
+	creditService: { claimRunUsage: jest.Mock };
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
 	processResumedStream: (
@@ -663,7 +678,7 @@ type SnapshotServiceInternals = {
 		getEventsForRun: jest.Mock;
 		getEventsForRuns: jest.Mock;
 	};
-	traceContextsByRunId: Map<string, { tracing?: { rootRun: { id: string; traceId: string } } }>;
+	tracing: { getTraceContext: jest.Mock };
 	logger: { warn: jest.Mock };
 };
 
@@ -700,16 +715,17 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		outputRedactionPii: 'credit-card',
 		outputRedactionPlaceholder: '[REDACTED]',
 	};
-	service.traceContextsByRunId = new Map([
-		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
-	]);
+	service.tracing = {
+		finalizeRunTracing: jest.fn(async () => {}),
+		maybeFinalizeRunTraceRoot: jest.fn(async () => {}),
+		buildMessageTraceMetadata: jest.fn(() => ({})),
+		getMessageGroupId: jest.fn((runId: string) => (runId === 'run-1' ? 'group-1' : undefined)),
+	};
 	service.threadPushRef = new Map();
-	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: jest.fn(async () => []) };
-	service.countCreditsIfFirst = jest.fn(async () => {});
-	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
+	service.creditService = { claimRunUsage: jest.fn(async () => {}) };
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
 	return service;
@@ -725,7 +741,7 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRun: jest.fn(() => []),
 		getEventsForRuns: jest.fn(() => []),
 	};
-	service.traceContextsByRunId = new Map();
+	service.tracing = { getTraceContext: jest.fn(() => undefined) };
 	service.logger = { warn: jest.fn() };
 	return service;
 }
@@ -808,7 +824,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getNodeDefinitionDirs: jest.Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: jest.Mock };
-			resolveAgentModelConfig: jest.Mock;
+			modelService: { resolveAgentModelConfig: jest.Mock; resolveProxyModel: jest.Mock };
 			ensureThreadExists: jest.Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -830,6 +846,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
 			domainAccessTrackersByThread: Map<string, unknown>;
+			threadGrantRepo: { findKeys: jest.Mock };
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -851,7 +869,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sourceControlPreferencesService = {
 			getPreferences: jest.fn(() => ({ branchReadOnly: false })),
 		};
-		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
+		service.modelService = {
+			resolveAgentModelConfig: jest.fn(async () => 'model-1'),
+			resolveProxyModel: jest.fn(async () => 'model-1'),
+		};
 		service.ensureThreadExists = jest.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: jest.fn(async () => 'project-1') };
 		service.dbIterationLogStorage = {};
@@ -875,6 +896,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
 		service.domainAccessTrackersByThread = new Map();
+		service.threadGrantRepo = { findKeys: jest.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
 			logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
@@ -890,6 +912,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			},
 			aiService: { isProxyEnabled: jest.fn(() => false), getClient: jest.fn() },
 		});
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -991,16 +1014,23 @@ describe('InstanceAiService — shutdown', () => {
 			shutdown: jest.fn(() => ({ activeRuns: [], suspendedRuns: [] })),
 		};
 		service.backgroundTasks = { cancelAll: jest.fn(() => []) };
-		service.traceContextsByRunId = new Map();
-		service.finalizeRunTracing = jest.fn(
-			async (_runId: string, _tracing: InstanceAiTraceContext | undefined, _options: unknown) => {},
-		);
-		service.finalizeBackgroundTaskTracing = jest.fn(
-			async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
-		);
-		service.finalizeRemainingMessageTraceRoots = jest.fn(
-			async (_threadId: string, _options: unknown) => {},
-		);
+		service.tracing = {
+			finalizeRunTracing: jest.fn(
+				async (
+					_runId: string,
+					_tracing: InstanceAiTraceContext | undefined,
+					_options: unknown,
+				) => {},
+			),
+			finalizeBackgroundTaskTracing: jest.fn(
+				async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
+			),
+			finalizeRemainingMessageTraceRoots: jest.fn(
+				async (_threadId: string, _options: unknown) => {},
+			),
+			getTrackedThreadIds: jest.fn(() => []),
+			clear: jest.fn(),
+		};
 		service.gatewayService = { disconnectAll: jest.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
@@ -1096,6 +1126,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			true,
 			'group-1',
 		);
+	});
+
+	it('skips internal follow-up when the task itself timed out', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
+		task.status = 'failed';
+		task.timeoutReason = 'idle_timeout';
+		task.error = 'Background workflow-builder task timed out after 600000ms';
+
+		service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
 	});
 
 	it('clears the active-timeout guard when the user starts a new run', () => {
@@ -1510,7 +1564,7 @@ type SuspendedRunResumeServiceInternals = {
 	};
 	logger: { warn: jest.Mock };
 	dbSnapshotStorage: unknown;
-	createOrchestratorResumeTraceContext: jest.Mock;
+	tracing: { createOrchestratorResumeTraceContext: jest.Mock };
 	processResumedStream: jest.Mock;
 	suspendedThreads: { dropPendingConfirmation: jest.Mock };
 	trackInFlightExecution: jest.Mock;
@@ -1542,7 +1596,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	};
 	service.logger = { warn: jest.fn() };
 	service.dbSnapshotStorage = {};
-	service.createOrchestratorResumeTraceContext = jest.fn(async () => undefined);
+	service.tracing = { createOrchestratorResumeTraceContext: jest.fn(async () => undefined) };
 	service.processResumedStream = jest.fn();
 	return service;
 }
@@ -2218,6 +2272,11 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			'text-delta',
 			'run-finish',
 		]);
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'completed',
+		});
 	});
 
 	it('does not publish completed fallback output when silence is expected', () => {
@@ -2298,7 +2357,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 	});
 
-	it('counts credits when a resumed run completes', async () => {
+	it('claims credits when a resumed run completes', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
 		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
@@ -2323,7 +2382,13 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		expect(service.countCreditsIfFirst).toHaveBeenCalledWith(fakeUser, 'thread-a', 'run-1');
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'agent-run-1',
+			[],
+			'completed',
+		);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
 		});
@@ -2450,7 +2515,7 @@ describe('InstanceAiService — workflow verification follow-up gate', () => {
 		expect(service.startInternalFollowUpRun).toHaveBeenCalled();
 	});
 
-	it.each(['verified', 'needs_setup', 'blocked'] as const)(
+	it.each(['verified', 'needs_setup', 'not_verifiable', 'blocked'] as const)(
 		'does not run a verification follow-up for a %s build (setup is routed separately)',
 		async (status) => {
 			const service = createVerificationGateService(makeObligation({ status }));
@@ -2624,6 +2689,28 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'workflow_setup',
 		);
 		expect(service.markWorkItemSetupRouted).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes a non-verifiable build that still needs setup', async () => {
+		const records = { 'wi-1': makeRecord() };
+		const service = createSetupFollowUpService(records);
+		service.workflowObligations.obligationFromRecord.mockReturnValueOnce({
+			...obligationFor(records['wi-1']),
+			status: 'not_verifiable',
+		});
+
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(started).toBe(true);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			expect.stringContaining('<workflow-setup-required>'),
+			'group-1',
+			false,
+			undefined,
+			'workflow_setup',
+		);
 	});
 
 	it('does not route the same build twice (loop-safe)', async () => {

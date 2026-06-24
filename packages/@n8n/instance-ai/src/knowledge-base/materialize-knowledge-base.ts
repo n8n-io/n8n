@@ -13,7 +13,6 @@ import type { Logger } from '../logger';
 import {
 	buildTemplatesIndexFromArchive,
 	KNOWLEDGE_BASE_TEMPLATES_DIR,
-	type KnowledgeBaseTemplateEntry,
 } from './build-templates-index';
 export { KNOWLEDGE_BASE_TEMPLATES_DIR };
 import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
@@ -68,7 +67,6 @@ export interface KnowledgeBaseRootIndex {
 	};
 	templates: {
 		indexFile: string;
-		entries: KnowledgeBaseTemplateEntry[];
 	};
 	reference: {
 		indexFile: string;
@@ -104,13 +102,13 @@ function addTemplatesToKnowledgeBaseFiles(
 	rootDir: string,
 	templatesArchive: Buffer,
 	logger: Logger,
-): KnowledgeBaseTemplateEntry[] {
+): void {
 	const extracted = extractBuilderTemplatesArchive(templatesArchive);
 	if (!extracted) {
 		logger.warn('[knowledge-base] rejected templates archive during bundle build', {
 			archiveBytes: templatesArchive.byteLength,
 		});
-		return [];
+		return;
 	}
 
 	const templatesIndex = buildTemplatesIndexFromArchive(extracted);
@@ -127,8 +125,6 @@ function addTemplatesToKnowledgeBaseFiles(
 	// The decompressed archive has been copied into `files`; release the
 	// intermediate map so the duplicate copy isn't held until GC.
 	extracted.clear();
-
-	return templatesIndex.entries;
 }
 
 const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
@@ -143,6 +139,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		description:
 			'Per-trigger inputData shapes for verify-built-workflow and executions(action="run")',
 		fileName: 'trigger-input-data-shapes.md',
+	},
+	{
+		id: 'open-ai-output-shape',
+		description:
+			'OpenAI node (@n8n/n8n-nodes-langchain.openAi) output shape for downstream expressions',
+		fileName: 'open-ai-output-shape.md',
 	},
 	{
 		id: 'workflow-builder-guardrails',
@@ -238,9 +240,9 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 	const bestPracticesIndex: KnowledgeBaseBestPracticesIndex = { entries: bestPracticeEntries };
 	files.set(bestPracticesIndexPath, stringifyWorkspaceJson(bestPracticesIndex));
 
-	const templateEntries = templatesArchive
-		? addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger)
-		: [];
+	if (templatesArchive) {
+		addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger);
+	}
 	const referenceEntries = await addReferenceFilesToKnowledgeBase(files, rootDir);
 
 	const rootIndexPath = posixJoin(rootDir, KNOWLEDGE_BASE_INDEX_FILE);
@@ -251,7 +253,6 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 		},
 		templates: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
-			entries: templateEntries,
 		},
 		reference: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, KNOWLEDGE_BASE_INDEX_FILE),

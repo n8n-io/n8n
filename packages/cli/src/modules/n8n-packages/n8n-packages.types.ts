@@ -1,12 +1,16 @@
 import type { User } from '@n8n/db';
 
-import type { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+import type {
+	WorkflowPublishingOutcome,
+	WorkflowPublishingPolicy,
+} from './entities/workflow/workflow-publishing-policy.types';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only';
-export type CredentialMissingMode = 'must-preexist';
+export type CredentialMissingMode = 'must-preexist' | 'create-stub';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
@@ -56,6 +60,29 @@ export type ImportWorkflowProperties = {
 	workflowIdPolicy: WorkflowIdPolicy;
 };
 
+/**
+ * The actor and resolved destination an import writes into. Threaded through
+ * each entity importer so they share one resolved target instead of re-deriving
+ * it or passing the full Project entity when only its id is needed.
+ * `folderId` is carried for uniformity even though not every importer uses it
+ * (credentials are not foldered).
+ */
+export interface ImportContext {
+	user: User;
+	projectId: string;
+	folderId: string | null;
+}
+
+export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
+	ImportWorkflowProperties;
+
+/** Credential ids involved in a package import, shaped for forward-compatible audit events. */
+export type ImportAuditCredentialIds = {
+	matched: string[];
+	created: string[];
+	updated: string[];
+};
+
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
 	localId: string;
@@ -63,6 +90,7 @@ export interface ImportedWorkflowSummary {
 	projectId: string;
 	parentFolderId: string | null;
 	activeVersionId: string | null;
+	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
 }
 
@@ -96,9 +124,13 @@ export type BlockingIssue =
 	  }
 	| {
 			type: 'credential-unresolved';
-			kind: 'not_found' | 'unknown_type' | 'source_not_found';
+			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
 			sourceId: string;
 			targetId?: string;
+			/** For `type_mismatch`: the credential type the package's workflow node requires. */
+			expectedType?: string;
+			/** For `type_mismatch`: the actual type of the resolved target credential. */
+			actualType?: string;
 			usedByWorkflows: string[];
 	  };
 
@@ -139,9 +171,15 @@ export interface ImportPackageSummary {
 	exportedAt: string;
 }
 
+export interface ImportCredentialSummary {
+	matched: string[];
+	stubbed: string[];
+}
+
 /** Result of an import: the workflows written to the database. */
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	bindings: SerializedBindings;
+	credentials: ImportCredentialSummary;
 }

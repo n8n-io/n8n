@@ -15,6 +15,7 @@ import { useToast } from './useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
+import { UpdateNodeGroupCommand } from '@/app/models/history';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useSelectionValidation } from './useSelectionValidation';
 
@@ -373,7 +374,19 @@ export function useWorkflowExtraction() {
 
 		if (affectedGroupIds.length !== 1) return;
 
-		workflowDocumentStore.value.addNodesToGroup(affectedGroupIds[0], [replacementNodeId]);
+		const groupId = affectedGroupIds[0];
+		const groupBefore = workflowDocumentStore.value.getGroupById(groupId);
+		workflowDocumentStore.value.addNodesToGroup(groupId, [replacementNodeId]);
+		const groupAfter = workflowDocumentStore.value.getGroupById(groupId);
+		if (groupBefore && groupAfter) {
+			historyStore.pushCommandToUndo(
+				new UpdateNodeGroupCommand(
+					{ ...groupBefore, nodeIds: [...groupBefore.nodeIds] },
+					{ ...groupAfter, nodeIds: [...groupAfter.nodeIds] },
+					Date.now(),
+				),
+			);
+		}
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {

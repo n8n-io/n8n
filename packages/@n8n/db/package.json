@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.27.0",
+  "version": "1.28.0",
   "scripts": {
     "clean": "rimraf dist .turbo .tmp-schema-docs",
     "dev": "pnpm watch",
@@ -58,6 +58,7 @@
     "@testcontainers/postgresql": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "express": "5.1.0",
+    "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

@@ -677,7 +677,7 @@ describe('ActiveWorkflowManager', () => {
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-					mock(),
+					mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 					scheduledTaskManager,
 					{
 						runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
@@ -754,7 +754,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-				mock(),
+				mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 				realScheduledTaskManager,
 				mock(),
 				mock(),

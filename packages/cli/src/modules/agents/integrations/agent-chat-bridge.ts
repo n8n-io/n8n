@@ -1,9 +1,10 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import type { AgentsService } from '../agents.service';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { RichSuspendPayload } from '../types';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
@@ -16,8 +17,9 @@ import {
 	type IntegrationMessageContext,
 	type IntegrationMessageSubject,
 } from './integration-tools';
-import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+
+import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
 
 interface PlatformAgentContext {
 	agentUserId?: string;
@@ -80,10 +82,6 @@ function isIntegrationActionSuspendPayload(value: unknown): boolean {
 		'type' in value &&
 		value.type === 'integration_action'
 	);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
@@ -238,7 +236,7 @@ export class AgentChatBridge {
 	static create(
 		chat: Chat,
 		agentId: string,
-		agentService: AgentsService,
+		agentService: AgentExecutionOrchestratorService,
 		componentMapper: ComponentMapper,
 		logger: Logger,
 		n8nProjectId: string,

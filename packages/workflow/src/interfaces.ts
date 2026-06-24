@@ -8,6 +8,7 @@ import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { AgentOptions } from 'https';
 import type { JSONSchema7 } from 'json-schema';
+import type { LookupFunction } from 'net';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -108,7 +109,7 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
-export type ExecutionStorageLocation = 'db' | 'fs' | 's3';
+export type ExecutionStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -522,6 +523,7 @@ export interface IHttpRequestOptions {
 		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
+	maxRedirects?: number; // Ignored when `disableFollowRedirect` is `true`.
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
@@ -874,6 +876,18 @@ interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
+/**
+ * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
+ * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
+ * validation and a connect-time secure DNS lookup.
+ */
+export interface NodeEgressFilter {
+	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
+	validateUrl(url: string | URL): Promise<Result<void, Error>>;
+	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
+	createSecureLookup(): LookupFunction;
+}
+
 export interface RequestHelperFunctions {
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 	httpRequestWithAuthentication(
@@ -889,6 +903,7 @@ export interface RequestHelperFunctions {
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		sanitizedRequest?: IDataObject,
 	): Promise<any[]>;
 
 	/**
@@ -931,6 +946,12 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	/**
+	 * Returns the instance egress filter for clients that build their own HTTP
+	 * transport, or `undefined` when egress filtering is not configured (callers
+	 * then use the default transport).
+	 */
+	getSecureEgressFilter(): NodeEgressFilter | undefined;
 }
 
 export type SSHCredentials = {
@@ -1357,6 +1378,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getHeaderData(): IncomingHttpHeaders;
 	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	/**
+	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * for this workflow, using the execution context established by
+	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
+	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
+	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 */
+	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -3317,6 +3346,7 @@ export interface IWorkflowExecuteAdditionalData {
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
 	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;

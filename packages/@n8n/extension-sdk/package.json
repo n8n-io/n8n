@@ -1,6 +1,6 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "type": "module",
   "files": [
     "dist",
@@ -49,6 +49,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "prettier": "catalog:",
     "tsdown": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",

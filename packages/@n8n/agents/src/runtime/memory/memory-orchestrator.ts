@@ -79,7 +79,12 @@ export class MemoryOrchestrator {
 		if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
 			const cursor = await memory.getCursor(threadId);
 
-			if (cursor) {
+			// Trust the cursor only when an observation log actually stands in for
+			// the pre-cursor messages. If the cursor advanced without observations
+			// being persisted (cursor/observation desync), loading only
+			// post-cursor messages would silently drop the entire prior
+			// conversation, so we fall back to the full history instead.
+			if (cursor && (await this.hasActiveObservations(memory, threadId))) {
 				return await memory.getMessagesForObservationScope(threadId, {
 					since: {
 						sinceCreatedAt: cursor.lastObservedAt,
@@ -92,6 +97,18 @@ export class MemoryOrchestrator {
 		return await memory.getMessages(threadId, {
 			resourceId,
 		});
+	}
+
+	private async hasActiveObservations(
+		memory: ObservationLogObserverMemory,
+		threadId: string,
+	): Promise<boolean> {
+		const observations = await memory.getActiveObservationLog({
+			observationScopeId: threadId,
+			limit: 1,
+			order: 'desc',
+		});
+		return observations.length > 0;
 	}
 
 	/**
@@ -331,13 +348,18 @@ export class MemoryOrchestrator {
 			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
 			lockTtlMs,
 			onEvent: (event) => {
+				this.config.onMemoryTaskEvent?.(event);
+
 				if (event.type !== 'failed') return;
+
 				const source = event.task.taskKind;
 				const message = `Observation log ${source} task failed`;
+
 				logger.warn(message, {
 					error: event.error,
 					observationScopeId: event.task.observationScopeId,
 				});
+
 				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
 			},
 		});

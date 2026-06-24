@@ -44,6 +44,15 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('clarifying questions', () => {
+		it('routes clarifying questions through ask-user instead of plain text', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('need clarification');
+			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
@@ -128,6 +137,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
+			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
@@ -214,7 +224,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).toContain('knowledge-base/templates/');
+			expect(prompt).toContain('never load `templates/index.json` wholesale');
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
