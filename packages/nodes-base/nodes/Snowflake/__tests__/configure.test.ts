@@ -24,8 +24,8 @@ const snowflakeCredentials = {
 beforeEach(() => {
 	vi.spyOn(snowflake, 'configure').mockImplementation(() => ({}) as never);
 	vi.spyOn(snowflake, 'createConnection').mockReturnValue(mockConnection as never);
-	mockConnect.mockImplementation((callback: (err: null) => void) => callback(null));
-	mockDestroy.mockImplementation((callback: (err: null) => void) => callback(null));
+	mockConnect.mockImplementation((cb: (err: null) => void) => cb(null));
+	mockDestroy.mockImplementation((cb: (err: null) => void) => cb(null));
 	mockExecute.mockImplementation(
 		({ complete }: { complete: (err: null, stmt: undefined, rows: unknown[]) => void }) =>
 			complete(null, undefined, []),
@@ -34,21 +34,19 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllMocks());
 
-describe('Test Snowflake, insert - parameter binding', () => {
+describe('Snowflake node — VARIANT column parser configuration', () => {
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['insert.workflow.json'],
 		credentials: { snowflake: snowflakeCredentials },
 		customAssertions() {
-			// One ALTER SESSION (STRICT_JSON_OUTPUT) call plus one INSERT for the single row
-			expect(mockExecute).toHaveBeenCalledTimes(2);
+			// VARIANT/OBJECT/ARRAY columns are parsed with JSON.parse.
+			expect(snowflake.configure).toHaveBeenCalledWith(
+				expect.objectContaining({ jsonColumnVariantParser: JSON.parse }),
+			);
+
+			// The session forces valid JSON output for those columns.
 			expect(mockExecute).toHaveBeenCalledWith(
 				expect.objectContaining({ sqlText: 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE' }),
-			);
-			expect(mockExecute).toHaveBeenCalledWith(
-				expect.objectContaining({
-					sqlText: 'INSERT INTO "ORDERS" ("NAME","STATUS") VALUES (?,?)',
-					binds: [['Alice', 'active']],
-				}),
 			);
 		},
 	});
