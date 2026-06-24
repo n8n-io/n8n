@@ -49,6 +49,15 @@ that must process every row, read `$input.all().map(i => i.json)` (or iterate
 the items) instead of mapping over `$input.first().json`, which would only see
 the first record and produce null/empty downstream values.
 
+This also applies to a bare array of primitives (for example Hacker News
+`/v0/topstories.json` returns `[12345, 12346, ...]`). It is still split into one
+item per element, so `$input.first().json` is one ID, and `$input.first().json
+.slice(...)` or `Array.isArray($input.first().json)` will be wrong and silently
+yield zero items. Read the IDs with `$input.all().map(i => i.json)`. For the
+common two-step list pattern (fetch a list of IDs, then fetch each item), take
+the top N from `$input.all()` and fan them out one item per ID, never
+`$input.first()`.
+
 When a downstream node must reason over the whole collection at once — a single
 AI Agent analysing a series, an indicator/metric computed across all rows, a
 summary, or a structured-output parser expecting one object — first aggregate

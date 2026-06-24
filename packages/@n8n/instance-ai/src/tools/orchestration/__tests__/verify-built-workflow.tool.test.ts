@@ -1103,6 +1103,39 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.coverageNote).toContain('Seed matching test data');
 	});
 
+	it('flags an items-dropped collapse with $input.all() guidance when a collection ran dry', async () => {
+		// INS-662: HTTP split a top-level array into N items, a Code node read $input.first() and emitted zero, downstream was skipped.
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					executeVerdict('Get Top Stories'),
+					simulateVerdict('Post to Slack', 'Sends a message'),
+				],
+				simulationFixtures: { 'Post to Slack': [{ ok: true }] },
+			}),
+			{
+				executionId: 'exec-collapse',
+				status: 'success',
+				data: {
+					// HTTP Request split a bare array of IDs into three items.
+					'Get Top Stories': [{ json: 12345 }, { json: 12346 }, { json: 12347 }],
+				},
+				// The Code node ran but read $input.first(), so it emitted zero items.
+				executedNodeNames: ['Get Top Stories', 'Get Top N IDs'],
+				lastNodeExecuted: 'Get Top N IDs',
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.nodesNotReached).toEqual(['Post to Slack']);
+		expect(result.coverageNote).toContain('$input.all()');
+		expect(result.coverageNote).toContain('$input.first()');
+		// Must NOT misattribute the dead-end to an empty lookup.
+		expect(result.coverageNote).not.toContain('Seed matching test data');
+	});
+
 	it('persists unreached nodes in the verification evidence', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(
 			makeBuildOutcome({
