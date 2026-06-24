@@ -1,0 +1,4 @@
+- Make publishing to an env actually invoke the ActiveWorkflowManager to talk to a workflow
+- Think about how to encode the currently viewed env in the url, which is needed to enable easy sharing of urls of edited workflows.
+- Think about "access to environemnts": e.g. "all roles", "selected roles", "selected users"
+- implement new credential picker logic in nodes for env-scoped credentials
