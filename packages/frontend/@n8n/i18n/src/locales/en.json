@@ -6721,7 +6721,6 @@
 	"agents.builder.subAgents.useWhen.hint": "Tell the parent agent when to delegate work to this agent.",
 	"agents.builder.subAgents.useWhen.placeholder": "Use for billing questions, invoice investigations, and payment status checks.",
 	"agents.builder.subAgents.useWhen.characterCount": "{count}/{max}",
-	"agents.builder.subAgents.useWhen.validation.minLength": "Enter at least {min} characters.",
 	"agents.builder.subAgents.useWhen.validation.maxLength": "Use when must be {max} characters or less.",
 	"agents.builder.subAgents.maxChildren.label": "Max parallel sub-agents",
 	"agents.builder.subAgents.maxChildren.hint": "How many sub-agents this agent can run at the same time ({min}-{max}).",

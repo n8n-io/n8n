@@ -10,7 +10,7 @@ import {
 	N8nScrollArea,
 	N8nText,
 } from '@n8n/design-system';
-import { SUB_AGENT_USE_WHEN_MAX_LENGTH, SUB_AGENT_USE_WHEN_MIN_LENGTH } from '@n8n/api-types';
+import { SUB_AGENT_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
@@ -21,7 +21,7 @@ export type AgentSubAgentOption = {
 	name: string;
 };
 
-type AgentSubAgentsModalConfirmPayload = { agentId: string; useWhen: string };
+type AgentSubAgentsModalConfirmPayload = { agentId: string; useWhen?: string };
 
 type AddSubAgentModalData = {
 	agents: AgentSubAgentOption[];
@@ -32,7 +32,7 @@ type AddSubAgentModalData = {
 
 type EditSubAgentModalData = {
 	selectedAgent: AgentSubAgentOption;
-	useWhen: string;
+	useWhen?: string;
 	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
 	onRemove?: (agentId: string) => void;
 };
@@ -61,23 +61,15 @@ const filteredAgents = computed(() =>
 const hasMatchingAgents = computed(() => filteredAgents.value.length > 0);
 const isEditing = computed(() => Boolean(props.data.selectedAgent));
 const selectedAgent = ref<AgentSubAgentOption | null>(props.data.selectedAgent ?? null);
-const useWhen = ref('useWhen' in props.data ? props.data.useWhen : '');
+const useWhen = ref(('useWhen' in props.data ? props.data.useWhen : '') ?? '');
 const useWhenTrimmed = computed(() => useWhen.value.trim());
 const useWhenError = computed(() => {
-	if (
-		useWhenTrimmed.value.length > 0 &&
-		useWhenTrimmed.value.length < SUB_AGENT_USE_WHEN_MIN_LENGTH
-	) {
-		return i18n.baseText('agents.builder.subAgents.useWhen.validation.minLength', {
-			interpolate: { min: String(SUB_AGENT_USE_WHEN_MIN_LENGTH) },
-		});
-	}
 	if (useWhenTrimmed.value.length <= SUB_AGENT_USE_WHEN_MAX_LENGTH) return '';
 	return i18n.baseText('agents.builder.subAgents.useWhen.validation.maxLength', {
 		interpolate: { max: String(SUB_AGENT_USE_WHEN_MAX_LENGTH) },
 	});
 });
-const canConfirm = computed(() => Boolean(useWhenTrimmed.value) && !useWhenError.value);
+const canConfirm = computed(() => !useWhenError.value);
 
 function closeModal() {
 	uiStore.closeModal(props.modalName);
@@ -105,7 +97,7 @@ function onConfirm() {
 
 	props.data.onConfirm({
 		agentId: selectedAgent.value.id,
-		useWhen: useWhenTrimmed.value,
+		...(useWhenTrimmed.value ? { useWhen: useWhenTrimmed.value } : {}),
 	});
 	closeModal();
 }

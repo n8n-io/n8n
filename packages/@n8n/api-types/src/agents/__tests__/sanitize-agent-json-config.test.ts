@@ -390,25 +390,22 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(parsed.data.subAgents?.agents?.[0]?.useWhen).toBe('Use for billing questions.');
 	});
 
-	it.each(['', '   ', 'Too short'])(
-		'keeps invalid sub-agent useWhen value %p for validation',
-		(useWhen) => {
-			const sanitized = sanitizeAgentJsonConfig({
-				...baseConfig,
-				subAgents: {
-					agents: [{ agentId: 'agent-2', useWhen }],
-				},
-			});
+	it.each(['', '   ', 'Too short'])('accepts optional sub-agent useWhen value %p', (useWhen) => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen }],
+			},
+		});
 
-			expect(sanitized).toEqual({
-				...baseConfig,
-				subAgents: {
-					agents: [{ agentId: 'agent-2', useWhen }],
-				},
-			});
-			expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(false);
-		},
-	);
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen }],
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
 
 	it('rejects sub-agent useWhen values over 512 characters', () => {
 		expect(

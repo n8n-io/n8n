@@ -69,18 +69,12 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
-export const SUB_AGENT_USE_WHEN_MIN_LENGTH = 20;
 export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
 
 const SubAgentConfigSchema = z
 	.object({
 		agentId: z.string().trim().min(1),
-		useWhen: z
-			.string()
-			.trim()
-			.min(SUB_AGENT_USE_WHEN_MIN_LENGTH)
-			.max(SUB_AGENT_USE_WHEN_MAX_LENGTH)
-			.optional(),
+		useWhen: z.string().trim().max(SUB_AGENT_USE_WHEN_MAX_LENGTH).optional(),
 	})
 	.strict();
 

@@ -24,7 +24,6 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.useWhen.hint': 'Tell the parent agent when to delegate work.',
 				'agents.builder.subAgents.useWhen.placeholder': 'Use for billing questions',
 				'agents.builder.subAgents.useWhen.characterCount': '0/512',
-				'agents.builder.subAgents.useWhen.validation.minLength': 'Use when is too short',
 				'agents.builder.subAgents.useWhen.validation.maxLength': `Use when must be ${options?.interpolate?.max ?? ''} characters or less`,
 				'generic.back': 'Back',
 				'generic.cancel': 'Cancel',
@@ -103,9 +102,9 @@ describe('AgentSubAgentsModal', () => {
 
 		expect(wrapper.find('h2').text()).toBe('Research Agent');
 		const confirmButton = wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]');
-		expect(confirmButton.attributes('disabled')).toBeDefined();
+		expect(confirmButton.attributes('disabled')).toBeUndefined();
 
-		await wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').setValue('Too short');
+		await wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').setValue('a'.repeat(513));
 		expect(
 			wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').attributes('disabled'),
 		).toBeDefined();
@@ -120,6 +119,28 @@ describe('AgentSubAgentsModal', () => {
 			useWhen: 'Use for deep research and source synthesis.',
 		});
 		expect(onConfirm).toHaveBeenCalledTimes(1);
+		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+	});
+
+	it('adds a sub-agent without useWhen guidance', async () => {
+		const onConfirm = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [{ id: 'agent-2', name: 'Billing Agent' }],
+					onConfirm,
+				},
+			},
+		});
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-add"]').trigger('click');
+
+		const confirmButton = wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]');
+		expect(confirmButton.attributes('disabled')).toBeUndefined();
+		await confirmButton.trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({ agentId: 'agent-2' });
 		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
 	});
 
@@ -205,15 +226,10 @@ describe('AgentSubAgentsModal', () => {
 			'Use for invoice questions.',
 		);
 
-		await wrapper
-			.find('[data-testid="agent-sub-agents-modal-use-when"]')
-			.setValue('Use for billing escalations.');
+		await wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').setValue('');
 		await wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').trigger('click');
 
-		expect(onConfirm).toHaveBeenCalledWith({
-			agentId: 'agent-2',
-			useWhen: 'Use for billing escalations.',
-		});
+		expect(onConfirm).toHaveBeenCalledWith({ agentId: 'agent-2' });
 		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
 
 		closeModalMock.mockClear();

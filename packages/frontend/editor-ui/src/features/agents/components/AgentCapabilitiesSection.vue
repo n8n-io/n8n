@@ -350,6 +350,13 @@ function emitSubAgentRefs(agents: typeof selectedSubAgentRefs.value) {
 	});
 }
 
+function toSubAgentRef(agentId: string, useWhen?: string) {
+	return {
+		agentId,
+		...(useWhen ? { useWhen } : {}),
+	};
+}
+
 function openChannelModal() {
 	channelModalView.value = 'list';
 	channelModalOpen.value = true;
@@ -370,10 +377,10 @@ async function openSubAgentsModal() {
 				id,
 				name,
 			})),
-			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen: string }) => {
+			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
 				if (selectedSubAgentIdSet.value.has(agentId)) return;
 
-				emitSubAgentRefs([...selectedSubAgentRefs.value, { agentId, useWhen }]);
+				emitSubAgentRefs([...selectedSubAgentRefs.value, toSubAgentRef(agentId, useWhen)]);
 			},
 		},
 	});
@@ -388,10 +395,10 @@ function openExistingSubAgentModal(subAgent: { id: string; name: string; useWhen
 				name: subAgent.name,
 			},
 			useWhen: subAgent.useWhen,
-			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen: string }) => {
+			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
 				emitSubAgentRefs(
 					selectedSubAgentRefs.value.map((ref) =>
-						ref.agentId === agentId ? { ...ref, useWhen } : ref,
+						ref.agentId === agentId ? toSubAgentRef(agentId, useWhen) : ref,
 					),
 				);
 			},

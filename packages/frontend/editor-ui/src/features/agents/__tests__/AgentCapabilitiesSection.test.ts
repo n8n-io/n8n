@@ -391,7 +391,7 @@ describe('AgentCapabilitiesSection', () => {
 		);
 
 		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
-			data: { onConfirm: (payload: { agentId: string; useWhen: string }) => void };
+			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
 		};
 		modalCall.data.onConfirm({
 			agentId: 'agent-3',
@@ -448,13 +448,12 @@ describe('AgentCapabilitiesSection', () => {
 
 		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
 			data: {
-				onConfirm: (payload: { agentId: string; useWhen: string }) => void;
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
 				onRemove: (agentId: string) => void;
 			};
 		};
 		modalCall.data.onConfirm({
 			agentId: 'agent-2',
-			useWhen: 'Use for invoice and payment status questions.',
 		});
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([
@@ -462,10 +461,7 @@ describe('AgentCapabilitiesSection', () => {
 				subAgents: {
 					maxChildren: 7,
 					agents: [
-						{
-							agentId: 'agent-2',
-							useWhen: 'Use for invoice and payment status questions.',
-						},
+						{ agentId: 'agent-2' },
 						{ agentId: 'agent-3', useWhen: 'Use for research tasks.' },
 					],
 				},
@@ -515,7 +511,7 @@ describe('AgentCapabilitiesSection', () => {
 
 		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
 			data: {
-				onConfirm: (payload: { agentId: string; useWhen: string }) => void;
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
 				onRemove: (agentId: string) => void;
 			};
 		};
