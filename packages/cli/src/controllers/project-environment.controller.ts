@@ -17,6 +17,7 @@ import {
 } from '@n8n/decorators';
 import { Response, NextFunction } from 'express';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ProjectEnvironmentService } from '@/services/project-environment.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -83,19 +84,39 @@ export class ProjectEnvironmentController {
 	@Get('/:envId/credential-bindings')
 	@ProjectScope('projectEnvironment:list')
 	//@Licensed('feat:environments')
-	async getCredentialBindings(req: AuthenticatedRequest<{ envId: string }>) {
-		return await this.environmentService.getCredentialBindings(req.params.envId);
+	async getCredentialBindings(
+		req: AuthenticatedRequest<{ envId: string }, {}, {}, { workflowId?: string }>,
+	) {
+		const workflowId = req.query.workflowId;
+		if (!workflowId) {
+			throw new BadRequestError('workflowId query parameter is required');
+		}
+		return await this.environmentService.getCredentialBindings(req.params.envId, workflowId);
 	}
 
 	@Put('/:envId/credential-bindings')
 	@ProjectScope('projectEnvironment:update')
 	//@Licensed('feat:environments')
 	async replaceCredentialBindings(
-		req: AuthenticatedRequest<{ projectId: string; envId: string }>,
+		req: AuthenticatedRequest<
+			{ projectId: string; envId: string },
+			{},
+			{},
+			{ workflowId?: string }
+		>,
 		_res: Response,
 		@Body payload: UpsertCredentialBindingsDto,
 	) {
 		const { projectId, envId } = req.params;
-		return await this.environmentService.replaceCredentialBindings(projectId, envId, payload);
+		const workflowId = req.query.workflowId;
+		if (!workflowId) {
+			throw new BadRequestError('workflowId query parameter is required');
+		}
+		return await this.environmentService.replaceCredentialBindings(
+			projectId,
+			envId,
+			workflowId,
+			payload,
+		);
 	}
 }

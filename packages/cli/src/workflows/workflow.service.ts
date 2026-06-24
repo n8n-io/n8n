@@ -811,6 +811,7 @@ export class WorkflowService {
 		if (options?.environmentId) {
 			const validation = await this.projectEnvironmentService.validateEnvironmentBindingsForPublish(
 				options.environmentId,
+				workflowId,
 				versionToActivate.nodes,
 			);
 			if (!validation.valid) {

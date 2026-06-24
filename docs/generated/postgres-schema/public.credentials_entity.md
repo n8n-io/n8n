@@ -130,6 +130,7 @@ erDiagram
   varchar_36_ sourceCredentialId FK
   varchar_36_ targetCredentialId FK
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.instance_ai_mcp_registry_connections" {
   timestamp_3__with_time_zone createdAt

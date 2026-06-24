@@ -400,10 +400,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		let credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
-		// Environment-scoped execution: swap to the bound target credential if one exists.
-		if (additionalData.environmentId) {
+		// Environment-scoped execution: swap to the per-workflow bound target credential if one exists.
+		if (additionalData.environmentId && additionalData.workflowId) {
 			const targetId = await this.environmentCredentialBindingRepository.resolveTargetCredentialId(
 				additionalData.environmentId,
+				additionalData.workflowId,
 				credentialsEntity.id,
 			);
 			if (targetId) {

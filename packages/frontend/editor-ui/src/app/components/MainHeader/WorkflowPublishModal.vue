@@ -105,10 +105,10 @@ async function onModalOpened() {
 		projectId ? environmentsStore.fetchEnvironments(projectId) : Promise.resolve(),
 	]);
 
-	if (projectId && environmentsStore.environments.length > 0) {
+	if (projectId && workflowId && environmentsStore.environments.length > 0) {
 		await Promise.all(
 			environmentsStore.environments.map((env) =>
-				environmentsStore.fetchCredentialBindings(projectId, env.id),
+				environmentsStore.fetchCredentialBindings(projectId, workflowId, env.id),
 			),
 		);
 	}
@@ -129,7 +129,10 @@ const workflowCredentialIds = computed((): Set<string> => {
 /** Returns true when an environment has all required credentials bound */
 function envHasAllBindings(envId: string): boolean {
 	if (workflowCredentialIds.value.size === 0) return true;
-	const bindings = environmentsStore.credentialBindings[envId] ?? [];
+	const workflowId = workflowDocumentStore.value.workflowId;
+	const bindings = workflowId
+		? (environmentsStore.credentialBindings[workflowId]?.[envId] ?? [])
+		: [];
 	const boundSources = new Set(bindings.map((b) => b.sourceCredentialId));
 	return [...workflowCredentialIds.value].every((id) => boundSources.has(id));
 }

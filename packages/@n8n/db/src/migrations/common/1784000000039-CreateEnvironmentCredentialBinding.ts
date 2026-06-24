@@ -5,10 +5,16 @@ export class CreateEnvironmentCredentialBinding1784000000039 implements Reversib
 		await createTable('environment_credential_binding')
 			.withColumns(
 				column('id').int.autoGenerate.primary,
+				column('workflowId').varchar(36).notNull,
 				column('environmentId').varchar(36).notNull,
 				column('sourceCredentialId').varchar(36).notNull,
 				column('targetCredentialId').varchar(36).notNull,
 			)
+			.withForeignKey('workflowId', {
+				tableName: 'workflow_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
 			.withForeignKey('environmentId', {
 				tableName: 'project_environment',
 				columnName: 'id',
@@ -24,8 +30,8 @@ export class CreateEnvironmentCredentialBinding1784000000039 implements Reversib
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn(['environmentId', 'sourceCredentialId'], true)
-			.withIndexOn('environmentId').withTimestamps;
+			.withIndexOn(['workflowId', 'environmentId', 'sourceCredentialId'], true)
+			.withIndexOn(['workflowId', 'environmentId']).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

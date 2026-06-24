@@ -17,6 +17,7 @@ export interface ProjectEnvironment {
 
 export interface EnvironmentCredentialBinding {
 	id: number;
+	workflowId: string;
 	environmentId: string;
 	sourceCredentialId: string;
 	targetCredentialId: string;
@@ -83,11 +84,12 @@ export const getCredentialBindings = async (
 	context: IRestApiContext,
 	projectId: string,
 	envId: string,
+	workflowId: string,
 ): Promise<EnvironmentCredentialBinding[]> => {
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`${base(projectId)}/${envId}/credential-bindings`,
+		`${base(projectId)}/${envId}/credential-bindings?workflowId=${encodeURIComponent(workflowId)}`,
 	);
 };
 
@@ -95,12 +97,13 @@ export const replaceCredentialBindings = async (
 	context: IRestApiContext,
 	projectId: string,
 	envId: string,
+	workflowId: string,
 	data: UpsertCredentialBindingsDto,
 ): Promise<EnvironmentCredentialBinding[]> => {
 	return await makeRestApiRequest(
 		context,
 		'PUT',
-		`${base(projectId)}/${envId}/credential-bindings`,
+		`${base(projectId)}/${envId}/credential-bindings?workflowId=${encodeURIComponent(workflowId)}`,
 		data,
 	);
 };

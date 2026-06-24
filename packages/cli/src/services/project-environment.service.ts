@@ -73,13 +73,17 @@ export class ProjectEnvironmentService {
 		await this.environmentRepository.remove(environment);
 	}
 
-	async getCredentialBindings(environmentId: string): Promise<EnvironmentCredentialBinding[]> {
-		return await this.bindingRepository.findAllByEnvironment(environmentId);
+	async getCredentialBindings(
+		environmentId: string,
+		workflowId: string,
+	): Promise<EnvironmentCredentialBinding[]> {
+		return await this.bindingRepository.findAllByEnvironment(environmentId, workflowId);
 	}
 
 	async replaceCredentialBindings(
 		projectId: string,
 		environmentId: string,
+		workflowId: string,
 		dto: UpsertCredentialBindingsDto,
 	): Promise<EnvironmentCredentialBinding[]> {
 		if (dto.bindings.length > 0) {
@@ -110,12 +114,13 @@ export class ProjectEnvironmentService {
 				sourceCredentialId: b.sourceCredentialId,
 				targetCredentialId: b.targetCredentialId,
 			}));
-		await this.bindingRepository.replaceAll(environmentId, bindingsArray);
-		return await this.bindingRepository.findAllByEnvironment(environmentId);
+		await this.bindingRepository.replaceAll(environmentId, workflowId, bindingsArray);
+		return await this.bindingRepository.findAllByEnvironment(environmentId, workflowId);
 	}
 
 	async validateEnvironmentBindingsForPublish(
 		environmentId: string,
+		workflowId: string,
 		nodes: INode[],
 	): Promise<{ valid: boolean; missingBindings: MissingBinding[] }> {
 		const enabledNodes = nodes.filter((n) => !n.disabled);
@@ -131,7 +136,7 @@ export class ProjectEnvironmentService {
 			return { valid: true, missingBindings: [] };
 		}
 
-		const bindings = await this.bindingRepository.findAllByEnvironment(environmentId);
+		const bindings = await this.bindingRepository.findAllByEnvironment(environmentId, workflowId);
 		const boundSourceIds = new Set(
 			bindings.map((b: EnvironmentCredentialBinding) => b.sourceCredentialId),
 		);

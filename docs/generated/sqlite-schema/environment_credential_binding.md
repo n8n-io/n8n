@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "environment_credential_binding" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "environmentId" varchar(36) NOT NULL, "sourceCredentialId" varchar(36) NOT NULL, "targetCredentialId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_0a768f1d90ef82cf3678e313759" FOREIGN KEY ("environmentId") REFERENCES "project_environment" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2d49f32b49d32d94684cd6a05c3" FOREIGN KEY ("sourceCredentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_0a175417bde5f5254b8c12cc242" FOREIGN KEY ("targetCredentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE)
+CREATE TABLE "environment_credential_binding" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "workflowId" varchar(36) NOT NULL, "environmentId" varchar(36) NOT NULL, "sourceCredentialId" varchar(36) NOT NULL, "targetCredentialId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_8a3cd22704215a2ee7307b83ec9" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_0a768f1d90ef82cf3678e313759" FOREIGN KEY ("environmentId") REFERENCES "project_environment" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2d49f32b49d32d94684cd6a05c3" FOREIGN KEY ("sourceCredentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_0a175417bde5f5254b8c12cc242" FOREIGN KEY ("targetCredentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "environment_credential_binding" ("id" integer PRIMARY KEY AUTOINCR
 | sourceCredentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
 | targetCredentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
@@ -29,14 +30,15 @@ CREATE TABLE "environment_credential_binding" ("id" integer PRIMARY KEY AUTOINCR
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (targetCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (sourceCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (environmentId) REFERENCES project_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_0a768f1d90ef82cf3678e31375 | CREATE INDEX "IDX_0a768f1d90ef82cf3678e31375" ON "environment_credential_binding" ("environmentId")  |
-| IDX_0b7ddcf4ee25bb1f126e3186a2 | CREATE UNIQUE INDEX "IDX_0b7ddcf4ee25bb1f126e3186a2" ON "environment_credential_binding" ("environmentId", "sourceCredentialId")  |
+| IDX_4e09818163d09eeaa64fbf3551 | CREATE UNIQUE INDEX "IDX_4e09818163d09eeaa64fbf3551" ON "environment_credential_binding" ("workflowId", "environmentId", "sourceCredentialId")  |
+| IDX_e6dcfc0dc8aef030779068ea44 | CREATE INDEX "IDX_e6dcfc0dc8aef030779068ea44" ON "environment_credential_binding" ("workflowId", "environmentId")  |
 
 ## Relations
 
@@ -46,6 +48,7 @@ erDiagram
 "environment_credential_binding" }o--|| "project_environment" : "FOREIGN KEY (environmentId) REFERENCES project_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (sourceCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (targetCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"environment_credential_binding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "environment_credential_binding" {
   datetime_3_ createdAt
@@ -54,6 +57,7 @@ erDiagram
   varchar_36_ sourceCredentialId FK
   varchar_36_ targetCredentialId FK
   datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "project_environment" {
   datetime_3_ createdAt
@@ -74,6 +78,28 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
+}
+"workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
+  varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

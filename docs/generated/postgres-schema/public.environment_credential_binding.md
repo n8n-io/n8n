@@ -10,6 +10,7 @@
 | sourceCredentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
 | targetCredentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
@@ -18,6 +19,7 @@
 | FK_0a175417bde5f5254b8c12cc242 | FOREIGN KEY | FOREIGN KEY ("targetCredentialId") REFERENCES credentials_entity(id) ON DELETE CASCADE |
 | FK_0a768f1d90ef82cf3678e313759 | FOREIGN KEY | FOREIGN KEY ("environmentId") REFERENCES project_environment(id) ON DELETE CASCADE |
 | FK_2d49f32b49d32d94684cd6a05c3 | FOREIGN KEY | FOREIGN KEY ("sourceCredentialId") REFERENCES credentials_entity(id) ON DELETE CASCADE |
+| FK_8a3cd22704215a2ee7307b83ec9 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | PK_88ccc069e07fe20a0cd57c80576 | PRIMARY KEY | PRIMARY KEY (id) |
 | environment_credential_binding_createdAt_not_null | n | NOT NULL "createdAt" |
 | environment_credential_binding_environmentId_not_null | n | NOT NULL "environmentId" |
@@ -25,13 +27,14 @@
 | environment_credential_binding_sourceCredentialId_not_null | n | NOT NULL "sourceCredentialId" |
 | environment_credential_binding_targetCredentialId_not_null | n | NOT NULL "targetCredentialId" |
 | environment_credential_binding_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| environment_credential_binding_workflowId_not_null | n | NOT NULL "workflowId" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_0a768f1d90ef82cf3678e31375 | CREATE INDEX "IDX_0a768f1d90ef82cf3678e31375" ON public.environment_credential_binding USING btree ("environmentId") |
-| IDX_0b7ddcf4ee25bb1f126e3186a2 | CREATE UNIQUE INDEX "IDX_0b7ddcf4ee25bb1f126e3186a2" ON public.environment_credential_binding USING btree ("environmentId", "sourceCredentialId") |
+| IDX_4e09818163d09eeaa64fbf3551 | CREATE UNIQUE INDEX "IDX_4e09818163d09eeaa64fbf3551" ON public.environment_credential_binding USING btree ("workflowId", "environmentId", "sourceCredentialId") |
+| IDX_e6dcfc0dc8aef030779068ea44 | CREATE INDEX "IDX_e6dcfc0dc8aef030779068ea44" ON public.environment_credential_binding USING btree ("workflowId", "environmentId") |
 | PK_88ccc069e07fe20a0cd57c80576 | CREATE UNIQUE INDEX "PK_88ccc069e07fe20a0cd57c80576" ON public.environment_credential_binding USING btree (id) |
 
 ## Relations
@@ -42,6 +45,7 @@ erDiagram
 "public.environment_credential_binding" }o--|| "public.project_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES project_environment(id) ON DELETE CASCADE"
 "public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;sourceCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;targetCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.environment_credential_binding" {
   timestamp_3__with_time_zone createdAt
@@ -50,6 +54,7 @@ erDiagram
   varchar_36_ sourceCredentialId FK
   varchar_36_ targetCredentialId FK
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.project_environment" {
   timestamp_3__with_time_zone createdAt
@@ -70,6 +75,28 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
+}
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

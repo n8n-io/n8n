@@ -11,25 +11,30 @@ export class EnvironmentCredentialBindingRepository extends Repository<Environme
 
 	async resolveTargetCredentialId(
 		environmentId: string,
+		workflowId: string,
 		sourceCredentialId: string,
 	): Promise<string | null> {
 		const row = await this.findOne({
-			where: { environmentId, sourceCredentialId },
+			where: { environmentId, workflowId, sourceCredentialId },
 			select: ['targetCredentialId'],
 		});
 		return row?.targetCredentialId ?? null;
 	}
 
-	async findAllByEnvironment(environmentId: string): Promise<EnvironmentCredentialBinding[]> {
-		return await this.find({ where: { environmentId } });
+	async findAllByEnvironment(
+		environmentId: string,
+		workflowId: string,
+	): Promise<EnvironmentCredentialBinding[]> {
+		return await this.find({ where: { environmentId, workflowId } });
 	}
 
 	async replaceAll(
 		environmentId: string,
+		workflowId: string,
 		bindings: Array<{ sourceCredentialId: string; targetCredentialId: string }>,
 	): Promise<void> {
-		await this.delete({ environmentId });
+		await this.delete({ environmentId, workflowId });
 		if (bindings.length === 0) return;
-		await this.insert(bindings.map((b) => ({ ...b, environmentId })));
+		await this.insert(bindings.map((b) => ({ ...b, environmentId, workflowId })));
 	}
 }

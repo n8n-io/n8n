@@ -131,6 +131,7 @@ erDiagram
   varchar_36_ sourceCredentialId FK
   varchar_36_ targetCredentialId FK
   datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "instance_ai_mcp_registry_connections" {
   datetime_3_ createdAt

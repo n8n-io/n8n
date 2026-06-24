@@ -59,6 +59,7 @@ erDiagram
   varchar_36_ sourceCredentialId FK
   varchar_36_ targetCredentialId FK
   datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "workflow_published_environment_version" {
   datetime_3_ createdAt

@@ -30,7 +30,6 @@ import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import EnvironmentList from '@/features/environments/components/EnvironmentList.vue';
-import EnvironmentBindings from '@/features/environments/components/EnvironmentBindings.vue';
 
 import {
 	N8nAlert,
@@ -677,11 +676,6 @@ onMounted(async () => {
 						:project-id="projectsStore.currentProject.id"
 						:selected-env-id="selectedEnvId"
 						@select="selectedEnvId = $event"
-					/>
-					<EnvironmentBindings
-						v-if="selectedEnvId"
-						:project-id="projectsStore.currentProject.id"
-						:environment-id="selectedEnvId"
 					/>
 				</fieldset>
 			</template>

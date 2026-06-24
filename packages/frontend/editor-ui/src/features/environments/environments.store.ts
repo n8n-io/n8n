@@ -22,8 +22,10 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 	/** Currently selected environment ID for canvas manual execution (null = global) */
 	const selectedEnvironmentId = ref<string | null>(null);
 
-	/** Maps environmentId → list of credential bindings */
-	const credentialBindings = ref<Record<string, EnvironmentCredentialBinding[]>>({});
+	/** Maps workflowId → environmentId → list of credential bindings */
+	const credentialBindings = ref<Record<string, Record<string, EnvironmentCredentialBinding[]>>>(
+		{},
+	);
 
 	async function fetchEnvironments(projectId: string): Promise<void> {
 		environments.value = await environmentsApi.getEnvironments(rootStore.restApiContext, projectId);
@@ -58,8 +60,13 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		if (selectedEnvironmentId.value === envId) {
 			selectedEnvironmentId.value = null;
 		}
-		const updated = { ...credentialBindings.value };
-		delete updated[envId];
+		const updated = Object.fromEntries(
+			Object.entries(credentialBindings.value).map(([wfId, byEnv]) => {
+				const withoutEnv = { ...byEnv };
+				delete withoutEnv[envId];
+				return [wfId, withoutEnv];
+			}),
+		);
 		credentialBindings.value = updated;
 	}
 
@@ -84,17 +91,26 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		publishedVersions.value = { ...publishedVersions.value, [environmentId]: versionId };
 	}
 
-	async function fetchCredentialBindings(projectId: string, envId: string): Promise<void> {
+	async function fetchCredentialBindings(
+		projectId: string,
+		workflowId: string,
+		envId: string,
+	): Promise<void> {
 		const bindings = await environmentsApi.getCredentialBindings(
 			rootStore.restApiContext,
 			projectId,
 			envId,
+			workflowId,
 		);
-		credentialBindings.value = { ...credentialBindings.value, [envId]: bindings };
+		credentialBindings.value = {
+			...credentialBindings.value,
+			[workflowId]: { ...credentialBindings.value[workflowId], [envId]: bindings },
+		};
 	}
 
 	async function saveCredentialBindings(
 		projectId: string,
+		workflowId: string,
 		envId: string,
 		bindings: Array<{ sourceCredentialId: string; targetCredentialId: string }>,
 	): Promise<void> {
@@ -102,9 +118,13 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 			rootStore.restApiContext,
 			projectId,
 			envId,
+			workflowId,
 			{ bindings },
 		);
-		credentialBindings.value = { ...credentialBindings.value, [envId]: saved };
+		credentialBindings.value = {
+			...credentialBindings.value,
+			[workflowId]: { ...credentialBindings.value[workflowId], [envId]: saved },
+		};
 	}
 
 	return {

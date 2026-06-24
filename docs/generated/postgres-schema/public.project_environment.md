@@ -52,6 +52,7 @@ erDiagram
   varchar_36_ sourceCredentialId FK
   varchar_36_ targetCredentialId FK
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.workflow_published_environment_version" {
   timestamp_3__with_time_zone createdAt
