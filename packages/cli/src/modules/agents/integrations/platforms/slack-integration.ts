@@ -4,10 +4,15 @@ import type { RichCardComponentType } from '@n8n/api-types';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
+	type PlatformAgentContext,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
+import type { ChatInstance } from '../chat-integration.service';
 import { loadSlackAdapter } from '../esm-loader';
 import { connectionUnavailable } from '../integration-helpers';
 import type {
@@ -15,6 +20,12 @@ import type {
 	IntegrationActionResult,
 	IntegrationContextQuery,
 } from '../integration-tools';
+import {
+	createSlackBridgeExecutionContext,
+	createSlackResumeExecutionContext,
+	getSlackPlatformAgentContext,
+	prepareSlackInboundText,
+} from './slack-bridge-behavior';
 import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
 
 /**
@@ -77,6 +88,29 @@ export class SlackIntegration extends AgentChatIntegration {
 		'send_channel_message',
 		'add_reaction',
 	];
+
+	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
+		return getSlackPlatformAgentContext(chat);
+	}
+
+	prepareInboundText(text: string, context: PlatformAgentContext): string {
+		return prepareSlackInboundText(text, context);
+	}
+
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		return await createSlackBridgeExecutionContext(params);
+	}
+
+	async createResumeExecutionContext(params: {
+		chat: ChatInstance;
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return await createSlackResumeExecutionContext(params);
+	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
 		if (!params.chat) return connectionUnavailable();
