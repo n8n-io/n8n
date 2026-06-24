@@ -55,7 +55,8 @@ describe('getSystemPrompt', () => {
 		it('does not route missing workflow setup values through ask-user before build', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Do not use `ask-user` for missing workflow setup values');
+			expect(prompt).toContain('use `ask-user` only for choices that change the workflow intent');
+			expect(prompt).toContain('Do not use `ask-user` before the first build');
 			expect(prompt).toContain('leave them for post-build workflow setup');
 		});
 	});
