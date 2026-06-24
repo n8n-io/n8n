@@ -123,6 +123,7 @@
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
+    "@n8n/crdt": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
@@ -232,8 +233,10 @@
     "xml2js": "catalog:",
     "xmllint-wasm": "3.0.1",
     "xss": "catalog:",
+    "y-protocols": "^1.0.7",
     "yaml": "catalog:",
     "yargs-parser": "21.1.1",
+    "yjs": "^13.6.20",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
   },

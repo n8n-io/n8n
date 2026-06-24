@@ -54,6 +54,31 @@ export const MESSAGE_DISCONNECTED = 5;
  */
 export const MESSAGE_INITIAL_SYNC = 6;
 
+// =============================================================================
+// Document sync channel sub-protocol
+// =============================================================================
+
+/**
+ * Frame types exchanged by a sync provider over a single document channel
+ * (e.g. {@link HandshakeSyncProvider} over a transport), framed via
+ * {@link encodeMessage}/{@link decodeMessage}. Modeled on the y-protocols sync
+ * flow. Both peers in a connection — including a server room hosting the
+ * authoritative document — speak this same set, which is why it lives here as
+ * the single canonical definition shared by client and server.
+ */
+/** Announce our state vector so the peer can send what we're missing. */
+export const SYNC_STEP1 = 0;
+/** Reply with the updates a peer is missing (diff for its state vector). */
+export const SYNC_STEP2 = 1;
+/** An incremental document update. */
+export const SYNC_UPDATE = 2;
+/**
+ * An ephemeral awareness update (presence/cursors), multiplexed alongside the
+ * sync frames above on the same channel. A sync provider ignores this frame
+ * type; a separate awareness relay handles it.
+ */
+export const SYNC_AWARENESS = 3;
+
 /**
  * Encode a message with type prefix.
  * @param messageType - The message type (MESSAGE_SYNC or MESSAGE_AWARENESS)

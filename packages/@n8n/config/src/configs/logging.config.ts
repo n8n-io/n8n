@@ -48,6 +48,7 @@ export const LOG_SCOPES = [
 	'mcp-registry',
 	'workflow-publication',
 	'metrics',
+	'crdt',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

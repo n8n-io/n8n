@@ -17,6 +17,7 @@ import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanva
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -214,6 +215,7 @@ const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
+const settingsStore = useSettingsStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();
@@ -333,11 +335,15 @@ const isWriterAnotherTab = computed(() => {
 	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
 });
 
-// With CRDT collaboration, the same user's other tab syncs live, so hide the
-// "Editing in another tab" pill. A different user's "{name} is editing" pill
-// (isWriterAnotherTab === false) is unaffected.
+// Server-side CRDT merges concurrent edits live, so everyone co-edits and the
+// single-writer "{name} is currently editing" pill never applies — hide it
+// entirely. With cross-tab (local) CRDT, only the same user's other tab syncs
+// live, so just hide the "Editing in another tab" pill; a different user's pill
+// still shows.
 const hideCollaborationPillForCrdt = computed(
-	() => isCrdtCollaborationEnabled() && isWriterAnotherTab.value,
+	() =>
+		settingsStore.crdtCollaborationMode === 'server' ||
+		(isCrdtCollaborationEnabled() && isWriterAnotherTab.value),
 );
 
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);

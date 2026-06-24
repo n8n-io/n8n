@@ -247,6 +247,16 @@ export interface FrontendSettings {
 	evaluation: {
 		quota: number;
 	};
+	collaboration: {
+		/**
+		 * Real-time collaborative editing mode for the workflow editor.
+		 * - `off`    – disabled.
+		 * - `local`  – sync across tabs of the same browser only (no backend).
+		 * - `server` – sync through this instance's CRDT WebSocket endpoint,
+		 *              shared across browsers and users.
+		 */
+		crdt: 'off' | 'local' | 'server';
+	};
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];

@@ -6,6 +6,10 @@ import {
 	MESSAGE_CONNECTED,
 	MESSAGE_DISCONNECTED,
 	MESSAGE_INITIAL_SYNC,
+	SYNC_STEP1,
+	SYNC_STEP2,
+	SYNC_UPDATE,
+	SYNC_AWARENESS,
 	encodeMessage,
 	decodeMessage,
 	encodeWithDocId,
@@ -26,6 +30,15 @@ describe('Protocol', () => {
 			expect(MESSAGE_CONNECTED).toBe(4);
 			expect(MESSAGE_DISCONNECTED).toBe(5);
 			expect(MESSAGE_INITIAL_SYNC).toBe(6);
+		});
+
+		it('should have stable document-sync channel frame values (client/server lockstep)', () => {
+			// These bytes are the wire contract between the frontend sync provider
+			// and the server CRDT room. Changing them is a breaking protocol change.
+			expect(SYNC_STEP1).toBe(0);
+			expect(SYNC_STEP2).toBe(1);
+			expect(SYNC_UPDATE).toBe(2);
+			expect(SYNC_AWARENESS).toBe(3);
 		});
 	});
 

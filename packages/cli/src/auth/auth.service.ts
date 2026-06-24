@@ -77,6 +77,10 @@ export class AuthService {
 			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
 			`/${restEndpoint}/push`,
 
+			// Same constraint as push: the CRDT collaboration websocket upgrade can't
+			// carry a browser-id header, so the browser-id check must be skipped here.
+			`/${restEndpoint}/crdt`,
+
 			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
 			`/${restEndpoint}/binary-data/`,
 

@@ -18,6 +18,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -41,6 +42,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 	const builderStore = useBuilderStore();
 	const toast = useToast();
 	const i18n = useI18n();
@@ -90,9 +92,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	const shouldBeReadOnly = computed(() => {
 		if (!isAnyoneWriting.value || isCurrentTabWriter.value) return false;
-		// With CRDT collaboration, same-browser tabs sync live, so another tab of
+		// Server-side CRDT merges concurrent edits across browsers and users, so the
+		// single-writer lock no longer applies — everyone co-edits live.
+		if (settingsStore.crdtCollaborationMode === 'server') return false;
+		// With cross-tab (local) CRDT, same-browser tabs sync live, so another tab of
 		// the SAME user should not lock this one. A different user's lock still
-		// applies (CRDT does not sync across browsers).
+		// applies (local CRDT does not sync across browsers).
 		if (isCrdtCollaborationEnabled() && isCurrentUserWriter.value) return false;
 		return true;
 	});
@@ -216,6 +221,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function requestWriteAccess() {
+		// Server-side CRDT lets everyone co-edit live, so no single-writer lock is
+		// acquired — report access as granted without contending for the lock.
+		if (settingsStore.crdtCollaborationMode === 'server') {
+			return true;
+		}
+
 		if (isCurrentTabWriter.value) {
 			return true;
 		}
@@ -237,6 +248,11 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function requestWriteAccessForce() {
+		// No single-writer lock under server-side CRDT — nothing to force-acquire.
+		if (settingsStore.crdtCollaborationMode === 'server') {
+			return true;
+		}
+
 		if (!collaboratingWorkflowId.value) {
 			return false;
 		}
@@ -363,6 +379,15 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	async function handleWorkflowUpdate(updatedByUserId?: string) {
 		if (!collaboratingWorkflowId.value) {
 			return;
+		}
+
+		// Server-side CRDT keeps ALL users' content in live sync, so any save —
+		// by this user or another — only advances the persisted baseline and is
+		// never a conflict here. Realign the baseline to the server's latest so
+		// the next save stays current, without warning about a conflict that
+		// doesn't exist or replacing the already-synced live canvas.
+		if (settingsStore.crdtCollaborationMode === 'server') {
+			return await fastForwardWorkflowBaseline();
 		}
 
 		// CRDT keeps this user's same-browser tabs in content sync, so any save by

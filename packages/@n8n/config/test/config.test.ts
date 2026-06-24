@@ -282,6 +282,9 @@ describe('GlobalConfig', () => {
 		chatTrigger: {
 			disablePublicChat: false,
 		},
+		collaboration: {
+			crdt: 'off',
+		},
 		compressionNode: {
 			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
 			maxZipEntries: 5000,

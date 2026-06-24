@@ -3155,6 +3155,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../@n8n/constants
+      '@n8n/crdt':
+        specifier: workspace:*
+        version: link:../@n8n/crdt
       '@n8n/db':
         specifier: workspace:*
         version: link:../@n8n/db
@@ -3482,12 +3485,18 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.29)
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
       yargs-parser:
         specifier: 21.1.1
         version: 21.1.1
+      yjs:
+        specifier: ^13.6.20
+        version: 13.6.29
       zod:
         specifier: 3.25.67
         version: 3.25.67

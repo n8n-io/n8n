@@ -7,6 +7,7 @@ import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
+import { CollaborationConfig } from './configs/collaboration.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
 import { CompressionNodeConfig } from './configs/compression.config';
 import { CredentialsConfig } from './configs/credentials.config';
@@ -284,4 +285,7 @@ export class GlobalConfig {
 
 	@Nested
 	instanceSettingsLoader: InstanceSettingsLoaderConfig;
+
+	@Nested
+	collaboration: CollaborationConfig;
 }

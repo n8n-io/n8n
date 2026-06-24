@@ -1,4 +1,5 @@
 import type { PushPayload } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
@@ -38,7 +39,16 @@ export class CollaborationService {
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
 		private readonly accessService: AccessService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	/**
+	 * Server-side CRDT merges concurrent edits on a shared document, so the
+	 * pessimistic single-writer lock no longer applies and must not be enforced.
+	 */
+	private get isServerCrdtEnabled(): boolean {
+		return this.globalConfig.collaboration.crdt === 'server';
+	}
 
 	init() {
 		this.push.on('message', async (event: OnPushMessage) => {
@@ -339,6 +349,10 @@ export class CollaborationService {
 	 * Throws if any user currently holds the write lock for the given workflow.
 	 */
 	async ensureWorkflowEditable(workflowId: Workflow['id']): Promise<void> {
+		if (this.isServerCrdtEnabled) {
+			return;
+		}
+
 		const lock = await this.state.getWriteLock(workflowId);
 		if (lock) {
 			throw new LockedError(
@@ -358,6 +372,12 @@ export class CollaborationService {
 		workflowId: Workflow['id'],
 		action: string,
 	): Promise<void> {
+		// Concurrent edits merge under server-side CRDT, so the lock must not block
+		// updates (otherwise co-editing users get 409/423 errors on save).
+		if (this.isServerCrdtEnabled) {
+			return;
+		}
+
 		if (!clientId) {
 			return;
 		}

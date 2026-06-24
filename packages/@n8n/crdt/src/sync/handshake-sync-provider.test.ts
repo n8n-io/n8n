@@ -1,6 +1,8 @@
 import { createCRDTProvider, CRDTEngine } from '../index';
+import { decodeMessage, SYNC_STEP1 } from '../protocol';
 import { MockTransport } from '../transports';
-import type { CRDTDoc, CRDTMap } from '../types';
+import type { SyncTransport } from '../transports';
+import type { CRDTDoc, CRDTMap, Unsubscribe } from '../types';
 import { createHandshakeSyncProvider } from './handshake-sync-provider';
 import type { SyncProvider } from './types';
 
@@ -162,5 +164,42 @@ describe('CRDTDoc.encodeStateFrom', () => {
 		target.applyUpdate(diff);
 
 		expect(target.getMap('data').toJSON()).toEqual({ a: 1, b: 2 });
+	});
+
+	it('re-runs the handshake when the transport reconnects (not just on start)', async () => {
+		const sent: Uint8Array[] = [];
+		let connectionHandler: ((connected: boolean) => void) | undefined;
+		const fakeTransport: SyncTransport = {
+			connected: true,
+			send: (data) => sent.push(Uint8Array.from(data)),
+			onReceive: (): Unsubscribe => () => {},
+			connect: async () => {},
+			disconnect: () => {},
+			onConnectionChange: (handler): Unsubscribe => {
+				connectionHandler = handler;
+				return () => {};
+			},
+			onError: (): Unsubscribe => () => {},
+		};
+		const doc = createCRDTProvider({ engine: CRDTEngine.yjs }).createDoc('reconnect-doc');
+		const sync = createHandshakeSyncProvider(doc, fakeTransport);
+
+		const step1Count = () =>
+			sent.filter((data) => decodeMessage(data).messageType === SYNC_STEP1).length;
+
+		await sync.start();
+		expect(step1Count()).toBe(1); // initial handshake
+
+		// An auto-reconnecting transport reconnects WITHOUT calling start()/stop();
+		// the provider must re-handshake so it re-seeds/catches up to the peer.
+		connectionHandler?.(true);
+		expect(step1Count()).toBe(2);
+
+		// A disconnect alone must not trigger a handshake.
+		connectionHandler?.(false);
+		expect(step1Count()).toBe(2);
+
+		sync.stop();
+		doc.destroy();
 	});
 });

@@ -43,8 +43,9 @@ import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useWorkflowsStore } from './workflows.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { CRDT_COLLABORATION_EXPERIMENT } from '@/app/constants/experiments';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { isCrdtCollaborationEnabled } from '@/experiments/utils';
 import { useWorkflowDocumentCollaboration } from './crdt/useWorkflowDocumentCollaboration';
 
 export {
@@ -258,19 +259,38 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			if (id) workflowDocumentNodeGroups.removeNodeFromGroups(id);
 		});
 
-		// --- CRDT collaboration (experiment-gated) ---
-		// When enabled, mirror this document into a CRDT doc that syncs across
-		// browser tabs (BroadcastChannel) with collaborative undo and presence.
-		// The doc is a mirror — the Vue refs above stay the source of truth.
-		// `markRaw` keeps the doc/undo-manager class instances out of Pinia's
-		// reactive proxy. See ./crdt/useWorkflowDocumentCollaboration.ts.
-		const collaboration = usePostHog().isVariantEnabled(
-			CRDT_COLLABORATION_EXPERIMENT.name,
-			CRDT_COLLABORATION_EXPERIMENT.variant,
-		)
+		// --- CRDT collaboration (gated by experiment or backend setting) ---
+		// When enabled, mirror this document into a CRDT doc that syncs either
+		// across browser tabs (BroadcastChannel) or through the backend CRDT
+		// WebSocket (server mode), with collaborative undo and presence. The doc is
+		// a mirror — the Vue refs above stay the source of truth. `markRaw` keeps
+		// the doc/undo-manager class instances out of Pinia's reactive proxy.
+		// See ./crdt/useWorkflowDocumentCollaboration.ts.
+		const settingsStore = useSettingsStore();
+		const rootStore = useRootStore();
+		// Server mode needs a persisted workflow to authorize the socket against;
+		// fall back to cross-tab sync for unsaved drafts.
+		const isPersistedWorkflow = !!workflowId && workflowId !== 'new' && workflowId !== '__EMPTY__';
+		const useServerCrdt = settingsStore.crdtCollaborationMode === 'server' && isPersistedWorkflow;
+
+		function buildCrdtServerUrl(): string {
+			const restUrl = rootStore.restUrl;
+			const { protocol, host } = window.location;
+			const wsBase = restUrl.startsWith('http')
+				? restUrl.replace(/^http/, 'ws')
+				: `${protocol === 'https:' ? 'wss' : 'ws'}://${host}${restUrl}`;
+			// The server derives the room key from the authorized workflow id + version
+			// (never a raw client key), so we send those rather than the local doc id.
+			const query = `workflowId=${encodeURIComponent(workflowId)}&version=${encodeURIComponent(workflowVersion)}`;
+			return `${wsBase}/crdt?${query}`;
+		}
+
+		const collaboration = isCrdtCollaborationEnabled()
 			? markRaw(
 					useWorkflowDocumentCollaboration({
 						docId: getWorkflowDocumentStoreId(id),
+						mode: useServerCrdt ? 'server' : 'local',
+						serverUrl: useServerCrdt ? buildCrdtServerUrl() : undefined,
 						nodesById: workflowDocumentNodes.nodesById,
 						getNodeByName: workflowDocumentNodes.getNodeByName,
 						connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode,

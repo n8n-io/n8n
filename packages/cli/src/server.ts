@@ -70,6 +70,7 @@ import '@/modules/workflow-index/workflow-dependency.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
+import { CrdtServer } from './crdt/crdt-server';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
@@ -205,6 +206,8 @@ export class Server extends AbstractServer {
 
 		const push = Container.get(Push);
 		push.setupPushHandler(restEndpoint, app);
+
+		Container.get(CrdtServer).setupHandlers(restEndpoint, app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
@@ -503,5 +506,6 @@ export class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
+		Container.get(CrdtServer).setupServer(restEndpoint, server, app);
 	}
 }

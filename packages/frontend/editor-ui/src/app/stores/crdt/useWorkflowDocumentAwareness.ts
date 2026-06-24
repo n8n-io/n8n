@@ -1,6 +1,7 @@
 import { onScopeDispose, shallowRef } from 'vue';
 import { ChangeOrigin } from '@n8n/crdt';
 import type { AwarenessClientId, AwarenessState, CRDTDoc, Unsubscribe } from '@n8n/crdt';
+import type { AwarenessRelay } from './awarenessRelay';
 
 export interface WorkflowAwarenessUser {
 	id: string;
@@ -21,6 +22,12 @@ export type WorkflowAwarenessState = {
 export interface WorkflowDocumentAwarenessDeps {
 	doc: CRDTDoc;
 	localUser: WorkflowAwarenessUser;
+	/**
+	 * Server-backed relay for presence. When provided (server mode), presence is
+	 * shared across browsers and users over this relay; otherwise it stays
+	 * cross-tab only via a dedicated BroadcastChannel.
+	 */
+	relay?: AwarenessRelay | null;
 }
 
 /**
@@ -52,20 +59,41 @@ export function useWorkflowDocumentAwareness(deps: WorkflowDocumentAwarenessDeps
 	const unsubscribeChange = awareness.onChange(refreshRemoteStates);
 	refreshRemoteStates();
 
-	// Cross-tab awareness relay (separate channel from the document sync).
+	// Only our OWN presence is broadcast. Applying a peer's update also fires
+	// onUpdate (origin 'remote'); re-broadcasting it would echo back and forth.
+	// Both transports deliver every peer the originator's update directly.
+	function broadcastLocalUpdate(update: Uint8Array, origin: ChangeOrigin) {
+		if (origin !== ChangeOrigin.local) return;
+		if (deps.relay) deps.relay.send(update);
+		else channel?.postMessage(Array.from(update));
+	}
+
 	let channel: BroadcastChannel | null = null;
 	let unsubscribeUpdate: Unsubscribe | null = null;
-	if (typeof BroadcastChannel !== 'undefined') {
-		channel = new BroadcastChannel(`${deps.doc.id}:awareness`);
-		unsubscribeUpdate = awareness.onUpdate((update, origin) => {
-			// Only broadcast our OWN presence. Applying a peer's update also fires
-			// onUpdate (origin 'remote'); re-broadcasting it would echo back and
-			// forth across tabs. Mesh delivery means every tab already hears the
-			// originator directly.
-			if (origin === ChangeOrigin.local) {
-				channel?.postMessage(Array.from(update));
-			}
+	let unsubscribeRelayReceive: Unsubscribe | null = null;
+	let unsubscribeRelayReady: Unsubscribe | null = null;
+
+	if (deps.relay) {
+		// Server mode: relay presence over the shared CRDT socket.
+		const relay = deps.relay;
+		unsubscribeUpdate = awareness.onUpdate(broadcastLocalUpdate);
+		unsubscribeRelayReceive = relay.onReceive((update) => awareness.applyUpdate(update));
+		// Re-announce our presence whenever the socket (re)connects, since peers
+		// that join later miss our earlier announcements. Re-setting local state
+		// bumps our awareness clock, so peers (and a still-warm server room) that
+		// still hold our pre-reconnect clock accept the re-announce immediately —
+		// a same-clock update would otherwise be ignored and our cursor would stay
+		// invisible until our next move. `onUpdate` then broadcasts it.
+		unsubscribeRelayReady = relay.onReady(() => {
+			const localState = awareness.getLocalState();
+			if (localState) awareness.setLocalState(localState);
 		});
+		// Announce immediately in case the socket is already connected.
+		relay.send(awareness.encodeState([awareness.clientId]));
+	} else if (typeof BroadcastChannel !== 'undefined') {
+		// Local mode: cross-tab awareness relay (separate channel from doc sync).
+		channel = new BroadcastChannel(`${deps.doc.id}:awareness`);
+		unsubscribeUpdate = awareness.onUpdate(broadcastLocalUpdate);
 		channel.onmessage = (event: MessageEvent) => {
 			awareness.applyUpdate(new Uint8Array(event.data as number[]));
 		};
@@ -80,12 +108,15 @@ export function useWorkflowDocumentAwareness(deps: WorkflowDocumentAwarenessDeps
 	}
 
 	function destroy() {
+		// Mark this client offline first, while the relay/channel is still live, so
+		// peers drop our cursor immediately rather than after the presence timeout.
+		awareness.setLocalState(null);
 		unsubscribeChange();
 		unsubscribeUpdate?.();
+		unsubscribeRelayReceive?.();
+		unsubscribeRelayReady?.();
 		channel?.close();
 		channel = null;
-		// Mark this client offline for peers; the doc owns full awareness teardown.
-		awareness.setLocalState(null);
 	}
 
 	onScopeDispose(destroy);

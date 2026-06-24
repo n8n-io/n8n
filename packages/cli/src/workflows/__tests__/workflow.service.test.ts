@@ -16,6 +16,7 @@ import type { IConnections, INode } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import type { EventService } from '@/events/event.service';
@@ -1042,6 +1043,55 @@ describe('WorkflowService', () => {
 			expect(activeWorkflowManagerMock.add).not.toHaveBeenCalled();
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('_detectConflicts under CRDT', () => {
+		function buildService(crdt: 'off' | 'server') {
+			const globalConfig = mock<GlobalConfig>();
+			globalConfig.collaboration = { crdt };
+			return new WorkflowService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+		}
+
+		it('does not throw a conflict in server CRDT mode (checksum is never checked)', async () => {
+			const service = buildService('server');
+			await expect(
+				service._detectConflicts({} as unknown as WorkflowEntity, 'stale-checksum'),
+			).resolves.toBeUndefined();
+		});
+
+		it('still throws ConflictError on a checksum mismatch when CRDT is off', async () => {
+			const service = buildService('off');
+			await expect(
+				service._detectConflicts({} as unknown as WorkflowEntity, 'definitely-not-the-checksum'),
+			).rejects.toThrow(ConflictError);
 		});
 	});
 });

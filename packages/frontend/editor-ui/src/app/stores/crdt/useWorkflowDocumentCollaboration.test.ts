@@ -61,6 +61,7 @@ function createFakeDeps() {
 	}
 
 	const deps: Omit<WorkflowDocumentCollaborationDeps, 'docId'> = {
+		mode: 'local',
 		nodesById,
 		getNodeByName: (target) => [...nodesById.value.values()].find((n) => n.name === target),
 		connectionsBySourceNode: computed(() => connections.value),
@@ -123,5 +124,28 @@ describe('useWorkflowDocumentCollaboration', () => {
 		expect(collaboration.doc).toBeDefined();
 		// Disposing the scope must not throw (sync stop + mirror + doc teardown).
 		expect(() => scope.stop()).not.toThrow();
+	});
+
+	it('exposes a server-backed awareness relay only in server mode', () => {
+		const local = createFakeDeps();
+		const localScope = effectScope();
+		const localCollab = localScope.run(() =>
+			useWorkflowDocumentCollaboration({ docId: `collab-${docCounter++}`, ...local.deps }),
+		)!;
+		expect(localCollab.awarenessRelay).toBeNull();
+		localScope.stop();
+
+		const server = createFakeDeps();
+		const serverScope = effectScope();
+		const serverCollab = serverScope.run(() =>
+			useWorkflowDocumentCollaboration({
+				docId: `collab-${docCounter++}`,
+				...server.deps,
+				mode: 'server',
+				serverUrl: 'ws://localhost/rest/crdt?docId=x&workflowId=w',
+			}),
+		)!;
+		expect(serverCollab.awarenessRelay).not.toBeNull();
+		expect(() => serverScope.stop()).not.toThrow();
 	});
 });

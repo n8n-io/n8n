@@ -2,6 +2,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { nextTick, reactive, ref } from 'vue';
 import { useCollaborationStore } from './collaboration.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const mockFetchWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -328,6 +329,41 @@ describe('useCollaborationStore', () => {
 
 			expect(mockSetChecksum).not.toHaveBeenCalled();
 			expect(mockShowMessage).toHaveBeenCalledTimes(1);
+
+			store.terminate();
+		});
+
+		test('fast-forwards instead of warning for a DIFFERENT user under server CRDT', async () => {
+			// Server CRDT merges everyone live, so a different user's save is not a
+			// conflict here — realign the baseline, never show the blocked-update toast.
+			useSettingsStore().settings.collaboration = { crdt: 'server' };
+			mockUiStore.stateIsDirty = true;
+			mockFetchWorkflow.mockResolvedValue({ versionId: 'version-9', checksum: 'checksum-9' });
+
+			const store = await emitWorkflowUpdated('user-2');
+
+			expect(mockSetChecksum).toHaveBeenCalledWith('checksum-9');
+			expect(mockShowMessage).not.toHaveBeenCalled();
+
+			store.terminate();
+		});
+	});
+
+	describe('write access under server CRDT', () => {
+		test('requestWriteAccess grants access without contending for the lock', async () => {
+			useSettingsStore().settings.collaboration = { crdt: 'server' };
+			const store = useCollaborationStore();
+			await store.initialize('workflow-1');
+			mockPushStore.send.mockClear();
+
+			expect(store.requestWriteAccess()).toBe(true);
+			expect(store.requestWriteAccessForce()).toBe(true);
+
+			// No single-writer lock is requested from the backend under server CRDT.
+			const lockRequest = mockPushStore.send.mock.calls.find(
+				(call) => (call[0] as { type: string }).type === 'writeAccessRequested',
+			);
+			expect(lockRequest).toBeUndefined();
 
 			store.terminate();
 		});

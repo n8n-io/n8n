@@ -59,6 +59,9 @@ export function useCanvasAwareness(selectedNodeIds: Ref<string[]>) {
 	const awareness = useWorkflowDocumentAwareness({
 		doc: collaboration.doc,
 		localUser: { id: currentUser.id, name, color: getUserCursorColor(currentUser.id) },
+		// In server mode, presence is relayed across browsers/users over the shared
+		// socket; in local mode this is null and presence stays cross-tab.
+		relay: collaboration.awarenessRelay,
 	});
 
 	watch(selectedNodeIds, (ids) => awareness.setSelectedNodeIds(ids), { immediate: true });

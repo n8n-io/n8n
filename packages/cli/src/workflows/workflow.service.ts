@@ -1232,6 +1232,14 @@ export class WorkflowService {
 	}
 
 	async _detectConflicts(dbWorkflow: WorkflowEntity, expectedChecksum: string) {
+		// Server-side CRDT continuously merges every editor's changes onto one
+		// shared document, so optimistic checksum conflict detection no longer
+		// applies — a save only advances the persisted baseline and is never a
+		// real "someone else changed it" conflict.
+		if (this.globalConfig.collaboration.crdt === 'server') {
+			return;
+		}
+
 		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
 
 		if (expectedChecksum !== currentChecksum) {

@@ -244,6 +244,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
+	/** CRDT collaborative-editing topology configured on the backend. */
+	const crdtCollaborationMode = computed(() => settings.value.collaboration?.crdt ?? 'off');
+
+	/** Whether collaborative editing is enabled via the backend setting (any mode). */
+	const isCrdtCollaborationEnabled = computed(() => crdtCollaborationMode.value !== 'off');
+
 	const endpointHealth = computed(() => settings.value.endpointHealth);
 
 	const setSettings = (newSettings: FrontendSettings) => {
@@ -410,6 +416,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		mfa,
 		isDocker,
 		isDevRelease,
+		crdtCollaborationMode,
+		isCrdtCollaborationEnabled,
 		endpointHealth,
 		isEnterpriseFeatureEnabled,
 		databaseType,

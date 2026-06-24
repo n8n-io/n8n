@@ -1,21 +1,10 @@
-import { decodeMessage, encodeMessage } from '../protocol';
+import { decodeMessage, encodeMessage, SYNC_STEP1, SYNC_STEP2, SYNC_UPDATE } from '../protocol';
 import type { SyncTransport } from '../transports';
 import type { CRDTDoc, Unsubscribe } from '../types';
 import type { SyncProvider } from './types';
 
 type SyncStateHandler = (syncing: boolean) => void;
 type ErrorHandler = (error: Error) => void;
-
-/**
- * Sync sub-message types, framed as `[type, ...payload]` over the transport.
- * Modeled on the y-protocols sync flow.
- */
-/** Announce our state vector so the peer can send what we're missing. */
-const SYNC_STEP1 = 0;
-/** Reply with the updates a peer is missing (diff for its state vector). */
-const SYNC_STEP2 = 1;
-/** An incremental document update. */
-const SYNC_UPDATE = 2;
 
 /**
  * HandshakeSyncProvider - sync provider with a state-vector handshake.
@@ -36,6 +25,7 @@ export class HandshakeSyncProvider implements SyncProvider {
 	private errorHandlers = new Set<ErrorHandler>();
 	private unsubscribeDoc: Unsubscribe | null = null;
 	private unsubscribeTransport: Unsubscribe | null = null;
+	private unsubscribeConnection: Unsubscribe | null = null;
 	// Whether we've already reciprocated a peer's handshake with our own STEP1.
 	// Bounds the exchange to at most two STEP1s per peer (connect + one reply),
 	// so it terminates instead of ping-ponging.
@@ -64,12 +54,33 @@ export class HandshakeSyncProvider implements SyncProvider {
 			}
 		});
 
+		// Re-run the handshake whenever the transport (re)connects. A transport
+		// that auto-reconnects (e.g. WebSocketTransport) does so without calling
+		// start()/stop(), so without this a reconnecting peer would only emit
+		// future deltas and never re-seed from — nor catch up to — the peer it
+		// reconnected to (which, for a server relay, may be a freshly recreated
+		// empty room). The initial connection already fired before this
+		// subscription, so it only triggers on subsequent reconnects.
+		this.unsubscribeConnection = this.transport.onConnectionChange((connected) => {
+			if (connected) this.sendStep1();
+		});
+
 		// Kick off the handshake: tell peers what we already have so they can
 		// send us anything we're missing.
-		this.transport.send(encodeMessage(SYNC_STEP1, this.doc.encodeStateVector()));
+		this.sendStep1();
 
 		this._syncing = true;
 		this.notifyStateChange();
+	}
+
+	/**
+	 * Announce our state vector so the peer sends what we're missing, and reset
+	 * the reciprocation guard so a reconnect runs a fresh, terminating exchange.
+	 */
+	private sendStep1(): void {
+		if (!this.transport.connected) return;
+		this.reciprocated = false;
+		this.transport.send(encodeMessage(SYNC_STEP1, this.doc.encodeStateVector()));
 	}
 
 	stop(): void {
@@ -79,6 +90,8 @@ export class HandshakeSyncProvider implements SyncProvider {
 		this.unsubscribeDoc = null;
 		this.unsubscribeTransport?.();
 		this.unsubscribeTransport = null;
+		this.unsubscribeConnection?.();
+		this.unsubscribeConnection = null;
 		this.reciprocated = false;
 
 		this.transport.disconnect();

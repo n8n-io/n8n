@@ -402,6 +402,9 @@ export class FrontendService {
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
+			collaboration: {
+				crdt: this.globalConfig.collaboration.crdt,
+			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,
 			envFeatureFlags: this.collectEnvFeatureFlags(),
