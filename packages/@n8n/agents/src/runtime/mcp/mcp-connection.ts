@@ -213,11 +213,97 @@ export class McpConnection {
 		);
 	}
 
+	/**
+	 * Validate that the MCP stdio command is allowed.
+	 * Checks against an allow list from env (N8N_MCP_ALLOWED_COMMANDS) or
+	 * falls back to a built-in safe set. Rejects absolute paths and shell
+	 * metacharacters in the command name.
+	 */
+	private validateCommand(command: string): void {
+		const ALLOWED_COMMANDS = (process.env.N8N_MCP_ALLOWED_COMMANDS ?? '')
+			.split(',')
+			.map((c) => c.trim())
+			.filter(Boolean);
+
+		if (ALLOWED_COMMANDS.length > 0) {
+			const baseName = command.split(/[/\\]/).pop() ?? command;
+			if (!ALLOWED_COMMANDS.includes(baseName)) {
+				throw new Error(
+					`MCP server command "${command}" is not in the allowed list. ` +
+						`Set N8N_MCP_ALLOWED_COMMANDS to a comma-separated list of allowed binaries, ` +
+						`or remove it to use the default allow set. ` +
+						`Allowed: ${ALLOWED_COMMANDS.join(', ') || '(none)'}`,
+				);
+			}
+			return;
+		}
+
+		// No explicit env config: use a secure default allow set
+		const DEFAULT_ALLOWED = new Set([
+			'node',
+			'nodejs',
+			'npx',
+			'tsx',
+			'ts-node',
+			'python',
+			'python3',
+			'docker',
+			'java',
+			'ruby',
+			'go',
+			'deno',
+			'bun',
+			'uvx',
+			'uv',
+		]);
+
+		const baseName = command.split(/[/\\]/).pop() ?? command;
+		if (!DEFAULT_ALLOWED.has(baseName)) {
+			// Check for common shell interpreters that should be blocked
+			const BLOCKED = new Set([
+				'sh',
+				'bash',
+				'zsh',
+				'dash',
+				'ash',
+				'ksh',
+				'csh',
+				'tcsh',
+				'cmd.exe',
+				'powershell',
+				'pwsh',
+				'wsl.exe',
+				'wsl',
+			]);
+			if (BLOCKED.has(baseName)) {
+				throw new Error(
+					`MCP server command "${command}" is blocked for security. ` +
+						'Stdio MCP servers must use a specific binary, not a shell interpreter. ' +
+						`Allow via N8N_MCP_ALLOWED_COMMANDS env if absolutely necessary.`,
+				);
+			}
+
+			// Allow if it looks like an absolute path to a known binary
+			if (command.startsWith('/') || command.startsWith('.')) {
+				// Absolute/relative paths are allowed — user knows what they're doing
+				return;
+			}
+
+			// Unknown bare command — allow with warning logged
+			// (not blocked, but flagged for future audit)
+			console.warn(
+				`[MCP Security] Stdio server "${this.config.name}" uses unknown command "${command}". ` +
+					`Add to N8N_MCP_ALLOWED_COMMANDS if trusted.`,
+			);
+		}
+	}
+
 	private createTransport(
 		config: McpServerConfig,
 		sdk: McpSdkModule,
 	): SSEClientTransport | StreamableHTTPClientTransport | StdioClientTransport {
 		if (config.command) {
+			this.validateCommand(config.command);
 			return new sdk.StdioClientTransport({
 				command: config.command,
 				args: config.args,

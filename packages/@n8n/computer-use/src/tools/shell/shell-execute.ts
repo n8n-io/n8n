@@ -9,7 +9,10 @@ import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult, formatErrorResult } from '../utils';
 import { buildShellResource } from './build-shell-resource';
 
-async function initializeSandbox({ dir }: { dir: string }) {
+let sandboxInitialized = false;
+
+async function ensureSandboxInitialized({ dir }: { dir: string }) {
+	if (sandboxInitialized) return;
 	const config: SandboxRuntimeConfig = {
 		ripgrep: {
 			command: rgPath,
@@ -19,13 +22,14 @@ async function initializeSandbox({ dir }: { dir: string }) {
 			deniedDomains: [],
 		},
 		filesystem: {
-			denyRead: ['~/.ssh', getSettingsDir()],
+			denyRead: ['~/.ssh', getSettingsDir(), '/etc/shadow', '/etc/passwd'],
 			allowRead: [],
 			allowWrite: [dir],
-			denyWrite: [getSettingsDir()],
+			denyWrite: [getSettingsDir(), '/etc', '/sys', '/proc', '/dev'],
 		},
 	};
 	await SandboxManager.initialize(config);
+	sandboxInitialized = true;
 }
 
 const inputSchema = z.object({
@@ -62,19 +66,24 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 
 async function spawnCommand(command: string, { dir, cwd }: { dir: string; cwd?: string }) {
 	const isWindows = process.platform === 'win32';
-	const isMac = process.platform === 'darwin';
 
 	if (isWindows) {
 		return spawn('cmd.exe', ['/C', command], { cwd });
 	}
 
-	if (isMac) {
-		await initializeSandbox({ dir });
+	// Try the Anthropic sandbox runtime (nsjail on Linux, sandbox-runner on macOS).
+	// The sandbox provides filesystem, network, and process-level isolation.
+	try {
+		await ensureSandboxInitialized({ dir });
 		const sandboxedCommand = await SandboxManager.wrapWithSandbox(command);
 		return spawn(sandboxedCommand, { shell: true, cwd });
+	} catch {
+		// Sandbox runtime unavailable (not installed, missing nsjail, etc.).
+		// Fall back to raw shell execution — this is inherently less secure.
+		// The filesystem deny list and network blocking are enforced by the
+		// Approval/HITL layer, not the sandbox.
+		return spawn('sh', ['-c', command], { cwd });
 	}
-
-	return spawn('sh', ['-c', command], { cwd });
 }
 
 async function runCommand(

@@ -1,5 +1,4 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import { IvmSandbox } from '../Code/IvmSandbox';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -156,13 +155,13 @@ return item;`,
 				const dataProxy = this.getWorkflowDataProxy(itemIndex);
 				Object.assign(sandbox, dataProxy);
 
-				const options: NodeVMOptions = {
-					console: mode === 'manual' ? 'redirect' : 'inherit',
+				const vm = new IvmSandbox({
 					sandbox,
-					require: vmResolver,
-				};
-
-				const vm = new NodeVM(options as unknown as NodeVMOptions);
+					resolver: vmResolver,
+					console: mode === 'manual' ? 'redirect' : 'inherit',
+					memoryLimit: 64,
+					timeout: 10_000,
+				});
 
 				if (mode === 'manual') {
 					vm.on('console.log', this.sendMessageToUI.bind(this));

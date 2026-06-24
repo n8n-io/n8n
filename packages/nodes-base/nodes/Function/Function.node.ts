@@ -1,5 +1,4 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import { IvmSandbox } from '../Code/IvmSandbox';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -149,13 +148,13 @@ return items;`,
 
 		const mode = this.getMode();
 
-		const options: NodeVMOptions = {
-			console: mode === 'manual' ? 'redirect' : 'inherit',
+		const vm = new IvmSandbox({
 			sandbox,
-			require: vmResolver,
-		};
-
-		const vm = new NodeVM(options);
+			resolver: vmResolver,
+			console: mode === 'manual' ? 'redirect' : 'inherit',
+			memoryLimit: 64,
+			timeout: 10_000,
+		});
 
 		if (mode === 'manual') {
 			vm.on('console.log', this.sendMessageToUI.bind(this));

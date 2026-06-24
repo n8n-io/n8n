@@ -1,5 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
-import { makeResolverFromLegacyOptions } from 'vm2';
+import { makeIvmResolver, type IvmResolver } from 'n8n-nodes-base/dist/nodes/Code/IvmSandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
@@ -156,20 +156,20 @@ export function createSandboxLogger(logger: Logger): Logger {
 }
 
 const langchainModules = ['langchain', '@langchain/*'];
-export const vmResolver = makeResolverFromLegacyOptions({
+export const vmResolver: IvmResolver = makeIvmResolver({
 	external: {
 		modules: external ? [...langchainModules, ...external.split(',')] : [...langchainModules],
 		transitive: false,
 	},
-	resolve(moduleName, parentDirname) {
+	builtin: builtIn?.split(',') ?? [],
+	resolve(moduleName: string, _parentDirname: string) {
 		if (moduleName.match(/^langchain\//) ?? moduleName.match(/^@langchain\//)) {
 			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
-				paths: [parentDirname],
+				paths: [_parentDirname],
 			});
 		}
 		return;
 	},
-	builtin: builtIn?.split(',') ?? [],
 });
 
 function getSandbox(

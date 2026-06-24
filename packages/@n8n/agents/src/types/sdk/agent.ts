@@ -337,6 +337,8 @@ export interface SerializableAgentState {
 	executionOptions?: PersistedExecutionOptions;
 	/** Number of completed LLM iterations at suspension time. */
 	iterationCount?: number;
+	/** Optimistic lock version — incremented on each resume() to detect concurrent access. */
+	__version?: number;
 }
 
 export type AgentPersistenceOptions = {

@@ -1,7 +1,14 @@
-import { NodeVM, makeResolverFromLegacyOptions, type Resolver } from 'vm2';
+/**
+ * JavaScript sandbox for the Code node.
+ *
+ * Uses isolated-vm (true V8 isolate) instead of vm2 (deprecated, known
+ * sandbox escape vulnerabilities) for secure code execution.
+ */
+
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { ExecutionError } from './ExecutionError';
+import { IvmSandbox, makeIvmResolver, type IvmResolver } from './IvmSandbox';
 import {
 	mapItemNotDefinedErrorIfNeededForRunForEach,
 	mapItemsNotDefinedErrorIfNeededForRunForAll,
@@ -14,7 +21,7 @@ import { ValidationError } from './ValidationError';
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
 
-export const vmResolver = makeResolverFromLegacyOptions({
+export const vmResolver: IvmResolver = makeIvmResolver({
 	external: external
 		? {
 				modules: external.split(','),
@@ -25,13 +32,13 @@ export const vmResolver = makeResolverFromLegacyOptions({
 });
 
 export class JavaScriptSandbox extends Sandbox {
-	private readonly vm: NodeVM;
+	private readonly sandbox: IvmSandbox;
 
 	constructor(
 		context: SandboxContext,
 		private jsCode: string,
 		helpers: IExecuteFunctions['helpers'],
-		options?: { resolver?: Resolver },
+		options?: { resolver?: IvmResolver },
 	) {
 		super(
 			{
@@ -42,20 +49,22 @@ export class JavaScriptSandbox extends Sandbox {
 			},
 			helpers,
 		);
-		this.vm = new NodeVM({
-			console: 'redirect',
+
+		this.sandbox = new IvmSandbox({
 			sandbox: context,
-			require: options?.resolver ?? vmResolver,
-			wasm: false,
+			resolver: options?.resolver ?? vmResolver,
+			console: 'redirect',
+			memoryLimit: 64,
+			timeout: 10_000,
 		});
 
-		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
+		this.sandbox.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
 	}
 
 	async runCode<T = unknown>(): Promise<T> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 		try {
-			const executionResult = (await this.vm.run(script, __dirname)) as T;
+			const executionResult = await this.sandbox.run<T>(script, __dirname);
 			return executionResult;
 		} catch (error) {
 			throw new ExecutionError(error);
@@ -70,7 +79,7 @@ export class JavaScriptSandbox extends Sandbox {
 		let executionResult: INodeExecutionData | INodeExecutionData[] | INodeExecutionData[][];
 
 		try {
-			executionResult = await this.vm.run(script, __dirname);
+			executionResult = await this.sandbox.run(script, __dirname);
 		} catch (error) {
 			// anticipate user expecting `items` to pre-exist as in Function Item node
 			mapItemsNotDefinedErrorIfNeededForRunForAll(this.jsCode, error);
@@ -108,7 +117,7 @@ export class JavaScriptSandbox extends Sandbox {
 		let executionResult: INodeExecutionData;
 
 		try {
-			executionResult = await this.vm.run(script, __dirname);
+			executionResult = await this.sandbox.run(script, __dirname);
 		} catch (error) {
 			// anticipate user expecting `item` to pre-exist as in Function Item node
 			mapItemNotDefinedErrorIfNeededForRunForEach(this.jsCode, error);
