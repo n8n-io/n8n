@@ -24,7 +24,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { UrlService } from '@/services/url.service';
-import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -99,7 +98,6 @@ function makeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		mock<AgentRepository>(),
 		mock<AgentFileRepository>(),
-		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<UserRepository>(),
