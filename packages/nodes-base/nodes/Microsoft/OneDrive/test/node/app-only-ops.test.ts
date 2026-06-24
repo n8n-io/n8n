@@ -1,6 +1,6 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
@@ -42,7 +42,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 			...overrides,
 		};
 		return (name: string, _itemIndex?: number, fallback?: unknown) =>
-			name in base ? base[name] : fallback;
+			(name in base ? base[name] : fallback) as NodeParameterValueType;
 	};
 
 	beforeEach(() => {

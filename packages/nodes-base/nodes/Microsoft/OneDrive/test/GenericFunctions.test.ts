@@ -1,5 +1,11 @@
 import get from 'lodash/get';
-import type { IExecuteFunctions, INode, IPollFunctions, IWorkflowMetadata } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	IPollFunctions,
+	IWorkflowMetadata,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -807,7 +813,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					if (name === 'authentication') return 'microsoftEntraServicePrincipalApi';
 					if (name === 'resourceTarget') return 'user';
 					if (name === 'userTarget') return 'jane@contoso.com';
-					return fallback;
+					return fallback as NodeParameterValueType;
 				},
 			);
 

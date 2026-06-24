@@ -1,6 +1,6 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, NodeParameterValueType } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
@@ -43,7 +43,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 			...overrides,
 		};
 		return (name: string, _itemIndex?: number, fallback?: unknown) =>
-			name in base ? base[name] : fallback;
+			(name in base ? base[name] : fallback) as NodeParameterValueType;
 	};
 
 	beforeEach(() => {
@@ -246,7 +246,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 					authentication: 'microsoftOneDriveOAuth2Api',
 				};
 				if (name === 'fileId') return itemIndex === 0 ? 'good-item' : 'bad-item';
-				return name in base ? base[name] : fallback;
+				return (name in base ? base[name] : fallback) as NodeParameterValueType;
 			},
 		);
 		mockApiRequest.mockImplementation(async (_method, resource) => {

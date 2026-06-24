@@ -1,4 +1,4 @@
-import type { IDataObject, IPollFunctions, INode } from 'n8n-workflow';
+import type { IDataObject, IPollFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
 import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 
 import { microsoftApiRequest, microsoftApiRequestAllItemsDelta } from '../GenericFunctions';
@@ -61,9 +61,9 @@ describe('MicrosoftOneDriveTrigger', () => {
 					return rlcValues[name];
 				}
 				if (name in params) {
-					return params[name];
+					return params[name] as NodeParameterValueType;
 				}
-				return fallback;
+				return fallback as NodeParameterValueType;
 			},
 		);
 	});
