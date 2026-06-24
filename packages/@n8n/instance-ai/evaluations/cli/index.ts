@@ -74,6 +74,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
@@ -279,7 +280,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// inflightKeys) plus the lane's traced LangSmith wrappers. `runner` is
 	// the underlying Lane (n8n client, credential state) — named distinctly so
 	// it doesn't shadow the iteration variable `lane` in lanes.map().
-	type BuildArgs = Pick<WorkflowTestCase, 'conversation' | 'messageBudget' | 'credentials'>;
+	type BuildArgs = Pick<
+		WorkflowTestCase,
+		| 'conversation'
+		| 'messageBudget'
+		| 'credentials'
+		| 'seedFile'
+		| 'priorConversation'
+		| 'seedThread'
+	>;
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
@@ -307,6 +316,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						conversation: buildArgs.conversation,
 						messageBudget: buildArgs.messageBudget,
 						credentials: buildArgs.credentials,
+						seedFile: buildArgs.seedFile,
+						priorConversation: buildArgs.priorConversation,
+						seedThread: buildArgs.seedThread,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: args.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
@@ -407,6 +419,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					conversation: entry.conversation,
 					messageBudget: entry.messageBudget,
 					credentials: entry.credentials,
+					seedFile: entry.seedFile,
+					priorConversation: entry.priorConversation,
+					seedThread: entry.seedThread,
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
@@ -478,7 +493,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				failureCategory: 'build_failure',
+				// Seeding failures are a harness setup problem, not an agent build
+				// failure — keep them out of the agent's build_failure bucket.
+				failureCategory: build.seedingFailed ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				execDurationMs: 0,
@@ -975,6 +992,9 @@ function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseR
 	}
 	return evaluation.testCases.flatMap((tc) =>
 		tc.runs.map((run, iter) => {
+			// seedThread cases carry no authored conversation (the live turn comes
+			// from the trace) — nothing to relabel.
+			if (!run.testCase.conversation?.length) return run;
 			const [opening, ...rest] = run.testCase.conversation;
 			return {
 				...run,
@@ -1117,7 +1137,7 @@ function writeEvalResults(
 		comparisonStatus: outcome?.kind ?? 'not_attempted',
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
-			name: tc.testCase.conversation[0].text.slice(0, 70),
+			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
@@ -1261,7 +1281,7 @@ function bucketFromEvaluation(
 		const fileSlug = slugByTestCase.get(tc.testCase);
 		if (!fileSlug) {
 			throw new Error(
-				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.conversation[0].text.slice(0, 60)}"`,
+				`bucketFromEvaluation: no fileSlug for test case "${caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 60)}"`,
 			);
 		}
 		const total = tc.runs.length;

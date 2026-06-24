@@ -97,6 +97,7 @@ function onCancel() {
 	<Modal
 		:name="modalName"
 		:event-bus="modalBus"
+		:custom-class="$style.credentialSelectorModal"
 		width="50%"
 		:center="true"
 		max-width="460px"
@@ -186,5 +187,12 @@ function onCancel() {
 
 .credentialPicker {
 	width: 100%;
+}
+
+.credentialSelectorModal {
+	:global(.el-dialog__body),
+	:global(.modal-content) {
+		overflow: visible;
+	}
 }
 </style>

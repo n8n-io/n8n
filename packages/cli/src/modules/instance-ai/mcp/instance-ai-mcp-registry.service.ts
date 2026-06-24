@@ -1,6 +1,7 @@
-import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { InstanceAiMcpUpdateConnectionRequestDto } from '@n8n/api-types';
-import { OutboundHttp } from '@n8n/backend-network';
+import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -19,8 +20,8 @@ import type {
 	McpRegistryServer,
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
 
 import type {
 	InstanceAiMcpRegistryConnection,
@@ -42,6 +43,7 @@ interface OAuth2FetchContext {
 	credentialId: string;
 	accessToken: string;
 	projectId: string;
+	credentialData: ICredentialDataDecryptedObject;
 }
 
 function readString(data: Record<string, unknown>, key: string): string | undefined {
@@ -130,6 +132,8 @@ export class InstanceAiMcpRegistryService {
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -241,8 +245,12 @@ export class InstanceAiMcpRegistryService {
 		const serverBySlug = new Map(servers.map((server) => [server.slug, server]));
 		const slugCounts = new Map<string, number>();
 
-		// One proxy-aware transport shared across all resolved MCP connections.
-		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+		// One proxy-aware, SSRF-protected transport shared across all resolved MCP connections.
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
 
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {
@@ -288,7 +296,7 @@ export class InstanceAiMcpRegistryService {
 				}
 
 				serverConfig.fetch = createAuthFetch({
-					baseFetch: aiProxyFetch,
+					baseFetch: aiMcpFetch,
 					initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
 					onUnauthorized: async () => {
 						if (!oauth2FetchContext.projectId) {
@@ -300,6 +308,7 @@ export class InstanceAiMcpRegistryService {
 							oauth2FetchContext.projectId,
 						);
 					},
+					allowedDomains: resolveAllowedDomains(oauth2FetchContext.credentialData),
 				});
 			}
 
@@ -384,6 +393,7 @@ export class InstanceAiMcpRegistryService {
 			credentialId: config.credentialId,
 			accessToken,
 			projectId,
+			credentialData: credentialWithData.data,
 		};
 	}
 
