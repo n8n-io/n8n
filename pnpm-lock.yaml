@@ -2854,6 +2854,9 @@ importers:
       '@types/temp':
         specifier: ^0.9.1
         version: 0.9.4
+      '@typescript-eslint/typescript-estree':
+        specifier: ^8.35.0
+        version: 8.35.0(typescript@6.0.2)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
@@ -5000,9 +5003,6 @@ importers:
 
   packages/nodes-base:
     dependencies:
-      '@aws-sdk/client-sso-oidc':
-        specifier: 3.808.0
-        version: 3.808.0
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
