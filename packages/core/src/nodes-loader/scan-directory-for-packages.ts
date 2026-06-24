@@ -30,16 +30,19 @@ export async function scanDirectoryForPackages(
 	const loaders: NodeLoader[] = [];
 
 	for (const packagePath of installedPackagePaths) {
-		const packageDir = path.join(nodeModulesDir, packagePath);
 		try {
-			// The constructor reads `package.json` synchronously. A partial or
-			// corrupt community-package install can leave a matching directory
-			// without a readable `package.json`; skip it instead of crashing boot.
 			loaders.push(
-				new LazyPackageDirectoryLoader(packageDir, options.excludeNodes, options.includeNodes),
+				new LazyPackageDirectoryLoader(
+					path.join(nodeModulesDir, packagePath),
+					options.excludeNodes,
+					options.includeNodes,
+				),
 			);
 		} catch (error) {
-			logger.warn(`Failed to load community package at "${packageDir}", skipping`, { error });
+			logger.warn(
+				`Skipping package directory "${packagePath}": failed to load package metadata. The package may be partially installed or corrupted.`,
+				{ error },
+			);
 		}
 	}
 

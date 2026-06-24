@@ -1,62 +1,106 @@
+// eslint-disable-next-line import-x/order
+import { mock } from 'vitest-mock-extended';
 import { Logger } from '@n8n/backend-common';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import * as fs from 'node:fs';
+import type * as fsPromises from 'node:fs/promises';
+
+vi.mock('node:fs', () => mock<typeof fs>());
+vi.mock('node:fs/promises', () => mock<typeof fsPromises>());
+
+const mockFs = mock(fs);
+
+vi.mock('fast-glob', () => ({
+	default: async (pattern: string) => {
+		if (pattern === '@*/n8n-nodes-*') {
+			return ['@mendable/n8n-nodes-firecrawl', '@elevenlabs/n8n-nodes-elevenlabs'];
+		}
+		return [];
+	},
+}));
 
 import { mockInstance } from '@test/utils';
 
+import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
 import { scanDirectoryForPackages } from '../scan-directory-for-packages';
 
 describe('scanDirectoryForPackages', () => {
-	let nodeModulesDir: string;
-	const logger = mockInstance(Logger);
+	const nodeModulesDir = '/data/nodes/node_modules';
+	let logger: ReturnType<typeof mock<Logger>>;
 
-	beforeEach(() => {
-		nodeModulesDir = mkdtempSync(path.join(tmpdir(), 'n8n-scan-'));
-	});
+	const packageJsonFor = (filePath: string) =>
+		filePath.includes('elevenlabs')
+			? JSON.stringify({ name: '@elevenlabs/n8n-nodes-elevenlabs', version: '1.0.0' })
+			: JSON.stringify({ name: '@mendable/n8n-nodes-firecrawl', version: '2.1.2' });
 
-	afterEach(() => {
-		rmSync(nodeModulesDir, { recursive: true, force: true });
-	});
-
-	const writePackage = (name: string) => {
-		const dir = path.join(nodeModulesDir, name);
-		mkdirSync(dir);
-		writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name, version: '1.0.0' }));
-		return dir;
+	const enoent = (file: string): NodeJS.ErrnoException => {
+		const error: NodeJS.ErrnoException = new Error(
+			`ENOENT: no such file or directory, open '${file}'`,
+		);
+		error.code = 'ENOENT';
+		return error;
 	};
 
-	it('returns a loader for every healthy package directory', async () => {
-		writePackage('n8n-nodes-good');
-		writePackage('n8n-nodes-better');
-
-		const loaders = await scanDirectoryForPackages(nodeModulesDir);
-
-		expect(loaders.map((loader) => loader.packageName).sort()).toEqual([
-			'n8n-nodes-better',
-			'n8n-nodes-good',
-		]);
-		expect(logger.warn).not.toHaveBeenCalled();
+	beforeEach(() => {
+		vi.clearAllMocks();
+		logger = mockInstance(Logger);
+		// Symlink resolution at construction time resolves to the same path.
+		mockFs.realpathSync.mockImplementation((p) => p as string);
 	});
 
-	// Reproduces NODE-5161: a directory matching `n8n-nodes-*` left behind by a
-	// partial/corrupt community-package install has no readable `package.json`.
-	// The broken package should be logged and skipped so the instance still boots.
-	it('logs and skips a matched package directory that has no package.json', async () => {
-		// Broken package: matches the glob but has no package.json
-		const brokenDir = path.join(nodeModulesDir, 'n8n-nodes-foo');
-		mkdirSync(brokenDir);
-
-		// Healthy package alongside it
-		writePackage('n8n-nodes-good');
+	it('skips a directory whose package.json is missing and returns the valid loaders', async () => {
+		mockFs.readFileSync.mockImplementation((filePath) => {
+			const file = String(filePath);
+			if (file.includes('firecrawl')) throw enoent(file);
+			return packageJsonFor(file);
+		});
 
 		const loaders = await scanDirectoryForPackages(nodeModulesDir);
 
 		expect(loaders).toHaveLength(1);
-		expect(loaders[0].packageName).toBe('n8n-nodes-good');
+		expect(loaders[0]).toBeInstanceOf(LazyPackageDirectoryLoader);
+		expect((loaders[0] as LazyPackageDirectoryLoader).packageName).toBe(
+			'@elevenlabs/n8n-nodes-elevenlabs',
+		);
+	});
+
+	it('skips a directory whose package.json is malformed and returns the valid loaders', async () => {
+		mockFs.readFileSync.mockImplementation((filePath) => {
+			const file = String(filePath);
+			if (file.includes('firecrawl')) return '{ not valid json';
+			return packageJsonFor(file);
+		});
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders).toHaveLength(1);
+		expect((loaders[0] as LazyPackageDirectoryLoader).packageName).toBe(
+			'@elevenlabs/n8n-nodes-elevenlabs',
+		);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+	});
+
+	it('logs a warning for each skipped directory', async () => {
+		mockFs.readFileSync.mockImplementation((filePath) => {
+			const file = String(filePath);
+			if (file.includes('firecrawl')) throw enoent(file);
+			return packageJsonFor(file);
+		});
+
+		await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(logger.warn).toHaveBeenCalledTimes(1);
 		expect(logger.warn).toHaveBeenCalledWith(
-			expect.stringContaining(brokenDir),
+			expect.stringContaining('@mendable/n8n-nodes-firecrawl'),
 			expect.objectContaining({ error: expect.any(Error) }),
 		);
+	});
+
+	it('returns a loader for every directory when all are well-formed', async () => {
+		mockFs.readFileSync.mockImplementation((filePath) => packageJsonFor(String(filePath)));
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders).toHaveLength(2);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });
