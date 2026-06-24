@@ -896,6 +896,13 @@ export type RelayEventMap = {
 		issuer: string;
 	};
 
+	'token-exchange-identity-rebound': {
+		userId: string;
+		sub: string;
+		kid: string;
+		issuer: string;
+	};
+
 	'token-exchange-user-provisioned': {
 		userId: string;
 		sub: string;

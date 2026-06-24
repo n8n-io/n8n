@@ -2719,7 +2719,7 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
-	it('populates executionData for a trigger run with no input so it survives queue persistence', async () => {
+	it('populates runnable executionData for a trigger run with no input', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
 			nodes: [
@@ -2738,11 +2738,11 @@ describe('createExecutionAdapter run()', () => {
 
 		const runData = mockWorkflowRunner.run.mock.calls[0][0];
 		expect(runData.executionMode).toBe('trigger');
-		// In queue mode a trigger execution is offloaded to a worker, which reads
-		// `execution.data` back from storage. An undefined `executionData` persists
-		// as an empty payload and deserializes to `undefined`, crashing the worker.
+		// The execution must be serializable for queue mode and directly runnable
+		// in regular mode, where WorkflowRunner uses this stack immediately.
 		expect(runData.executionData).toBeDefined();
-		expect(runData.executionData?.manualData?.userId).toBe('user-1');
-		expect(runData.executionData?.manualData?.triggerToStartFrom?.name).toBe('Schedule Trigger');
+		const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
+		expect(firstStackItem?.node.name).toBe('Schedule Trigger');
+		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
 	});
 });

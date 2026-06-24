@@ -73,11 +73,17 @@ describe('getAdditionalKeys', () => {
 		});
 	});
 
-	it('should include secrets', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null);
+	it('should include secrets when isCredential is true', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null, { isCredential: true });
 
 		expect(result.$secrets).toBeDefined();
 		expect((result.$secrets?.provider1 as IDataObject).secret1).toEqual('secret-value');
+	});
+
+	it('should return undefined $secrets by default', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null);
+
+		expect(result.$secrets).toBeUndefined();
 	});
 
 	it('should throw errors in manual mode', () => {
