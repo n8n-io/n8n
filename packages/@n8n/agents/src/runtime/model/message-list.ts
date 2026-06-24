@@ -264,6 +264,14 @@ export class AgentMessageList {
 		return this.all.filter((m) => this.responseSet.has(m));
 	}
 
+	/**
+	 * Only this turn's input messages (excludes history and responses).
+	 * Used to persist the user's input eagerly, before the turn completes.
+	 */
+	inputDelta(): AgentDbMessage[] {
+		return this.all.filter((m) => this.inputSet.has(m));
+	}
+
 	serialize(): SerializedMessageList {
 		const toIds = (set: Set<AgentDbMessage>) => Array.from(set).map((m) => m.id);
 		return {

@@ -9,7 +9,7 @@ import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
-import type { ContentToolCall, Message } from '../../types/sdk/message';
+import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../loop/agent-runtime';
@@ -683,6 +683,100 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		expect(result.finishReason).toBe('stop');
 		expect(result.error).toBeUndefined();
 		expect(result.messages.length).toBeGreaterThan(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// eager input persistence — input survives an uncompleted turn
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — eager input persistence', () => {
+	const PERSIST = { persistence: { threadId: 't1', resourceId: 'u1' } };
+
+	function textOf(message: AgentDbMessage): string | undefined {
+		const content = (message as { content?: unknown }).content;
+		if (!Array.isArray(content)) return undefined;
+		const block = content.find(
+			(c): c is { type: 'text'; text: string } =>
+				typeof c === 'object' && c !== null && Reflect.get(c, 'type') === 'text',
+		);
+		return block?.text;
+	}
+
+	function makeMemoryRuntime() {
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+		});
+		return { runtime, bus, memory };
+	}
+
+	it('persists the user input when the turn aborts before completion', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const { runtime, bus, memory } = makeMemoryRuntime();
+		// Abort during AgentStart: the input is added (and eagerly persisted) in
+		// buildMessageList, but the loop's first abort-check throws before finishComplete.
+		bus.on(AgentEvent.AgentStart, () => bus.abort());
+
+		const result = await runtime.generate('remember this prompt', PERSIST);
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(persisted.map(textOf)).toContain('remember this prompt');
+	});
+
+	it('stores exactly one user-message row on normal completion (idempotent)', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('done'));
+		const { runtime, memory } = makeMemoryRuntime();
+
+		await runtime.generate('hello once', PERSIST);
+
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const userRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'user' && textOf(m) === 'hello once',
+		);
+		expect(userRows).toHaveLength(1);
+	});
+
+	it('does not duplicate the user row across a suspend -> resume cycle', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		// Turn 1: the model calls the interruptible tool, so the run suspends on HITL
+		// before reaching finishComplete.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// Eager persist wrote the input even though the turn has not completed.
+		const afterSuspend = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterSuspend.filter((m) => textOf(m) === 'please build it')).toHaveLength(1);
+
+		// Resume to completion: the end-of-turn save writes the full turnDelta, which
+		// includes the input again (same id) — it must upsert, not create a 2nd row.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterResume.filter((m) => textOf(m) === 'please build it')).toHaveLength(1);
 	});
 });
 

@@ -157,6 +157,37 @@ export class MemoryOrchestrator {
 		}
 	}
 
+	/**
+	 * Eagerly persist just this turn's input messages, before the turn completes.
+	 * Skips the observation-log / episodic-memory jobs that `saveToMemory` schedules —
+	 * those stay at end-of-turn. Idempotent with the end-of-turn save: both write the
+	 * same message id, so TypeORM upserts a single row.
+	 */
+	async persistInputMessages(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		if (!this.config.memory || !options?.persistence) return;
+		const input = list.inputDelta();
+		if (input.length === 0) return;
+		try {
+			await saveMessagesToThread(
+				this.config.memory,
+				options.persistence.threadId,
+				options.persistence.resourceId,
+				input,
+			);
+		} catch (error) {
+			// Best-effort: the end-of-turn save still persists the input on a
+			// completed turn, so a transient failure here must not abort the turn.
+			// Only an uncompleted turn whose eager save also failed loses the input.
+			logger.warn('Failed to eagerly persist input messages', {
+				error,
+				threadId: options.persistence.threadId,
+			});
+		}
+	}
+
 	/** Persist the current-turn delta to memory and schedule background indexing. */
 	async saveToMemory(
 		list: AgentMessageList,
