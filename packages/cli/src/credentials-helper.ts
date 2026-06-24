@@ -529,7 +529,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.authentication = decryptedDataOriginal.authentication;
 		}
 
-		const additionalKeys = getAdditionalKeys(additionalData, mode, null);
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
+			isCredential: true,
+		});
 
 		if (expressionResolveValues) {
 			try {
