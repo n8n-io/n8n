@@ -57,6 +57,13 @@ export const deleteEnvironment = async (
 	await makeRestApiRequest(context, 'DELETE', `${base(projectId)}/${envId}`);
 };
 
+export const initializeEnvironments = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectEnvironment[]> => {
+	return await makeRestApiRequest(context, 'POST', `${base(projectId)}/initialize`);
+};
+
 export const publishToEnvironment = async (
 	context: IRestApiContext,
 	workflowId: string,

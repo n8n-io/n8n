@@ -54,6 +54,14 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		return updated;
 	}
 
+	async function initializeEnvironments(projectId: string): Promise<void> {
+		const created = await environmentsApi.initializeEnvironments(
+			rootStore.restApiContext,
+			projectId,
+		);
+		environments.value = created;
+	}
+
 	async function deleteEnvironment(projectId: string, envId: string): Promise<void> {
 		await environmentsApi.deleteEnvironment(rootStore.restApiContext, projectId, envId);
 		environments.value = environments.value.filter((e) => e.id !== envId);
@@ -133,6 +141,7 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		selectedEnvironmentId,
 		credentialBindings,
 		fetchEnvironments,
+		initializeEnvironments,
 		createEnvironment,
 		updateEnvironment,
 		deleteEnvironment,

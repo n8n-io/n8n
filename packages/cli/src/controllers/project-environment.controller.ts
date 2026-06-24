@@ -49,6 +49,13 @@ export class ProjectEnvironmentController {
 		return await this.environmentService.getEnvironments(req.params.projectId);
 	}
 
+	@Post('/initialize')
+	@ProjectScope('projectEnvironment:create')
+	//@Licensed('feat:environments')
+	async initializeEnvironments(req: AuthenticatedRequest<{ projectId: string }>) {
+		return await this.environmentService.initializeEnvironments(req.params.projectId);
+	}
+
 	@Post('/')
 	@ProjectScope('projectEnvironment:create')
 	//@Licensed('feat:environments')
