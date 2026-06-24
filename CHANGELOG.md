@@ -1,3 +1,17 @@
+## [2.27.4](https://github.com/n8n-io/n8n/compare/n8n@2.27.3...n8n@2.27.4) (2026-06-24)
+
+
+### Bug Fixes
+
+* **core:** Let allowlisted Python packages import their own submodules via relative imports ([#32832](https://github.com/n8n-io/n8n/issues/32832)) ([62e876c](https://github.com/n8n-io/n8n/commit/62e876c01cfec2ac3184dcb93037140760a530d8))
+
+
+### Features
+
+* **core:** Fix building incorrect chained nodes ([#32850](https://github.com/n8n-io/n8n/issues/32850)) ([91ac921](https://github.com/n8n-io/n8n/commit/91ac9211e6face0105841a49554c8e8a8f299182))
+* **Google Ads Node:** Upgrade API from v20 to v21 ([#32791](https://github.com/n8n-io/n8n/issues/32791)) ([16699e2](https://github.com/n8n-io/n8n/commit/16699e2c6c8851cb96b6b7ed6c1a6499aea3005f))
+
+
 ## [2.27.3](https://github.com/n8n-io/n8n/compare/n8n@2.27.2...n8n@2.27.3) (2026-06-19)
 
 
