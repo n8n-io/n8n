@@ -1,4 +1,11 @@
+<<<<<<< HEAD
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
+=======
+import type { InstanceAiMcpUpdateConnectionRequestDto } from '@n8n/api-types';
+import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -17,7 +24,12 @@ import type {
 	McpRegistryServer,
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
+<<<<<<< HEAD
 import { createAuthFetch } from '@/utils/auth-fetch';
+=======
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 
 import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
@@ -36,6 +48,7 @@ interface OAuth2FetchContext {
 	credentialId: string;
 	accessToken: string;
 	projectId: string;
+	credentialData: ICredentialDataDecryptedObject;
 }
 
 function readString(data: Record<string, unknown>, key: string): string | undefined {
@@ -96,6 +109,12 @@ export class InstanceAiMcpRegistryService {
 		private readonly credentialsService: CredentialsService,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
+<<<<<<< HEAD
+=======
+		private readonly outboundHttp: OutboundHttp,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -189,6 +208,16 @@ export class InstanceAiMcpRegistryService {
 		const serverBySlug = new Map(servers.map((server) => [server.slug, server]));
 		const slugCounts = new Map<string, number>();
 
+<<<<<<< HEAD
+=======
+		// One proxy-aware, SSRF-protected transport shared across all resolved MCP connections.
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
+
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {
 			const server = serverBySlug.get(connection.serverSlug);
@@ -232,6 +261,10 @@ export class InstanceAiMcpRegistryService {
 				}
 
 				serverConfig.fetch = createAuthFetch({
+<<<<<<< HEAD
+=======
+					baseFetch: aiMcpFetch,
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 					initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
 					onUnauthorized: async () => {
 						if (!oauth2FetchContext.projectId) {
@@ -243,6 +276,7 @@ export class InstanceAiMcpRegistryService {
 							oauth2FetchContext.projectId,
 						);
 					},
+					allowedDomains: resolveAllowedDomains(oauth2FetchContext.credentialData),
 				});
 			}
 
@@ -327,6 +361,7 @@ export class InstanceAiMcpRegistryService {
 			credentialId: config.credentialId,
 			accessToken,
 			projectId,
+			credentialData: credentialWithData.data,
 		};
 	}
 

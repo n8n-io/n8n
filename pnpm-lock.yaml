@@ -339,6 +339,12 @@ catalogs:
     rimraf:
       specifier: 6.0.1
       version: 6.0.1
+<<<<<<< HEAD
+=======
+    sanitize-html:
+      specifier: 2.17.4
+      version: 2.17.4
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
     sass-embedded:
       specifier: ^1.98.0
       version: 1.98.0
@@ -2701,8 +2707,13 @@ importers:
         specifier: 4.6.14
         version: 4.6.14
       sanitize-html:
+<<<<<<< HEAD
         specifier: 2.12.1
         version: 2.12.1
+=======
+        specifier: 'catalog:'
+        version: 2.17.4
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
@@ -3994,8 +4005,13 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
+<<<<<<< HEAD
         specifier: 2.12.1
         version: 2.12.1
+=======
+        specifier: 'catalog:'
+        version: 2.17.4
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -4577,6 +4593,18 @@ importers:
       qrcode.vue:
         specifier: ^3.3.4
         version: 3.3.4(vue@3.5.26(typescript@6.0.2))
+<<<<<<< HEAD
+=======
+      regenerator-runtime:
+        specifier: 0.14.1
+        version: 0.14.1
+      reka-ui:
+        specifier: ^2.5.0
+        version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      sanitize-html:
+        specifier: 'catalog:'
+        version: 2.17.4
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
       semver:
         specifier: 7.7.3
         version: 7.7.3
@@ -4991,8 +5019,13 @@ importers:
         specifier: 3.13.0
         version: 3.13.0
       sanitize-html:
+<<<<<<< HEAD
         specifier: 2.12.1
         version: 2.12.1
+=======
+        specifier: 'catalog:'
+        version: 2.17.4
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
       semver:
         specifier: 7.7.3
         version: 7.7.3
@@ -7736,7 +7769,6 @@ packages:
   '@langchain/community@1.1.27':
     resolution: {integrity: sha512-s2U3w7QV7QpkFtY1eZMni4poz+nKLFclpDi3a7hUbZ67ttsGaU9WkZ2BiLuzLIs+IFaUvON/KcGkE8EqAl9aPA==}
     engines: {node: '>=20'}
-    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.2.0
       '@aws-crypto/sha256-js': ^5.0.0
@@ -14002,8 +14034,8 @@ packages:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
-  entities@7.0.0:
-    resolution: {integrity: sha512-FDWG5cmEYf2Z00IkYRhbFrwIwvdFKH07uV8dvNy0omp/Qb1xcyCWp2UDtcwJF4QZZvk0sLudP6/hAu42TaqVhQ==}
+  entities@7.0.1:
+    resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
     engines: {node: '>=0.12'}
 
   env-paths@2.2.1:
@@ -15143,6 +15175,9 @@ packages:
   htmlparser2@10.0.0:
     resolution: {integrity: sha512-TwAZM+zE5Tq3lrEHvOlvwgj1XLWQCtaaibSN11Q+gGBAS7Y1uZSWwXXRe4iF6OXnaq1riyQAPFOBtYc77Mxq0g==}
 
+  htmlparser2@10.1.0:
+    resolution: {integrity: sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==}
+
   htmlparser2@5.0.1:
     resolution: {integrity: sha512-vKZZra6CSe9qsJzh0BjBGXo8dvzNsq/oGvsjfRdOrrryfeD9UOBEEQdeoqCRmKZchF5h2zOBMQ6YuQ0uRUmdbQ==}
 
@@ -16136,6 +16171,9 @@ packages:
         optional: true
       ws:
         optional: true
+
+  launder@1.7.1:
+    resolution: {integrity: sha512-mU6WRz5EusL9ZZuiZ5SO4Y6C0P9PAUR9iwdb6bzj4KDihm28DiHFw+/yk9DBH4f+Pv1wuzQ4e2jV3oQ7mkIqvw==}
 
   lazy-ass@1.6.0:
     resolution: {integrity: sha512-cc8oEVoctTvsFZ/Oje/kGnHbpWHYBe8IAJe4C0QNc3t8uM/0Y8+erSz/7Y1ALuXTEZTMvxXwO6YbX1ey3ujiZw==}
@@ -19118,8 +19156,8 @@ packages:
   sanitize-filename@1.6.4:
     resolution: {integrity: sha512-9ZyI08PsvdQl2r/bBIGubpVdR3RR9sY6RDiWFPreA21C/EFlQhmgo20UZlNjZMMZNubusLhAQozkA0Od5J21Eg==}
 
-  sanitize-html@2.12.1:
-    resolution: {integrity: sha512-Plh+JAn0UVDpBRP/xEjsk+xDCoOvMBwQUf/K+/cBAVuTbtX8bj2VB7S1sL1dssVpykqp0/KPSesHrqXtokVBpA==}
+  sanitize-html@2.17.4:
+    resolution: {integrity: sha512-2HW7v2ol/uAM7sX4hbD8Z59OGWmAPrvjL8E71UWlBcj6m+kcF6ilQBLny+cIgY214QJeJT5tQuxKKqX0SQqjGQ==}
 
   sass-embedded-all-unknown@1.98.0:
     resolution: {integrity: sha512-6n4RyK7/1mhdfYvpP3CClS3fGoYqDvRmLClCESS6I7+SAzqjxvGG6u5Fo+cb1nrPNbbilgbM4QKdgcgWHO9NCA==}
@@ -22804,6 +22842,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+<<<<<<< HEAD
+=======
+  '@azure/core-http-compat@2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-client': 1.10.2
+      '@azure/core-rest-pipeline': 1.24.0
+
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
   '@azure/core-lro@2.4.0':
     dependencies:
       '@azure/abort-controller': 1.1.0
@@ -22866,9 +22913,15 @@ snapshots:
       '@azure/core-client': 1.9.2
       '@azure/core-http-compat': 1.3.0
       '@azure/core-lro': 2.4.0
+<<<<<<< HEAD
       '@azure/core-paging': 1.3.0
       '@azure/core-rest-pipeline': 1.20.0
       '@azure/core-tracing': 1.2.0
+=======
+      '@azure/core-paging': 1.6.2
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
       '@azure/core-util': 1.13.1
       '@azure/logger': 1.0.3
       tslib: 2.8.1
@@ -22943,12 +22996,39 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 2.1.2
       '@azure/core-auth': 1.10.1
+<<<<<<< HEAD
       '@azure/core-client': 1.9.2
       '@azure/core-http-compat': 2.1.2
       '@azure/core-lro': 2.4.0
       '@azure/core-paging': 1.3.0
       '@azure/core-rest-pipeline': 1.20.0
       '@azure/core-tracing': 1.2.0
+=======
+      '@azure/core-client': 1.10.2
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)
+      '@azure/core-lro': 2.4.0
+      '@azure/core-paging': 1.6.2
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
+      '@azure/core-util': 1.13.1
+      '@azure/core-xml': 1.4.5
+      '@azure/logger': 1.3.0
+      events: 3.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/storage-blob@12.32.0':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-auth': 1.10.1
+      '@azure/core-client': 1.10.2
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2)(@azure/core-rest-pipeline@1.24.0)
+      '@azure/core-lro': 2.4.0
+      '@azure/core-paging': 1.6.2
+      '@azure/core-rest-pipeline': 1.24.0
+      '@azure/core-tracing': 1.3.1
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
       '@azure/core-util': 1.13.1
       '@azure/core-xml': 1.4.5
       '@azure/logger': 1.0.3
@@ -29407,7 +29487,7 @@ snapshots:
     dependencies:
       '@babel/parser': 7.29.2
       '@vue/shared': 3.5.26
-      entities: 7.0.0
+      entities: 7.0.1
       estree-walker: 2.0.2
       source-map-js: 1.2.1
 
@@ -30719,12 +30799,26 @@ snapshots:
 
   cheerio@1.0.0-rc.6:
     dependencies:
+<<<<<<< HEAD
       cheerio-select: 1.6.0
       dom-serializer: 1.4.1
       domhandler: 4.3.1
       htmlparser2: 6.1.0
       parse5: 6.0.1
       parse5-htmlparser2-tree-adapter: 6.0.1
+=======
+      cheerio-select: 2.1.0
+      dom-serializer: 2.0.0
+      domhandler: 5.0.3
+      domutils: 3.2.2
+      encoding-sniffer: 0.2.0
+      htmlparser2: 10.1.0
+      parse5: 7.3.0
+      parse5-htmlparser2-tree-adapter: 7.1.0
+      parse5-parser-stream: 7.1.2
+      undici: 7.28.0
+      whatwg-mimetype: 4.0.0
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 
   chokidar@4.0.3:
     dependencies:
@@ -32006,7 +32100,7 @@ snapshots:
 
   entities@6.0.1: {}
 
-  entities@7.0.0: {}
+  entities@7.0.1: {}
 
   env-paths@2.2.1: {}
 
@@ -33546,6 +33640,13 @@ snapshots:
       domutils: 3.2.2
       entities: 6.0.1
 
+  htmlparser2@10.1.0:
+    dependencies:
+      domelementtype: 2.3.0
+      domhandler: 5.0.3
+      domutils: 3.2.2
+      entities: 7.0.1
+
   htmlparser2@5.0.1:
     dependencies:
       domelementtype: 2.3.0
@@ -34826,6 +34927,10 @@ snapshots:
       '@opentelemetry/sdk-trace-base': 2.7.1(@opentelemetry/api@1.9.0)
       openai: 6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       ws: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+
+  launder@1.7.1:
+    dependencies:
+      dayjs: 1.11.10
 
   lazy-ass@1.6.0: {}
 
@@ -38434,12 +38539,13 @@ snapshots:
     dependencies:
       truncate-utf8-bytes: 1.0.2
 
-  sanitize-html@2.12.1:
+  sanitize-html@2.17.4:
     dependencies:
       deepmerge: 4.3.1
       escape-string-regexp: 4.0.0
-      htmlparser2: 8.0.2
+      htmlparser2: 10.1.0
       is-plain-object: 5.0.0
+      launder: 1.7.1
       parse-srcset: 1.0.2
       postcss: 8.5.10
 

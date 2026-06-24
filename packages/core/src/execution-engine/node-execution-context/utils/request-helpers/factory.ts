@@ -93,6 +93,7 @@ export const getRequestHelperFunctions = (
 			paginationOptions,
 			credentialsType,
 			additionalCredentialOptions,
+			sanitizedRequest,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any[]> {
 			return await requestWithAuthenticationPaginated.call(
@@ -104,6 +105,7 @@ export const getRequestHelperFunctions = (
 				node,
 				credentialsType,
 				additionalCredentialOptions,
+				sanitizedRequest,
 			);
 		},
 		async httpRequestWithAuthentication(

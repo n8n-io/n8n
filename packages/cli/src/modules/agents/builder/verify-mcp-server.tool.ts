@@ -12,6 +12,10 @@ export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;
 	oauthService: OauthService;
 	projectId: string;
+<<<<<<< HEAD
+=======
+	proxyFetch: CustomFetch;
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 }
 
 /**

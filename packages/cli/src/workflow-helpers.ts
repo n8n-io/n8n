@@ -4,6 +4,7 @@ import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
+	isSafeObjectProperty,
 	resolveNodeWebhookId,
 	safeParseWorkflowStructure,
 	type IDataObject,
@@ -282,6 +283,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Reject credential types that resolve to object internals,
+			// so the dynamic lookups and writes below cannot reach the prototype chain.
+			if (!isSafeObjectProperty(nodeCredentialType)) {
+				continue;
+			}
 			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
 			if (nodeCredentials === null || nodeCredentials === undefined) {
 				continue;

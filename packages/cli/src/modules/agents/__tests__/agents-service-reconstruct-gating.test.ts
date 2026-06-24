@@ -6,8 +6,27 @@ import {
 	WRITE_TODOS_TOOL_NAME,
 } from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
+<<<<<<< HEAD
 import { SUB_AGENT_MAX_CHILDREN_DEFAULT, type AgentJsonConfig } from '@n8n/api-types';
 import type { AgentsConfig } from '@n8n/config';
+=======
+import {
+	N8N_CHAT_ACTION_TOOL_NAME,
+	N8N_CHAT_CONTEXT_TOOL_NAME,
+	N8N_CHAT_INTEGRATION_TYPE,
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { UserRepository, WorkflowRepository } from '@n8n/db';
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import { Container } from '@n8n/di';
 
 import type { Logger } from '@n8n/backend-common';
@@ -85,6 +104,13 @@ function makeReconstructionService(
 			modules,
 			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
+<<<<<<< HEAD
+=======
+		outboundHttp,
+		mock<AgentKnowledgeSandboxService>(),
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 	);
 }
 

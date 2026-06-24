@@ -1,5 +1,12 @@
+<<<<<<< HEAD
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 import type { AgentsConfig, GlobalConfig } from '@n8n/config';
+=======
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { ProjectRelationRepository } from '@n8n/db';
+>>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
