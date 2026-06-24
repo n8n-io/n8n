@@ -397,7 +397,7 @@ const commonStubs = {
 	AgentSubAgentsPanel: {
 		name: 'AgentSubAgentsPanel',
 		template: '<div data-testid="stub-agent-sub-agents-panel" />',
-		props: ['config', 'disabled', 'projectId', 'agentId'],
+		props: ['config', 'disabled', 'projectId'],
 		emits: ['update:config'],
 	},
 	AgentSkillViewer: {

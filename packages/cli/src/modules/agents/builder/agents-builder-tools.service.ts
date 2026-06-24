@@ -593,7 +593,7 @@ export class AgentsBuilderToolsService {
 				'List published agents in the same project that can be added to the target agent as subagents. ' +
 					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
 					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
-					'write parent-owned routing guidance into `subAgents.agents[].useWhen` only when it is clear when that parent should use the subagent.',
+					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
 			)
 			.input(z.object({}))
 			.handler(async () => {

@@ -34,8 +34,8 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
-				'agents.builder.subAgents.title': 'Sub-agents',
-				'agents.builder.subAgents.description': 'Sub-agents description',
+				'agents.builder.subAgents.settings.title': 'Sub-agent settings',
+				'agents.builder.subAgents.settings.description': 'Sub-agent settings description',
 				'agents.builder.subAgents.maxChildren.label': 'Max parallel sub-agents',
 				'agents.builder.subAgents.maxChildren.hint': 'Max children hint',
 				'agents.builder.subAgents.modelsByDifficulty.title': 'Inline sub-agent models',
@@ -159,7 +159,6 @@ async function mountPanel(
 			config,
 			disabled: options.disabled ?? false,
 			projectId: 'project-1',
-			agentId: 'agent-1',
 		},
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
@@ -238,7 +237,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				maxChildren: 2,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			},
 		});
 		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');
@@ -248,7 +247,7 @@ describe('AgentSubAgentsPanel', () => {
 			{
 				subAgents: {
 					maxChildren: 4,
-					agents: [{ agentId: 'agent-2' }],
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 				},
 			},
 		]);
@@ -259,14 +258,16 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				maxChildren: SUB_AGENT_MAX_CHILDREN_DEFAULT,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			},
 		});
 		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');
 		await input.setValue('abc');
 
 		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
-		expect(last.subAgents?.agents).toEqual([{ agentId: 'agent-2' }]);
+		expect(last.subAgents?.agents).toEqual([
+			{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+		]);
 		expect(last.subAgents).not.toHaveProperty('maxChildren');
 	});
 
@@ -275,7 +276,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				maxChildren: 5,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			},
 		});
 		await flushPromises();
@@ -290,7 +291,7 @@ describe('AgentSubAgentsPanel', () => {
 			{
 				subAgents: {
 					maxChildren: 5,
-					agents: [{ agentId: 'agent-2' }],
+					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 					modelsByDifficulty: {
 						high: {
 							model: 'openai/gpt-4o-mini',

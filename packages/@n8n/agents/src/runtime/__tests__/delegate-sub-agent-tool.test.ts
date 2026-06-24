@@ -96,7 +96,11 @@ describe('createDelegateSubAgentTool', () => {
 					name: 'Billing Agent',
 					useWhen: 'Use for invoice investigations and payment status checks.',
 				},
-				{ id: 'agent-research', name: 'Research Agent' },
+				{
+					id: 'agent-research',
+					name: 'Research Agent',
+					useWhen: 'Use for market and source research.',
+				},
 			],
 		});
 
@@ -106,6 +110,7 @@ describe('createDelegateSubAgentTool', () => {
 			'Use when: Use for invoice investigations and payment status checks.',
 		);
 		expect(tool.systemInstruction).toContain('- agent-research: Research Agent');
+		expect(tool.systemInstruction).toContain('Use when: Use for market and source research.');
 		expect(tool.systemInstruction).not.toContain('name/description');
 	});
 

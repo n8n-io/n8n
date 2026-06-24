@@ -10,26 +10,34 @@ import {
 	N8nScrollArea,
 	N8nText,
 } from '@n8n/design-system';
+import { SUB_AGENT_USE_WHEN_MAX_LENGTH, SUB_AGENT_USE_WHEN_MIN_LENGTH } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-
-const SUB_AGENT_USE_WHEN_MIN_LENGTH = 20;
-const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
 
 export type AgentSubAgentOption = {
 	id: string;
 	name: string;
 };
 
-export type AgentSubAgentsModalData = {
+type AgentSubAgentsModalConfirmPayload = { agentId: string; useWhen: string };
+
+type AddSubAgentModalData = {
 	agents: AgentSubAgentOption[];
-	selectedAgent?: AgentSubAgentOption;
-	useWhen?: string;
-	onConfirm: (payload: { agentId: string; useWhen: string }) => void;
+	selectedAgent?: never;
+	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
+	onRemove?: never;
+};
+
+type EditSubAgentModalData = {
+	selectedAgent: AgentSubAgentOption;
+	useWhen: string;
+	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
 	onRemove?: (agentId: string) => void;
 };
+
+export type AgentSubAgentsModalData = AddSubAgentModalData | EditSubAgentModalData;
 
 const props = defineProps<{
 	modalName: string;
@@ -39,20 +47,21 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 
-const hasAgents = computed(() => props.data.agents.length > 0);
+const availableAgents = computed(() => ('agents' in props.data ? props.data.agents : []));
+const hasAgents = computed(() => availableAgents.value.length > 0);
 const searchQuery = ref('');
 const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase());
 const filteredAgents = computed(() =>
 	normalizedSearchQuery.value
-		? props.data.agents.filter((agent) =>
+		? availableAgents.value.filter((agent) =>
 				agent.name.toLowerCase().includes(normalizedSearchQuery.value),
 			)
-		: props.data.agents,
+		: availableAgents.value,
 );
 const hasMatchingAgents = computed(() => filteredAgents.value.length > 0);
 const isEditing = computed(() => Boolean(props.data.selectedAgent));
 const selectedAgent = ref<AgentSubAgentOption | null>(props.data.selectedAgent ?? null);
-const useWhen = ref(props.data.useWhen ?? '');
+const useWhen = ref('useWhen' in props.data ? props.data.useWhen : '');
 const useWhenTrimmed = computed(() => useWhen.value.trim());
 const useWhenError = computed(() => {
 	if (
@@ -64,7 +73,9 @@ const useWhenError = computed(() => {
 		});
 	}
 	if (useWhenTrimmed.value.length <= SUB_AGENT_USE_WHEN_MAX_LENGTH) return '';
-	return i18n.baseText('agents.builder.subAgents.useWhen.validation.maxLength');
+	return i18n.baseText('agents.builder.subAgents.useWhen.validation.maxLength', {
+		interpolate: { max: String(SUB_AGENT_USE_WHEN_MAX_LENGTH) },
+	});
 });
 const canConfirm = computed(() => Boolean(useWhenTrimmed.value) && !useWhenError.value);
 

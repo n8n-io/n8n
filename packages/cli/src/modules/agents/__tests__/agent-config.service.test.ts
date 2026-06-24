@@ -321,14 +321,16 @@ describe('AgentConfigService', () => {
 			await expect(
 				service.updateConfig(agentId, projectId, {
 					...baseConfig,
-					subAgents: { agents: [{ agentId: 'agent-3' }] },
+					subAgents: {
+						agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
+					},
 				}),
 			).rejects.toThrow('must be published');
 
 			await expect(
 				service.updateConfig(agentId, projectId, {
 					...baseConfig,
-					subAgents: { agents: [{ agentId }] },
+					subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
 				}),
 			).rejects.toThrow('cannot use itself');
 		});

@@ -303,7 +303,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		},
 		{
 			name: 'saved-agent references',
-			subAgents: { agents: [{ agentId: 'agent-2' }] },
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }],
+			},
 		},
 	])('always injects delegation tools for $name', async ({ subAgents }) => {
 		const { service, credentialProvider } = setup();

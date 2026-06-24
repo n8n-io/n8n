@@ -80,8 +80,7 @@ Example patch flow:
   config. It is not the child agent's global description.
 - Write \`useWhen\` only when the intended routing is clear from the user's
   request or an explicit follow-up answer.
-- Omit \`useWhen\` rather than writing placeholder text only if the user
-  explicitly wants to add the subagent now without routing guidance.
+- Every saved subagent ref must include \`useWhen\`.
 - Good \`useWhen\` values are concrete and intent-oriented, such as
   "Use for invoice investigations and payment status checks."
 - Do not write vague values such as "Use when helpful", "Use for tasks", or
@@ -117,8 +116,7 @@ Example shape:
 
 - Inline delegation still works even when \`subAgents.agents\` is absent.
 - Saved refs use only returned same-project published agent ids.
-- Saved refs either include concrete \`useWhen\` guidance or intentionally omit
-  it because the user chose to add the subagent without routing guidance.
+- Saved refs include concrete \`useWhen\` guidance.
 - Any \`subAgents.maxChildren\` value stays within ${SUB_AGENT_MAX_CHILDREN_MIN} to ${SUB_AGENT_MAX_CHILDREN_MAX}.`,
 	};
 }

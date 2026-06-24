@@ -43,7 +43,6 @@ const props = defineProps<{
 	config: AgentJsonConfig | null;
 	disabled: boolean;
 	projectId: string;
-	agentId: string;
 }>();
 
 const emit = defineEmits<{
@@ -213,10 +212,10 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 		<div :class="$style.subAgentsHeader">
 			<div :class="$style.subAgentsText">
 				<N8nText tag="h3" :bold="true">
-					{{ i18n.baseText('agents.builder.subAgents.title') }}
+					{{ i18n.baseText('agents.builder.subAgents.settings.title') }}
 				</N8nText>
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.description') }}
+					{{ i18n.baseText('agents.builder.subAgents.settings.description') }}
 				</N8nText>
 			</div>
 		</div>

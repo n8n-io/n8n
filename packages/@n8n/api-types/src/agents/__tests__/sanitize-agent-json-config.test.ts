@@ -450,7 +450,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			...baseConfig,
 			subAgents: {
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
 					medium: { model: 'anthropic/claude-haiku-4-5', credential: 'cred-anthropic' },

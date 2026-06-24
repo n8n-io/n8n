@@ -25,7 +25,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.useWhen.placeholder': 'Use for billing questions',
 				'agents.builder.subAgents.useWhen.characterCount': '0/512',
 				'agents.builder.subAgents.useWhen.validation.minLength': 'Use when is too short',
-				'agents.builder.subAgents.useWhen.validation.maxLength': 'Use when is too long',
+				'agents.builder.subAgents.useWhen.validation.maxLength': `Use when must be ${options?.interpolate?.max ?? ''} characters or less`,
 				'generic.back': 'Back',
 				'generic.cancel': 'Cancel',
 				'generic.save': 'Save',
@@ -190,7 +190,6 @@ describe('AgentSubAgentsModal', () => {
 			props: {
 				modalName: 'agentSubAgentsModal',
 				data: {
-					agents: [],
 					selectedAgent: { id: 'agent-2', name: 'Billing Agent' },
 					useWhen: 'Use for invoice questions.',
 					onConfirm,

@@ -139,7 +139,6 @@ const i18n = useI18n();
 							:config="localConfig"
 							:disabled="childrenDisabled"
 							:project-id="projectId"
-							:agent-id="agentId"
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>

@@ -194,7 +194,7 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * Sub-agents the model may choose between. Listed in the system prompt; the
 	 * model selects one by passing its id as `subAgentId`.
 	 */
-	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
+	availableSubAgents?: Array<{ id: string; name: string; useWhen: string }>;
 	/** Parallelism limit for delegated child runs (also used as delegate_subagent batch size). */
 	policy?: DelegateSubAgentPolicy;
 	/** Additional local/deferred tool names the host removes from inline children. */
@@ -348,8 +348,7 @@ function formatAvailableSubAgents(
 	return [
 		'Configured subagents are available as specialist options. Use subAgentId: "inline" for the default inline child; pass one of these exact IDs only when that specialist is a better fit:',
 		...availableSubAgents.map((subAgent) => {
-			const useWhen = subAgent.useWhen ? `\n  Use when: ${subAgent.useWhen}` : '';
-			return `- ${subAgent.id}: ${subAgent.name}${useWhen}`;
+			return `- ${subAgent.id}: ${subAgent.name}\n  Use when: ${subAgent.useWhen}`;
 		}),
 	];
 }
