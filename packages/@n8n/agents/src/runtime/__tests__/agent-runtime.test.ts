@@ -4680,6 +4680,17 @@ describe('AgentRuntime — observation log jobs', () => {
 			lastObservedAt: observedAt,
 			updatedAt: observedAt,
 		});
+		// A cursor is only trusted when an observation log stands in for the
+		// pre-cursor messages, so seed one alongside the cursor.
+		await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'critical',
+				text: 'Observed old context.',
+				parentId: null,
+				createdAt: observedAt,
+			},
+		]);
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',

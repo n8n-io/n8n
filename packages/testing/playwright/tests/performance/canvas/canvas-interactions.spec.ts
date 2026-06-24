@@ -25,7 +25,7 @@ test.use({
 
 test.describe(
 	'Canvas Interactions Benchmark',
-	{ annotation: [{ type: 'owner', description: 'Canvas' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		for (const tier of TIERS) {
 			test(`interactions ${tier}-tier @tier:${tier}`, async ({ n8n, api }, testInfo) => {
