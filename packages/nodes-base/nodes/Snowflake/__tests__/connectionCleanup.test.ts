@@ -74,9 +74,7 @@ describe('Snowflake connection cleanup on statement failure', () => {
 		);
 		executeFns.getCredentials.mockResolvedValue(snowflakeCredentials);
 
-		await expect(new Snowflake().execute.call(executeFns)).rejects.toThrow(
-			'has locked table',
-		);
+		await expect(new Snowflake().execute.call(executeFns)).rejects.toThrow('has locked table');
 
 		// The connection must be cleaned up so the locked table is released.
 		expect(mockDestroy).toHaveBeenCalled();
