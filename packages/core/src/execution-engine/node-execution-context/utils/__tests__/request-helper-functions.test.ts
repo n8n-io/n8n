@@ -3,10 +3,13 @@ import type { Agent as HttpsAgent } from 'https';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type {
 	IAllExecuteFunctions,
+	IDataObject,
+	IExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INode,
 	IRequestOptions,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	PaginationOptions,
 	Workflow,
@@ -19,6 +22,7 @@ import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifec
 import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
+	getRequestHelperFunctions,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
@@ -679,6 +683,82 @@ describe('Request Helper Functions', () => {
 				uri: 'https://original.com/api',
 				method: 'GET',
 			});
+		});
+	});
+
+	describe('requestWithAuthenticationPaginated', () => {
+		const node = mock<INode>({ name: 'Test', typeVersion: 1 });
+
+		const setup = () => {
+			const paginationOptions = {
+				continue: '={{ false }}',
+				request: { url: 'https://example.com/page' },
+				maxRequests: 1,
+			} as unknown as PaginationOptions;
+
+			// Capture the additionalKeys (which carry $request) handed to each
+			// resolved expression so we can assert what pagination expressions see.
+			const capturedKeys: IWorkflowDataProxyAdditionalKeys[] = [];
+			const getParameterValue = jest.fn(
+				(parameterValue, _red, _ri, _ii, _name, _cid, _mode, additionalKeys) => {
+					if (additionalKeys) capturedKeys.push(additionalKeys);
+					if (parameterValue === paginationOptions.request) {
+						return { url: 'https://example.com/page' };
+					}
+					return 1;
+				},
+			);
+			const workflow = mock<Workflow>({ expression: { getParameterValue } });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			const helpers = getRequestHelperFunctions(workflow, node, additionalData);
+
+			const request = jest.fn().mockResolvedValue({ body: {}, headers: {}, statusCode: 200 });
+			const ctx = { helpers: { request } } as unknown as IExecuteFunctions;
+
+			const requestOptions: IRequestOptions = {
+				uri: 'https://example.com',
+				headers: { 'x-secret': 'live-secret' },
+			};
+
+			return { helpers, ctx, request, requestOptions, paginationOptions, capturedKeys };
+		};
+
+		test('exposes the sanitized request to pagination expressions while sending the live one', async () => {
+			const { helpers, ctx, request, requestOptions, paginationOptions, capturedKeys } = setup();
+
+			const sanitizedRequest: IDataObject = {
+				uri: 'https://example.com',
+				headers: { 'x-secret': '**hidden**' },
+			};
+
+			await helpers.requestWithAuthenticationPaginated.call(
+				ctx,
+				requestOptions,
+				0,
+				paginationOptions,
+				undefined,
+				undefined,
+				sanitizedRequest,
+			);
+
+			expect(capturedKeys.length).toBeGreaterThan(0);
+			expect(capturedKeys[0].$request).toBe(sanitizedRequest);
+
+			const sentOptions = request.mock.calls[0][0] as IRequestOptions;
+			expect((sentOptions.headers as IDataObject)['x-secret']).toBe('live-secret');
+		});
+
+		test('falls back to the request options when no sanitized request is provided', async () => {
+			const { helpers, ctx, requestOptions, paginationOptions, capturedKeys } = setup();
+
+			await helpers.requestWithAuthenticationPaginated.call(
+				ctx,
+				requestOptions,
+				0,
+				paginationOptions,
+			);
+
+			expect(capturedKeys[0].$request).toBe(requestOptions);
 		});
 	});
 
