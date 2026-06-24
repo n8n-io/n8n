@@ -56,12 +56,15 @@ export function mergeUsage(
 		totalTokens: current.totalTokens + next.totalTokens,
 	};
 
+	const noCache =
+		(current.inputTokenDetails?.noCache ?? 0) + (next.inputTokenDetails?.noCache ?? 0);
 	const cacheRead =
 		(current.inputTokenDetails?.cacheRead ?? 0) + (next.inputTokenDetails?.cacheRead ?? 0);
 	const cacheWrite =
 		(current.inputTokenDetails?.cacheWrite ?? 0) + (next.inputTokenDetails?.cacheWrite ?? 0);
-	if (cacheRead > 0 || cacheWrite > 0) {
+	if (noCache > 0 || cacheRead > 0 || cacheWrite > 0) {
 		merged.inputTokenDetails = {
+			...(noCache > 0 && { noCache }),
 			...(cacheRead > 0 && { cacheRead }),
 			...(cacheWrite > 0 && { cacheWrite }),
 		};
@@ -87,7 +90,11 @@ export function accumulateUsage(
 				inputTokens?: number | undefined;
 				outputTokens?: number | undefined;
 				totalTokens?: number | undefined;
-				inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number };
+				inputTokenDetails?: {
+					noCacheTokens?: number;
+					cacheReadTokens?: number;
+					cacheWriteTokens?: number;
+				};
 				outputTokenDetails?: { reasoningTokens?: number };
 		  }
 		| undefined,

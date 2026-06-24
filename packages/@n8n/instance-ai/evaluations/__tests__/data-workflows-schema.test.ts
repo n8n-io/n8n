@@ -56,6 +56,62 @@ describe('WorkflowTestCaseSchema', () => {
 		).toThrow();
 	});
 
+	it('accepts a prose priorConversation prelude', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			priorConversation: [{ role: 'user', text: 'We already agreed on #cosmic-otter-alerts' }],
+		});
+		expect(parsed.priorConversation).toHaveLength(1);
+	});
+
+	it('rejects seedFile combined with priorConversation', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				seedFile: 'seeds/some-thread.seed.json',
+				priorConversation: [{ role: 'user', text: 'prelude' }],
+			}),
+		).toThrow(/mutually exclusive/);
+	});
+
+	it('accepts a seedThread case with no conversation (live turn from the trace)', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		const parsed = WorkflowTestCaseSchema.parse({
+			...rest,
+			seedThread: { threadId: 'example-thread-id' },
+		});
+		expect(parsed.seedThread?.threadId).toBe('example-thread-id');
+		expect(parsed.conversation).toBeUndefined();
+	});
+
+	it('accepts seedThread WITH a conversation (continuation after the live turn)', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			seedThread: { threadId: 't1' },
+			conversation: [{ role: 'user', text: 'now also add error handling' }],
+		});
+		expect(parsed.seedThread?.threadId).toBe('t1');
+		expect(parsed.conversation).toHaveLength(1);
+	});
+
+	it('rejects seedThread combined with another seeding mode', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...rest,
+				seedThread: { threadId: 't1' },
+				seedFile: 'seeds/x.seed.json',
+			}),
+		).toThrow(/mutually exclusive/);
+	});
+
+	it('rejects a non-seedThread case that omits conversation', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() => WorkflowTestCaseSchema.parse(rest)).toThrow(
+			/needs a conversation, or a seedThread/,
+		);
+	});
+
 	it('accepts the optional triggerType field', () => {
 		const parsed = WorkflowTestCaseSchema.parse({ ...validFixture(), triggerType: 'webhook' });
 		expect(parsed.triggerType).toBe('webhook');

@@ -215,6 +215,8 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * `helpers.runInlineSubAgent` for inline work.
 	 */
 	runSubAgent?: DelegateSubAgentRunner;
+
+	toModelOutput?: (output: z.infer<typeof delegateSubAgentOutputSchema>) => unknown;
 }
 
 export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
@@ -292,8 +294,10 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 			async (input, ctx) =>
 				await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes),
 		)
+		.toModelOutput((output) => {
+			return resolvedOptions.toModelOutput ? resolvedOptions.toModelOutput(output) : output;
+		})
 		.build();
-
 	return withSdkOwnedBuiltInMetadata({
 		...tool,
 		metadata: {
@@ -319,6 +323,9 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 					: {}),
 				...(resolvedOptions.runSubAgent !== undefined
 					? { runSubAgent: resolvedOptions.runSubAgent }
+					: {}),
+				...(resolvedOptions.toModelOutput !== undefined
+					? { toModelOutput: resolvedOptions.toModelOutput }
 					: {}),
 			} satisfies DelegateSubAgentToolMetadata,
 		},

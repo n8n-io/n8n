@@ -6,7 +6,7 @@ import type { WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
 import type { BuildExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
-import { transcriptAsText } from '../utils/conversation-text';
+import { buildWorkflowCallsPerTurn, transcriptAsText } from '../utils/conversation-text';
 
 // ---------------------------------------------------------------------------
 // Structured output schema
@@ -150,6 +150,9 @@ function buildConversationContext(
 	const metricsBlock = metrics
 		? `\`\`\`json\n${JSON.stringify(metrics, null, 2)}\n\`\`\``
 		: '(none captured)';
+	const buildCalls = buildWorkflowCallsPerTurn(transcript);
+	const maxBuildCalls = buildCalls.length > 0 ? Math.max(...buildCalls) : 0;
+	const totalBuildCalls = buildCalls.reduce((sum, n) => sum + n, 0);
 	return [
 		'## Conversation transcript',
 		'',
@@ -158,6 +161,10 @@ function buildConversationContext(
 		'## Conversation metrics (ground truth — do not recount)',
 		'',
 		metricsBlock,
+		'',
+		'## Build-tool usage (ground truth — do not recount)',
+		'',
+		`The \`build-workflow\` tool was called ${String(totalBuildCalls)} time(s) total, at most ${String(maxBuildCalls)} within any single turn.`,
 		'',
 		'## Expectations',
 		'',

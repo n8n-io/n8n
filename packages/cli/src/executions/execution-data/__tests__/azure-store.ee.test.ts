@@ -4,6 +4,7 @@
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { AzureBlobService } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee';
+import type { Readable } from 'node:stream';
 
 import { AzureStore } from '../azure-store.ee';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
@@ -23,6 +24,8 @@ const blobNotFound = () =>
 
 const bundle = { ...payload, version: 1 as const };
 
+const bufferResult = (text: string) => Buffer.from(text) as unknown as Readable;
+
 describe('AzureStore', () => {
 	let azureBlob: ReturnType<typeof mock<AzureBlobService>>;
 	let errorReporter: ReturnType<typeof mock<ErrorReporter>>;
@@ -39,9 +42,10 @@ describe('AzureStore', () => {
 			await azureStore.write(ref, payload);
 
 			expect(azureBlob.put).toHaveBeenCalledTimes(1);
-			const [key, body] = azureBlob.put.mock.calls[0];
+			const [key, body, metadata] = azureBlob.put.mock.calls[0];
 			expect(key).toBe(keyFor(executionId));
 			expect(JSON.parse(body.toString('utf-8'))).toMatchObject(bundle);
+			expect(metadata).toEqual({ mimeType: 'application/json' });
 		});
 
 		it('should wrap a put failure in `ExecutionDataWriteError`', async () => {
@@ -53,12 +57,12 @@ describe('AzureStore', () => {
 
 	describe('read', () => {
 		it('should retrieve and parse the stored bundle', async () => {
-			azureBlob.get.mockResolvedValueOnce(Buffer.from(JSON.stringify(bundle)));
+			azureBlob.get.mockResolvedValueOnce(bufferResult(JSON.stringify(bundle)));
 
 			const result = await azureStore.read(ref);
 
 			expect(result).toEqual(bundle);
-			expect(azureBlob.get).toHaveBeenCalledWith(keyFor(executionId));
+			expect(azureBlob.get).toHaveBeenCalledWith(keyFor(executionId), { mode: 'buffer' });
 		});
 
 		it('should return `null` when the blob is missing (BlobNotFound)', async () => {
@@ -81,7 +85,7 @@ describe('AzureStore', () => {
 		});
 
 		it('should throw `CorruptedExecutionDataError` for non-parseable content', async () => {
-			azureBlob.get.mockResolvedValueOnce(Buffer.from('invalid json{{{'));
+			azureBlob.get.mockResolvedValueOnce(bufferResult('invalid json{{{'));
 
 			await expect(azureStore.read(ref)).rejects.toThrow(CorruptedExecutionDataError);
 		});
@@ -101,7 +105,7 @@ describe('AzureStore', () => {
 			const present = createExecutionRef(workflowId, 'exec-1');
 			const missing = createExecutionRef(workflowId, 'exec-2');
 			azureBlob.get
-				.mockResolvedValueOnce(Buffer.from(JSON.stringify(bundle)))
+				.mockResolvedValueOnce(bufferResult(JSON.stringify(bundle)))
 				.mockRejectedValueOnce(blobNotFound());
 
 			const bundles = await azureStore.readMany([present, missing]);
@@ -115,8 +119,8 @@ describe('AzureStore', () => {
 			const good = createExecutionRef(workflowId, 'good');
 			const bad = createExecutionRef(workflowId, 'bad');
 			azureBlob.get
-				.mockResolvedValueOnce(Buffer.from(JSON.stringify(bundle)))
-				.mockResolvedValueOnce(Buffer.from('invalid json{{{'));
+				.mockResolvedValueOnce(bufferResult(JSON.stringify(bundle)))
+				.mockResolvedValueOnce(bufferResult('invalid json{{{'));
 
 			const bundles = await azureStore.readMany([good, bad]);
 
