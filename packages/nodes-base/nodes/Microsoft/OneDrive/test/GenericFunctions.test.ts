@@ -245,6 +245,8 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+			// dual-branch lock: the OAuth2 path must never reach requestWithAuthentication
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('should use the microsoftOneDriveOAuth2Api credential when selected', async () => {
@@ -259,6 +261,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				'microsoftOneDriveOAuth2Api',
 				expect.anything(),
 			);
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('should fall back to microsoftOneDriveOAuth2Api when authentication is not set', async () => {
