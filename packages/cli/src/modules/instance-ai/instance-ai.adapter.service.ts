@@ -1792,8 +1792,11 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
+
 		const { outboundHttp, ssrfProtectionService } = this;
-		const sharedTransport = outboundHttp.transport({ ssrf: ssrfProtectionService });
+		const sharedTransport = outboundHttp.transport({
+			ssrf: this.ssrfProtectionService, // LLM/user-chosen URLs
+		});
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
