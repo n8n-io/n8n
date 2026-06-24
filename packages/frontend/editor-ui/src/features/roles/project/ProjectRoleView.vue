@@ -8,7 +8,6 @@ import {
 	N8nButton,
 	N8nFormInput,
 	N8nHeading,
-	N8nInput,
 	N8nLoading,
 	N8nTabs,
 	N8nText,
@@ -25,6 +24,7 @@ import { computed, ref, toRaw, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
 
+import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 
 const rolesStore = useRolesStore();
@@ -344,99 +344,42 @@ const displayNameValidationRules = [
 	{ name: 'REQUIRED' },
 	{ name: 'MIN_LENGTH', config: { minimum: 2 } },
 ];
+
+const isNew = computed(() => !props.roleSlug);
+const showEditButtons = computed(
+	() => Boolean(initialState.value) && !isReadOnly.value && !isLoading.value,
+);
+const showCreateButton = computed(() => isNew.value);
+
+const editorLabels = computed<RoleEditorLabels>(() => ({
+	newRoleTitle: i18n.baseText('projectRoles.newRole'),
+	roleName: i18n.baseText('projectRoles.roleName'),
+	description: i18n.baseText('projectRoles.description'),
+	optional: i18n.baseText('projectRoles.optional'),
+	systemRoleNotEditable: i18n.baseText('projectRoles.systemRoleNotEditable'),
+	discardChanges: i18n.baseText('projectRoles.discardChanges'),
+	save: i18n.baseText('projectRoles.save'),
+	create: i18n.baseText('projectRoles.create'),
+}));
 </script>
 
 <template>
-	<div class="pb-xl" :class="$style.container">
-		<N8nButton
-			variant="ghost"
-			icon="arrow-left"
-			:class="$style.backButton"
-			text
-			@click="onBackClick"
-		>
-			{{ backButtonText }}
-		</N8nButton>
-		<div class="mb-xl" :class="$style.headerContainer">
-			<div :class="$style.headingContainer">
-				<N8nHeading tag="h1" size="2xlarge" :class="$style.heading">
-					<template v-if="roleSlug"
-						>Role "<N8nTooltip :content="form.displayName" placement="bottom"
-							><span>{{ form.displayName }}</span></N8nTooltip
-						>"</template
-					>
-					<template v-else>{{ i18n.baseText('projectRoles.newRole') }}</template>
-				</N8nHeading>
-			</div>
-			<div v-if="initialState && !isReadOnly && !isLoading" :class="$style.headerActions">
-				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
-					{{ i18n.baseText('projectRoles.discardChanges') }}
-				</N8nButton>
-				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
-					{{ i18n.baseText('projectRoles.save') }}
-				</N8nButton>
-			</div>
-			<template v-else-if="!roleSlug">
-				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
-			</template>
-		</div>
-
-		<div class="mb-l" :class="$style.formContainer">
-			<!-- Read-only: use slot to wrap input with tooltip -->
-			<template v-if="isReadOnly">
-				<N8nFormInput
-					v-model="form.displayName"
-					:label="i18n.baseText('projectRoles.roleName')"
-					class="mb-s"
-					show-required-asterisk
-					required
-				>
-					<N8nTooltip
-						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
-						placement="top"
-					>
-						<N8nInput v-model="form.displayName" :maxlength="100" disabled />
-					</N8nTooltip>
-				</N8nFormInput>
-				<N8nFormInput v-model="form.description" :label="i18n.baseText('projectRoles.description')">
-					<N8nTooltip
-						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
-						placement="top"
-					>
-						<N8nInput
-							v-model="form.description"
-							type="textarea"
-							:placeholder="i18n.baseText('projectRoles.optional')"
-							:maxlength="500"
-							:autosize="{ minRows: 2, maxRows: 4 }"
-							disabled
-						/>
-					</N8nTooltip>
-				</N8nFormInput>
-			</template>
-			<!-- Editable: standard N8nFormInput with full validation -->
-			<template v-else>
-				<N8nFormInput
-					v-model="form.displayName"
-					:label="i18n.baseText('projectRoles.roleName')"
-					validate-on-blur
-					:validation-rules="displayNameValidationRules"
-					class="mb-s"
-					show-required-asterisk
-					required
-					:maxlength="100"
-				/>
-				<N8nFormInput
-					v-model="form.description"
-					:label="i18n.baseText('projectRoles.description')"
-					:placeholder="i18n.baseText('projectRoles.optional')"
-					type="textarea"
-					:maxlength="500"
-					:autosize="{ minRows: 2, maxRows: 4 }"
-				/>
-			</template>
-		</div>
-
+	<RoleEditorLayout
+		v-model:display-name="form.displayName"
+		v-model:description="form.description"
+		:is-new="isNew"
+		:is-read-only="isReadOnly"
+		:show-edit-buttons="showEditButtons"
+		:show-create-button="showCreateButton"
+		:has-unsaved-changes="hasUnsavedChanges"
+		:back-button-text="backButtonText"
+		:labels="editorLabels"
+		:display-name-validation-rules="displayNameValidationRules"
+		@back="onBackClick"
+		@save="handleSubmit"
+		@discard="resetForm(initialState)"
+		@create="handleSubmit"
+	>
 		<div v-if="roleSlug" class="mb-l">
 			<N8nTabs v-model="activeTab" :options="tabOptions" />
 		</div>
@@ -524,17 +467,10 @@ const displayNameValidationRules = [
 		</div>
 
 		<RoleAssignmentsTab v-if="roleSlug && activeTab === 'assignments'" :role-slug="roleSlug" />
-	</div>
+	</RoleEditorLayout>
 </template>
 
 <style lang="css" module>
-.container {
-	max-width: 700px;
-	margin: 0 auto;
-	display: flex;
-	flex-direction: column;
-}
-
 .cardContainer {
 	padding: 8px 16px;
 	border-radius: 4px;
@@ -556,39 +492,6 @@ const displayNameValidationRules = [
 
 .cardTitle {
 	width: 133px;
-}
-
-.backButton {
-	position: absolute;
-	top: 10px;
-	left: 10px;
-}
-
-.headerContainer {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: var(--spacing--sm);
-}
-
-.headingContainer {
-	min-width: 0;
-}
-
-.heading {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.headerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
-.formContainer {
-	max-width: 415px;
 }
 
 .presetsContainer {
