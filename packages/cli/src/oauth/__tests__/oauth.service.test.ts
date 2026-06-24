@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { parseOAuth2Scopes } from '@n8n/client-oauth2';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -3976,6 +3977,45 @@ describe('OauthService', () => {
 				});
 
 				expect(options.resource).toBeUndefined();
+			});
+
+			it('should default to the openid scope when no scope is set', () => {
+				const options = (service as any).convertCredentialToOptions({
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://auth.example.com/oauth2/token',
+				});
+
+				expect(options.scopes).toEqual(['openid']);
+				expect(options.scopesSeparator).toBe(' ');
+			});
+
+			it('should split a comma-separated scope string and keep the comma separator', () => {
+				const options = (service as any).convertCredentialToOptions({
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://auth.example.com/oauth2/token',
+					scope: 'read,write',
+				});
+
+				expect(options.scopes).toEqual(['read', 'write']);
+				expect(options.scopesSeparator).toBe(',');
+			});
+
+			it('should accept scopes provided as an array (multiOptions credential field)', () => {
+				jest
+					.mocked(parseOAuth2Scopes)
+					.mockImplementation(jest.requireActual('@n8n/client-oauth2').parseOAuth2Scopes);
+
+				const options = (service as any).convertCredentialToOptions({
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://auth.example.com/oauth2/token',
+					scope: ['read', 'write'],
+				});
+
+				expect(options.scopes).toEqual(['read', 'write']);
+				expect(options.scopesSeparator).toBe(' ');
 			});
 		});
 	});

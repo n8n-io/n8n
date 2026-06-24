@@ -1,6 +1,6 @@
 import type { TokenCredential, AccessToken } from '@azure/identity';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
-import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { ClientOAuth2, parseOAuth2Scopes } from '@n8n/client-oauth2';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -26,7 +26,7 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 				clientId: this.credential.clientId,
 				clientSecret: this.credential.clientSecret,
 				accessTokenUri: this.credential.accessTokenUrl,
-				scopes: this.credential.scope?.split(' '),
+				scopes: parseOAuth2Scopes(this.credential.scope),
 				authentication: this.credential.authentication,
 				authorizationUri: this.credential.authUrl,
 				additionalBodyProperties: {

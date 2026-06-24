@@ -46,6 +46,18 @@ export function getAuthError(body: {
 }
 
 /**
+ * Normalize an OAuth2 `scope` credential value into a list of scope tokens.
+ *
+ * The value may be a space-separated string or, for `multiOptions` credential
+ * fields, an array. Empty tokens are dropped because they are not RFC 6749
+ * compliant and may be rejected by authorization servers.
+ */
+export function parseOAuth2Scopes(scope: string | string[] | undefined): string[] {
+	const tokens = Array.isArray(scope) ? scope : (scope ?? '').split(' ');
+	return tokens.map((token) => token.trim()).filter(Boolean);
+}
+
+/**
  * Ensure a value is a string.
  */
 function toString(str: string | null | undefined) {
