@@ -191,6 +191,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		}
 
 		agent.memory(mem);
+		agent.persistInputOnReceipt(true);
 	}
 	if (options.onMemoryTaskEvent) {
 		agent.memoryTaskObserver(options.onMemoryTaskEvent);

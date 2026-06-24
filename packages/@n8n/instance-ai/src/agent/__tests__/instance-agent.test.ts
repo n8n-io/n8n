@@ -9,6 +9,7 @@ const mockAgentInstances: Array<{
 	skills: Mock;
 	checkpoint: Mock;
 	memory: Mock;
+	persistInputOnReceipt: Mock;
 	telemetry: Mock;
 	workspace: Mock;
 	thinking: Mock;
@@ -31,6 +32,7 @@ vi.mock('@n8n/agents', () => ({
 		this.skills = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
+		this.persistInputOnReceipt = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
@@ -531,6 +533,41 @@ describe('createInstanceAgent', () => {
 			reflectorThresholdTokens: 40_000,
 		});
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
+	});
+
+	it('persists the user input on receipt when memory is configured', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'persist-input-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'persist-input-test' },
+			memory: { id: 'memory-store' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.persistInputOnReceipt).toHaveBeenCalledWith(true);
+	});
+
+	it('does not enable input-on-receipt persistence when no memory store is provided', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'no-memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'no-memory-test' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.persistInputOnReceipt).not.toHaveBeenCalled();
 	});
 
 	it('enables adaptive thinking by default for Anthropic models', async () => {

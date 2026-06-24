@@ -24,6 +24,7 @@ export interface AgentBuilder {
 	providerTool(t: BuiltProviderTool): this;
 	thinking(provider: string, config?: Record<string, unknown>): this;
 	toolCallConcurrency(n: number): this;
+	persistInputOnReceipt(enabled: boolean): this;
 	memory(m: unknown): this;
 	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this;
 	checkpoint(storage: 'memory' | CheckpointStore): this;

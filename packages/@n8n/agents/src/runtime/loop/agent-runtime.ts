@@ -106,6 +106,13 @@ export interface AgentRuntimeConfig {
 	runState?: RunStateManager;
 	/** Host callback for observational-memory background task lifecycle events. */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Persist the turn's input messages to memory as soon as they are added,
+	 * instead of only on a clean end-of-turn save. Guarantees the user's input
+	 * survives an abort or an abandoned HITL suspend. Requires `memory` +
+	 * per-run `persistence`. Off by default.
+	 */
+	persistInputOnReceipt?: boolean;
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -453,6 +460,13 @@ export class AgentRuntime {
 		const list = new AgentMessageList();
 		await this.memory.loadInto(list, options);
 		list.addInput(input);
+
+		// Persist input now (after history load, so the prompt isn't polluted) so it
+		// survives an abort or abandoned HITL suspend that never reaches finishComplete.
+		if (this.config.persistInputOnReceipt) {
+			await this.memory.persistInputMessages(list, options);
+		}
+
 		return list;
 	}
 
