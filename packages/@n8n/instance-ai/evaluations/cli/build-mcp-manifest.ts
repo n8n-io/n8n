@@ -10,6 +10,7 @@ import { homedir, tmpdir } from 'os';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
+import { DEFAULT_DATASETS } from '../data/workflows/schema';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
 
@@ -552,14 +553,16 @@ function discoverSlugs(workflowDir: string): string[] {
 
 const tierDatasetsSchema = z.object({ datasets: z.array(z.string()).optional() }).passthrough();
 
-/** A test case's `datasets`, defaulting to ['full'] when absent — mirrors the eval schema default. */
+/** A test case's `datasets`, defaulting to the shared eval default when absent — mirrors the loader schema. */
 function readDatasets(workflowDir: string, slug: string): string[] {
 	const file = join(workflowDir, `${slug}.json`);
 	if (!existsSync(file)) return [];
 	try {
-		return tierDatasetsSchema.parse(readJson(file, `test case ${slug}`)).datasets ?? ['full'];
+		return (
+			tierDatasetsSchema.parse(readJson(file, `test case ${slug}`)).datasets ?? DEFAULT_DATASETS
+		);
 	} catch {
-		return ['full'];
+		return DEFAULT_DATASETS;
 	}
 }
 

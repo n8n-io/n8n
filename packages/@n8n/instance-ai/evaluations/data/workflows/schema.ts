@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { SUPPORTED_CREDENTIAL_TYPES } from '../../credentials/seeder';
 
+/** Default `datasets` grouping for a case that omits the field — the single
+ *  source of truth shared by the loader schema and the mcp-manifest tier reader. */
+export const DEFAULT_DATASETS = ['full'];
+
 const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	// A string, or an array of lines joined with newlines. The array form lets
@@ -75,7 +79,7 @@ const workflowTestCaseObjectSchema = z.object({
 	 * splits, so subsets can be evaluated and compared independently. Defaults
 	 * to `['full']` — cases without this field run in the full suite only.
 	 */
-	datasets: z.array(z.string()).min(1).default(['full']),
+	datasets: z.array(z.string()).min(1).default(DEFAULT_DATASETS),
 });
 
 // At most one seeding mode, and a source for the live turn.
