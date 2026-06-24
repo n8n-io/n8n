@@ -197,6 +197,30 @@ describe('components', () => {
 			expect(code?.textContent).not.toContain(' ');
 		});
 
+		// A longer outer fence (4 backticks) can contain a shorter inner fence (3
+		// backticks) as literal content. The shorter run must NOT close the block, so
+		// blank lines after it stay literal and never become a &nbsp; soft-break.
+		it('treats a shorter inner fence as code, not a closing fence (sticky markdown)', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '````\nouter code\n```\nstill code\n\nalso still code\n````',
+					withMultiBreaks: true,
+					theme: 'sticky',
+				},
+			});
+
+			const code = wrapper.container.querySelector('pre code');
+			expect(code?.textContent).toContain('still code');
+			expect(code?.textContent).toContain('also still code');
+			expect(code?.textContent).not.toContain('&nbsp;');
+			expect(code?.textContent).not.toContain(' ');
+		});
+
 		it('should not render YouTube embed player with extra parameters', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {

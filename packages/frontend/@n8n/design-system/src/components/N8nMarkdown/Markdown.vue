@@ -104,22 +104,42 @@ const htmlContent = computed(() => {
 		// Keep them as real paragraph breaks when adjacent to block-level markdown
 		// (list, heading, blockquote, code fence, hr) so structures parse correctly,
 		// and leave blank lines inside fenced code blocks untouched so they stay literal.
-		const fenceRegex = /^\s*(```|~~~)/;
+		// Parse a code-fence line into its fence char and run length (>= 3). A fence
+		// can be made of 3+ backticks or tildes; the closing fence must use the same
+		// char and be at least as long, and carry no info string after it.
+		const parseFence = (line: string) => {
+			const match = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+			return match ? { char: match[1][0], length: match[1].length, rest: match[2] } : null;
+		};
 		const isBlockStart = (line: string) =>
 			/^\s*([-*+]|\d+\.)\s/.test(line) ||
 			/^#{1,6}\s/.test(line) ||
 			/^>/.test(line) ||
-			fenceRegex.test(line) ||
+			parseFence(line) !== null ||
 			/^---+\s*$/.test(line);
 		const lines = contentToRender.split('\n');
-		let insideFence = false;
+		let openFence: { char: string; length: number } | null = null;
 		contentToRender = lines
 			.map((line, i) => {
-				if (fenceRegex.test(line)) {
-					insideFence = !insideFence;
+				const fence = parseFence(line);
+				if (openFence) {
+					// A closing fence matches the opening char, is at least as long, and
+					// has no trailing content; shorter/different fences stay code content.
+					if (
+						fence &&
+						fence.char === openFence.char &&
+						fence.length >= openFence.length &&
+						fence.rest.trim() === ''
+					) {
+						openFence = null;
+					}
 					return line;
 				}
-				if (insideFence || line !== '') return line;
+				if (fence) {
+					openFence = { char: fence.char, length: fence.length };
+					return line;
+				}
+				if (line !== '') return line;
 				const prev = lines[i - 1] ?? '';
 				const next = lines[i + 1] ?? '';
 				return isBlockStart(prev) || isBlockStart(next) ? '' : '&nbsp;';
