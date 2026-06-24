@@ -86,10 +86,11 @@ const USER_TARGET_UPN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
 const USER_TARGET_HOST = /^[A-Za-z0-9.-]+$/;
 const DRIVE_TARGET_ID = /^[A-Za-z0-9!._-]+$/;
 // Site id = comma-composite form only (`host,siteGuid,webGuid`). Exactly three
-// comma-separated parts, no `/`, `\`, `:`, or whitespace — which also makes a bare
-// `..` segment impossible (it would have to be a whole part, blocked by the
-// dots-only common check, and the no-slash invariant blocks `../` path traversal).
-const SITE_TARGET_COMPOSITE = /^[A-Za-z0-9.-]+,[0-9a-fA-F-]+,[0-9a-fA-F-]+$/;
+// comma-separated parts, no `/`, `\`, `:`, or whitespace. The host part must hold
+// at least one alphanumeric character (a real SharePoint host), which rejects a
+// bare-dots host like `..` or `.`; the no-slash invariant blocks `../` traversal.
+const SITE_TARGET_COMPOSITE =
+	/^(?=[A-Za-z0-9.-]*[A-Za-z0-9])[A-Za-z0-9.-]+,[0-9a-fA-F-]+,[0-9a-fA-F-]+$/;
 
 /**
  * Validates an app-only `resourceTargetId` for a given target before it is encoded
