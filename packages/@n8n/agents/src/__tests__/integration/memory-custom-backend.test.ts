@@ -7,9 +7,9 @@
  */
 import { expect, it, beforeEach } from 'vitest';
 
-import { Agent, Memory, type AgentDbMessage } from '../../../index';
-import type { BuiltMemory, MemoryDescriptor, Thread } from '../../../types/sdk/memory';
-import { describeIf, findLastTextContent, getModel } from '../helpers';
+import { describeIf, findLastTextContent, getModel } from './helpers';
+import { Agent, Memory, type AgentDbMessage } from '../../index';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../../types/sdk/memory';
 
 const describe = describeIf('anthropic');
 

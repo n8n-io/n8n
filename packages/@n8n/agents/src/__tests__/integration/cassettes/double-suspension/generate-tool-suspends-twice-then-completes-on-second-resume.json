@@ -46,35 +46,31 @@
 			}
 		},
 		"status": 200,
-		"response": [
-			"1f8b080000000000000a7551cb6edb3010fc15612fb95085a4c645c3639aa6690103368a9eea80d88a1b8b1545327cb8360cfd7b41db82e3043911bb33c3190ef73058491a38b41a93a4b243d5a7f2ba9c954dd5cceaaaaa818192c061086b51d5dfe6385fc8cd7d7fd7507f4fbfe4c3e7ed8fafc020ee1c651685806b0206deeabcc010548868223068ad896422f0dffb891f699b91c3c1e1fb95d68524a7edae881d15e85cb182615706f21bd5d20a8a27eb8b9d4d1f6064e74bacd522059aa2e63989aa5efc5dd2ddf322f846ddf65fc2cf46b97fcb0e18181cb2eee824d0b9ac342e45e07bc8237f610a238316b5269fd193a5549eda08e3f8c82044eb84270cd65c863900819e139996809ba4f5692929a2d261daa543677c7f0c21a2edc904e09f3ed6d9baed48b49e302a6bc425a39a704f28dfc3266d3620d7d1401eb5980d6ff967b4ee5ea323039be245bc1b06a78e4454b91ec83f2dd1cb439f4fe4f3c3c59a2c7030360adca0d2f847138ce37f29fe4bb37b020000"
-		],
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01VPvokawZyzTDwcqT55rgF2\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01L8Qu5FoFKhf6k71KidW5QX\",\"name\":\"deploy_app\",\"input\":{\"app\":\"my-service\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":631,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":56,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:43Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:43Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:51Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:51Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:42Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:43Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:50Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:51Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f1aaeabf275e-WAW",
+			"cf-ray": "a10371815db84341-VIE",
 			"connection": "keep-alive",
-			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 22 Jun 2026 08:39:43 GMT",
-			"request-id": "req_011CcHzpFMRCX1R9xEHM4C1d",
+			"date": "Tue, 23 Jun 2026 12:19:51 GMT",
+			"request-id": "req_011CcLBQncyeEvvviAomFULx",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=RbFVkttcGm1Mni8AMGn3oE1W2zvzfww6.cV486OogQ8-1782117582.548915-1.0.1.1-RrfOT5Kse4.x3WUqtLenL8UdtZEc1lbYKdVN258It1w; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=4uY41urjAbsuu9pS8y1Rgn6eZq02Tg8PSEaDSnTafGY-1782217190.612349-1.0.1.1-fvpfi8jW7vTLwsNbjA.yfIYmD_lR_eeTezp5NHWmrLo; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-464a7bf84c107182fc565c25d4f21dfb-35ba227a68416372-01",
-			"transfer-encoding": "chunked",
+			"traceresponse": "00-7f8147806469035de4458bb9df3e98f9-e38de1e0d74346db-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -107,12 +103,8 @@
 					"role": "assistant",
 					"content": [
 						{
-							"type": "text",
-							"text": "I'll deploy the app \"my-service\" for you."
-						},
-						{
 							"type": "tool_use",
-							"id": "toolu_01PjQeDqPsr2iBkCsS2ipwQh",
+							"id": "toolu_01L8Qu5FoFKhf6k71KidW5QX",
 							"name": "deploy_app",
 							"input": {
 								"app": "my-service"
@@ -128,7 +120,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01PjQeDqPsr2iBkCsS2ipwQh",
+							"tool_use_id": "toolu_01L8Qu5FoFKhf6k71KidW5QX",
 							"content": "{\"deployed\":true,\"app\":\"my-service\",\"steps\":3}"
 						}
 					]
@@ -157,35 +149,31 @@
 			}
 		},
 		"status": 200,
-		"response": [
-			"1f8b080000000000000a75924f6f133110c5bf8a990b974db51b4891f6868404483df400278a56eefa256b6a7bb69e71da28ca77474e13d11638597abfe7f9bfa7c80e817a1a832d0e8bc9fabbb278bf582d96ed72d5b56d470d79473d45d90c6d7775d97df938dfae80c75ff10adfbbebf5f2d38e1ad2dd8cea8288dd801aca1caa6045bca84d4a0d8d9c1449a9ffb13ffb158f951c9f9e3e67587d63bebeddc2f8e4d55b85333ac138cc817711490dafcd0dc5dd4290b77ec40d5d986f2f1d73e6112266b262446dae416c72e6c187f0048f513397cd64de1951ccf2144476a28826e3bef80c31fac02673494e6ada91d3dae768d57332ca66e43807288e15ae4b08ff28e2c25c075881899cbc727eddcd9c7993ab8f0e3f1b12e579c8b0c2897a427283969ce80404f7056904f5a98470121dd4fa2067ad1cc7dfefc9a7b9e8a07c8724d47f585e3634da71c230d6217b4ec34b477be619d6fd8f9dffd604982744641b8655fcdbff8776d36b7a68888b3e97566d43a77d0eea91a9a77a34ce6657ef2fad916be3c3064c3d25d6c16ead0ff636800e87dfe4227a06c6020000"
-		],
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_014v1QYutFz2X6qz49Mb6CCH\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Great! I've initiated the deployment of \\\"my-service\\\". The deployment process is underway with 3 steps. The app has been successfully deployed.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":713,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":35,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:43Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:44Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:52Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:52Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:43Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:43Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:51Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:52Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f1b09f22275e-WAW",
+			"cf-ray": "a10371875d704341-VIE",
 			"connection": "keep-alive",
-			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 22 Jun 2026 08:39:44 GMT",
-			"request-id": "req_011CcHzpKFKvNEMnq4SCuoxM",
+			"date": "Tue, 23 Jun 2026 12:19:52 GMT",
+			"request-id": "req_011CcLBQrj2vbybr5Lthxv4s",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=waqRL1S.Dn6EGoeBWqnWiN01qsYKfB_IRrgLMXAhhs8-1782117583.4585729-1.0.1.1-5CF1xBKAYS5284CQnfvOEljjapewWx_AopdNOHjsZX4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=tUZV9cbF1ZeT2FL12kUTp8QbQtHVn2GsWqanXa6ExJo-1782217191.5777037-1.0.1.1-ZDDBI1bIASdAEKHQgx850v3nB9tRPLbtAqgkWVB_ipA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-9125481ee264d64ac186965ef0e19fc3-c608fde87e275f28-01",
-			"transfer-encoding": "chunked",
+			"traceresponse": "00-3fa5a1765bf8e73261ca02d71c8d50b6-271a8a1f86f2c59e-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

@@ -14,8 +14,8 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { toAiMessages, fromAiMessages } from '../../runtime/model/messages';
 import type { Message } from '../../types/sdk/message';
+import { toAiMessages, fromAiMessages } from '../model/messages';
 
 describe('toAiMessages + fromAiMessages — round-trip', () => {
 	it('splits a resolved tool-call into assistant + tool ModelMessages', () => {
