@@ -2,7 +2,6 @@ import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Application, Request, Response } from 'express';
 import { ServerResponse, type Server as HttpServer } from 'http';
-import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import {
@@ -24,7 +23,8 @@ export class BrowserUseServer {
 
 	setup(server: HttpServer, app: Application): void {
 		server.on('upgrade', (req: BrowserUseUpgradeRequest, socket, head) => {
-			if (!parseUrl(req.url ?? '').pathname?.startsWith(`${BROWSER_USE_WS_NAMESPACE}/`)) return;
+			const pathname = URL.parse(req.url ?? '', 'http://localhost')?.pathname;
+			if (!pathname?.startsWith(`${BROWSER_USE_WS_NAMESPACE}/`)) return;
 			this.wsServer.handleUpgrade(req, socket, head, (ws) => {
 				req.ws = ws;
 				const res = new ServerResponse(req);

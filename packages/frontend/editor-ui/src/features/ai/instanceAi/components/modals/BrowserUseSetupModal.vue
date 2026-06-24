@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
@@ -7,38 +7,46 @@ import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 
 import { CHROME_EXTENSION_URL } from './constants';
 
+const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
+
 const props = defineProps<{ modalName: string }>();
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 
 const isConnected = computed(() => store.browserConnected);
+const connectUrl = ref<string | null>(null);
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
-function isConnectUrlFresh(): boolean {
-	if (!store.browserConnectUrl) return false;
-	if (!store.browserConnectUrlExpiresAt) return true;
-	return Date.parse(store.browserConnectUrlExpiresAt) > Date.now();
+function clearRefreshTimer(): void {
+	if (refreshTimer) {
+		clearTimeout(refreshTimer);
+		refreshTimer = undefined;
+	}
 }
 
-async function openConnectPage(): Promise<void> {
-	if (isConnectUrlFresh()) {
-		window.open(store.browserConnectUrl ?? '', '_blank');
-		return;
-	}
-	const url = await store.fetchBrowserConnectUrl();
-	if (url) {
-		window.open(url, '_blank');
-	}
+async function refreshConnectUrl(): Promise<void> {
+	clearRefreshTimer();
+	connectUrl.value = await store.fetchBrowserConnectUrl();
+
+	const expiresAt = store.browserConnectUrlExpiresAt;
+	if (!connectUrl.value || !expiresAt) return;
+
+	const delay = Date.parse(expiresAt) - Date.now() - CONNECT_URL_REFRESH_MARGIN_MS;
+	if (!Number.isFinite(delay) || delay <= 0) return;
+
+	refreshTimer = setTimeout(() => void refreshConnectUrl(), delay);
 }
 
 onMounted(() => {
 	void store.fetchBrowserStatus();
 	if (!store.browserConnected) {
-		void store.fetchBrowserConnectUrl();
+		void refreshConnectUrl();
 	}
 });
 
 onBeforeUnmount(() => {
+	clearRefreshTimer();
 	store.clearBrowserConnectUrl();
 });
 </script>
@@ -102,12 +110,13 @@ onBeforeUnmount(() => {
 						</N8nText>
 						<N8nButton
 							:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
+							:href="connectUrl ?? undefined"
+							target="_blank"
 							variant="solid"
 							size="medium"
 							icon="external-link"
-							:disabled="!store.browserConnectUrl"
+							:disabled="!connectUrl"
 							data-test-id="browser-use-open-connect-page"
-							@click="openConnectPage"
 						/>
 					</div>
 

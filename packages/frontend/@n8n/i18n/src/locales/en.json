@@ -5892,7 +5892,7 @@
 	"instanceAi.mcp.error.autoConnectAmbiguous.title": "Credential created",
 	"instanceAi.mcp.error.autoConnectAmbiguous.message": "Multiple new credentials appeared. Please pick the one you just created from the credential picker.",
 	"instanceAi.browserUse.modal.title": "Connect Browser Use",
-	"instanceAi.browserUse.modal.description": "Let the agent automate tasks in your browser. Install the n8n Browser Use extension and connect it — no other software needed.",
+	"instanceAi.browserUse.modal.description": "Let the agent automate tasks in your browser. Install the n8n Browser Use extension and connect it - no other software needed.",
 	"instanceAi.browserUse.step.extension.title": "1. Install the Chrome extension",
 	"instanceAi.browserUse.step.extension.description": "Install the n8n Browser Use extension for Google Chrome so the agent can control your browser.",
 	"instanceAi.browserUse.step.extension.cta": "Install Chrome extension",
