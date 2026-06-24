@@ -19,6 +19,7 @@ import type { InstanceSettings } from '@/instance-settings';
 import { Tracing } from '@/observability';
 
 import { ActiveWorkflowTriggers } from '../active-workflow-triggers';
+import { CronRegistry } from '../cron-registry';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
@@ -846,6 +847,7 @@ describe('ActiveWorkflowTriggers', () => {
 	describe('ScheduledTaskManager cron cleanup', () => {
 		const hourly = '0 * * * *' as CronExpression;
 		let realLogger: ReturnType<typeof mock<Logger>>;
+		let realCronRegistry: CronRegistry;
 		let realScheduledTaskManager: ScheduledTaskManager;
 		let activeWorkflowTriggersReal: ActiveWorkflowTriggers;
 
@@ -859,12 +861,13 @@ describe('ActiveWorkflowTriggers', () => {
 			vi.useFakeTimers();
 			realLogger = mock<Logger>();
 			realLogger.scoped.mockReturnValue(realLogger);
-			realScheduledTaskManager = new ScheduledTaskManager(
+			realCronRegistry = new CronRegistry(
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
 				mock(),
 				mock(),
 			);
+			realScheduledTaskManager = new ScheduledTaskManager(realCronRegistry);
 			activeWorkflowTriggersReal = new ActiveWorkflowTriggers(
 				realLogger,
 				realScheduledTaskManager,
@@ -883,13 +886,13 @@ describe('ActiveWorkflowTriggers', () => {
 			// A cron registered in the ScheduledTaskManager while the workflow is not
 			// tracked as active in memory must still be stoppable via remove().
 			registerStrandedCron(workflowId);
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(true);
+			expect(realScheduledTaskManager.hasCrons(workflowId)).toBe(true);
 			expect(activeWorkflowTriggersReal.isActive(workflowId)).toBe(false);
 
 			const result = await activeWorkflowTriggersReal.remove(workflowId);
 
 			expect(result).toBe(false);
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+			expect(realScheduledTaskManager.hasCrons(workflowId)).toBe(false);
 		});
 
 		it('should warn when it deregisters a cron for a workflow not active in memory', async () => {
@@ -908,28 +911,11 @@ describe('ActiveWorkflowTriggers', () => {
 			// removeAll must also stop crons whose workflow is no longer tracked as active.
 			registerStrandedCron('orphan-workflow');
 			expect(activeWorkflowTriggersReal.isActive('orphan-workflow')).toBe(false);
-			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(true);
+			expect(realScheduledTaskManager.hasCrons('orphan-workflow')).toBe(true);
 
 			await activeWorkflowTriggersReal.removeAllNonWebhookTriggerWorkflows();
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(false);
-		});
-
-		it('should not deregister agent task crons on workflow removeAll', async () => {
-			realScheduledTaskManager.registerCron(
-				{
-					ownerType: 'agent-task',
-					ownerId: 'agent-1',
-					targetId: 'task-1',
-					timezone: 'GMT',
-					expression: hourly,
-				},
-				vi.fn(),
-			);
-
-			await activeWorkflowTriggersReal.removeAllNonWebhookTriggerWorkflows();
-
-			expect(realScheduledTaskManager.hasCrons('agent-1', 'agent-task')).toBe(true);
+			expect(realScheduledTaskManager.hasCrons('orphan-workflow')).toBe(false);
 		});
 
 		it('should leave no registered cron when a later trigger node fails activation', async () => {
@@ -959,7 +945,7 @@ describe('ActiveWorkflowTriggers', () => {
 				),
 			).rejects.toThrow(WorkflowActivationError);
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+			expect(realScheduledTaskManager.hasCrons(workflowId)).toBe(false);
 		});
 
 		it('should leave no registered cron when a later poll node fails activation', async () => {
@@ -989,7 +975,7 @@ describe('ActiveWorkflowTriggers', () => {
 				),
 			).rejects.toThrow(WorkflowActivationError);
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+			expect(realScheduledTaskManager.hasCrons(workflowId)).toBe(false);
 		});
 
 		it('should tear down a lingering cron before re-adding so reactivation does not leave a duplicate', async () => {
@@ -997,7 +983,7 @@ describe('ActiveWorkflowTriggers', () => {
 			// must be torn down before the new one registers
 			// otherwise both would coexist and fire, duplicating executions.
 			registerStrandedCron(workflowId, 'stale-node');
-			expect(realScheduledTaskManager.cronsByWorkflow.get(workflowId)?.size).toBe(1);
+			expect(realScheduledTaskManager.getCronNodeIds(workflowId)).toEqual(['stale-node']);
 
 			workflow.id = workflowId;
 			workflow.getTriggerNodes.mockReturnValue([mock<INode>()]);
@@ -1021,9 +1007,7 @@ describe('ActiveWorkflowTriggers', () => {
 			);
 
 			// Only the newly registered cron remains; the stale one was removed
-			const crons = realScheduledTaskManager.cronsByWorkflow.get(workflowId);
-			expect(crons?.size).toBe(1);
-			expect(Array.from(crons!.values())[0].ctx.nodeId).toBe('fresh-node');
+			expect(realScheduledTaskManager.getCronNodeIds(workflowId)).toEqual(['fresh-node']);
 		});
 	});
 });

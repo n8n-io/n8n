@@ -6,6 +6,7 @@ import merge from 'lodash/merge';
 import set from 'lodash/set';
 import { PollContext, returnJsonArray } from 'n8n-core';
 import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import { CronRegistry } from 'n8n-core/dist/execution-engine/cron-registry';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import {
 	createDeferredPromise,
@@ -90,10 +91,7 @@ export async function testTriggerNode(
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
 	const scheduledTaskManager = new ScheduledTaskManager(
-		mock<InstanceSettings>(),
-		logger as any,
-		mock(),
-		mock(),
+		new CronRegistry(mock<InstanceSettings>(), logger as any, mock(), mock()),
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
@@ -180,10 +178,7 @@ export async function testWebhookTriggerNode(
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
 	const scheduledTaskManager = new ScheduledTaskManager(
-		mock<InstanceSettings>(),
-		logger as any,
-		mock(),
-		mock(),
+		new CronRegistry(mock<InstanceSettings>(), logger as any, mock(), mock()),
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,

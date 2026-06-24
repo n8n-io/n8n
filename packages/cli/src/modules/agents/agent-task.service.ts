@@ -7,7 +7,7 @@ import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
-import { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -15,6 +15,7 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentTaskScheduler } from './agent-task-scheduler';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
@@ -37,7 +38,7 @@ const TASK_RUN_LOCK_RENEW_MS = 60 * 1000;
  * in the `agent_task_definition` table; membership and the `enabled` flag live
  * in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
  * skills). Scheduling is driven entirely by the PUBLISHED snapshot rows tied to
- * `activeVersionId`. `ScheduledTaskManager` registers a cron per enabled
+ * `activeVersionId`. `AgentTaskScheduler` registers a cron per enabled
  * snapshot row of a published agent (leader-only). Adding, removing, toggling,
  * or editing a task is a draft change that only affects scheduled runs once the
  * agent is (re)published — "republish to apply". Manual "Run now" deliberately
@@ -58,7 +59,7 @@ export class AgentTaskService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly scheduledTaskManager: ScheduledTaskManager,
+		private readonly agentTaskScheduler: AgentTaskScheduler,
 		private readonly publisher: Publisher,
 	) {}
 
@@ -305,14 +306,11 @@ export class AgentTaskService {
 		this.deregister(taskId);
 
 		const timezone = this.globalConfig.generic.timezone;
-		const registered = this.scheduledTaskManager.registerCron(
-			{
-				ownerType: 'agent-task',
-				ownerId: agentId,
-				targetId: taskId,
-				expression: cronExpression,
-				timezone,
-			},
+		const registered = this.agentTaskScheduler.register(
+			agentId,
+			taskId,
+			cronExpression,
+			timezone,
 			() => {
 				void this.runScheduledTask(taskId);
 			},
@@ -331,7 +329,7 @@ export class AgentTaskService {
 	private deregister(taskId: string): void {
 		const existing = this.registeredTasks.get(taskId);
 		if (!existing) return;
-		this.scheduledTaskManager.deregisterCron(existing.agentId, taskId, 'agent-task');
+		this.agentTaskScheduler.deregister(existing.agentId, taskId);
 		this.registeredTasks.delete(taskId);
 		this.logger.info('[AgentTaskService] Deregistered task', { taskId });
 	}

@@ -5,7 +5,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { ActiveWorkflowTriggers, ScheduledTaskManager } from 'n8n-core';
+import { ActiveWorkflowTriggers, CronRegistry, ScheduledTaskManager } from 'n8n-core';
 import type {
 	CronExpression,
 	ExecutionError,
@@ -748,10 +748,12 @@ describe('ActiveWorkflowManager', () => {
 			jest.clearAllMocks();
 			jest.useFakeTimers();
 			realScheduledTaskManager = new ScheduledTaskManager(
-				mock<InstanceSettings>({ isLeader: true }),
-				mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
-				mock(),
-				mock(),
+				new CronRegistry(
+					mock<InstanceSettings>({ isLeader: true }),
+					mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
+					mock(),
+					mock(),
+				),
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
 				mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
@@ -790,12 +792,12 @@ describe('ActiveWorkflowManager', () => {
 				{ workflowId: 'wf-desynced', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
 				jest.fn(),
 			);
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-desynced')).toBe(true);
+			expect(realScheduledTaskManager.hasCrons('wf-desynced')).toBe(true);
 			expect(realActiveWorkflowTriggers.isActive('wf-desynced')).toBe(false);
 
 			await activeWorkflowManager.removeNonWebhookTriggers('wf-desynced');
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-desynced')).toBe(false);
+			expect(realScheduledTaskManager.hasCrons('wf-desynced')).toBe(false);
 		});
 
 		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
@@ -806,12 +808,12 @@ describe('ActiveWorkflowManager', () => {
 				{ workflowId: 'wf-orphan', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
 				jest.fn(),
 			);
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(true);
+			expect(realScheduledTaskManager.hasCrons('wf-orphan')).toBe(true);
 			expect(realActiveWorkflowTriggers.isActive('wf-orphan')).toBe(false);
 
 			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(false);
+			expect(realScheduledTaskManager.hasCrons('wf-orphan')).toBe(false);
 		});
 
 		it('does not tear down triggers under the publication service flag', async () => {
@@ -826,7 +828,7 @@ describe('ActiveWorkflowManager', () => {
 
 				await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
-				expect(realScheduledTaskManager.cronsByWorkflow.has('wf-pub')).toBe(true);
+				expect(realScheduledTaskManager.hasCrons('wf-pub')).toBe(true);
 			} finally {
 				workflowsConfig.useWorkflowPublicationService = false;
 			}

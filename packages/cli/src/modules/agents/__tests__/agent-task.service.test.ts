@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -10,6 +10,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentTaskService } from '../agent-task.service';
+import type { AgentTaskScheduler } from '../agent-task-scheduler';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -131,7 +132,7 @@ describe('AgentTaskService', () => {
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let agentExecutionOrchestratorService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
-	let scheduledTaskManager: ReturnType<typeof mock<ScheduledTaskManager>>;
+	let agentTaskScheduler: ReturnType<typeof mock<AgentTaskScheduler>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let txManager: { save: jest.Mock; remove: jest.Mock };
 	let service: AgentTaskService;
@@ -152,7 +153,7 @@ describe('AgentTaskService', () => {
 			projectRelationRepository,
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
-			scheduledTaskManager,
+			agentTaskScheduler,
 			publisher,
 		);
 	}
@@ -184,8 +185,8 @@ describe('AgentTaskService', () => {
 		};
 		projectRelationRepository = mock<ProjectRelationRepository>();
 		agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
-		scheduledTaskManager = mock<ScheduledTaskManager>();
-		scheduledTaskManager.registerCron.mockReturnValue(true);
+		agentTaskScheduler = mock<AgentTaskScheduler>();
+		agentTaskScheduler.register.mockReturnValue(true);
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
 		// Default to the leader so existing registration assertions hold.
@@ -249,7 +250,7 @@ describe('AgentTaskService', () => {
 				enabled: true,
 			});
 
-			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 	});
 
@@ -286,7 +287,7 @@ describe('AgentTaskService', () => {
 			expect(dto.cronExpression).toBe('0 10 * * *');
 			expect(task.cronExpression).toBe('0 10 * * *');
 			expect(txManager.save).toHaveBeenCalled();
-			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('is a no-op when no field changes (skips the agent write)', async () => {
@@ -346,7 +347,7 @@ describe('AgentTaskService', () => {
 
 			await service.delete(AGENT_ID, 'task-1');
 
-			expect(scheduledTaskManager.deregisterCron).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.deregister).not.toHaveBeenCalled();
 		});
 	});
 
@@ -361,14 +362,11 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
-				{
-					ownerType: 'agent-task',
-					ownerId: AGENT_ID,
-					targetId: 'task-1',
-					expression: '0 9 * * *',
-					timezone: 'UTC',
-				},
+			expect(agentTaskScheduler.register).toHaveBeenCalledWith(
+				AGENT_ID,
+				'task-1',
+				'0 9 * * *',
+				'UTC',
 				expect.any(Function),
 			);
 		});
@@ -381,7 +379,7 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('registers nothing when the agent is unpublished', async () => {
@@ -391,7 +389,7 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('does not register cron jobs on a follower (leader owns the cron)', async () => {
@@ -405,7 +403,7 @@ describe('AgentTaskService', () => {
 
 			await follower.registerEnabledForAgent(AGENT_ID);
 
-			expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('skips a cron tick while the same task is already running', async () => {
@@ -435,7 +433,7 @@ describe('AgentTaskService', () => {
 				.mockReturnValueOnce(emptyStream());
 
 			await service.registerEnabledForAgent(AGENT_ID);
-			const onTick = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			const onTick = agentTaskScheduler.register.mock.calls[0][4] as () => void;
 
 			onTick();
 			await flushAsyncWork();
@@ -485,12 +483,12 @@ describe('AgentTaskService', () => {
 			);
 
 			await previousLeader.registerEnabledForAgent(AGENT_ID);
-			const previousLeaderTick = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			const previousLeaderTick = agentTaskScheduler.register.mock.calls[0][4] as () => void;
 			previousLeaderTick();
 			await flushAsyncWork();
 
 			await nextLeader.registerEnabledForAgent(AGENT_ID);
-			const nextLeaderTick = scheduledTaskManager.registerCron.mock.calls[1][1] as () => void;
+			const nextLeaderTick = agentTaskScheduler.register.mock.calls[1][4] as () => void;
 			nextLeaderTick();
 			await flushAsyncWork();
 
@@ -542,14 +540,11 @@ describe('AgentTaskService', () => {
 
 			await service.handleTasksChanged({ agentId: AGENT_ID });
 
-			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
-				{
-					ownerType: 'agent-task',
-					ownerId: AGENT_ID,
-					targetId: 'task-1',
-					expression: '0 9 * * *',
-					timezone: 'UTC',
-				},
+			expect(agentTaskScheduler.register).toHaveBeenCalledWith(
+				AGENT_ID,
+				'task-1',
+				'0 9 * * *',
+				'UTC',
 				expect.any(Function),
 			);
 		});
@@ -573,16 +568,8 @@ describe('AgentTaskService', () => {
 
 			service.deregisterAgentTasks('agent-a');
 
-			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-				'agent-a',
-				'a-task',
-				'agent-task',
-			);
-			expect(scheduledTaskManager.deregisterCron).not.toHaveBeenCalledWith(
-				'agent-b',
-				'b-task',
-				'agent-task',
-			);
+			expect(agentTaskScheduler.deregister).toHaveBeenCalledWith('agent-a', 'a-task');
+			expect(agentTaskScheduler.deregister).not.toHaveBeenCalledWith('agent-b', 'b-task');
 		});
 	});
 
@@ -760,11 +747,7 @@ describe('AgentTaskService', () => {
 
 			service.stopAll();
 
-			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(
-				AGENT_ID,
-				'task-1',
-				'agent-task',
-			);
+			expect(agentTaskScheduler.deregister).toHaveBeenCalledWith(AGENT_ID, 'task-1');
 			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
 		});
 	});
