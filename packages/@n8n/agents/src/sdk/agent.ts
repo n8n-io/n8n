@@ -174,8 +174,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private concurrencyValue?: number;
 
-	private persistInputOnReceiptValue?: boolean;
-
 	private telemetryBuilder?: Telemetry;
 
 	private telemetryConfig?: BuiltTelemetry;
@@ -461,16 +459,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error('toolCallConcurrency must be a positive integer or Infinity');
 		}
 		this.concurrencyValue = n;
-		return this;
-	}
-
-	/**
-	 * Persist the turn's input messages to memory as soon as they arrive, rather
-	 * than only on a clean end-of-turn save. Guarantees the user's input survives
-	 * an abort or an abandoned HITL suspend. Requires memory + per-run persistence.
-	 */
-	persistInputOnReceipt(enabled: boolean): this {
-		this.persistInputOnReceiptValue = enabled;
 		return this;
 	}
 
@@ -983,9 +971,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			modelCost,
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
-			...(this.persistInputOnReceiptValue !== undefined
-				? { persistInputOnReceipt: this.persistInputOnReceiptValue }
-				: {}),
 		};
 	}
 

@@ -3324,7 +3324,7 @@ export class InstanceAiService {
 			try {
 				// Attachments need the explicit message-object shape (text + file blocks);
 				// a plain prompt goes through as a string. The SDK assigns the message id
-				// and persists the input on receipt (see persistInputOnReceipt).
+				// and persists the input on receipt.
 				if (nonStructuredAttachments.length > 0) {
 					const baseContent = [
 						{ type: 'text' as const, text: fullMessage },

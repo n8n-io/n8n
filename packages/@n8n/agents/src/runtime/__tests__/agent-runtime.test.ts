@@ -687,10 +687,10 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 });
 
 // ---------------------------------------------------------------------------
-// persistInputOnReceipt — input survives an uncompleted turn
+// eager input persistence — input survives an uncompleted turn
 // ---------------------------------------------------------------------------
 
-describe('AgentRuntime — persistInputOnReceipt', () => {
+describe('AgentRuntime — eager input persistence', () => {
 	const PERSIST = { persistence: { threadId: 't1', resourceId: 'u1' } };
 
 	function textOf(message: AgentDbMessage): string | undefined {
@@ -703,7 +703,7 @@ describe('AgentRuntime — persistInputOnReceipt', () => {
 		return block?.text;
 	}
 
-	function makeMemoryRuntime(persistInputOnReceipt: boolean) {
+	function makeMemoryRuntime() {
 		const memory = new InMemoryMemory();
 		const bus = new AgentEventBus();
 		const runtime = new AgentRuntime({
@@ -712,14 +712,13 @@ describe('AgentRuntime — persistInputOnReceipt', () => {
 			instructions: 'You are a test assistant.',
 			eventBus: bus,
 			memory,
-			persistInputOnReceipt,
 		});
 		return { runtime, bus, memory };
 	}
 
 	it('persists the user input when the turn aborts before completion', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
-		const { runtime, bus, memory } = makeMemoryRuntime(true);
+		const { runtime, bus, memory } = makeMemoryRuntime();
 		// Abort during AgentStart: the input is added (and eagerly persisted) in
 		// buildMessageList, but the loop's first abort-check throws before finishComplete.
 		bus.on(AgentEvent.AgentStart, () => bus.abort());
@@ -732,20 +731,9 @@ describe('AgentRuntime — persistInputOnReceipt', () => {
 		expect(persisted.map(textOf)).toContain('remember this prompt');
 	});
 
-	it('does NOT persist the user input on abort when the flag is off', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-		const { runtime, bus, memory } = makeMemoryRuntime(false);
-		bus.on(AgentEvent.AgentStart, () => bus.abort());
-
-		await runtime.generate('remember this prompt', PERSIST);
-
-		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
-		expect(persisted).toEqual([]);
-	});
-
 	it('stores exactly one user-message row on normal completion (idempotent)', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('done'));
-		const { runtime, memory } = makeMemoryRuntime(true);
+		const { runtime, memory } = makeMemoryRuntime();
 
 		await runtime.generate('hello once', PERSIST);
 
@@ -766,7 +754,6 @@ describe('AgentRuntime — persistInputOnReceipt', () => {
 			tools: [suspendTool],
 			checkpointStorage: 'memory',
 			memory,
-			persistInputOnReceipt: true,
 		});
 
 		// Turn 1: the model calls the interruptible tool, so the run suspends on HITL
