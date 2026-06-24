@@ -1,6 +1,6 @@
 import { useRouter } from 'vue-router';
 
-import { VIEWS } from '@/app/constants';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 
 /**
@@ -18,6 +18,9 @@ export function useBuildManually() {
 
 	function buildManually(projectId?: string) {
 		uiStore.addFirstStepOnLoad = true;
+		// Attribute the manual build to Instance AI (the 'User opened nodes panel'
+		// event). Generic on purpose — reused by future Instance AI experiments.
+		uiStore.addFirstStepOnLoadSource = NODE_CREATOR_OPEN_SOURCES.INSTANCE_AI;
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
 			query: projectId ? { projectId } : {},

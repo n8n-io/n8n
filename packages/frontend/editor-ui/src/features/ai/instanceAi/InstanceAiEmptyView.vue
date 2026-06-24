@@ -351,8 +351,13 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	});
 }
 
-function handleShelfSuggestionSubmit(payload: { promptKey: BaseTextKey }) {
-	void handleSubmit(i18n.baseText(payload.promptKey));
+function handleShelfSuggestionSubmit(payload: {
+	promptKey: BaseTextKey;
+	suggestionId: string;
+	suggestionKind: 'prompt' | 'quick_example';
+	position: number;
+}) {
+	void chatInputRef.value?.submitSuggestion(payload);
 }
 
 function handleShelfSuggestionInsert(payload: {

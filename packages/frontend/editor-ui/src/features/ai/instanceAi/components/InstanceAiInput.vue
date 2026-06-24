@@ -150,6 +150,7 @@ defineExpose({
 	appendText,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
+	submitSuggestion,
 });
 
 const isBusy = computed(() =>
@@ -266,6 +267,15 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	trackSelectedSuggestionSubmitted(message);
 	emitSubmittedMessage(message, attachments);
 	resetDraftComposer();
+}
+
+// Experiment cleanup: remove with instanceAiSplitEmptyState. A split example row
+// click sends the prompt directly — attribute the submit (unedited) without a
+// separate 'selected' event, since there is no insert step.
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	const prompt = getSuggestionPrompt(payload);
+	selectedSuggestionDraft.value = { ...payload, originalPrompt: prompt };
+	submitComposerMessage(prompt);
 }
 
 async function handleSubmit() {

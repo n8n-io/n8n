@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -264,7 +265,13 @@ const InstanceAiInputStub = defineComponent({
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
-		expose({ focus: vi.fn() });
+		const i18n = useI18n();
+		expose({
+			focus: vi.fn(),
+			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
+			submitSuggestion: (payload: { promptKey: BaseTextKey }) =>
+				emit('submit', i18n.baseText(payload.promptKey)),
+		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				h(
