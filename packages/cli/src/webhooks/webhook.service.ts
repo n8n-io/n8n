@@ -250,7 +250,7 @@ export class WebhookService {
 	}
 
 	/**
-	 * Returns all the webhooks which should be created for the give node
+	 * Returns all the webhooks which should be created for the given node.
 	 */
 	getNodeWebhooks(
 		workflow: Workflow,
