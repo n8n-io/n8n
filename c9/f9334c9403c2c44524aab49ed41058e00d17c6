@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.vue
+  s_d039c4d9371ecf::t_8816daf7cefac3 10
+packages/frontend/editor-ui/src/app/router.ts
+  s_d039c4d9371ecf::t_73ed6c0ae97267 804,826,858,872,877
+packages/frontend/editor-ui/src/features/collaboration/projects/components/RoleHoverPopover.test.ts
+  s_d039c4d9371ecf::t_73ed6c0ae97267 11
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.vue
+  s_d039c4d9371ecf::t_e23dbd214d48e7 14
+packages/frontend/editor-ui/src/features/collaboration/projects/components/RoleHoverPopover.vue
+  s_d039c4d9371ecf::t_73ed6c0ae97267 12
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_d039c4d9371ecf::t_20ac0e38186180 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "c9f9334c9403c2c44524aab49ed41058e00d17c6",
+  "prompts": {},
+  "sessions": {
+    "s_d039c4d9371ecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d6af74f-0c62-4f40-a23b-841141b3e9c4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
