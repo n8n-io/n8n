@@ -5,7 +5,10 @@ import { useSpeechSynthesis } from '@vueuse/core';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { buildDisplayGroups, type DisplayGroup } from '@/features/ai/shared/agentsChat/displayGroups';
+import {
+	buildDisplayGroups,
+	type DisplayGroup,
+} from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import type {
 	ChatMessage,
