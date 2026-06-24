@@ -333,6 +333,67 @@ describe('NodeCatalogService', () => {
 			expect(result).toContain('# Errors');
 			expect(result).toContain('n8n-nodes-dynamic.dynamic');
 		});
+
+		test('synthesizes the latest version of a versioned node by default', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			await service.getNodeTypes(['n8n-nodes-multi.multi']);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledTimes(1);
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ version: 2 }),
+			);
+		});
+
+		test('synthesizes the requested version of a versioned node', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			await service.getNodeTypes([{ nodeId: 'n8n-nodes-multi.multi', version: '1' }]);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ version: 1 }),
+			);
+		});
 	});
 
 	describe('getSuggestedNodes', () => {

@@ -17,7 +17,7 @@ import type {
 } from 'n8n-workflow';
 import * as path from 'path';
 
-import { N8N_VERSION } from '@/constants';
+import { BUILTIN_NODES_PACKAGES, N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
@@ -186,7 +186,7 @@ export class WorkflowBuilderService {
 
 	private resolveBuiltinNodeDefinitionDirs(): string[] {
 		const dirs: string[] = [];
-		for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		for (const packageId of BUILTIN_NODES_PACKAGES) {
 			try {
 				const packageJsonPath = require.resolve(`${packageId}/package.json`);
 				const distDir = path.dirname(packageJsonPath);

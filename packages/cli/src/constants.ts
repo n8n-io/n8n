@@ -51,6 +51,9 @@ export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
+/** Packages whose node type definitions are generated to disk at build time. */
+export const BUILTIN_NODES_PACKAGES = ['n8n-nodes-base', '@n8n/n8n-nodes-langchain'] as const;
+
 export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;
 
 export const RESPONSE_ERROR_MESSAGES = {

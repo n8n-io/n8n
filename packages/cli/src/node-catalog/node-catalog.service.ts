@@ -9,21 +9,25 @@ import * as fs from 'fs/promises';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 
+import { BUILTIN_NODES_PACKAGES } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 
 export type NodeFilter = (nodeId: string) => boolean;
 
 /**
- * Packages whose type definitions are generated to disk at build time. Their
- * node IDs resolve through the richer, discriminator-aware on-disk lookup;
- * everything else (MCP registry, custom and community nodes) is synthesized
- * from its in-memory description.
+ * Built-in node IDs resolve through the richer, discriminator-aware on-disk
+ * lookup; everything else (MCP registry, custom and community nodes) is
+ * synthesized from its in-memory description.
  */
-const BUILTIN_NODE_PACKAGES = ['n8n-nodes-base', '@n8n/n8n-nodes-langchain'] as const;
-
 const isBuiltinNodeId = (nodeId: string): boolean =>
-	BUILTIN_NODE_PACKAGES.some((pkg) => nodeId.startsWith(`${pkg}.`));
+	BUILTIN_NODES_PACKAGES.some((pkg) => nodeId.startsWith(`${pkg}.`));
+
+const nodeVersionNumbers = (description: INodeTypeDescription): number[] =>
+	Array.isArray(description.version) ? description.version : [description.version];
+
+const maxNodeVersion = (description: INodeTypeDescription): number =>
+	Math.max(...nodeVersionNumbers(description));
 
 export interface SearchNodesOptions {
 	/**
@@ -60,8 +64,11 @@ export class NodeCatalogService {
 	 * `n8n-nodes-base.set`, `@n8n/mcp-registry.notion`, `n8n-nodes-resend.resend`).
 	 * Used by `getNodeTypes` to synthesise type-def content for non-built-in
 	 * nodes (registry, custom and community), which have no on-disk artifact.
+	 *
+	 * Versioned nodes contribute one description per version under the same name,
+	 * so values are arrays; `selectDescription` picks the requested or latest one.
 	 */
-	private descriptionsById = new Map<string, INodeTypeDescription>();
+	private descriptionsById = new Map<string, INodeTypeDescription[]>();
 
 	private initPromise: Promise<void> | undefined;
 
@@ -167,7 +174,8 @@ export class NodeCatalogService {
 
 		for (const id of synthesizeIds) {
 			const nodeId = typeof id === 'string' ? id : id.nodeId;
-			const description = this.descriptionsById.get(nodeId);
+			const requestedVersion = typeof id === 'string' ? undefined : id.version;
+			const description = this.selectDescription(nodeId, requestedVersion);
 			if (!description) {
 				errors.push(
 					`Node type '${nodeId}' not found. Use search_nodes to find the correct node ID.`,
@@ -252,13 +260,42 @@ export class NodeCatalogService {
 	private indexDescriptions(descriptions: INodeTypeDescription[]): void {
 		this.descriptionsById.clear();
 		for (const description of descriptions) {
-			this.descriptionsById.set(description.name, description);
+			const existing = this.descriptionsById.get(description.name);
+			if (existing) {
+				existing.push(description);
+			} else {
+				this.descriptionsById.set(description.name, [description]);
+			}
 		}
+	}
+
+	/**
+	 * Pick the description to synthesize for a node. Versioned nodes have one
+	 * description per version; honour an explicitly requested version, otherwise
+	 * default to the latest (mirroring the on-disk lookup's default).
+	 */
+	private selectDescription(
+		nodeId: string,
+		requestedVersion?: string,
+	): INodeTypeDescription | undefined {
+		const candidates = this.descriptionsById.get(nodeId);
+		if (!candidates?.length) return undefined;
+		if (candidates.length === 1) return candidates[0];
+
+		if (requestedVersion !== undefined) {
+			const wanted = Number.parseFloat(requestedVersion.replace(/^v/, ''));
+			const match = candidates.find((d) => nodeVersionNumbers(d).includes(wanted));
+			if (match) return match;
+		}
+
+		return candidates.reduce((latest, d) =>
+			maxNodeVersion(d) > maxNodeVersion(latest) ? d : latest,
+		);
 	}
 
 	private async resolveBuiltinNodeDefinitionDirs(): Promise<string[]> {
 		const dirs: string[] = [];
-		for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		for (const packageId of BUILTIN_NODES_PACKAGES) {
 			try {
 				const packageJsonPath = require.resolve(`${packageId}/package.json`);
 				const distDir = path.dirname(packageJsonPath);
