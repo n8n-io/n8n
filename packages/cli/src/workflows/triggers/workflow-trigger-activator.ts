@@ -12,11 +12,18 @@ import type {
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	Result,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import { Workflow, WorkflowActivationError, ensureError } from 'n8n-workflow';
+import {
+	Workflow,
+	WorkflowActivationError,
+	createResultError,
+	createResultOk,
+	ensureError,
+} from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -46,9 +53,9 @@ export type TriggerActivationFailure = {
  * this into a `completed`, `partial`, or `failed` publication result.
  */
 export type TriggerActivationOutcome = {
-	/** Trigger node IDs that were successfully (re)registered, in attempt order. */
+	/** Trigger node IDs that were successfully (re)registered. */
 	activated: Array<INode['id']>;
-	/** Trigger nodes that failed to register, in attempt order. */
+	/** Trigger nodes that failed to register. */
 	failures: TriggerActivationFailure[];
 };
 
@@ -485,20 +492,31 @@ export class WorkflowTriggerActivator {
 			},
 		});
 
-		for (const nodeId of triggerNodeIds) {
-			try {
-				await retryTriggerActivation(
-					async () =>
-						await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
-				);
-				outcome.activated.push(nodeId);
-			} catch (error) {
-				outcome.failures.push({
-					nodeId,
-					nodeName: this.resolveNodeName(workflow, nodeId),
-					error: ensureError(error),
-				});
+		const results = await Promise.all(
+			triggerNodeIds.map(async (nodeId): Promise<Result<INode['id'], TriggerActivationFailure>> => {
+				try {
+					await retryTriggerActivation(
+						async () =>
+							await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
+						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+					);
+
+					return createResultOk(nodeId);
+				} catch (error) {
+					return createResultError({
+						nodeId,
+						nodeName: this.resolveNodeName(workflow, nodeId),
+						error: ensureError(error),
+					});
+				}
+			}),
+		);
+
+		for (const result of results) {
+			if (result.ok) {
+				outcome.activated.push(result.result);
+			} else {
+				outcome.failures.push(result.error);
 			}
 		}
 	}
@@ -518,9 +536,11 @@ export class WorkflowTriggerActivator {
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 
-		for (const nodeId of triggerNodeIds) {
-			await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId);
-		}
+		await Promise.all(
+			triggerNodeIds.map(
+				async (nodeId) => await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId),
+			),
+		);
 	}
 
 	private getNonWebhookTriggerNodeIdsForNodeIds(workflow: Workflow, nodeIds: Set<INode['id']>) {
