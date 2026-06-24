@@ -4,8 +4,6 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-<<<<<<< HEAD
-=======
 import type {
 	CustomFetch,
 	HttpTransport,
@@ -13,7 +11,6 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -31,6 +28,8 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { NodeTypes } from '@/node-types';
 
 const ctx = {
 	resumeData: undefined,
@@ -48,10 +47,17 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
+	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	mcpRegistryService.getAll.mockResolvedValue([]);
+
+	const transport = mock<HttpTransport>();
+	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.transport.mockReturnValue(transport);
 
 	const service = new AgentsBuilderToolsService(
 		agentsService,
@@ -64,11 +70,6 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
-<<<<<<< HEAD
-	);
-
-	return { service, agentsService, secureRuntime, agentTaskService, agentRepository };
-=======
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
@@ -76,16 +77,7 @@ function makeService() {
 		mock<SsrfProtectionService>(),
 	);
 
-	return {
-		service,
-		agentsService: purposeServices,
-		secureRuntime,
-		agentTaskService,
-		agentRepository,
-		nodeTypes,
-		outboundHttp,
-	};
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
+	return { service, agentsService, secureRuntime, agentTaskService, agentRepository, outboundHttp };
 }
 
 const baseConfig: AgentJsonConfig = {

@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import { McpConnection } from '../mcp-connection';
-=======
 import { McpClient } from '../../sdk/mcp-client';
-import { McpConnection } from '../mcp/mcp-connection';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
+import { McpConnection } from '../mcp-connection';
 
 const sseCtor = vi.fn();
 const streamableHttpCtor = vi.fn();
@@ -123,8 +119,6 @@ describe('McpConnection — custom fetch forwarding', () => {
 		expect(options.eventSourceInit).toBeUndefined();
 	});
 });
-<<<<<<< HEAD
-=======
 
 describe('McpClient — connection error formatting', () => {
 	beforeEach(() => {
@@ -234,4 +228,3 @@ describe('McpConnection — tool filtering', () => {
 		expect(excludeTools.map((tool) => tool.name)).toEqual(['s2_echo', 's2_add', 's2_subtract']);
 	});
 });
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))

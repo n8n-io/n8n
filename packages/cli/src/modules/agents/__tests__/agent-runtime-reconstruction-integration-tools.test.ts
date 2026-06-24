@@ -123,7 +123,6 @@ function makeRuntimeReconstructionService(
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 	);

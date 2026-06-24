@@ -1,22 +1,12 @@
-import type * as agents from '@n8n/agents';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	getInlineDelegateSubAgentToolOptions,
 	WRITE_TODOS_TOOL_NAME,
 } from '@n8n/agents';
+import type * as agents from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
-<<<<<<< HEAD
 import { SUB_AGENT_MAX_CHILDREN_DEFAULT, type AgentJsonConfig } from '@n8n/api-types';
-import type { AgentsConfig } from '@n8n/config';
-=======
-import {
-	N8N_CHAT_ACTION_TOOL_NAME,
-	N8N_CHAT_CONTEXT_TOOL_NAME,
-	N8N_CHAT_INTEGRATION_TYPE,
-	SUB_AGENT_MAX_CHILDREN_DEFAULT,
-	type AgentJsonConfig,
-} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	CustomFetch,
@@ -26,11 +16,7 @@ import type {
 } from '@n8n/backend-network';
 import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import { Container } from '@n8n/di';
-
-import type { Logger } from '@n8n/backend-common';
-import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -45,9 +31,9 @@ import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentRepository } from '../repositories/agent.repository';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
+import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
@@ -85,6 +71,10 @@ function makeReconstructionService(
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
+	const transport = mock<HttpTransport>();
+	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.transport.mockReturnValue(transport);
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		mock<AgentRepository>(),
@@ -104,13 +94,9 @@ function makeReconstructionService(
 			modules,
 			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
-<<<<<<< HEAD
-=======
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 	);
 }
 

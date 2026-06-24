@@ -21,12 +21,8 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
-import { AgentsConfig } from '@n8n/config';
-=======
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -35,10 +31,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
-<<<<<<< HEAD
-=======
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -113,13 +106,9 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
-<<<<<<< HEAD
-=======
 		private readonly outboundHttp: OutboundHttp,
-		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -212,8 +201,6 @@ export class AgentRuntimeReconstructionService {
 		const toolResolver = this.makeToolResolver(projectId, userId);
 		const resolvedTools: BuiltTool[] = [];
 
-<<<<<<< HEAD
-=======
 		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
 		// Transport for MCP calls
@@ -223,16 +210,12 @@ export class AgentRuntimeReconstructionService {
 			this.ssrfProtectionService,
 		);
 
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-<<<<<<< HEAD
-=======
 				proxyFetch: aiMcpFetch,
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {

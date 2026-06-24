@@ -1,6 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
-=======
 import type {
 	CustomFetch,
 	HttpTransport,
@@ -8,7 +6,6 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -27,6 +24,7 @@ import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.servic
 import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
 
 const proxyFetchMock = jest.fn();
+const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 jest.mock('@n8n/ai-utilities', () => ({
 	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
@@ -82,6 +80,10 @@ describe('InstanceAiMcpRegistryService', () => {
 		const credentialsService = mock<CredentialsService>();
 		const oauthService = mock<OauthService>();
 		const eventService = mock<EventService>();
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(proxyFetch);
+		const outboundHttp = mock<OutboundHttp>();
+		outboundHttp.transport.mockReturnValue(transport);
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -91,12 +93,9 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 			eventService,
-<<<<<<< HEAD
-=======
 			outboundHttp,
 			mock<SsrfProtectionConfig>({ enabled: true }),
 			mock<SsrfProtectionService>(),
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 		);
 
 		return {

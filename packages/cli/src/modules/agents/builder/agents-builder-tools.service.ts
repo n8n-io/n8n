@@ -10,11 +10,8 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
-<<<<<<< HEAD
-=======
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -23,19 +20,6 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
-<<<<<<< HEAD
-=======
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { NodeTypes } from '@/node-types';
-import { OauthService } from '@/oauth/oauth.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-
-import { AgentConfigService } from '../agent-config.service';
-import { AgentCustomToolsService } from '../agent-custom-tools.service';
-import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import { AgentSkillsService } from '../agent-skills.service';
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
@@ -61,6 +45,9 @@ import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
+import { NodeTypes } from '@/node-types';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -209,14 +196,11 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
-<<<<<<< HEAD
-=======
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 	) {}
 
 	getTools(
@@ -497,14 +481,11 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-<<<<<<< HEAD
-=======
 				proxyFetch: createAiMcpFetch(
 					this.outboundHttp,
 					this.ssrfConfig,
 					this.ssrfProtectionService,
 				),
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];

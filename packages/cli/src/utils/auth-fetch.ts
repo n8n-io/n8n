@@ -1,15 +1,13 @@
-<<<<<<< HEAD
-import { proxyFetch } from '@n8n/ai-utilities';
-=======
-import { fetchFollowingRedirects } from '@n8n/ai-utilities';
+import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 import type { CustomFetch } from '@n8n/backend-network';
 import { assertUrlAllowed, UserError } from 'n8n-workflow';
 import type { DomainRestrictionMode, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 export type AuthFetchDomainPolicy = { mode: 'domains'; domains: string } | { mode: 'none' };
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 
 interface CreateAuthFetchOptions {
+	/** Proxy-aware base `fetch` every request routes through (see `createAiProxyFetch`). */
+	baseFetch: CustomFetch;
 	initialHeaders: Record<string, string>;
 	/**
 	 * Called on a 401 response. Should return a fresh set of auth headers, or
@@ -75,19 +73,15 @@ function assertDomainPolicyAllowsUrl(url: string, policy: AuthFetchDomainPolicy)
  * connection behaves identically to one configured via the workflow editor.
  */
 export function createAuthFetch({
+	baseFetch,
 	initialHeaders,
 	onUnauthorized,
 	allowedDomains,
 }: CreateAuthFetchOptions): typeof fetch {
 	let headers = initialHeaders;
 
-<<<<<<< HEAD
-	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await proxyFetch(input, {
-=======
 	const authedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const response = await baseFetch(input, {
->>>>>>> a4bc50f9 (chore: Bundle/2.x (#32896))
 			...init,
 			headers: { ...headersToRecord(init?.headers), ...headers },
 		});
