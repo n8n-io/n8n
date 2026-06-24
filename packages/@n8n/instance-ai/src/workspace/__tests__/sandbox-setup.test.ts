@@ -132,6 +132,8 @@ async function loadSetupSandboxWorkspaceWithFsMocks(
 	runInSandbox: RunInSandboxMock,
 	readFileViaSandbox: ReadFileViaSandboxMock,
 ): Promise<SetupSandboxWorkspace> {
+	vi.doUnmock('../sandbox-fs');
+	vi.doUnmock('../pack-workspace-sdk');
 	vi.resetModules();
 	vi.doMock('../sandbox-fs', () => ({
 		runInSandbox,
@@ -143,6 +145,10 @@ async function loadSetupSandboxWorkspaceWithFsMocks(
 			}
 		},
 		escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
+	}));
+	vi.doMock('../pack-workspace-sdk', () => ({
+		isLinkWorkspaceSdkEnabled: () => false,
+		packWorkspaceSdk: vi.fn(),
 	}));
 
 	const sandboxSetup = (await import('../sandbox-setup')) as {
@@ -156,6 +162,8 @@ async function loadLinkWorkspaceSdkWithMocks(
 	packWorkspaceSdk: Mock,
 	runInSandbox: RunInSandboxMock,
 ): Promise<LinkWorkspaceSdkIfEnabled> {
+	vi.doUnmock('../sandbox-fs');
+	vi.doUnmock('../pack-workspace-sdk');
 	vi.resetModules();
 	vi.doMock('../pack-workspace-sdk', () => ({
 		isLinkWorkspaceSdkEnabled: () => true,
@@ -184,6 +192,7 @@ async function loadSandboxPackageJson(linkSdk: boolean): Promise<{
 	// is re-evaluated. Using `await import` (rather than `vi.importActual`) keeps the
 	// module-cache interaction consistent with the doMock-based loaders above.
 	vi.doUnmock('../sandbox-fs');
+	vi.doUnmock('../pack-workspace-sdk');
 	vi.resetModules();
 	if (linkSdk) {
 		process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK = '1';
@@ -227,9 +236,21 @@ describe('PACKAGE_JSON', () => {
 	});
 });
 describe('setupSandboxWorkspace', () => {
+	const originalLinkSdk = process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+
+	beforeEach(() => {
+		delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+	});
+
 	afterEach(() => {
 		vi.doUnmock('../sandbox-fs');
+		vi.doUnmock('../pack-workspace-sdk');
 		vi.resetModules();
+		if (originalLinkSdk === undefined) {
+			delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+		} else {
+			process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK = originalLinkSdk;
+		}
 	});
 
 	it('writes the initialized marker only after workspace files and npm install succeed', async () => {
