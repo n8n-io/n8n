@@ -1,4 +1,8 @@
-import { CreateEnvironmentDto, UpdateEnvironmentDto } from '@n8n/api-types';
+import {
+	CreateEnvironmentDto,
+	UpdateEnvironmentDto,
+	UpsertCredentialBindingsDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -7,6 +11,7 @@ import {
 	Middleware,
 	Patch,
 	Post,
+	Put,
 	ProjectScope,
 	RestController,
 } from '@n8n/decorators';
@@ -73,5 +78,24 @@ export class ProjectEnvironmentController {
 		const { projectId, envId } = req.params;
 		await this.environmentService.deleteEnvironment(projectId, envId);
 		return true;
+	}
+
+	@Get('/:envId/credential-bindings')
+	@ProjectScope('projectEnvironment:list')
+	//@Licensed('feat:environments')
+	async getCredentialBindings(req: AuthenticatedRequest<{ envId: string }>) {
+		return await this.environmentService.getCredentialBindings(req.params.envId);
+	}
+
+	@Put('/:envId/credential-bindings')
+	@ProjectScope('projectEnvironment:update')
+	//@Licensed('feat:environments')
+	async replaceCredentialBindings(
+		req: AuthenticatedRequest<{ projectId: string; envId: string }>,
+		_res: Response,
+		@Body payload: UpsertCredentialBindingsDto,
+	) {
+		const { projectId, envId } = req.params;
+		return await this.environmentService.replaceCredentialBindings(projectId, envId, payload);
 	}
 }

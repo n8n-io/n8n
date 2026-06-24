@@ -5,7 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { useEnvironmentsStore } from '../environments.store';
 import { useToast } from '@/app/composables/useToast';
 
-const props = defineProps<{ projectId: string }>();
+const props = defineProps<{ projectId: string; selectedEnvId?: string | null }>();
+const emit = defineEmits<{ select: [id: string | null] }>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -51,6 +52,10 @@ function cancelEdit() {
 	editingId.value = null;
 }
 
+function selectEnvironment(id: string) {
+	emit('select', props.selectedEnvId === id ? null : id);
+}
+
 async function removeEnvironment(id: string, name: string) {
 	if (
 		!confirm(
@@ -94,6 +99,12 @@ async function removeEnvironment(id: string, name: string) {
 					<N8nText>{{ env.name }}</N8nText>
 					<N8nButton size="small" type="secondary" @click="startEdit(env.id, env.name)"
 						>Edit</N8nButton
+					>
+					<N8nButton
+						size="small"
+						:type="selectedEnvId === env.id ? 'primary' : 'tertiary'"
+						@click="selectEnvironment(env.id)"
+						>Configure</N8nButton
 					>
 					<N8nButton size="small" type="tertiary" @click="removeEnvironment(env.id, env.name)"
 						>Delete</N8nButton

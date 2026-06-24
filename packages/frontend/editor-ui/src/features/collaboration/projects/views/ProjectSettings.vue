@@ -30,7 +30,7 @@ import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import EnvironmentList from '@/features/environments/components/EnvironmentList.vue';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import EnvironmentBindings from '@/features/environments/components/EnvironmentBindings.vue';
 
 import {
 	N8nAlert,
@@ -70,6 +70,8 @@ const isEnvironmentsFeatureEnabled = computed(() => {
 	return true;
 	// return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Environments];
 });
+
+const selectedEnvId = ref<string | null>(null);
 
 const showSaveError = (error: Error) => {
 	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
@@ -671,7 +673,16 @@ onMounted(async () => {
 							i18n.baseText('projects.settings.environments')
 						}}</label>
 					</h3>
-					<EnvironmentList :project-id="projectsStore.currentProject.id" />
+					<EnvironmentList
+						:project-id="projectsStore.currentProject.id"
+						:selected-env-id="selectedEnvId"
+						@select="selectedEnvId = $event"
+					/>
+					<EnvironmentBindings
+						v-if="selectedEnvId"
+						:project-id="projectsStore.currentProject.id"
+						:environment-id="selectedEnvId"
+					/>
 				</fieldset>
 			</template>
 

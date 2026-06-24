@@ -4,9 +4,12 @@ import { ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as environmentsApi from '@n8n/rest-api-client/api/projectEnvironments';
-import type { ProjectEnvironment } from '@n8n/rest-api-client/api/projectEnvironments';
+import type {
+	ProjectEnvironment,
+	EnvironmentCredentialBinding,
+} from '@n8n/rest-api-client/api/projectEnvironments';
 
-export type { ProjectEnvironment };
+export type { ProjectEnvironment, EnvironmentCredentialBinding };
 
 export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 	const rootStore = useRootStore();
@@ -18,6 +21,9 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 
 	/** Currently selected environment ID for canvas manual execution (null = global) */
 	const selectedEnvironmentId = ref<string | null>(null);
+
+	/** Maps environmentId → list of credential bindings */
+	const credentialBindings = ref<Record<string, EnvironmentCredentialBinding[]>>({});
 
 	async function fetchEnvironments(projectId: string): Promise<void> {
 		environments.value = await environmentsApi.getEnvironments(rootStore.restApiContext, projectId);
@@ -52,6 +58,9 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		if (selectedEnvironmentId.value === envId) {
 			selectedEnvironmentId.value = null;
 		}
+		const updated = { ...credentialBindings.value };
+		delete updated[envId];
+		credentialBindings.value = updated;
 	}
 
 	async function fetchPublishedVersions(workflowId: string): Promise<void> {
@@ -75,15 +84,41 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		publishedVersions.value = { ...publishedVersions.value, [environmentId]: versionId };
 	}
 
+	async function fetchCredentialBindings(projectId: string, envId: string): Promise<void> {
+		const bindings = await environmentsApi.getCredentialBindings(
+			rootStore.restApiContext,
+			projectId,
+			envId,
+		);
+		credentialBindings.value = { ...credentialBindings.value, [envId]: bindings };
+	}
+
+	async function saveCredentialBindings(
+		projectId: string,
+		envId: string,
+		bindings: Array<{ sourceCredentialId: string; targetCredentialId: string }>,
+	): Promise<void> {
+		const saved = await environmentsApi.replaceCredentialBindings(
+			rootStore.restApiContext,
+			projectId,
+			envId,
+			{ bindings },
+		);
+		credentialBindings.value = { ...credentialBindings.value, [envId]: saved };
+	}
+
 	return {
 		environments,
 		publishedVersions,
 		selectedEnvironmentId,
+		credentialBindings,
 		fetchEnvironments,
 		createEnvironment,
 		updateEnvironment,
 		deleteEnvironment,
 		fetchPublishedVersions,
 		publishToEnvironment,
+		fetchCredentialBindings,
+		saveCredentialBindings,
 	};
 });
