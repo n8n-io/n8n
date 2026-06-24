@@ -1,10 +1,10 @@
 import type { CredentialProvider, McpClient } from '@n8n/agents';
+import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'jest-mock-extended';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
 import { buildVerifyMcpServerTool } from '../verify-mcp-server.tool';
-import { CustomFetch } from '@n8n/backend-network';
 
 // ---------------------------------------------------------------------------
 // Module mocks

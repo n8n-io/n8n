@@ -1,4 +1,4 @@
-import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
+import { fetchFollowingRedirects } from '@n8n/ai-utilities';
 import type { CustomFetch } from '@n8n/backend-network';
 import { assertUrlAllowed, UserError } from 'n8n-workflow';
 import type { DomainRestrictionMode, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -92,7 +92,7 @@ export function createAuthFetch({
 		if (!refreshed) return response;
 
 		headers = refreshed;
-		return await proxyFetch(input, {
+		return await baseFetch(input, {
 			...init,
 			headers: { ...headersToRecord(init?.headers), ...headers },
 		});
