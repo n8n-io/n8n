@@ -30,6 +30,16 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const documentId = createWorkflowDocumentId('1');
 const opts: PushHandlerOptions = {
 	router: mock<Router>(),
@@ -746,11 +756,13 @@ describe('manual execution stats tracking', () => {
 		it('shows success toast when executed node has run data', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send Telegram';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -777,11 +789,13 @@ describe('manual execution stats tracking', () => {
 		it('shows warning toast when executed node was not reached', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -806,11 +820,13 @@ describe('manual execution stats tracking', () => {
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {

@@ -73,6 +73,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
 | [instance_ai_run_snapshots](instance_ai_run_snapshots.md) | 11 |  | table |
+| [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
@@ -221,6 +222,8 @@ erDiagram
 "instance_ai_pending_confirmations" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_run_snapshots" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -720,13 +723,13 @@ erDiagram
   VARCHAR_36_ workflowVersionId
 }
 "execution_entity" {
-  BIGINT binaryDataSizeBytes
+  bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey
   datetime_3_ deletedAt
   boolean finished
   INTEGER id
-  BIGINT jsonSizeBytes
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
@@ -737,7 +740,7 @@ erDiagram
   TEXT tracingContext
   datetime waitTill
   varchar_36_ workflowId FK
-  VARCHAR_36_ workflowVersionId
+  varchar_36_ workflowVersionId
 }
 "execution_metadata" {
   INTEGER executionId FK
@@ -924,6 +927,13 @@ erDiagram
   varchar_64_ traceId
   TEXT tree
   datetime_3_ updatedAt
+}
+"instance_ai_thread_grants" {
+  datetime_3_ createdAt
+  varchar_512_ grantKey PK
+  varchar threadId PK
+  datetime_3_ updatedAt
+  varchar userId PK
 }
 "instance_ai_threads" {
   datetime_3_ createdAt

@@ -1,3 +1,4 @@
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
@@ -9,6 +10,12 @@ import { Telemetry } from '@/telemetry';
 
 jest.unmock('@/telemetry');
 jest.mock('@/posthog');
+
+const rudderStackConstructor = jest.fn().mockImplementation(() => mock<RudderStack>());
+jest.mock('@rudderstack/rudder-sdk-node', () => ({
+	__esModule: true,
+	default: rudderStackConstructor,
+}));
 
 describe('Telemetry', () => {
 	let spyTrack: jest.SpyInstance;
@@ -52,6 +59,7 @@ describe('Telemetry', () => {
 			mock(),
 			globalConfig,
 			mock(),
+			mock(),
 		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
@@ -59,6 +67,69 @@ describe('Telemetry', () => {
 
 	afterEach(async () => {
 		await telemetry.stopTracking();
+	});
+
+	describe('init', () => {
+		const httpAgent = mock();
+		const httpsAgent = mock();
+		const getNodeAgent = jest.fn().mockReturnValue({ httpAgent, httpsAgent });
+		const transport = jest.fn().mockReturnValue({ getNodeAgent });
+		const outboundHttp = mock<OutboundHttp>({ transport });
+
+		const initConfig = mock<GlobalConfig>({
+			diagnostics: { enabled: true, backendConfig: 'test-key;https://data-plane.test' },
+			logging: { level: 'info', outputs: ['console'] },
+		});
+
+		let initTelemetry: Telemetry;
+
+		beforeEach(() => {
+			rudderStackConstructor.mockClear();
+			transport.mockClear();
+			getNodeAgent.mockClear();
+			initConfig.diagnostics.backendConfig = 'test-key;https://data-plane.test';
+			initTelemetry = new Telemetry(
+				mock(),
+				new PostHogClient(instanceSettings, mock()),
+				mock(),
+				instanceSettings,
+				mock(),
+				initConfig,
+				mock(),
+				outboundHttp,
+			);
+		});
+
+		afterEach(async () => {
+			await initTelemetry.stopTracking();
+		});
+
+		test('should route the RudderStack SDK through the outbound transport with SSRF disabled', async () => {
+			await initTelemetry.init();
+
+			expect(transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(getNodeAgent).toHaveBeenCalled();
+			expect(rudderStackConstructor).toHaveBeenCalledWith(
+				'test-key',
+				expect.objectContaining({
+					dataPlaneUrl: 'https://data-plane.test',
+					gzip: false,
+					axiosConfig: {
+						httpAgent,
+						httpsAgent,
+						headers: { 'Content-Type': 'application/json' },
+					},
+				}),
+			);
+		});
+
+		test('should not initialize RudderStack when the backend config is invalid', async () => {
+			initConfig.diagnostics.backendConfig = 'missing-data-plane';
+
+			await initTelemetry.init();
+
+			expect(rudderStackConstructor).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('trackWorkflowExecution', () => {
@@ -515,6 +586,241 @@ describe('Telemetry', () => {
 			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
 
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+	});
+
+	describe('trackAgentTurnFinished', () => {
+		const configuration = {
+			model: 'anthropic/claude-sonnet-4-5',
+			channels: ['slack'],
+			tool_types: ['custom'],
+			tool_count: 1,
+			num_skills: 2,
+			memory_type: 'n8n_observational' as const,
+		};
+
+		test('should buffer agent session metrics without tracking immediately', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			expect(spyTrack).toHaveBeenCalledTimes(0);
+			expect(Object.values(telemetry.getAgentSessionMetricsBuffer())).toEqual([
+				expect.objectContaining({
+					agent_id: 'agent-1',
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					sessions: {
+						'thread-1': {
+							latency_ms: 100,
+							cost: 10,
+							tool_call_count: 1,
+							num_skills: 2,
+							turn_count: 1,
+						},
+					},
+				}),
+			]);
+		});
+
+		test('should flush session metrics with additive sums', () => {
+			for (const [thread_id, latency_ms, cost, tool_call_count] of [
+				['thread-1', 100, 10, 1],
+				['thread-1', 200, 20, 3],
+				['thread-2', 400, 40, 5],
+				['thread-3', 800, 80, 7],
+			] as const) {
+				telemetry.trackAgentTurnFinished({
+					agent_id: 'agent-1',
+					thread_id,
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					latency_ms,
+					cost,
+					tool_call_count,
+				});
+			}
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).toEqual({
+				event_version: '1',
+				agent_id: 'agent-1',
+				...configuration,
+				run_type: 'test',
+				turn_status: 'succeeded',
+				session_count: 3,
+				turn_count: 4,
+				latency_ms_sum: 1500,
+				cost_sum: 150,
+				tool_call_count_sum: 16,
+				num_skills_sum: 6,
+			});
+			expect(payload).not.toHaveProperty('latency_ms_avg');
+			expect(payload).not.toHaveProperty('latency_ms_p25');
+			expect(payload).not.toHaveProperty('cost_avg');
+			expect(payload).not.toHaveProperty('tool_call_count_p50');
+			expect(payload).not.toHaveProperty('num_skills_p75');
+			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
+		});
+
+		test('should flush turn status and run type buckets separately', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-2',
+				run_type: 'production',
+				turn_status: 'failed',
+				configuration,
+				latency_ms: 200,
+				cost: 20,
+				tool_call_count: 2,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'test',
+					turn_status: 'succeeded',
+					latency_ms_sum: 100,
+				}),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'failed',
+					latency_ms_sum: 200,
+				}),
+			);
+		});
+
+		test('should keep mixed turn outcomes separate for the same session', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 200,
+				cost: 20,
+				tool_call_count: 2,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'failed',
+				configuration,
+				latency_ms: 400,
+				cost: 40,
+				tool_call_count: 4,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'succeeded',
+					session_count: 1,
+					turn_count: 2,
+					latency_ms_sum: 300,
+					cost_sum: 30,
+					tool_call_count_sum: 3,
+					num_skills_sum: 2,
+				}),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'failed',
+					session_count: 1,
+					turn_count: 1,
+					latency_ms_sum: 400,
+					cost_sum: 40,
+					tool_call_count_sum: 4,
+					num_skills_sum: 2,
+				}),
+			);
+		});
+
+		test('should not emit thread IDs', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).not.toHaveProperty('thread_id');
+			expect(JSON.stringify(payload)).not.toContain('thread-1');
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
 		});
 	});
 

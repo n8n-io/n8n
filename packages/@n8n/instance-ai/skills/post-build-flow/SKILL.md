@@ -55,9 +55,10 @@ workflow as a precondition for running it.
    `setupRequirement` from the tool output. If the output is missing a
    `workflowId`, explain that the build did not submit.
    - Before treating a saved workflow as done, inspect the persisted workflow
-     with `workflows(action="get-json", workflowId)` and compare the actual
-     graph to the user's requested outcome. Build/save success only means a
-     workflow was saved; it does not prove the saved workflow is good.
+     with `workflows(action="get-as-code", workflowId)` or read the bound
+     workspace source file, and compare the actual graph to the user's requested
+     outcome. Build/save success only means a workflow was saved; it does not
+     prove the saved workflow is good.
    - If the persisted workflow is missing the requested outcome, has an obvious
      dead-end draft shape, or the verification evidence is weak, load the
      `workflow-builder` skill and patch the same workflow with `build-workflow`
@@ -103,6 +104,19 @@ workflow as a precondition for running it.
    coverage).
 7. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically.
+
+## Claiming success
+
+Do not tell the user a workflow is "fixed", "verified", "tested", "working", or
+has "no errors" unless this turn has a passing `verify-built-workflow` or
+`executions(action="run")` that exercised the path being claimed. A successful
+`build-workflow`/save, a static `workflows(action="validate")`, or your own
+narration are NOT execution evidence. For a produced artifact (a file, generated
+document, or Code-node output), read the real output before calling it complete;
+do not infer correctness from the fact that a node ran. If you could not run the
+failing path or inspect the artifact, say so plainly — "I couldn't verify X
+because Y" — and name what is unconfirmed. An honest "could not verify" beats an
+unverified success claim.
 
 ## Credentials before build
 

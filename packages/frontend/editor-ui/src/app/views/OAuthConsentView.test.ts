@@ -18,10 +18,16 @@ describe('OAuthConsentView', () => {
 		createTestingPinia({ stubActions: false });
 		consentStore = mockedStore(useConsentStore);
 
-		consentStore.consentDetails = {
+		const details = {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
+			redirectUri: 'https://legitimate-client.com/callback',
 		};
+		consentStore.consentDetails = details;
+		consentStore.fetchConsentDetails.mockImplementation(async () => {
+			consentStore.consentDetails = details;
+			return details;
+		});
 		consentStore.isLoading = false;
 		consentStore.error = null;
 
@@ -65,7 +71,24 @@ describe('OAuthConsentView', () => {
 		expect(getByText('Get a list of your workflows')).toBeVisible();
 	});
 
-	it('should show the dedicated error and disable the buttons when the resource is unavailable', async () => {
+	it('should show the dedicated error and a Close action when the resource is unavailable', async () => {
+		consentStore.error = 'Authorization target is no longer available';
+		consentStore.errorCode = 'resource_unavailable';
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
+
+		const { getByTestId, queryByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-error-notice')).toHaveTextContent(
+			'This authorization can no longer be completed because the target is no longer available.',
+		);
+		// No grant controls on a rejected request — only a way out.
+		expect(queryByTestId('consent-deny-button')).toBeNull();
+		expect(queryByTestId('consent-allow-button')).toBeNull();
+		expect(getByTestId('consent-close-button')).toBeVisible();
+	});
+
+	it('should redirect to home page when Close is clicked on the error screen', async () => {
 		consentStore.error = 'Authorization target is no longer available';
 		consentStore.errorCode = 'resource_unavailable';
 		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
@@ -73,11 +96,24 @@ describe('OAuthConsentView', () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 
-		expect(getByTestId('consent-error-notice')).toHaveTextContent(
-			'This authorization can no longer be completed because the target is no longer available.',
-		);
-		expect(getByTestId('consent-deny-button')).toBeDisabled();
-		expect(getByTestId('consent-allow-button')).toBeDisabled();
+		await userEvent.click(getByTestId('consent-close-button'));
+		await waitAllPromises();
+
+		expect(consentStore.approveConsent).not.toHaveBeenCalled();
+		expect(window.location.href).toBe(window.BASE_PATH ?? '/');
+	});
+
+	it('should not render the instance consent layout when the resource is unavailable', async () => {
+		consentStore.error = 'Authorization target is no longer available';
+		consentStore.errorCode = 'resource_unavailable';
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
+
+		const { queryByText } = renderComponent();
+		await waitAllPromises();
+
+		// A rejected request must not present the broad instance permission grant.
+		expect(queryByText('Test MCP Client wants access to your n8n instance')).toBeNull();
+		expect(queryByText('Get a list of your workflows')).toBeNull();
 	});
 
 	it('should redirect to home page when deny is clicked', async () => {
@@ -104,8 +140,10 @@ describe('OAuthConsentView', () => {
 			redirectUrl,
 		});
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId, getByLabelText } = renderComponent();
 		await waitAllPromises();
+
+		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
 		const allowButton = getByTestId('consent-allow-button');
 		await userEvent.click(allowButton);
@@ -113,5 +151,17 @@ describe('OAuthConsentView', () => {
 
 		expect(consentStore.approveConsent).toHaveBeenCalledWith(true);
 		expect(window.location.href).toBe(redirectUrl);
+	});
+
+	it('should disable allow button until redirect URL is trusted', async () => {
+		const { getByTestId, getByLabelText } = renderComponent();
+		await waitAllPromises();
+
+		const allowButton = getByTestId('consent-allow-button');
+		expect(allowButton).toBeDisabled();
+
+		await userEvent.click(getByLabelText('I recognize and trust this URL'));
+
+		expect(allowButton).not.toBeDisabled();
 	});
 });

@@ -66,7 +66,7 @@ export class ImportPackageRequestDto extends Z.class({
 	projectId: optionalFormId,
 	folderId: optionalFormId,
 	credentialMatchingMode: z.enum(['id-only']).optional().default('id-only'),
-	credentialMissingMode: z.enum(['must-preexist']).optional().default('must-preexist'),
+	credentialMissingMode: z.enum(['must-preexist', 'create-stub']).optional().default('create-stub'),
 	credentialBindings: credentialBindingsSchema,
 	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
 	workflowPublishingPolicy: z

@@ -63,7 +63,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
-import { SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -230,6 +230,7 @@ export class InstanceAiAdapterService {
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -242,15 +243,18 @@ export class InstanceAiAdapterService {
 			pushRef?: string;
 			threadId?: string;
 			projectId?: string;
+			/** Eval-only: restrict the credential `list()` view to these IDs. */
+			credentialIdAllowlist?: string[];
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId, projectId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist } =
+			options ?? {};
 		return {
 			userId: user.id,
 			projectId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user, projectId),
+			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -590,6 +594,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -678,6 +683,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -777,6 +783,9 @@ export class InstanceAiAdapterService {
 				const updateData = workflowRepository.create({
 					nodes: version.nodes,
 					connections: version.connections,
+					// Restore the group state from the same snapshot so groups stay consistent
+					// with the restored graph (history rows always carry nodeGroups).
+					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
 				await workflowService.update(user, updateData, workflowId, {
@@ -994,6 +1003,19 @@ export class InstanceAiAdapterService {
 					if (Object.keys(basePinData).length > 0) {
 						runData.pinData = basePinData;
 					}
+					// In queue mode this execution is offloaded to a worker, which reads
+					// `execution.data` back from storage. Persist a valid run-data object
+					// (the worker reconstructs the run and starts from the trigger) so an
+					// undefined payload doesn't deserialize to `undefined` and crash the worker.
+					runData.executionData = createRunExecutionData({
+						startData: {},
+						resultData: { pinData: runData.pinData, runData: null },
+						manualData: {
+							userId: user.id,
+							triggerToStartFrom: runData.triggerToStartFrom,
+						},
+						executionData: null,
+					});
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
@@ -1189,10 +1211,11 @@ export class InstanceAiAdapterService {
 	private createCredentialAdapter(
 		user: User,
 		boundProjectId?: string,
+		credentialIdAllowlist?: string[],
 	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 
-		return {
+		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
 				// project's usable set (project-shared + global) — the same intersection
@@ -1471,6 +1494,18 @@ export class InstanceAiAdapterService {
 					return { accountIdentifier: undefined };
 				}
 			},
+		};
+
+		if (!credentialIdAllowlist) return adapter;
+
+		// Eval runs pin each build thread to a declared credential set so
+		// concurrent test cases can't observe each other's credentials. Discovery
+		// only: get/test/delete still resolve explicit IDs the caller already has.
+		const allowed = new Set(credentialIdAllowlist);
+		return {
+			...adapter,
+			list: async (options) =>
+				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
 		};
 	}
 
@@ -1757,7 +1792,8 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
-		const ssrf = this.ssrfProtectionService;
+		const { outboundHttp, ssrfProtectionService } = this;
+		const sharedTransport = outboundHttp.transport({ ssrf: ssrfProtectionService });
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1810,13 +1846,19 @@ export class InstanceAiAdapterService {
 					return cached;
 				}
 
-				// Fetch and extract — pass authorizeUrl for redirect-hop gating
+				const authorizeUrl = options?.authorizeUrl;
+				const transport = authorizeUrl
+					? outboundHttp.transport({
+							ssrf: ssrfProtectionService,
+							authorize: async (target: URL) => await authorizeUrl(target.href),
+						})
+					: sharedTransport;
+
 				const page = await fetchAndExtract(url, {
 					maxContentLength: options?.maxContentLength,
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
-					authorizeUrl: options?.authorizeUrl,
-					ssrf,
+					transport,
 				});
 
 				// Attempt summarization (truncation fallback — no model injection yet)
@@ -3134,6 +3176,16 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 	return result;
 }
 
+/**
+ * Groups are authoritative on save: persist the emitted groups, or [] to clear when the
+ * agent removed every `.group(...)`. `undefined` would leave the NOT-NULL column stale.
+ */
+function sdkNodeGroupsToRuntime(
+	nodeGroups: WorkflowJSON['nodeGroups'],
+): NonNullable<WorkflowJSON['nodeGroups']> {
+	return nodeGroups ?? [];
+}
+
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
 	const id = Reflect.get(value, 'id');
@@ -3192,6 +3244,7 @@ function toWorkflowJSON(
 		})),
 		connections: workflow.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
+		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
 	};
 }
 

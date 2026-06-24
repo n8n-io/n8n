@@ -76,6 +76,7 @@ vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
 		injectNDVStore: vi.fn(() => ({ value: mockNdvState })),
+		injectNDVStoreIfProvided: vi.fn(() => ({ value: mockNdvState })),
 	};
 });
 

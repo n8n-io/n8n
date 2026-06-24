@@ -50,6 +50,10 @@ describe('OIDC service', () => {
 	});
 
 	describe('loadConfig', () => {
+		beforeEach(() => {
+			discoveryMock.mockResolvedValue({});
+		});
+
 		it('should initialize with default config', () => {
 			expect(oidcService.getRedactedConfig()).toEqual({
 				clientId: '',
@@ -178,6 +182,10 @@ describe('OIDC service', () => {
 				expect.any(URL),
 				'test-client-id',
 				'test-client-secret',
+				undefined,
+				expect.objectContaining({
+					[real_odic_client.customFetch]: expect.any(Function),
+				}),
 			);
 		});
 

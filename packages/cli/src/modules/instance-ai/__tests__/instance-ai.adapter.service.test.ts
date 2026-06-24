@@ -1115,6 +1115,8 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
+import type { OutboundHttp } from '@n8n/backend-network';
+
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -1167,6 +1169,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	(
@@ -1300,6 +1303,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1620,6 +1624,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const boundProjectId =
@@ -1927,6 +1932,47 @@ describe('createWorkflowAdapter', () => {
 			expect.anything(),
 			expect.anything(),
 		);
+	});
+
+	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
+		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
+		// update path must treat that as "no groups" and send [] so a removed group is
+		// dropped — not silently preserved and then rejected by group validation.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ nodeGroups: [] }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('writes the node groups the SDK workflow declares', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			nodeGroups,
+		} as unknown as WorkflowJSON;
+
+		await adapter.updateFromWorkflowJSON('wf-new', workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodeGroups: unknown };
+		expect(updateData.nodeGroups).toEqual(nodeGroups);
 	});
 
 	it('strips id-less credential references before creating a workflow', async () => {
@@ -2237,6 +2283,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2509,6 +2556,7 @@ function createRunAdapterForTests(
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -2669,5 +2717,32 @@ describe('createExecutionAdapter run()', () => {
 				status: 'error',
 			}),
 		);
+	});
+
+	it('populates executionData for a trigger run with no input so it survives queue persistence', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.executionMode).toBe('trigger');
+		// In queue mode a trigger execution is offloaded to a worker, which reads
+		// `execution.data` back from storage. An undefined `executionData` persists
+		// as an empty payload and deserializes to `undefined`, crashing the worker.
+		expect(runData.executionData).toBeDefined();
+		expect(runData.executionData?.manualData?.userId).toBe('user-1');
+		expect(runData.executionData?.manualData?.triggerToStartFrom?.name).toBe('Schedule Trigger');
 	});
 });

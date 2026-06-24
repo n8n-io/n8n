@@ -1,3 +1,20 @@
+/* eslint-disable n8n-local-rules/no-uncentralized-http -- langchain consumers pin undici v6, incompatible with backend-network's v7 dispatchers; see block comment below */
+/**
+ * Proxy/transport helpers for the AI model suppliers.
+ *
+ * These are the last AI proxy-fetch helpers not yet consolidated onto `@n8n/backend-network`.
+ * They are kept here because their consumers (the langchain providers, e.g. `@langchain/openai` / `@langchain/anthropic`) pin
+ * undici v6 and inject the proxy via `fetchOptions: { dispatcher }`,
+ * while `@n8n/backend-network` builds undici v7 dispatchers.
+ *
+ * A v7 `Dispatcher` is not interoperable with a v6 `fetch` (the dispatch-handler protocol differs),
+ * so the dispatcher produced here cannot simply come from backend-network.
+ *
+ * TODO: once these consumers move to undici v7, drop these helpers and route
+ * their calls through `@n8n/backend-network/transport` (use `asCustomFetch()`,
+ * a self-contained `fetch` that is version-agnostic, rather than handing out a
+ * raw dispatcher). See CAT-3377 for the consolidation this completes.
+ */
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import proxyFromEnv from 'proxy-from-env';
 import { Agent, ProxyAgent } from 'undici';
