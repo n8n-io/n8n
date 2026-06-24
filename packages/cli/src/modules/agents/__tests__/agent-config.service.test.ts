@@ -1,6 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -37,13 +36,12 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-function makeService(config: Partial<AgentsConfig> = {}) {
+function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
-	const agentsConfig = { modules: [], ...config } as AgentsConfig;
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
@@ -61,7 +59,6 @@ function makeService(config: Partial<AgentsConfig> = {}) {
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
-		agentsConfig,
 		runtimeCacheService,
 		credentialsService,
 	);
@@ -110,27 +107,6 @@ describe('AgentConfigService', () => {
 				valid: false,
 				error: 'Node tool configs must not include inputSchema.',
 			});
-		});
-
-		it('gates config.nodeTools.enabled on the node-tools module', async () => {
-			await expect(
-				makeService().service.validateConfig({
-					...baseConfig,
-					config: { nodeTools: { enabled: true } },
-				}),
-			).resolves.toMatchObject({
-				valid: false,
-				error: expect.stringContaining('node-tools-searcher'),
-			});
-
-			await expect(
-				makeService({
-					modules: ['node-tools-searcher'] as AgentsConfig['modules'],
-				}).service.validateConfig({
-					...baseConfig,
-					config: { nodeTools: { enabled: true } },
-				}),
-			).resolves.toMatchObject({ valid: true });
 		});
 
 		it('accepts draft credentials that are not checked until update sanitization', async () => {

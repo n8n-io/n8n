@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T13:28:32.925Z",
-	"totalViolations": 145,
+	"generated": "2026-06-23T20:38:55.035Z",
+	"totalViolations": 141,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -577,26 +577,6 @@
 				"hash": "e8fc423eeeb7"
 			}
 		],
-		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "68c3ed65550b"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Chained locator call in test: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "189e3887535d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
-				"hash": "423a23988aea"
-			}
-		],
 		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -882,19 +862,13 @@
 		"pages/WorkflowsPage.ts": [
 			{
 				"rule": "deduplication",
-				"line": 121,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-toggle-dropdown\") in pages scope",
-				"hash": "0bcc0c5c11f6"
-			},
-			{
-				"rule": "deduplication",
-				"line": 36,
+				"line": 38,
 				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
 				"hash": "206b89bd1594"
 			},
 			{
 				"rule": "deduplication",
-				"line": 50,
+				"line": 52,
 				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
 				"hash": "2f37cf533810"
 			}

@@ -102,8 +102,13 @@ export class SlackIntegration extends AgentChatIntegration {
 		return await createSlackBridgeExecutionContext(params);
 	}
 
-	async createResumeExecutionContext(): Promise<BridgeResumeExecutionContext> {
-		return await createSlackResumeExecutionContext();
+	async createResumeExecutionContext(params: {
+		chat: ChatInstance;
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return await createSlackResumeExecutionContext(params);
 	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {

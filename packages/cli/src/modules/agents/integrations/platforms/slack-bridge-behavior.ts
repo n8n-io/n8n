@@ -61,11 +61,23 @@ export async function createSlackBridgeExecutionContext(
 	};
 }
 
-export async function createSlackResumeExecutionContext(): Promise<BridgeResumeExecutionContext> {
+export async function createSlackResumeExecutionContext(params: {
+	chat: ChatInstance;
+	thread: Thread<unknown, unknown>;
+	logger: BridgeMessageContextParams['logger'];
+	agentId: string;
+}): Promise<BridgeResumeExecutionContext> {
 	// Slack action payloads do not reliably include the original message's raw
 	// thread_ts, so resume responses use the same safe buffered path as top-level
 	// messages without a materialized Slack thread.
-	return { forceBuffered: true };
+	return {
+		forceBuffered: true,
+		statusHandle: await startSlackThinkingStatus(params.thread, {
+			chat: params.chat,
+			logger: params.logger,
+			agentId: params.agentId,
+		}),
+	};
 }
 
 async function startSlackThinkingStatus(
