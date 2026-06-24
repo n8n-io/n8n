@@ -18,7 +18,7 @@
 	"complexity": "medium",
 	"tags": ["build", "form-trigger", "google-sheets", "openai", "multi-turn"],
 	"triggerType": "form",
-	"datasets": ["mcp", "full", "form"],
+	"datasets": ["full", "form"],
 	"processExpectations": [
 		"The agent did not claim the edit succeeded without verifying the saved workflow reflects the requested change.",
 		"After the first user message, the agent built a workflow with a Form Trigger collecting all six required fields (Customer Name, Service Type, Appointment Date, Appointment Time, Phone Number, Request Details), an OpenAI step that generates a personalized confirmation, a Google Sheets append to SmartAssist Bookings with all seven columns including AI Confirmation, and a form completion or thank-you ending screen."
