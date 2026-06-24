@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/FolderDescription.ts
+  s_c10e563f7c2f73::t_5bd8847d03a04b 221-233,243-244
+  s_c10e563f7c2f73::t_bf601b1835b13a 33,119-186,188,220,254
+  s_c10e563f7c2f73::t_8ad1e9010e1c0f 187,245,255-267
+  s_c10e563f7c2f73::t_412b0c33c56f6e 34-38
+packages/nodes-base/nodes/Microsoft/OneDrive/FileDescription.ts
+  s_c10e563f7c2f73::t_2c6af9ceb69cca 316,374,384-396
+  s_c10e563f7c2f73::t_7c3abebf7a5297 350-362,372-373
+  s_c10e563f7c2f73::t_db03c22e7e39cc 39,248-315,317,349,383
+  s_c10e563f7c2f73::t_e19f7413844364 40-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "c148fa1fc8116795b72d18a6827a78737d7469f7",
+  "prompts": {},
+  "sessions": {
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
