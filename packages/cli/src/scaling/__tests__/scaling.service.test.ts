@@ -1,5 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, WorkerPoolConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
@@ -39,7 +39,7 @@ describe('ScalingService', () => {
 					tls: false,
 				},
 			},
-			workerPool: { name: '' },
+			workerPool: Object.assign(new WorkerPoolConfig(), { enabled: true, name: '' }),
 		},
 		endpoints: {
 			metrics: {
@@ -176,6 +176,7 @@ describe('ScalingService', () => {
 		describe('queue name resolution', () => {
 			afterEach(() => {
 				globalConfig.queue.workerPool.name = '';
+				globalConfig.queue.workerPool.enabled = true;
 			});
 
 			it('uses "jobs" on worker when pool is empty', async () => {
@@ -195,6 +196,17 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 
 				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs-gpu'));
+			});
+
+			it('uses "jobs" on worker when a pool is set but pools are disabled', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.queue.workerPool.name = 'gpu';
+				globalConfig.queue.workerPool.enabled = false;
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
 			});
 
 			it('ignores pool name on main and uses "jobs"', async () => {

@@ -1,17 +1,6 @@
-export type ExecutionCategory = 'production' | 'manual' | 'evaluation';
-
-export type PoolAssignment = Partial<Record<ExecutionCategory, string>>;
-
-export type WorkerPoolsResponse = {
-	pools: string[];
-	assignment: PoolAssignment;
-};
-
 export type ProjectPoolSettingsResponse = {
-	assignment: PoolAssignment;
-	allowedPools: string[];
-	/** Pool names registered by workers in the cluster (read-only context). */
+	/** Pool that all executions in this project route to. `null` = the system default queue. */
+	defaultPool: string | null;
+	/** Pool names registered by workers in the cluster (read-only context, populates the dropdown). */
 	availablePools: string[];
-	/** Instance-level pool assignment, shown in the UI as the "Inherit from instance" fallback (read-only context). */
-	instanceDefaults: PoolAssignment;
 };

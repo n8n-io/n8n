@@ -16,7 +16,6 @@ import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
-import type { PoolAssignment } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -88,18 +87,15 @@ const resourceCounts = ref<ResourceCounts>({
 const formData = ref<
 	Pick<Project, 'name' | 'description' | 'relations'> & {
 		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
-		assignment: PoolAssignment;
-		allowedPools: string[];
+		defaultPool: string | null;
 	}
 >({
 	name: '',
 	description: '',
 	relations: [],
 	customTelemetryTags: [],
-	assignment: {},
-	allowedPools: [],
+	defaultPool: null,
 });
-const isWorkerPoolsValid = ref(true);
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
 
@@ -288,26 +284,14 @@ const resetFormData = () => {
 		? deepCopy(projectsStore.currentProject.customTelemetryTags)
 		: [];
 	telemetryTagsRef.value?.resetTouched();
-	formData.value.assignment = projectsStore.currentProjectPoolSettings
-		? { ...projectsStore.currentProjectPoolSettings.assignment }
-		: {};
-	formData.value.allowedPools = projectsStore.currentProjectPoolSettings
-		? [...projectsStore.currentProjectPoolSettings.allowedPools]
-		: [];
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
 };
 
 const hasWorkerPoolsChanges = (): boolean => {
-	const stored = projectsStore.currentProjectPoolSettings;
-	if (!stored) {
-		// No row exists; consider any non-default formData as a change
-		return (
-			Object.keys(formData.value.assignment).length > 0 || formData.value.allowedPools.length > 0
-		);
-	}
-	return (
-		JSON.stringify(formData.value.assignment) !== JSON.stringify(stored.assignment) ||
-		JSON.stringify(formData.value.allowedPools) !== JSON.stringify(stored.allowedPools)
-	);
+	const stored = projectsStore.currentProjectPoolSettings?.defaultPool || null;
+	// Treat empty string and null as equivalent (both mean "default queue")
+	const current = formData.value.defaultPool || null;
+	return current !== stored;
 };
 
 const onCancel = () => {
@@ -395,11 +379,10 @@ const updateProject = async () => {
 			}),
 		);
 
-		if (hasWorkerPoolsChanges()) {
+		if (isWorkerPoolsEnabled.value && hasWorkerPoolsChanges()) {
 			tasks.push(
 				projectsStore.updateCurrentProjectPoolSettings(projectId, {
-					assignment: formData.value.assignment,
-					allowedPools: formData.value.allowedPools,
+					defaultPool: formData.value.defaultPool ?? '',
 				}),
 			);
 		}
@@ -413,7 +396,7 @@ const updateProject = async () => {
 };
 
 const onSubmit = async () => {
-	if (!isDirty.value || !isWorkerPoolsValid.value) {
+	if (!isDirty.value) {
 		return;
 	}
 	try {
@@ -481,7 +464,15 @@ const onIconUpdated = async () => {
 	}
 };
 
-// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
+const isWorkerPoolsEnabled = computed(() => settingsStore.isWorkerPoolsEnabled);
+
+const resetPoolSettingsFormData = () => {
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+};
+
+// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits.
+// Also the single hook reacting to the project becoming available (it loads asynchronously on a
+// direct page load), so project-scoped data like the pool settings is fetched here too.
 watch(
 	() => projectsStore.currentProject,
 	async () => {
@@ -494,6 +485,16 @@ watch(
 		selectProjectNameIfMatchesDefault();
 		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
 			projectIcon.value = projectsStore.currentProject.icon;
+		}
+
+		const projectId = projectsStore.currentProjectId;
+		if (canUpdateProject.value && projectId && isWorkerPoolsEnabled.value) {
+			await projectsStore
+				.fetchProjectPoolSettings(projectId)
+				.catch(() => {
+					// Non-fatal; store has been cleared, fall back to defaults below.
+				})
+				.finally(resetPoolSettingsFormData);
 		}
 	},
 	{ immediate: true },
@@ -599,30 +600,9 @@ const searchUsers = async (query: string) => {
 
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
-const resetPoolSettingsFormData = () => {
-	formData.value.assignment = projectsStore.currentProjectPoolSettings
-		? { ...projectsStore.currentProjectPoolSettings.assignment }
-		: {};
-	formData.value.allowedPools = projectsStore.currentProjectPoolSettings
-		? [...projectsStore.currentProjectPoolSettings.allowedPools]
-		: [];
-};
-
 onBeforeMount(async () => {
 	if (!canUpdateProject.value) return;
-	const projectId = projectsStore.currentProjectId;
-	const tasks: Array<Promise<unknown>> = [searchUsers('')];
-	if (projectId) {
-		tasks.push(
-			projectsStore
-				.fetchProjectPoolSettings(projectId)
-				.catch(() => {
-					// Non-fatal; store has been cleared, fall back to defaults below.
-				})
-				.finally(resetPoolSettingsFormData),
-		);
-	}
-	await Promise.all(tasks);
+	await searchUsers('');
 });
 
 const isProjectRoleProvisioningEnabled = computed(
@@ -662,7 +642,7 @@ onMounted(async () => {
 						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
 					>
 					<N8nButton
-						:disabled="!isValid || !isDirty || !isWorkerPoolsValid"
+						:disabled="!isValid || !isDirty"
 						variant="solid"
 						data-test-id="project-settings-save-button"
 						@click.stop.prevent="onSubmit"
@@ -807,23 +787,15 @@ onMounted(async () => {
 					/>
 				</fieldset>
 				<ProjectWorkerPoolsSection
-					:assignment="formData.assignment"
-					:allowed-pools="formData.allowedPools"
+					v-if="isWorkerPoolsEnabled"
+					:default-pool="formData.defaultPool"
 					:available-pools="projectsStore.currentProjectPoolSettings?.availablePools ?? []"
-					:instance-defaults="projectsStore.currentProjectPoolSettings?.instanceDefaults ?? {}"
-					@update:assignment="
+					@update:default-pool="
 						(v) => {
-							formData.assignment = v;
+							formData.defaultPool = v;
 							onTextInput();
 						}
 					"
-					@update:allowed-pools="
-						(v) => {
-							formData.allowedPools = v;
-							onTextInput();
-						}
-					"
-					@update:is-valid="isWorkerPoolsValid = $event"
 				/>
 
 				<fieldset>

@@ -11,7 +11,15 @@ const workerPoolNameSchema = z
 	);
 
 @Config
-class WorkerPoolConfig {
+export class WorkerPoolConfig {
+	/**
+	 * Whether worker pools are enabled. When off, all executions route to the default queue and the pool UI is hidden.
+	 *
+	 * **Experimental** - Use at your own risk.
+	 */
+	@Env('N8N_WORKER_POOLS_ENABLED')
+	enabled: boolean = false;
+
 	/**
 	 * Label identifying the worker pool this worker belongs to.
 	 * Empty (default) means the worker listens to the unlabeled `jobs` queue.

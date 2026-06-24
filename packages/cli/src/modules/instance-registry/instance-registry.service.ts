@@ -2,10 +2,11 @@ import type { InstanceRegistration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, ScalingModeConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { randomUUID } from 'node:crypto';
 import { InstanceSettings } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 
 import { N8N_VERSION } from '@/constants';
+import { resolveWorkerPoolName } from '@/scaling/queue-name';
 
 import { REGISTRY_CONSTANTS } from './instance-registry.types';
 import type { InstanceStorage } from './storage/instance-storage.interface';
@@ -107,7 +108,7 @@ export class InstanceRegistryService {
 		};
 
 		if (this.instanceSettings.instanceType === 'worker') {
-			return { ...base, poolName: this.scalingModeConfig.workerPool.name };
+			return { ...base, poolName: resolveWorkerPoolName(this.scalingModeConfig.workerPool) };
 		}
 
 		return base;
