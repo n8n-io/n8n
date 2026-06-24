@@ -40,6 +40,7 @@ import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
 import { ValidDescriptionRule } from './valid-description.js';
@@ -67,6 +68,7 @@ export const rules = {
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
+	'trigger-node-conventions': TriggerNodeConventionsRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
 	'node-class-description-name-camelcase': NodeClassDescriptionNameCamelCaseRule,
