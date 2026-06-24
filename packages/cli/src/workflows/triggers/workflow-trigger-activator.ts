@@ -452,12 +452,17 @@ export class WorkflowTriggerActivator {
 		try {
 			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
 
-			removedNodeNames = await Promise.all(
+			const deregistrationResults = await Promise.allSettled(
 				webhooks.map(
 					async (webhookData) =>
 						await this.webhookTriggerRegistrar.deregister({ workflow, webhookData }),
 				),
 			);
+
+			for (const result of deregistrationResults) {
+				if (result.status === 'rejected') throw ensureError(result.reason);
+				removedNodeNames.push(result.value);
+			}
 		} finally {
 			await workflow.expression.releaseIsolate();
 		}
