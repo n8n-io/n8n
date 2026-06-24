@@ -91,6 +91,7 @@ beforeAll(async () => {
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
+		mock(), // projectEnvironmentService
 	);
 });
 

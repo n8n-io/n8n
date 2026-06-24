@@ -6,6 +6,7 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
+export { EnvironmentCredentialBindingRepository } from './environment-credential-binding.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,

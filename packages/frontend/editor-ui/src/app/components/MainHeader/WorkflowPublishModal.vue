@@ -104,6 +104,34 @@ async function onModalOpened() {
 		workflowId ? environmentsStore.fetchPublishedVersions(workflowId) : Promise.resolve(),
 		projectId ? environmentsStore.fetchEnvironments(projectId) : Promise.resolve(),
 	]);
+
+	if (projectId && environmentsStore.environments.length > 0) {
+		await Promise.all(
+			environmentsStore.environments.map((env) =>
+				environmentsStore.fetchCredentialBindings(projectId, env.id),
+			),
+		);
+	}
+}
+
+/** Credential IDs used by enabled nodes in the current workflow version */
+const workflowCredentialIds = computed((): Set<string> => {
+	const ids = new Set<string>();
+	for (const node of workflowDocumentStore.value?.allNodes ?? []) {
+		if (node.disabled) continue;
+		for (const cred of Object.values(node.credentials ?? {})) {
+			if (cred.id) ids.add(cred.id);
+		}
+	}
+	return ids;
+});
+
+/** Returns true when an environment has all required credentials bound */
+function envHasAllBindings(envId: string): boolean {
+	if (workflowCredentialIds.value.size === 0) return true;
+	const bindings = environmentsStore.credentialBindings[envId] ?? [];
+	const boundSources = new Set(bindings.map((b) => b.sourceCredentialId));
+	return [...workflowCredentialIds.value].every((id) => boundSources.has(id));
 }
 
 onMounted(() => {
@@ -376,11 +404,17 @@ async function handlePublish() {
 					<div v-for="env in environmentsStore.environments" :key="env.id" :class="$style.envSlot">
 						<span :class="[$style.envFreshness, $style[`envFreshness--${envFreshness(env.id)}`]]" />
 						<span :class="$style.envName">{{ env.name }}</span>
+						<span
+							v-if="!envHasAllBindings(env.id)"
+							:class="$style.missingBindingsBadge"
+							title="Some credentials are not bound for this environment"
+							>⚠</span
+						>
 						<N8nButton
 							size="small"
-							variant="secondary"
+							variant="subtle"
 							:loading="publishingEnvId === env.id"
-							:disabled="publishingEnvId !== null"
+							:disabled="publishingEnvId !== null || !envHasAllBindings(env.id)"
 							:label="`Publish to ${env.name}`"
 							:data-test-id="`publish-to-env-${env.id}`"
 							@click="handlePublishToEnvironment(env.id)"
@@ -462,5 +496,11 @@ async function handlePublish() {
 
 .envFreshness--never {
 	background-color: var(--color-foreground-dark);
+}
+
+.missingBindingsBadge {
+	color: var(--color-warning);
+	font-size: var(--font-size-xs);
+	line-height: 1;
 }
 </style>

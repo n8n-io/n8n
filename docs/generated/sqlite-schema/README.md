@@ -47,6 +47,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [dynamic_credential_entry](dynamic_credential_entry.md) | 6 |  | table |
 | [dynamic_credential_resolver](dynamic_credential_resolver.md) | 6 |  | table |
 | [dynamic_credential_user_entry](dynamic_credential_user_entry.md) | 6 |  | table |
+| [environment_credential_binding](environment_credential_binding.md) | 6 |  | table |
 | [evaluation_collection](evaluation_collection.md) | 9 |  | table |
 | [evaluation_config](evaluation_config.md) | 12 |  | table |
 | [event_destinations](event_destinations.md) | 4 |  | table |
@@ -189,6 +190,9 @@ erDiagram
 "dynamic_credential_user_entry" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (targetCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (sourceCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"environment_credential_binding" }o--|| "project_environment" : "FOREIGN KEY (environmentId) REFERENCES project_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "evaluation_collection" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "evaluation_collection" }o--|| "evaluation_config" : "FOREIGN KEY (evaluationConfigId) REFERENCES evaluation_config (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "evaluation_collection" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -678,6 +682,14 @@ erDiagram
   varchar_16_ resolverId PK
   datetime_3_ updatedAt
   varchar userId PK
+}
+"environment_credential_binding" {
+  datetime_3_ createdAt
+  varchar_36_ environmentId FK
+  INTEGER id
+  varchar_36_ sourceCredentialId FK
+  varchar_36_ targetCredentialId FK
+  datetime_3_ updatedAt
 }
 "evaluation_collection" {
   datetime_3_ createdAt

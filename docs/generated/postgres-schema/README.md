@@ -47,6 +47,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.dynamic_credential_entry](public.dynamic_credential_entry.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) | 6 |  | BASE TABLE |
+| [public.environment_credential_binding](public.environment_credential_binding.md) | 6 |  | BASE TABLE |
 | [public.evaluation_collection](public.evaluation_collection.md) | 9 |  | BASE TABLE |
 | [public.evaluation_config](public.evaluation_config.md) | 12 |  | BASE TABLE |
 | [public.event_destinations](public.event_destinations.md) | 4 |  | BASE TABLE |
@@ -205,6 +206,9 @@ erDiagram
 "public.dynamic_credential_user_entry" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;targetCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;sourceCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.environment_credential_binding" }o--|| "public.project_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES project_environment(id) ON DELETE CASCADE"
 "public.evaluation_collection" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.evaluation_collection" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.evaluation_collection" }o--|| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE CASCADE"
@@ -690,6 +694,14 @@ erDiagram
   varchar_16_ resolverId FK
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.environment_credential_binding" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ environmentId FK
+  integer id
+  varchar_36_ sourceCredentialId FK
+  varchar_36_ targetCredentialId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.evaluation_collection" {
   timestamp_3__with_time_zone createdAt

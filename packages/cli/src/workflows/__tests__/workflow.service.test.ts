@@ -92,6 +92,7 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // projectEnvironmentService
 			);
 		});
 
@@ -353,6 +354,7 @@ describe('WorkflowService', () => {
 				licenseStateMock, // licenseState
 				mock(), // projectRepository
 				redactionEnforcementServiceMock, // redactionEnforcementService
+				mock(), // projectEnvironmentService
 			);
 
 			jest.clearAllMocks();
@@ -1039,6 +1041,7 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
 				outboxRepositoryMock, // outboxRepository
+				mock(), // workflowPublishedEnvVersionRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
 				}), // workflowValidationService
@@ -1047,6 +1050,7 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // projectEnvironmentService
 			);
 
 			// Bypass validation internals
@@ -1268,12 +1272,14 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
+				mock(), // workflowPublishedEnvVersionRepository
 				mock(), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
+				mock(), // projectEnvironmentService
 			);
 		});
 

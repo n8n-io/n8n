@@ -10,6 +10,7 @@ import {
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { EnvironmentCredentialBinding } from './environment-credential-binding';
 import { DeploymentKey } from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
@@ -56,6 +57,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 export {
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
+	EnvironmentCredentialBinding,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -111,6 +113,7 @@ export {
 export const entities = {
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
+	EnvironmentCredentialBinding,
 	ProcessedData,
 	Settings,
 	Variables,

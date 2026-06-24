@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.workflow_published_environment_version](public.workflow_published_environment_version.md) |  |  |
+| id | varchar(36) |  | false | [public.environment_credential_binding](public.environment_credential_binding.md) [public.workflow_published_environment_version](public.workflow_published_environment_version.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -34,6 +34,7 @@
 ```mermaid
 erDiagram
 
+"public.environment_credential_binding" }o--|| "public.project_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES project_environment(id) ON DELETE CASCADE"
 "public.workflow_published_environment_version" }o--|| "public.project_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES project_environment(id) ON DELETE CASCADE"
 "public.project_environment" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
@@ -42,6 +43,14 @@ erDiagram
   varchar_36_ id
   varchar_255_ name
   varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.environment_credential_binding" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ environmentId FK
+  integer id
+  varchar_36_ sourceCredentialId FK
+  varchar_36_ targetCredentialId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_published_environment_version" {

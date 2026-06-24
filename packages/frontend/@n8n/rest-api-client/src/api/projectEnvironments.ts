@@ -1,4 +1,8 @@
-import type { CreateEnvironmentDto, UpdateEnvironmentDto } from '@n8n/api-types';
+import type {
+	CreateEnvironmentDto,
+	UpdateEnvironmentDto,
+	UpsertCredentialBindingsDto,
+} from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
@@ -9,6 +13,13 @@ export interface ProjectEnvironment {
 	name: string;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface EnvironmentCredentialBinding {
+	id: number;
+	environmentId: string;
+	sourceCredentialId: string;
+	targetCredentialId: string;
 }
 
 const base = (projectId: string) => `/projects/${projectId}/environments`;
@@ -65,5 +76,31 @@ export const getPublishedEnvVersions = async (
 		context,
 		'GET',
 		`/workflows/${workflowId}/published-env-versions`,
+	);
+};
+
+export const getCredentialBindings = async (
+	context: IRestApiContext,
+	projectId: string,
+	envId: string,
+): Promise<EnvironmentCredentialBinding[]> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${base(projectId)}/${envId}/credential-bindings`,
+	);
+};
+
+export const replaceCredentialBindings = async (
+	context: IRestApiContext,
+	projectId: string,
+	envId: string,
+	data: UpsertCredentialBindingsDto,
+): Promise<EnvironmentCredentialBinding[]> => {
+	return await makeRestApiRequest(
+		context,
+		'PUT',
+		`${base(projectId)}/${envId}/credential-bindings`,
+		data,
 	);
 };
