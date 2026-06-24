@@ -23,7 +23,7 @@ describe('FirecrawlHandler', () => {
 	it('should create the request client with SSRF disabled for the fixed vendor host', () => {
 		const requests = jest.fn().mockReturnValue(mock<ReturnType<OutboundHttp['requests']>>());
 		new FirecrawlHandler(mock<OutboundHttp>({ requests }));
-		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 30_000 });
 	});
 
 	describe('setConfig', () => {

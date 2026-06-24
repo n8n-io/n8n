@@ -1,0 +1,86 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete multiple files, you MUST call delete_file for EACH file using parallel tool calls in the same turn. Never skip a file."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Delete these two files: /tmp/a.txt and /tmp/b.txt. You MUST call delete_file for each file in a single turn using parallel tool calls."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a single file at the given path. Can only delete one file per call.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000acd564d53db400cbdf32b323a3bc5a609d0bd050a3d502e6da730349d1d652d922debddad770d0919fff7ce2638b1434269cb477df39364e93d4923d33569cf5a19398743e2ce63eeb752f4c85a53f0134bc0a06184a87a073685cca4a480815058a4d41ea1bc2ada9d76b7bd13ef7493384e200299866fb8218f93cebbb30371d13dd9df3d787b7a3319dbe3a3714740b4920922c88d0a003a279d471dd20aa33d690fecdbf7089c3796e784ce6860ba50ea0e72f4b3202da801a6e4512a57614555bdd4b6f0dc9b2bd20ed8ee7e1c814031222e72422f8de64d8f853d274c37d9aad89080ec8832ca51f16e76df7f694d46abd6320253f83ab4d789c0517e2d05712f290706419914f33488ac2f290fc4f9900c30d0c673bc46a970a008cab2557bcaad2d9ab7fd4e523e50465cad6ffe1a9759ba94c673d2757be07c17e78d51bc70540d40782f789c241f2e06c719dad3f3c3c9f9c72391ddee1e9e5888406316e25252e4895f4a350b0daa009b96415da502eb458654e624fc92db9296957ab8c2a30501844dd453521e1fa63e7369509f23cb82e62dfce18c5e385bccbd4435038101940f36e085aa98f6c1a21ff581b5fab0ed33bb8d6ffcd843f9881979a112fb502ecbd93cafc6fe6e5c8dad55f21c2b90fcf90a9c0f777aa75fba9fbbbd1bec7d7a5f88c333fcbaf7b42bf0af5d4bfe76bc5fb9847bb3dd98eaff40a3ed4163d75eb99a6acf9e6ac5928d62573f116b89358c5023d238f3f5857ae4b12f9fefdaaf9ce7248ecb3574d70958b74143ab5ff64725fe8e090000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:55Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:55Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:55Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:55Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f0830bde5906-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:38:56 GMT",
+			"request-id": "req_011CcHzkkx3DuhGo8fzHAYze",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=fPJw7z7DCCWCFjZUumIMr63Xs0rzohMMfCnzpeuZOVE-1782117535.2087228-1.0.1.1-Ea9kYXt8F9zMxA3gLD6NLYi8rybWcTJteKW.YFNUvQ8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-1ae6e1ff6af0ecd2140809ecee08c034-816e4900fba72d38-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]
