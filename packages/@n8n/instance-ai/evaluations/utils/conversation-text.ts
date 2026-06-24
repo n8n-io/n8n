@@ -37,8 +37,12 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
  * same way as userTurnsAsText. The prebuilt/MCP path has no captured transcript,
  * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
  * text from the authored conversation instead of receiving an empty prompt.
+ *
+ * Accepts `undefined` because `testCase.conversation` is optional (seedThread-only
+ * cases carry none) and callers pass it straight through — no conversation → ''.
  */
-export function conversationUserTurnsAsText(conversation: ConversationTurn[]): string {
+export function conversationUserTurnsAsText(conversation: ConversationTurn[] | undefined): string {
+	if (!conversation) return '';
 	const turns = conversation
 		.filter((t) => t.role === 'user')
 		.map((t) => t.text)

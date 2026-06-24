@@ -33,6 +33,10 @@ describe('conversationUserTurnsAsText', () => {
 		expect(conversationUserTurnsAsText([])).toBe('');
 	});
 
+	it('returns empty string when conversation is undefined (seedThread-only case)', () => {
+		expect(conversationUserTurnsAsText(undefined)).toBe('');
+	});
+
 	it('returns the lone user message as plain text on a single user turn', () => {
 		const conversation: ConversationTurn[] = [{ role: 'user', text: 'build a webhook' }];
 		expect(conversationUserTurnsAsText(conversation)).toBe('build a webhook');
