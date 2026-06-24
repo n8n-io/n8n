@@ -14,8 +14,13 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { AgentsConfig } from '@n8n/config';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -117,6 +122,8 @@ function makeReconstructionService(
 		} as unknown as AgentsConfig,
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 }
 

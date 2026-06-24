@@ -15,7 +15,8 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
-import { OutboundHttp } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -29,7 +30,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
@@ -255,6 +256,8 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	private getDynamicSelectorPath(
@@ -620,7 +623,11 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: createAiProxyFetch(this.outboundHttp),
+				proxyFetch: createAiMcpFetch(
+					this.outboundHttp,
+					this.ssrfConfig,
+					this.ssrfProtectionService,
+				),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];

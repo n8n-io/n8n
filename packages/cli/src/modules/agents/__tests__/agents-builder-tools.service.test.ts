@@ -4,7 +4,13 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -69,9 +75,19 @@ function makeService() {
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 
-	return { service, agentsService, secureRuntime, agentTaskService, agentRepository, nodeTypes };
+	return {
+		service,
+		agentsService,
+		secureRuntime,
+		agentTaskService,
+		agentRepository,
+		nodeTypes,
+		outboundHttp,
+	};
 }
 
 const baseConfig: AgentJsonConfig = {
@@ -187,6 +203,16 @@ describe('AgentsBuilderToolsService', () => {
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+		});
+
+		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
+			const { service, outboundHttp } = makeService();
+
+			service.getTools(agentId, projectId, credentialProvider, user);
+
+			expect(outboundHttp.transport).toHaveBeenCalledWith(
+				expect.not.objectContaining({ ssrf: 'disabled' }),
+			);
 		});
 
 		it('read_config returns the current config snapshot metadata', async () => {
