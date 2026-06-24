@@ -37,6 +37,12 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Get a file',
 			},
 			{
+				name: 'Move',
+				value: 'move',
+				description: 'Move a file',
+				action: 'Move a file',
+			},
+			{
 				name: 'Rename',
 				value: 'rename',
 				description: 'Rename a file',
@@ -239,6 +245,76 @@ export const fileFields: INodeProperties[] = [
 		description: 'Field ID',
 	},
 	/* -------------------------------------------------------------------------- */
+	/*                                 file:move                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['move'],
+				resource: ['file'],
+			},
+		},
+		default: '',
+		description: 'ID of the file to move',
+	},
+	{
+		displayName: 'Parent Reference',
+		name: 'parentReference',
+		type: 'collection',
+		placeholder: 'Add Parent Reference',
+		description: 'Reference to the destination folder the file will be moved into',
+		displayOptions: {
+			show: {
+				operation: ['move'],
+				resource: ['file'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Destination Folder ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				description: 'ID of the destination folder to move the item into',
+			},
+			{
+				displayName: 'Drive ID',
+				name: 'driveId',
+				type: 'string',
+				default: '',
+				description:
+					'Identifier of the destination drive. Required for app-only (Service Principal) moves to a user or site; leave empty to move within the same drive.',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['move'],
+				resource: ['file'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'New Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'A new name for the file. If omitted, the existing name is kept.',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
 	/*                                 file:rename                                */
 	/* -------------------------------------------------------------------------- */
 	{
@@ -271,6 +347,20 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:search                                */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName:
+			'Search is not available with the Service Principal credential. App-only Microsoft Graph cannot search a drive — use File: Get, or switch to an OAuth2 credential.',
+		name: 'searchUnsupportedNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['search'],
+				resource: ['file'],
+				authentication: ['microsoftEntraServicePrincipalApi'],
+			},
+		},
+	},
+	{
 		displayName: 'Query',
 		name: 'query',
 		type: 'string',
@@ -278,6 +368,9 @@ export const fileFields: INodeProperties[] = [
 			show: {
 				operation: ['search'],
 				resource: ['file'],
+			},
+			hide: {
+				authentication: ['microsoftEntraServicePrincipalApi'],
 			},
 		},
 		default: '',
@@ -287,6 +380,20 @@ export const fileFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 file:share                                 */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName:
+			'With the Service Principal credential, creating a sharing link uses application permissions and may require additional tenant or admin configuration to succeed.',
+		name: 'shareServicePrincipalNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['share'],
+				resource: ['file'],
+				authentication: ['microsoftEntraServicePrincipalApi'],
+			},
+		},
+	},
 	{
 		displayName: 'File ID',
 		name: 'fileId',
