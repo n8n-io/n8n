@@ -49,6 +49,14 @@ workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
 
+For workflows produced by `build-workflow`, prefer `verify-built-workflow` over
+raw `executions(action="run")`. It reuses the build outcome simulation plan,
+mocked credentials, and temporary pin data, so it is safe to call repeatedly.
+For follow-up requests like "verify again", call it with `workflowId` even if the
+original `workItemId` is not in context. For alternate deterministic scenarios,
+pass `fixtureOverrides` keyed by simulated node name instead of trying to force
+data through the trigger.
+
 ## After build-workflow succeeds
 
 1. Read `workflowId`, `workItemId`, `triggerNodes`, `verificationReadiness`, and
@@ -66,9 +74,9 @@ workflow as a precondition for running it.
      again.
    - If `verificationReadiness.status === "already_verified"`, treat the
      workflow as verified and do **not** call `verify-built-workflow` again.
-   - If `verificationReadiness.status === "ready"`, call
-     `verify-built-workflow` with the `workItemId` / `workflowId` and the
-     trigger-appropriate `inputData` shape.
+  - If `verificationReadiness.status === "ready"`, call
+    `verify-built-workflow` with the `workflowId`, the `workItemId` when you
+    have it, and the trigger-appropriate `inputData` shape.
    - If `verificationReadiness.status === "needs_setup"`, call
      `workflows(action="setup")` with the workflowId so the user can configure it
      through the inline setup card in the AI Assistant panel.

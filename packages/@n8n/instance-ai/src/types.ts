@@ -1231,6 +1231,7 @@ export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }

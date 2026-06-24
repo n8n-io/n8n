@@ -198,9 +198,15 @@ save. The job is done when one of these is true:
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
+Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
+be called again with `workflowId` if the original `workItemId` is no longer in
+context. For alternate deterministic scenarios, pass `fixtureOverrides` for
+nodes already classified as simulated. Use raw `executions(action="run")` only
+for ad hoc non-build verification or when the user explicitly wants a live run.
+
 Trigger input shapes:
 
-- Manual or Schedule: use `executions(action="run")` when appropriate. Schedule
+- Manual or Schedule: use `verify-built-workflow` when appropriate. Schedule
   usually needs no `inputData`.
 - Form Trigger: pass a flat field map, for example
   `{ "name": "Alice", "email": "a@b.c" }`. Do not wrap in `formFields`.

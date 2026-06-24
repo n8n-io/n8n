@@ -115,7 +115,10 @@ function buildNodePreviews(
  * fixture is still pinned (with an empty item) — losing output realism is
  * acceptable, executing a destructive operation is not.
  */
-function buildVerificationPinData(buildOutcome: WorkflowBuildOutcome): {
+function buildVerificationPinData(
+	buildOutcome: WorkflowBuildOutcome,
+	fixtureOverrides: VerifyInput['fixtureOverrides'],
+): {
 	pinData: Record<string, unknown[]> | undefined;
 	simulatedNodes: Array<{ nodeName: string; reason: string }>;
 } {
@@ -130,10 +133,31 @@ function buildVerificationPinData(buildOutcome: WorkflowBuildOutcome): {
 		merged[verdict.nodeName] = items?.length ? items : [{}];
 	}
 
+	if (fixtureOverrides) {
+		for (const [nodeName, items] of Object.entries(fixtureOverrides)) {
+			merged[nodeName] = items;
+		}
+	}
+
 	return {
 		pinData: Object.keys(merged).length > 0 ? merged : undefined,
 		simulatedNodes,
 	};
+}
+
+function getInvalidFixtureOverrideNodeNames(
+	buildOutcome: WorkflowBuildOutcome,
+	fixtureOverrides: VerifyInput['fixtureOverrides'],
+): string[] {
+	if (!fixtureOverrides) return [];
+
+	const simulatedNodeNames = new Set(
+		(buildOutcome.nodeSimulationPlan ?? [])
+			.filter((verdict) => verdict.verdict === 'simulate')
+			.map((verdict) => verdict.nodeName),
+	);
+
+	return Object.keys(fixtureOverrides).filter((nodeName) => !simulatedNodeNames.has(nodeName));
 }
 
 function countProducedOutputRows(
@@ -149,7 +173,12 @@ function countProducedOutputRows(
 }
 
 export const verifyBuiltWorkflowInputSchema = z.object({
-	workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
+	workItemId: z
+		.string()
+		.optional()
+		.describe(
+			'The work item ID from the build (wi_XXXXXXXX). Optional for follow-up verification; when omitted, the latest build outcome for workflowId in this thread is used.',
+		),
 	workflowId: z.string().describe('The workflow ID to verify'),
 	inputData: z
 		.record(z.unknown())
@@ -181,6 +210,12 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.max(20_000)
 		.optional()
 		.describe('Max characters per node preview in the compact response (default 600).'),
+	fixtureOverrides: z
+		.record(z.array(z.record(z.unknown())))
+		.optional()
+		.describe(
+			'Optional per-run output fixtures keyed by node name. Only nodes already classified as simulated in the build outcome may be overridden. Use this for alternate deterministic scenarios, not raw trigger input.',
+		),
 });
 
 const remediationOutputSchema = z
@@ -276,6 +311,7 @@ function classifyVerificationFailure(
 }
 
 const verifyBuiltWorkflowOutputSchema = z.object({
+	resolvedWorkItemId: z.string().optional(),
 	executionId: z.string().optional(),
 	success: z.boolean(),
 	status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
@@ -305,6 +341,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 
 type VerifyBuiltWorkflowOutput = z.infer<typeof verifyBuiltWorkflowOutputSchema>;
 type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
+type ResolvedVerifyInput = VerifyInput & { workItemId: string };
 type WorkflowTaskService = NonNullable<OrchestrationContext['workflowTaskService']>;
 type ExecutionRunResult = Awaited<
 	ReturnType<NonNullable<OrchestrationContext['domainContext']>['executionService']['run']>
@@ -329,6 +366,7 @@ async function resolveVerifyPreconditions(
 ): Promise<
 	| { result: VerifyBuiltWorkflowOutput }
 	| {
+			input: ResolvedVerifyInput;
 			buildOutcome: WorkflowBuildOutcome;
 			workflowId: string;
 			stateBefore: Awaited<ReturnType<WorkflowTaskService['getWorkflowLoopState']>> | undefined;
@@ -348,7 +386,35 @@ async function resolveVerifyPreconditions(
 		};
 	}
 
-	const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
+	const buildOutcome =
+		(input.workItemId
+			? await context.workflowTaskService.getBuildOutcome(input.workItemId)
+			: undefined) ??
+		(await context.workflowTaskService.getLatestBuildOutcomeForWorkflow(input.workflowId));
+	if (!buildOutcome) {
+		const target = input.workItemId
+			? `work item ${input.workItemId} or workflow ${input.workflowId}`
+			: `workflow ${input.workflowId}`;
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'missing_build_outcome',
+			guidance: `No build outcome found for ${target}. Stop code edits and explain the blocker.`,
+		});
+		return {
+			result: {
+				success: false,
+				error: `No build outcome found for ${target}.`,
+				remediation,
+				guidance: remediation.guidance,
+			},
+		};
+	}
+
+	const resolvedInput: ResolvedVerifyInput = { ...input, workItemId: buildOutcome.workItemId };
+	const stateBefore = await context.workflowTaskService.getWorkflowLoopState(
+		resolvedInput.workItemId,
+	);
 	const terminalRemediation =
 		stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
 			? terminalRemediationFromState(stateBefore, context.runId)
@@ -357,27 +423,10 @@ async function resolveVerifyPreconditions(
 		return {
 			result: {
 				success: false,
+				resolvedWorkItemId: resolvedInput.workItemId,
 				error: terminalRemediation.guidance,
 				remediation: terminalRemediation,
 				guidance: terminalRemediation.guidance,
-			},
-		};
-	}
-
-	const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
-	if (!buildOutcome) {
-		const remediation = createRemediation({
-			category: 'blocked',
-			shouldEdit: false,
-			reason: 'missing_build_outcome',
-			guidance: `No build outcome found for work item ${input.workItemId}. Stop code edits and explain the blocker.`,
-		});
-		return {
-			result: {
-				success: false,
-				error: `No build outcome found for work item ${input.workItemId}.`,
-				remediation,
-				guidance: remediation.guidance,
 			},
 		};
 	}
@@ -386,7 +435,8 @@ async function resolveVerifyPreconditions(
 		return {
 			result: {
 				success: false,
-				error: `Build outcome ${input.workItemId} does not include a workflow ID.`,
+				resolvedWorkItemId: resolvedInput.workItemId,
+				error: `Build outcome ${resolvedInput.workItemId} does not include a workflow ID.`,
 			},
 		};
 	}
@@ -395,14 +445,16 @@ async function resolveVerifyPreconditions(
 		return {
 			result: {
 				success: false,
+				resolvedWorkItemId: resolvedInput.workItemId,
 				error:
-					`Build outcome ${input.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
+					`Build outcome ${resolvedInput.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
 					`but verification was requested for workflow ${input.workflowId}.`,
 			},
 		};
 	}
 
 	return {
+		input: resolvedInput,
 		buildOutcome,
 		workflowId: buildOutcome.workflowId,
 		stateBefore,
@@ -416,7 +468,7 @@ async function resolveVerifyPreconditions(
  * nodes), persist the terminal verdict best-effort, and return a blocked result.
  */
 async function handleMissingSimulationPlan(
-	input: VerifyInput,
+	input: ResolvedVerifyInput,
 	context: OrchestrationContext,
 	workflowTaskService: WorkflowTaskService,
 	workflowId: string,
@@ -467,12 +519,19 @@ async function handleMissingSimulationPlan(
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
-	return { success: false, status: 'unknown', error: guidance, remediation, guidance };
+	return {
+		success: false,
+		resolvedWorkItemId: input.workItemId,
+		status: 'unknown',
+		error: guidance,
+		remediation,
+		guidance,
+	};
 }
 
 /** Persist a structured verification record onto the build outcome (best-effort). */
 async function persistVerificationRecord(
-	input: VerifyInput,
+	input: ResolvedVerifyInput,
 	workflowTaskService: WorkflowTaskService,
 	args: {
 		success: boolean;
@@ -508,7 +567,7 @@ async function persistVerificationRecord(
 
 /** Report a terminal (non-editable) remediation verdict and emit guard telemetry (best-effort). */
 async function reportTerminalRemediation(
-	input: VerifyInput,
+	input: ResolvedVerifyInput,
 	context: OrchestrationContext,
 	workflowTaskService: WorkflowTaskService,
 	args: { remediation: RemediationMetadata; workflowId: string; executionId: string | undefined },
@@ -610,8 +669,14 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 		.handler(async (input: VerifyInput) => {
 			const preconditions = await resolveVerifyPreconditions(input, context);
 			if ('result' in preconditions) return preconditions.result;
-			const { buildOutcome, workflowId, stateBefore, workflowTaskService, domainContext } =
-				preconditions;
+			const {
+				input: resolvedInput,
+				buildOutcome,
+				workflowId,
+				stateBefore,
+				workflowTaskService,
+				domainContext,
+			} = preconditions;
 
 			// Destructive nodes (including dataTable writes) are simulated via the
 			// build outcome's node simulation plan, so verification creates no
@@ -623,17 +688,47 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// silently executing everything for real.
 			const planMissing = buildOutcome.nodeSimulationPlan === undefined;
 			if (planMissing) {
-				return await handleMissingSimulationPlan(input, context, workflowTaskService, workflowId);
+				return await handleMissingSimulationPlan(
+					resolvedInput,
+					context,
+					workflowTaskService,
+					workflowId,
+				);
 			}
-			const { pinData: verificationPinData, simulatedNodes } =
-				buildVerificationPinData(buildOutcome);
+			const invalidFixtureOverrideNodeNames = getInvalidFixtureOverrideNodeNames(
+				buildOutcome,
+				resolvedInput.fixtureOverrides,
+			);
+			if (invalidFixtureOverrideNodeNames.length > 0) {
+				const guidance =
+					'Fixture overrides can only target nodes already classified as simulated in the build outcome. ' +
+					`Invalid override node(s): ${invalidFixtureOverrideNodeNames.join(', ')}. ` +
+					'Do not run the workflow live; rebuild with declared output fixtures or override a simulated node.';
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'invalid_fixture_override',
+					guidance,
+				});
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: guidance,
+					remediation,
+					guidance,
+				};
+			}
+			const { pinData: verificationPinData, simulatedNodes } = buildVerificationPinData(
+				buildOutcome,
+				resolvedInput.fixtureOverrides,
+			);
 			const simulationMap =
 				simulatedNodes.length > 0
 					? Object.fromEntries(simulatedNodes.map((n) => [n.nodeName, { reason: n.reason }]))
 					: undefined;
 
-			const result = await domainContext.executionService.run(workflowId, input.inputData, {
-				timeout: input.timeout,
+			const result = await domainContext.executionService.run(workflowId, resolvedInput.inputData, {
+				timeout: resolvedInput.timeout,
 				pinData: verificationPinData,
 				simulation: simulationMap,
 			});
@@ -684,7 +779,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 
 			// Persist a structured verification record (best-effort) so the checkpoint
 			// follow-up turn can reuse it instead of re-running verify.
-			await persistVerificationRecord(input, workflowTaskService, {
+			await persistVerificationRecord(resolvedInput, workflowTaskService, {
 				success,
 				result,
 				reachedNames,
@@ -692,19 +787,20 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			});
 
 			if (remediation && !remediation.shouldEdit) {
-				await reportTerminalRemediation(input, context, workflowTaskService, {
+				await reportTerminalRemediation(resolvedInput, context, workflowTaskService, {
 					remediation,
 					workflowId,
 					executionId: result.executionId || undefined,
 				});
 			}
 
-			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
+			const maxDataChars = resolvedInput.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
 			const nodesExecuted = namesOrDataKeys(reachedNames, result.data);
 			const simulatedNames = new Set(reachedSimulatedNodes.map((n) => n.nodeName));
 			const simulationNote = buildSimulationNote(reachedSimulatedNodes, planMissing);
 			const coverageNote = buildCoverageNote(nodesNotReached, result, success);
 			return {
+				resolvedWorkItemId: resolvedInput.workItemId,
 				executionId: result.executionId || undefined,
 				success,
 				status: result.status,
@@ -715,7 +811,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				simulationNote,
 				nodesNotReached: nodesNotReached.length > 0 ? nodesNotReached : undefined,
 				coverageNote,
-				...(input.includeData ? { data: result.data } : {}),
+				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: result.error,
 				remediation,
 				guidance: remediation?.guidance,

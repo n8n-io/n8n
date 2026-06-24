@@ -1556,6 +1556,8 @@ export class InstanceAiService {
 				await sync();
 			},
 			getBuildOutcome: async (workItemId) => await workflowTasks.getBuildOutcome(workItemId),
+			getLatestBuildOutcomeForWorkflow: async (workflowId) =>
+				await workflowTasks.getLatestBuildOutcomeForWorkflow(workflowId),
 			getWorkflowLoopState: async (workItemId) =>
 				await workflowTasks.getWorkflowLoopState(workItemId),
 		};
