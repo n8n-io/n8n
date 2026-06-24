@@ -1,11 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+import { mockInstance } from '@test/utils';
 
 import { scanDirectoryForPackages } from '../scan-directory-for-packages';
 
 describe('scanDirectoryForPackages', () => {
 	let nodeModulesDir: string;
+	const logger = mockInstance(Logger);
 
 	beforeEach(() => {
 		nodeModulesDir = mkdtempSync(path.join(tmpdir(), 'n8n-scan-'));
@@ -15,24 +19,44 @@ describe('scanDirectoryForPackages', () => {
 		rmSync(nodeModulesDir, { recursive: true, force: true });
 	});
 
+	const writePackage = (name: string) => {
+		const dir = path.join(nodeModulesDir, name);
+		mkdirSync(dir);
+		writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name, version: '1.0.0' }));
+		return dir;
+	};
+
+	it('returns a loader for every healthy package directory', async () => {
+		writePackage('n8n-nodes-good');
+		writePackage('n8n-nodes-better');
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders.map((loader) => loader.packageName).sort()).toEqual([
+			'n8n-nodes-better',
+			'n8n-nodes-good',
+		]);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
 	// Reproduces NODE-5161: a directory matching `n8n-nodes-*` left behind by a
 	// partial/corrupt community-package install has no readable `package.json`.
-	// The broken package should be skipped so the instance still boots.
-	it('skips a matched package directory that has no package.json', async () => {
+	// The broken package should be logged and skipped so the instance still boots.
+	it('logs and skips a matched package directory that has no package.json', async () => {
 		// Broken package: matches the glob but has no package.json
-		mkdirSync(path.join(nodeModulesDir, 'n8n-nodes-foo'));
+		const brokenDir = path.join(nodeModulesDir, 'n8n-nodes-foo');
+		mkdirSync(brokenDir);
 
 		// Healthy package alongside it
-		const goodDir = path.join(nodeModulesDir, 'n8n-nodes-good');
-		mkdirSync(goodDir);
-		writeFileSync(
-			path.join(goodDir, 'package.json'),
-			JSON.stringify({ name: 'n8n-nodes-good', version: '1.0.0' }),
-		);
+		writePackage('n8n-nodes-good');
 
 		const loaders = await scanDirectoryForPackages(nodeModulesDir);
 
 		expect(loaders).toHaveLength(1);
 		expect(loaders[0].packageName).toBe('n8n-nodes-good');
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining(brokenDir),
+			expect.objectContaining({ error: expect.any(Error) }),
+		);
 	});
 });

@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import glob from 'fast-glob';
 import { type NodeLoader } from 'n8n-workflow';
 import path from 'path';
@@ -24,12 +26,22 @@ export async function scanDirectoryForPackages(
 		...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
 	];
 
-	return installedPackagePaths.map(
-		(packagePath) =>
-			new LazyPackageDirectoryLoader(
-				path.join(nodeModulesDir, packagePath),
-				options.excludeNodes,
-				options.includeNodes,
-			),
-	);
+	const logger = Container.get(Logger);
+	const loaders: NodeLoader[] = [];
+
+	for (const packagePath of installedPackagePaths) {
+		const packageDir = path.join(nodeModulesDir, packagePath);
+		try {
+			// The constructor reads `package.json` synchronously. A partial or
+			// corrupt community-package install can leave a matching directory
+			// without a readable `package.json`; skip it instead of crashing boot.
+			loaders.push(
+				new LazyPackageDirectoryLoader(packageDir, options.excludeNodes, options.includeNodes),
+			);
+		} catch (error) {
+			logger.warn(`Failed to load community package at "${packageDir}", skipping`, { error });
+		}
+	}
+
+	return loaders;
 }
