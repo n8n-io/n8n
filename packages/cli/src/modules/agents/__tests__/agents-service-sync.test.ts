@@ -1,20 +1,15 @@
 /* eslint-disable @typescript-eslint/require-await -- mock implementations kept async for future-proofing */
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
-
-import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -51,20 +46,9 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<Logger>(),
 			agentRepository,
 			mock<ProjectRelationRepository>(),
-			mock<N8NCheckpointStorage>(),
-			mock<N8nMemory>(),
-			mock<AgentExecutionService>(),
-			mock(),
-			mock<AgentSkillsService>(),
-			mock(), // AgentTaskRepository
-			mock(), // AgentTaskSnapshotRepository
-			mock(),
-			{ modules: [] } as unknown as AgentsConfig,
-			mock(),
-			mock<Telemetry>(),
-			mock<ChatIntegrationService>(),
-			mock(),
-			mock(),
+			mock<AgentKnowledgeService>(),
+			mock<AgentRuntimeCacheService>(),
+			mock<AgentTestChatService>(),
 		);
 	});
 

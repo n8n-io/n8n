@@ -49,6 +49,7 @@ const operationTypeSchema = z.enum([
 	'setWorkflowMetadata',
 	'addTags',
 	'removeTags',
+	'setNodeGroups',
 ]);
 
 const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
@@ -117,6 +118,16 @@ const operationInputSchema = z
 		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
 		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
 		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
+		nodeGroups: z
+			.array(
+				z.object({
+					id: z.string().optional(),
+					name: z.string(),
+					nodeIds: z.array(z.string()),
+				}),
+			)
+			.optional()
+			.describe('For setNodeGroups. Replaces all node groups; pass [] to clear.'),
 	})
 	.describe('Workflow update operation. Provide fields matching type.');
 
@@ -356,6 +367,10 @@ export const createUpdateWorkflowTool = (
 				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
 			);
 
+			// Only persist nodeGroups when a setNodeGroups op ran; otherwise omit the key so
+			// WorkflowService preserves the existing groups (preserve-on-omit).
+			const hasNodeGroupOperation = strictOperations.some((op) => op.type === 'setNodeGroups');
+
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
@@ -364,6 +379,7 @@ export const createUpdateWorkflowTool = (
 					: {}),
 				nodes: result.workflow.nodes,
 				connections: result.workflow.connections,
+				...(hasNodeGroupOperation ? { nodeGroups: result.workflow.nodeGroups } : {}),
 				meta: hasNonTagOperations
 					? {
 							...(existingWorkflow.meta ?? {}),
@@ -398,7 +414,10 @@ export const createUpdateWorkflowTool = (
 			}
 
 			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
-			const validator = new ParseValidateHandler({ generatePinData: false });
+			const validator = new ParseValidateHandler({
+				generatePinData: false,
+				nodeTypesProvider: nodeTypes,
+			});
 			const validationWarnings = validator.validateJSON({
 				name: workflowUpdateData.name,
 				nodes: workflowUpdateData.nodes,

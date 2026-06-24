@@ -1349,7 +1349,7 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
 		});
 
-		test('does not show the not-connected warning banner for static OAuth credentials', async () => {
+		test('shows the not-connected warning banner for static OAuth credentials that are not yet connected', async () => {
 			const pinia = createPiniaForBannerTest();
 			const credentialsStore = setupOAuthCredential({
 				isResolvable: false,
@@ -1365,7 +1365,7 @@ describe('CredentialEdit', () => {
 			});
 
 			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 		});
 
 		describe('switching a connected private credential to static', () => {

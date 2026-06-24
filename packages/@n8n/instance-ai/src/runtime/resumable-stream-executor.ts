@@ -1,5 +1,6 @@
 import type { RedactionOptions, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
@@ -77,10 +78,6 @@ export interface ExecuteResumableStreamResult {
 	workSummary: WorkSummary;
 	/** Accumulated token usage and cost, when the stream emitted usage. */
 	usage?: RunTokenUsage;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -337,6 +334,22 @@ async function consumeStreamPass(args: {
 
 	for await (const chunk of activeStream) {
 		if (options.context.signal.aborted) {
+			// A stop aborts the agent stream too: it stops generating and emits a
+			// terminal finish chunk carrying the run's usage. Drain the rest of the
+			// stream (without publishing further events) so that usage is observed
+			// and the cancelled run still gets billed for the tokens it consumed.
+			usageAccumulator.observe(chunk);
+			try {
+				for await (const remaining of activeStream) {
+					usageAccumulator.observe(remaining);
+				}
+			} catch (drainError) {
+				options.context.logger.debug('Instance AI abort drain ended early', {
+					threadId: options.context.threadId,
+					runId: options.context.runId,
+					error: drainError instanceof Error ? drainError.message : String(drainError),
+				});
+			}
 			return {
 				cancelled: true,
 				hasError,

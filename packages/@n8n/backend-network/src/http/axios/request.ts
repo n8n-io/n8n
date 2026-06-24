@@ -1,8 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
 import type { AxiosRequestConfig } from 'axios';
-import axios from 'axios';
-import type { AgentOptions } from 'https';
 import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
@@ -12,12 +8,13 @@ import type {
 import { isObjectEmpty } from 'n8n-workflow';
 import { stringify } from 'qs';
 
+import { invokeAxios } from './invoke';
+import { followSsrfRedirects, shouldFollowRedirectsManually } from './redirect';
 import { applyDefaultOutboundUserAgent } from './user-agent';
 import {
+	buildAgentOptions,
 	buildTargetUrl,
-	digestAuthAxiosConfig,
 	getBeforeRedirectFn,
-	getHostFromRequestObject,
 	isFormDataInstance,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
@@ -26,31 +23,6 @@ import {
 	validateUrlSsrf,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
-
-export async function invokeAxios(
-	axiosConfig: AxiosRequestConfig,
-	authOptions: IRequestOptions['auth'] = {},
-) {
-	try {
-		return await axios(axiosConfig);
-	} catch (error) {
-		if (authOptions.sendImmediately !== false || !(error instanceof axios.AxiosError)) throw error;
-		// for digest-auth
-		const { response } = error;
-		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-			throw error;
-		}
-		// Credentials were withheld from the initial request; take them from the
-		// auth options (accepts both user/pass and username/password) for the digest response.
-		const auth = {
-			username: (authOptions.user ?? authOptions.username) as string,
-			password: (authOptions.password ?? authOptions.pass) as string,
-		};
-		delete axiosConfig.auth;
-		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
-		return await axios(axiosConfig);
-	}
-}
 
 export function convertN8nRequestToAxios(
 	n8nRequest: IHttpRequestOptions,
@@ -63,9 +35,7 @@ export function convertN8nRequestToAxios(
 		headers: headers ?? {},
 		method,
 		timeout,
-		// Withhold credentials for challenge-response schemes (e.g. Digest);
-		// invokeAxios sends them after the server's challenge.
-		auth: auth?.sendImmediately === false ? undefined : auth,
+		auth,
 		url,
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
@@ -91,14 +61,7 @@ export function convertN8nRequestToAxios(
 		axiosRequest.responseType = n8nRequest.encoding;
 	}
 
-	const host = getHostFromRequestObject(n8nRequest);
-	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
-	}
-	if (n8nRequest.skipSslCertificateValidation === true) {
-		agentOptions.rejectUnauthorized = false;
-	}
+	const agentOptions = buildAgentOptions(n8nRequest);
 	setAxiosAgents(axiosRequest, agentOptions, proxy, ssrfBridge ?? 'disabled');
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(
@@ -235,7 +198,17 @@ export async function httpRequest(
 
 	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
 
-	const result = await invokeAxios(axiosRequest, requestOptions.auth);
+	const result = shouldFollowRedirectsManually(axiosRequest, requestOptions.proxy, ssrfBridge)
+		? await followSsrfRedirects(axiosRequest, {
+				ssrf: ssrfBridge,
+				proxyConfig: requestOptions.proxy,
+				agentOptions: buildAgentOptions(requestOptions),
+				allowedDomains: requestOptions.allowedDomains,
+				sendCredentialsOnCrossOriginRedirect:
+					requestOptions.sendCredentialsOnCrossOriginRedirect ?? true,
+				authSendImmediately: requestOptions.auth?.sendImmediately,
+			})
+		: await invokeAxios(axiosRequest, requestOptions.auth?.sendImmediately);
 
 	if (requestOptions.returnFullResponse) {
 		return {

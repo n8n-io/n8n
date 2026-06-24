@@ -8,120 +8,12 @@ import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '../../../ssrf';
 import { configureGlobalAxiosDefaults } from '../config';
-import { convertN8nRequestToAxios, httpRequest, invokeAxios, removeEmptyBody } from '../request';
+import { convertN8nRequestToAxios, httpRequest, removeEmptyBody } from '../request';
 
 // Sets axios defaults and registers the vendor-header interceptor.
 configureGlobalAxiosDefaults();
 
 const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
-
-describe('invokeAxios', () => {
-	const baseUrl = 'https://example.de';
-
-	beforeEach(() => {
-		nock.cleanAll();
-		vi.clearAllMocks();
-	});
-
-	it('should throw error for non-401 status codes', async () => {
-		nock(baseUrl).get('/test').reply(500, {});
-
-		await expect(invokeAxios({ url: `${baseUrl}/test` })).rejects.toThrow(
-			'Request failed with status code 500',
-		);
-	});
-
-	it('should throw error on 401 without digest auth challenge', async () => {
-		nock(baseUrl).get('/test').reply(401, {});
-
-		await expect(
-			invokeAxios(
-				{
-					url: `${baseUrl}/test`,
-				},
-				{ sendImmediately: false },
-			),
-		).rejects.toThrow('Request failed with status code 401');
-	});
-
-	it('should make successful requests', async () => {
-		nock(baseUrl).get('/test').reply(200, { success: true });
-
-		const response = await invokeAxios({
-			url: `${baseUrl}/test`,
-		});
-
-		expect(response.status).toBe(200);
-		expect(response.data).toEqual({ success: true });
-	});
-
-	it('should handle digest auth when receiving 401 with nonce', async () => {
-		// The first request must stay unauthenticated so the server issues its challenge.
-		nock(baseUrl, { badheaders: ['authorization'] })
-			.get('/test')
-			.once()
-			.reply(401, {}, { 'www-authenticate': 'Digest realm="test", nonce="abc123", qop="auth"' });
-
-		nock(baseUrl)
-			.get('/test')
-			.matchHeader(
-				'authorization',
-				/^Digest username="user",realm="test",nonce="abc123",uri="\/test",qop="auth",algorithm="MD5",response="[0-9a-f]{32}"/,
-			)
-			.reply(200, { success: true });
-
-		const response = await invokeAxios(
-			{
-				url: `${baseUrl}/test`,
-			},
-			{ user: 'user', pass: 'pass', sendImmediately: false },
-		);
-
-		expect(response.status).toBe(200);
-		expect(response.data).toEqual({ success: true });
-	});
-
-	it('should handle digest auth with username/password spelling', async () => {
-		nock(baseUrl, { badheaders: ['authorization'] })
-			.get('/test')
-			.once()
-			.reply(401, {}, { 'www-authenticate': 'Digest realm="test", nonce="abc123", qop="auth"' });
-
-		nock(baseUrl)
-			.get('/test')
-			.matchHeader(
-				'authorization',
-				/^Digest username="user",realm="test",nonce="abc123",uri="\/test",qop="auth",algorithm="MD5",response="[0-9a-f]{32}"/,
-			)
-			.reply(200, { success: true });
-
-		const response = await invokeAxios(
-			{
-				url: `${baseUrl}/test`,
-			},
-			{ username: 'user', password: 'pass', sendImmediately: false },
-		);
-
-		expect(response.status).toBe(200);
-		expect(response.data).toEqual({ success: true });
-	});
-
-	it('should include vendor headers in requests to OpenAi', async () => {
-		const { openAiDefaultHeaders } = Container.get(AiConfig);
-		nock('https://api.openai.com', {
-			reqheaders: openAiDefaultHeaders,
-		})
-			.get('/chat')
-			.reply(200, { success: true });
-
-		const response = await invokeAxios({
-			url: 'https://api.openai.com/chat',
-		});
-
-		expect(response.status).toBe(200);
-		expect(response.data).toEqual({ success: true });
-	});
-});
 
 describe('removeEmptyBody', () => {
 	test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
@@ -217,38 +109,6 @@ describe('convertN8nRequestToAxios', () => {
 				params: { param1: 'value1' },
 			}),
 		);
-	});
-
-	test('should pass credentials through when sendImmediately is not false', () => {
-		const axiosConfig = convertN8nRequestToAxios({
-			method: 'GET',
-			url: 'https://example.com',
-			auth: { username: 'user', password: 'pass' },
-		});
-
-		expect(axiosConfig.auth).toEqual({ username: 'user', password: 'pass' });
-	});
-
-	test('should pass credentials through when sendImmediately is explicitly true', () => {
-		const axiosConfig = convertN8nRequestToAxios({
-			method: 'GET',
-			url: 'https://example.com',
-			auth: { username: 'user', password: 'pass', sendImmediately: true },
-		});
-
-		expect(axiosConfig.auth).toMatchObject({ username: 'user', password: 'pass' });
-	});
-
-	test('should withhold credentials on the first request when sendImmediately is false', () => {
-		const axiosConfig = convertN8nRequestToAxios({
-			method: 'GET',
-			url: 'https://example.com',
-			auth: { username: 'user', password: 'pass', sendImmediately: false },
-		});
-
-		// Challenge-response schemes (e.g. Digest) must not send credentials up
-		// front; invokeAxios applies them after the 401 challenge.
-		expect(axiosConfig.auth).toBeUndefined();
 	});
 
 	test('should handle body and content type', () => {
