@@ -1,3 +1,4 @@
+import { McpClient } from '../../sdk/mcp-client';
 import { McpConnection } from '../mcp-connection';
 
 const sseCtor = vi.fn();
@@ -116,5 +117,114 @@ describe('McpConnection — custom fetch forwarding', () => {
 		];
 		expect(options.fetch).toBeUndefined();
 		expect(options.eventSourceInit).toBeUndefined();
+	});
+});
+
+describe('McpClient — connection error formatting', () => {
+	beforeEach(() => {
+		clientConnect.mockReset();
+		clientListTools.mockReset();
+		clientClose.mockReset();
+	});
+
+	it('includes nested fetch causes in the aggregated connection error', async () => {
+		clientConnect.mockRejectedValueOnce(
+			new TypeError('fetch failed', {
+				cause: new Error('The request was blocked because it resolves to a restricted IP address'),
+			}),
+		);
+
+		const client = new McpClient([
+			{
+				name: 'custom_mcp',
+				url: 'http://localhost:5678/mcp/my-mcp-server',
+				transport: 'streamableHttp',
+			},
+		]);
+
+		await expect(client.listTools()).rejects.toThrow(
+			'MCP connection failed:\n\tcustom_mcp: fetch failed. The request was blocked because it resolves to a restricted IP address',
+		);
+	});
+});
+
+describe('McpConnection — tool filtering', () => {
+	beforeEach(() => {
+		clientConnect.mockClear();
+		clientListTools.mockClear();
+		clientListTools.mockResolvedValue({
+			tools: [
+				{ name: 'echo', description: '', inputSchema: { type: 'object' } },
+				{ name: 'add', description: '', inputSchema: { type: 'object' } },
+				{ name: 'subtract', description: '', inputSchema: { type: 'object' } },
+			],
+		});
+	});
+
+	it('returns all tools when no filter is configured', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_add', 's1_subtract']);
+	});
+
+	it('keeps only allowed tools when allow filter is configured', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'allow', tools: ['echo', 'subtract'] },
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_subtract']);
+	});
+
+	it('removes excluded tools when exclude filter is configured', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'exclude', tools: ['add'] },
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_subtract']);
+	});
+
+	it('returns no tools for allow mode with an empty list', async () => {
+		const allowConn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'allow', tools: [] },
+		});
+		await allowConn.connect();
+		const allowTools = await allowConn.listTools();
+
+		expect(allowTools).toHaveLength(0);
+	});
+
+	it('keeps all tools for exclude mode with an empty list', async () => {
+		const excludeConn = new McpConnection({
+			name: 's2',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'exclude', tools: [] },
+		});
+		await excludeConn.connect();
+		const excludeTools = await excludeConn.listTools();
+
+		expect(excludeTools.map((tool) => tool.name)).toEqual(['s2_echo', 's2_add', 's2_subtract']);
 	});
 });

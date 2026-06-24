@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import {
 	agentSkillSchema,
 	agentTaskSchema,
@@ -10,6 +10,8 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,17 +20,15 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { OauthService } from '@/oauth/oauth.service';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
-import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-} from '../json-config/native-web-search-provider-tools';
-import { AgentRepository } from '../repositories/agent.repository';
-import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { BUILDER_TOOLS } from './builder-tool-names';
 import {
 	buildAskCredentialTool,
 	buildAskLlmTool,
@@ -36,13 +36,17 @@ import {
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { OauthService } from '@/oauth/oauth.service';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import {
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+} from '../json-config/native-web-search-provider-tools';
+import { AgentRepository } from '../repositories/agent.repository';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -191,6 +195,9 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	getTools(
@@ -471,6 +478,11 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
+				proxyFetch: createAiMcpFetch(
+					this.outboundHttp,
+					this.ssrfConfig,
+					this.ssrfProtectionService,
+				),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];

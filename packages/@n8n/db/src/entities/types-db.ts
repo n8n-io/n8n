@@ -461,7 +461,7 @@ export type AuthenticatedRequest<
 };
 
 export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
-	return 'user' in req && req.user !== null;
+	return 'user' in req && Object.hasOwn(req, 'user') && req.user !== null;
 }
 
 /**

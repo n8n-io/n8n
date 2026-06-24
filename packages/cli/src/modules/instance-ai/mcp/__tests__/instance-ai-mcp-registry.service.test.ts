@@ -1,4 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -17,6 +24,7 @@ import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.servic
 import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
 
 const proxyFetchMock = jest.fn();
+const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 jest.mock('@n8n/ai-utilities', () => ({
 	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
@@ -72,6 +80,10 @@ describe('InstanceAiMcpRegistryService', () => {
 		const credentialsService = mock<CredentialsService>();
 		const oauthService = mock<OauthService>();
 		const eventService = mock<EventService>();
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(proxyFetch);
+		const outboundHttp = mock<OutboundHttp>();
+		outboundHttp.transport.mockReturnValue(transport);
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -81,6 +93,9 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 			eventService,
+			outboundHttp,
+			mock<SsrfProtectionConfig>({ enabled: true }),
+			mock<SsrfProtectionService>(),
 		);
 
 		return {
@@ -92,6 +107,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 			eventService,
+			outboundHttp,
 		};
 	}
 
@@ -183,6 +199,29 @@ describe('InstanceAiMcpRegistryService', () => {
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-3', user, [
 			'credential:read',
 		]);
+	});
+
+	it('builds MCP fetch with OutboundHttp default SSRF protection enabled', async () => {
+		const {
+			service,
+			connectionRepository,
+			mcpRegistryService,
+			credentialsFinderService,
+			credentialsService,
+			outboundHttp,
+		} = createService();
+		connectionRepository.findBy.mockResolvedValue([
+			{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
+		] as InstanceAiMcpRegistryConnection[]);
+		mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+		credentialsService.decrypt.mockResolvedValue(oauthCredentialData);
+
+		await service.getRegistryMcpServers(user);
+
+		expect(outboundHttp.transport).toHaveBeenCalledWith(
+			expect.not.objectContaining({ ssrf: 'disabled' }),
+		);
 	});
 
 	it('skips connections with missing server slugs or unsupported remotes', async () => {
@@ -307,6 +346,114 @@ describe('InstanceAiMcpRegistryService', () => {
 			credential.id,
 			'project-1',
 		);
+	});
+
+	describe('credential domain restrictions', () => {
+		it('returns a fetch that blocks when credential mode is "none" (block all)', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				credentialsService,
+			} = createService();
+			connectionRepository.findBy.mockResolvedValue([
+				{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
+			] as InstanceAiMcpRegistryConnection[]);
+			mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue({
+				...oauthCredentialData,
+				allowedHttpRequestDomains: 'none',
+			});
+
+			const result = await service.getRegistryMcpServers(user);
+
+			expect(result).toHaveLength(1);
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).not.toHaveBeenCalled();
+		});
+
+		it('returns a fetch that blocks when endpoint URL is not in the credential allowlist', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				credentialsService,
+			} = createService();
+			connectionRepository.findBy.mockResolvedValue([
+				{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
+			] as InstanceAiMcpRegistryConnection[]);
+			mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue({
+				...oauthCredentialData,
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'other-host.test',
+			});
+
+			const result = await service.getRegistryMcpServers(user);
+
+			expect(result).toHaveLength(1);
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).not.toHaveBeenCalled();
+		});
+
+		it('allows connection when endpoint URL matches the credential allowlist', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				credentialsService,
+			} = createService();
+			connectionRepository.findBy.mockResolvedValue([
+				{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
+			] as InstanceAiMcpRegistryConnection[]);
+			mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue({
+				...oauthCredentialData,
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'linear.example.com',
+			});
+
+			const result = await service.getRegistryMcpServers(user);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					name: 'mcp_linear',
+					url: 'https://linear.example.com/mcp',
+					fetch: expect.any(Function),
+				}),
+			);
+		});
+
+		it('allows connection when credential mode is "all"', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				credentialsService,
+			} = createService();
+			connectionRepository.findBy.mockResolvedValue([
+				{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
+			] as InstanceAiMcpRegistryConnection[]);
+			mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue({
+				...oauthCredentialData,
+				allowedHttpRequestDomains: 'all',
+			});
+
+			const result = await service.getRegistryMcpServers(user);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].fetch).toBeDefined();
+		});
 	});
 
 	describe('listConnectionsForUser', () => {

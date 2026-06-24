@@ -6,14 +6,9 @@ import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from '
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge } from '../../ssrf';
-import { configureGlobalAxiosDefaults } from '../axios-config';
-import {
-	convertN8nRequestToAxios,
-	httpRequest,
-	invokeAxios,
-	removeEmptyBody,
-} from '../http-request';
+import type { SsrfBridge } from '../../../ssrf';
+import { configureGlobalAxiosDefaults } from '../config';
+import { convertN8nRequestToAxios, httpRequest, invokeAxios, removeEmptyBody } from '../request';
 
 // Sets axios defaults and registers the vendor-header interceptor.
 configureGlobalAxiosDefaults();
@@ -636,6 +631,7 @@ describe('SSRF protection', () => {
 	const createSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({
 		validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
 		validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+		validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
 		validateRedirectSync: vi.fn(),
 		createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 		...overrides,

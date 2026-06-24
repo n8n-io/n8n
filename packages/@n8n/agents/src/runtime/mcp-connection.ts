@@ -54,6 +54,30 @@ async function loadMcpSdk(): Promise<McpSdkModule> {
 	return await mcpSdkPromise;
 }
 
+/**
+ * Restrict the raw tools advertised by a server to those permitted by its
+ * `toolFilter`. Matching is by the original (un-prefixed) tool name, so this
+ * must run before the resolver applies the server-name prefix.
+ */
+function applyToolFilter<T extends { name: string }>(
+	tools: T[],
+	toolFilter: McpServerConfig['toolFilter'],
+): T[] {
+	if (!toolFilter?.mode || !toolFilter?.tools) {
+		return tools;
+	}
+
+	const filterSet = new Set(toolFilter.tools);
+	if (toolFilter.mode === 'allow') {
+		return tools.filter((tool) => filterSet.has(tool.name));
+	} else if (toolFilter.mode === 'exclude') {
+		return tools.filter((tool) => !filterSet.has(tool.name));
+	}
+
+	// Return tools as-is if `mode` is not `'allow' | 'exclude'` for some reason
+	return tools;
+}
+
 /** Wraps a single MCP SDK Client instance for one server. Not publicly exported. */
 export class McpConnection {
 	private client: Client | undefined;
@@ -125,7 +149,8 @@ export class McpConnection {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const result = await this.client.listTools();
 		const resolver = new McpToolResolver();
-		const tools = resolver.resolve(this, result.tools);
+		const filteredRawTools = applyToolFilter(result.tools, this.config.toolFilter);
+		const tools = resolver.resolve(this, filteredRawTools);
 		return tools.map((t) =>
 			t.suspendSchema || !this.shouldRequireToolApproval(t)
 				? t
