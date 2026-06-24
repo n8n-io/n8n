@@ -3,6 +3,7 @@
 .vscode/
 .idea/
 build/
+dist/
 coverage/
 node_modules/
 /ormconfig.json

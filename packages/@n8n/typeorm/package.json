@@ -1,6 +1,5 @@
 {
   "name": "@n8n/typeorm",
-  "private": true,
   "version": "0.3.20-18",
   "description": "Data-Mapper ORM for TypeScript, ES7, ES6, ES5. Supports PostgreSQL and SQLite databases.",
   "license": "MIT",
@@ -11,22 +10,25 @@
   },
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "node": {
-        "import": "./index.mjs",
-        "require": "./index.js",
-        "types": "./index.d.ts"
-      }
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js"
     },
-    "./*.js": "./*.js",
+    "./*.js": "./dist/*.js",
     "./*": {
-      "require": "./*.js",
-      "import": "./*"
+      "types": "./dist/*.d.ts",
+      "require": "./dist/*.js",
+      "import": "./dist/*.js"
     }
   },
-  "main": "./index.js",
-  "module": "./index.mjs",
-  "types": "./index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/typeorm/typeorm.git"
@@ -50,7 +52,6 @@
     "@types/chai": "^4.3.4",
     "@types/chai-as-promised": "^7.1.5",
     "@types/debug": "^4.1.7",
-    "@types/gulp": "^4.0.17",
     "@types/mkdirp": "^1.0.2",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.13.0",
@@ -62,17 +63,11 @@
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
-    "conventional-changelog-angular": "^5.0.13",
-    "conventional-changelog-cli": "^2.2.2",
-    "del": "6.1.1",
     "eslint": "^8.44.0",
-    "gulp": "^5.0.1",
-    "husky": "^8.0.3",
     "mocha": "^10.2.0",
     "pg": "^8.17.0",
     "pg-query-stream": "^4.10.3",
     "prettier": "^2.8.3",
-    "remap-istanbul": "^0.13.0",
     "rimraf": "^4.1.2",
     "sinon": "^15.0.1",
     "sinon-chai": "^3.7.0",
@@ -122,13 +117,8 @@
     "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 90000 ./build/compiled/test",
     "typecheck": "tsc --noEmit",
     "build": "pnpm compile",
-    "compile": "tsc",
-    "watch": "./node_modules/.bin/tsc -w",
-    "package": "gulp package",
-    "pack": "gulp pack",
-    "lint": "eslint . --ext .ts",
-    "format": "prettier --write --end-of-line auto \"./src/**/*.ts\" \"./test/**/*.ts\" \"./sample/**/*.ts\"",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 2"
+    "compile": "tsc -p tsconfig.build.json",
+    "watch": "tsc -w -p tsconfig.build.json"
   },
   "funding": "https://opencollective.com/typeorm",
   "collective": {
