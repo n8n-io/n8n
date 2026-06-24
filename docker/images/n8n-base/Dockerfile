@@ -2,8 +2,8 @@ ARG NODE_VERSION=24.16.0
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
-# Digest pins to dhi.io/node:24.16.0-alpine3.22-dev (Node 24.16.0, Alpine 3.22, DHI dev variant).
-FROM dhi.io/node:24.16.0-alpine3.22-dev@sha256:67906dda1e458153488aecb9a7a5a926cb03cf1e8890eb8602a86a78162b2556
+# Digest pins to dhi.io/node:24.16.0-alpine3.24-dev (Node 24.16.0, Alpine 3.24, DHI dev variant).
+FROM dhi.io/node:24.16.0-alpine3.24-dev@sha256:0fda302d7d6f2436b27edc9392bd6a4f8ae9ce86e9837c2b8676abdf26a4a7fb
 
 ARG NODE_VERSION
 
@@ -22,7 +22,7 @@ RUN apk add --no-cache busybox-binsh && \
     # libs Node uses (the openssl CLI binary isn't needed at runtime).
     apk add --no-cache \
         openssh \
-        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (GPL-2.0); see SEC-398 + NODE-4184` \
+        graphicsmagick `# unpinned to float with the Alpine base; OS-layer copyleft (ghostscript-fonts GPL-2.0, libheif LGPL-3.0) is non-in-force per security/sca/README.md. NODE-4184 migrates gm->sharp` \
         tini \
         tzdata \
         ca-certificates \
