@@ -70,6 +70,7 @@ export function useRolesListActions({
 			return role;
 		} catch (error) {
 			showError(error, i18n.baseText('roles.action.duplicate.error'));
+			return undefined;
 		}
 	}
 
