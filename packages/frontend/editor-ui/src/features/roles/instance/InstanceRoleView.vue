@@ -5,89 +5,41 @@ import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { N8nButton, N8nHeading, N8nTabs, N8nText } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { Role } from '@n8n/permissions';
-import { useAsyncState } from '@vueuse/core';
-import isEqual from 'lodash/isEqual';
-import sortBy from 'lodash/sortBy';
-import { computed, ref, toRaw, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, toRaw } from 'vue';
+import { useRouter } from 'vue-router';
 
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
+import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import ScopeGroupSelector from './components/ScopeGroupSelector.vue';
+import { ALL_INSTANCE_SCOPES } from './instanceRoleScopes';
 
 const rolesStore = useRolesStore();
-const route = useRoute();
 const router = useRouter();
-const { showError, showMessage } = useToast();
+const { showMessage } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
 
 const props = defineProps<{ roleSlug?: string }>();
 
-const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
-
-watch(activeTab, (newTab) => {
-	void router.replace({ query: { ...route.query, tab: newTab } });
-});
-
-const tabOptions = computed<Array<TabOptions<string>>>(() => [
-	{ label: i18n.baseText('projectRoles.tab.permissions'), value: 'permissions' },
-	{ label: i18n.baseText('projectRoles.tab.assignments'), value: 'assignments' },
-]);
-
-const defaultForm = () => ({
-	displayName: '',
-	description: '' as string | null | undefined,
-	scopes: [] as string[],
-});
-
-const initialState = ref<Role | undefined>();
-const { state: form, isLoading } = useAsyncState(
-	async () => {
-		if (!props.roleSlug) {
-			return defaultForm();
-		}
-
-		try {
-			const role = await rolesStore.fetchRoleBySlug({ slug: props.roleSlug });
-			initialState.value = structuredClone(role);
-			return {
-				displayName: role.displayName,
-				description: role.description,
-				scopes: role.scopes,
-			};
-		} catch (error) {
-			showError(error, i18n.baseText('roles.instance.action.fetch.error'));
-			return defaultForm();
-		}
-	},
-	defaultForm(),
-	{ shallow: false },
-);
-
-// Read-only if system role OR on the dedicated view route (not the edit route).
-const isReadOnly = computed(
-	() => initialState.value?.systemRole === true || route.name === VIEWS.INSTANCE_ROLE_VIEW,
-);
-
-const isNew = computed(() => !props.roleSlug);
-const showEditButtons = computed(
-	() => Boolean(initialState.value) && !isReadOnly.value && !isLoading.value,
-);
-const showCreateButton = computed(() => isNew.value);
-
-const hasUnsavedChanges = computed(() => {
-	if (!initialState.value) return false;
-
-	if (!isEqual(initialState.value.displayName, form.value.displayName)) return true;
-	// Treat empty string and null as equivalent for the optional description field.
-	if (!isEqual(initialState.value.description ?? null, form.value.description || null)) return true;
-	if (!isEqual(sortBy(initialState.value.scopes), sortBy(form.value.scopes))) return true;
-
-	return false;
+const {
+	activeTab,
+	tabOptions,
+	form,
+	isLoading,
+	initialState,
+	isReadOnly,
+	isNew,
+	showEditButtons,
+	showCreateButton,
+	hasUnsavedChanges,
+	displayNameValidationRules,
+	resetForm,
+} = useRoleEditorForm({
+	roleSlug: () => props.roleSlug,
+	viewRoute: VIEWS.INSTANCE_ROLE_VIEW,
+	fetchError: i18n.baseText('roles.instance.action.fetch.error'),
 });
 
 const editorLabels = computed<RoleEditorLabels>(() => ({
@@ -101,11 +53,6 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 	create: i18n.baseText('projectRoles.create'),
 }));
 
-const displayNameValidationRules = [
-	{ name: 'REQUIRED' },
-	{ name: 'MIN_LENGTH', config: { minimum: 2 } },
-];
-
 // System roles populate the preset buttons (clicking copies their scopes).
 const presetRoles = computed(() => rolesStore.processedInstanceRoles.filter((r) => r.systemRole));
 
@@ -113,20 +60,15 @@ function onBackClick() {
 	void router.push({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } });
 }
 
-function resetForm(payload: Role | undefined) {
-	form.value = payload
-		? {
-				displayName: payload.displayName,
-				description: payload.description,
-				scopes: payload.scopes,
-			}
-		: defaultForm();
-}
-
 function setPreset(slug: string) {
 	const preset = rolesStore.processedInstanceRoles.find((role) => role.slug === slug);
 	if (!preset) return;
-	form.value.scopes = structuredClone(toRaw(preset.scopes));
+
+	// Only keep scopes the editor knows about; system roles may carry internal scopes
+	// (e.g. chatHub:*) that the UI doesn't expose and shouldn't be silently forwarded.
+	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
+		(ALL_INSTANCE_SCOPES as readonly string[]).includes(s),
+	);
 }
 
 async function createInstanceRole() {

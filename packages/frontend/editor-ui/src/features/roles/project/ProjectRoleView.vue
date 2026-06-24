@@ -13,19 +13,15 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { Role } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useAsyncState } from '@vueuse/core';
-import isEqual from 'lodash/isEqual';
-import sortBy from 'lodash/sortBy';
-import { computed, ref, toRaw, watch } from 'vue';
+import { computed, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
 
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
+import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -38,16 +34,31 @@ const settingsStore = useSettingsStore();
 
 const props = defineProps<{ roleSlug?: string }>();
 
-const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
-
-watch(activeTab, (newTab) => {
-	void router.replace({ query: { ...route.query, tab: newTab } });
+const {
+	activeTab,
+	tabOptions,
+	form,
+	isLoading,
+	initialState,
+	isReadOnly,
+	isNew,
+	showEditButtons,
+	showCreateButton,
+	hasUnsavedChanges,
+	displayNameValidationRules,
+	resetForm,
+} = useRoleEditorForm({
+	roleSlug: () => props.roleSlug,
+	viewRoute: VIEWS.PROJECT_ROLE_VIEW,
+	defaultScopes: () =>
+		structuredClone(
+			toRaw(
+				rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes ??
+					[],
+			),
+		),
+	fetchError: 'Error fetching role',
 });
-
-const tabOptions = computed<Array<TabOptions<string>>>(() => [
-	{ label: i18n.baseText('projectRoles.tab.permissions'), value: 'permissions' },
-	{ label: i18n.baseText('projectRoles.tab.assignments'), value: 'assignments' },
-]);
 
 // Dynamic back button text and navigation based on where the user navigated from
 const cameFromProjectSettings = computed(() => route.query.from === VIEWS.PROJECT_SETTINGS);
@@ -65,68 +76,6 @@ const onBackClick = () => {
 		void router.push({ name: VIEWS.PROJECT_ROLES_SETTINGS });
 	}
 };
-
-const defaultForm = () => ({
-	displayName: '',
-	description: '',
-	scopes: structuredClone(
-		toRaw(
-			rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes || [],
-		),
-	),
-});
-
-const initialState = ref<Role | undefined>();
-const { state: form, isLoading } = useAsyncState(
-	async () => {
-		if (!props.roleSlug) {
-			return defaultForm();
-		}
-
-		try {
-			const role = await rolesStore.fetchRoleBySlug({ slug: props.roleSlug });
-			initialState.value = structuredClone(role);
-			return {
-				displayName: role.displayName,
-				description: role.description,
-				scopes: role.scopes,
-			};
-		} catch (error) {
-			showError(error, 'Error fetching role');
-			return defaultForm();
-		}
-	},
-	defaultForm(),
-	{ shallow: false },
-);
-
-// Read-only if system role OR on view route (not edit route)
-const isReadOnly = computed(
-	() => initialState.value?.systemRole === true || route.name === VIEWS.PROJECT_ROLE_VIEW,
-);
-
-const hasUnsavedChanges = computed(() => {
-	if (!initialState.value) return false;
-
-	if (!isEqual(initialState.value.displayName, form.value.displayName)) return true;
-	// We need to explicitly check for an empty string and convert it to null.
-	// Using `??` wouldn't work here because `""` is a valid value and not `null` or `undefined`.
-	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	if (!isEqual(initialState.value.description ?? null, form.value.description || null)) return true;
-	if (!isEqual(sortBy(initialState.value.scopes), sortBy(form.value.scopes))) return true;
-
-	return false;
-});
-
-function resetForm(payload: Role | undefined) {
-	form.value = payload
-		? {
-				displayName: payload.displayName,
-				description: payload.description,
-				scopes: payload.scopes,
-			}
-		: defaultForm();
-}
 
 const scopeTypes = computed(() => {
 	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
@@ -339,17 +288,6 @@ async function deleteRole() {
 		return;
 	}
 }
-
-const displayNameValidationRules = [
-	{ name: 'REQUIRED' },
-	{ name: 'MIN_LENGTH', config: { minimum: 2 } },
-];
-
-const isNew = computed(() => !props.roleSlug);
-const showEditButtons = computed(
-	() => Boolean(initialState.value) && !isReadOnly.value && !isLoading.value,
-);
-const showCreateButton = computed(() => isNew.value);
 
 const editorLabels = computed<RoleEditorLabels>(() => ({
 	newRoleTitle: i18n.baseText('projectRoles.newRole'),
