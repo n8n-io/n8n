@@ -119,7 +119,7 @@ describe('PrometheusDbPoolMetricsService', () => {
 			expect(mockGaugeSet).toHaveBeenCalledWith(2);
 		});
 
-		it('sets the max gauge from the configured SQLite pool size', () => {
+		it('sets the max gauge from the configured SQLite pool size plus the write connection', () => {
 			new PrometheusDbPoolMetricsService(
 				buildConfig(),
 				buildDatabaseConfig({ type: 'sqlite' }),
@@ -127,7 +127,7 @@ describe('PrometheusDbPoolMetricsService', () => {
 				new DbConnectionMetrics(),
 			).init();
 
-			expect(mockGaugeSet).toHaveBeenCalledWith(3);
+			expect(mockGaugeSet).toHaveBeenCalledWith(4);
 		});
 	});
 

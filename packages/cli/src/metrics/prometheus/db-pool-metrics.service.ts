@@ -67,8 +67,8 @@ export class PrometheusDbPoolMetricsService implements PrometheusMetricsCollecto
 	}
 
 	private maxPoolSize(): number {
-		return this.dbConfig.type === 'postgresdb'
-			? this.dbConfig.postgresdb.poolSize
-			: this.dbConfig.sqlite.poolSize;
+		if (this.dbConfig.type === 'postgresdb') return this.dbConfig.postgresdb.poolSize;
+		// sqlite-pooled adds one write connection on top of the read pool.
+		return this.dbConfig.sqlite.poolSize + 1;
 	}
 }
