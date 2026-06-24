@@ -11,6 +11,7 @@ import {
 	runValidate,
 	getChangedFiles,
 	getMergeBase,
+	buildChangedFilesOutput,
 } from '../ci-filter.mjs';
 
 // --- matchGlob ---
@@ -609,5 +610,33 @@ describe('runValidate', () => {
 			}),
 			1,
 		);
+	});
+});
+
+// --- buildChangedFilesOutput ---
+
+describe('buildChangedFilesOutput', () => {
+	it('joins a small list with newlines', () => {
+		assert.equal(
+			buildChangedFilesOutput(['packages/cli/src/a.ts', 'packages/core/src/b.ts']),
+			'packages/cli/src/a.ts\npackages/core/src/b.ts',
+		);
+	});
+
+	it('returns empty string for an empty list', () => {
+		assert.equal(buildChangedFilesOutput([]), '');
+	});
+
+	it('drops the list when it exceeds the byte cap', () => {
+		// 200 paths well over a tiny cap — must collapse to empty so the value
+		// stays small enough to forward through a CHANGED_FILES env var.
+		const files = Array.from({ length: 200 }, (_, i) => `packages/pkg/src/file-${i}.ts`);
+		assert.equal(buildChangedFilesOutput(files, 64), '');
+	});
+
+	it('keeps the list when it is at or under the byte cap', () => {
+		const files = ['a.ts', 'b.ts'];
+		const joined = files.join('\n');
+		assert.equal(buildChangedFilesOutput(files, Buffer.byteLength(joined, 'utf-8')), joined);
 	});
 });

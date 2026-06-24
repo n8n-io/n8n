@@ -601,19 +601,25 @@ async function runDistribute(options: CliOptions): Promise<void> {
 }
 
 /**
- * Read CHANGED_FILES from --changed-files flag or env. Returns null when
- * neither is set — callers treat that as "no signal, run everything" so local
- * dev (`pnpm test:changed` with no env) doesn't silently skip tests.
+ * Read CHANGED_FILES from --changed-files flag or env. Returns null when there
+ * is no usable signal — callers treat that as "run everything" so local dev
+ * (`pnpm test:changed` with no env) doesn't silently skip tests.
+ *
+ * An explicitly-empty value is also treated as "no signal": ci-filter omits an
+ * oversized changed-files list (see its MAX_CHANGED_FILES_BYTES cap), and in CI
+ * a real PR always has at least one changed file, so empty can only mean the
+ * signal was dropped. Falling back to RUN_FULL there avoids a false green.
  */
 function readChangedFiles(options: CliOptions): string[] | null {
 	const flag = options.changedFiles;
 	const env = process.env.CHANGED_FILES;
 	if (flag === undefined && env === undefined) return null;
 	const raw = flag ?? env ?? '';
-	return raw
+	const files = raw
 		.split(/[\n,]+/)
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+	return files.length > 0 ? files : null;
 }
 
 function runAffectedPackages(options: CliOptions): void {

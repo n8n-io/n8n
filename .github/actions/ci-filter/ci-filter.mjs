@@ -226,6 +226,34 @@ export function evaluateFilter(changedFiles, patterns) {
 
 // --- Mode: filter ---
 
+// GitHub Actions launches each step's `bash` via execve, which rejects any
+// single argument or env-var string over the kernel's MAX_ARG_STRLEN (128 KiB)
+// with E2BIG — surfaced as "Argument list too long". The changed-files list is
+// forwarded to downstream jobs as the CHANGED_FILES env var, so a PR touching
+// thousands of files blows past that limit and every bash step in those jobs
+// fails to even start. Past this size per-package test scoping is pointless
+// anyway (the PR touches nearly everything), so we drop the list; consumers
+// treat an empty list as "no signal" and fall back to running the full suite.
+const MAX_CHANGED_FILES_BYTES = Number(process.env.CI_FILTER_MAX_CHANGED_FILES_BYTES) || 64 * 1024;
+
+/**
+ * Serialise the changed-files list for the action output, dropping it when it
+ * is too large to safely forward through a CHANGED_FILES env var. Returns the
+ * newline-joined list, or an empty string when over the byte cap.
+ */
+export function buildChangedFilesOutput(changedFiles, maxBytes = MAX_CHANGED_FILES_BYTES) {
+	const joined = changedFiles.join('\n');
+	const byteLength = Buffer.byteLength(joined, 'utf-8');
+	if (byteLength > maxBytes) {
+		console.log(
+			`Changed-files list (${changedFiles.length} files, ${byteLength} bytes) exceeds the ` +
+				`${maxBytes}-byte cap; omitting it so downstream jobs run unscoped (full) suites.`,
+		);
+		return '';
+	}
+	return joined;
+}
+
 function setOutput(name, value) {
 	const outputFile = process.env.GITHUB_OUTPUT;
 	if (outputFile) {
@@ -264,7 +292,7 @@ export function runFilter() {
 	}
 
 	setOutput('results', JSON.stringify(results));
-	setOutput('changed-files', changedFiles.join('\n'));
+	setOutput('changed-files', buildChangedFilesOutput(changedFiles));
 	setOutput('base-ref', baseRef);
 	setOutput('merge-base', mergeBase);
 }
