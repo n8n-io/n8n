@@ -177,7 +177,7 @@ export class WebhookTriggerRegistrar {
 
 		const registeredKeys = new Set(
 			(await this.webhookService.getRegisteredWebhooks(workflow.id)).map((webhook) =>
-				this.webhookKey(webhook.method, webhook.webhookPath),
+				this.buildWebhookKey(webhook.method, webhook.webhookPath),
 			),
 		);
 
@@ -189,7 +189,7 @@ export class WebhookTriggerRegistrar {
 			}
 
 			const webhook = this.buildNormalizedWebhook(workflow, webhookData);
-			const key = this.webhookKey(webhook.method, webhook.webhookPath);
+			const key = this.buildWebhookKey(webhook.method, webhook.webhookPath);
 			if (!registeredKeys.has(key)) {
 				unregistered.add(node.id);
 			}
@@ -218,7 +218,7 @@ export class WebhookTriggerRegistrar {
 	}
 
 	/** Identity of a webhook row: its `(method, path)` primary key. */
-	private webhookKey(method: string, webhookPath: string): string {
+	private buildWebhookKey(method: string, webhookPath: string): string {
 		return `${method} ${webhookPath}`;
 	}
 
