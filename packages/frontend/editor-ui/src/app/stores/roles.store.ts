@@ -12,6 +12,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	CreateRoleDto,
 	RoleAssignmentsResponse,
+	RoleMembersResponse,
 	RoleProjectMembersResponse,
 	UpdateRoleDto,
 } from '@n8n/api-types';
@@ -108,6 +109,10 @@ export const useRolesStore = defineStore('roles', () => {
 		return await rolesApi.getRoleProjectMembers(rootStore.restApiContext, slug, projectId);
 	};
 
+	const fetchRoleMembers = async (slug: string): Promise<RoleMembersResponse> => {
+		return await rolesApi.getRoleMembers(rootStore.restApiContext, slug);
+	};
+
 	return {
 		roles,
 		processedProjectRoles,
@@ -121,5 +126,6 @@ export const useRolesStore = defineStore('roles', () => {
 		deleteRole,
 		fetchRoleAssignments,
 		fetchRoleProjectMembers,
+		fetchRoleMembers,
 	};
 });
