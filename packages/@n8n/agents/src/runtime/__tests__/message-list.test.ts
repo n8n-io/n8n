@@ -76,6 +76,32 @@ describe('AgentMessageList — monotonic timestamps', () => {
 });
 
 // ---------------------------------------------------------------------------
+// inputDelta — input-only messages for eager persistence
+// ---------------------------------------------------------------------------
+
+describe('AgentMessageList — inputDelta', () => {
+	it('returns only input messages, excluding history and responses', () => {
+		const list = new AgentMessageList();
+		list.addHistory([makeDbMsg('old', new Date('2024-01-01T00:00:00.000Z'))]);
+		list.addInput([makeUserMsg('the user prompt')]);
+		list.addResponse([makeUserMsg('assistant reply')]);
+
+		const delta = list.inputDelta();
+
+		expect(delta).toHaveLength(1);
+		const [text] = (delta[0] as { content: Array<{ type: string; text: string }> }).content;
+		expect(text.text).toBe('the user prompt');
+	});
+
+	it('returns an empty array when no input was added', () => {
+		const list = new AgentMessageList();
+		list.addHistory([makeDbMsg('old', new Date('2024-01-01T00:00:00.000Z'))]);
+
+		expect(list.inputDelta()).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // History messages keep their DB-sourced createdAt
 // ---------------------------------------------------------------------------
 

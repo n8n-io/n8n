@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, provide, useTemplateRef, watch } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
@@ -18,7 +18,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { isAgentEditingWorkflow } from '../canvasPreview.utils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
@@ -34,8 +35,10 @@ const props = withDefaults(
 		workflowId: string;
 		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
+		/** Latest completed execution produced by the agent for this workflow. */
+		executionResult?: ExecutionResult;
 	}>(),
-	{ refreshKey: 0 },
+	{ refreshKey: 0, executionResult: undefined },
 );
 
 const emit = defineEmits<{
@@ -43,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
+const workflowsStore = useWorkflowsStore();
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
@@ -125,6 +129,34 @@ function reportWorkflowFailures(executionId: string, workflowId: string) {
 	emit('workflow-failures', { workflowId, executionId, errors });
 }
 
+let latestExecutionLoadRequest = 0;
+
+async function showExecutionResult(executionResult: ExecutionResult | undefined) {
+	if (!executionResult) return;
+
+	const request = ++latestExecutionLoadRequest;
+	let execution: Awaited<ReturnType<typeof workflowsStore.fetchExecutionDataById>>;
+	try {
+		execution = await workflowsStore.fetchExecutionDataById(executionResult.executionId);
+	} catch {
+		return;
+	}
+	if (request !== latestExecutionLoadRequest) return;
+	if (!execution || execution.workflowId !== props.workflowId) return;
+
+	useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+
+	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
+	const activeExecutionId = executionState.activeExecutionId;
+	executionState.setDisplayedExecutionId(execution.id);
+	if (
+		activeExecutionId === undefined ||
+		(typeof activeExecutionId === 'string' && activeExecutionId !== execution.id)
+	) {
+		executionState.setActiveExecutionId(undefined);
+	}
+}
+
 const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
 	if (event.data.workflowId !== props.workflowId) return;
@@ -138,6 +170,14 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.data.source === 'instance_ai') return;
 	reportWorkflowFailures(event.data.executionId, event.data.workflowId);
 });
+
+watch(
+	() => [props.workflowId, props.executionResult?.executionId] as const,
+	() => {
+		void showExecutionResult(props.executionResult);
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	removeExecutionStartedListener();
