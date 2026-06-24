@@ -33,7 +33,7 @@
   "devDependencies": {
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
-    "@n8n/typeorm": "catalog:",
+    "@n8n/typeorm": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",

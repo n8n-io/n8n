@@ -101,12 +101,6 @@
       "optional": true
     }
   },
-  "pnpm": {
-    "overrides": {
-      "minimatch@9.0.3": "9.0.7",
-      "glob@<=10.5.0": "10.5.0"
-    }
-  },
   "dependencies": {
     "app-root-path": "^3.1.0",
     "async-mutex": "^0.5.0",
@@ -124,7 +118,10 @@
   },
   "scripts": {
     "test": "tsc && mocha --file ./build/compiled/test/utils/test-setup.js --recursive --timeout 90000 ./build/compiled/test",
+    "test:unit": "pnpm test-fast",
     "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 90000 ./build/compiled/test",
+    "typecheck": "tsc --noEmit",
+    "build": "pnpm compile",
     "compile": "tsc",
     "watch": "./node_modules/.bin/tsc -w",
     "package": "gulp package",
