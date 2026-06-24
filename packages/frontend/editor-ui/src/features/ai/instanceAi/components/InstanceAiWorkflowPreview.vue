@@ -1,7 +1,9 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, provide, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { N8nRadioButtons } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import {
 	EditorEnabledFeaturesKey,
@@ -19,6 +21,7 @@ import {
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import ExecutionPreviewHost from '@/features/execution/executions/components/workflow/ExecutionPreviewHost.vue';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
 import type { FixWithAiError } from '../fixWithAi';
@@ -47,6 +50,7 @@ const emit = defineEmits<{
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
 const workflowsStore = useWorkflowsStore();
+const i18n = useI18n();
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
@@ -157,6 +161,36 @@ async function showExecutionResult(executionResult: ExecutionResult | undefined)
 	}
 }
 
+const ARTIFACT_WORKFLOW_VIEWS = {
+	EDITOR: 'editor',
+	EXECUTIONS: 'executions',
+} as const;
+type ArtifactWorkflowView = (typeof ARTIFACT_WORKFLOW_VIEWS)[keyof typeof ARTIFACT_WORKFLOW_VIEWS];
+
+const activeWorkflowView = ref<ArtifactWorkflowView>(ARTIFACT_WORKFLOW_VIEWS.EDITOR);
+const latestExecutionId = computed(() => props.executionResult?.executionId);
+const workflowViewOptions = computed(() => {
+	const options: Array<{ value: ArtifactWorkflowView; label: string }> = [
+		{
+			value: ARTIFACT_WORKFLOW_VIEWS.EDITOR,
+			label: i18n.baseText('generic.editor'),
+		},
+	];
+	if (latestExecutionId.value) {
+		options.push({
+			value: ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS,
+			label: i18n.baseText('generic.executions'),
+		});
+	}
+	return options;
+});
+
+function setActiveWorkflowView(view: string) {
+	if (view === ARTIFACT_WORKFLOW_VIEWS.EDITOR || view === ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS) {
+		activeWorkflowView.value = view;
+	}
+}
+
 const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
 	if (event.data.workflowId !== props.workflowId) return;
@@ -178,6 +212,12 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(latestExecutionId, (executionId) => {
+	if (!executionId && activeWorkflowView.value === ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS) {
+		activeWorkflowView.value = ARTIFACT_WORKFLOW_VIEWS.EDITOR;
+	}
+});
 
 onBeforeUnmount(() => {
 	removeExecutionStartedListener();
@@ -245,13 +285,29 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 
 <template>
 	<div :class="$style.content">
-		<WorkflowCanvasHost
-			ref="host"
-			:workflow-id="workflowId"
-			:refresh-key="refreshKey"
-			:initial-workflow="initialWorkflow"
-			:initial-execution="initialExecution"
-		/>
+		<div v-if="workflowViewOptions.length > 1" :class="$style.viewTabs">
+			<N8nRadioButtons
+				:model-value="activeWorkflowView"
+				:options="workflowViewOptions"
+				data-test-id="instance-ai-workflow-view-tabs"
+				@update:model-value="setActiveWorkflowView"
+			/>
+		</div>
+		<div :class="$style.viewContent">
+			<WorkflowCanvasHost
+				v-show="activeWorkflowView === ARTIFACT_WORKFLOW_VIEWS.EDITOR"
+				ref="host"
+				:workflow-id="workflowId"
+				:refresh-key="refreshKey"
+				:initial-workflow="initialWorkflow"
+				:initial-execution="initialExecution"
+			/>
+			<ExecutionPreviewHost
+				v-if="activeWorkflowView === ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS && latestExecutionId"
+				:workflow-id="workflowId"
+				:execution-id="latestExecutionId"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -259,7 +315,24 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 .content {
 	flex: 1;
 	min-height: 0;
-	position: relative;
 	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.viewTabs {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--4xs) var(--spacing--xs);
+	border-bottom: var(--border);
+	background-color: var(--color--background--light-3);
+}
+
+.viewContent {
+	flex: 1;
+	min-height: 0;
+	position: relative;
 }
 </style>
