@@ -756,6 +756,26 @@ describe('applyOperations', () => {
 			});
 			expect(parsed.success).toBe(true);
 		});
+
+		test('schema accepts a valid IANA timezone and "DEFAULT"', () => {
+			for (const timezone of ['America/New_York', 'UTC', 'Europe/Berlin', 'DEFAULT']) {
+				const parsed = partialUpdateOperationSchema.safeParse({
+					type: 'setWorkflowSettings',
+					settings: { timezone },
+				});
+				expect(parsed.success).toBe(true);
+			}
+		});
+
+		test('schema rejects an invalid timezone', () => {
+			for (const timezone of ['Not/AZone', 'EST5', 'Mars/Olympus_Mons', '']) {
+				const parsed = partialUpdateOperationSchema.safeParse({
+					type: 'setWorkflowSettings',
+					settings: { timezone },
+				});
+				expect(parsed.success).toBe(false);
+			}
+		});
 	});
 
 	describe('atomicity', () => {

@@ -1,3 +1,4 @@
+import { IANAZone } from 'luxon';
 import type {
 	IConnection,
 	IConnections,
@@ -25,6 +26,15 @@ const credentialsSchema = z.record(
 );
 
 /**
+ * True when `tz` is a zone the runtime accepts. Uses Luxon's `IANAZone.isValidZone`
+ * to match downstream semantics exactly — the same check the expression runtime
+ * applies before setting the default zone, and what Schedule Trigger/cron paths
+ * rely on — rather than calling `Intl` directly, which can drift across Node/ICU
+ * builds.
+ */
+const isValidIanaTimezone = (tz: string): boolean => IANAZone.isValidZone(tz);
+
+/**
  * Curated subset of `IWorkflowSettings` that is safe and useful to set from MCP.
  * Each key is optional and only the keys provided are written; omitted keys are
  * left unchanged. Enterprise/internal settings (redactionPolicy,
@@ -41,6 +51,10 @@ export const workflowSettingsObjectSchema = z.object({
 		.optional(),
 	timezone: z
 		.string()
+		.refine((tz) => tz === 'DEFAULT' || isValidIanaTimezone(tz), {
+			message:
+				'timezone must be a valid IANA timezone (e.g. "America/New_York"), or "DEFAULT" to inherit the instance timezone',
+		})
 		.describe(
 			'IANA timezone used by Schedule Triggers and date/time operations, e.g. "America/New_York". Pass "DEFAULT" to inherit the instance timezone.',
 		)

@@ -598,8 +598,15 @@ export const createUpdateWorkflowTool = (
 			// workflow:publish). Without this preflight, a user with edit-but-not-
 			// publish access would persist the settings and only then fail activation,
 			// breaking this tool's atomicity and leaving the running version stale.
-			if (hasSettingsOperations && existingWorkflow.activeVersionId) {
-				const canPublish = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+			// A global publish scope already guarantees access, so skip the DB lookup
+			// for instance owners/admins (the common MCP case) and only probe when the
+			// permission could come from a project/resource role.
+			if (
+				hasSettingsOperations &&
+				existingWorkflow.activeVersionId &&
+				!hasGlobalScope(user, 'workflow:publish')
+			) {
+				const canPublish = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 					'workflow:publish',
 				]);
 				if (!canPublish) {

@@ -69,6 +69,7 @@ describe('update-workflow MCP tool', () => {
 	const user = userWithScopes(['tag:create']);
 	let workflowFinderService: WorkflowFinderService;
 	let findWorkflowMock: jest.Mock;
+	let findWorkflowHeadMock: jest.Mock;
 	let workflowService: WorkflowService;
 	let updateMock: jest.Mock;
 	let urlService: UrlService;
@@ -110,8 +111,10 @@ describe('update-workflow MCP tool', () => {
 		jest.clearAllMocks();
 
 		findWorkflowMock = jest.fn().mockResolvedValue(buildExistingWorkflow());
+		findWorkflowHeadMock = jest.fn().mockResolvedValue({ versionId: 'v1', updatedAt: new Date() });
 		workflowFinderService = mockInstance(WorkflowFinderService, {
 			findWorkflowForUser: findWorkflowMock,
+			findWorkflowHeadForUser: findWorkflowHeadMock,
 		});
 		updateMock = jest
 			.fn()
@@ -741,14 +744,13 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('rejects settings changes on a published workflow without publish permission', async () => {
-				findWorkflowMock.mockImplementation(
-					async (id: string, _user: unknown, scopes: string[]) => {
-						if (id !== 'wf-1') return null;
-						// Edit access yes, publish access no.
-						if (scopes.includes('workflow:publish')) return null;
-						return Object.assign(buildExistingWorkflow(), { activeVersionId: 'wf-1-v1' });
-					},
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'wf-1'
+						? Object.assign(buildExistingWorkflow(), { activeVersionId: 'wf-1-v1' })
+						: null,
 				);
+				// Edit access yes (findWorkflowForUser above), publish access no.
+				findWorkflowHeadMock.mockResolvedValue(null);
 
 				const result = await callHandler({
 					workflowId: 'wf-1',
@@ -758,6 +760,7 @@ describe('update-workflow MCP tool', () => {
 				const response = parseResult(result);
 				expect(result.isError).toBe(true);
 				expect(response.error).toContain('requires publish permission');
+				expect(findWorkflowHeadMock).toHaveBeenCalledWith('wf-1', user, ['workflow:publish']);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -777,14 +780,48 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).toHaveBeenCalled();
 			});
 
+			test('skips the publish-permission lookup when the user has a global publish scope', async () => {
+				const globalPublisher = userWithScopes(['workflow:update', 'workflow:publish']);
+				const tool = createUpdateWorkflowTool(
+					globalPublisher,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+					subworkflowPolicyChecker,
+					workflowPublishedDataService,
+				);
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'wf-1'
+						? Object.assign(buildExistingWorkflow(), { activeVersionId: 'wf-1-v1' })
+						: null,
+				);
+
+				const result = await tool.handler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
+					},
+					{} as never,
+				);
+
+				expect(result.isError).toBeUndefined();
+				// Global publish scope is proven in-memory, so no DB probe is needed.
+				expect(findWorkflowHeadMock).not.toHaveBeenCalled();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
 			test('does not require publish permission for settings on an unpublished workflow', async () => {
 				// No activeVersionId → not published → reactivation never happens.
-				findWorkflowMock.mockImplementation(
-					async (id: string, _user: unknown, scopes: string[]) => {
-						if (id !== 'wf-1') return null;
-						if (scopes.includes('workflow:publish')) return null; // would fail if checked
-						return buildExistingWorkflow();
-					},
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'wf-1' ? buildExistingWorkflow() : null,
 				);
 
 				const result = await callHandler({
@@ -793,6 +830,8 @@ describe('update-workflow MCP tool', () => {
 				});
 
 				expect(result.isError).toBeUndefined();
+				// Unpublished → no publish probe at all.
+				expect(findWorkflowHeadMock).not.toHaveBeenCalled();
 				expect(workflowService.update).toHaveBeenCalled();
 			});
 		});
