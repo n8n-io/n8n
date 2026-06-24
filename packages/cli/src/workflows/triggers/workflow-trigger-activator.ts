@@ -446,7 +446,7 @@ export class WorkflowTriggerActivator {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
 	) {
-		let removedNodeNames: string[] = [];
+		const removedNodeNames: string[] = [];
 
 		await workflow.expression.acquireIsolate();
 		try {
