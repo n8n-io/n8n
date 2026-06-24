@@ -221,35 +221,35 @@ export class AgentExecutionService {
 	 * Delete a thread and all its associated runs. The FK on agent_execution
 	 * cascades, so deleting the thread removes the runs in one statement.
 	 */
-	async deleteThread(projectId: string, threadId: string): Promise<boolean> {
+	async deleteThread(projectId: string, agentId: string, threadId: string): Promise<boolean> {
 		// Verify ownership before deleting anything
 		const thread = await this.agentExecutionThreadRepository.findOneBy({
 			id: threadId,
 			projectId,
+			agentId,
 		});
 		if (!thread) return false;
 
-		await this.n8nMemory.getImplementation(thread.agentId).deleteThread(threadId);
+		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
 	}
 
 	/**
-	 * Get paginated execution threads for a project.
-	 * Optionally filtered by agentId. Each thread is annotated with the
-	 * first non-empty user message for preview.
+	 * Get paginated execution threads for an agent.
+	 * Each thread is annotated with the first non-empty user message for preview.
 	 */
 	async getThreads(
 		projectId: string,
+		agentId: string,
 		limit: number,
 		cursor?: string,
-		agentId?: string,
 	): Promise<{ threads: ThreadListItem[]; nextCursor: string | null }> {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,
+			agentId,
 			limit,
 			cursor,
-			agentId,
 		);
 
 		if (page.threads.length === 0) {
@@ -271,12 +271,12 @@ export class AgentExecutionService {
 
 	/**
 	 * Get a thread with all its executions.
-	 * Validates projectId ownership. Optionally validates agentId.
+	 * Validates projectId and agentId ownership.
 	 */
 	async getThreadDetail(
 		threadId: string,
 		projectId: string,
-		agentId?: string,
+		agentId: string,
 	): Promise<ThreadDetail | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
@@ -296,16 +296,16 @@ export class AgentExecutionService {
 }
 
 /**
- * True if `thread` belongs to the given project (and optionally agent).
+ * True if `thread` belongs to the given project and agent.
  * Returns false for threads from a different project/agent so the caller can
  * reject the request instead of leaking/modifying unrelated thread data.
  */
 export function threadBelongsTo(
 	thread: AgentExecutionThread,
 	projectId: string,
-	agentId?: string,
+	agentId: string,
 ): boolean {
 	if (thread.projectId !== projectId) return false;
-	if (agentId && thread.agentId !== agentId) return false;
+	if (thread.agentId !== agentId) return false;
 	return true;
 }

@@ -14,8 +14,13 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { AgentsConfig } from '@n8n/config';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -24,7 +29,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { UrlService } from '@/services/url.service';
-import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -99,7 +103,6 @@ function makeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		mock<AgentRepository>(),
 		mock<AgentFileRepository>(),
-		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<UserRepository>(),
@@ -117,6 +120,8 @@ function makeReconstructionService(
 		} as unknown as AgentsConfig,
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 }
 

@@ -15,7 +15,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { AgentsService } from './agents.service';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
@@ -57,7 +57,7 @@ export class AgentTaskService {
 		private readonly taskRunLockRepository: AgentTaskRunLockRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly agentsService: AgentsService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 	) {}
@@ -467,7 +467,7 @@ export class AgentTaskService {
 			await this.consumeTaskRun(
 				'Task run',
 				{ taskId, agentId, projectId },
-				this.agentsService.executeForTaskPublished({
+				this.agentExecutionOrchestratorService.executeForTaskPublished({
 					agentId: agent.id,
 					projectId: agent.projectId,
 					message,
@@ -559,7 +559,7 @@ export class AgentTaskService {
 		await this.consumeTaskRun(
 			'Manual task run',
 			{ taskId: task.id, agentId: task.agentId, projectId },
-			this.agentsService.executeForTaskNow({
+			this.agentExecutionOrchestratorService.executeForTaskNow({
 				agentId: task.agentId,
 				projectId,
 				userId,
