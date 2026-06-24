@@ -390,8 +390,8 @@ column names.
 - SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
   n8n runtime item envelopes like `{ json: { ... } }` unless downstream
   expressions intentionally read `$json.json.*`. Correct:
-  `output: [{ daily: { precipitation_sum: [4.6] } }]`; wrong:
-  `output: [{ json: { daily: { precipitation_sum: [4.6] } } }]`.
+  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
+  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
   Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
   this rule applies to SDK `node({ output: [...] })` mocks.
 

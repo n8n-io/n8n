@@ -993,6 +993,8 @@ export class InstanceAiAdapterService {
 					if (pinData) {
 						runData.pinData = pinData;
 					}
+					// Also persist pin data in executionData so queued workers can hydrate
+					// verification fixtures while starting from the trigger node.
 					runData.executionData = createTriggerExecutionData({ triggerNode, pinData });
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;

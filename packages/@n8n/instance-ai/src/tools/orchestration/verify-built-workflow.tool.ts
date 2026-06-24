@@ -7,7 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isPlaceholderValue, isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -203,7 +203,6 @@ const CREDENTIAL_FAILURE_KEYWORDS = [
 	'free tier',
 	'quota',
 ];
-const PLACEHOLDER_FAILURE_KEYWORDS = ['__placeholder_value__', '<__placeholder'];
 const TRANSIENT_FAILURE_KEYWORDS = ['429', 'rate limit', '502', 'bad gateway', 'timed out'];
 
 function messageMatchesAny(normalized: string, keywords: readonly string[]): boolean {
@@ -234,7 +233,7 @@ function classifyVerificationFailure(
 	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
 	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
 	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
-	if (messageMatchesAny(normalized, PLACEHOLDER_FAILURE_KEYWORDS)) {
+	if (isPlaceholderValue(error)) {
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
