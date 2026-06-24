@@ -58,11 +58,6 @@ export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
 }) {}
 
-export class UpdateAgentDto extends Z.class({
-	name: z.string().optional(),
-	updatedAt: z.string().optional(),
-}) {}
-
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
 }) {}
