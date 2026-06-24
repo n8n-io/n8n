@@ -92,7 +92,15 @@ export class AuthController {
 
 		await this.validateMfa(user, mfaCode, mfaRecoveryCode);
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		await this.authService.issueCookie(
+			res,
+			user,
+			user.mfaEnabled,
+			req.browserId,
+			undefined,
+			undefined,
+			this.authService.getSessionContext(req),
+		);
 
 		this.eventService.emit('user-logged-in', {
 			user,

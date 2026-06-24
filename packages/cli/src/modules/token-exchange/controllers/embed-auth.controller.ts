@@ -73,10 +73,18 @@ export class EmbedAuthController {
 			const { user, subject, issuer, kid } =
 				await this.tokenExchangeService.embedLogin(subjectToken);
 
-			this.authService.issueCookie(res, user, true, req.browserId, true, {
-				sameSite: 'none',
-				secure: true,
-			});
+			await this.authService.issueCookie(
+				res,
+				user,
+				true,
+				req.browserId,
+				true,
+				{
+					sameSite: 'none',
+					secure: true,
+				},
+				this.authService.getSessionContext(req),
+			);
 
 			this.eventService.emit('embed-login', {
 				subject,

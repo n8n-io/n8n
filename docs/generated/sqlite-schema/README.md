@@ -106,6 +106,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [user](user.md) | 15 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
+| [user_login_session](user_login_session.md) | 9 |  | table |
 | [variables](variables.md) | 5 |  | table |
 | [webhook_entity](webhook_entity.md) | 6 |  | table |
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
@@ -260,6 +261,7 @@ erDiagram
 "user" }o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "user_api_keys" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "user_favorites" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"user_login_session" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "variables" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1205,6 +1207,17 @@ erDiagram
   INTEGER id
   varchar_255_ resourceId
   varchar_64_ resourceType
+  varchar userId FK
+}
+"user_login_session" {
+  varchar_64_ browserIdHash
+  datetime_3_ createdAt
+  datetime_3_ expiresAt
+  varchar_36_ id PK
+  varchar_45_ ipAddress
+  datetime_3_ lastActiveAt
+  datetime_3_ updatedAt
+  varchar_512_ userAgent
   varchar userId FK
 }
 "variables" {

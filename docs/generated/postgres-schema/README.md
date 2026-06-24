@@ -106,6 +106,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.user](public.user.md) | 15 |  | BASE TABLE |
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
+| [public.user_login_session](public.user_login_session.md) | 9 |  | BASE TABLE |
 | [public.variables](public.variables.md) | 5 |  | BASE TABLE |
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
@@ -274,6 +275,7 @@ erDiagram
 "public.user" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug)"
 "public.user_api_keys" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.user_favorites" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.user_login_session" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.variables" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.webhook_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_builder_session" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -1215,6 +1217,17 @@ erDiagram
   integer id
   varchar_255_ resourceId
   varchar_64_ resourceType
+  uuid userId FK
+}
+"public.user_login_session" {
+  varchar_64_ browserIdHash
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone expiresAt
+  varchar_36_ id
+  varchar_45_ ipAddress
+  timestamp_3__with_time_zone lastActiveAt
+  timestamp_3__with_time_zone updatedAt
+  varchar_512_ userAgent
   uuid userId FK
 }
 "public.variables" {

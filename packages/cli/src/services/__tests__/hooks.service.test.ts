@@ -61,7 +61,7 @@ describe('HooksService', () => {
 		mockedUser.mfaEnabled = false; // Mock mfaEnabled property
 
 		// ACT
-		hooksService.issueCookie(res, mockedUser);
+		await hooksService.issueCookie(res, mockedUser);
 
 		// ASSERT
 		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser, false);

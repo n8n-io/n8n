@@ -138,7 +138,15 @@ export class OidcController {
 
 		const user = await this.oidcService.loginUser(callbackUrl, state, nonce);
 
-		this.authService.issueCookie(res, user, true, req.browserId);
+		await this.authService.issueCookie(
+			res,
+			user,
+			true,
+			req.browserId,
+			undefined,
+			undefined,
+			this.authService.getSessionContext(req),
+		);
 		this.eventService.emit('user-logged-in', {
 			user,
 			authenticationMethod: 'oidc',

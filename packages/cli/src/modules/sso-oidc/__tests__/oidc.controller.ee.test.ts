@@ -85,7 +85,15 @@ describe('OidcController', () => {
 			);
 
 			// Verify that issueCookie was called with MFA flag set to true
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				user,
+				true,
+				req.browserId,
+				undefined,
+				undefined,
+				undefined,
+			);
 			expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
 				user,
 				authenticationMethod: 'oidc',
@@ -120,7 +128,15 @@ describe('OidcController', () => {
 				'state_value',
 				'nonce_value',
 			);
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				user,
+				true,
+				req.browserId,
+				undefined,
+				undefined,
+				undefined,
+			);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
@@ -146,7 +162,15 @@ describe('OidcController', () => {
 				'state_value',
 				'nonce_value',
 			);
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, undefined);
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				user,
+				true,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+			);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
