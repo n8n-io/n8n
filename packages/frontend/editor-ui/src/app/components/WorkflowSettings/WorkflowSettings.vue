@@ -928,9 +928,6 @@ onMounted(async () => {
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
-	if (workflowSettingsData.priority === undefined) {
-		workflowSettingsData.priority = 'default';
-	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
@@ -1647,38 +1644,6 @@ onBeforeUnmount(() => {
 									@update:model-value="toggleAvailableInMCP"
 								></ElSwitch>
 							</N8nTooltip>
-						</div>
-					</ElCol>
-				</ElRow>
-				<ElRow data-test-id="workflow-settings-priority">
-					<ElCol :span="10" :class="$style['setting-name']">
-						<label for="priority">
-							{{ i18n.baseText('workflowSettings.priority') }}
-							<N8nTooltip placement="top">
-								<template #content>
-									{{ i18n.baseText('workflowSettings.priority.tooltip') }}
-								</template>
-								<N8nIcon icon="circle-help" />
-							</N8nTooltip>
-						</label>
-					</ElCol>
-					<ElCol :span="14">
-						<div class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="workflowSettings.priority"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-priority-select"
-								size="medium"
-							>
-								<N8nOption
-									:label="i18n.baseText('workflowSettings.priority.options.default')"
-									value="default"
-								/>
-								<N8nOption
-									:label="i18n.baseText('workflowSettings.priority.options.high')"
-									value="high"
-								/>
-							</N8nSelect>
 						</div>
 					</ElCol>
 				</ElRow>
