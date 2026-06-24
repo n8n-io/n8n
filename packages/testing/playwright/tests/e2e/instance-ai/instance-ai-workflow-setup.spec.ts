@@ -454,7 +454,7 @@ function expectNodeParameter(
 test.describe(
 	'Instance AI workflow setup @capability:proxy @db:reset',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });

@@ -1324,3 +1324,43 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 */
 	credentialIds: z.array(z.string().min(1)).max(50),
 }) {}
+
+/** A workflow a conversation seed references, recreated at its given id so the
+ *  seeded history resolves. Content is opaque here; the server validates it. */
+const instanceAiEvalSeedWorkflowSchema = z.object({
+	id: z.string().min(1).max(64),
+	name: z.string().min(1).max(255),
+	nodes: z.array(z.record(z.unknown())).max(500),
+	connections: z.record(z.unknown()),
+});
+
+export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
+
+/** A data table a seed references. Recreated on restore (its id is server-
+ *  generated, so the seed workflows' references are rewritten to the new id).
+ *  Schema only — no rows (the table just needs to exist; rows are the trace's
+ *  highest-PII payload and are never sent here). */
+const instanceAiEvalSeedDataTableSchema = z.object({
+	id: z.string().min(1).max(64),
+	name: z.string().min(1).max(128),
+	columns: z
+		.array(
+			z.object({
+				name: z.string().min(1).max(128),
+				type: z.enum(['string', 'number', 'boolean', 'date']),
+			}),
+		)
+		.max(50),
+});
+
+export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
+
+export class InstanceAiEvalRestoreThreadRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/** Native agent message log (ISO `createdAt`), stored verbatim. */
+	messages: z.array(z.record(z.unknown())).min(1).max(1000),
+	/** Data tables the workflows reference; recreated first so ids can be rewritten. */
+	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
+	/** Workflows the history references; recreated (node credentials stripped). */
+	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
+}) {}
