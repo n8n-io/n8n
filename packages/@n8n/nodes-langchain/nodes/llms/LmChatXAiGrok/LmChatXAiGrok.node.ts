@@ -219,17 +219,33 @@ export class LmChatXAiGrok implements INodeType {
 						type: 'boolean',
 					},
 					{
-						displayName: 'Reasoning',
+						displayName: 'Reasoning Effort',
 						name: 'reasoning',
 						type: 'options',
 						default: 'low',
 						description: 'Effort the model spends thinking before responding.',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
-							{ name: 'None', value: 'none' },
-							{ name: 'Low', value: 'low' },
-							{ name: 'Medium', value: 'medium' },
-							{ name: 'High', value: 'high' },
+							{
+								name: 'None',
+								value: 'none',
+								description: 'Disables reasoning entirely; no thinking tokens are used',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Uses some reasoning tokens, but still fast',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'More thinking for less-latency sensitive applications',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description: 'Uses more reasoning tokens for deeper thinking',
+							},
 						],
 					},
 				],
