@@ -399,7 +399,13 @@ async function loadAndSetFieldsToMap(): Promise<void> {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
 			if (existingField) {
-				field.removed = existingField.removed;
+				// Keep the user's removed state, but don't let an incomplete cached
+				// field (e.g. an AI-authored schema missing `removed`) overwrite the
+				// loader-populated value with `undefined`.
+				field.removed =
+					typeof existingField.removed === 'boolean'
+						? existingField.removed
+						: (field.removed ?? false);
 			} else if (state.paramValue.value !== null && !(field.id in state.paramValue.value)) {
 				// New fields are shown by default
 				field.removed = false;

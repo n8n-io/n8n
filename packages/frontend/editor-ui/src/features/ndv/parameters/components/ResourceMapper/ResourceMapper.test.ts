@@ -2,6 +2,7 @@ import {
 	DEFAULT_SETUP,
 	MAPPING_COLUMNS_RESPONSE,
 	UPDATED_SCHEMA,
+	getLatestValueChangeEvent,
 } from './ResourceMapper.test.utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
@@ -402,6 +403,55 @@ describe('ResourceMapper.vue', () => {
 		const mappingContainer = getByTestId('mapping-fields-container');
 		expect(mappingContainer.textContent).not.toContain('cached_only_field');
 		expect(mappingContainer.textContent).toContain('First name');
+	});
+
+	it('does not reintroduce an incomplete field when reconciling a matching-id schema', async () => {
+		// A cached field that shares its id with the live schema but is missing the
+		// loader-populated readOnly/removed, as an AI-authored schema would be.
+		// The reconcile must not copy the cached field's missing `removed` onto the
+		// freshly loaded field, which would leave it incomplete and re-trigger the
+		// refresh on every open.
+		const incompleteMatchingSchema = [
+			{
+				id: 'First name',
+				displayName: 'First name',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+			},
+		];
+
+		// Rendered without `{ merge: true }` to keep the cached schema deterministic
+		// (see the test below for why).
+		const { emitted } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: incompleteMatchingSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshIncompleteSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+
+		const reconciledSchema = getLatestValueChangeEvent(emitted())[0].value.schema;
+		const firstName = reconciledSchema.find((field) => field.id === 'First name');
+		expect(firstName?.removed).toBe(false);
 	});
 
 	it('keeps the stale warning for a complete-but-drifted schema when refreshIncompleteSchemaOnOpen is set', async () => {
