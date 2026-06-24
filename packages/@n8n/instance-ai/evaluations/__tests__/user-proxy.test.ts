@@ -6,10 +6,62 @@
 // deterministic shortcuts, repeat detection, and budget enforcement.
 // ---------------------------------------------------------------------------
 
+import { zodToJsonSchema } from '@n8n/agents';
+
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
-import type { Decision } from '../utils/user-proxy/tools';
+import { decisionSchema, type Decision } from '../utils/user-proxy/tools';
+
+// ---------------------------------------------------------------------------
+// Decision schema
+// ---------------------------------------------------------------------------
+
+describe('decisionSchema', () => {
+	it('marks nullable fields as required for strict response formats', () => {
+		const schema = zodToJsonSchema(decisionSchema) as {
+			type?: string;
+			required?: string[];
+			properties?: {
+				answers?: { anyOf?: Array<{ items?: { required?: string[] } }> };
+			};
+		};
+
+		expect(schema.type).toBe('object');
+		expect(schema.required).toEqual([
+			'action',
+			'answers',
+			'nodeParametersJson',
+			'approved',
+			'userInput',
+			'response',
+			'decision',
+			'message',
+		]);
+		expect(schema.properties?.answers?.anyOf?.[0]?.items?.required).toEqual([
+			'questionId',
+			'selectedOptions',
+			'customText',
+			'skipped',
+		]);
+	});
+});
+
+const nullDecisionFields = {
+	answers: null,
+	nodeParametersJson: null,
+	approved: null,
+	userInput: null,
+	response: null,
+	decision: null,
+	message: null,
+} satisfies Omit<Decision, 'action'>;
+
+function makeDecision(
+	decision: Pick<Decision, 'action'> & Partial<Omit<Decision, 'action'>>,
+): Decision {
+	return { ...nullDecisionFields, ...decision };
+}
 
 // ---------------------------------------------------------------------------
 // FakeAgent — programmable agent for tests
@@ -189,10 +241,14 @@ function textInputEvent(requestId: string): CapturedEvent {
 describe('UserProxyLlm.respondToConfirmation', () => {
 	it('answers questions when the agent returns answer_questions', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'answer_questions',
-			answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'answer_questions',
+				answers: [
+					{ questionId: 'q1', selectedOptions: ['#general'], customText: null, skipped: null },
+				],
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'post to #general' }],
 			agent,
@@ -212,13 +268,25 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('routes ask-user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'answer_questions',
-			answers: [
-				{ questionId: 'cities', selectedOptions: [], customText: 'London, New York, Tokyo' },
-				{ questionId: 'destination', selectedOptions: ['Slack'] },
-			],
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'answer_questions',
+				answers: [
+					{
+						questionId: 'cities',
+						selectedOptions: [],
+						customText: 'London, New York, Tokyo',
+						skipped: null,
+					},
+					{
+						questionId: 'destination',
+						selectedOptions: ['Slack'],
+						customText: null,
+						skipped: null,
+					},
+				],
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'I need weather alerts.' },
@@ -255,11 +323,13 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('returns approval with userInput when the agent picks approve_or_reject', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'approve_or_reject',
-			approved: true,
-			userInput: 'looks good',
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'approve_or_reject',
+				approved: true,
+				userInput: 'looks good',
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'approve' }],
 			agent,
@@ -301,7 +371,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('returns approval with no userInput when the agent omits it', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({ action: 'approve_or_reject', approved: true });
+		agent.enqueue(makeDecision({ action: 'approve_or_reject', approved: true, userInput: null }));
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'approve' }],
 			agent,
@@ -317,11 +387,13 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('rejects a plan when the agent returns approve_or_reject with approved=false', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'approve_or_reject',
-			approved: false,
-			userInput: 'I wanted email, not data table',
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'approve_or_reject',
+				approved: false,
+				userInput: 'I wanted email, not data table',
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'send an email' }],
 			agent,
@@ -337,12 +409,14 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('encodes apply_setup_wizard into setupWorkflowApply with nodeParameters', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'apply_setup_wizard',
-			nodeParametersJson: JSON.stringify({
-				'Send Slack Message': { channelId: 'general', text: 'hi' },
+		agent.enqueue(
+			makeDecision({
+				action: 'apply_setup_wizard',
+				nodeParametersJson: JSON.stringify({
+					'Send Slack Message': { channelId: 'general', text: 'hi' },
+				}),
 			}),
-		});
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'post hi to #general' }],
 			agent,
@@ -407,10 +481,12 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('routes setup-wizard events to the agent even when they include credentialRequests', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'apply_setup_wizard',
-			nodeParametersJson: JSON.stringify({ Node1: { p1: 'v1' } }),
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'apply_setup_wizard',
+				nodeParametersJson: JSON.stringify({ Node1: { p1: 'v1' } }),
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			agent,
@@ -450,7 +526,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	it('falls back to the permissive payload when the agent picks a between-run action', async () => {
 		const agent = new FakeAgent();
 		// declare_done is a between-run action, invalid as a confirmation response.
-		agent.enqueue({ action: 'declare_done' });
+		agent.enqueue(makeDecision({ action: 'declare_done' }));
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			agent,
@@ -462,10 +538,14 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('reuses the first payload on a repeat requestId without consulting the agent', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'answer_questions',
-			answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'answer_questions',
+				answers: [
+					{ questionId: 'q1', selectedOptions: ['#general'], customText: null, skipped: null },
+				],
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			agent,
@@ -486,10 +566,15 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('does not treat a requestId as handled when decision generation throws', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue(new Error('temporary model failure'), {
-			action: 'answer_questions',
-			answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
-		});
+		agent.enqueue(
+			new Error('temporary model failure'),
+			makeDecision({
+				action: 'answer_questions',
+				answers: [
+					{ questionId: 'q1', selectedOptions: ['#general'], customText: null, skipped: null },
+				],
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			agent,
@@ -510,11 +595,13 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('handles text input by routing to the agent and encoding as approval', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'approve_or_reject',
-			approved: true,
-			userInput: 'continue',
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'approve_or_reject',
+				approved: true,
+				userInput: 'continue',
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			agent,
@@ -552,7 +639,9 @@ describe('UserProxyLlm.decideFollowUp', () => {
 		// can adapt to whatever the assistant just said while staying faithful
 		// to the script's intent.
 		const agent = new FakeAgent();
-		agent.enqueue({ action: 'send_follow_up_message', message: 'also log to sheets' });
+		agent.enqueue(
+			makeDecision({ action: 'send_follow_up_message', message: 'also log to sheets' }),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'build the workflow' },
@@ -574,7 +663,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 
 	it('invokes the agent on every follow-up — no verbatim shortcut for short scripts', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({ action: 'send_follow_up_message', message: 'one more thing' });
+		agent.enqueue(makeDecision({ action: 'send_follow_up_message', message: 'one more thing' }));
 		const proxy = new UserProxyLlm({
 			// Only one user turn in the script.
 			conversation: [{ role: 'user', text: 'build it' }],
@@ -592,7 +681,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 
 	it('treats declare_done as done', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({ action: 'declare_done' });
+		agent.enqueue(makeDecision({ action: 'declare_done' }));
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'all set' }],
 			messageBudget: 3,
@@ -636,10 +725,12 @@ describe('UserProxyLlm.decideFollowUp', () => {
 
 	it('returns done when the agent picks a confirmation-only action', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({
-			action: 'answer_questions',
-			answers: [{ questionId: 'q1', selectedOptions: [] }],
-		});
+		agent.enqueue(
+			makeDecision({
+				action: 'answer_questions',
+				answers: [{ questionId: 'q1', selectedOptions: [], customText: null, skipped: null }],
+			}),
+		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			messageBudget: 3,
@@ -652,7 +743,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 
 	it('treats an empty follow-up message as done without consuming budget', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({ action: 'send_follow_up_message', message: '   ' });
+		agent.enqueue(makeDecision({ action: 'send_follow_up_message', message: '   ' }));
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			messageBudget: 3,
@@ -667,8 +758,8 @@ describe('UserProxyLlm.decideFollowUp', () => {
 	it('caps follow-ups at messageBudget across multiple invocations', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue(
-			{ action: 'send_follow_up_message', message: 'msg1' },
-			{ action: 'send_follow_up_message', message: 'msg2' },
+			makeDecision({ action: 'send_follow_up_message', message: 'msg1' }),
+			makeDecision({ action: 'send_follow_up_message', message: 'msg2' }),
 		);
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
@@ -691,7 +782,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 describe('UserProxyLlm.ingestEvents', () => {
 	it('accumulates text-delta payloads into the rolling transcript', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({ action: 'declare_done' });
+		agent.enqueue(makeDecision({ action: 'declare_done' }));
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'open a ticket' }],
 			messageBudget: 3,
@@ -725,7 +816,7 @@ describe('UserProxyLlm.ingestEvents', () => {
 
 	it('is idempotent — re-ingesting the same array does not duplicate transcript entries', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue({ action: 'declare_done' });
+		agent.enqueue(makeDecision({ action: 'declare_done' }));
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
 			messageBudget: 3,

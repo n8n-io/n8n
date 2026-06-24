@@ -11,42 +11,30 @@ import { z } from 'zod';
 const answerSchema = z.object({
 	questionId: z.string(),
 	selectedOptions: z.array(z.string()),
-	customText: z.string().optional(),
-	skipped: z.boolean().optional(),
+	customText: z.string().nullable(),
+	skipped: z.boolean().nullable(),
 });
 
-export const decisionSchema = z.discriminatedUnion('action', [
-	z.object({
-		action: z.literal('answer_questions'),
-		answers: z.array(answerSchema),
-	}),
-	z.object({
-		action: z.literal('apply_setup_wizard'),
-		// JSON-encoded object mapping nodeId -> parameter map. Emitted as a string
-		// because Anthropic structured output rejects nested z.record schemas.
-		nodeParametersJson: z.string(),
-	}),
-	z.object({
-		action: z.literal('approve_or_reject'),
-		approved: z.boolean(),
-		userInput: z.string().optional(),
-	}),
-	z.object({
-		action: z.literal('respond_to_domain_access'),
-		response: z.enum(['allow_once', 'allow_all', 'deny']),
-	}),
-	z.object({
-		action: z.literal('pick_resource_decision'),
-		decision: z.string(),
-	}),
-	z.object({
-		action: z.literal('send_follow_up_message'),
-		message: z.string(),
-	}),
-	z.object({
-		action: z.literal('declare_done'),
-	}),
-]);
+export const decisionSchema = z.object({
+	action: z.enum([
+		'answer_questions',
+		'apply_setup_wizard',
+		'approve_or_reject',
+		'respond_to_domain_access',
+		'pick_resource_decision',
+		'send_follow_up_message',
+		'declare_done',
+	]),
+	answers: z.array(answerSchema).nullable(),
+	// JSON-encoded object mapping nodeId -> parameter map. Emitted as a string
+	// because Anthropic structured output rejects nested z.record schemas.
+	nodeParametersJson: z.string().nullable(),
+	approved: z.boolean().nullable(),
+	userInput: z.string().nullable(),
+	response: z.enum(['allow_once', 'allow_all', 'deny']).nullable(),
+	decision: z.string().nullable(),
+	message: z.string().nullable(),
+});
 
 export type Decision = z.infer<typeof decisionSchema>;
 
@@ -55,6 +43,8 @@ export type Decision = z.infer<typeof decisionSchema>;
 // ---------------------------------------------------------------------------
 
 export const TOOL_DESCRIPTIONS = `Available actions:
+
+Set fields that do not apply to the selected action to null.
 
 - answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Set skipped=true only when the question has no plausible answer of any shape, OR when a [stage direction] in the script tells the user to decline or withhold that value — in that case you MUST set skipped=true with an empty selectedOptions and pick NO option (not even one that looks standard or obvious); picking a value defeats the test.
 
@@ -85,15 +75,26 @@ export function encodeConfirmationDecision(
 ): InstanceAiConfirmRequest | null {
 	switch (decision.action) {
 		case 'answer_questions':
-			return { kind: 'questions', answers: decision.answers };
+			if (!decision.answers) return null;
+			return {
+				kind: 'questions',
+				answers: decision.answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
+					questionId,
+					selectedOptions,
+					...(customText ? { customText } : {}),
+					...(skipped !== null ? { skipped } : {}),
+				})),
+			};
 
 		case 'apply_setup_wizard':
+			if (!decision.nodeParametersJson) return null;
 			return {
 				kind: 'setupWorkflowApply',
 				nodeParameters: parseNodeParametersJson(decision.nodeParametersJson, onParseFailure),
 			};
 
 		case 'approve_or_reject':
+			if (decision.approved === null) return null;
 			return {
 				kind: 'approval',
 				approved: decision.approved,
@@ -101,6 +102,7 @@ export function encodeConfirmationDecision(
 			};
 
 		case 'respond_to_domain_access': {
+			if (!decision.response) return null;
 			if (decision.response === 'deny') return { kind: 'domainAccessDeny' };
 			const parsed = domainAccessActionSchema.safeParse(decision.response);
 			return {
@@ -110,6 +112,7 @@ export function encodeConfirmationDecision(
 		}
 
 		case 'pick_resource_decision': {
+			if (!decision.decision) return null;
 			const parsed = instanceGatewayResourceDecisionSchema.safeParse(decision.decision);
 			return {
 				kind: 'resourceDecision',
