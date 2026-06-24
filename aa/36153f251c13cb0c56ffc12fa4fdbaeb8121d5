@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_06bc7f3c2041cd::t_dd2db8e3523e34 95
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourceLocatorModes.test.ts
+  s_06bc7f3c2041cd::t_23a8ea88b7f81c 1-61
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_06bc7f3c2041cd::t_c45c244b44add7 1-118,128-163,168-202
+  ai_agent 119-127,164-167
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_06bc7f3c2041cd::t_72eb4089cc0280 476-490
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.test.ts
+  s_06bc7f3c2041cd::t_488d3bf6bbd998 2462-2483
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_06bc7f3c2041cd::t_87125a67154159 163-164,170
+  ai_agent 36
+  s_06bc7f3c2041cd::t_be893706fd13b7 88-90,95,97,100
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_06bc7f3c2041cd::t_da3b429e5cb2e8 299
+  s_06bc7f3c2041cd::t_3a496b3fe4615c 62,70-79
+  s_06bc7f3c2041cd::t_aa9e94ad9bb34a 147-155
+  s_06bc7f3c2041cd::t_303a512a0af428 22
+  s_06bc7f3c2041cd::t_8de13ccc61da4c 281
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.ts
+  s_06bc7f3c2041cd::t_6005adaa70a825 60-61
+  s_06bc7f3c2041cd::t_8c39680385bc79 541,765
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_06bc7f3c2041cd::t_78b4d203238a9a 977,1685
+  s_06bc7f3c2041cd::t_433731250884d2 75-77
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_06bc7f3c2041cd::t_cb8f17ed774a27 59
+  s_06bc7f3c2041cd::t_417aeba411753d 3,9-12
+  s_06bc7f3c2041cd::t_b69552fd3f93c7 65,78-79,82-90
+  s_06bc7f3c2041cd::t_0979867c1b2d8f 68-77
+  s_06bc7f3c2041cd::t_e287fea1f767c7 27-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa36153f251c13cb0c56ffc12fa4fdbaeb8121d5",
+  "prompts": {},
+  "sessions": {
+    "s_06bc7f3c2041cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "340cc0d0-3bb1-46b2-aaf6-697dfc7f4960",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
