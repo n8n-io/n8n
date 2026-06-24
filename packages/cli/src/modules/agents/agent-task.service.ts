@@ -7,7 +7,7 @@ import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -15,7 +15,6 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { AgentTaskScheduler } from './agent-task-scheduler';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
@@ -32,13 +31,19 @@ import { generateAgentResourceId } from './utils/agent-resource-id';
 
 const TASK_RUN_LOCK_TTL_MS = 5 * 60 * 1000;
 const TASK_RUN_LOCK_RENEW_MS = 60 * 1000;
+const AGENT_TASK_SCHEDULE_GROUP_TYPE = 'agent-task';
+
+const agentTaskScheduleGroup = (agentId: string): ScheduledTaskGroup => ({
+	type: AGENT_TASK_SCHEDULE_GROUP_TYPE,
+	id: agentId,
+});
 
 /**
  * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron) live
  * in the `agent_task_definition` table; membership and the `enabled` flag live
  * in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
  * skills). Scheduling is driven entirely by the PUBLISHED snapshot rows tied to
- * `activeVersionId`. `AgentTaskScheduler` registers a cron per enabled
+ * `activeVersionId`. `ScheduledTaskManager` registers a cron per enabled
  * snapshot row of a published agent (leader-only). Adding, removing, toggling,
  * or editing a task is a draft change that only affects scheduled runs once the
  * agent is (re)published — "republish to apply". Manual "Run now" deliberately
@@ -56,7 +61,7 @@ export class AgentTaskService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly agentTaskScheduler: AgentTaskScheduler,
+		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
 	) {}
 
@@ -229,8 +234,9 @@ export class AgentTaskService {
 
 	/** Stop all cron jobs belonging to an agent — called on unpublish/agent delete. */
 	deregisterAgentTasks(agentId: string): void {
-		const taskIds = this.agentTaskScheduler.getTaskIds(agentId);
-		if (!this.agentTaskScheduler.deregisterAgent(agentId)) return;
+		const group = agentTaskScheduleGroup(agentId);
+		const taskIds = this.scheduledTaskManager.getTargetIds(group);
+		if (!this.scheduledTaskManager.deregisterGroup(group)) return;
 
 		for (const taskId of taskIds) {
 			this.logger.info('[AgentTaskService] Deregistered task', { taskId });
@@ -259,7 +265,7 @@ export class AgentTaskService {
 	@OnLeaderStepdown()
 	@OnShutdown()
 	stopAll(): void {
-		this.agentTaskScheduler.deregisterAll();
+		this.scheduledTaskManager.deregisterGroups(AGENT_TASK_SCHEDULE_GROUP_TYPE);
 	}
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
@@ -280,7 +286,7 @@ export class AgentTaskService {
 		);
 		const enabledIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
 
-		for (const taskId of this.agentTaskScheduler.getTaskIds(agent.id)) {
+		for (const taskId of this.scheduledTaskManager.getTargetIds(agentTaskScheduleGroup(agent.id))) {
 			if (!enabledIds.has(taskId)) this.deregister(agent.id, taskId);
 		}
 
@@ -303,11 +309,13 @@ export class AgentTaskService {
 		this.deregister(agentId, taskId);
 
 		const timezone = this.globalConfig.generic.timezone;
-		const registered = this.agentTaskScheduler.register(
-			agentId,
-			taskId,
-			cronExpression,
-			timezone,
+		const registered = this.scheduledTaskManager.register(
+			{
+				group: agentTaskScheduleGroup(agentId),
+				targetId: taskId,
+				expression: cronExpression,
+				timezone,
+			},
 			() => {
 				void this.runScheduledTask(agentId, taskId);
 			},
@@ -323,9 +331,10 @@ export class AgentTaskService {
 	}
 
 	private deregister(agentId: string, taskId: string): void {
-		if (!this.agentTaskScheduler.hasTask(agentId, taskId)) return;
+		const group = agentTaskScheduleGroup(agentId);
+		if (!this.scheduledTaskManager.hasTarget(group, taskId)) return;
 
-		this.agentTaskScheduler.deregister(agentId, taskId);
+		this.scheduledTaskManager.deregisterTarget(group, taskId);
 		this.logger.info('[AgentTaskService] Deregistered task', { taskId });
 	}
 

@@ -100,7 +100,6 @@ export * from './node-execution-context/utils/execution-metadata';
 export * from './partial-execution-utils';
 export { isEngineRequest } from './requests-response';
 export * from './routing-node';
-export * from './cron-registry';
 export * from './scheduled-task-manager';
 export * from './workflow-execute';
 // Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
