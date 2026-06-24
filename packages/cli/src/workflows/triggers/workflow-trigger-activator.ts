@@ -358,10 +358,10 @@ export class WorkflowTriggerActivator {
 
 	/**
 	 * Registers the webhook triggers of the given node set, fanning out across
-	 * nodes. The registrar registers each node's webhooks (retrying transient
-	 * failures per webhook); a node that fails to register one of its webhooks is
-	 * recorded as a failure with any already-registered webhooks left in place,
-	 * and the other nodes are unaffected. Successful nodes are added to
+	 * nodes. Each node's own webhooks are registered sequentially (retrying
+	 * transient failures per webhook); a node that fails to register one of its
+	 * webhooks is recorded as a failure with any already-registered webhooks left
+	 * in place, and the other nodes are unaffected. Successful nodes are added to
 	 * `outcome.activated`.
 	 */
 	private async registerWebhookTriggers(
@@ -384,8 +384,8 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Registers a single node's webhooks via the registrar, retrying transient
-	 * failures, and returns a discriminated result so the parallel fan-out can
+	 * Registers a single node's webhooks sequentially, retrying transient failures
+	 * per webhook, and returns a discriminated result so the parallel fan-out can
 	 * partition nodes into successes and failures.
 	 */
 	private async registerWebhookTriggersForNode(
@@ -395,16 +395,18 @@ export class WorkflowTriggerActivator {
 		webhooks: IWebhookData[],
 	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
 		try {
-			await retryTriggerActivation(
-				async () =>
-					await this.webhookTriggerRegistrar.registerForNode({
-						workflow,
-						webhooks,
-						mode: 'trigger',
-						activation: 'update',
-					}),
-				TRIGGER_ACTIVATION_MAX_ATTEMPTS,
-			);
+			for (const webhookData of webhooks) {
+				await retryTriggerActivation(
+					async () =>
+						await this.webhookTriggerRegistrar.register({
+							workflow,
+							webhookData,
+							mode: 'trigger',
+							activation: 'update',
+						}),
+					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+				);
+			}
 			return createResultOk({ nodeId });
 		} catch (error) {
 			return createResultError({ nodeId, nodeName, error: ensureError(error) });
