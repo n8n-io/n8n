@@ -3257,6 +3257,7 @@ export class InstanceAiService {
 					'cancelled',
 					cancellationReason,
 					archivedWorkflowIds,
+					user.id,
 				);
 				if (activeSnapshotStorage) {
 					await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
@@ -4084,6 +4085,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
+				userId: opts.user.id,
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
@@ -4148,6 +4150,7 @@ export class InstanceAiService {
 					'cancelled',
 					cancellationReason,
 					archivedWorkflowIds,
+					opts.user.id,
 				);
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
@@ -4566,6 +4569,7 @@ export class InstanceAiService {
 			'cancelled',
 			reason,
 			archivedWorkflowIds,
+			suspended.user.id,
 		);
 
 		// Persist the snapshot so the run-finish event (which clears
@@ -4595,6 +4599,7 @@ export class InstanceAiService {
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
 		archivedWorkflowIds?: string[],
+		userId?: string,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
 		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
@@ -4608,11 +4613,12 @@ export class InstanceAiService {
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
 		});
-		// ponytail: success-drop heartbeat; every real run finish funnels here
+		// success-drop heartbeat; user_id required or PostHog drops instance-only events
 		this.telemetry.track('instance_ai_run_finished', {
 			thread_id: threadId,
 			run_id: runId,
 			status: effectiveStatus,
+			...(userId ? { user_id: userId } : {}),
 		});
 	}
 
@@ -4629,7 +4635,14 @@ export class InstanceAiService {
 			usage?: RunTokenUsage;
 		},
 	): Promise<void> {
-		this.publishRunFinish(threadId, runId, status, undefined, options?.archivedWorkflowIds);
+		this.publishRunFinish(
+			threadId,
+			runId,
+			status,
+			undefined,
+			options?.archivedWorkflowIds,
+			options?.userId,
+		);
 		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		if (status === 'completed' && options?.userId && options?.modelId) {
