@@ -196,7 +196,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 	const loadFile = source.loadFile;
 	return new Tool(SKILL_LOAD_TOOL_NAME)
 		.description(
-			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles.',
+			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; do not pass "/", ".", or "./"; use filePath only for a linked file path returned in linkedFiles.',
 		)
 		.input(skillLoadInputWithFilesSchema)
 		.output(skillLoadOutputSchema)
@@ -228,8 +228,8 @@ async function loadSkill(
 		};
 	}
 
-	const loadMainSkill = filePath === undefined || filePath.trim() === RUNTIME_SKILL_FILE_NAME;
-	if (!loadMainSkill) {
+	const loadMainSkill = isMainSkillFilePath(filePath);
+	if (!loadMainSkill && filePath !== undefined) {
 		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, filePath);
 		if (!linkedFile) {
 			return {
@@ -374,6 +374,18 @@ function findRegisteredLinkedFile(
 		if (linkedFile) return linkedFile;
 	}
 	return undefined;
+}
+
+function isMainSkillFilePath(filePath: string | undefined): boolean {
+	const normalizedPath = filePath?.trim();
+	return (
+		normalizedPath === undefined ||
+		normalizedPath === RUNTIME_SKILL_FILE_NAME ||
+		normalizedPath === `./${RUNTIME_SKILL_FILE_NAME}` ||
+		normalizedPath === '/' ||
+		normalizedPath === '.' ||
+		normalizedPath === './'
+	);
 }
 
 function envelopeValue(value: string): string {
