@@ -274,11 +274,11 @@ async function handleArchiveWorkflow() {
 	});
 
 	// Navigate to the appropriate project's workflow list
-	const workflow = workflowsListStore.getWorkflowById(props.id);
-	if (workflow?.homeProject?.type === ProjectTypes.Team) {
+	const homeProject = workflowDocumentStore?.value?.homeProject;
+	if (homeProject?.type === ProjectTypes.Team) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: workflow.homeProject.id },
+			params: { projectId: homeProject.id },
 		});
 	} else {
 		await router.push({ name: VIEWS.WORKFLOWS });
@@ -352,9 +352,9 @@ async function handleDeleteWorkflow() {
 		return;
 	}
 
-	// Get workflow before deletion to know which project to navigate to
-	const workflow = workflowsListStore.getWorkflowById(props.id);
-	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
+	// Get workflow's home project before deletion to know which project to navigate to
+	const homeProject = workflowDocumentStore?.value?.homeProject;
+	const isTeamProject = homeProject?.type === ProjectTypes.Team;
 
 	try {
 		await workflowsListStore.deleteWorkflow(props.id);
@@ -373,10 +373,10 @@ async function handleDeleteWorkflow() {
 	});
 
 	// Navigate to the appropriate project's workflow list
-	if (isTeamProject && workflow?.homeProject) {
+	if (isTeamProject && homeProject) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: workflow.homeProject.id },
+			params: { projectId: homeProject.id },
 		});
 	} else {
 		await router.push({ name: VIEWS.WORKFLOWS });
