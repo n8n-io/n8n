@@ -190,6 +190,11 @@ export class WebhookService {
 		return this.webhookRepository.create(data);
 	}
 
+	/** The webhooks currently registered (stored locally) for a workflow. */
+	async getRegisteredWebhooks(workflowId: string) {
+		return await this.webhookRepository.findBy({ workflowId });
+	}
+
 	async deleteWorkflowWebhooks(workflowId: string) {
 		const webhooks = await this.webhookRepository.findBy({ workflowId });
 

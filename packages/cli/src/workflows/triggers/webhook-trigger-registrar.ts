@@ -76,17 +76,7 @@ export class WebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				const node = workflow.getNode(webhookData.node) as INode;
-				node.name = webhookData.node;
-
-				const webhook = this.webhookService.createWebhook({
-					workflowId: webhookData.workflowId,
-					webhookPath: webhookData.path,
-					node: node.name,
-					method: webhookData.httpMethod,
-				});
-
-				this.normalizeWebhookPath(webhook, node.webhookId);
+				const webhook = this.buildNormalizedWebhook(workflow, webhookData);
 
 				let isStored = false;
 				try {
@@ -161,6 +151,79 @@ export class WebhookTriggerRegistrar {
 
 	async clearWorkflowWebhooksForNodes(workflowId: string, nodeNames: string[]) {
 		await this.webhookService.deleteWorkflowWebhooksForNodes(workflowId, nodeNames);
+	}
+
+	/**
+	 * Of the given trigger nodes, returns the ids of those whose desired webhooks
+	 * are not all present in storage. A node is treated atomically: if any one of
+	 * its webhooks is missing, the whole node is returned so it gets re-registered.
+	 *
+	 * This compares the desired state against the actual local (`webhook_entity`)
+	 * state, so a node whose registration was never completed (e.g. a crash after
+	 * the published version advanced) is reconciled on the next publish.
+	 *
+	 * NOTE: it only considers the local registration, not any remote state
+	 * (e.g., a third-party service that has lost the webhook).
+	 */
+	async getNodesWithUnregisteredWebhooks(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		desiredNodes: Set<INode['id']>,
+	): Promise<Set<INode['id']>> {
+		const desiredWebhooks = this.getWebhookTriggers(workflow, additionalData).filter(
+			(webhookData) => desiredNodes.has(workflow.getNode(webhookData.node)?.id ?? ''),
+		);
+		if (desiredWebhooks.length === 0) {
+			return new Set();
+		}
+
+		const registeredKeysByNode = new Map<string, Set<string>>();
+		for (const webhook of await this.webhookService.getRegisteredWebhooks(workflow.id)) {
+			const keys = registeredKeysByNode.get(webhook.node) ?? new Set<string>();
+			keys.add(this.webhookKey(webhook.method, webhook.webhookPath));
+			registeredKeysByNode.set(webhook.node, keys);
+		}
+
+		const unregistered = new Set<INode['id']>();
+		for (const webhookData of desiredWebhooks) {
+			const node = workflow.getNode(webhookData.node);
+			if (!node) {
+				continue;
+			}
+
+			const webhook = this.buildNormalizedWebhook(workflow, webhookData);
+			const key = this.webhookKey(webhook.method, webhook.webhookPath);
+			if (!registeredKeysByNode.get(webhookData.node)?.has(key)) {
+				unregistered.add(node.id);
+			}
+		}
+
+		return unregistered;
+	}
+
+	/**
+	 * Builds the storage entity for a webhook, normalizing its path so static and
+	 * dynamic paths match what is persisted. Shared by registration and the
+	 * unregistered-webhook check so their comparison keys cannot drift.
+	 */
+	private buildNormalizedWebhook(workflow: Workflow, webhookData: IWebhookData): WebhookEntity {
+		const node = workflow.getNode(webhookData.node) as INode;
+
+		const webhook = this.webhookService.createWebhook({
+			workflowId: webhookData.workflowId,
+			webhookPath: webhookData.path,
+			node: node.name,
+			method: webhookData.httpMethod,
+		});
+
+		this.normalizeWebhookPath(webhook, node.webhookId);
+
+		return webhook;
+	}
+
+	/** Identity of a webhook row: its `(method, path)` primary key. */
+	private webhookKey(method: string, webhookPath: string): string {
+		return `${method} ${webhookPath}`;
 	}
 
 	private async clearRegisteredWebhook(workflow: Workflow, webhookData: IWebhookData) {
