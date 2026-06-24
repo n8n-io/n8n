@@ -240,11 +240,10 @@ async function displayActivationError() {
 	});
 }
 
-function envFreshness(envId: string): 'current' | 'stale' | 'never' {
-	const publishedVersionId = environmentsStore.publishedVersions[envId];
-	if (!publishedVersionId) return 'never';
-	return publishedVersionId === workflowDocumentStore.value?.versionId ? 'current' : 'stale';
-}
+const selectedEnvId = computed(() => environmentsStore.selectedEnvironmentId);
+const selectedEnvironmentName = computed(
+	() => environmentsStore.environments.find((e) => e.id === selectedEnvId.value)?.name ?? '',
+);
 
 async function handlePublishToEnvironment(envId: string) {
 	const workflowId = workflowDocumentStore.value.workflowId;
@@ -258,6 +257,7 @@ async function handlePublishToEnvironment(envId: string) {
 			title: 'Published to environment',
 			type: 'success',
 		});
+		modalBus.emit('close');
 	} catch (error) {
 		showError(error, 'Failed to publish to environment');
 	} finally {
@@ -373,57 +373,66 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
-				<WorkflowVersionForm
-					ref="publishForm"
-					v-model:version-name="versionName"
-					v-model:description="description"
-					:disabled="inputsDisabled"
-					version-name-test-id="workflow-publish-version-name-input"
-					description-test-id="workflow-publish-description-input"
-					@submit="handlePublish"
-				/>
-				<div :class="$style.actions">
-					<N8nButton
-						variant="subtle"
-						:disabled="publishing"
-						:label="i18n.baseText('generic.cancel')"
-						data-test-id="workflow-publish-cancel-button"
-						@click="modalBus.emit('close')"
+				<template v-if="environmentsStore.environments.length === 0">
+					<WorkflowVersionForm
+						ref="publishForm"
+						v-model:version-name="versionName"
+						v-model:description="description"
+						:disabled="inputsDisabled"
+						version-name-test-id="workflow-publish-version-name-input"
+						description-test-id="workflow-publish-description-input"
+						@submit="handlePublish"
 					/>
-					<N8nButton
-						:disabled="isPublishDisabled"
-						:loading="publishing"
-						:label="i18n.baseText('workflows.publish')"
-						data-test-id="workflow-publish-button"
-						@click="handlePublish"
-					/>
-				</div>
-				<div
-					v-if="environmentsStore.environments.length > 0"
-					:class="$style.envSlots"
-					data-test-id="publish-env-slots"
-				>
-					<p :class="$style.envSlotsLabel">Publish to environment</p>
-					<div v-for="env in environmentsStore.environments" :key="env.id" :class="$style.envSlot">
-						<span :class="[$style.envFreshness, $style[`envFreshness--${envFreshness(env.id)}`]]" />
-						<span :class="$style.envName">{{ env.name }}</span>
-						<span
-							v-if="!envHasAllBindings(env.id)"
-							:class="$style.missingBindingsBadge"
-							title="Some credentials are not bound for this environment"
-							>⚠</span
-						>
+					<div :class="$style.actions">
 						<N8nButton
-							size="small"
 							variant="subtle"
-							:loading="publishingEnvId === env.id"
-							:disabled="publishingEnvId !== null || !envHasAllBindings(env.id)"
-							:label="`Publish to ${env.name}`"
-							:data-test-id="`publish-to-env-${env.id}`"
-							@click="handlePublishToEnvironment(env.id)"
+							:disabled="publishing"
+							:label="i18n.baseText('generic.cancel')"
+							data-test-id="workflow-publish-cancel-button"
+							@click="modalBus.emit('close')"
+						/>
+						<N8nButton
+							:disabled="isPublishDisabled"
+							:loading="publishing"
+							:label="i18n.baseText('workflows.publish')"
+							data-test-id="workflow-publish-button"
+							@click="handlePublish"
 						/>
 					</div>
-				</div>
+				</template>
+				<template v-else>
+					<p :class="$style.envPublishContext" data-test-id="publish-env-context">
+						Publishing to environment: <strong>{{ selectedEnvironmentName }}</strong>
+					</p>
+					<N8nCallout
+						v-if="selectedEnvId && !envHasAllBindings(selectedEnvId)"
+						theme="warning"
+						icon="triangle-alert"
+						data-test-id="publish-env-missing-bindings"
+					>
+						Some credentials are not bound for this environment. Resolve them before publishing.
+					</N8nCallout>
+					<div :class="$style.actions">
+						<N8nButton
+							variant="subtle"
+							:disabled="publishingEnvId !== null"
+							:label="i18n.baseText('generic.cancel')"
+							data-test-id="workflow-publish-cancel-button"
+							@click="modalBus.emit('close')"
+						/>
+						<N8nButton
+							:disabled="
+								!selectedEnvId ||
+								publishingEnvId !== null ||
+								(!!selectedEnvId && !envHasAllBindings(selectedEnvId))
+							"
+							:loading="publishingEnvId === selectedEnvId"
+							:label="i18n.baseText('workflows.publish')"
+							data-test-id="workflow-publish-button"
+							@click="selectedEnvId && handlePublishToEnvironment(selectedEnvId)"
+						/>
+					</div>
+				</template>
 			</div>
 		</template>
 	</Modal>
@@ -457,53 +466,9 @@ async function handlePublish() {
 	color: var(--callout--color--text--danger);
 }
 
-.envSlots {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	border-top: 1px solid var(--color-foreground-base);
-	padding-top: var(--spacing--sm);
-}
-
-.envSlotsLabel {
-	font-size: var(--font-size--xs);
-	color: var(--color-text-light);
+.envPublishContext {
 	margin: 0;
-}
-
-.envSlot {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-}
-
-.envName {
-	flex: 1;
 	font-size: var(--font-size--s);
-}
-
-.envFreshness {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	flex-shrink: 0;
-}
-
-.envFreshness--current {
-	background-color: var(--color-success);
-}
-
-.envFreshness--stale {
-	background-color: var(--color-warning);
-}
-
-.envFreshness--never {
-	background-color: var(--color-foreground-dark);
-}
-
-.missingBindingsBadge {
-	color: var(--color-warning);
-	font-size: var(--font-size-xs);
-	line-height: 1;
+	color: var(--color-text-base);
 }
 </style>

@@ -39,6 +39,11 @@ export class ProjectEnvironmentService {
 		return await this.environmentRepository.findAllByProject(projectId);
 	}
 
+	async hasEnvironments(projectId: string): Promise<boolean> {
+		const count = await this.environmentRepository.count({ where: { projectId } });
+		return count > 0;
+	}
+
 	async createEnvironment(
 		projectId: string,
 		dto: CreateEnvironmentDto,

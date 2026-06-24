@@ -806,6 +806,24 @@ export class WorkflowService {
 			throw error;
 		}
 
+		// Block global publish for workflows whose project has environments defined.
+		if (!options?.environmentId) {
+			const ownerSharing = await this.sharedWorkflowRepository.findOne({
+				where: { workflowId, role: 'workflow:owner' },
+				select: { projectId: true },
+			});
+			if (ownerSharing?.projectId) {
+				const hasEnvs = await this.projectEnvironmentService.hasEnvironments(
+					ownerSharing.projectId,
+				);
+				if (hasEnvs) {
+					throw new BadRequestError(
+						'Workflows in projects with environments must be published to a specific environment.',
+					);
+				}
+			}
+		}
+
 		// Environment-scoped publish: validate credential bindings, then record the published version.
 		// Does NOT change workflow_entity.activeVersionId or trigger the active workflow manager.
 		if (options?.environmentId) {

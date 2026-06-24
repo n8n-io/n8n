@@ -8,20 +8,17 @@ const props = defineProps<{ projectId?: string }>();
 
 const environmentsStore = useEnvironmentsStore();
 
-const GLOBAL_ID = '';
+const items = computed<Array<ActionDropdownItem<string>>>(() =>
+	environmentsStore.environments.map((e) => ({ id: e.id, label: e.name })),
+);
 
-const items = computed<Array<ActionDropdownItem<string>>>(() => [
-	{ id: GLOBAL_ID, label: 'Global (no environment)' },
-	...environmentsStore.environments.map((e) => ({ id: e.id, label: e.name })),
-]);
-
-const selectedLabel = computed(() => {
-	if (!environmentsStore.selectedEnvironmentId) return 'Global';
-	return (
+const selectedLabel = computed(
+	() =>
 		environmentsStore.environments.find((e) => e.id === environmentsStore.selectedEnvironmentId)
-			?.name ?? 'Global'
-	);
-});
+			?.name ??
+		environmentsStore.environments[0]?.name ??
+		'',
+);
 
 function onSelect(id: string) {
 	environmentsStore.selectedEnvironmentId = id || null;
@@ -30,6 +27,9 @@ function onSelect(id: string) {
 onMounted(async () => {
 	if (props.projectId && environmentsStore.environments.length === 0) {
 		await environmentsStore.fetchEnvironments(props.projectId);
+	}
+	if (environmentsStore.environments.length > 0 && !environmentsStore.selectedEnvironmentId) {
+		environmentsStore.selectedEnvironmentId = environmentsStore.environments[0].id;
 	}
 });
 </script>
