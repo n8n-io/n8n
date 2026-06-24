@@ -7,6 +7,7 @@ import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModa
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
+import { MessageBox } from './components/messageBoxLocators';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -487,11 +488,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
-		await expect(this.page.locator('.el-message-box')).toBeVisible();
-		await this.page
-			.locator('.el-message-box__btns button')
-			.filter({ hasText: /ignore for all workflows/i })
-			.click();
+		const messageBox = new MessageBox(this.page);
+		await expect(messageBox.root).toBeVisible();
+		await messageBox.buttonByText(/ignore for all workflows/i).click();
 	}
 
 	async duplicateNode(nodeName: string): Promise<void> {
