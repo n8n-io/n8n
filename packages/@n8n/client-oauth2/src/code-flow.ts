@@ -1,5 +1,6 @@
 import * as qs from 'querystring';
 
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from './client-assertion';
 import type { ClientOAuth2, ClientOAuth2Options } from './client-oauth2';
 import type { ClientOAuth2Token } from './client-oauth2-token';
 import { DEFAULT_HEADERS, DEFAULT_URL_BASE } from './constants';
@@ -11,6 +12,8 @@ interface CodeFlowBody {
 	redirect_uri?: string;
 	client_id?: string;
 	resource?: string;
+	client_assertion_type?: string;
+	client_assertion?: string;
 }
 
 /**
@@ -101,12 +104,19 @@ export class CodeFlow {
 			...(options.resource ? { resource: options.resource } : {}),
 		};
 
-		// `client_id`: REQUIRED, if the client is not authenticating with the
-		// authorization server as described in Section 3.2.1.
-		// Reference: https://tools.ietf.org/html/rfc6749#section-3.2.1
-		if (options.clientSecret) {
+		if (options.clientCertificate) {
+			body.client_id = options.clientId;
+			body.client_assertion_type = CLIENT_ASSERTION_TYPE;
+			body.client_assertion = buildClientAssertion({
+				clientId: options.clientId,
+				accessTokenUri: options.accessTokenUri,
+				...options.clientCertificate,
+			});
+		} else if (options.clientSecret) {
 			headers.Authorization = auth(options.clientId, options.clientSecret);
 		} else {
+			// `client_id`: REQUIRED if the client is not authenticating with the
+			// authorization server. Reference: https://tools.ietf.org/html/rfc6749#section-3.2.1
 			body.client_id = options.clientId;
 		}
 

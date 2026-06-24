@@ -20,9 +20,16 @@ export interface ClientOAuth2RequestObject {
 	ignoreSSLIssues?: boolean;
 }
 
+/** Certificate (private_key_jwt) client authentication, an alternative to `clientSecret`. */
+export interface ClientCertificate {
+	privateKey: string;
+	certificate: string;
+}
+
 export interface ClientOAuth2Options {
 	clientId: string;
 	clientSecret?: string;
+	clientCertificate?: ClientCertificate;
 	accessTokenUri: string;
 	authentication?: 'header' | 'body';
 	authorizationUri?: string;
