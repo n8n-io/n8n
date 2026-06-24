@@ -127,7 +127,6 @@ const selectedSubAgents = computed(() =>
 		return {
 			id: agentId,
 			name: agent?.name ?? agentId,
-			description: agent?.description ?? null,
 		};
 	}),
 );
@@ -278,10 +277,9 @@ async function onOpenAddSubAgentsModal() {
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
-			agents: availableSubAgents.value.map(({ id, name, description }) => ({
+			agents: availableSubAgents.value.map(({ id, name }) => ({
 				id,
 				name,
-				description,
 			})),
 			onConfirm: (agentIds: string[]) => {
 				const newAgentRefs = agentIds
@@ -441,14 +439,6 @@ function onRemoveSubAgent(agentId: string) {
 
 						<N8nText size="xsmall" color="text-dark" :bold="true" :class="$style.name">
 							{{ subAgent.name }}
-						</N8nText>
-						<N8nText
-							v-if="subAgent.description"
-							size="xsmall"
-							color="text-light"
-							:class="$style.metadata"
-						>
-							{{ subAgent.description }}
 						</N8nText>
 
 						<template #append>
@@ -623,8 +613,7 @@ function onRemoveSubAgent(agentId: string) {
 	color: var(--text-color--subtle);
 }
 
-.name,
-.metadata {
+.name {
 	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;

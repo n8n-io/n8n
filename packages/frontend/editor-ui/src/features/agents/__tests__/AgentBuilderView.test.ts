@@ -178,7 +178,6 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	return {
 		id: 'a1',
 		name: 'Agent One',
-		description: null,
 		tools: {},
 		skills: {},
 		updatedAt: '2026-01-01T00:00:00Z',

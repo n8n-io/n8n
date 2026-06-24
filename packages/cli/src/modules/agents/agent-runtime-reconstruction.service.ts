@@ -69,7 +69,7 @@ export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; description?: string }>;
+	availableSubAgents: Array<{ id: string; name: string }>;
 }
 
 export interface ReconstructAgentRuntimeParams {
@@ -297,7 +297,6 @@ export class AgentRuntimeReconstructionService {
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,
-				...(agent.description ? { description: agent.description } : {}),
 			});
 		}
 

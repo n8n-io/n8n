@@ -17,7 +17,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 export type AgentSubAgentOption = {
 	id: string;
 	name: string;
-	description?: string | null;
 };
 
 export type AgentSubAgentsModalData = {
@@ -114,14 +113,6 @@ function onAdd() {
 								<N8nText size="small" color="text-dark" :bold="true" :class="$style.name">
 									{{ agent.name }}
 								</N8nText>
-								<N8nText
-									v-if="agent.description"
-									size="xsmall"
-									color="text-light"
-									:class="$style.description"
-								>
-									{{ agent.description }}
-								</N8nText>
 							</div>
 						</N8nCard>
 					</div>
@@ -201,14 +192,6 @@ function onAdd() {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	max-width: 100%;
-}
-
-.description {
-	display: -webkit-box;
-	overflow: hidden;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	overflow-wrap: anywhere;
 }
 
 .footer {

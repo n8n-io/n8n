@@ -6646,8 +6646,6 @@
 	"agents.builder.agent.description": "Core setup that defines how this agent behaves",
 	"agents.builder.agent.name.label": "Name",
 	"agents.builder.agent.name.placeholder": "My agent",
-	"agents.builder.agent.description.label": "Description",
-	"agents.builder.agent.description.placeholder": "What does this agent do?",
 	"agents.builder.agent.model.label": "Model",
 	"agents.builder.agent.instructions.label": "Instructions",
 	"agents.builder.agent.instructions.characterCount": "{count} characters",

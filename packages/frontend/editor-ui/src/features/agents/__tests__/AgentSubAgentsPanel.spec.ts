@@ -170,7 +170,6 @@ vi.mock('@n8n/design-system', () => ({
 const publishedSubAgent: AgentResource = {
 	id: 'agent-2',
 	name: 'Helper Agent',
-	description: 'Helps with tasks',
 	activeVersionId: 'version-2',
 } as AgentResource;
 
@@ -464,7 +463,7 @@ describe('AgentSubAgentsPanel', () => {
 			expect.objectContaining({
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
-					agents: [{ id: 'agent-2', name: 'Helper Agent', description: 'Helps with tasks' }],
+					agents: [{ id: 'agent-2', name: 'Helper Agent' }],
 				}),
 			}),
 		);
@@ -519,7 +518,6 @@ describe('AgentSubAgentsPanel', () => {
 			{
 				id: 'agent-3',
 				name: 'Other Agent',
-				description: null,
 				activeVersionId: 'version-3',
 			} as AgentResource,
 		];
