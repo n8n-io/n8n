@@ -131,7 +131,7 @@ catalog:
   mysql2: 3.17.0
   nanoid: 3.3.8
   nock: 14.0.14
-  nodemailer: 8.0.10
+  nodemailer: 9.0.1
   openai: 6.19.0
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1

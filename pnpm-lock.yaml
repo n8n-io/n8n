@@ -578,7 +578,7 @@ overrides:
   form-data: 4.0.6
   pdf-parse: 2.4.5
   tmp: 0.2.7
-  nodemailer: 8.0.10
+  nodemailer: 9.0.1
   validator: 13.15.26
   zod: 3.25.67
   js-yaml: 4.2.0
@@ -3498,8 +3498,8 @@ importers:
         specifier: 'catalog:'
         version: 3.3.8
       nodemailer:
-        specifier: 8.0.10
-        version: 8.0.10
+        specifier: 9.0.1
+        version: 9.0.1
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -5157,8 +5157,8 @@ importers:
         specifier: 13.2.0
         version: 13.2.0
       nodemailer:
-        specifier: 8.0.10
-        version: 8.0.10
+        specifier: 9.0.1
+        version: 9.0.1
       oracledb:
         specifier: 6.10.0
         version: 6.10.0
@@ -7981,6 +7981,7 @@ packages:
   '@langchain/community@1.1.27':
     resolution: {integrity: sha512-s2U3w7QV7QpkFtY1eZMni4poz+nKLFclpDi3a7hUbZ67ttsGaU9WkZ2BiLuzLIs+IFaUvON/KcGkE8EqAl9aPA==}
     engines: {node: '>=20'}
+    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.2.0
       '@aws-crypto/sha256-js': ^5.0.0
@@ -17741,8 +17742,8 @@ packages:
     resolution: {integrity: sha512-X75ZN8DCLftGM5iKwoYLA3rjnrAEs97MkzvSd4q2746Tgpg8b8XWiBGiBG4ZpgcAqBgtgPHTiAc8ZMCvZuikDw==}
     engines: {node: '>=10'}
 
-  nodemailer@8.0.10:
-    resolution: {integrity: sha512-BLFuSth7QtHOkBzyqTehWWyub0NTRDuK2Q2SQfnGLsrJnzyU+Yeh4WpV1eZGuARFj1xQJHIdnTuJZLP+b9R1GQ==}
+  nodemailer@9.0.1:
+    resolution: {integrity: sha512-Gwv8SQewT616ZM/URn0H54b8PWo/Wum7md3EW2aWy1lO27+WZCX+Xyak3J+NlmHUjDh5ME+uesJUDRbR3Ye8Bw==}
     engines: {node: '>=6.0.0'}
 
   nodemon@2.0.22:
@@ -18811,6 +18812,7 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -24323,7 +24325,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.18.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.18.0)
+      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.3))
       chalk: 4.1.2
       commander: 13.1.0
       date-fns: 2.30.0
@@ -27360,7 +27362,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
       axios: 1.18.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.18.0)
+      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.3))
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -30354,7 +30356,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.18.0):
+  axios-retry@4.5.0(axios@1.18.0(debug@4.4.3)):
     dependencies:
       axios: 1.18.0(debug@4.4.3)
       is-retry-allowed: 2.2.0
@@ -35449,7 +35451,7 @@ snapshots:
       iconv-lite: 0.7.2
       libmime: 5.3.7
       linkify-it: 5.0.0
-      nodemailer: 8.0.10
+      nodemailer: 9.0.1
       punycode.js: 2.3.1
       tlds: 1.261.0
 
@@ -36796,7 +36798,7 @@ snapshots:
       util: 0.12.5
       vm-browserify: 1.1.2
 
-  nodemailer@8.0.10: {}
+  nodemailer@9.0.1: {}
 
   nodemon@2.0.22:
     dependencies:
