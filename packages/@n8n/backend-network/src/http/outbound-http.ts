@@ -15,7 +15,12 @@ import { executeLegacyRequest, type LegacyRequestCallbacks } from './legacy-requ
 import { buildNodeAgents } from './node-agents';
 import type { NodeAgentOptions, ProxyOption, SsrfOption } from './node-agents';
 import { SsrfProtectionService } from '../ssrf';
-import { buildDispatcher, dispatchedFetch, type CustomFetch } from './undici/transport';
+import {
+	buildDispatcher,
+	dispatchedFetch,
+	type CustomFetch,
+	type TransportTimeoutOptions,
+} from './undici/transport';
 
 export interface HttpRequestClientOptions {
 	/**
@@ -39,6 +44,12 @@ export interface HttpTransportOptions {
 	 * Pass `'disabled'` to explicitly opt out.
 	 */
 	ssrf?: SsrfOption;
+	/**
+	 * Undici agent timeout overrides (ms). Unset fields keep undici's defaults.
+	 * Used for long-running outbound calls (e.g. LLM completions) that would
+	 * otherwise hit undici's 5-minute `headersTimeout` / `bodyTimeout`.
+	 */
+	timeouts?: TransportTimeoutOptions;
 }
 
 /**
@@ -147,8 +158,9 @@ export class OutboundHttp {
 	transport(options?: HttpTransportOptions): HttpTransport {
 		const proxy = options?.proxy ?? 'env';
 		const ssrf = options?.ssrf ?? this.ssrfProtection;
+		const timeouts = options?.timeouts;
 
-		const lazyDispatcher = lazy(() => buildDispatcher(proxy, ssrf));
+		const lazyDispatcher = lazy(() => buildDispatcher(proxy, ssrf, timeouts));
 		const lazyNodeAgents = lazy(() => buildNodeAgents(proxy, ssrf));
 
 		return {

@@ -11,24 +11,61 @@ import type { ProxyOption, SsrfOption } from '../node-agents';
 export type CustomFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /**
+ * Undici agent timeout overrides for a transport, in milliseconds.
+ *
+ * undici defaults `headersTimeout` / `bodyTimeout` to 5 minutes, which is too
+ * short for long-running outbound calls (e.g. LLM completions). Callers pass
+ * their own values here; unset fields keep undici's defaults.
+ */
+export interface TransportTimeoutOptions {
+	headersTimeout?: number;
+	bodyTimeout?: number;
+	connectTimeout?: number;
+}
+
+/**
  * Builds the undici dispatcher for a given proxy + SSRF policy — the transport
  * plumbing behind `OutboundHttp.transport()`. When SSRF is active the dispatcher
  * is composed with {@link createSsrfInterceptor} so every dispatched request,
  * including each redirect hop, is validated.
+ *
+ * `timeouts` overrides undici's default agent timeouts (e.g. for long-running
+ * AI calls); unset fields keep undici's defaults.
  */
-export function buildDispatcher(proxy: ProxyOption, ssrf: SsrfOption): Dispatcher {
-	const dispatcher = buildDispatcherFromProxy(proxy);
+export function buildDispatcher(
+	proxy: ProxyOption,
+	ssrf: SsrfOption,
+	timeouts?: TransportTimeoutOptions,
+): Dispatcher {
+	const dispatcher = buildDispatcherFromProxy(proxy, timeouts);
 	return ssrf === 'disabled' ? dispatcher : dispatcher.compose(createSsrfInterceptor(ssrf));
 }
 
-function buildDispatcherFromProxy(proxy: ProxyOption): Dispatcher {
+function buildDispatcherFromProxy(
+	proxy: ProxyOption,
+	timeouts?: TransportTimeoutOptions,
+): Dispatcher {
+	const agentOptions = toAgentTimeoutOptions(timeouts);
 	if (proxy === false) {
-		return new Agent();
+		return new Agent(agentOptions);
 	}
 	if (proxy === 'env') {
-		return new EnvHttpProxyAgent();
+		return new EnvHttpProxyAgent(agentOptions);
 	}
-	return new ProxyAgent(proxy);
+	return new ProxyAgent({ uri: proxy, ...agentOptions });
+}
+
+/**
+ * Maps {@link TransportTimeoutOptions} onto the undici agent option subset,
+ * omitting unset keys so undici keeps its own default for each one.
+ */
+function toAgentTimeoutOptions(timeouts?: TransportTimeoutOptions): TransportTimeoutOptions {
+	if (!timeouts) return {};
+	return {
+		...(timeouts.headersTimeout !== undefined && { headersTimeout: timeouts.headersTimeout }),
+		...(timeouts.bodyTimeout !== undefined && { bodyTimeout: timeouts.bodyTimeout }),
+		...(timeouts.connectTimeout !== undefined && { connectTimeout: timeouts.connectTimeout }),
+	};
 }
 
 /**

@@ -36,6 +36,10 @@ export function createAiProxyFetch(outboundHttp: OutboundHttp): CustomFetch {
 		.transport({
 			proxy: 'env',
 			ssrf: 'disabled',
+			timeouts: {
+				headersTimeout: AI_REQUEST_TIMEOUT_MS,
+				bodyTimeout: AI_REQUEST_TIMEOUT_MS,
+			},
 		})
 		.asCustomFetch();
 }
@@ -54,6 +58,10 @@ export function createAiMcpFetch(
 		.transport({
 			proxy: 'env',
 			ssrf: ssrfConfig.enabled ? ssrfProtectionService : 'disabled',
+			timeouts: {
+				headersTimeout: AI_REQUEST_TIMEOUT_MS,
+				bodyTimeout: AI_REQUEST_TIMEOUT_MS,
+			},
 		})
 		.asCustomFetch();
 }

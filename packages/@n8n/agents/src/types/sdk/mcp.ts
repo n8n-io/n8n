@@ -52,14 +52,10 @@ export interface McpServerConfig {
 	 * Tools are matched by their original (un-prefixed) name.
 	 *
 	 * - `{ mode: 'allow', tools: [...] }` — only the listed tools are surfaced.
+	 *   An empty list surfaces no tools.
 	 * - `{ mode: 'exclude', tools: [...] }` — every tool except the listed ones
-	 *   is surfaced.
+	 *   is surfaced. An empty list surfaces every tool.
 	 * - omitted — every tool the server advertises is surfaced.
-	 *
-	 * An empty `tools` array is a no-op for both modes — i.e. an empty allow
-	 * list does not hide everything, and an empty exclude list does not hide
-	 * anything. This matches the JSON-config semantics ("no filter applied"
-	 * is expressed by omitting the field).
 	 */
 	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
 }
