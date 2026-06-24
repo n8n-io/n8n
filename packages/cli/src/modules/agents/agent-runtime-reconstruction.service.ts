@@ -24,8 +24,8 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp } from '@n8n/backend-network';
-import { AgentsConfig } from '@n8n/config';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -34,8 +34,8 @@ import { ActiveExecutions } from '@/active-executions';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
-import type { WorkflowRunner } from '@/workflow-runner';
+import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsToolsService } from './agents-tools.service';
@@ -139,6 +139,8 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -231,16 +233,21 @@ export class AgentRuntimeReconstructionService {
 		const toolResolver = this.makeToolResolver(projectId, userId);
 		const resolvedTools: BuiltTool[] = [];
 
-		// One proxy-aware transport shared by the agent's model and all its MCP
-		// connections, so they reuse a single connection pool.
+		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+		// Transport for MCP calls
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
 
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: aiProxyFetch,
+				proxyFetch: aiMcpFetch,
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {

@@ -145,7 +145,7 @@ catalog:
   qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  sanitize-html: 2.12.1
+  sanitize-html: 2.17.4
   sass-embedded: ^1.98.0
   semver: 7.7.3
   simple-git: 3.36.0
