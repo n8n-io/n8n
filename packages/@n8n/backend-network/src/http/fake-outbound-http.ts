@@ -1,10 +1,7 @@
-import type {
-	HttpRequestClient,
-	HttpRequestClientOptions,
-	OutboundHttp,
-} from '@n8n/backend-network';
-import { mock } from 'jest-mock-extended';
 import type { IHttpRequestOptions } from 'n8n-workflow';
+
+import type { HttpRequestClientOptions } from './client-options';
+import type { HttpRequestClient, OutboundHttp } from './outbound-http';
 
 export interface Route {
 	method?: string;
@@ -105,20 +102,44 @@ function respondWith(routes: Route[]) {
 	};
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- structural mock signature
+type AnyFn = (...args: any[]) => any;
+
+/**
+ * Test-framework mock factory — pass `jest.fn` or `vi.fn`. Injected so this
+ * helper stays framework-neutral: `@n8n/backend-network` runs on vitest while
+ * consumers such as `packages/cli` run on jest, and `expect(fn).toHaveBeenCalled…`
+ * assertions need a real mock from the consumer's own framework.
+ */
+export type MockFnFactory = <T extends AnyFn>(
+	impl: T,
+) => T & { mock: { calls: Array<Parameters<T>> } };
+
 /**
  * Builds a faithful fake {@link OutboundHttp} over a set of routes. The returned
- * `httpRequest` jest.fn records the *resolved* request (bound `baseURL` applied,
+ * `httpRequest` mock records the *resolved* request (bound `baseURL` applied,
  * `headers` merged), so assertions see exactly what the real client would send.
+ *
+ * @param routes responses to serve, matched and consumed in order.
+ * @param fn the consumer's mock factory (`jest.fn` / `vi.fn`).
  */
-export function createFakeOutboundHttp(routes: Route[]) {
+export function createFakeOutboundHttp(routes: Route[], fn: MockFnFactory) {
 	const stub = respondWith(routes);
-	const httpRequest = jest.fn(stub);
-	const requests = jest.fn((options?: HttpRequestClientOptions) =>
-		mock<HttpRequestClient>({
+	const httpRequest = fn(stub);
+	const requests = fn(
+		(options?: HttpRequestClientOptions): HttpRequestClient => ({
 			request: (async (request: IHttpRequestOptions) =>
 				await httpRequest(applyClientDefaults(options, request))) as HttpRequestClient['request'],
+			requestLegacy: () => {
+				throw new Error('requestLegacy is not supported by the fake OutboundHttp');
+			},
 		}),
 	);
-	const outboundHttp = mock<OutboundHttp>({ requests });
+	const outboundHttp = {
+		requests,
+		transport: () => {
+			throw new Error('transport is not supported by the fake OutboundHttp');
+		},
+	} as unknown as OutboundHttp;
 	return { outboundHttp, httpRequest, requests };
 }
