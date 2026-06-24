@@ -136,8 +136,12 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instanc
 
 `--tier` filters by the `datasets` array in each test case. Build the whole tier
 so every case the eval selects is present in the manifest — any case missing
-from the manifest falls back to the normal Instance AI build path. `--tier`
-combines with `--filter` and `--exclude` on both commands.
+from the manifest falls back to the normal Instance AI build path.
+
+`--filter` and `--exclude` are `eval:instance-ai` flags only — combine them with
+`--tier` to narrow the eval further. `eval:build-mcp-manifest` does not accept
+them; narrow its build set with positional slugs instead (e.g. append
+`contact-form-automation` to build just that case).
 
 ## Generate a cohort
 
