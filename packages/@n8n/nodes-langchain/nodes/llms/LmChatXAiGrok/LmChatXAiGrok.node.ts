@@ -215,7 +215,7 @@ export class LmChatXAiGrok implements INodeType {
 						name: 'priority',
 						default: false,
 						description:
-							'Priority Processing gives your xAI API requests higher scheduling priority',
+							'Whether to give your xAI API requests higher scheduling priority (Priority Processing)',
 						type: 'boolean',
 					},
 					{
@@ -223,7 +223,7 @@ export class LmChatXAiGrok implements INodeType {
 						name: 'reasoning',
 						type: 'options',
 						default: 'low',
-						description: 'Effort the model spends thinking before responding.',
+						description: 'Effort the model spends thinking before responding',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
