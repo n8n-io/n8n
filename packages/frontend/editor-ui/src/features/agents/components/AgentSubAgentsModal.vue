@@ -5,6 +5,7 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nHeading,
+	N8nInput,
 	N8nMarkdownEditor,
 	N8nScrollArea,
 	N8nText,
@@ -39,6 +40,16 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 
 const hasAgents = computed(() => props.data.agents.length > 0);
+const searchQuery = ref('');
+const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase());
+const filteredAgents = computed(() =>
+	normalizedSearchQuery.value
+		? props.data.agents.filter((agent) =>
+				agent.name.toLowerCase().includes(normalizedSearchQuery.value),
+			)
+		: props.data.agents,
+);
+const hasMatchingAgents = computed(() => filteredAgents.value.length > 0);
 const isEditing = computed(() => Boolean(props.data.selectedAgent));
 const selectedAgent = ref<AgentSubAgentOption | null>(props.data.selectedAgent ?? null);
 const useWhen = ref(props.data.useWhen ?? '');
@@ -110,10 +121,22 @@ function onConfirm() {
 					{{ i18n.baseText('agents.builder.subAgents.modal.description') }}
 				</N8nText>
 
-				<N8nScrollArea v-if="hasAgents" max-height="420px" type="auto">
+				<N8nInput
+					v-if="hasAgents"
+					v-model="searchQuery"
+					:placeholder="i18n.baseText('agents.builder.subAgents.modal.search.placeholder')"
+					clearable
+					data-testid="agent-sub-agents-modal-search"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" :size="16" />
+					</template>
+				</N8nInput>
+
+				<N8nScrollArea v-if="hasAgents && hasMatchingAgents" max-height="420px" type="auto">
 					<div :class="$style.rows">
 						<div
-							v-for="agent in data.agents"
+							v-for="agent in filteredAgents"
 							:key="agent.id"
 							:class="$style.row"
 							data-testid="agent-sub-agents-modal-row"
@@ -141,6 +164,14 @@ function onConfirm() {
 						</div>
 					</div>
 				</N8nScrollArea>
+
+				<N8nActionBox
+					v-else-if="hasAgents && !hasMatchingAgents"
+					:icon="{ type: 'icon', value: 'bot' }"
+					:heading="i18n.baseText('agents.builder.subAgents.modal.noResults.title')"
+					:description="i18n.baseText('agents.builder.subAgents.modal.noResults.description')"
+					data-testid="agent-sub-agents-modal-no-results"
+				/>
 
 				<N8nActionBox
 					v-else

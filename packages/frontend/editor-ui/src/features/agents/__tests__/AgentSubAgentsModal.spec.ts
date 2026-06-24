@@ -10,11 +10,14 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
 			({
-				'agents.builder.subAgents.modal.title': 'Add sub-agent',
+				'agents.builder.subAgents.modal.title': 'Sub-agents',
 				'agents.builder.subAgents.modal.description': 'Select published agents',
 				'agents.builder.subAgents.modal.selectAgent': `Select ${options?.interpolate?.name ?? ''}`,
 				'agents.builder.subAgents.modal.empty.title': 'No agents to add',
 				'agents.builder.subAgents.modal.empty.description': 'Published agents show here',
+				'agents.builder.subAgents.modal.search.placeholder': 'Search agents',
+				'agents.builder.subAgents.modal.noResults.title': 'No matching agents',
+				'agents.builder.subAgents.modal.noResults.description': 'Try another search term.',
 				'agents.builder.subAgents.modal.add': 'Add agent',
 				'agents.builder.subAgents.modal.remove': 'Remove sub agent',
 				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
@@ -46,8 +49,7 @@ vi.mock('@/app/components/Modal.vue', () => ({
 vi.mock('@n8n/design-system', () => ({
 	N8nActionBox: {
 		props: ['heading', 'description'],
-		template:
-			'<div data-testid="agent-sub-agents-modal-empty">{{ heading }} {{ description }}</div>',
+		template: '<div v-bind="$attrs">{{ heading }} {{ description }}</div>',
 	},
 	N8nButton: {
 		props: ['variant', 'size', 'disabled'],
@@ -57,6 +59,12 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['tag', 'size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
+	N8nInput: {
+		props: ['modelValue', 'placeholder', 'clearable', 'size'],
+		emits: ['update:modelValue'],
+		template:
+			'<input v-bind="$attrs" :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	},
 	N8nMarkdownEditor: {
 		props: ['modelValue'],
 		emits: ['update:modelValue'],
@@ -115,6 +123,46 @@ describe('AgentSubAgentsModal', () => {
 		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
 	});
 
+	it('filters available agents by name before configuring one', async () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [
+						{ id: 'agent-2', name: 'Billing Agent' },
+						{ id: 'agent-3', name: 'Research Agent' },
+					],
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		const searchInput = wrapper.find('[data-testid="agent-sub-agents-modal-search"]');
+		expect(searchInput.exists()).toBe(true);
+
+		await searchInput.setValue(' bill ');
+
+		let rows = wrapper.findAll('[data-testid="agent-sub-agents-modal-row"]');
+		expect(rows).toHaveLength(1);
+		expect(rows[0].text()).toContain('Billing Agent');
+		expect(wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')).toHaveLength(1);
+
+		await searchInput.setValue('unknown');
+
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-no-results"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-empty"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')).toHaveLength(0);
+
+		await searchInput.setValue('RESEARCH');
+		rows = wrapper.findAll('[data-testid="agent-sub-agents-modal-row"]');
+		expect(rows).toHaveLength(1);
+		expect(rows[0].text()).toContain('Research Agent');
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-add"]').trigger('click');
+
+		expect(wrapper.find('h2').text()).toBe('Research Agent');
+	});
+
 	it('returns to the list from the configure step', async () => {
 		const wrapper = mount(AgentSubAgentsModal, {
 			props: {
@@ -131,7 +179,7 @@ describe('AgentSubAgentsModal', () => {
 
 		await wrapper.find('[data-testid="agent-sub-agents-modal-back"]').trigger('click');
 
-		expect(wrapper.find('h2').text()).toBe('Add sub-agent');
+		expect(wrapper.find('h2').text()).toBe('Sub-agents');
 		expect(wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')).toHaveLength(1);
 	});
 
