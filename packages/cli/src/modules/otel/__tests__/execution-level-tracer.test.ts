@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { mock } from 'jest-mock-extended';
+import { consumeOtelExecutionWrapper } from 'n8n-core';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { OtelSettingsService } from '../otel-settings.service';
@@ -727,6 +728,42 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('OTEL execution-context wrapper', () => {
+		it('registers a wrapper that runs the execution callback when the workflow starts', async () => {
+			tracer.startWorkflow({ executionId: 'exec-wrapper', workflow: defaultWorkflow });
+
+			const wrapper = consumeOtelExecutionWrapper('exec-wrapper');
+			expect(wrapper).toBeDefined();
+
+			let called = false;
+			await wrapper!(async () => {
+				called = true;
+			});
+			expect(called).toBe(true);
+
+			tracer.endWorkflow({
+				executionId: 'exec-wrapper',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+		});
+
+		it('cleans up an unconsumed wrapper on endWorkflow', () => {
+			tracer.startWorkflow({ executionId: 'exec-wrapper-cleanup', workflow: defaultWorkflow });
+
+			// Simulate an execution that ended before the core loop consumed the wrapper.
+			tracer.endWorkflow({
+				executionId: 'exec-wrapper-cleanup',
+				status: 'error',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			expect(consumeOtelExecutionWrapper('exec-wrapper-cleanup')).toBeUndefined();
 		});
 	});
 });

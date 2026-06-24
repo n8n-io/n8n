@@ -14,12 +14,12 @@ import {
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
 
+import { N8N_VERSION } from '@/constants';
+
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
-
-import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
@@ -28,6 +28,7 @@ export class OtelService {
 	private static isDiagnosticsLoggerConfigured = false;
 	private sdk?: NodeSDK;
 	private hasLoggedStartupConnectivityFailure = false;
+	private traceContextInjected = false;
 
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
@@ -146,7 +147,29 @@ export class OtelService {
 		});
 
 		this.sdk.start();
+		this.injectTraceContextIntoLogs();
 		return otlpTracesUrl;
+	}
+
+	/**
+	 * Prepend a Winston format that reads the active OpenTelemetry span and adds
+	 * `traceId`/`spanId` to every log record, so log lines can be correlated with
+	 * traces in observability platforms. Runs once: the format reads the active
+	 * span at log time, so it keeps working across SDK restarts.
+	 */
+	private injectTraceContextIntoLogs(): void {
+		if (this.traceContextInjected) return;
+		this.traceContextInjected = true;
+
+		this.logger.prependFormat((info) => {
+			const span = trace.getActiveSpan();
+			if (span) {
+				const { traceId, spanId } = span.spanContext();
+				info.traceId = traceId;
+				info.spanId = spanId;
+			}
+			return info;
+		});
 	}
 
 	parseOtlpHeaders(headersToSplit: string): Record<string, string> {

@@ -53,6 +53,7 @@ import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
 import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
+import { registerOtelExecutionWrapper } from '../otel-execution-context';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
@@ -108,6 +109,91 @@ describe('WorkflowExecute', () => {
 
 			expect(result.finished).toBe(true);
 			expect(runNodeSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('OTEL execution-context wrapping', () => {
+		it('runs the execution inside the registered wrapper and finishes', async () => {
+			const node = createNodeData({ name: 'node1' });
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			additionalData.executionId = 'exec-otel';
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			vi.spyOn(workflowExecute, 'runNode').mockResolvedValue({ data: [[{ json: { ok: true } }]] });
+
+			let wrapped = false;
+			registerOtelExecutionWrapper('exec-otel', async (fn) => {
+				wrapped = true;
+				await fn();
+			});
+
+			await workflowExecute.run({ workflow, startNode: node });
+			const result = await waitPromise.promise;
+
+			expect(wrapped).toBe(true);
+			expect(result.finished).toBe(true);
+			expect(result.data.resultData.runData.node1).toBeDefined();
+		});
+
+		it('preserves retry control flow when wrapped (node retries then succeeds)', async () => {
+			const retryNode: INode = {
+				...createNodeData({ name: 'retryNode' }),
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 1,
+			};
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [retryNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			additionalData.executionId = 'exec-otel-retry';
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			// Fail once (error output) then succeed — exercises the retry loop while wrapped.
+			const runNodeSpy = vi
+				.spyOn(workflowExecute, 'runNode')
+				.mockResolvedValueOnce({ data: [[{ json: { error: 'transient' } }]] })
+				.mockResolvedValueOnce({ data: [[{ json: { ok: true } }]] });
+
+			registerOtelExecutionWrapper('exec-otel-retry', async (fn) => await fn());
+
+			await workflowExecute.run({ workflow, startNode: retryNode });
+			const result = await waitPromise.promise;
+
+			expect(runNodeSpy).toHaveBeenCalledTimes(2);
+			expect(result.finished).toBe(true);
+		});
+
+		it('falls back to running directly when no wrapper is registered', async () => {
+			const node = createNodeData({ name: 'node1' });
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			additionalData.executionId = 'exec-no-wrapper';
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			vi.spyOn(workflowExecute, 'runNode').mockResolvedValue({ data: [[{ json: { ok: true } }]] });
+
+			await workflowExecute.run({ workflow, startNode: node });
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
 		});
 	});
 

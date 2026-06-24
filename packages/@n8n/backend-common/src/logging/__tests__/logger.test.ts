@@ -672,4 +672,44 @@ describe('Logger', () => {
 			expect(ANSI_COLOR_PATTERN.test(debugOutput)).toBe(false);
 		});
 	});
+
+	describe('prependFormat', () => {
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		test('injects fields at the JSON record root, kept out of nested metadata', () => {
+			// ARRANGE
+			const globalConfig = mock<GlobalConfig>({
+				logging: { format: 'json', level: 'info', outputs: ['console'], scopes: [] },
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+
+			logger.prependFormat((info) => {
+				info.traceId = 'trace-abc';
+				info.spanId = 'span-def';
+				return info;
+			});
+
+			// ACT
+			logger.info('Test Message', { test: 1 });
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			expect(typeof output).toBe('string');
+			const parsed = JSON.parse(output as string) as {
+				traceId?: string;
+				spanId?: string;
+				metadata?: { traceId?: string; spanId?: string };
+			};
+
+			// Trace fields stay at the record root (not moved into `metadata`) so log
+			// forwarders can surface them as top-level attributes.
+			expect(parsed.traceId).toBe('trace-abc');
+			expect(parsed.spanId).toBe('span-def');
+			expect(parsed.metadata?.traceId).toBeUndefined();
+			expect(parsed.metadata?.spanId).toBeUndefined();
+		});
+	});
 });

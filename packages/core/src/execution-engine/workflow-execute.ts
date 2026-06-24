@@ -73,6 +73,7 @@ import {
 	PollContext,
 	resolveSourceOverwrite,
 } from './node-execution-context';
+import { consumeOtelExecutionWrapper } from './otel-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -1602,7 +1603,7 @@ export class WorkflowExecute {
 			});
 
 			// eslint-disable-next-line complexity
-			const returnPromise = (async () => {
+			const workflowExecution = async () => {
 				try {
 					await workflow.expression.acquireIsolate();
 
@@ -2464,7 +2465,14 @@ export class WorkflowExecute {
 				}
 
 				return;
-			})()
+			};
+
+			// Run the workflow execution within the active OTEL span context (when OTEL is
+			// enabled) so trace.getActiveSpan() resolves during log writes and node runs,
+			// enabling log-trace correlation. The wrapper is registered by the OTEL module
+			// (packages/cli) when the workflow span is created; it is undefined otherwise.
+			const otelWrapper = consumeOtelExecutionWrapper(this.additionalData.executionId ?? '');
+			const returnPromise = (otelWrapper ? otelWrapper(workflowExecution) : workflowExecution())
 				.then(async () => {
 					if (this.status === 'canceled' && executionError === undefined) {
 						return await this.processSuccessExecution(
