@@ -36,7 +36,7 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { AiService } from '@/services/ai.service';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
