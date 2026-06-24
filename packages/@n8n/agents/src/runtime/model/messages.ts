@@ -112,12 +112,19 @@ function hasEntries(value: Record<string, unknown>): boolean {
 	return Object.keys(value).length > 0;
 }
 
+function shouldStripOpenAiResponsesField(key: string, value: unknown): boolean {
+	return (
+		OPENAI_RESPONSES_STATE_KEYS.has(key) ||
+		(key === 'reasoningEncryptedContent' && (value === null || value === undefined))
+	);
+}
+
 function stripOpenAiResponsesStateFromRecord(
 	value: Record<string, unknown>,
 ): Record<string, unknown> | undefined {
 	const result: Record<string, unknown> = {};
 	for (const [key, entry] of Object.entries(value)) {
-		if (!OPENAI_RESPONSES_STATE_KEYS.has(key)) {
+		if (!shouldStripOpenAiResponsesField(key, entry)) {
 			result[key] = entry;
 		}
 	}
@@ -128,7 +135,7 @@ function stripOpenAiResponsesStateFromRecord(
 function stripOpenAiResponsesStateFromJsonObject(value: JSONObject): JSONObject | undefined {
 	const result: JSONObject = {};
 	for (const [key, entry] of Object.entries(value)) {
-		if (!OPENAI_RESPONSES_STATE_KEYS.has(key)) {
+		if (!shouldStripOpenAiResponsesField(key, entry)) {
 			result[key] = entry;
 		}
 	}
@@ -172,6 +179,28 @@ function stripOpenAiResponsesStateFromProviderOptions(
 	}
 
 	return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function hasReplayableReasoningProviderOptions(
+	providerOptions: ProviderOptions | undefined,
+): boolean {
+	if (!providerOptions) return false;
+
+	const openAiOptions = getRecord(providerOptions.openai);
+	if (typeof openAiOptions?.reasoningEncryptedContent === 'string') return true;
+
+	const anthropicOptions = getRecord(providerOptions.anthropic);
+	if (
+		typeof anthropicOptions?.signature === 'string' ||
+		typeof anthropicOptions?.redactedData === 'string'
+	) {
+		return true;
+	}
+
+	return Object.entries(providerOptions).some(
+		([provider, options]) =>
+			provider !== 'openai' && provider !== 'anthropic' && hasEntries(options),
+	);
 }
 
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
@@ -252,6 +281,9 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			block.providerMetadata,
 		);
 		const sanitizedProviderOptions = stripOpenAiResponsesStateFromProviderOptions(providerOptions);
+		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(sanitizedProviderOptions)) {
+			return undefined;
+		}
 
 		return {
 			...base,

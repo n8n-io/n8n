@@ -241,7 +241,12 @@ export class RuntimeContextBuilder {
 			}
 			case 'openai': {
 				const cfg = thinking as OpenAIThinkingConfig;
-				return { openai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+				return {
+					openai: {
+						reasoningEffort: cfg.reasoningEffort ?? 'medium',
+						...(cfg.reasoningSummary ? { reasoningSummary: cfg.reasoningSummary } : {}),
+					},
+				};
 			}
 			case 'google': {
 				const cfg = thinking as GoogleThinkingConfig;

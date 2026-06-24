@@ -176,4 +176,32 @@ describe('message provider metadata conversion', () => {
 			},
 		]);
 	});
+
+	it.each(['', 'A concise reasoning summary.'])(
+		'drops OpenAI reasoning part without encrypted replay content: %j',
+		(text) => {
+			const message: Message = {
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text,
+						providerMetadata: {
+							openai: {
+								itemId: 'rs_123',
+								reasoningEncryptedContent: null,
+							},
+						},
+						providerOptions: {
+							openai: {
+								reasoningEncryptedContent: null,
+							},
+						},
+					},
+				],
+			};
+
+			expect(toAiMessages([message])).toEqual([]);
+		},
+	);
 });
