@@ -210,6 +210,28 @@ export class LmChatXAiGrok implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Enable Priority',
+						name: 'priority',
+						default: false,
+						description:
+							'Priority Processing gives your xAI API requests higher scheduling priority',
+						type: 'boolean',
+					},
+					{
+						displayName: 'Reasoning',
+						name: 'reasoning',
+						type: 'options',
+						default: 'low',
+						description: 'Effort the model spends thinking before responding.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+						],
+					},
 				],
 			},
 		],
@@ -229,6 +251,8 @@ export class LmChatXAiGrok implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoning?: 'none' | 'low' | 'medium' | 'high';
+			priority?: boolean;
 		};
 
 		const timeout = options.timeout;
@@ -242,10 +266,14 @@ export class LmChatXAiGrok implements INodeType {
 			},
 		};
 
+		// `reasoning` (xAI reasoning effort) and `priority` are xAI-specific and passed via
+		// modelKwargs, so keep them out of the spread into the ChatOpenAI constructor.
+		const { reasoning, priority, ...restOptions } = options;
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
+			...restOptions,
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
@@ -257,6 +285,8 @@ export class LmChatXAiGrok implements INodeType {
 							response_format: { type: options.responseFormat },
 						}
 					: undefined),
+				...(reasoning ? { reasoning_effort: reasoning } : undefined),
+				...(priority ? { service_tier: 'priority' } : undefined),
 			},
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
