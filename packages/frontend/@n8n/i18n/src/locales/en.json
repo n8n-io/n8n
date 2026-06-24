@@ -6955,7 +6955,7 @@
 	"agents.builder.addTrigger.helpText.linear": "Connect a Linear OAuth credential to let this agent respond in Linear. For agent sessions, choose Application as the actor, point a Linear webhook at the URL below, and paste its signing secret into the credential.",
 	"agents.builder.addTrigger.connectedText.slack": "Your agent is connected to Slack and ready to send and receive messages.",
 	"agents.builder.addTrigger.connectedText.telegram": "Your agent is connected to Telegram and can receive messages.",
-	"agents.builder.addTrigger.connectedText.linear": "Your agent is connected to Linear and can reply to @-mentions.",
+	"agents.builder.addTrigger.connectedText.linear": "Your agent is connected to Linear and can reply to {'@'}-mentions.",
 	"instanceAi.welcomeModal.gateway.title": "Connect AI Assistant to your computer",
 	"instanceAi.welcomeModal.gateway.description": "Allow AI Assistant to work with local files, run terminal commands, and control your browser so it can help build automations on your machine. It connects through n8n Computer Use, a lightweight local process you can disconnect anytime.",
 	"instanceAi.welcomeModal.gateway.warning": "AI Assistant is a preview and can be unpredictable. Be aware of allowing access to sensitive data. Permissions can be adjusted during setup.",
