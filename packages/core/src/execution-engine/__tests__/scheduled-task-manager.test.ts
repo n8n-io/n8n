@@ -195,6 +195,22 @@ describe('ScheduledTaskManager', () => {
 		expect(scheduledTaskManager.getCronNodeIds('unknown-workflow')).toEqual([]);
 	});
 
+	it('returns whether a node has crons registered for a workflow', () => {
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'node-a',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.hasCronForNode(workflow.id, 'node-a')).toBe(true);
+		expect(scheduledTaskManager.hasCronForNode(workflow.id, 'node-b')).toBe(false);
+		expect(scheduledTaskManager.hasCronForNode('unknown-workflow', 'node-a')).toBe(false);
+	});
+
 	it('should deregister CronJobs for a single node, leaving other nodes intact', () => {
 		const nodeA = 'node-a';
 		const nodeB = 'node-b';
