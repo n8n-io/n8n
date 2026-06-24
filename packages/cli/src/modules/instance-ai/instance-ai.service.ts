@@ -1,4 +1,5 @@
-import type { Message, Workspace, ScopedMemoryTaskEvent } from '@n8n/agents';
+import { AgentEvent } from '@n8n/agents';
+import type { Message, Workspace, ScopedMemoryTaskEvent, AgentEventData } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -722,6 +723,30 @@ export class InstanceAiService {
 			};
 			this.logger.info(`Observational memory task ${event.type}`, logContext);
 		};
+	}
+
+	/**
+	 * Surface the agent's background/best-effort failures to Sentry. The SDK emits
+	 * `AgentEvent.Error` for these but nothing consumed it, so they were lost: memory
+	 * observer/reflector/episodic indexing and the eager input / turn-on-suspend
+	 * persists all fail silently while the run itself succeeds. We report only the
+	 * `source`-tagged events — the main agentic-loop errors (no source) already reach
+	 * Sentry via the errored run/stream result, so reporting them here would only
+	 * re-tag the same (deduped) error.
+	 */
+	private subscribeToAgentErrors(
+		agent: Awaited<ReturnType<typeof createInstanceAgent>>,
+		threadId: string,
+		runId: string,
+	): void {
+		agent.on(AgentEvent.Error, (event: AgentEventData) => {
+			if (event.type !== AgentEvent.Error || !event.source) return;
+			this.reportInstanceAiError(event.error, {
+				component: `instance-ai-${event.source}`,
+				threadId,
+				runId,
+			});
+		});
 	}
 
 	private reportInstanceAiError(
@@ -2997,6 +3022,7 @@ export class InstanceAiService {
 				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
 				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
+			this.subscribeToAgentErrors(agent, threadId, runId);
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
@@ -3693,6 +3719,7 @@ export class InstanceAiService {
 				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
 				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			});
+			this.subscribeToAgentErrors(agent, orphan.threadId, orphan.runId);
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
 		}
