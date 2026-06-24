@@ -194,7 +194,7 @@ export class MicrosoftOneDrive implements INodeType {
 						if (additionalFields.name) {
 							body.name = additionalFields.name as string;
 						}
-						// App-only Graph cannot copy into /me — ensure a destination drive id.
+						// App-only Graph has no /me, so a destination drive id is required.
 						if (isServicePrincipal) {
 							const providedDriveId =
 								typeof parentReference?.driveId === 'string' ? parentReference.driveId : '';
@@ -206,10 +206,12 @@ export class MicrosoftOneDrive implements INodeType {
 								};
 							}
 						}
+						// Encode the path-interpolated item id (same as upload/move): it keeps
+						// any `/ : ? #` in the id from changing which item the URL addresses.
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/drive/items/${fileId}/copy`,
+							`/drive/items/${encodeURIComponent(fileId)}/copy`,
 							body,
 							{},
 							undefined,
@@ -605,9 +607,8 @@ export class MicrosoftOneDrive implements INodeType {
 							body.name = additionalFields.name as string;
 						}
 
-						// The item id IS interpolated into the URL path, so encode it (the
-						// upload precedent) — `encodeURIComponent` does not neutralize `..`,
-						// but here it keeps any `/ : ? #` from retargeting the request.
+						// Encode the path-interpolated item id (same as upload/copy): it keeps
+						// any `/ : ? #` in the id from changing which item the URL addresses.
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',

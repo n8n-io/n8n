@@ -61,21 +61,58 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 		vi.clearAllMocks();
 	});
 
-	it('file:delete threads the user root onto DELETE /drive/items/{id}', async () => {
+	// delete is a separate call site per resource (fileId vs folderId), so pin the
+	// threaded root on BOTH so a missing root in either branch can't regress silently.
+	it.each([
+		['file', 'fileId'],
+		['folder', 'folderId'],
+	] as const)(
+		'%s:delete threads the user root onto DELETE /drive/items/{id}',
+		async (resource, idParam) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				params({ resource, operation: 'delete', [idParam]: 'item-1' }),
+			);
+
+			await microsoftOneDrive.execute.call(mockExecuteFunctions);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'DELETE',
+				'/drive/items/item-1',
+				{},
+				{},
+				undefined,
+				{},
+				{ json: true },
+				USER_ROOT,
+			);
+		},
+	);
+
+	it('file:copy encodes the path-interpolated item id (.. is escaped) and threads the root', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
-			params({ resource: 'file', operation: 'delete', fileId: 'item-1' }),
+			params({
+				resource: 'file',
+				operation: 'copy',
+				fileId: '../secret',
+				additionalFields: {},
+				// explicit destination driveId so no resolution GET is needed
+				parentReference: { id: 'dest', driveId: 'b!explicit' },
+			}),
 		);
+		mockApiRequest.mockResolvedValue({ headers: { location: 'https://graph/monitor/1' } });
 
 		await microsoftOneDrive.execute.call(mockExecuteFunctions);
 
 		expect(mockApiRequest).toHaveBeenCalledWith(
-			'DELETE',
-			'/drive/items/item-1',
-			{},
+			'POST',
+			'/drive/items/..%2Fsecret/copy',
+			expect.objectContaining({
+				parentReference: expect.objectContaining({ driveId: 'b!explicit' }),
+			}),
 			{},
 			undefined,
 			{},
-			{ json: true },
+			{ json: true, resolveWithFullResponse: true },
 			USER_ROOT,
 		);
 	});
