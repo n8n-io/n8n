@@ -268,6 +268,17 @@ const ALL_ACTION_TOOL_DEFINITIONS = [
 	...LINEAR_ACTION_TOOL_DEFINITIONS,
 ] satisfies IntegrationActionDefinition[];
 
+// Compile-time: every operation union member must have a matching definition.
+export const contextQueryDefinitionsAreExhaustive: IsExactUnion<
+	(typeof ALL_CONTEXT_QUERY_TOOL_DEFINITIONS)[number]['name'],
+	IntegrationContextQuery
+> = true;
+
+export const actionDefinitionsAreExhaustive: IsExactUnion<
+	(typeof ALL_ACTION_TOOL_DEFINITIONS)[number]['name'],
+	IntegrationAction
+> = true;
+
 const contextDefinitionsByName = toDefinitionMap(ALL_CONTEXT_QUERY_TOOL_DEFINITIONS);
 const actionDefinitionsByName = toDefinitionMap(ALL_ACTION_TOOL_DEFINITIONS);
 
@@ -311,3 +322,9 @@ function requireDefinition<
 type IntegrationToolDefinition<TName extends string> = {
 	name: TName;
 };
+
+type IsExactUnion<TActual, TExpected> = [TActual] extends [TExpected]
+	? [TExpected] extends [TActual]
+		? true
+		: never
+	: never;
