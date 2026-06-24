@@ -15,6 +15,8 @@ describe('PrometheusWorkflowExecutionDurationMetricsService', () => {
 		prefix: 'n8n_',
 		includeWorkflowExecutionDuration: true,
 		includeWorkflowIdLabel: false,
+		includeWorkflowNameLabel: false,
+		includeProjectNameLabel: false,
 	});
 	const eventService = mock<EventService>();
 	let service: PrometheusWorkflowExecutionDurationMetricsService;
@@ -29,6 +31,8 @@ describe('PrometheusWorkflowExecutionDurationMetricsService', () => {
 			prefix: 'n8n_',
 			includeWorkflowExecutionDuration: true,
 			includeWorkflowIdLabel: false,
+			includeWorkflowNameLabel: false,
+			includeProjectNameLabel: false,
 		});
 		service = new PrometheusWorkflowExecutionDurationMetricsService(config, eventService);
 		mockHistogramObserve = jest.fn();
@@ -69,6 +73,37 @@ describe('PrometheusWorkflowExecutionDurationMetricsService', () => {
 
 			expect(promClient.Histogram).toHaveBeenCalledWith(
 				expect.objectContaining({ labelNames: ['status', 'mode', 'workflow_id'] }),
+			);
+		});
+
+		it('should include workflow_name in labelNames when includeWorkflowNameLabel is true', () => {
+			config.includeWorkflowNameLabel = true;
+			service.init();
+
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({ labelNames: ['status', 'mode', 'workflow_name'] }),
+			);
+		});
+
+		it('should include project_name in labelNames when includeProjectNameLabel is true', () => {
+			config.includeProjectNameLabel = true;
+			service.init();
+
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({ labelNames: ['status', 'mode', 'project_name'] }),
+			);
+		});
+
+		it('should include all optional labels in order when every label flag is true', () => {
+			config.includeWorkflowIdLabel = true;
+			config.includeWorkflowNameLabel = true;
+			config.includeProjectNameLabel = true;
+			service.init();
+
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({
+					labelNames: ['status', 'mode', 'workflow_id', 'workflow_name', 'project_name'],
+				}),
 			);
 		});
 
@@ -195,6 +230,73 @@ describe('PrometheusWorkflowExecutionDurationMetricsService', () => {
 
 			expect(mockHistogramObserve).toHaveBeenCalledWith(
 				{ status: 'success', mode: 'manual', workflow_id: 'wf_789' },
+				1,
+			);
+		});
+
+		it('should include workflow_name in labels when includeWorkflowNameLabel is true', () => {
+			config.includeWorkflowNameLabel = true;
+			service.init();
+			const handler = getEventHandler();
+
+			expect(handler).toBeDefined();
+			handler!({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'manual',
+				},
+				workflow: { id: 'wf_789', name: 'My Workflow' },
+			});
+
+			expect(mockHistogramObserve).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'manual', workflow_name: 'My Workflow' },
+				1,
+			);
+		});
+
+		it('should include project_name from the event when includeProjectNameLabel is true', () => {
+			config.includeProjectNameLabel = true;
+			service.init();
+			const handler = getEventHandler();
+
+			expect(handler).toBeDefined();
+			handler!({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'manual',
+				},
+				workflow: { id: 'wf_789', name: 'My Workflow' },
+				projectName: 'My Project',
+			});
+
+			expect(mockHistogramObserve).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'manual', project_name: 'My Project' },
+				1,
+			);
+		});
+
+		it('should default project_name to empty string when the event has no project', () => {
+			config.includeProjectNameLabel = true;
+			service.init();
+			const handler = getEventHandler();
+
+			expect(handler).toBeDefined();
+			handler!({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'trigger',
+				},
+				workflow: { id: 'wf_789', name: 'My Workflow' },
+			});
+
+			expect(mockHistogramObserve).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'trigger', project_name: '' },
 				1,
 			);
 		});

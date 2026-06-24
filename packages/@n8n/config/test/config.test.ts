@@ -231,6 +231,7 @@ describe('GlobalConfig', () => {
 				prefix: 'n8n_',
 				includeWorkflowIdLabel: false,
 				includeWorkflowNameLabel: false,
+				includeProjectNameLabel: false,
 				includeDefaultMetrics: true,
 				includeMessageEventBusMetrics: false,
 				includeNodeTypeLabel: false,

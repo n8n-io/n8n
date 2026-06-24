@@ -17,6 +17,7 @@ describe('PrometheusEventBusMetricsService', () => {
 		includeCredentialTypeLabel: false,
 		includeWorkflowIdLabel: false,
 		includeWorkflowNameLabel: false,
+		includeProjectNameLabel: false,
 		includeNodeTypeLabel: false,
 	});
 	const eventBus = mock<MessageEventBus>();
@@ -35,6 +36,7 @@ describe('PrometheusEventBusMetricsService', () => {
 			includeCredentialTypeLabel: false,
 			includeWorkflowIdLabel: false,
 			includeWorkflowNameLabel: false,
+			includeProjectNameLabel: false,
 			includeNodeTypeLabel: false,
 		});
 		service = new PrometheusEventBusMetricsService(eventBus, config);
@@ -292,6 +294,61 @@ describe('PrometheusEventBusMetricsService', () => {
 			});
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ workflow_name: 'Fake Workflow Name' }, 1);
+		});
+
+		it('should include project_name label for workflow events when includeProjectNameLabel is true', () => {
+			config.includeProjectNameLabel = true;
+			service.init();
+
+			const handler = getEventBusHandler();
+			handler({
+				__type: EventMessageTypeNames.workflow,
+				eventName: 'n8n.workflow.success',
+				payload: { projectName: 'My Project' },
+			});
+
+			expect(promClient.Counter).toHaveBeenCalledWith(
+				expect.objectContaining({ labelNames: ['project_name'] }),
+			);
+			expect(mockCounterInc).toHaveBeenCalledWith({ project_name: 'My Project' }, 1);
+		});
+
+		it('should default project_name to empty string for workflow events with no project', () => {
+			config.includeProjectNameLabel = true;
+			service.init();
+
+			const handler = getEventBusHandler();
+			handler({
+				__type: EventMessageTypeNames.workflow,
+				eventName: 'n8n.workflow.success',
+				payload: { workflowId: 'wf_789' },
+			});
+
+			expect(mockCounterInc).toHaveBeenCalledWith({ project_name: '' }, 1);
+		});
+
+		it('should combine workflow_id, workflow_name and project_name labels for workflow events', () => {
+			config.includeWorkflowIdLabel = true;
+			config.includeWorkflowNameLabel = true;
+			config.includeProjectNameLabel = true;
+			service.init();
+
+			const handler = getEventBusHandler();
+			handler({
+				__type: EventMessageTypeNames.workflow,
+				eventName: 'n8n.workflow.success',
+				payload: { workflowId: 'wf_123', workflowName: 'My Workflow', projectName: 'My Project' },
+			});
+
+			expect(promClient.Counter).toHaveBeenCalledWith(
+				expect.objectContaining({
+					labelNames: ['workflow_id', 'workflow_name', 'project_name'],
+				}),
+			);
+			expect(mockCounterInc).toHaveBeenCalledWith(
+				{ workflow_id: 'wf_123', workflow_name: 'My Workflow', project_name: 'My Project' },
+				1,
+			);
 		});
 
 		it('should create a counter with no labels for workflow events when all flags are off', () => {
