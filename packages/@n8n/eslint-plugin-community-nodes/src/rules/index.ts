@@ -17,6 +17,7 @@ import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDangerousFunctionsRule } from './no-dangerous-functions.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
+import { NoDuplicateParamOptionsRule } from './no-duplicate-param-options.js';
 import { NoEmojiInOptionsRule } from './no-emoji-in-options.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
@@ -53,6 +54,7 @@ export const rules = {
 	'credential-password-field': CredentialPasswordFieldRule,
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'no-emoji-in-options': NoEmojiInOptionsRule,
+	'no-duplicate-param-options': NoDuplicateParamOptionsRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'options-sorted-alphabetically': OptionsSortedAlphabeticallyRule,
 	'package-name-convention': PackageNameConventionRule,
