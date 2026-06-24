@@ -447,7 +447,7 @@ interface VerifyToolContext {
 					...args: [
 						string,
 						Record<string, unknown> | undefined,
-						{ timeout?: number; pinData?: unknown; simulation?: unknown },
+						{ timeout?: number; pinData?: unknown },
 					]
 				) => Promise<ExecutionRunResult>
 			>;
@@ -996,7 +996,6 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
 			pinData: { 'Get Berlin Weather': weatherOutput },
-			simulation: { 'Get Berlin Weather': { reason } },
 		});
 	});
 
@@ -1022,7 +1021,6 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
 			pinData: { 'Get Berlin Forecast': clearOutput },
-			simulation: { 'Get Berlin Forecast': { reason } },
 		});
 	});
 

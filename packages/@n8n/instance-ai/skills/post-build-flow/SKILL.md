@@ -56,6 +56,12 @@ For follow-up requests like "verify again", call it with `workflowId` even if th
 original `workItemId` is not in context. For alternate deterministic scenarios,
 pass `fixtureOverrides` keyed by simulated node name instead of trying to force
 data through the trigger.
+If `fixtureOverrides` is rejected with `invalid_fixture_override`, the target
+node was not classified as simulated in the build outcome. Do not retry the same
+override. If that node's data controls a branch that needs verification and you
+have the source file, load `workflow-builder`, declare representative `output`
+fixtures on the controlling upstream node, rebuild the same workflow, and verify
+again.
 
 ## After build-workflow succeeds
 
@@ -96,6 +102,13 @@ data through the trigger.
      were verified and which were not, and tell the user the unreached part
      needs a manual test. Never claim end-to-end verification when
      `nodesNotReached` is non-empty.
+   - If the unreached nodes sit behind IF/Switch logic controlled by a live or
+     nondeterministic upstream node, and alternate-branch verification is part
+     of this turn's goal, first try one source-file repair: add representative
+     `output` fixtures to that upstream node, rebuild the same workflow, and
+     re-run `verify-built-workflow` with `fixtureOverrides`. Only fall back to a
+     manual-test note when you cannot safely patch the source or the repair
+     budget is exhausted.
    - Relay `simulationNote` (nodes whose output was simulated) to the user
      whenever it is present.
 3. After verification handling, if `setupRequirement.status === "required"` and

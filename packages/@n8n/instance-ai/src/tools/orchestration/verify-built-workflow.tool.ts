@@ -722,15 +722,10 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				buildOutcome,
 				resolvedInput.fixtureOverrides,
 			);
-			const simulationMap =
-				simulatedNodes.length > 0
-					? Object.fromEntries(simulatedNodes.map((n) => [n.nodeName, { reason: n.reason }]))
-					: undefined;
 
 			const result = await domainContext.executionService.run(workflowId, resolvedInput.inputData, {
 				timeout: resolvedInput.timeout,
 				pinData: verificationPinData,
-				simulation: simulationMap,
 			});
 
 			// Coverage: partition the simulation plan against the nodes that

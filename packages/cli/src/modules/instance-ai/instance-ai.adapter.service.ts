@@ -79,6 +79,7 @@ import {
 	type IConnections,
 	type IWorkflowSettings,
 	type IPinData,
+	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 	type DataTableFilter,
 	type DataTableRow,
@@ -958,6 +959,7 @@ export class InstanceAiAdapterService {
 					? (sdkPinDataToRuntime(options.pinData) ?? {})
 					: {};
 				const basePinData = { ...workflowPinData, ...overridePinData };
+				let nonVerificationPinData = { ...workflowPinData };
 				const mockDataSources: WorkflowExecutionMockDataSource[] = [];
 
 				if (inputData && triggerNode) {
@@ -975,6 +977,7 @@ export class InstanceAiAdapterService {
 				if (inputData && triggerNode) {
 					const triggerPinData = getPinDataForTrigger(triggerNode, inputData);
 					const mergedPinData = { ...basePinData, ...triggerPinData };
+					nonVerificationPinData = { ...nonVerificationPinData, ...triggerPinData };
 					const triggerItems = triggerPinData[triggerNode.name];
 
 					runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
@@ -1019,6 +1022,21 @@ export class InstanceAiAdapterService {
 				};
 
 				const executionId = await workflowRunner.run(runData);
+				const pruneVerificationPins = async (executedNodeNames?: string[]) => {
+					try {
+						await pruneUnreachedVerificationPinData(
+							executionId,
+							overridePinData,
+							nonVerificationPinData,
+							executedNodeNames,
+						);
+					} catch (error) {
+						logger.warn('Failed to prune verification pin data from execution', {
+							executionId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				};
 
 				// Wait for completion with timeout protection
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
@@ -1054,6 +1072,7 @@ export class InstanceAiAdapterService {
 								status: 'error',
 								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 							} satisfies ExecutionResult;
+							await pruneVerificationPins();
 							trackBuilderExecutedWorkflow(result.status);
 							return result;
 						}
@@ -1061,42 +1080,8 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				// Persist the simulation map onto the saved execution so the editor
-				// can label simulated node outputs. Only nodes that actually ran are
-				// recorded — an execution that dead-ends early must not claim
-				// simulations that never happened. Post-completion update: works in
-				// queue mode too (plain DB write), and the final save has already
-				// happened once the post-execute promise resolves. Best-effort — a
-				// failure must not mask the execution result.
-				if (options?.simulation && Object.keys(options.simulation).length > 0) {
-					try {
-						const execution = await executionRepository.findSingleExecution(executionId, {
-							includeData: true,
-							unflattenData: true,
-						});
-						if (execution?.data) {
-							const runData = execution.data.resultData.runData ?? {};
-							const simulation = Object.fromEntries(
-								Object.entries(options.simulation).filter(([nodeName]) =>
-									Object.hasOwn(runData, nodeName),
-								),
-							);
-							if (Object.keys(simulation).length > 0) {
-								execution.data.resultData.simulation = simulation;
-								await executionRepository.updateExistingExecution(executionId, {
-									data: execution.data,
-								});
-							}
-						}
-					} catch (error) {
-						logger.warn('Failed to persist simulation metadata on execution', {
-							executionId,
-							error: error instanceof Error ? error.message : String(error),
-						});
-					}
-				}
-
 				const result = await extractExecutionResult(executionId, allowSendingParameterValues);
+				await pruneVerificationPins(result.executedNodeNames);
 				trackBuilderExecutedWorkflow(result.status);
 				return result;
 			},
@@ -3157,6 +3142,55 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
 	}
 	return result;
+}
+
+async function pruneUnreachedVerificationPinData(
+	executionId: string,
+	verificationPinData: IPinData,
+	nonVerificationPinData: IPinData,
+	executedNodeNames?: string[],
+) {
+	const verificationNodeNames = Object.keys(verificationPinData);
+	if (verificationNodeNames.length === 0) return;
+
+	const executionPersistence = Container.get(ExecutionPersistence);
+	const execution = await executionPersistence.findSingleExecution(executionId, {
+		includeData: true,
+		unflattenData: true,
+	});
+	const executionData = execution?.data;
+	const resultData = executionData?.resultData;
+	const persistedPinData = resultData?.pinData;
+	if (!executionData || !resultData || !persistedPinData) return;
+
+	const reachedNodeNames = new Set(executedNodeNames ?? Object.keys(resultData.runData ?? {}));
+	let nextPinData: IPinData | undefined;
+
+	for (const nodeName of verificationNodeNames) {
+		if (reachedNodeNames.has(nodeName) || persistedPinData[nodeName] === undefined) continue;
+
+		nextPinData ??= { ...persistedPinData };
+		const preservedPinData = nonVerificationPinData[nodeName];
+		if (preservedPinData) {
+			nextPinData[nodeName] = preservedPinData;
+		} else {
+			delete nextPinData[nodeName];
+		}
+	}
+
+	if (!nextPinData) return;
+
+	const nextExecutionData: IRunExecutionData = {
+		...executionData,
+		resultData: {
+			...resultData,
+			pinData: nextPinData,
+		},
+	};
+
+	await executionPersistence.updateExistingExecution(executionId, {
+		data: nextExecutionData,
+	});
 }
 
 /**
