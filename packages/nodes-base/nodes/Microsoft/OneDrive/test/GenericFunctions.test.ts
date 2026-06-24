@@ -482,6 +482,9 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			);
 			// commas must stay literal, never percent-encoded
 			expect(root).not.toContain('%2C');
+			// the assembled URL path must not collapse via dot-segments (no traversal)
+			const pathname = new URL(`https://graph.microsoft.com/v1.0${root}/drive`).pathname;
+			expect(pathname).toBe(`/v1.0${root}/drive`);
 		});
 
 		it('encodes a user UPN exactly once (@ becomes %40, encoded a single time)', () => {
