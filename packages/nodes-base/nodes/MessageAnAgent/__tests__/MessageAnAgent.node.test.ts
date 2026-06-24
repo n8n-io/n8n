@@ -1,12 +1,14 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ExecuteAgentData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { MessageAnAgent } from '../MessageAnAgent.node';
 import type { Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
+
+import { MessageAnAgent, baseDescription } from '../MessageAnAgent.node';
+import { MessageAnAgentV1 } from '../v1/MessageAnAgentV1.node';
+import { MessageAnAgentV2 } from '../v2/MessageAnAgentV2.node';
 
 describe('MessageAnAgent Node', () => {
-	let node: MessageAnAgent;
+	let node: MessageAnAgentV2;
 	let executeFunctions: Mocked<IExecuteFunctions>;
 
 	const mockSession = {
@@ -29,7 +31,7 @@ describe('MessageAnAgent Node', () => {
 	};
 
 	beforeEach(() => {
-		node = new MessageAnAgent();
+		node = new MessageAnAgentV2(baseDescription);
 		executeFunctions = mockDeep<IExecuteFunctions>();
 		vi.clearAllMocks();
 
@@ -385,5 +387,31 @@ describe('MessageAnAgent Node', () => {
 			'Output schema is not valid JSON',
 		);
 		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+	});
+});
+
+describe('MessageAnAgent versioning', () => {
+	it('exposes v1 and v2 with v2 as the default', () => {
+		const versioned = new MessageAnAgent();
+
+		expect(versioned.description.defaultVersion).toBe(2);
+		expect(Object.keys(versioned.nodeVersions)).toEqual(['1', '2']);
+	});
+
+	it('keeps the original resourceLocator picker on v1 (non-breaking) with the listAgents method', () => {
+		const v1 = new MessageAnAgentV1(baseDescription);
+		const agentId = v1.description.properties.find((p) => p.name === 'agentId');
+
+		expect(v1.description.version).toBe(1);
+		expect(agentId?.type).toBe('resourceLocator');
+		expect(v1.methods?.listSearch?.listAgents).toBeDefined();
+	});
+
+	it('uses the agentSelector picker on v2', () => {
+		const v2 = new MessageAnAgentV2(baseDescription);
+		const agentId = v2.description.properties.find((p) => p.name === 'agentId');
+
+		expect(v2.description.version).toBe(2);
+		expect(agentId?.type).toBe('agentSelector');
 	});
 });

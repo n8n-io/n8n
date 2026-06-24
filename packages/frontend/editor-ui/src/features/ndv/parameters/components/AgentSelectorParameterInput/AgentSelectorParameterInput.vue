@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
@@ -12,35 +10,19 @@ import type {
 	ResourceLocatorModes,
 } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
+import { onClickOutside } from '@vueuse/core';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '../ParameterIssues.vue';
-import { onClickOutside } from '@vueuse/core';
-import { useRouter } from 'vue-router';
 import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
 import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
-import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
+import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { VIEWS } from '@/app/constants';
-import {
-	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
-	SAMPLE_SUBWORKFLOW_WORKFLOW,
-} from '@/app/constants/samples';
-import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
-import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useToast } from '@/app/composables/useToast';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-import {
-	N8nIcon,
-	N8nInput,
-	N8nLink,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
@@ -52,7 +34,6 @@ export interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
-	sampleWorkflow?: WorkflowDataCreate;
 	newResourceLabel?: string;
 }
 
@@ -65,7 +46,6 @@ const props = withDefaults(defineProps<Props>(), {
 	expressionDisplayValue: '',
 	newResourceLabel: '',
 	parameterIssues: () => [],
-	sampleWorkflow: () => SAMPLE_SUBWORKFLOW_WORKFLOW,
 });
 
 const emit = defineEmits<{
@@ -74,41 +54,64 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 	focus: [];
 	blur: [];
-	workflowCreated: [workflowId: string];
+	agentCreateRequested: [];
 }>();
 
-const workflowsStore = useWorkflowsStore();
-const workflowsListStore = useWorkflowsListStore();
-const projectStore = useProjectsStore();
-
-const router = useRouter();
 const i18n = useI18n();
+const projectStore = useProjectsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
-const telemetry = useTelemetry();
-const toast = useToast();
-
-const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
+const width = ref(0);
+
+// Scope to the workflow's owning project so the picker only lists agents that
+// execution can resolve. Falls back to the workflow's home project (shared
+// personal workflows have no `currentProject`) and finally the personal
+// project, mirroring how execution resolves the agent's owning project.
+const projectId = computed(
+	() =>
+		projectStore.currentProjectId ??
+		workflowDocumentStore.value?.homeProject?.id ??
+		projectStore.personalProject?.id ??
+		'',
+);
+
+// Resolve a project by id from the stores the picker already has loaded, so the
+// "+ Create agent" label and the per-agent subtitle stay consistent with the
+// `projectId` the catalog is scoped to.
+function findProject(id: string) {
+	if (!id) return null;
+	if (projectStore.currentProject?.id === id) return projectStore.currentProject;
+	if (projectStore.personalProject?.id === id) return projectStore.personalProject;
+	return projectStore.myProjects.find((candidate) => candidate.id === id) ?? null;
+}
+
+function resolveProjectName(id: string): string | null {
+	// Only surface a project subtitle for non-personal team projects
+	if (!projectStore.isTeamProjectFeatureEnabled) return null;
+	const project = findProject(id);
+	if (!project || project.type === 'personal') return null;
+	return project.name ?? null;
+}
 
 const {
-	hasMoreWorkflowsToLoad,
+	agentsResources,
 	isLoadingResources,
+	loadError,
+	hasMoreAgentsToLoad,
 	searchFilter,
 	onSearchFilter,
-	getWorkflowName,
-	applyDefaultExecuteWorkflowNodeName,
-	populateNextWorkflowsPage,
-	setWorkflowsResources,
-	workflowDbToResourceMapper,
-	getWorkflowUrl,
-	workflowsResources,
-} = useWorkflowResourcesLocator(router);
+	getAgentName,
+	loadMore,
+	setAgentsResources,
+} = useAgentResourcesLocator(projectId, resolveProjectName);
 
 const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
 	useResourceLocatorModes(
 		computed(() => props.modelValue),
-		getWorkflowName,
+		getAgentName,
 	);
 
 const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDropdown(
@@ -116,16 +119,15 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDrop
 	inputRef,
 );
 
-const { onDocumentVisible } = useDocumentVisibility();
-
 const currentProjectName = computed(() => {
 	if (!projectStore.isTeamProjectFeatureEnabled) return '';
 
-	if (!projectStore?.currentProject || projectStore.currentProject?.type === 'personal') {
+	const project = findProject(projectId.value);
+	if (!project || project.type === 'personal') {
 		return `'${i18n.baseText('projects.menu.personal')}'`;
 	}
 
-	return `'${projectStore.currentProject?.name}'`;
+	return `'${project.name}'`;
 });
 
 const getCreateResourceLabel = computed(() => {
@@ -134,13 +136,22 @@ const getCreateResourceLabel = computed(() => {
 	}
 
 	if (!currentProjectName.value) {
-		return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow.noProject');
+		return i18n.baseText('agentSelector.createNewAgent.noProject');
 	}
 
-	return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow', {
+	return i18n.baseText('agentSelector.createNewAgent', {
 		interpolate: { projectName: currentProjectName.value },
 	});
 });
+
+// The create action is hidden until AGENT-277 wires the eager-create + Agent
+// Builder navigation. The handler (`onAddResourceClicked`) and label stay
+// implemented so re-enabling it is a one-line change.
+const isAgentCreationEnabled = false;
+
+const newResourceOptions = computed(() =>
+	isAgentCreationEnabled ? { label: getCreateResourceLabel.value } : {},
+);
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
@@ -162,10 +173,6 @@ const placeholder = computed(() => {
 	return i18n.baseText('resourceLocator.id.placeholder');
 });
 
-const showOpenResourceLink = computed(() => {
-	return !props.isValueExpression && props.modelValue.value;
-});
-
 function setWidth() {
 	const containerRef = container.value as HTMLElement | undefined;
 	if (containerRef) {
@@ -173,32 +180,26 @@ function setWidth() {
 	}
 }
 
-function onInputChange(workflowId: NodeParameterValue): void {
-	if (typeof workflowId !== 'string') return;
+function onInputChange(agentId: NodeParameterValue): void {
+	if (typeof agentId !== 'string') return;
 
 	const params: INodeParameterResourceLocator = {
 		__rl: true,
-		value: workflowId,
+		value: agentId,
 		mode: selectedMode.value,
-		cachedResultUrl: getWorkflowUrl(workflowId),
 	};
 	if (isListMode.value) {
-		const resource = workflowsListStore.getWorkflowById(workflowId);
-		if (resource?.name) {
-			params.cachedResultName = getWorkflowName(workflowId);
+		const name = getAgentName(agentId);
+		if (name && name !== agentId) {
+			params.cachedResultName = name;
 		}
 	}
 	emit('update:modelValue', params);
 }
 
 function onListItemSelected(value: NodeParameterValue) {
-	telemetry.track('User chose sub-workflow', {});
 	onInputChange(value);
 	hideDropdown();
-	// we rename defaults here to allow selecting the same workflow to
-	// update the name, as we don't eagerly update a changed workflow name
-	// but rather only react on changed id elsewhere
-	applyDefaultExecuteWorkflowNodeName(value);
 }
 
 function onInputFocus(): void {
@@ -217,37 +218,28 @@ async function onDrop(data: string) {
 function onModeSwitched(mode: ResourceLocatorModes) {
 	emit('update:modelValue', getUpdatedModePayload(mode));
 }
+
 function onKeyDown(e: KeyboardEvent) {
 	if (isDropdownVisible.value) {
 		props.eventBus.emit('keyDown', e);
 	}
 }
 
-function openWorkflow() {
-	window.open(getWorkflowUrl(props.modelValue.value?.toString() ?? ''), '_blank');
+function onAddResourceClicked() {
+	hideDropdown();
+	// The eager-create + Agent Builder navigation is wired by AGENT-277. Here we
+	// only surface the intent so the parent can drive the create round-trip.
+	emit('agentCreateRequested');
 }
 
-async function refreshCachedWorkflow() {
-	if (!props.modelValue || props.modelValue.mode !== 'list' || !props.modelValue.value) {
-		return;
-	}
-
-	const workflowId = props.modelValue.value;
-	try {
-		await workflowsListStore.fetchWorkflow(`${workflowId}`);
-		onInputChange(workflowId);
-	} catch (e) {
-		// keep old cached value
-	}
+async function onRetry() {
+	await setAgentsResources();
 }
-
-onDocumentVisible(refreshCachedWorkflow);
 
 onMounted(() => {
-	void refreshCachedWorkflow();
 	window.addEventListener('resize', setWidth);
 	setWidth();
-	void setWorkflowsResources();
+	void setAgentsResources();
 });
 
 onUnmounted(() => {
@@ -264,63 +256,11 @@ watch(
 	},
 );
 
-watch(
-	() => props.modelValue,
-	(val, old) => {
-		// We update the name only if the actual ID changed
-		// Because eagerly renaming the node when the target sub-workflow
-		// changed name means the workflow becomes unsaved and changed just by
-		// opening the ExecuteWorkflow node referencing the renamed workflow
-		if (old.value !== val.value) {
-			applyDefaultExecuteWorkflowNodeName(val.value);
-		}
-	},
-);
-
 onClickOutside(dropdown, () => {
 	isDropdownVisible.value = false;
 });
 
-const onAddResourceClicked = async () => {
-	try {
-		const projectId = projectStore.currentProjectId;
-		const sampleWorkflow = props.sampleWorkflow;
-		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
-		const sampleSubWorkflows = workflowsListStore.allWorkflows.filter(
-			(w) => w.name && new RegExp(workflowName).test(w.name),
-		);
-
-		const workflow: WorkflowDataCreate = {
-			...sampleWorkflow,
-			name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
-		};
-		if (projectId) {
-			workflow.projectId = projectId;
-		}
-		telemetry.track('User clicked create new sub-workflow button', {});
-
-		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
-		const { href } = router.resolve({
-			name: VIEWS.WORKFLOW,
-			params: { workflowId: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
-		});
-		workflowsResources.value.push(workflowDbToResourceMapper(newWorkflow));
-		emit('update:modelValue', {
-			__rl: true,
-			value: newWorkflow.id,
-			mode: selectedMode.value,
-			cachedResultName: newWorkflow.name,
-			cachedResultUrl: getWorkflowUrl(newWorkflow.id),
-		});
-		hideDropdown();
-
-		window.open(href, '_blank');
-
-		emit('workflowCreated', newWorkflow.id);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('generic.error.subworkflowCreationFailed'));
-	}
-};
+defineExpose({ showDropdown });
 </script>
 <template>
 	<div
@@ -333,41 +273,34 @@ const onAddResourceClicked = async () => {
 			:show="isDropdownVisible"
 			:filterable="true"
 			:filter-required="false"
-			:resources="workflowsResources"
+			:resources="agentsResources"
 			:loading="isLoadingResources"
 			:filter="searchFilter"
-			:has-more="hasMoreWorkflowsToLoad"
-			:error-view="false"
-			:allow-new-resources="{
-				label: getCreateResourceLabel,
-			}"
+			:has-more="hasMoreAgentsToLoad"
+			:error-view="!!loadError"
+			:allow-new-resources="newResourceOptions"
 			:width="width"
 			:event-bus="eventBus"
 			:model-value="modelValue"
 			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
-			@load-more="populateNextWorkflowsPage"
+			@load-more="loadMore"
 			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
-				<div :class="$style.error" data-test-id="rlc-error-container">
+				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
 					<N8nText color="text-dark" align="center" tag="div">
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</N8nText>
+					<N8nButton
+						type="tertiary"
+						size="small"
+						:label="i18n.baseText('generic.retry')"
+						data-test-id="rlc-error-retry"
+						@click="onRetry"
+					/>
 				</div>
-			</template>
-			<template #item-badge="{ item, isHovered }">
-				<span v-if="!item.active && isHovered" :class="$style.inactiveBadgeWrapper">
-					<N8nTooltip
-						:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
-						placement="top"
-					>
-						<span :class="$style.inactiveBadge">
-							<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
-						</span>
-					</N8nTooltip>
-				</span>
 			</template>
 			<div
 				:class="{
@@ -462,15 +395,6 @@ const onAddResourceClicked = async () => {
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
 					/>
-					<div
-						v-if="showOpenResourceLink"
-						:class="$style.openResourceLink"
-						data-test-id="rlc-open-resource-link"
-					>
-						<N8nLink theme="text" @click.stop="openWorkflow()">
-							<N8nIcon icon="external-link" :title="'Open resource link'" />
-						</N8nLink>
-					</div>
 				</div>
 			</div>
 		</ResourceLocatorDropdown>
@@ -479,16 +403,4 @@ const onAddResourceClicked = async () => {
 
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
-
-.inactiveBadgeWrapper {
-	display: inline-flex;
-	align-items: center;
-	margin-left: var(--spacing--2xs);
-}
-
-.inactiveBadge {
-	display: inline-flex;
-	align-items: center;
-	color: var(--color--warning);
-}
 </style>
