@@ -736,6 +736,29 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			);
 		});
 
+		it('routes via requestWithAuthentication for an absolute uri with NO driveScopeRoot (trigger delta convention)', async () => {
+			// This mirrors how the trigger calls transport (manual mode + the delta
+			// paginator): an absolute, already-scoped `uri` and NO `driveScopeRoot`.
+			// The helper must be chosen by credential type, not by `driveScopeRoot` —
+			// otherwise the app-only credential wrongly falls into the OAuth2 helper.
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'',
+				{},
+				{},
+				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta',
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta',
+				}),
+			);
+			expect(mockRequestOAuth2).not.toHaveBeenCalled();
+		});
+
 		it('honors a sovereign graphApiBaseUrl with a non-user (drive) root', async () => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				accessToken: 'test-access-token',

@@ -76,19 +76,20 @@ export function getOneDriveCredentialType(
 	return selected || 'microsoftOneDriveOAuth2Api';
 }
 
-// App-only Microsoft Graph has no `/me`, so the drive must be addressed under an
-// explicit user / drive / site root. The accepted shapes are deliberately narrow:
-// `encodeURIComponent` does NOT neutralize `..`, so a value is validated for shape
-// BEFORE it is encoded and interpolated into a Graph URL path. Messages are fully
-// static (the id is never echoed) so an attacker-supplied value can't be reflected.
+// App-only Microsoft Graph has no `/me`, so the drive is addressed under an
+// explicit user / drive / site root. The accepted shapes are deliberately narrow
+// and the id shape is validated BEFORE encoding — `encodeURIComponent` leaves `..`
+// intact, so shape validation (not encoding) is what keeps a value safe to
+// interpolate into a Graph URL path. Validation messages are static, so the id is
+// never echoed back.
 const USER_TARGET_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 const USER_TARGET_UPN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
 const USER_TARGET_HOST = /^[A-Za-z0-9.-]+$/;
 const DRIVE_TARGET_ID = /^[A-Za-z0-9!._-]+$/;
-// Site id = comma-composite form only (`host,siteGuid,webGuid`). Exactly three
-// comma-separated parts, no `/`, `\`, `:`, or whitespace. The host part must hold
-// at least one alphanumeric character (a real SharePoint host), which rejects a
-// bare-dots host like `..` or `.`; the no-slash invariant blocks `../` traversal.
+// Site id = comma-composite form only (`host,siteGuid,webGuid`): exactly three
+// comma-separated parts, no `/`, `\`, `:`, or whitespace. The host part requires at
+// least one alphanumeric character (a real SharePoint host), so a bare-dots host
+// like `..` or `.` is rejected; with no slash accepted, no dot-segment can form.
 const SITE_TARGET_COMPOSITE =
 	/^(?=[A-Za-z0-9.-]*[A-Za-z0-9])[A-Za-z0-9.-]+,[0-9a-fA-F-]+,[0-9a-fA-F-]+$/;
 
@@ -137,8 +138,8 @@ export function validateResourceTargetId(target: string, id: string, node: INode
  * chosen target and its id. Reusable kernel (ENT-92+ lifts this) — it deliberately
  * contains NO `/drive` and does its own per-target encoding: user/drive ids are
  * `encodeURIComponent`d; a site id is reassembled from its validated parts with
- * literal commas (Graph's site addressing requires unencoded commas). The id is
- * validated BEFORE encoding so a bad shape throws and is never reflected.
+ * literal commas (Graph's site addressing requires unencoded commas). The id shape
+ * is validated BEFORE encoding so a malformed id throws (and is not echoed back).
  */
 export function getServicePrincipalResourceRoot(
 	target: string,
@@ -179,10 +180,9 @@ export function resolveDriveScopeRoot(
 		// OAuth2 credentials address the signed-in user's drive via `/me`.
 		return undefined;
 	}
-	const target =
-		(isPoll
-			? (this.getNodeParameter('resourceTarget', 'user') as string)
-			: (this.getNodeParameter('resourceTarget', itemIndex, 'user') as string)) || 'user';
+	const target = isPoll
+		? (this.getNodeParameter('resourceTarget', 'user') as string)
+		: (this.getNodeParameter('resourceTarget', itemIndex, 'user') as string);
 	const id = isPoll
 		? (this.getNodeParameter(`${target}Target`, '', { extractValue: true }) as string)
 		: (this.getNodeParameter(`${target}Target`, itemIndex, '', { extractValue: true }) as string);
@@ -215,6 +215,7 @@ export async function microsoftApiRequest(
 	driveScopeRoot?: string,
 ): Promise<any> {
 	const credentialType = getOneDriveCredentialType.call(this);
+	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
 	const credentials = await this.getCredentials(credentialType);
 	const baseUrl = (
 		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
@@ -224,10 +225,9 @@ export async function microsoftApiRequest(
 
 	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
 	if (!uri && driveScopeRoot) {
-		// Invariant: every scoped caller passes a `/drive`-rooted resource. A
-		// non-`/drive` resource here is a programmer error (a call site that built the
-		// wrong path), not user input, so fail loudly rather than silently corrupting
-		// the URL by slicing the wrong prefix.
+		// Every scoped caller passes a `/drive`-rooted resource. A non-`/drive`
+		// resource here means a call site built the wrong path (programmer error,
+		// not user input), so fail loudly instead of slicing the wrong prefix.
 		if (!resource.startsWith('/drive')) {
 			throw new OperationalError(
 				`microsoftApiRequest: scoped resource must start with "/drive" (got "${resource}")`,
@@ -256,10 +256,12 @@ export async function microsoftApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		if (driveScopeRoot) {
-			// App-only Service Principal: not an oAuth2Api parent type, so this routes
-			// through the credential's preAuthentication (token mint) + authenticate
-			// (Bearer) and core's single 401-retry — called exactly once here.
+		// Select the helper by credential type, not by `driveScopeRoot`: the trigger's
+		// delta calls pass an absolute (already-scoped) `uri` with no `driveScopeRoot`,
+		// and the app-only credential is not an `oAuth2Api` parent type — it must go
+		// through `requestWithAuthentication` (preAuthentication token mint +
+		// authenticate Bearer + core's single 401-retry, called exactly once here).
+		if (isServicePrincipal) {
 			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
