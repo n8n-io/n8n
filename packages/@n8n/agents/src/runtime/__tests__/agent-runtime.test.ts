@@ -703,6 +703,18 @@ describe('AgentRuntime — eager input persistence', () => {
 		return block?.text;
 	}
 
+	function hasToolCall(message: AgentDbMessage, toolCallId: string): boolean {
+		const content = (message as { content?: unknown }).content;
+		if (!Array.isArray(content)) return false;
+		return content.some(
+			(c) =>
+				typeof c === 'object' &&
+				c !== null &&
+				Reflect.get(c, 'type') === 'tool-call' &&
+				Reflect.get(c, 'toolCallId') === toolCallId,
+		);
+	}
+
 	function makeMemoryRuntime() {
 		const memory = new InMemoryMemory();
 		const bus = new AgentEventBus();
@@ -777,6 +789,70 @@ describe('AgentRuntime — eager input persistence', () => {
 
 		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
 		expect(afterResume.filter((m) => textOf(m) === 'please build it')).toHaveLength(1);
+	});
+
+	it("persists the turn's assistant output when the turn suspends on HITL", async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		// The model calls the interruptible tool, so the run suspends on HITL before
+		// reaching finishComplete — the only path that previously saved the turn.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		await runtime.generate('please build it', PERSIST);
+
+		// The assistant's tool-call output from the suspended turn is now in memory, so a
+		// later cancel/abandon cannot drop it — the next turn sees the work was done.
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'assistant' && hasToolCall(m, 'tc-1'),
+		);
+		expect(assistantRows).toHaveLength(1);
+	});
+
+	it('stores exactly one assistant row across a suspend -> resume cycle (idempotent)', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// Saved on suspend (pending tool-call).
+		const afterSuspend = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterSuspend.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
+
+		// Resume to completion: the end-of-turn save rewrites the same assistant row (now
+		// with the resolved tool-call) under the same id — upsert, not a 2nd row.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
 	});
 });
 

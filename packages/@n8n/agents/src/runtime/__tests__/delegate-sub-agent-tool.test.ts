@@ -88,6 +88,47 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
+	it('renders configured sub-agent useWhen guidance in model-facing instructions', () => {
+		const tool = createDelegateSubAgentTool({
+			availableSubAgents: [
+				{
+					id: 'agent-billing',
+					name: 'Billing Agent',
+					useWhen: 'Use for invoice investigations and payment status checks.',
+				},
+				{
+					id: 'agent-research',
+					name: 'Research Agent',
+					useWhen: 'Use for market and source research.',
+				},
+			],
+		});
+
+		expect(tool.systemInstruction).toContain('name and useWhen guidance');
+		expect(tool.systemInstruction).toContain('- agent-billing: Billing Agent');
+		expect(tool.systemInstruction).toContain(
+			'Use when: Use for invoice investigations and payment status checks.',
+		);
+		expect(tool.systemInstruction).toContain('- agent-research: Research Agent');
+		expect(tool.systemInstruction).toContain('Use when: Use for market and source research.');
+		expect(tool.systemInstruction).not.toContain('name/description');
+	});
+
+	it('preserves available sub-agent useWhen guidance in delegate tool metadata', () => {
+		const availableSubAgents = [
+			{
+				id: 'agent-billing',
+				name: 'Billing Agent',
+				useWhen: 'Use for invoice investigations.',
+			},
+		];
+		const tool = createDelegateSubAgentTool({ availableSubAgents });
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.availableSubAgents).toEqual(
+			availableSubAgents,
+		);
+	});
+
 	it('preserves resolveInlineSubAgentProviderTools in delegate tool metadata', () => {
 		const resolveInlineSubAgentProviderTools = () => [];
 		const tool = createDelegateSubAgentTool({
