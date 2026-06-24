@@ -8,11 +8,13 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
+import { targetDescription } from './descriptions/TargetDescription';
 import {
 	getOneDriveCredentialType,
 	getPath,
 	microsoftApiRequest,
 	microsoftApiRequestAllItemsDelta,
+	resolveDriveScopeRoot,
 } from './GenericFunctions';
 import { triggerDescription } from './TriggerDescription';
 
@@ -47,6 +49,15 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
+			},
 		],
 		polling: true,
 		inputs: [],
@@ -68,9 +79,16 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 						description:
 							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Files.ReadWrite.All) on the credential.',
 					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only access via a Microsoft Entra app registration. Choose which user, drive, or site to watch under "Access As".',
+					},
 				],
 				default: 'microsoftOneDriveOAuth2Api',
 			},
+			...targetDescription,
 			...triggerDescription,
 		],
 	};
@@ -90,8 +108,18 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 				: 'https://graph.microsoft.com'
 		).replace(/\/+$/, '');
 
+		// App-only Graph has no `/me`, so the delta feed is rooted at the chosen
+		// user/drive/site. `undefined` for OAuth2 → fall back to `/me`.
+		const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
+		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ?? '/me'}/drive/root/delta`;
+
+		// Reset a persisted delta link that belongs to a different scope (auth switched,
+		// or the target id changed) — otherwise we would page a foreign drive's feed.
+		const persistedLastLink = workflowData.LastLink as string | undefined;
 		const lastLink: string =
-			(workflowData.LastLink as string) || `${baseUrl}/v1.0/me/drive/root/delta?token=latest`;
+			persistedLastLink && persistedLastLink.startsWith(deltaRoot)
+				? persistedLastLink
+				: `${deltaRoot}?token=latest`;
 
 		const now = DateTime.now().toUTC();
 		const start = DateTime.fromISO(workflowData.lastTimeChecked as string) || now;
@@ -112,14 +140,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		try {
 			if (this.getMode() === 'manual') {
 				responseData = (
-					await microsoftApiRequest.call(
-						this,
-						'GET',
-						'',
-						{},
-						{},
-						`${baseUrl}/v1.0/me/drive/root/delta`,
-					)
+					await microsoftApiRequest.call(this, 'GET', '', {}, {}, deltaRoot)
 				).value as IDataObject[];
 			} else {
 				const response: IDataObject = (await microsoftApiRequestAllItemsDelta.call(
