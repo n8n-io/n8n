@@ -457,6 +457,10 @@ export class RelationIdLoader {
 		entities: ObjectLiteral[],
 		relatedEntities?: ObjectLiteral[],
 	) {
+		// Keep a reference to the original relation: when the owning side is
+		// unidirectional, `relation.inverseRelation` is undefined, but the
+		// alias built below needs this (inverse) relation's propertyPath.
+		const inverseSideRelation = relation;
 		relation = relation.inverseRelation!;
 
 		if (relation.entityMetadata.primaryColumns.length === relation.joinColumns.length) {
@@ -476,7 +480,7 @@ export class RelationIdLoader {
 							const primaryColumnName =
 								joinColumn.entityMetadata.name +
 								'_' +
-								relation.inverseRelation!.propertyPath.replace('.', '_') +
+								inverseSideRelation.propertyPath.replace('.', '_') +
 								'_' +
 								joinColumn.propertyPath.replace('.', '_');
 							result[joinColumnName] = value;
@@ -498,7 +502,7 @@ export class RelationIdLoader {
 				undefined,
 				primaryColumn.entityMetadata.name +
 					'_' +
-					relation.inverseRelation!.propertyPath.replace('.', '_') +
+					inverseSideRelation.propertyPath.replace('.', '_') +
 					'_' +
 					primaryColumn.propertyPath.replace('.', '_'),
 			);

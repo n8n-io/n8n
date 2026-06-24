@@ -74,7 +74,10 @@ describe('multi-database > basic-functionality', () => {
 			});
 			connections = connections.filter((connection) => connection.name.startsWith('sqlite'));
 		});
-		beforeEach(() => reloadTestingDatabases(connections));
+		// These connections all ATTACH the same physical database files, so
+		// schema reloads must run sequentially to avoid SQLITE_BUSY from
+		// concurrent CREATE TABLE on a shared attached database.
+		beforeEach(() => reloadTestingDatabases(connections, false));
 		after(async () => {
 			await closeTestingConnections(connections);
 			await rimraf(`${tempPath}/**/*.attach.db`);
