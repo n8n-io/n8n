@@ -15,8 +15,6 @@ import type { PushResult } from 'simple-git';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
-	SOURCE_CONTROL_DEFAULT_EMAIL,
-	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
@@ -449,6 +447,10 @@ export class SourceControlService {
 
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
+			// Set the author within the locked section so a concurrent push can't change the
+			// repo-wide git config between staging and this commit.
+			await this.gitService.setGitUserDetails(`${user.firstName} ${user.lastName}`, user.email);
+
 			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 		} catch (error) {
 			this.logger.error('Failed to export or commit changes', { error });
@@ -633,14 +635,6 @@ export class SourceControlService {
 			await this.sanityCheck();
 			return await this.sourceControlStatusService.getStatus(user, options);
 		});
-	}
-
-	async setGitUserDetails(
-		name = SOURCE_CONTROL_DEFAULT_NAME,
-		email = SOURCE_CONTROL_DEFAULT_EMAIL,
-	): Promise<void> {
-		await this.sanityCheck();
-		await this.gitService.setGitUserDetails(name, email);
 	}
 
 	async getRemoteFileEntity({
