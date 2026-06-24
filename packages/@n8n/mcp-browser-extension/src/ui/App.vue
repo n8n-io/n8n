@@ -44,7 +44,7 @@ const {
 				<template v-if="isRelayAllowed">
 					<p class="connect-notice">
 						You're about to connect to <strong>{{ relayHost }}</strong
-						>, and open new ones. Only continue if you started this connection yourself.
+						>. Only continue if you started this connection yourself.
 					</p>
 					<TabList
 						v-if="tabs.length"
