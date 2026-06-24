@@ -5,7 +5,6 @@ import { Service } from '@n8n/di';
 import { CronJob, CronTime } from 'cron';
 import type { CronContext } from 'n8n-workflow';
 
-import { ErrorReporter } from '@/errors';
 import { InstanceSettings } from '@/instance-settings';
 
 type CronKey = string; // see `CronRegistry.toCronKey`
@@ -46,7 +45,6 @@ export class CronRegistry {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		{ activeInterval }: CronLoggingConfig,
-		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('cron');
 
@@ -65,6 +63,19 @@ export class CronRegistry {
 	register(ctx: CronRegistryContext, onTick: (scheduledTime: Date) => void): boolean {
 		const { namespace, ownerId, targetId, timezone, expression, recurrence } = ctx;
 
+		if (!this.instanceSettings.isLeader) {
+			this.logger.debug('Skipped cron registration on follower instance', {
+				namespace,
+				ownerId,
+				targetId,
+				timezone,
+				expression,
+				recurrence,
+				instanceRole: this.instanceSettings.instanceRole,
+			});
+			return false;
+		}
+
 		const summary = recurrence?.activated
 			? `${expression} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
 			: expression;
@@ -73,17 +84,14 @@ export class CronRegistry {
 		const key = this.toCronKey(ctx);
 
 		if (ownerCrons?.has(key)) {
-			this.errorReporter.error('Skipped registration for already registered cron', {
-				tags: { cron: 'duplicate' },
-				extra: {
-					namespace,
-					ownerId,
-					targetId,
-					timezone,
-					expression,
-					recurrence,
-					instanceRole: this.instanceSettings.instanceRole,
-				},
+			this.logger.debug('Skipped registration for already registered cron', {
+				namespace,
+				ownerId,
+				targetId,
+				timezone,
+				expression,
+				recurrence,
+				instanceRole: this.instanceSettings.instanceRole,
 			});
 			return false;
 		}

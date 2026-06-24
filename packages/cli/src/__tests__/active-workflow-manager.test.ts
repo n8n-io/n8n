@@ -752,7 +752,6 @@ describe('ActiveWorkflowManager', () => {
 					mock<InstanceSettings>({ isLeader: true }),
 					mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 					mock(),
-					mock(),
 				),
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(

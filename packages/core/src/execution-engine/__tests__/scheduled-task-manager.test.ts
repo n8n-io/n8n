@@ -22,7 +22,7 @@ describe('ScheduledTaskManager', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
-		cronRegistry = new CronRegistry(instanceSettings, logger, mock(), mock());
+		cronRegistry = new CronRegistry(instanceSettings, logger, mock());
 		scheduledTaskManager = new ScheduledTaskManager(cronRegistry);
 	});
 
@@ -107,13 +107,8 @@ describe('ScheduledTaskManager', () => {
 		expect((firstArg as Date).getTime()).not.toBe(unaligned.getTime());
 	});
 
-	it('should not invoke on follower instances', () => {
-		cronRegistry = new CronRegistry(
-			mock<InstanceSettings>({ isLeader: false }),
-			logger,
-			mock(),
-			mock(),
-		);
+	it('should not register or invoke on follower instances', () => {
+		cronRegistry = new CronRegistry(mock<InstanceSettings>({ isLeader: false }), logger, mock());
 		scheduledTaskManager = new ScheduledTaskManager(cronRegistry);
 
 		const ctx: CronContext = {
@@ -123,8 +118,10 @@ describe('ScheduledTaskManager', () => {
 			expression: everyMinute,
 		};
 
-		scheduledTaskManager.registerCron(ctx, onTick);
+		const registered = scheduledTaskManager.registerCron(ctx, onTick);
 
+		expect(registered).toBe(false);
+		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(false);
 		expect(onTick).not.toHaveBeenCalled();
 		vi.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).not.toHaveBeenCalled();
@@ -318,7 +315,7 @@ describe('ScheduledTaskManager', () => {
 
 	it('should not set up log interval when activeInterval is 0', () => {
 		const configWithZeroInterval = mock({ activeInterval: 0 });
-		const registry = new CronRegistry(instanceSettings, logger, configWithZeroInterval, mock());
+		const registry = new CronRegistry(instanceSettings, logger, configWithZeroInterval);
 
 		// @ts-expect-error Private property
 		expect(registry.logInterval).toBeUndefined();

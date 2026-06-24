@@ -865,7 +865,6 @@ describe('ActiveWorkflowTriggers', () => {
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
 				mock(),
-				mock(),
 			);
 			realScheduledTaskManager = new ScheduledTaskManager(realCronRegistry);
 			activeWorkflowTriggersReal = new ActiveWorkflowTriggers(
