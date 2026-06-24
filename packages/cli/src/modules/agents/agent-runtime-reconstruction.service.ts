@@ -407,8 +407,12 @@ export class AgentRuntimeReconstructionService {
 						(integrationConfig) => {
 							const integrationDef = integrationRegistry.get(integrationConfig.type);
 							return {
+								contextToolDefinitions: integrationDef?.contextToolDefinitions,
+								actionToolDefinitions: integrationDef?.actionToolDefinitions,
 								contextQueries: integrationDef?.contextQueries,
 								actions: integrationDef?.actions,
+								contextToolGuidance: integrationDef?.contextToolGuidance,
+								actionToolGuidance: integrationDef?.actionToolGuidance,
 							};
 						},
 					);
@@ -428,6 +432,10 @@ export class AgentRuntimeReconstructionService {
 						actionToolName: N8N_CHAT_ACTION_TOOL_NAME,
 						contextQueries: [...n8nChat.contextQueries],
 						actions: [...n8nChat.actions],
+						contextToolDefinitions: [...n8nChat.contextToolDefinitions],
+						actionToolDefinitions: [...n8nChat.actionToolDefinitions],
+						contextToolGuidance: n8nChat.contextToolGuidance,
+						actionToolGuidance: n8nChat.actionToolGuidance,
 					});
 				}
 

@@ -6,10 +6,16 @@ import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from './integration-tool-definitions';
 import type {
 	IntegrationAction,
+	IntegrationActionDefinition,
 	IntegrationActionResult,
 	IntegrationContextQuery,
+	IntegrationContextQueryDefinition,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
@@ -108,14 +114,32 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly supportedComponents?: readonly RichCardComponentType[];
 
+	/** Read-only context query definitions exposed through the generated context tool. */
+	readonly contextToolDefinitions: IntegrationContextQueryDefinition[] =
+		resolveIntegrationContextQueryDefinitions([
+			'get_current_message_context',
+			'get_current_subject',
+		]);
+
+	/** Side-effecting action definitions exposed through the generated action tool. */
+	readonly actionToolDefinitions: IntegrationActionDefinition[] =
+		resolveIntegrationActionDefinitions(['respond']);
+
+	/** Optional additional guidance appended to the generated context tool description. */
+	readonly contextToolGuidance?: string[];
+
+	/** Optional additional guidance appended to the generated action tool description. */
+	readonly actionToolGuidance?: string[];
+
 	/** Read-only context queries exposed through the generated integration context tool. */
-	readonly contextQueries: IntegrationContextQuery[] = [
-		'get_current_message_context',
-		'get_current_subject',
-	];
+	get contextQueries(): IntegrationContextQuery[] {
+		return this.contextToolDefinitions.map((definition) => definition.name);
+	}
 
 	/** Side-effecting actions exposed through the generated integration action tool. */
-	readonly actions: IntegrationAction[] = ['respond'];
+	get actions(): IntegrationAction[] {
+		return this.actionToolDefinitions.map((definition) => definition.name);
+	}
 
 	/**
 	 * True if this platform has a small callback_data limit (Telegram: 64 bytes).
