@@ -138,6 +138,44 @@ describe('WorkflowTriggerActivator', () => {
 		});
 	});
 
+	describe('getNodesWithUnregisteredWebhooks', () => {
+		test("delegates to the registrar with the version's enabled trigger node ids", async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set(['w']));
+			const activator = buildActivator({ webhookTriggerRegistrar });
+
+			const result = await activator.getNodesWithUnregisteredWebhooks(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{
+					nodes: [node('w', 'webhook'), node('regular', 'n8n-nodes-base.set')],
+					connections: {},
+				},
+			);
+
+			expect(result).toEqual(new Set(['w']));
+			expect(webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				additionalData,
+				new Set(['w']),
+			);
+		});
+
+		test('returns empty without calling the registrar when there are no trigger nodes', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			const activator = buildActivator({ webhookTriggerRegistrar });
+
+			const result = await activator.getNodesWithUnregisteredWebhooks(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('regular', 'n8n-nodes-base.set')], connections: {} },
+			);
+
+			expect(result).toEqual(new Set());
+			expect(webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks).not.toHaveBeenCalled();
+		});
+	});
+
 	test('activates webhooks, non-webhook triggers, count, and persistence in order', async () => {
 		const callOrder: string[] = [];
 		jest.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {

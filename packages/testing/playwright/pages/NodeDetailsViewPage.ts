@@ -864,6 +864,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('ai-output-mode-select');
 	}
 
+	getAiOutputModeRadios() {
+		return this.getAiOutputModeToggle().locator('[role="radio"]');
+	}
+
+	getWebhookUrlsContainer() {
+		return this.container.getByText('Webhook URLs').locator('..');
+	}
+
 	getCredentialLabel(credentialType: string) {
 		return this.credentials.getLabelByText(credentialType);
 	}

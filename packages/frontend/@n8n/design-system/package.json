@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.26.0",
+  "version": "2.27.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -23,7 +23,7 @@
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
   },
   "devDependencies": {
-    "@iconify/json": "^2.2.349",
+    "@iconify/json": "^2.2.488",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",

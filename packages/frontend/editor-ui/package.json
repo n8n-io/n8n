@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.27.0",
+  "version": "2.28.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -126,7 +126,7 @@
   "devDependencies": {
     "@codecov/vite-plugin": "^1.9.1",
     "@faker-js/faker": "^8.0.2",
-    "@iconify/json": "^2.2.349",
+    "@iconify/json": "^2.2.488",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",

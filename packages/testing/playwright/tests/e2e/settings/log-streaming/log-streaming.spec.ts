@@ -74,6 +74,28 @@ test.describe(
 				await n8n.settingsLogStreaming.confirmDialog();
 			});
 
+			test('should create a Sentry destination and persist its DSN', async ({ n8n }) => {
+				const dsn = 'https://abc@example.com/1';
+
+				await n8n.settingsLogStreaming.openDestinationModalForType(1); // Sentry
+				await n8n.settingsLogStreaming.setDestinationName('Sentry Destination');
+				await n8n.settingsLogStreaming.fillDsn(dsn);
+				await n8n.settingsLogStreaming.saveDestination();
+
+				// Reopen the destination after a reload to prove the DSN was persisted.
+				await n8n.page.reload();
+				await n8n.settingsLogStreaming.clickDestinationCard(0);
+				expect(await n8n.settingsLogStreaming.getDsnValue()).toBe(dsn);
+
+				// The test message returns synchronously from the Sentry SDK; we assert
+				// the success state, not real ingest (delivery is fire-and-forget).
+				await n8n.settingsLogStreaming.sendTestEvent();
+				await expect(n8n.settingsLogStreaming.getSendTestEventButton()).toHaveAttribute(
+					'title',
+					'Event sent and returned OK',
+				);
+			});
+
 			test('should create a destination and delete it via card actions', async ({ n8n }) => {
 				await n8n.settingsLogStreaming.createDestination(DESTINATION_NAMES.SECOND);
 				await n8n.page.reload();

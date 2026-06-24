@@ -12,6 +12,7 @@ export type AgentConfigPart =
 	| 'tools'
 	| 'skills'
 	| 'triggers'
+	| 'subAgents'
 	| 'name'
 	| 'description';
 

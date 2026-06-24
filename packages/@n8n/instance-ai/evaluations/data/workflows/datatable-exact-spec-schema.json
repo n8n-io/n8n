@@ -1,0 +1,47 @@
+{
+	"description": "Regression for INS-496: when an approved spec lists dedicated Data Tables with exact columns, the builder must create both tables with every column as specified (correct names and types, e.g. numeric counts as number not string) instead of creating simplified tables or redesigning the workflow to fit a wrong schema.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Build a workflow that runs every Monday at 9am and records a weekly digest into two dedicated data tables. Use placeholder values for the rows for now.",
+				"Create these tables exactly as specified. I need every column; do not simplify, drop, or merge any of them.",
+				"Table pd_tq_clusters (cross-week theme memory) columns:",
+				"- theme_key (string)",
+				"- cluster_id (string)",
+				"- period_id (string)",
+				"- title (string)",
+				"- thread_count (number)",
+				"- rank (number)",
+				"- consecutive_weeks (number)",
+				"- first_seen_period (string)",
+				"- last_seen_period (string)",
+				"- seen_at (string)",
+				"Table pd_periods (per-period digest log) columns:",
+				"- period_id (string)",
+				"- period_start (string)",
+				"- period_end (string)",
+				"- total_clusters (number)",
+				"- total_threads (number)",
+				"- sent_at (string)"
+			]
+		}
+	],
+	"complexity": "complex",
+	"tags": ["data-table", "schema", "build", "behaviour", "no-simplify"],
+	"triggerType": "schedule",
+	"buildExpectations": [
+		"The agent created the pd_tq_clusters data table with all ten specified columns: theme_key, cluster_id, period_id, title, thread_count, rank, consecutive_weeks, first_seen_period, last_seen_period, and seen_at.",
+		"The agent created the pd_periods data table with all six specified columns: period_id, period_start, period_end, total_clusters, total_threads, and sent_at.",
+		"The agent gave the count columns (thread_count, rank, consecutive_weeks, total_clusters, total_threads) the number type, not string.",
+		"The agent did not drop, merge, rename, or simplify any of the specified columns in either table, and did not redesign the workflow to avoid the specified schema."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "A Monday 9am schedule writes one placeholder row into each dedicated table",
+			"dataSetup": "Both data tables pd_tq_clusters and pd_periods start empty. Each insert returns the created row with an assigned id.",
+			"successCriteria": "The workflow is built with a Monday 09:00 schedule trigger feeding Data Table nodes that write a row to pd_tq_clusters and a row to pd_periods whose fields cover the specified columns. When it runs, it executes without errors and inserts one row into each table. Only judge the workflow's structure and execution; don't judge anything about the conversation."
+		}
+	]
+}

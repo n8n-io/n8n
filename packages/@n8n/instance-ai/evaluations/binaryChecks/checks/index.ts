@@ -26,6 +26,7 @@ import { memoryProperlyConnected } from './memory-properly-connected';
 import { memorySessionKeyExpression } from './memory-session-key-expression';
 import { noDisabledNodes } from './no-disabled-nodes';
 import { noEmptySetNodes } from './no-empty-set-nodes';
+import { noExcessiveBuildFailures } from './no-excessive-build-failures';
 import { noHardcodedCredentials } from './no-hardcoded-credentials';
 import { noInvalidFromAi } from './no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
@@ -84,6 +85,8 @@ export const NODES_CRAFTSMANSHIP_CHECKS: BinaryCheck[] = [
 	responseMatchesWorkflowChanges,
 ];
 
+export const EFFICIENCY_CHECKS: BinaryCheck[] = [noExcessiveBuildFailures];
+
 export const SECURITY_CHECKS: BinaryCheck[] = [noHardcodedCredentials, inboundTriggerAuthDefaults];
 
 export const ALL_CHECKS: BinaryCheck[] = [
@@ -93,6 +96,7 @@ export const ALL_CHECKS: BinaryCheck[] = [
 	...INTENT_MATCH_CHECKS,
 	...AI_NODES_CHECKS,
 	...NODES_CRAFTSMANSHIP_CHECKS,
+	...EFFICIENCY_CHECKS,
 	...SECURITY_CHECKS,
 ];
 
