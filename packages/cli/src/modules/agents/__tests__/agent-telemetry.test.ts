@@ -41,7 +41,7 @@ describe('agent telemetry', () => {
 				'openai.web_search': { enabled: true },
 			},
 			subAgents: {
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }],
 			},
 			config: {
 				webSearch: { enabled: true },
