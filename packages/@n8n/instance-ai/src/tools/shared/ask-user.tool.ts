@@ -51,6 +51,9 @@ export function createAskUserTool() {
 				'Also NEVER add a separate follow-up question asking the user to elaborate ' +
 				'on a previous "other" choice. Keep questions concise and ' +
 				'avoid questions that reference answers to previous questions. ' +
+				'During an initial workflow build, do not ask for missing setup values ' +
+				'such as notification recipients, account IDs, channel IDs, or credential fields; ' +
+				'use placeholders and let post-build workflow setup collect them. ' +
 				'A question is asked at most once: if the user skips or dismisses it (you ' +
 				'receive answered: false, or an individual answer with skipped: true), treat that ' +
 				'as a deliberate "proceed without this" — ' +

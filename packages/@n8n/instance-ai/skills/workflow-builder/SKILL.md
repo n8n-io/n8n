@@ -84,6 +84,11 @@ tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
 the build, `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel so the user can fill placeholder values.
 
+Do not ask for missing setup values before the first successful build. Missing
+email recipients, notification targets, account IDs, channel IDs, resource IDs,
+credentials, and similar node configuration belong in placeholders during the
+initial build; route them to setup only after the workflow is saved.
+
 Do not replace concrete user-provided or discoverable values with placeholders.
 If the prompt gives a real URL, channel name, table name, label, folder,
 database, or other literal selector, preserve that value and only use a

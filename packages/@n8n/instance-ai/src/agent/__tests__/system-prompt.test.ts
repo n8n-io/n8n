@@ -51,6 +51,13 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('need clarification');
 			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
 		});
+
+		it('does not route missing workflow setup values through ask-user before build', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do not use `ask-user` for missing workflow setup values');
+			expect(prompt).toContain('leave them for post-build workflow setup');
+		});
 	});
 
 	describe('license hints', () => {
