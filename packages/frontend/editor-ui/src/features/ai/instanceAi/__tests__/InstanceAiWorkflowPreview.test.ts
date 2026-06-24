@@ -171,7 +171,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		expect(mocks.setExecution).toHaveBeenCalledWith(execution);
 		expect(mocks.setDisplayedExecutionId).toHaveBeenCalledWith('exec-1');
 
-		expect(wrapper.get('[data-test-id="workflow-canvas-host-stub"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="workflow-canvas-host-stub"]').exists()).toBe(true);
 
 		await wrapper.get('[data-test-id="instance-ai-workflow-view-tab-executions"]').trigger('click');
 
