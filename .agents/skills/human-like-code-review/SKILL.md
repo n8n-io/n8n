@@ -182,9 +182,7 @@ When a comment suggests something different, be precise about it. Either propose
 
 ### Issue summary
 
-After the prose review, always end with a plain-text `## Issue Summary` section.
-Avoid markdown tables here because the review file is often read in raw text
-mode. If there are no issues in a category, skip that category rather than
+After the prose review, always end with a plain-text `## Issue Summary` section. If there are no issues in a category, skip that category rather than
 adding empty headings.
 
 Use this format:
