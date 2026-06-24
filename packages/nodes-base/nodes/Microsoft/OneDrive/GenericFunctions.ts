@@ -53,7 +53,10 @@ export function validateOneDriveFileName(
 	}
 }
 
-export type OneDriveCredentialType = 'microsoftOneDriveOAuth2Api' | 'microsoftOAuth2Api';
+export type OneDriveCredentialType =
+	| 'microsoftOneDriveOAuth2Api'
+	| 'microsoftOAuth2Api'
+	| 'microsoftEntraServicePrincipalApi';
 
 /**
  * Resolves which credential type the node is configured to use. Defaults to the
@@ -87,6 +90,23 @@ export async function microsoftApiRequest(
 			? credentials.graphApiBaseUrl
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
+
+	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
+
+	// App-only (service principal) has no signed-in user, so `/me` doesn't exist.
+	// Target the user configured on the credential instead.
+	let driveScope = '/me';
+	if (isServicePrincipal) {
+		const userId = (credentials.userId as string)?.trim();
+		if (!userId) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Set "User (UPN or ID)" on the Microsoft Entra Service Principal credential — app-only access has no /me.',
+			);
+		}
+		driveScope = `/users/${userId}`;
+	}
+
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -94,7 +114,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `${baseUrl}/v1.0/me${resource}`,
+		uri: uri || `${baseUrl}/v1.0${driveScope}${resource}`,
 	};
 	try {
 		Object.assign(options, option);
@@ -106,6 +126,10 @@ export async function microsoftApiRequest(
 		}
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
+		}
+		if (isServicePrincipal) {
+			// Custom-auth credential: its authenticate() mints the app-only token.
+			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
@@ -211,19 +235,12 @@ export async function getPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	itemId: string,
 ): Promise<string> {
-	const credentials = await this.getCredentials(getOneDriveCredentialType.call(this));
-	const baseUrl = (
-		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-			? credentials.graphApiBaseUrl
-			: 'https://graph.microsoft.com'
-	).replace(/\/+$/, '');
+	// Pass the resource path (not a full URI) so the /me vs /users/{id} scope is
+	// resolved by microsoftApiRequest for whichever credential type is in use.
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		'',
-		{},
-		{},
-		`${baseUrl}/v1.0/me/drive/items/${itemId}`,
+		`/drive/items/${itemId}`,
 	)) as IDataObject;
 	if (responseData.folder) {
 		return (responseData?.parentReference as IDataObject)?.path + `/${responseData?.name}`;
