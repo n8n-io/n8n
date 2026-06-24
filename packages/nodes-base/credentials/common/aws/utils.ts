@@ -1,4 +1,4 @@
-import { resolveProxyUrl } from '@n8n/backend-network';
+import { createDispatcherTransport } from '@n8n/backend-network/transport';
 import {
 	type IHttpRequestMethods,
 	isObjectEmpty,
@@ -21,7 +21,6 @@ import {
 	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
-import { ProxyAgent } from 'undici';
 
 import { getSystemCredentials } from './system-credentials-utils';
 
@@ -375,15 +374,11 @@ export async function assumeRole(
 		throw new OperationalError('Failed to sign STS request');
 	}
 
-	const proxyUrl = resolveProxyUrl(stsEndpoint);
-	const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
-	const requestInit: RequestInit & { dispatcher?: unknown } = {
+	const response = await createDispatcherTransport({ proxy: 'env' }).asCustomFetch()(stsEndpoint, {
 		method: 'POST',
 		headers: signOpts.headers as Record<string, string>,
 		body: bodyContent,
-		...(dispatcher ? { dispatcher } : {}),
-	};
-	const response = await fetch(stsEndpoint, requestInit);
+	});
 
 	if (!response.ok) {
 		const errorText = await response.text();

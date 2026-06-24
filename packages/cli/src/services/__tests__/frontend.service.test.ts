@@ -1,5 +1,6 @@
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -42,6 +43,10 @@ describe('FrontendService', () => {
 			whatsNewEnabled: false,
 			whatsNewEndpoint: '',
 			infoUrl: '',
+		},
+		dynamicBanners: {
+			endpoint: 'https://api.n8n.io/api/banners',
+			enabled: true,
 		},
 		personalization: { enabled: false },
 		defaultLocale: 'en',
@@ -179,6 +184,10 @@ describe('FrontendService', () => {
 		getAiUsageSettings: jest.fn().mockResolvedValue(true),
 	});
 
+	const workflowRepository = mock<WorkflowRepository>({
+		getPublishedCount: jest.fn().mockResolvedValue(7),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -206,6 +215,7 @@ describe('FrontendService', () => {
 				mfaService,
 				ownershipService,
 				aiUsageService,
+				workflowRepository,
 			),
 			license,
 		};
@@ -214,9 +224,11 @@ describe('FrontendService', () => {
 	beforeEach(() => {
 		originalEnv = process.env;
 		jest.clearAllMocks();
+		globalConfig.diagnostics.enabled = false;
 	});
 
 	afterEach(() => {
+		jest.useRealTimers();
 		process.env = originalEnv;
 	});
 
@@ -229,6 +241,78 @@ describe('FrontendService', () => {
 				expect.objectContaining({
 					settingsMode: 'authenticated',
 				}),
+			);
+		});
+
+		it('should cache dynamic banner filters for 30 seconds', async () => {
+			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockResolvedValueOnce(7).mockResolvedValueOnce(8);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(29_999);
+			const cachedSettings = await service.getSettings();
+
+			expect(cachedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(1);
+			const refreshedSettings = await service.getSettings();
+
+			expect(refreshedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 8,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
+		});
+
+		it('should fall back when dynamic banner filters cannot be loaded', async () => {
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 0,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('should fall back to the last published workflow count when refresh fails', async () => {
+			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount
+				.mockResolvedValueOnce(7)
+				.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			await service.getSettings();
+			jest.advanceTimersByTime(30_000);
+
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
 		});
 
