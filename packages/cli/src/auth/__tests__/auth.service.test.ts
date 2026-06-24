@@ -13,6 +13,7 @@ import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
+import type { LoginSessionService } from '@/auth/login-session.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
@@ -41,6 +42,7 @@ describe('AuthService', () => {
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
 	const logger = mock<Logger>();
+	const loginSessionService = mock<LoginSessionService>();
 	const authService = new AuthService(
 		globalConfig,
 		logger,
@@ -50,6 +52,7 @@ describe('AuthService', () => {
 		userRepository,
 		invalidAuthTokenRepository,
 		mfaService,
+		loginSessionService,
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
@@ -58,9 +61,6 @@ describe('AuthService', () => {
 	const validToken =
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
 
-	const validTokenWithMfa =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
-
 	beforeEach(() => {
 		jest.resetAllMocks();
 		jest.setSystemTime(now);
@@ -68,6 +68,7 @@ describe('AuthService', () => {
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
 		license.isWithinUsersLimit.mockReturnValue(true);
+		loginSessionService.isActive.mockResolvedValue(true);
 	});
 
 	describe('createJWTHash', () => {
@@ -514,33 +515,57 @@ describe('AuthService', () => {
 
 	describe('issueCookie', () => {
 		const res = mock<Response>();
-		it('should issue a cookie with the correct options', () => {
-			authService.issueCookie(res, user, false, browserId);
+		beforeEach(() => {
+			user.role = GLOBAL_OWNER_ROLE;
+		});
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+		it('should issue a cookie with the correct options and create a session', async () => {
+			await authService.issueCookie(res, user, false, browserId, undefined, undefined, {
+				userAgent: 'jest-agent',
+				ipAddress: '10.0.0.1',
+			});
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
 				secure: true,
 			});
+			expect(loginSessionService.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: user.id,
+					userAgent: 'jest-agent',
+					ipAddress: '10.0.0.1',
+				}),
+			);
+		});
+
+		it('should reuse the session and roll its expiry forward on refresh', async () => {
+			await authService.issueCookie(res, user, false, browserId, undefined, undefined, {
+				jti: 'existing-jti',
+			});
+
+			expect(loginSessionService.create).not.toHaveBeenCalled();
+			expect(loginSessionService.refreshExpiry).toHaveBeenCalledWith(
+				'existing-jti',
+				expect.any(Date),
+			);
 		});
 
 		describe('when user limit is reached', () => {
 			it('should block issuance if the user is not the global owner', async () => {
 				user.role = GLOBAL_MEMBER_ROLE;
 				license.isWithinUsersLimit.mockReturnValue(false);
-				expect(() => {
-					authService.issueCookie(res, user, false, browserId);
-				}).toThrowError('Maximum number of users reached');
+				await expect(authService.issueCookie(res, user, false, browserId)).rejects.toThrow(
+					'Maximum number of users reached',
+				);
 			});
 
 			it('should allow issuance if the user is the global owner', async () => {
 				license.isWithinUsersLimit.mockReturnValue(false);
 				user.role = GLOBAL_OWNER_ROLE;
-				expect(() => {
-					authService.issueCookie(res, user, false, browserId);
-				}).not.toThrowError('Maximum number of users reached');
-				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+				await expect(authService.issueCookie(res, user, false, browserId)).resolves.toBeDefined();
+				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 					httpOnly: true,
 					maxAge: 604800000,
 					sameSite: 'lax',
@@ -549,10 +574,10 @@ describe('AuthService', () => {
 			});
 		});
 
-		it('should issue a cookie with the correct options, when 2FA was used', () => {
-			authService.issueCookie(res, user, true, browserId);
+		it('should issue a cookie with the correct options, when 2FA was used', async () => {
+			await authService.issueCookie(res, user, true, browserId);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validTokenWithMfa, {
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -560,12 +585,12 @@ describe('AuthService', () => {
 			});
 		});
 
-		it('should allow changing cookie options', () => {
+		it('should allow changing cookie options', async () => {
 			globalConfig.auth.cookie = { secure: false, samesite: 'none' };
 
-			authService.issueCookie(res, user, false, browserId);
+			await authService.issueCookie(res, user, false, browserId);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'none',
@@ -647,6 +672,27 @@ describe('AuthService', () => {
 				'invalid signature',
 			);
 			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should reject a token whose session has been revoked', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			loginSessionService.isActive.mockResolvedValue(false);
+			const tokenWithJti = authService.issueJWT(user, false, browserId, false, 'revoked-session');
+
+			await expect(authService.resolveJwt(tokenWithJti, req, res)).rejects.toThrow('Unauthorized');
+			expect(loginSessionService.isActive).toHaveBeenCalledWith('revoked-session');
+		});
+
+		it('should accept a token whose session is still active', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			loginSessionService.isActive.mockResolvedValue(true);
+			const tokenWithJti = authService.issueJWT(user, false, browserId, false, 'active-session');
+
+			await expect(authService.resolveJwt(tokenWithJti, req, res)).resolves.toEqual([
+				user,
+				{ usedMfa: false },
+			]);
+			expect(loginSessionService.touchIfStale).toHaveBeenCalledWith('active-session');
 		});
 
 		it('should throw on hijacked tokens', async () => {
@@ -1047,6 +1093,25 @@ describe('AuthService', () => {
 			userRepository.findOne.mockResolvedValue(null);
 
 			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
+		});
+
+		it('should throw when the token session has been revoked', async () => {
+			const token = authService.issueJWT(user, false, browserId, false, 'revoked-session');
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(user);
+			loginSessionService.isActive.mockResolvedValue(false);
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
+			expect(loginSessionService.isActive).toHaveBeenCalledWith('revoked-session');
+		});
+
+		it('should resolve for a token whose session is still active', async () => {
+			const token = authService.issueJWT(user, false, browserId, false, 'active-session');
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(user);
+			loginSessionService.isActive.mockResolvedValue(true);
+
+			await expect(authService.validateCookieToken(token)).resolves.toBe(user);
 		});
 	});
 

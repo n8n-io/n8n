@@ -1,15 +1,16 @@
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
+import { LoginSessionService } from '@/auth/login-session.service';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -28,6 +29,16 @@ interface AuthJwtPayload {
 	usedMfa?: boolean;
 	/** This indicates if the session originated from an embed login (cross-site cookie required) */
 	isEmbed?: boolean;
+	/** Id of the persisted login session this token belongs to */
+	jti?: string;
+}
+
+/** Per-request data captured at login to describe the session in the UI. */
+export interface SessionContext {
+	/** Reuse an existing session id (set on JWT refresh); omit to start a new session. */
+	jti?: string;
+	userAgent?: string | null;
+	ipAddress?: string | null;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -70,6 +81,7 @@ export class AuthService {
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
+		private readonly loginSessionService: LoginSessionService,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
@@ -178,6 +190,14 @@ export class AuthService {
 		return undefined;
 	}
 
+	/** Captures the request metadata stored on a new login session for display. */
+	getSessionContext(req: Request): SessionContext {
+		return {
+			userAgent: req.headers?.['user-agent'] ?? null,
+			ipAddress: req.ip ?? null,
+		};
+	}
+
 	getMethod(req: Request) {
 		return req.method;
 	}
@@ -194,25 +214,39 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (!token) return;
 		try {
-			const { exp } = this.jwtService.decode(token);
+			const { exp, jti } = this.jwtService.decode<IssuedJWT>(token);
 			if (exp) {
 				await this.invalidAuthTokenRepository.insert({
 					token,
 					expiresAt: new Date(exp * 1000),
 				});
 			}
+			// Drop the persisted session so it disappears from the user's session list.
+			if (jti) await this.loginSessionService.remove(jti);
 		} catch (e) {
 			this.logger.warn('failed to invalidate auth token', { error: (e as Error).message });
 		}
 	}
 
-	issueCookie(
+	/** Reads the session id (`jti`) from the request's auth cookie, if present. */
+	getSessionId(req: Request): string | undefined {
+		const token = this.getCookieToken(req);
+		if (!token) return undefined;
+		try {
+			return this.jwtService.decode<IssuedJWT>(token)?.jti;
+		} catch {
+			return undefined;
+		}
+	}
+
+	async issueCookie(
 		res: Response,
 		user: User,
 		usedMfa: boolean,
 		browserId?: string,
 		isEmbed?: boolean,
 		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+		sessionContext?: SessionContext,
 	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
@@ -221,7 +255,28 @@ export class AuthService {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, usedMfa, browserId, isEmbed);
+		// Reuse the session id on refresh; otherwise start a new session.
+		const isRefresh = Boolean(sessionContext?.jti);
+		const jti = sessionContext?.jti ?? randomUUID();
+
+		const token = this.issueJWT(user, usedMfa, browserId, isEmbed, jti);
+
+		const expiresAt = new Date(Date.now() + this.jwtExpiration * Time.seconds.toMilliseconds);
+		if (isRefresh) {
+			// Roll the row's expiry forward with the re-issued token so prune-on-read
+			// doesn't delete an actively-refreshing session at its original expiry.
+			await this.loginSessionService.refreshExpiry(jti, expiresAt);
+		} else {
+			await this.loginSessionService.create({
+				userId: user.id,
+				jti,
+				browserIdHash: browserId ? this.hash(browserId) : null,
+				userAgent: sessionContext?.userAgent ?? null,
+				ipAddress: sessionContext?.ipAddress ?? null,
+				expiresAt,
+			});
+		}
+
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
@@ -229,15 +284,24 @@ export class AuthService {
 			sameSite: cookieOverrides?.sameSite ?? samesite,
 			secure: cookieOverrides?.secure ?? secure,
 		});
+
+		return jti;
 	}
 
-	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
+	issueJWT(
+		user: User,
+		usedMfa: boolean = false,
+		browserId?: string,
+		isEmbed?: boolean,
+		jti?: string,
+	) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
 			...(isEmbed && { isEmbed }),
+			...(jti && { jti }),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
@@ -353,6 +417,14 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
+		// Enforce the session registry on every auth path (interactive, webhook,
+		// dynamic credentials). A revoked or logged-out session has no row, so the
+		// token is rejected everywhere. Tokens issued before this shipped carry no
+		// `jti` and fall back to the hash + deny-list checks until they drain.
+		if (jwtPayload.jti && !(await this.loginSessionService.isActive(jwtPayload.jti))) {
+			throw new AuthError('Unauthorized');
+		}
+
 		return {
 			user,
 			jwtPayload,
@@ -371,18 +443,23 @@ export class AuthService {
 		const method = this.getMethod(req);
 		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
+		// Keep `lastActiveAt` reasonably fresh for the sessions list. Throttled
+		// internally, so this is a no-op DB-wise for most requests.
+		if (jwtPayload.jti) await this.loginSessionService.touchIfStale(jwtPayload.jti);
+
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
 			const embedCookieOverrides = jwtPayload.isEmbed
 				? ({ sameSite: 'none' as const, secure: true } as const)
 				: undefined;
-			this.issueCookie(
+			await this.issueCookie(
 				res,
 				user,
 				jwtPayload.usedMfa ?? false,
 				browserId,
 				jwtPayload.isEmbed,
 				embedCookieOverrides,
+				{ jti: jwtPayload.jti },
 			);
 		}
 

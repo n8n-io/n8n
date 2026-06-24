@@ -330,7 +330,15 @@ describe('InvitationController', () => {
 			});
 			expect(passwordUtility.hash).toHaveBeenCalledWith('Password123!');
 			expect(userRepository.save).toHaveBeenCalled();
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, invitee, false, 'browser-id');
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				invitee,
+				false,
+				'browser-id',
+				undefined,
+				undefined,
+				undefined,
+			);
 			expect(eventService.emit).toHaveBeenCalledWith('user-signed-up', {
 				user: invitee,
 				userType: 'email',

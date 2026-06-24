@@ -4,8 +4,8 @@ import {
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Time } from '@n8n/constants';
+import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import {
 	Body,
 	createBodyKeyedRateLimiter,
@@ -16,10 +16,11 @@ import {
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
+import { ErrorReporter } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
+import { LoginSessionService } from '@/auth/login-session.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ErrorReporter } from 'n8n-core';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -29,6 +30,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
+import { createJitterMiddleware } from '@/middlewares';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
@@ -37,7 +39,6 @@ import {
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
-import { createJitterMiddleware } from '@/middlewares';
 
 @RestController()
 export class PasswordResetController {
@@ -53,6 +54,7 @@ export class PasswordResetController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly errorReporter: ErrorReporter,
+		private readonly loginSessionService: LoginSessionService,
 	) {}
 
 	/**
@@ -221,7 +223,17 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		const sessionId = await this.authService.issueCookie(
+			res,
+			user,
+			user.mfaEnabled,
+			req.browserId,
+			undefined,
+			undefined,
+			this.authService.getSessionContext(req),
+		);
+		// The password change invalidates every other token; drop their session rows too.
+		await this.loginSessionService.revokeAllOthers(user.id, sessionId);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 

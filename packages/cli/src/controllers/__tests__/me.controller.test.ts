@@ -8,6 +8,7 @@ import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
+import { LoginSessionService } from '@/auth/login-session.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -38,6 +39,7 @@ describe('MeController', () => {
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
 	mockInstance(InvalidAuthTokenRepository);
+	const loginSessionService = mockInstance(LoginSessionService);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
@@ -1013,6 +1015,81 @@ describe('MeController', () => {
 			};
 
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrow(BadRequestError);
+		});
+	});
+
+	describe('login sessions', () => {
+		const user = { id: 'user-1' } as unknown as User;
+		// JWT carrying `jti: 'current-session'`, signed with the test secret.
+		const tokenWithJti = jwt.sign({ id: user.id, jti: 'current-session' }, 'random-secret');
+
+		const reqWithSession = {
+			user,
+			cookies: { [AUTH_COOKIE_NAME]: tokenWithJti },
+		} as unknown as AuthenticatedRequest;
+
+		beforeEach(() => {
+			loginSessionService.listForUser.mockReset();
+			loginSessionService.revokeForUser.mockReset();
+			loginSessionService.revokeAllOthers.mockReset();
+		});
+
+		describe('getLoginSessions', () => {
+			it('should return the caller sessions with the current one flagged', async () => {
+				loginSessionService.listForUser.mockResolvedValue([
+					{ id: 'current-session', current: true } as never,
+				]);
+
+				const result = await controller.getLoginSessions(reqWithSession);
+
+				expect(loginSessionService.listForUser).toHaveBeenCalledWith(user.id, 'current-session');
+				expect(result).toEqual({ items: [{ id: 'current-session', current: true }] });
+			});
+		});
+
+		describe('revokeLoginSession', () => {
+			it('should revoke another session without clearing the cookie', async () => {
+				const res = mock<Response>();
+
+				const result = await controller.revokeLoginSession(reqWithSession, res, 'other-session');
+
+				expect(loginSessionService.revokeForUser).toHaveBeenCalledWith(user.id, 'other-session');
+				expect(res.clearCookie).not.toHaveBeenCalled();
+				expect(result).toEqual({ success: true });
+			});
+
+			it('should clear the cookie when revoking the current session (logout)', async () => {
+				const res = mock<Response>();
+
+				const result = await controller.revokeLoginSession(reqWithSession, res, 'current-session');
+
+				expect(loginSessionService.revokeForUser).toHaveBeenCalledWith(user.id, 'current-session');
+				expect(res.clearCookie).toHaveBeenCalled();
+				expect(result).toEqual({ success: true });
+			});
+		});
+
+		describe('revokeAllOtherLoginSessions', () => {
+			it('should revoke all sessions except the current one', async () => {
+				loginSessionService.revokeAllOthers.mockResolvedValue(3);
+
+				const result = await controller.revokeAllOtherLoginSessions(reqWithSession);
+
+				expect(loginSessionService.revokeAllOthers).toHaveBeenCalledWith(
+					user.id,
+					'current-session',
+				);
+				expect(result).toEqual({ revokedCount: 3 });
+			});
+
+			it('should revoke nothing when the current session id is unknown', async () => {
+				const req = { user, cookies: {} } as unknown as AuthenticatedRequest;
+
+				const result = await controller.revokeAllOtherLoginSessions(req);
+
+				expect(loginSessionService.revokeAllOthers).not.toHaveBeenCalled();
+				expect(result).toEqual({ revokedCount: 0 });
+			});
 		});
 	});
 });

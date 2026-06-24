@@ -10,6 +10,7 @@ import {
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
+import { LoginSessionService } from '@/auth/login-session.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -26,6 +27,7 @@ export class MFAController {
 		private userRepository: UserRepository,
 		private eventService: EventService,
 		private instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private loginSessionService: LoginSessionService,
 	) {}
 
 	@Post('/enforce-mfa')
@@ -150,7 +152,17 @@ export class MFAController {
 			},
 		});
 
-		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
+		const sessionId = await this.authService.issueCookie(
+			res,
+			updatedUser,
+			verified,
+			req.browserId,
+			undefined,
+			undefined,
+			{ ...this.authService.getSessionContext(req), jti: this.authService.getSessionId(req) },
+		);
+		// Enabling MFA rotates the token hash, so other sessions are dead — clear their rows.
+		await this.loginSessionService.revokeAllOthers(updatedUser.id, sessionId);
 	}
 
 	@Post('/disable', {
@@ -194,7 +206,17 @@ export class MFAController {
 			relations: ['role'],
 		});
 
-		this.authService.issueCookie(res, updatedUser, false, req.browserId);
+		const sessionId = await this.authService.issueCookie(
+			res,
+			updatedUser,
+			false,
+			req.browserId,
+			undefined,
+			undefined,
+			{ ...this.authService.getSessionContext(req), jti: this.authService.getSessionId(req) },
+		);
+		// Disabling MFA rotates the token hash, so other sessions are dead — clear their rows.
+		await this.loginSessionService.revokeAllOthers(updatedUser.id, sessionId);
 	}
 
 	@Post('/verify', {

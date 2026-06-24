@@ -37,6 +37,7 @@ import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
 import { User } from './user';
+import { UserLoginSession } from './user-login-session';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
@@ -53,6 +54,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	InvalidAuthToken,
+	UserLoginSession,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
@@ -106,6 +108,7 @@ export {
 
 export const entities = {
 	InvalidAuthToken,
+	UserLoginSession,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,

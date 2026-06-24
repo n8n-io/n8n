@@ -92,6 +92,7 @@ describe('EmbedAuthController', () => {
 					sameSite: 'none',
 					secure: true,
 				},
+				undefined,
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('embed-login', {
 				subject: 'ext-sub-1',
@@ -123,6 +124,7 @@ describe('EmbedAuthController', () => {
 					sameSite: 'none',
 					secure: true,
 				},
+				undefined,
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('embed-login', {
 				subject: 'ext-sub-1',

@@ -104,7 +104,15 @@ describe('AuthController', () => {
 
 			expect(ldapService.handleLogin).toHaveBeenCalledWith(body.emailOrLdapLoginId, body.password);
 
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				member,
+				false,
+				browserId,
+				undefined,
+				undefined,
+				undefined,
+			);
 			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in', {
 				user: member,
 				authenticationMethod: 'ldap',
@@ -217,7 +225,15 @@ describe('AuthController', () => {
 				body.emailOrLdapLoginId,
 				body.password,
 			);
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, '1');
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				member,
+				false,
+				'1',
+				undefined,
+				undefined,
+				undefined,
+			);
 		});
 	});
 
