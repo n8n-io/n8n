@@ -126,6 +126,26 @@ export class RoleRepository extends Repository<Role> {
 			.filter((r) => r !== null);
 	}
 
+	async findUsersWithGlobalRole(roleSlug: string): Promise<
+		Array<{
+			userId: string;
+			firstName: string | null;
+			lastName: string | null;
+			email: string;
+			role: string;
+		}>
+	> {
+		return await this.manager
+			.createQueryBuilder(User, 'user')
+			.select('user.id', 'userId')
+			.addSelect('user.firstName', 'firstName')
+			.addSelect('user.lastName', 'lastName')
+			.addSelect('user.email', 'email')
+			.addSelect('user.roleSlug', 'role')
+			.where('user.roleSlug = :slug', { slug: roleSlug })
+			.getRawMany();
+	}
+
 	async findAllProjectMembers(
 		projectId: string,
 		roleSlug?: string,

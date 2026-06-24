@@ -70,7 +70,6 @@ describe('sanitizeAgentJsonConfig', () => {
 			config: {
 				toolCallConcurrency: 2,
 				webSearch: { enabled: true, provider: 'native' },
-				nodeTools: { enabled: true },
 			},
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);

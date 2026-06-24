@@ -1,0 +1,303 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an inventory assistant. Use the lookup_inventory tool when asked about stock. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "How many widgets do we have in stock?"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup_inventory",
+					"description": "Look up the current inventory count for a product",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"product": {
+								"type": "string",
+								"description": "Product name"
+							}
+						},
+						"required": ["product"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01AibwE8DUWskuqKeK7cHXf7\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01P7UX2NZ6RxDzwp88EV3osh\",\"name\":\"lookup_inventory\",\"input\":{\"product\":\"widgets\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":625,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":54,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:08Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:08Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19998",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:07Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:08Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371ec6db75ba9-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:08 GMT",
+			"request-id": "req_011CcLBS3xjmdpke2eFRxCrX",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=0EGRLXH9NPRqjU.A41CqPS6LUI7W7mUgrnf.8dh2Dwo-1782217207.750474-1.0.1.1-5h9GCDjxDnqBbUy7X_.QQWtP8hpQksAm3iG0Jyp3cSk; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f880dfab81cd62806782a87078ddfac5-99e17e2ccf9ab48a-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an inventory assistant. Use the lookup_inventory tool when asked about stock. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "How many widgets do we have in stock?"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01P7UX2NZ6RxDzwp88EV3osh",
+							"name": "lookup_inventory",
+							"input": {
+								"product": "widgets"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01P7UX2NZ6RxDzwp88EV3osh",
+							"content": "{\"product\":\"widgets\",\"count\":42,\"warehouse\":\"Building-7\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup_inventory",
+					"description": "Look up the current inventory count for a product",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"product": {
+								"type": "string",
+								"description": "Product name"
+							}
+						},
+						"required": ["product"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_017agKoPoFMEsh2TFfJvg88G\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"We have **42 widgets** in stock, located in Building-7.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":706,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":19,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:10Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:10Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:08Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:10Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371f1c90f5ba9-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:10 GMT",
+			"request-id": "req_011CcLBS7fVMcTvQAZW56ojv",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Xm73Cg8ShcSJrykkX_bnE04luT.bKS74XdOqaUgVk6Q-1782217208.6085112-1.0.1.1-XUcEIY54U1NdKa_N6VnVQRThG_5Kq4M3byLvqAGjUwA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-491a76c24fb421f2c056d553e5a1f6e7-3c24884f9e462c73-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an inventory assistant. Use the lookup_inventory tool when asked about stock. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "How many widgets do we have in stock?"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01P7UX2NZ6RxDzwp88EV3osh",
+							"name": "lookup_inventory",
+							"input": {
+								"product": "widgets"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01P7UX2NZ6RxDzwp88EV3osh",
+							"content": "{\"product\":\"widgets\",\"count\":42,\"warehouse\":\"Building-7\"}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "We have **42 widgets** in stock, located in Building-7."
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Which warehouse are the widgets stored in? Do NOT call any tools — answer from what you already know."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup_inventory",
+					"description": "Look up the current inventory count for a product",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"product": {
+								"type": "string",
+								"description": "Product name"
+							}
+						},
+						"required": ["product"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01RMWC9g5y2pyfHv3xBPjwtj\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The widgets are stored in **Building-7**, based on the inventory lookup I just performed.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":749,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":22,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:11Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:11Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:10Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:11Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371fe8aa75ba9-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:11 GMT",
+			"request-id": "req_011CcLBSGN7ignVmBjbjXmdR",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=EifVo9r5BVPx7nwtaZiPVIifZekcmiigHsg6YkdDNsM-1782217210.651317-1.0.1.1-bhU5u.trc8Cb1DRBAaeMtGknnIPqCM0l8TtLUxpmE0E; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-b98995b4271add3ecb957a3370b0b619-c4a2830c4390262e-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

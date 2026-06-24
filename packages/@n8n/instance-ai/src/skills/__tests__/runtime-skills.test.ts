@@ -147,8 +147,13 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
+		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
+		expect(loaded?.instructions).toContain('.to(isImportant)');
+		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
+		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
+		expect(loaded?.instructions).toContain('branch nodes are omitted from the saved graph');
 	});
 
 	it('loads the bundled planning skill', async () => {

@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
-import type { Thread, Author } from 'chat';
+import type { Thread, Author, Message } from 'chat';
+import type { Logger } from 'n8n-workflow';
 
 import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -33,6 +34,34 @@ export interface AgentChatIntegrationBuilderGuidance {
 	capabilities: string[];
 	useIntegrationWhen: string[];
 	useNodeToolWhen: string[];
+}
+
+export interface PlatformAgentContext {
+	agentUserId?: string;
+}
+
+export interface BridgeStatusHandle {
+	clearBeforeResponse(): Promise<void>;
+}
+
+export interface BridgeExecutionContext {
+	platformAgentContext: PlatformAgentContext;
+	forceBuffered?: boolean;
+	statusHandle?: BridgeStatusHandle;
+}
+
+export type BridgeResumeExecutionContext = Pick<
+	BridgeExecutionContext,
+	'forceBuffered' | 'statusHandle'
+>;
+
+export interface BridgeMessageContextParams {
+	chat: ChatInstance;
+	thread: Thread<unknown, unknown>;
+	message: Message<unknown>;
+	logger: Logger;
+	agentId: string;
+	statusRetry?: AbortController;
 }
 
 /**
@@ -195,6 +224,31 @@ export abstract class AgentChatIntegration {
 	 * Private-mode allowlist.
 	 */
 	isUserAllowed?(author: Author, settings: AgentIntegrationConfig | undefined): boolean;
+
+	/**
+	 * Optional platform context needed by the bridge before execution. Slack uses
+	 * this to persist the bot user ID and strip self-mentions from inbound text.
+	 */
+	getPlatformAgentContext?(chat: ChatInstance): PlatformAgentContext;
+
+	/** Optional text normalization before the message is handed to the agent. */
+	prepareInboundText?(text: string, context: PlatformAgentContext): string;
+
+	/**
+	 * Optional per-message execution policy for platform-specific bridge behavior,
+	 * such as status indicators or forcing buffered output for a specific thread.
+	 */
+	createBridgeExecutionContext?(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext>;
+
+	/** Optional stream/status policy for responses after interactive resume actions. */
+	createResumeExecutionContext?(params: {
+		chat: ChatInstance;
+		thread: Thread<unknown, unknown>;
+		logger: Logger;
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext>;
 
 	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,

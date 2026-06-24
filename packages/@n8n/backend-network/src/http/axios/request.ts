@@ -1,8 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
 import type { AxiosRequestConfig } from 'axios';
-import axios from 'axios';
-import type { AgentOptions } from 'https';
 import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
@@ -12,12 +8,13 @@ import type {
 import { isObjectEmpty } from 'n8n-workflow';
 import { stringify } from 'qs';
 
+import { invokeAxios } from './invoke';
+import { followSsrfRedirects, shouldFollowRedirectsManually } from './redirect';
 import { applyDefaultOutboundUserAgent } from './user-agent';
 import {
+	buildAgentOptions,
 	buildTargetUrl,
-	digestAuthAxiosConfig,
 	getBeforeRedirectFn,
-	getHostFromRequestObject,
 	isFormDataInstance,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
@@ -26,26 +23,6 @@ import {
 	validateUrlSsrf,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
-
-export async function invokeAxios(
-	axiosConfig: AxiosRequestConfig,
-	authOptions: IRequestOptions['auth'] = {},
-) {
-	try {
-		return await axios(axiosConfig);
-	} catch (error) {
-		if (authOptions.sendImmediately !== false || !(error instanceof axios.AxiosError)) throw error;
-		// for digest-auth
-		const { response } = error;
-		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-			throw error;
-		}
-		const { auth } = axiosConfig;
-		delete axiosConfig.auth;
-		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
-		return await axios(axiosConfig);
-	}
-}
 
 export function convertN8nRequestToAxios(
 	n8nRequest: IHttpRequestOptions,
@@ -84,14 +61,7 @@ export function convertN8nRequestToAxios(
 		axiosRequest.responseType = n8nRequest.encoding;
 	}
 
-	const host = getHostFromRequestObject(n8nRequest);
-	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
-	}
-	if (n8nRequest.skipSslCertificateValidation === true) {
-		agentOptions.rejectUnauthorized = false;
-	}
+	const agentOptions = buildAgentOptions(n8nRequest);
 	setAxiosAgents(axiosRequest, agentOptions, proxy, ssrfBridge ?? 'disabled');
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(
@@ -114,7 +84,7 @@ export function convertN8nRequestToAxios(
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest, 'content-type');
 		if (existingContentTypeHeaderKey === undefined) {
-			axiosRequest.headers = axiosRequest.headers || {};
+			axiosRequest.headers = axiosRequest.headers ?? {};
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
 			if (isFormDataInstance(body)) {
@@ -186,7 +156,7 @@ function isEmpty(value: unknown): boolean {
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
 export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOptions) {
-	const method = requestOptions.method || 'GET';
+	const method = requestOptions.method ?? 'GET';
 	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
 		delete requestOptions.body;
 	}
@@ -228,7 +198,17 @@ export async function httpRequest(
 
 	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
 
-	const result = await invokeAxios(axiosRequest, requestOptions.auth);
+	const result = shouldFollowRedirectsManually(axiosRequest, requestOptions.proxy, ssrfBridge)
+		? await followSsrfRedirects(axiosRequest, {
+				ssrf: ssrfBridge,
+				proxyConfig: requestOptions.proxy,
+				agentOptions: buildAgentOptions(requestOptions),
+				allowedDomains: requestOptions.allowedDomains,
+				sendCredentialsOnCrossOriginRedirect:
+					requestOptions.sendCredentialsOnCrossOriginRedirect ?? true,
+				authSendImmediately: requestOptions.auth?.sendImmediately,
+			})
+		: await invokeAxios(axiosRequest, requestOptions.auth?.sendImmediately);
 
 	if (requestOptions.returnFullResponse) {
 		return {

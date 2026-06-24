@@ -44,6 +44,15 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('clarifying questions', () => {
+		it('routes clarifying questions through ask-user instead of plain text', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('need clarification');
+			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({

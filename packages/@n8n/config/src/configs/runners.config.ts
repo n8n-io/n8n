@@ -2,9 +2,9 @@ import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 const runnerModeSchema = z.enum(['internal', 'external']);
-const positiveIntSchema = z.number({ coerce: true }).int().positive();
 
 export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
