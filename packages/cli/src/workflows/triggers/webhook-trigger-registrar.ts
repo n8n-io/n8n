@@ -177,12 +177,11 @@ export class WebhookTriggerRegistrar {
 			return new Set();
 		}
 
-		const registeredKeysByNode = new Map<string, Set<string>>();
-		for (const webhook of await this.webhookService.getRegisteredWebhooks(workflow.id)) {
-			const keys = registeredKeysByNode.get(webhook.node) ?? new Set<string>();
-			keys.add(this.webhookKey(webhook.method, webhook.webhookPath));
-			registeredKeysByNode.set(webhook.node, keys);
-		}
+		const registeredKeys = new Set(
+			(await this.webhookService.getRegisteredWebhooks(workflow.id)).map((webhook) =>
+				this.webhookKey(webhook.method, webhook.webhookPath),
+			),
+		);
 
 		const unregistered = new Set<INode['id']>();
 		for (const webhookData of desiredWebhooks) {
@@ -193,7 +192,7 @@ export class WebhookTriggerRegistrar {
 
 			const webhook = this.buildNormalizedWebhook(workflow, webhookData);
 			const key = this.webhookKey(webhook.method, webhook.webhookPath);
-			if (!registeredKeysByNode.get(webhookData.node)?.has(key)) {
+			if (!registeredKeys.has(key)) {
 				unregistered.add(node.id);
 			}
 		}
