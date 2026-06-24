@@ -8,12 +8,19 @@ import { getAllKeyPaths } from '@/utils';
 
 // #region External Secrets
 
+const SECRETS_REFERENCE_REGEX = /\$secrets\b/;
+
 /**
  * Checks if a string value contains an external secret expression.
  * Detects both dot notation ($secrets.vault.key) and bracket notation ($secrets['vault']['key']).
  */
 function containsExternalSecretExpression(value: string): boolean {
-	return value.includes('$secrets.') || value.includes('$secrets[');
+	for (const [, blockContent] of value.matchAll(/\{\{(.*?)\}\}/gs)) {
+		if (SECRETS_REFERENCE_REGEX.test(blockContent)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**

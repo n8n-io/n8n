@@ -1556,7 +1556,7 @@ describe('CredentialsService', () => {
 				name: 'Test Credential',
 				type: 'apiKey',
 				data: {
-					apiKey: '$secrets.myApiKey',
+					apiKey: '={{ $secrets.myApiKey }}',
 					url: 'https://api.example.com',
 				},
 				projectId: 'project-1',

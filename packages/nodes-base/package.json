@@ -947,7 +947,7 @@
     "rhea": "3.0.4",
     "rrule": "2.8.1",
     "rss-parser": "3.13.0",
-    "sanitize-html": "2.12.1",
+    "sanitize-html": "catalog:",
     "semver": "7.5.4",
     "showdown": "2.1.0",
     "simple-git": "catalog:",

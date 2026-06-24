@@ -1,13 +1,14 @@
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type {
-	IDataObject,
-	INodeCredentialsDetails,
-	IRun,
-	ITaskData,
-	IWorkflowBase,
-	RelatedExecution,
+import {
+	isSafeObjectProperty,
+	type IDataObject,
+	type INodeCredentialsDetails,
+	type IRun,
+	type ITaskData,
+	type IWorkflowBase,
+	type RelatedExecution,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -88,6 +89,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Reject credential types that resolve to object internals,
+			// so the dynamic lookups and writes below cannot reach the prototype chain.
+			if (!isSafeObjectProperty(nodeCredentialType)) {
+				continue;
+			}
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;

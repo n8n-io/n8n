@@ -76,6 +76,31 @@ describe('Credentials Validation', () => {
 				errorMessage,
 			);
 		});
+
+		describe('non-literal $secrets references', () => {
+			it.each([
+				['space before dot', '={{ $secrets .vault.key }}'],
+				['multiple spaces before dot', '={{ $secrets   .vault.key }}'],
+				['tab before dot', '={{ $secrets\t.vault.key }}'],
+				['newline before dot', '={{ $secrets\n.vault.key }}'],
+				['space before bracket', "={{ $secrets ['vault']['key'] }}"],
+				['newline before bracket', "={{ $secrets\n['vault']['key'] }}"],
+				['optional chaining', '={{ $secrets?.vault?.key }}'],
+				['parentheses', '={{ ($secrets).vault.key }}'],
+				['comma operator', '={{ (0, $secrets).vault.key }}'],
+				['array wrap with pop', '={{ [$secrets].pop().vault.key }}'],
+				['array wrap with at', '={{ [$secrets].at(0).vault.key }}'],
+				['inline comment', '={{ ( /* x */ $secrets ).vault.key }}'],
+				['Object() wrap', '={{ Object($secrets).vault.key }}'],
+				['nullish coalescing', '={{ ($secrets ?? {}).vault.key }}'],
+				['template-literal key', '={{ $secrets [`vault`].key }}'],
+				['concatenated key', '={{ $secrets ["va".concat("ult")].key }}'],
+			])('should throw when user lacks permission and uses %s', (_label, expression) => {
+				expect(() =>
+					validateExternalSecretsPermissions(memberUser, { apiKey: expression }),
+				).toThrow(errorMessage);
+			});
+		});
 	});
 
 	describe('isChangingExternalSecretExpression', () => {
@@ -129,8 +154,8 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should return true when modifying external secret in nested object', () => {
-			const existingData = { apiKey: 'plain', config: { token: '$secrets.oldToken' } };
-			const newData = { apiKey: 'plain', config: { token: '$secrets.newToken' } };
+			const existingData = { apiKey: 'plain', config: { token: '={{ $secrets.oldToken }}' } };
+			const newData = { apiKey: 'plain', config: { token: '={{ $secrets.newToken }}' } };
 
 			expect(isChangingExternalSecretExpression(newData, existingData)).toBe(true);
 		});

@@ -108,6 +108,9 @@ catalogs:
     rimraf:
       specifier: 6.0.1
       version: 6.0.1
+    sanitize-html:
+      specifier: 2.17.4
+      version: 2.17.4
     simple-git:
       specifier: 3.36.0
       version: 3.36.0
@@ -1010,7 +1013,7 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -1353,8 +1356,8 @@ importers:
         specifier: 4.6.14
         version: 4.6.14
       sanitize-html:
-        specifier: 2.12.1
-        version: 2.12.1
+        specifier: 'catalog:'
+        version: 2.17.4
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
@@ -1546,7 +1549,7 @@ importers:
         version: 14.6.1(@testing-library/dom@10.4.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -2143,7 +2146,7 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
         version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2252,7 +2255,7 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.9.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -2314,8 +2317,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
       sanitize-html:
-        specifier: 2.12.1
-        version: 2.12.1
+        specifier: 'catalog:'
+        version: 2.17.4
       vue:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.9.2)
@@ -2443,7 +2446,7 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.9.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -2507,7 +2510,7 @@ importers:
         version: 14.6.1(@testing-library/dom@10.4.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -2556,7 +2559,7 @@ importers:
         version: 2.2.4(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -3187,8 +3190,8 @@ importers:
         specifier: 3.13.0
         version: 3.13.0
       sanitize-html:
-        specifier: 2.12.1
-        version: 2.12.1
+        specifier: 'catalog:'
+        version: 2.17.4
       semver:
         specifier: ^7.5.4
         version: 7.6.0
@@ -5689,7 +5692,6 @@ packages:
   '@langchain/community@1.1.18':
     resolution: {integrity: sha512-F+grFLi2DtnFRQvdkRNiR8Ew6VAZ6ZP9VPmEHMTf5tOPPOR5IPPGA1USXxJMfVq6RbeOXEgNSElwDGgyg32FAQ==}
     engines: {node: '>=20'}
-    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.1.0
       '@aws-crypto/sha256-js': ^5.0.0
@@ -6398,9 +6400,6 @@ packages:
 
   '@napi-rs/wasm-runtime@0.2.11':
     resolution: {integrity: sha512-9DPkXtvHydrcOsopiYpUgPHpmj0HWZKMUnL2dZqpvC42lsratuBG06V5ipyno0fUek5VlFsNQ+AcFATSrJXgMA==}
-
-  '@napi-rs/wasm-runtime@1.0.7':
-    resolution: {integrity: sha512-SeDnOO0Tk7Okiq6DbXmmBODgOAb9dp9gjlphokTUxmt8U3liIP1ZsozBahH69j/RJv+Rfs6IwUKHTgQYJ/HBAw==}
 
   '@napi-rs/wasm-runtime@1.1.4':
     resolution: {integrity: sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==}
@@ -11097,6 +11096,10 @@ packages:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
+  entities@7.0.1:
+    resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
+    engines: {node: '>=0.12'}
+
   env-paths@2.2.1:
     resolution: {integrity: sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==}
     engines: {node: '>=6'}
@@ -12199,6 +12202,9 @@ packages:
 
   htmlparser2@10.0.0:
     resolution: {integrity: sha512-TwAZM+zE5Tq3lrEHvOlvwgj1XLWQCtaaibSN11Q+gGBAS7Y1uZSWwXXRe4iF6OXnaq1riyQAPFOBtYc77Mxq0g==}
+
+  htmlparser2@10.1.0:
+    resolution: {integrity: sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==}
 
   htmlparser2@5.0.1:
     resolution: {integrity: sha512-vKZZra6CSe9qsJzh0BjBGXo8dvzNsq/oGvsjfRdOrrryfeD9UOBEEQdeoqCRmKZchF5h2zOBMQ6YuQ0uRUmdbQ==}
@@ -13323,6 +13329,9 @@ packages:
       ws:
         optional: true
 
+  launder@1.7.1:
+    resolution: {integrity: sha512-mU6WRz5EusL9ZZuiZ5SO4Y6C0P9PAUR9iwdb6bzj4KDihm28DiHFw+/yk9DBH4f+Pv1wuzQ4e2jV3oQ7mkIqvw==}
+
   lazy-ass@1.6.0:
     resolution: {integrity: sha512-cc8oEVoctTvsFZ/Oje/kGnHbpWHYBe8IAJe4C0QNc3t8uM/0Y8+erSz/7Y1ALuXTEZTMvxXwO6YbX1ey3ujiZw==}
     engines: {node: '> 0.8'}
@@ -13960,10 +13969,6 @@ packages:
   minipass@3.3.6:
     resolution: {integrity: sha512-DxiNidxSEK+tHG6zOIklvNOwm3hvCrbUrdtzY74U6HKTJxvIDfOUL5W5P2Ghd3DTkhhKPYGqeNUIh5qcM4YBfw==}
     engines: {node: '>=8'}
-
-  minipass@7.1.2:
-    resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
-    engines: {node: '>=16 || 14 >=14.17'}
 
   minipass@7.1.3:
     resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
@@ -14899,10 +14904,6 @@ packages:
     resolution: {integrity: sha512-Xa4Nw17FS9ApQFJ9umLiJS4orGjm7ZzwUrwamcGQuHSzDyth9boKDaycYdDcZDuqYATXw4HFXgaqWTctW/v1HA==}
     engines: {node: '>=16 || 14 >=14.18'}
 
-  path-scurry@2.0.1:
-    resolution: {integrity: sha512-oWyT4gICAu+kaA7QWk/jvCHWarMKNs6pXOGWKDTr7cw4IGcUbW+PeTfbaQiLGheFRpjo6O9J0PmyMfQPjH71oA==}
-    engines: {node: 20 || >=22}
-
   path-scurry@2.0.2:
     resolution: {integrity: sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==}
     engines: {node: 18 || 20 || >=22}
@@ -15467,7 +15468,6 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -16022,8 +16022,8 @@ packages:
   samlify@2.13.0:
     resolution: {integrity: sha512-9VyXF9FKUn4D1LFt1KnkcltIk/P0w5WOp13oiGjq6NEVBleBSd3iaFFP7vigmvmCEntaAeyFSSdjMhYc41hptA==}
 
-  sanitize-html@2.12.1:
-    resolution: {integrity: sha512-Plh+JAn0UVDpBRP/xEjsk+xDCoOvMBwQUf/K+/cBAVuTbtX8bj2VB7S1sL1dssVpykqp0/KPSesHrqXtokVBpA==}
+  sanitize-html@2.17.4:
+    resolution: {integrity: sha512-2HW7v2ol/uAM7sX4hbD8Z59OGWmAPrvjL8E71UWlBcj6m+kcF6ilQBLny+cIgY214QJeJT5tQuxKKqX0SQqjGQ==}
 
   sass-lookup@6.1.0:
     resolution: {integrity: sha512-Zx+lVyoWqXZxHuYWlTA17Z5sczJ6braNT2C7rmClw+c4E7r/n911Zwss3h1uHI9reR5AgHZyNHF7c2+VIp5AUA==}
@@ -21702,7 +21702,7 @@ snapshots:
       istanbul-lib-instrument: 5.2.1
       istanbul-lib-report: 3.0.1
       istanbul-lib-source-maps: 4.0.1
-      istanbul-reports: 3.1.7
+      istanbul-reports: 3.2.0
       jest-message-util: 29.6.2
       jest-util: 29.6.2
       jest-worker: 29.6.2
@@ -22463,13 +22463,6 @@ snapshots:
       '@tybys/wasm-util': 0.9.0
     optional: true
 
-  '@napi-rs/wasm-runtime@1.0.7':
-    dependencies:
-      '@emnapi/core': 1.5.0
-      '@emnapi/runtime': 1.5.0
-      '@tybys/wasm-util': 0.10.1
-    optional: true
-
   '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)':
     dependencies:
       '@emnapi/core': 1.5.0
@@ -23114,9 +23107,12 @@ snapshots:
       - '@emnapi/runtime'
     optional: true
 
-  '@rolldown/binding-wasm32-wasi@1.0.0-beta.50':
+  '@rolldown/binding-wasm32-wasi@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.0.7
+      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+    transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
     optional: true
 
   '@rolldown/binding-win32-arm64-msvc@1.0.0-beta.42':
@@ -28006,6 +28002,8 @@ snapshots:
 
   entities@6.0.1: {}
 
+  entities@7.0.1: {}
+
   env-paths@2.2.1: {}
 
   epub2@3.0.2(ts-toolbelt@9.6.0):
@@ -29251,10 +29249,10 @@ snapshots:
     dependencies:
       foreground-child: 3.3.1
       jackspeak: 4.1.1
-      minimatch: 10.2.1
-      minipass: 7.1.2
+      minimatch: 10.2.3
+      minipass: 7.1.3
       package-json-from-dist: 1.0.0
-      path-scurry: 2.0.1
+      path-scurry: 2.0.2
 
   glob@13.0.6:
     dependencies:
@@ -29558,6 +29556,13 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.2.2
       entities: 6.0.1
+
+  htmlparser2@10.1.0:
+    dependencies:
+      domelementtype: 2.3.0
+      domhandler: 5.0.3
+      domutils: 3.2.2
+      entities: 7.0.1
 
   htmlparser2@5.0.1:
     dependencies:
@@ -31199,6 +31204,10 @@ snapshots:
       openai: 6.21.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       ws: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
+  launder@1.7.1:
+    dependencies:
+      dayjs: 1.11.10
+
   lazy-ass@1.6.0: {}
 
   lazystream@1.0.1:
@@ -31798,8 +31807,6 @@ snapshots:
       yallist: 4.0.0
     optional: true
 
-  minipass@7.1.2: {}
-
   minipass@7.1.3: {}
 
   minizlib@2.1.2:
@@ -31823,7 +31830,7 @@ snapshots:
 
   mjml-accordion@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31831,7 +31838,7 @@ snapshots:
 
   mjml-body@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31839,7 +31846,7 @@ snapshots:
 
   mjml-button@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31847,7 +31854,7 @@ snapshots:
 
   mjml-carousel@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31872,7 +31879,7 @@ snapshots:
 
   mjml-column@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31895,7 +31902,7 @@ snapshots:
 
   mjml-divider@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31903,7 +31910,7 @@ snapshots:
 
   mjml-group@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31911,7 +31918,7 @@ snapshots:
 
   mjml-head-attributes@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31919,7 +31926,7 @@ snapshots:
 
   mjml-head-breakpoint@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31927,7 +31934,7 @@ snapshots:
 
   mjml-head-font@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31935,7 +31942,7 @@ snapshots:
 
   mjml-head-html-attributes@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31943,7 +31950,7 @@ snapshots:
 
   mjml-head-preview@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31951,7 +31958,7 @@ snapshots:
 
   mjml-head-style@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31959,7 +31966,7 @@ snapshots:
 
   mjml-head-title@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31967,7 +31974,7 @@ snapshots:
 
   mjml-head@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31975,7 +31982,7 @@ snapshots:
 
   mjml-hero@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -31983,7 +31990,7 @@ snapshots:
 
   mjml-image@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32002,7 +32009,7 @@ snapshots:
 
   mjml-navbar@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32010,7 +32017,7 @@ snapshots:
 
   mjml-parser-xml@4.15.3:
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       detect-node: 2.1.0
       htmlparser2: 9.1.0
       lodash: 4.18.0
@@ -32048,7 +32055,7 @@ snapshots:
 
   mjml-raw@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32056,7 +32063,7 @@ snapshots:
 
   mjml-section@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32064,7 +32071,7 @@ snapshots:
 
   mjml-social@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32072,7 +32079,7 @@ snapshots:
 
   mjml-spacer@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32080,7 +32087,7 @@ snapshots:
 
   mjml-table@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32088,7 +32095,7 @@ snapshots:
 
   mjml-text@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -32100,7 +32107,7 @@ snapshots:
 
   mjml-wrapper@4.15.3(encoding@0.1.13):
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-section: 4.15.3(encoding@0.1.13)
@@ -33031,11 +33038,6 @@ snapshots:
       lru-cache: 10.2.2
       minipass: 7.1.3
 
-  path-scurry@2.0.1:
-    dependencies:
-      lru-cache: 11.2.2
-      minipass: 7.1.2
-
   path-scurry@2.0.2:
     dependencies:
       lru-cache: 11.2.2
@@ -33219,7 +33221,7 @@ snapshots:
 
   polished@4.2.2:
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
 
   pop-iterate@1.0.1: {}
 
@@ -34123,7 +34125,7 @@ snapshots:
 
   rndm@1.2.0: {}
 
-  rolldown-plugin-dts@0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
+  rolldown-plugin-dts@0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0))(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
     dependencies:
       '@babel/generator': 7.28.5
       '@babel/parser': 7.28.5
@@ -34134,7 +34136,7 @@ snapshots:
       get-tsconfig: 4.13.0
       magic-string: 0.30.21
       obug: 2.0.0(ms@2.1.3)
-      rolldown: 1.0.0-beta.50
+      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
     optionalDependencies:
       typescript: 5.9.2
       vue-tsc: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)
@@ -34188,7 +34190,7 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
-  rolldown@1.0.0-beta.50:
+  rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0):
     dependencies:
       '@oxc-project/types': 0.97.0
       '@rolldown/pluginutils': 1.0.0-beta.50
@@ -34203,10 +34205,13 @@ snapshots:
       '@rolldown/binding-linux-x64-gnu': 1.0.0-beta.50
       '@rolldown/binding-linux-x64-musl': 1.0.0-beta.50
       '@rolldown/binding-openharmony-arm64': 1.0.0-beta.50
-      '@rolldown/binding-wasm32-wasi': 1.0.0-beta.50
+      '@rolldown/binding-wasm32-wasi': 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
       '@rolldown/binding-win32-arm64-msvc': 1.0.0-beta.50
       '@rolldown/binding-win32-ia32-msvc': 1.0.0-beta.50
       '@rolldown/binding-win32-x64-msvc': 1.0.0-beta.50
+    transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
 
   rollup@4.52.4:
     dependencies:
@@ -34331,14 +34336,15 @@ snapshots:
       xml-escape: 1.1.0
       xpath: 0.0.34
 
-  sanitize-html@2.12.1:
+  sanitize-html@2.17.4:
     dependencies:
       deepmerge: 4.3.1
       escape-string-regexp: 4.0.0
-      htmlparser2: 8.0.2
+      htmlparser2: 10.1.0
       is-plain-object: 5.0.0
+      launder: 1.7.1
       parse-srcset: 1.0.2
-      postcss: 8.4.49
+      postcss: 8.5.6
 
   sass-lookup@6.1.0:
     dependencies:
@@ -35668,7 +35674,7 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tsdown@0.16.5(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
+  tsdown@0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
     dependencies:
       ansis: 4.2.0
       cac: 6.7.14
@@ -35677,17 +35683,19 @@ snapshots:
       empathic: 2.0.0
       hookable: 5.5.3
       obug: 2.0.0(ms@2.1.3)
-      rolldown: 1.0.0-beta.50
-      rolldown-plugin-dts: 0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      rolldown-plugin-dts: 0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0))(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       semver: 7.7.3
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
       tree-kill: 1.2.2
       unconfig-core: 7.4.1
-      unrun: 0.2.10
+      unrun: 0.2.10(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
     optionalDependencies:
       typescript: 5.9.2
     transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
       - '@ts-macro/tsc'
       - '@typescript/native-preview'
       - ms
@@ -35975,7 +35983,7 @@ snapshots:
       '@antfu/install-pkg': 0.3.3
       '@antfu/utils': 0.7.10
       '@iconify/utils': 2.1.25
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       kolorist: 1.8.0
       local-pkg: 0.5.0
       unplugin: 1.11.0
@@ -36015,10 +36023,13 @@ snapshots:
       '@unrs/resolver-binding-win32-ia32-msvc': 1.9.2
       '@unrs/resolver-binding-win32-x64-msvc': 1.9.2
 
-  unrun@0.2.10:
+  unrun@0.2.10(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0):
     dependencies:
       '@oxc-project/runtime': 0.97.0
-      rolldown: 1.0.0-beta.50
+      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+    transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
 
   update-browserslist-db@1.1.3(browserslist@4.24.4):
     dependencies:
