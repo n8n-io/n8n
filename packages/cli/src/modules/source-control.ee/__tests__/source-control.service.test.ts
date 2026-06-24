@@ -1185,9 +1185,24 @@ describe('SourceControlService', () => {
 			commitMessage: 'Test commit',
 		};
 
-		// Flush enough microtasks for the parked push to advance to its export step.
-		const flushMicrotasks = async () => {
-			for (let tick = 0; tick < 20; tick++) await Promise.resolve();
+		// Parks an in-flight push inside its export step. `exportStarted` resolves once the push
+		// has reached the export call; `releaseExport` lets it continue from there. This keeps the
+		// race tests deterministic instead of relying on a fixed number of microtask ticks.
+		const installExportGate = () => {
+			let releaseExport!: () => void;
+			let signalExportStarted!: () => void;
+			const exportGate = new Promise<void>((resolve) => {
+				releaseExport = resolve;
+			});
+			const exportStarted = new Promise<void>((resolve) => {
+				signalExportStarted = resolve;
+			});
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockImplementation(async () => {
+				signalExportStarted();
+				await exportGate;
+				return mock<ExportResult>();
+			});
+			return { exportStarted, releaseExport };
 		};
 
 		const arrangeSuccessfulPushMocks = () => {
@@ -1223,24 +1238,14 @@ describe('SourceControlService', () => {
 			});
 			gitService.pull.mockResolvedValue(mock<PullResult>());
 
-			// Park the push inside the export step until we manually release it.
-			let releaseExport!: () => void;
-			const exportGate = new Promise<void>((resolve) => {
-				releaseExport = resolve;
-			});
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockImplementation(async () => {
-				await exportGate;
-				return mock<ExportResult>();
-			});
+			const { exportStarted, releaseExport } = installExportGate();
 
-			// ACT
+			// ACT: start the push and wait until it is parked inside the export step.
 			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
-			await flushMicrotasks();
-			expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalled();
+			await exportStarted;
 
 			// A concurrent reset arrives while the push holds the lock.
 			const resetPromise = sourceControlService.resetWorkfolder();
-			await flushMicrotasks();
 
 			// ASSERT: the reset is queued behind the mutex, so no `git reset --hard` runs yet.
 			expect(gitService.resetBranch).not.toHaveBeenCalled();
@@ -1260,24 +1265,16 @@ describe('SourceControlService', () => {
 			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
 			gitService.commit.mockResolvedValue(mock<CommitResult>());
 
-			let releaseExport!: () => void;
-			const exportGate = new Promise<void>((resolve) => {
-				releaseExport = resolve;
-			});
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockImplementation(async () => {
-				await exportGate;
-				return mock<ExportResult>();
-			});
+			const { exportStarted, releaseExport } = installExportGate();
 
 			// ACT
 			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
-			await flushMicrotasks();
+			await exportStarted;
 
 			// The push has already read status once before parking at the export gate.
 			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
 
 			const statusPromise = sourceControlService.getStatus(user, {} as any);
-			await flushMicrotasks();
 
 			// ASSERT: the queued getStatus has not run its own status read yet.
 			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
@@ -1288,6 +1285,69 @@ describe('SourceControlService', () => {
 
 			// Once the push releases the lock, the queued getStatus runs.
 			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(2);
+		});
+
+		it('queues a pull behind an in-flight push', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			const { exportStarted, releaseExport } = installExportGate();
+
+			// ACT
+			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
+			await exportStarted;
+
+			// The push has already read status once before parking at the export gate.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			const pullPromise = sourceControlService.pullWorkfolder(user, { force: true } as any);
+
+			// ASSERT: the queued pull has not run its own status read yet.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			releaseExport();
+			await pushPromise;
+			await pullPromise;
+
+			// Once the push releases the lock, the queued pull runs its status read.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(2);
+		});
+
+		it('sets the git author inside the locked push, before the commit it applies to', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+
+			const callOrder: string[] = [];
+			gitService.setGitUserDetails.mockImplementation(async () => {
+				callOrder.push('setAuthor');
+				await Promise.resolve();
+			});
+			gitService.commit.mockImplementation(async () => {
+				callOrder.push('commit');
+				return await Promise.resolve(mock<CommitResult>());
+			});
+
+			const author = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				email: 'ada@example.com',
+			});
+
+			// ACT
+			await sourceControlService.pushWorkfolder(author, pushOptions);
+
+			// ASSERT: the author is set from the pushing user, immediately before the commit,
+			// both inside the serialized section.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith('Ada Lovelace', 'ada@example.com');
+			expect(callOrder).toEqual(['setAuthor', 'commit']);
 		});
 
 		it('releases the lock when an operation fails so the next operation can proceed', async () => {
