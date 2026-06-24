@@ -106,7 +106,7 @@ but make sure the diff has been checked against these common failure modes.
 - Caches or Maps that grow without eviction logic
 - Streams or file handles opened but not closed on all code paths, including error paths
 - Class fields holding references that should be nulled on `dispose()`/`destroy()`
-- **Streams**: `.write()` return value ignored (missing `drain` await), `.pipe()` used instead of `pipeline()`, missing `AbortSignal` for teardown, `objectMode` streams with untuned `highWaterMark`, Transform streams without asymmetric buffer limits. See the `nodejs-streams` skill for the full checklist.
+- **Streams**: `.write()` return value ignored (missing `drain` await), `.pipe()` used instead of `pipeline()`, missing `AbortSignal` for teardown, `objectMode` streams with untuned `highWaterMark`, Transform streams without asymmetric buffer limits.
 
 ### Edge cases
 
@@ -169,7 +169,8 @@ The markdown file must contain:
 
 `file name + line number + comment`
 
-- An issue summary table at the end of the review (omit rows with no issues).
+- A plain-text `## Issue Summary` section at the end of the review (omit
+  categories with no issues).
 
 Comments should be easy to copy/paste. Do not quote comments using `>` - just write them directly.
 
@@ -179,16 +180,30 @@ comments list and a short positive `## General` comment.
 
 When a comment suggests something different, be precise about it. Either propose the actual code change (a short snippet or `suggestion` block the author can apply directly) or, if a full snippet isn't practical, state the concrete direction (which function/value/approach to use) rather than a vague hint. Avoid comments like "this could be cleaner" with no actionable next step.
 
-### Issue summary table
+### Issue summary
 
-After the prose review, always end with this table. If there are no issues in a
-category, skip that category's rows rather than adding empty rows.
+After the prose review, always end with a plain-text `## Issue Summary` section.
+Avoid markdown tables here because the review file is often read in raw text
+mode. If there are no issues in a category, skip that category rather than
+adding empty headings.
 
-| # | Severity | Priority | Area | File / Location | Description |
-|---|---|---|---|---|---|
-| 1 | Critical | P1 | Memory leak | `path/to/file.ts:42` | `setInterval` in constructor is never cleared |
-| 2 | High | P2 | Edge case | `path/to/service.ts:100` | No guard for empty array - crashes on `arr[0].id` |
-| 3 | Medium | P3 | Method size | `path/to/handler.ts:buildFoo()` | 80-line method mixes validation, mapping and I/O; suggest splitting into three helpers |
+Use this format:
+
+```markdown
+## Issue Summary
+
+1. Critical / P1 / Memory leak
+   Location: `path/to/file.ts:42`
+   `setInterval` in constructor is never cleared.
+
+2. High / P2 / Edge case
+   Location: `path/to/service.ts:100`
+   No guard for empty array - crashes on `arr[0].id`.
+
+3. Medium / P3 / Method size
+   Location: `path/to/handler.ts:buildFoo()`
+   80-line method mixes validation, mapping and I/O; suggest splitting into three helpers.
+```
 
 ### Hints for a reviewer
 
