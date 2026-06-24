@@ -68,34 +68,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000ac5564b6bdb4010bee7572c73e9450e561e90ea56280d0da6145a9a96b82ce3ddb1b5cd7a57d9878931faef6565cb91fc487b48882e42f3cd68bef96656235a9009059b93f73823ee03ba70223160c15610961541013d10b2f6198a15ccad240d05088d51d2a044751f071783cbc1d9f0ec321f0e73c840c9f40e3fe3c3fc567cb5341d9d7f38ff48d7bfccc8a2921307d94e26c8c0599d0ce8bdf2014d4a2bac0964021477bf33f0c156dc117a6ba03051eb8dc9d3432423a86794145069dfda62cb5e992a061eec3d190fc5557e9e81405112178e30286b78df63d8e28e501ec3dad89480aa92e6e450f3cbf9beff139a97bb689d818da1472f034f6ea104f1a0c841014918894e268dcd945caa9bcfc84201c6068e0b541a279aa0ae59e7aa4f4e68ddf58da27ca2adb83fdcfb032e4d3a498feb9abb782a791317e8313936b702a03e90bd5266b6938e4132c231869274c0e719362e3d866b4b9fd9d66dc3eff33bad5949ba624b1b99b0d104164a62a244872290f34c19e8a9785cc75763c9c660aecc1858f4cacc98a429394792056bb53f65230a6c4eace9119b2c992774a24c9e53eb183e15b32e300129f2b4a9ebf850d8ea5f3361ab4e292f385ef933e365ade6d153fb7949cf910ff31fe2e7f4fd979bc599fff430fdf6dd5d8ff0a6ba850c0cce53dc5a13de28d624aa62806255a7c3ab753a55db14523912a17f765eaee5f97ecbd75f803fde9aad73852e28d48db17b8cde98c76a0c0f91dc720c051bc3fe5c41fdd60cc7506fc47aa9c1cefb2f6b77e2c17a7a2074f8f7b6567788ff7377d5afb7bc76b7cd45bd3b6a4fbf01fbca7531d806fe05b586299f5d080000"
+			"1f8b0800000000000013c555c96edb3010bde72b88b9f42207561a3781fea04d0e019af65217044d4e2426142993c33486a17f2f286f9297b48704d145d0bca1de9b8d83cf68a9603586204ae48184a7332548146c09b468100a1880906dbea15842ed141a28401a11158e2aa19fe2e87234195d8c2f26f9789c43065aa57f84928ff3ef772467b2be99ffb86faea59c07efaf267790ed314106de99641021e840c2265ae92ca125287efdce20906bb847119c85c24663d6a680f38856e2c0a890843661638b1bf5da369138b927b4018aebfc730652c80ab9f428483bcb871ee30dee51a853d8e66c22c0a6c21abd307c521ffaefd0bcda47db0c5ca481bc0c02fa672d9193460f05a4c428e155cab17d409fe2e6253a28c03ae2e25968236606a16d59ff69cfce7055f6754af9cc38f974bcf8475c3a3e852faba0fb788a797d8ef0253976af02a03d46df685beef1314846382551a121f1bac4ce65207165194adbbaad057efd640cabd0346ce122932e5a6254219395f04212fac0b485f664eede4d189b82bdb6536031685b32850fe83d2a46ce9970ce6e91588dacab0b9b2d5840e165953c1f9c6762a77f155302d2c9f36d414e37836bfed50baee985f34e2d96bfd262ce191e036eee98f41df938ffe6eef517f5186f6f66a56d26e564fef3eaf20f6460459dcead72c4bb0c76444d2428966d9a6063d2686d2994f6286937406f57fefcb0fcab2be03138bb756e84272d4c675c8fd1074b584e611ed12fa650b0291cb6576fd23f58e914da4ecc5b7578ce4eb4f8663f1e8d6b00422f8ec106ebf7f27feeb1f6fd16d9fee6b96c0f833d96bd3e06fd44fd059dfa089066080000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:38:58Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:38:58Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:44Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:44Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:38:58Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:38:58Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:44Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:44Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f093cedf34d0-WAW",
+			"cf-ray": "a1037157edd45b18-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 22 Jun 2026 08:38:59 GMT",
-			"request-id": "req_011CcHzkxRbwfNooCyVCPWA9",
+			"date": "Tue, 23 Jun 2026 12:19:44 GMT",
+			"request-id": "req_011CcLBQJT51N16gx933n2ir",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=uxjzXiPCEUdz8NuJZpyysJifsE41lsAiWg5vVX2pS2w-1782117537.8854785-1.0.1.1-ECR.OCXJvFFr1RWvVn2aRyazALJwsngq1amDQni1Eqo; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=VQ.WHHkN4lqQSR20.DqzK7gt.AXxIltDMpPiDCJK14I-1782217183.984369-1.0.1.1-hNFmFN6Y3cT_evFP2PEkzzlO1umt0sUfYGSfdURdHyw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-ca22aab4763e3bcb5fb9a802b1ccd11e-63379a141eeeac56-01",
+			"traceresponse": "00-39fa99830f060e583c65a532ff3d3c39-5c8778798b2c1082-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -134,7 +134,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01VcXf9NJv2sFqfSTrGLaJpW",
+							"id": "toolu_01JoTi6djuLKbgnp5g5qV74w",
 							"name": "search_tools",
 							"input": {
 								"query": "character counting"
@@ -150,7 +150,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01VcXf9NJv2sFqfSTrGLaJpW",
+							"tool_use_id": "toolu_01JoTi6djuLKbgnp5g5qV74w",
 							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
 						}
 					]
@@ -201,34 +201,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000acd565d4fdb30147de75778f739450da36cf3db34044c437d98b4add23a19635fdaac8e1deceb0e56e5bf4f6e9bb6290586b40ff212e59cebdc73bf728353b4c4598921c8118a40d2d39e9624399b01dd56081c5a2464cd33f019944ea3010ecac8a8b13396c524760e3bbdce41f7a09777bb396450e8f48e3012ddfcf8fae3495f5d1ea3fb74fee5e73bfb360e06b727906d79820cbc330990211481a44d6e95b38496807ffd96412057098f32380bdc46639650c0eb8856610bd448b230a1c162a3beb05524416e8236007ff3b29781926a8c42799454382bda16dd86f728f57d5c733639c06a8c257a6944afbc6bbf66f3f1365b67e0226d42790601fdb45028a8400f1c5262b4f43ae5d85ea14f718b113ae0601d09399585919706a1aeebbd3d5c547a994571699c9aecaef70e93b90b8d378b3837f914e6f21ce14d329cdf3840cdd2b5f65c1576b4e58a4102e13e751a0dc987d5cd4d5aea16485bd5ca6ca9ed34d56829b02df21f0978c1deb32b17ad66344676a15cb424d4587aa9087db860e49cd9677df78319245622334e6a56d03ed4f7aa4dbdfe582d5db5a195b14733f0f406c91f6810e78c88019b8f427a8ea29b7f9e1e9d57d5ebc3c1517f707afcc11df52767fd33c8c0ca329d4bb18b643cf75245023eabd3bc19930661f57e5d78540475fde7eb9adfadeb6262bf076757c695f454483307d723f01ca4cc86f36cf7658943e06c088b967b460ad7ddbf12f59f150da18607be9c4f1bb6bc154fb3527746d2226143796be96d4ed36faebefaefedbead65f5aab76306d7ff117753b7c9a57df00bfa59e11798080000"
+			"1f8b0800000000000013cd556d4fdb3010feceaff0ee733a35b00e2ddfd0406c9a84f6a689b14ed6611fada96307fbd23155f9ef93db069252189386b67c89f2dc63df736f399a93e3429414234e4846c6c03b1a190bb100fe591114d03342d67e43b180d26bb25080b2586b1a4cd1cceac18bc168b03bdc1de5c3610e19189dee881339cc471f7872a0aeb4729fbfce4ee6a7672fdde1c10cb20d4f9041f0360118a3898c2eb955de313986e2dbf70c22fb4a06c2e81d14aeb6760d45baaac929ea819a188d8d2d56b7ea8dab6a96ec67e42214aff64619285453922a10b2f14ef619c3d61e08f57db6f66c7240d5944a0a68e5a8bccbbfb5e6d34d6b9381afb90be519440a73a348b2a10005a4c4680c3ae5d85d504871cb097928c07996384763f1dc12348de83fcdce0ead0abf4eaa3cb75ecdb6977f0b65e951d3f52aecae3d45bd3ec7749d88cb5701d074bc56c64d36dc084820dca74c93657c58d992d253b642fa8a6e686b5dc7a95cd03c2a3d4f26e299782b2e7cedb4e0298931285f3b966a8a011553886310ecbd7d2e4efc0f61894549c27ad4c2f0f395f6fb2beaabdf15d4571dc14fd629f9039de2bd9575a4f66791be6b39ccf7df5d1e95b32f6ff6b8da3d3b3c787dfcf1fdd1e927c8c06199cea514c8445e7aa96a8662d1a439b4360dc8cdfdda0452fcf831f8f33ae777ebbc1ae8cbe8dd0db9c2c006ed125c8dc47fa365315e66fd044b1a43b1a505a1f9c70ac7d07413f6b71a3eef5fd6eebaad41f58cd009a2b78dbaedfcc89dd43cdd52dad822fba366fb04dc2ef9bbf9ebdad21ffa170757667935080000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "3999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:00Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:00Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:46Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:46Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:00Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4799000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:00Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:46Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:46Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f0a3ae9f34d0-WAW",
+			"cf-ray": "a10371609c5a5b18-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 22 Jun 2026 08:39:00 GMT",
-			"request-id": "req_011CcHzm9HTYtvu9GVjZ7EGH",
+			"date": "Tue, 23 Jun 2026 12:19:48 GMT",
+			"request-id": "req_011CcLBQQGpMMfRSVgSioVbG",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=fN5CSQRvQo_4SvI1pwLPJhZV2hJRcQudaRpL_vo6Cbw-1782117540.4304428-1.0.1.1-AUpXH3dKEYCQuhQJ6qmuSNjpAyWy.LVPzo6oYkImPXQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=b.DWbM2C7yZkxZfEqcMUV3qxjfD66hYDTnPYFAWcBBA-1782217185.3749816-1.0.1.1-.4rOd0qsTZLUAIdFoV7EIaBAhwx6DX_7VFDByiMykcI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-332d5369bef7a8e8318ee2a8f4733430-78f866ecd10429b8-01",
+			"traceresponse": "00-1c40512a661049436cedc7d84fafe705-9c8e98ef55a48396-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -267,7 +267,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01VcXf9NJv2sFqfSTrGLaJpW",
+							"id": "toolu_01JoTi6djuLKbgnp5g5qV74w",
 							"name": "search_tools",
 							"input": {
 								"query": "character counting"
@@ -283,7 +283,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01VcXf9NJv2sFqfSTrGLaJpW",
+							"tool_use_id": "toolu_01JoTi6djuLKbgnp5g5qV74w",
 							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
 						}
 					]
@@ -293,11 +293,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Great! I found the `count_characters` tool. Now let me load it."
+							"text": "Great! I found the \"count_characters\" tool. Now let me load it."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01Vv6Lpp84X6NXGDKo6NkHNH",
+							"id": "toolu_017KjEmkVH3tp2ZDACGRPEXS",
 							"name": "load_tool",
 							"input": {
 								"toolName": "count_characters"
@@ -313,7 +313,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Vv6Lpp84X6NXGDKo6NkHNH",
+							"tool_use_id": "toolu_017KjEmkVH3tp2ZDACGRPEXS",
 							"content": "{\"status\":\"loaded\",\"toolName\":\"count_characters\",\"tool\":{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":true},\"message\":\"Tool \\\"count_characters\\\" is loaded and will be available on the next model turn.\"}"
 						}
 					]
@@ -381,34 +381,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000ac5554d6fdb300cbdf757083c3b43dc2e5de1e3807543b7ee30b41d86651058994db42a922b515987c0ffbd90133776927e1cdacd17c324a5f7c8479a3427cb85985108382119183def95c8588805f0df8aa0809e13b2f61b8a05cc5c49060a500663498329eaeb38783b180df687fba37c38cc21035da63bc2440ef36fdf4fe8e3f462727ca6f559fc327f7f7c7a7efa01b20d24c8c03b930c18820e8c36c12a67992c43f1f35706815d253d6170160a1b8d599902dd44b28a7ac69218b509ad2db6ecb5ad224b76d7640314797e789481423525a93c216b67653f64d8fa3d61f990af3d9b10a89ad28c3c1a399a6dc7afbdf974d35b67e022774d871904f273ad48b2260f05a4ca94e8cb54647b453e252e27e4a000eb58e21cb5c14b4350d762fdd47b7bb4547d555179699cbadeadfd8e9006ada4db65ca5d7fca78758ee9360536af02a05e8356da4e36500424233c44ac24c3f838b126a4476c69e913ba0f5bd1faeafe08432c6624141a23784ac2382ca984fac972bd1a2bc1ce19c14e28172d37a4d4143d2a261f84b6620cf6c88ee10d74557d4c57573d25abab3a345fae41f2471ac4392363a0f60791bea31ce6a3a30375787b821727f1f813fe38d737579ff519646071b6c48b96e5ba200d5815198a459d26d098341af730a5f6a4380dc0cbe9986febb81cdedfc1d9fbe00a3d6b348db11981e768f58fc82cc64db38da158365397dc7fa636867aa3af5facb1f3ee55ed52db9956cf099d347a6ba7dbc3cf5c3ef52b6e9f8d75f1ee60a7a8eb65be5dbcae0fc4960877417271fa2c080000"
+			"1f8b0800000000000013c5554b6fd43010bef7575873e192459bed53be960b12451454816091e5dac3c6acd74eed715bb4ca7f47ce6eb6c9b27d20159a4b94f9c6febe7965f01a1d71b6c018e50c452419684f4b929c2d817ed5081c062014dd37f0252cbc460b1c949549e3a892669e4607a3c3d1643c392cc7e3120a303adf1167625c7e3839aad3f9bbb3d3abe32fb7741a666717f4b182628b090a08de66838cd144922ed32aef081d01fff6bd8048be160165f40eb84bd6ae4d11af123a8503a34692c6c6ce963af5c6d58904f939ba08bc2c8f4e0a50525528544049c63b317419777840a9efc3bab39901eb0a1718a415878b3ffdefd0b2da469b027ca2be695240c4706d140a32188043ce8c9641e724bb1f1872e062861e38384f425e4b63e5a545681a76f7347b7bb8aafa3aa3e2d27a35df5dfb1d2e2d9bc6db55c87d3c47bc3e47789b1ddb1707e8f30f35d4c6cdb648196423dca753a325f9b0ced665a0736519eadbb8ad55bef737eced50ea7fd7f0ca5aa6a4b58c2a64d64b8d9a91f7969167ca27472da02a19a4220c9119c7a6e04edc145ec3d3aaecebc78aeceb9eeee76e9af281a6f1de8a14b1fb69e4ef24c6e5c14c4f4cfa1ade9c9fc7cf479fe2c55998efdf40014e2e567cc991b84b4a4b562702be6cf2545a9bc76543a34d4045c3a178de62977f167b35de3fa3771be75a0632d2b6c6c190bcb090e5b4edc629f0556b6d84bdb0ae29348f4af9dbf62e879775ab6e674403107a110c9651bf8b9fb8929a7fb893b696c8f17eb323dc5d59eb63d0e5fc37b0706a9f2f080000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "3999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:01Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:01Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:49Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:49Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:01Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4799000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:01Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:49Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:49Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f0aaaa8834d0-WAW",
+			"cf-ray": "a1037177ffbc5b18-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 22 Jun 2026 08:39:02 GMT",
-			"request-id": "req_011CcHzmE3xEGaR6E2rgp1oF",
+			"date": "Tue, 23 Jun 2026 12:19:49 GMT",
+			"request-id": "req_011CcLBQgGjYBFVAQHj5SFF2",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=8n.TXvdtyfXEI9zQuZJX1t_f8j8URzc3iqLWLIJxqvA-1782117541.5452752-1.0.1.1-2y5uSE0.HdZ99b5tLJth_OJ8sfD0c6yfVAjRkDMTjhU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=cuTudPwGpMQw5oum5Ie2FqhIH7XI8G4CLP.6LVJazwE-1782217189.1178675-1.0.1.1-K6zSkuefH1ytHao.VSwK7PObTCESZSsL2BUtirvVazg; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-cb1ef57f640f59a04e73a0d2cb977b38-c572a402fffdc70c-01",
+			"traceresponse": "00-3e149c47b121b5a70db468b008a9b1f9-ef32002218563f81-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -447,7 +447,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01VcXf9NJv2sFqfSTrGLaJpW",
+							"id": "toolu_01JoTi6djuLKbgnp5g5qV74w",
 							"name": "search_tools",
 							"input": {
 								"query": "character counting"
@@ -463,7 +463,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01VcXf9NJv2sFqfSTrGLaJpW",
+							"tool_use_id": "toolu_01JoTi6djuLKbgnp5g5qV74w",
 							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
 						}
 					]
@@ -473,11 +473,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Great! I found the `count_characters` tool. Now let me load it."
+							"text": "Great! I found the \"count_characters\" tool. Now let me load it."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01Vv6Lpp84X6NXGDKo6NkHNH",
+							"id": "toolu_017KjEmkVH3tp2ZDACGRPEXS",
 							"name": "load_tool",
 							"input": {
 								"toolName": "count_characters"
@@ -493,7 +493,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Vv6Lpp84X6NXGDKo6NkHNH",
+							"tool_use_id": "toolu_017KjEmkVH3tp2ZDACGRPEXS",
 							"content": "{\"status\":\"loaded\",\"toolName\":\"count_characters\",\"tool\":{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":true},\"message\":\"Tool \\\"count_characters\\\" is loaded and will be available on the next model turn.\"}"
 						}
 					]
@@ -503,11 +503,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now let me call the loaded tool to count the characters in \"n8n\"."
+							"text": "Now I'll call the loaded tool to count the characters in \"n8n\"."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01583c6xJaVJuFHaYUiqfKiT",
+							"id": "toolu_014gd2iuZrDQQsW6SsUMrk3w",
 							"name": "count_characters",
 							"input": {
 								"text": "n8n"
@@ -523,7 +523,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01583c6xJaVJuFHaYUiqfKiT",
+							"tool_use_id": "toolu_014gd2iuZrDQQsW6SsUMrk3w",
 							"content": "{\"length\":3}"
 						}
 					]
@@ -591,34 +591,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b080000000000000abd544d8bdb3010bde757b8730c4eb1d3842e3a2ef4564a0b0b4be916312bcdda228ae44ae33465f17f2f4ae28d9d8f6d2fad2fc6ef8dfcde9bf19836e458646b8a112b929131f04423a3c89e817f3504024624e4fd338867587b4d1604288bada6598d66d5ce16b3e56c5ecc976551949083d1e91db1924579ffe5d6cf3fc4dbc5d79fdb4adf994f1fefdd620bf98912e410bc4d00c66822a34bb2ca3b26c720be7dcf21b26f64208cde8170adb50728d28f969ca211a889d1d8d8636defdeb8a665c97e452e8228e7cbf739285435491508d97827c72545cf07427d8debcf26056a6a5a53402b97ebf3fa235bd6a76c97836f79082d72881436469164430104a4ce680c3a35d93d5148c165451e0438cf1237682c3e5a82aeeb2613da8ffad046f968bd5a5d1ef885929d84a6ed3ee7904f310fe798b6a9707713005d76b88ee28d71d5895a0609846b063559c6d70dee4a4606f7c8d8d84bd9c1de670a4fa4f84d765753b6c35efc9ed9fe4f96b2077037ee01767a685ccca6d37799aa31a0620a713a7d0bdd555be953ffd3247d33307516b35ff48b0147240c028d5611c869c96d70f0d70bd9fdc38d3c59a1f2a6bb32e1e33feebc89430e86677f032634c6ad3d050000"
+			"1f8b0800000000000013bd53c18ed33010bdf72bcc1cab1425ed568b7ce5ca01c422845864cddab389a96b077b52ed6a957f47691b36c9a6c0057289f2deb3e7bd990c1dc8b3147b4a094b528931f2c220a3144fc08f358184110959ff0df209f6c1900309da61636855a1dd35ababd576b5ced7db22cf0bc8c09aee8e54aabcf8f4eef163fdbd31e5872f9b066bbcd9bcbdae3f4336a90419c4e03a0053b289d1776575f04c9e417efd9641e250ab48988207e91be7ce50a21f0d794d23d010a375a9c79adebdf575c38ac38e7c0259acb7d71968d415291d09d906afc692bce723a1b9c4f567bb0a5457b4a7884e6df72ff5cf6c514dd93683d0f010baca20513c584d8a2d4590d075c660345d93fd3dc52eb82a2980041f58e101adc33b47d0b642b48b059d867d6ea4ba7341efe6473e23391631f4704a3ae4bba0e7734c0f9df0f89200ad183ecf0e6aebcb4949011d08975c1a728cbf7779948c5c9e90b1bb5fb2b3c7f714ef49f32b7153913862edace5ff6447dc827fe36f415498c472b911bac2889a29a6e552582f1cf992abd7bdcbcb530df59f861aea81bd1781fbad9f8d3a2261106db49740de286ea287bfdecef61faee7649fd6457b21f25cf3861c88e97ffd1332c0ba5f47050000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "3995000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:03Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:03Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:51Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:51Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:03Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4795000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:03Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:51Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:51Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f0b43fcb34d0-WAW",
+			"cf-ray": "a103717fedb75b18-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Mon, 22 Jun 2026 08:39:03 GMT",
-			"request-id": "req_011CcHzmLbMUEMVgAuGS9wnp",
+			"date": "Tue, 23 Jun 2026 12:19:52 GMT",
+			"request-id": "req_011CcLBQmoNQCXieUZDXqdkF",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=YlwVZE8mXWy9cuTncx0xvwuQTbKariTwTsXWx7SMiHY-1782117543.0716712-1.0.1.1-8kokSBNiOCkxknklTrf9.Ocq.52P4POxRyMhVWibtMU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=6tlTa0WSsRBd5IO5zFzoko0uobfWu8hYZGSakFwlRd0-1782217190.3856556-1.0.1.1-Tvs.DsliAI2XN52CR_LV3qKLRp2Pkypds6cM0yRbEDM; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-396505a64980dd22a8e598bb39e43250-62b9b54bd317c35e-01",
+			"traceresponse": "00-88300871577a9e020d4a5dd22bf6463b-4cbeb0a4ee1a4c5b-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
