@@ -1,5 +1,6 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'jest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
@@ -19,10 +20,9 @@ jest.mock('@n8n/agents', () => ({
 	}),
 }));
 
+// Stands in for the proxy-aware transport fetch the caller injects via deps.
 const proxyFetchMock = jest.fn();
-jest.mock('@n8n/ai-utilities', () => ({
-	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
-}));
+const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -84,6 +84,7 @@ describe('buildMcpClientForServer — header derivation', () => {
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -164,7 +165,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'mcpOAuth2Api', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -190,7 +191,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -221,7 +222,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 				approval: { mode: 'selected', tools: ['create'] },
 				connectionTimeoutMs: 5_000,
 			}),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
@@ -245,6 +246,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
@@ -272,6 +274,7 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -359,7 +362,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -382,6 +385,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];

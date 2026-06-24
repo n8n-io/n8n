@@ -14,10 +14,12 @@ import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
-import type { CredentialTypes } from '@/credential-types';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -27,9 +29,6 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { NodeTypes } from '@/node-types';
 
 const ctx = {
 	resumeData: undefined,
@@ -47,8 +46,6 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
-	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
-	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -71,8 +68,6 @@ function makeService() {
 		agentTaskService,
 		agentRepository,
 		outboundHttp,
-		dynamicNodeParametersService,
-		nodeTypes,
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 	);

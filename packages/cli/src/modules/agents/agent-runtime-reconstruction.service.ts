@@ -31,7 +31,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
-import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -201,8 +201,6 @@ export class AgentRuntimeReconstructionService {
 		const toolResolver = this.makeToolResolver(projectId, userId);
 		const resolvedTools: BuiltTool[] = [];
 
-		// Transport for LLM calls
-		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
 		// Transport for MCP calls
 		const aiMcpFetch = createAiMcpFetch(
 			this.outboundHttp,
