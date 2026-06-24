@@ -15,6 +15,8 @@ import type { PushResult } from 'simple-git';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
@@ -448,8 +450,15 @@ export class SourceControlService {
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
 			// Set the author within the locked section so a concurrent push can't change the
-			// repo-wide git config between staging and this commit.
-			await this.gitService.setGitUserDetails(`${user.firstName} ${user.lastName}`, user.email);
+			// repo-wide git config between staging and this commit. Fall back to defaults when the
+			// user has no full profile, matching repo initialization, so the commit can't fail on an
+			// empty git identity.
+			await this.gitService.setGitUserDetails(
+				user.firstName && user.lastName
+					? `${user.firstName} ${user.lastName}`
+					: SOURCE_CONTROL_DEFAULT_NAME,
+				user.email || SOURCE_CONTROL_DEFAULT_EMAIL,
+			);
 
 			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 		} catch (error) {

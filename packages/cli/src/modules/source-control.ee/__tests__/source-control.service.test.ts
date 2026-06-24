@@ -15,7 +15,11 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
-import { SOURCE_CONTROL_DEFAULT_BRANCH_COLOR } from '../constants';
+import {
+	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
+} from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
 
@@ -1348,6 +1352,32 @@ describe('SourceControlService', () => {
 			// both inside the serialized section.
 			expect(gitService.setGitUserDetails).toHaveBeenCalledWith('Ada Lovelace', 'ada@example.com');
 			expect(callOrder).toEqual(['setAuthor', 'commit']);
+		});
+
+		it('falls back to default author details when the pushing user has no full profile', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+
+			const userWithoutProfile = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+				firstName: '',
+				lastName: '',
+				email: '',
+			});
+
+			// ACT
+			await sourceControlService.pushWorkfolder(userWithoutProfile, pushOptions);
+
+			// ASSERT: an empty profile must not produce an invalid git identity for the commit.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith(
+				SOURCE_CONTROL_DEFAULT_NAME,
+				SOURCE_CONTROL_DEFAULT_EMAIL,
+			);
 		});
 
 		it('releases the lock when an operation fails so the next operation can proceed', async () => {
