@@ -15,9 +15,6 @@ export class ProjectPoolSettingsRepository extends Repository<ProjectPoolSetting
 	}
 
 	async setDefaultPool(projectId: string, defaultPool: string | null): Promise<void> {
-		const existing = await this.findOneBy({ projectId });
-		const row = existing ?? this.create({ projectId, defaultPool: null });
-		row.defaultPool = defaultPool;
-		await this.save(row);
+		await this.upsert({ projectId, defaultPool }, ['projectId']);
 	}
 }

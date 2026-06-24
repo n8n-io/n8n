@@ -26,6 +26,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createRunExecutionData,
+	ensureError,
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
@@ -49,6 +50,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { PoolConfigService } from '@/scaling/pool-config.service';
+import { DEFAULT_QUEUE_NAME } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -515,7 +517,18 @@ export class WorkflowRunner {
 			this.poolConfigService = Container.get(PoolConfigService);
 		}
 
-		const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
+		// A pool-resolution failure must not abort the execution: fall back to the default queue.
+		let queueName: string;
+		let poolName: string | undefined;
+		try {
+			({ queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data));
+		} catch (error) {
+			this.logger.warn(
+				`Failed to resolve worker pool for execution ${executionId}, falling back to default queue: ${ensureError(error).message}`,
+			);
+			queueName = DEFAULT_QUEUE_NAME;
+			poolName = undefined;
+		}
 
 		const jobData: JobData = {
 			workflowId,
