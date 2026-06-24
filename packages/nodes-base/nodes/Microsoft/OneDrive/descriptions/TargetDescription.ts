@@ -105,7 +105,7 @@ export const siteTargetRLC: INodeProperties = {
 			hint: 'The composite site ID in the form host,siteCollectionGuid,webGuid',
 		},
 	],
-	description: "The SharePoint site whose document library the Service Principal should act on",
+	description: 'The SharePoint site whose document library the Service Principal should act on',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],

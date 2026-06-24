@@ -471,11 +471,14 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 
 	describe('getServicePrincipalResourceRoot', () => {
 		it('builds a pluralized /drives/{id} root (catches singular/plural mutation)', () => {
-			expect(getServicePrincipalResourceRoot('drive', 'b!abc123', mockNode)).toBe('/drives/b!abc123');
+			expect(getServicePrincipalResourceRoot('drive', 'b!abc123', mockNode)).toBe(
+				'/drives/b!abc123',
+			);
 		});
 
 		it('builds a /sites/{host},{g},{g} root with literal (unencoded) commas', () => {
-			const id = 'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222';
+			const id =
+				'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222';
 			const root = getServicePrincipalResourceRoot('site', id, mockNode);
 			expect(root).toBe(
 				'/sites/contoso.sharepoint.com,11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222',
@@ -534,14 +537,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			},
 		);
 
-		it.each(['user', 'drive', 'site'])(
-			'rejects path separators / traversal for %s',
-			(target) => {
-				expect(() => validateResourceTargetId(target, 'a/b', mockNode)).toThrow();
-				expect(() => validateResourceTargetId(target, 'a\\b', mockNode)).toThrow();
-				expect(() => validateResourceTargetId(target, '../..', mockNode)).toThrow();
-			},
-		);
+		it.each(['user', 'drive', 'site'])('rejects path separators / traversal for %s', (target) => {
+			expect(() => validateResourceTargetId(target, 'a/b', mockNode)).toThrow();
+			expect(() => validateResourceTargetId(target, 'a\\b', mockNode)).toThrow();
+			expect(() => validateResourceTargetId(target, '../..', mockNode)).toThrow();
+		});
 
 		it('accepts a user GUID and a user UPN', () => {
 			expect(() =>

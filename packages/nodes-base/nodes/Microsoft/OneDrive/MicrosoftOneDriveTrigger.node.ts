@@ -139,9 +139,8 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		}
 		try {
 			if (this.getMode() === 'manual') {
-				responseData = (
-					await microsoftApiRequest.call(this, 'GET', '', {}, {}, deltaRoot)
-				).value as IDataObject[];
+				responseData = (await microsoftApiRequest.call(this, 'GET', '', {}, {}, deltaRoot))
+					.value as IDataObject[];
 			} else {
 				const response: IDataObject = (await microsoftApiRequestAllItemsDelta.call(
 					this,

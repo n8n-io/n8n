@@ -140,7 +140,8 @@ describe('MicrosoftOneDriveTrigger', () => {
 		};
 		pollFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 		vi.mocked(microsoftApiRequestAllItemsDelta).mockResolvedValue({
-			deltaLink: 'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta?token=NEW',
+			deltaLink:
+				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta?token=NEW',
 			returnData: [],
 		});
 
@@ -186,8 +187,7 @@ describe('MicrosoftOneDriveTrigger', () => {
 		rlcValues.driveTarget = 'b!abc';
 		pollFunctions.getCredentials.mockResolvedValue({ accessToken: 'test-access-token' });
 		pollFunctions.getMode.mockReturnValue('trigger');
-		const stillValid =
-			'https://graph.microsoft.com/v1.0/drives/b!abc/drive/root/delta?token=KEEP';
+		const stillValid = 'https://graph.microsoft.com/v1.0/drives/b!abc/drive/root/delta?token=KEEP';
 		const staticData: IDataObject = {
 			LastLink: stillValid,
 			lastTimeChecked: '2020-01-01T00:00:00.000Z',

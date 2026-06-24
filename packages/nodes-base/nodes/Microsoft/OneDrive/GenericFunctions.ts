@@ -140,7 +140,11 @@ export function validateResourceTargetId(target: string, id: string, node: INode
  * literal commas (Graph's site addressing requires unencoded commas). The id is
  * validated BEFORE encoding so a bad shape throws and is never reflected.
  */
-export function getServicePrincipalResourceRoot(target: string, rawId: string, node: INode): string {
+export function getServicePrincipalResourceRoot(
+	target: string,
+	rawId: string,
+	node: INode,
+): string {
 	const id = String(rawId ?? '').trim();
 	validateResourceTargetId(target, id, node);
 	switch (target) {
