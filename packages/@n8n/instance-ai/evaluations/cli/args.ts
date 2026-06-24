@@ -7,6 +7,8 @@
 
 import { z } from 'zod';
 
+import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -58,6 +60,12 @@ export interface CliArgs {
 	 *  LangSmith examples are queried via the matching split. Defaults to
 	 *  unset → run everything matched by `--filter` / `--exclude`. */
 	tier?: string;
+	/** Experiment-name prefix the regression comparison uses to find the
+	 *  baseline. Defaults to the Instance AI baseline (`instance-ai-baseline-`).
+	 *  Override for an isolated cohort (e.g. `mcp-baseline-`) so the run compares
+	 *  against its own baselines instead of the Instance AI one. Pair with a
+	 *  dedicated `--dataset` to keep MCP runs fully separate. */
+	baselinePrefix: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +90,7 @@ const cliArgsSchema = z.object({
 	iterations: z.number().int().positive().default(1),
 	pinAiRoots: z.array(z.string().min(1)).optional(),
 	tier: z.string().min(1).optional(),
+	baselinePrefix: z.string().min(1).default(BASELINE_EXPERIMENT_PREFIX),
 });
 
 // ---------------------------------------------------------------------------
@@ -116,6 +125,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		iterations: validated.iterations,
 		pinAiRoots: validated.pinAiRoots,
 		tier: validated.tier,
+		baselinePrefix: validated.baselinePrefix,
 	};
 }
 
@@ -141,6 +151,7 @@ interface RawArgs {
 	iterations: number;
 	pinAiRoots?: string[];
 	tier?: string;
+	baselinePrefix: string;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -156,6 +167,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		experimentName: undefined,
 		iterations: 1,
 		pinAiRoots: undefined,
+		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -251,6 +263,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--tier':
 				result.tier = nextArg(argv, i, '--tier');
+				i++;
+				break;
+
+			case '--baseline-prefix':
+				result.baselinePrefix = nextArg(argv, i, '--baseline-prefix');
 				i++;
 				break;
 
