@@ -56,7 +56,7 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 		const credentialExists = async (credentialId: string) => {
-			if(!credentialId || credentialId === MANAGED_CREDENTIAL_TOKEN) return false;
+			if (!credentialId || credentialId === MANAGED_CREDENTIAL_TOKEN) return false;
 			return (await findCredential(credentialId)) !== undefined;
 		};
 
