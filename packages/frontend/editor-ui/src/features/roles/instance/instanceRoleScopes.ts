@@ -16,7 +16,7 @@ type ResourceScope<R extends keyof typeof RESOURCES> =
 type InstanceScopeGroups = {
 	[R in keyof typeof RESOURCES]?: Record<string, ReadonlyArray<ResourceScope<R>>>;
 } & {
-	settings?: Record<string, ReadonlyArray<Scope>>;
+	settings?: Record<string, readonly Scope[]>;
 };
 
 export const INSTANCE_SCOPE_GROUPS = {
