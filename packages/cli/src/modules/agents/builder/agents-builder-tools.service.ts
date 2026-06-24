@@ -603,7 +603,6 @@ export class AgentsBuilderToolsService {
 						.map((agent) => ({
 							agentId: agent.id,
 							name: agent.name,
-							...(agent.description ? { description: agent.description } : {}),
 						})),
 				};
 			})

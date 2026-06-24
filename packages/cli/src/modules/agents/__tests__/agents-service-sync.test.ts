@@ -15,7 +15,6 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: 'agent-1',
 		name: 'Old Name',
-		description: 'Old description',
 		projectId: 'project-1',
 		credentialId: null,
 		provider: null,
@@ -34,7 +33,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as Agent;
 }
 
-describe('AgentsService — updateName / updateDescription schema sync', () => {
+describe('AgentsService — updateName schema sync', () => {
 	let service: AgentsService;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 
@@ -92,40 +91,6 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			const result = await service.updateName('missing', 'project-1', 'Name');
 
 			expect(result).toBeNull();
-		});
-	});
-
-	describe('updateDescription', () => {
-		it('updates entity description and schema description together', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			const result = await service.updateDescription('agent-1', 'project-1', 'New desc');
-
-			expect(result).not.toBeNull();
-			expect(result!.description).toBe('New desc');
-			expect(result!.schema!.description).toBe('New desc');
-		});
-
-		it('preserves other schema fields when updating description', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			const result = await service.updateDescription('agent-1', 'project-1', 'New desc');
-
-			expect(result!.schema!.name).toBe('Old Name');
-			expect(result!.schema!.model).toBe('anthropic/claude-sonnet-4-5');
-		});
-
-		it('handles agent with null schema', async () => {
-			const agent = makeAgent({ schema: null } as unknown as Partial<Agent>);
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			const result = await service.updateDescription('agent-1', 'project-1', 'New desc');
-
-			expect(result).not.toBeNull();
-			expect(result!.description).toBe('New desc');
-			expect(result!.schema).toBeNull();
 		});
 	});
 });

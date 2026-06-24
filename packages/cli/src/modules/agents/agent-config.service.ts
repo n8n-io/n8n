@@ -151,7 +151,6 @@ export class AgentConfigService {
 		const integrationsProvided = result.config.integrations !== undefined;
 		const toolsProvided = result.config.tools !== undefined;
 		const skillsProvided = result.config.skills !== undefined;
-		const descriptionProvided = result.config.description !== undefined;
 		const credentialProvided = result.config.credential !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
 		const subAgentsProvided = result.config.subAgents !== undefined;
@@ -165,11 +164,10 @@ export class AgentConfigService {
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
 
 		const nextSchema: AgentJsonConfig = {
-			...(previousSchema ?? ({} as AgentJsonConfig)),
+			...omitLegacyAgentDescription(previousSchema),
 			name: decomposedSchema.name,
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
-			...(descriptionProvided ? { description: decomposedSchema.description } : {}),
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
@@ -183,7 +181,6 @@ export class AgentConfigService {
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
-		if (descriptionProvided) entity.description = result.config.description ?? null;
 		entity.integrations = nextIntegrations;
 		markAgentDraftDirty(entity);
 
@@ -331,4 +328,13 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
 
 	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
+}
+
+function omitLegacyAgentDescription(config: AgentJsonConfig | null): Partial<AgentJsonConfig> {
+	if (!config) return {};
+
+	const { description: _description, ...rest } = config as AgentJsonConfig & {
+		description?: unknown;
+	};
+	return rest;
 }

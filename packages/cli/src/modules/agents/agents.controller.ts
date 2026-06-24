@@ -81,7 +81,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Body payload: UpdateAgentDto,
 	) {
-		const { name, description } = payload;
+		const { name } = payload;
 		let agent = await this.agentsService.findById(agentId, req.params.projectId);
 
 		if (!agent) {
@@ -90,19 +90,6 @@ export class AgentsController {
 
 		if (name !== undefined) {
 			agent = await this.agentsService.updateName(agentId, req.params.projectId, name);
-		}
-
-		if (description !== undefined && agent) {
-			// Use the latest updatedAt from previous saves (name), not the original
-			// request updatedAt, to avoid false optimistic-lock conflicts.
-			const latestUpdatedAt =
-				agent.updatedAt instanceof Date ? agent.updatedAt.toISOString() : agent.updatedAt;
-			agent = await this.agentsService.updateDescription(
-				agentId,
-				req.params.projectId,
-				description,
-				latestUpdatedAt,
-			);
 		}
 
 		if (!agent) {

@@ -4,8 +4,6 @@ import { In, ProjectRelationRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
@@ -78,32 +76,6 @@ export class AgentsService {
 		markAgentDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
-		return saved;
-	}
-
-	async updateDescription(
-		agentId: string,
-		projectId: string,
-		description: string,
-		updatedAt?: string,
-	): Promise<Agent | null> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-
-		if (!agent) {
-			return null;
-		}
-
-		if (updatedAt && agent.updatedAt.toISOString() !== updatedAt) {
-			throw new ConflictError('Agent has been modified');
-		}
-
-		agent.description = description;
-		if (agent.schema) {
-			agent.schema = { ...agent.schema, description };
-		}
-		markAgentDraftDirty(agent);
-		const saved = await this.agentRepository.save(agent);
-		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;
 	}
 

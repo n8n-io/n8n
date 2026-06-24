@@ -268,7 +268,6 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
-	description: z.string().max(512).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),

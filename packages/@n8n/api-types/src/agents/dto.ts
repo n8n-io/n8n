@@ -61,7 +61,6 @@ export class CreateAgentDto extends Z.class({
 export class UpdateAgentDto extends Z.class({
 	name: z.string().optional(),
 	updatedAt: z.string().optional(),
-	description: z.string().optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({

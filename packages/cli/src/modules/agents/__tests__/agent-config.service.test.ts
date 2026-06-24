@@ -158,14 +158,13 @@ describe('AgentConfigService', () => {
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
 			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
 			const agent = makeAgent({
-				description: 'Existing description',
 				schema: {
 					...baseConfig,
-					description: 'Existing description',
+					description: 'Legacy description',
 					credential: 'stored-cred',
 					memory: { enabled: true, storage: 'n8n' },
 					tools: [{ type: 'custom', id: 'tool-1' }],
-				},
+				} as unknown as AgentJsonConfig,
 				integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -179,12 +178,12 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).toEqual(
 				expect.objectContaining({
 					instructions: 'Updated instructions',
-					description: 'Existing description',
 					credential: 'stored-cred',
 					memory: { enabled: true, storage: 'n8n' },
 					tools: [{ type: 'custom', id: 'tool-1' }],
 				}),
 			);
+			expect(saved.schema).not.toHaveProperty('description');
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'slack-cred' }]);
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig, integrations: [] });

@@ -23,7 +23,6 @@ function makeController({
 			| 'findByProjectId'
 			| 'findByProjectIdPaginated'
 			| 'updateName'
-			| 'updateDescription'
 			| 'delete'
 		>
 	>(),
@@ -39,7 +38,6 @@ function makeController({
 			| 'findByProjectId'
 			| 'findByProjectIdPaginated'
 			| 'updateName'
-			| 'updateDescription'
 			| 'delete'
 		>
 	>;
