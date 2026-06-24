@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T13:28:32.925Z",
-	"totalViolations": 145,
+	"generated": "2026-06-23T16:27:44.350Z",
+	"totalViolations": 142,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -575,26 +575,6 @@
 				"line": 96,
 				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
 				"hash": "e8fc423eeeb7"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "68c3ed65550b"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Chained locator call in test: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "189e3887535d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
-				"hash": "423a23988aea"
 			}
 		],
 		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
