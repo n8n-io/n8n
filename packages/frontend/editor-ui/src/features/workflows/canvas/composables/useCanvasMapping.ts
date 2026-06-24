@@ -208,6 +208,10 @@ export function useCanvasMapping({
 	function getConnectionStatus(connection: Connection): CanvasConnectionData['status'] {
 		const rd = renderData.value;
 		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
+		const sourceName = nodeNameById.value.get(connection.source);
+		const hasSimulatedSourceOutput = Boolean(
+			sourceName && rd.executionSimulationByNodeName[sourceName],
+		);
 
 		const runData = rd.executionRunDataOutputMapByNodeId.get(connection.source)?.[type]?.[index];
 		const runDataTotal = runData?.total ?? 0;
@@ -227,7 +231,10 @@ export function useCanvasMapping({
 		const matches: Record<(typeof CONNECTION_STATUS_PRIORITY)[number], boolean> = {
 			running:
 				(rd.executionRunningByNodeId.get(connection.source)?.value ?? false) && runDataTotal === 0,
-			pinned: Boolean(rd.pinnedDataByNodeId.get(connection.source)?.value && sourceTasks),
+			pinned: Boolean(
+				(rd.pinnedDataByNodeId.get(connection.source)?.value || hasSimulatedSourceOutput) &&
+					sourceTasks,
+			),
 			error: rd.hasIssuesByNodeId.get(connection.source)?.value ?? false,
 			success: runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled' && targetExecuted,
 		};

@@ -8,6 +8,7 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
 	| { ok: true; clientName: string; clientId: string; resourceName?: string; redirectUri?: string }
@@ -26,6 +27,7 @@ export class OAuthConsentService {
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -90,12 +92,15 @@ export class OAuthConsentService {
 			throw new UserError('Invalid or expired session');
 		}
 
+		const issuer = this.urlService.getInstanceBaseUrl();
+
 		if (!approved) {
 			const redirectUrl = OAuthHelpers.buildErrorRedirectUrl(
 				sessionPayload.redirectUri,
 				'access_denied',
 				'User denied the authorization request',
 				sessionPayload.state,
+				issuer,
 			);
 
 			this.logger.info('Consent denied', {
@@ -128,6 +133,7 @@ export class OAuthConsentService {
 			sessionPayload.redirectUri,
 			code,
 			sessionPayload.state,
+			issuer,
 		);
 
 		this.logger.info('Consent approved', {

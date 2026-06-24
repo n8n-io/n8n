@@ -541,21 +541,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
 						workflow: json,
 						mockedNodeNames: mockResult.mockedNodeNames,
+						declaredOutputFixtures: compiled.declaredOutputFixtures,
 						workflowId: saved.id,
 						logger: context.logger,
 					});
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
-					const placeholderRemediation = hasPlaceholders
-						? createRemediation({
-								category: 'needs_setup',
-								shouldEdit: false,
-								reason: 'mocked_credentials_or_placeholders',
-								guidance:
-									'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
-							})
-						: undefined;
 					binding = await saveWorkflowSourceFileBinding(context, {
 						...binding,
 						workflowId: saved.id,
@@ -573,8 +565,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						submitted: true,
 						triggerType: 'manual_or_testable',
 						triggerNodes,
-						needsUserInput: hasPlaceholders,
-						blockingReason: placeholderRemediation?.guidance,
+						needsUserInput: false,
 						mockedNodeNames: hasMockedCredentialNodes ? mockResult.mockedNodeNames : undefined,
 						mockedCredentialTypes: hasMockedCredentialNodes
 							? mockResult.mockedCredentialTypes
@@ -587,7 +578,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
-						remediation: placeholderRemediation,
 						summary,
 					});
 
@@ -608,7 +598,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						saveOperation: operation,
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
-						remediation: placeholderRemediation,
 						warningCount: informational.length,
 					});
 

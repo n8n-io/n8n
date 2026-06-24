@@ -133,7 +133,10 @@ describe('memory integration', () => {
 			const { done } = await reader.read();
 			if (done) break;
 		}
-		const result1 = await agent.generate('How many widgets do we have in stock?', options);
+		const result1 = await agent.generate(
+			'How many widgets do we have in stock? Call the tool.',
+			options,
+		);
 		expect(findLastToolCallContent(result1.messages)).toBeTruthy();
 
 		// Turn 2: ask about the tool result

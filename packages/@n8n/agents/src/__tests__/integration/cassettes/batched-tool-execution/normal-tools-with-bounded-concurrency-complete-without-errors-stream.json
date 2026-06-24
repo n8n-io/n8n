@@ -1,0 +1,228 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to check multiple files, you MUST call check_file for EACH file using parallel tool calls in the same turn. Never skip a file. After checking, summarize the results concisely."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Check if these three files exist: /home/a.txt, /home/b.txt, /home/c.txt. You MUST call check_file for each file using parallel tool calls in the same turn."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "check_file",
+					"description": "Check if a file exists at the given path. Can only check one file per call.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to check"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000acd56db6edb300c7def57047c7656db487ad1db8a6e037ac3ba162db6651014898dddc8922bc94182c0ff5e28a9db38756f6b7af19b48ca3c87e4818823548eb432b4960d905ac78c5b13cc31d29a829be408046a4e08aa339029645aa004025cb242603b61e9b06877dadd761cc6dd280c23082015fe1f7640c368e7607ff2f3e468bbfbfb32fe33e6fcec840f778e2158ca0401182dbd81599b5ac7944fcbb572a81c90bfff02b04ee7d420b35a0151859437268b57052a8e35a340c752692b5b51a14f555e38eaf4109505b219460170c613a4dc2073a956b41e11567e834c3ce4abeefa04982798a1619276b3fbf177de2859f69601e8c2d5e07502b068462947ea523440c0574630237c91d5051a4f9c0e500301a51d6523964ad6970865d9aa7de5da1ace1b7f5354da979a0f9bdbdf10324b28703ca7bde8f7ac6fee39ad252d2c5623e0cf050da3fdf3efe7f8639245a7a7db457651a8788bedf72100c5b259be04f9905ea47276d39705c8b4f4e595d2d3be4d205283dc55e4ee38e5a91a2c91688137c243bc054ac71ee73d0ba9f19e5beee0cc3b7869b5ba0dce9971299333231080f2c90ebc1392690f72e6921e90560fd6139de13afbe2c6ce23fc60683d2861695c1f99579d3f35ae3a5f00f41612885e2e8178b41b8bddcd497faf48d4b1f9b659a8adbd8dd74a60758d8b3ecd74ff1792fbd3fdec897a2784ebfdb9da3e184683d65625b568a51a8b5faeb1ae1d7fdd3812eee8e05774d8b15787f9b139db5ae133f3da8ec5af14d96780d3f08ef0ea1df970706ff992c48dffac36e5468235272c10aaedb28bf3fccc8db67cbb957669078d3a51f920e9a6122efa6076e91aca18a177710c0000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:50Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:50Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:50Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:50Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1ddfc5ac385-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:39:51 GMT",
+			"request-id": "req_011CcHzprG8nFYBPKDLPBJ6T",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=2x3eDIBo9IpMZNyJOcaXsS6ADYCqaoqpQh3T2DnkPp8-1782117590.7143664-1.0.1.1-tmNWwy0A8vDDm0XV6bKY8CAgP86CyQdjtUpWt4kdgvw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-1d894ce9cf54a9a550ecfd3814428182-d8db98b9ef557788-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to check multiple files, you MUST call check_file for EACH file using parallel tool calls in the same turn. Never skip a file. After checking, summarize the results concisely."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Check if these three files exist: /home/a.txt, /home/b.txt, /home/c.txt. You MUST call check_file for each file using parallel tool calls in the same turn."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01KWFWeGym1TT9umfun28aKb",
+							"name": "check_file",
+							"input": {
+								"path": "/home/a.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_012vD2dD7ybJuhnQrE7un8J6",
+							"name": "check_file",
+							"input": {
+								"path": "/home/b.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_015sxA6NdtNLR1M4sqMpQrV8",
+							"name": "check_file",
+							"input": {
+								"path": "/home/c.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01KWFWeGym1TT9umfun28aKb",
+							"content": "{\"exists\":true,\"path\":\"/home/a.txt\"}"
+						},
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_012vD2dD7ybJuhnQrE7un8J6",
+							"content": "{\"exists\":true,\"path\":\"/home/b.txt\"}"
+						},
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_015sxA6NdtNLR1M4sqMpQrV8",
+							"content": "{\"exists\":true,\"path\":\"/home/c.txt\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "check_file",
+					"description": "Check if a file exists at the given path. Can only check one file per call.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to check"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000abd54c18ed33010bdf72bac3946c9b6e95256f886b8202490964a706091ebc6b38d55c70ef6a46ab5ca91bfe0ebf81294b6a149b6dde5c2e612e5bd379e37cfd1e0062d7156600872852290f434529224670f40bb1281438f84b8fd06fe0085536880436664a530c9a55e57c9ab64964c27d3593a99a4108356cd19612526e9b5fd787deb6ff1feebeb0f59f1e9fdfcdd97ad9f433ce8043178671a4086a00349dbb4cd9c25b404fcdbf71802b9527894c159e0b632e60805fc51a1cdb0072a24a94d68b1aa75af6d599120b7461b80bfb999c690c92c47917994a49d157dc5a4e53d4a75896b6b9b0658e658a09746cc8ac7fa139be643b68ec155d485d21802fa8dce5090460f1c9a6094f4aac9d8dea36fe6162b74c0c13a127223b5914b8350d78c31568f4678b8ed639262695cb63e7fe76724fb360ab78759bb7c33eab18e70db08f72f0e509f9a96daae065d1834205c32a6d0907cdad85ed2337640fa86feca8eb6a208f6891c9f17efff19436528b0795514d2ef7814ddd984fdfef5932dc6b92b702caf684b0b96b028c2ad0e14868ad6ff8b5b1f2f9fb336cece29eeec5b6318e51e91dd6b8381ed39a62da31cdbd20553da6346ceefae7a57f4f4ffebcae77e5f5776261d9cd6aeb7b399f548e864d45b40805609aabc857f5e43f5ffdb4383c57193d697823c6df6c7117639e8d6fe01d7bc78db33060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:52Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:52Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:52Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:52Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1e58a59c385-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:39:52 GMT",
+			"request-id": "req_011CcHzpwXtbrsdKX5xAkM3Q",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=3xxDRyJpHRYtCt3fhDWahBhBz7vdW84H3YE5KP99au8-1782117591.9279764-1.0.1.1-4wMEYmxTv5FOOPXk69UdGMQ9sO6bXAXk8RjUez_Xnw0; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-de0cdefdecabf4d4af8b4bdc572d39c6-5dddfa68795c9a4c-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]
