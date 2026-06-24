@@ -32,6 +32,14 @@ export class WorkflowActivationError extends ExecutionBaseError {
 		this.node = node;
 		this.workflowId = workflowId;
 		this.message = message;
+		// Surface the underlying cause in `description`. The wrapper `message` is a
+		// generic sentence, so without this the real reason (e.g. a trigger node's
+		// connection error) is lost for consumers that serialize the error, such as
+		// the Error Trigger payload.
+		if (cause && !this.description) {
+			const causeDescription = (cause as { description?: unknown }).description;
+			this.description = typeof causeDescription === 'string' ? causeDescription : cause.message;
+		}
 		this.setLevel(level);
 	}
 

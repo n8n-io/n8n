@@ -476,7 +476,12 @@ export class EmailReadImapV2 implements INodeType {
 						this.logger.debug('Email Read Imap: Shutting down workflow - connected closed');
 					} else if (!errorReported) {
 						this.logger.error('Email Read Imap: Connected closed unexpectedly');
-						this.emitError(new Error('Imap connection closed unexpectedly'));
+						this.emitError(
+							new NodeOperationError(this.getNode(), 'Imap connection closed unexpectedly', {
+								description:
+									'The IMAP server closed the connection without an error. This often happens when the mail server drops idle connections (some providers do so every few hours). n8n will try to reactivate the workflow automatically. To avoid it, enable the "Force Reconnect" option and set an interval shorter than your provider\'s idle timeout.',
+							}),
+						);
 					}
 					conn.removeAllListeners();
 				});
