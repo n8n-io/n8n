@@ -11,30 +11,35 @@ export function useLogsTreeExpand(
 	loadSubExecution: (logEntry: LogTreeEntry) => Promise<void>,
 ) {
 	const collapsedEntries = shallowRef<Record<string, boolean>>({});
-	// Entry ids we've already applied a default collapse state for, so user
-	// toggles aren't overwritten when the tree rebuilds (e.g. while executing).
-	const appliedDefaults = new Set<string>();
+	// Ids the user has explicitly expanded/collapsed. Their choice always wins
+	// over the computed defaults, even as the tree rebuilds while executing.
+	const userToggled = new Set<string>();
 	const flatLogEntries = computed<LogTreeEntry[]>(() =>
 		flattenLogEntries(entries.value, collapsedEntries.value),
 	);
 
-	// Apply default collapse state (groups + empty sub-execution placeholders)
-	// the first time each entry appears, without clobbering existing choices.
+	// (Re)apply default collapse state (groups collapse unless they contain an
+	// error; empty sub-execution placeholders collapse) on every rebuild, leaving
+	// any entry the user has manually toggled untouched. Re-applying — rather than
+	// applying once — lets a group expand if a member errors after it first appears.
 	watch(
 		entries,
 		(latest) => {
 			const defaults = getDefaultCollapsedEntries(latest);
-			const pending = Object.entries(defaults).filter(([id]) => !appliedDefaults.has(id));
+			const next: Record<string, boolean> = {};
 
-			if (pending.length === 0) {
-				return;
+			for (const id of userToggled) {
+				if (collapsedEntries.value[id] !== undefined) {
+					next[id] = collapsedEntries.value[id];
+				}
 			}
 
-			const next = { ...collapsedEntries.value };
-			for (const [id, collapsed] of pending) {
-				next[id] = collapsed;
-				appliedDefaults.add(id);
+			for (const [id, collapsed] of Object.entries(defaults)) {
+				if (!userToggled.has(id)) {
+					next[id] = collapsed;
+				}
 			}
+
 			collapsedEntries.value = next;
 		},
 		{ immediate: true },
@@ -46,6 +51,7 @@ export function useLogsTreeExpand(
 			return;
 		}
 
+		userToggled.add(treeNode.id);
 		collapsedEntries.value = {
 			...collapsedEntries.value,
 			[treeNode.id]: expand === undefined ? !collapsedEntries.value[treeNode.id] : !expand,

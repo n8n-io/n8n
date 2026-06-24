@@ -1942,4 +1942,19 @@ describe(wrapLogEntriesInGroups, () => {
 
 		expect(getDefaultCollapsedEntries(result)).toEqual({ 'group:wf-1:g1': true });
 	});
+
+	it('does not collapse a group whose member errored', () => {
+		const tree = buildTree({
+			Trigger: [createTestTaskData({ startTime: 1 })],
+			A: [createTestTaskData({ startTime: 2 })],
+			B: [createTestTaskData({ startTime: 3 })],
+			C: [createTestTaskData({ startTime: 4, executionStatus: 'error' })],
+		});
+
+		const result = wrapLogEntriesInGroups(tree, [
+			{ id: 'g1', name: 'G', nodeIds: ['id-b', 'id-c'] },
+		]);
+
+		expect(getDefaultCollapsedEntries(result)).toEqual({});
+	});
 });

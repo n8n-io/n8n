@@ -611,8 +611,11 @@ export function getDefaultCollapsedEntries(entries: LogTreeEntry[]): Record<stri
 	function collect(children: LogTreeEntry[]) {
 		for (const entry of children) {
 			if (isLogGroupEntry(entry)) {
-				// Groups load collapsed by default, mirroring the canvas.
-				ret[entry.id] = true;
+				// Groups load collapsed by default, except when a member errored —
+				// surface the failure by expanding the group on first open.
+				if (entry.executionStatus !== 'error') {
+					ret[entry.id] = true;
+				}
 			} else if (hasSubExecution(entry) && entry.children.length === 0) {
 				ret[entry.id] = true;
 			}
