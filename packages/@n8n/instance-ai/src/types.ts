@@ -1329,15 +1329,6 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
-	/**
-	 * Persist the current user message to thread memory immediately, so it
-	 * survives a restart that happens while the orchestrator is suspended on
-	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
-	 * loop completion, which a suspended run never reaches — without this the
-	 * user's bubble is invisible on reload until the turn eventually completes.
-	 * Idempotent: safe to call multiple times within a run.
-	 */
-	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */

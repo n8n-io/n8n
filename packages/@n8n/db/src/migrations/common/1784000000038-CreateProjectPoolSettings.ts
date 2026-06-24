@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'project_pool_settings';
 
-export class CreateProjectPoolSettings1784000000037 implements ReversibleMigration {
+export class CreateProjectPoolSettings1784000000038 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
