@@ -32,19 +32,6 @@ describe('ScalingModeConfig.workerPool', () => {
 		expect(config.workerPool.enabled).toBe(true);
 	});
 
-	test('effectiveName is the pool name when pools are enabled', () => {
-		process.env = { N8N_WORKER_POOLS_ENABLED: 'true', N8N_WORKER_POOL_NAME: 'gpu' };
-		const config = Container.get(ScalingModeConfig);
-		expect(config.workerPool.effectiveName).toBe('gpu');
-	});
-
-	test('effectiveName is empty when pools are disabled, even with a pool name set', () => {
-		process.env = { N8N_WORKER_POOL_NAME: 'gpu' };
-		const config = Container.get(ScalingModeConfig);
-		expect(config.workerPool.name).toBe('gpu');
-		expect(config.workerPool.effectiveName).toBe('');
-	});
-
 	test('accepts a valid label', () => {
 		process.env = { N8N_WORKER_POOL_NAME: 'gpu' };
 		const config = Container.get(ScalingModeConfig);

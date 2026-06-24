@@ -28,14 +28,6 @@ export class WorkerPoolConfig {
 	 */
 	@Env('N8N_WORKER_POOL_NAME', workerPoolNameSchema)
 	name: string = '';
-
-	/**
-	 * The pool name the worker should actually use. Empty when pools are disabled, so a worker
-	 * configured with a pool name still falls back to the default queue.
-	 */
-	get effectiveName(): string {
-		return this.enabled ? this.name : '';
-	}
 }
 
 @Config

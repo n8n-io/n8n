@@ -72,7 +72,6 @@ const makeInstanceSettings = (overrides: Partial<InstanceSettings> = {}) =>
 const makeExecutionsConfig = (mode: 'regular' | 'queue' = 'regular') =>
 	mock<ExecutionsConfig>({ mode });
 
-// Use a real WorkerPoolConfig so `effectiveName` comes from the actual getter, not a reimplementation.
 const makeScalingModeConfig = (poolName: string = '', enabled: boolean = true) => {
 	const workerPool = Object.assign(new WorkerPoolConfig(), { name: poolName, enabled });
 	return mock<ScalingModeConfig>({ workerPool });

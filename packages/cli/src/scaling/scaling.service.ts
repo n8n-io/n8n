@@ -17,7 +17,7 @@ import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
-import { DEFAULT_QUEUE_NAME, resolveQueueName } from './queue-name';
+import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
 	JobQueue,
 	Job,
@@ -99,7 +99,7 @@ export class ScalingService {
 				createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 			});
 
-		const poolName = this.globalConfig.queue.workerPool.effectiveName;
+		const poolName = resolveWorkerPoolName(this.globalConfig.queue.workerPool);
 		const queueName = resolveQueueName(this.instanceSettings.instanceType, poolName);
 
 		const queue = this.createBullQueue(queueName);

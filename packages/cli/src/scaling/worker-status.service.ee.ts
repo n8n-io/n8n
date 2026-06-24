@@ -11,7 +11,7 @@ import { Push } from '@/push';
 
 import { JobProcessor } from './job-processor';
 import { Publisher } from './pubsub/publisher.service';
-import { resolveQueueName } from './queue-name';
+import { resolveQueueName, resolveWorkerPoolName } from './queue-name';
 
 @Service()
 export class WorkerStatusService {
@@ -99,10 +99,10 @@ export class WorkerStatusService {
 				})),
 			),
 			version: N8N_VERSION,
-			poolName: this.globalConfig.queue.workerPool.effectiveName,
+			poolName: resolveWorkerPoolName(this.globalConfig.queue.workerPool),
 			queueName: resolveQueueName(
 				this.instanceSettings.instanceType,
-				this.globalConfig.queue.workerPool.effectiveName,
+				resolveWorkerPoolName(this.globalConfig.queue.workerPool),
 			),
 		};
 	}
