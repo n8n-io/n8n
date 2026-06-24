@@ -58,7 +58,11 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { conversationUserTurnsAsText, userTurnsAsText } from '../utils/conversation-text';
+import {
+	conversationUserTurnsAsText,
+	failedBuildsPerTurn,
+	userTurnsAsText,
+} from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -718,6 +722,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					workflow: outcome.workflowJsons[0],
 					prompt: userTurnsAsText(transcript),
 					agentText: outcome.finalText,
+					failedBuildsPerTurn: failedBuildsPerTurn(transcript),
 					logger,
 				});
 
@@ -1177,6 +1182,8 @@ export async function runWorkflowChecks(args: {
 	workflow: WorkflowResponse | undefined;
 	prompt: string;
 	agentText: string | undefined;
+	/** Per-live-turn failed build-workflow attempt counts; feeds the efficiency check. */
+	failedBuildsPerTurn?: number[];
 	logger: EvalLogger;
 }): Promise<CheckOutcome[] | undefined> {
 	if (!args.workflow) return undefined;
@@ -1186,6 +1193,7 @@ export async function runWorkflowChecks(args: {
 		prompt: args.prompt,
 		...(modelId ? { modelId } : {}),
 		...(args.agentText ? { agentTextResponse: args.agentText } : {}),
+		...(args.failedBuildsPerTurn ? { failedBuildsPerTurn: args.failedBuildsPerTurn } : {}),
 	};
 
 	try {

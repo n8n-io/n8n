@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { InfisicalProvider } from '../infisical';
-import { createFakeOutboundHttp, type Route } from './fake-outbound-http';
 
 const SITE_URL = 'https://app.infisical.com';
 const PROJECT_ID = 'project-123';
@@ -65,7 +65,7 @@ describe('InfisicalProvider', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	function createProvider(routes: Route[]) {
-		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(routes);
+		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(routes, jest.fn);
 		const provider = new InfisicalProvider(logger, outboundHttp);
 		return { provider, httpRequest, requests, outboundHttp };
 	}
@@ -76,7 +76,12 @@ describe('InfisicalProvider', () => {
 		return ctx;
 	}
 
-	function findCall(httpRequest: jest.Mock, predicate: (options: IHttpRequestOptions) => boolean) {
+	type FakeHttpRequest = ReturnType<typeof createFakeOutboundHttp>['httpRequest'];
+
+	function findCall(
+		httpRequest: FakeHttpRequest,
+		predicate: (options: IHttpRequestOptions) => boolean,
+	) {
 		return httpRequest.mock.calls.map(([options]) => options).find(predicate);
 	}
 
