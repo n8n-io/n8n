@@ -1,3 +1,4 @@
+import { IANAZone } from 'luxon';
 import type {
 	IConnection,
 	IConnections,
@@ -24,15 +25,14 @@ const credentialsSchema = z.record(
 	z.object({ id: z.string().optional(), name: z.string() }),
 );
 
-/** True when `tz` is an IANA zone the runtime accepts (validated via the Intl DB). */
-const isValidIanaTimezone = (tz: string): boolean => {
-	try {
-		Intl.DateTimeFormat('en-US', { timeZone: tz });
-		return true;
-	} catch {
-		return false;
-	}
-};
+/**
+ * True when `tz` is a zone the runtime accepts. Uses Luxon's `IANAZone.isValidZone`
+ * to match downstream semantics exactly — the same check the expression runtime
+ * applies before setting the default zone, and what Schedule Trigger/cron paths
+ * rely on — rather than calling `Intl` directly, which can drift across Node/ICU
+ * builds.
+ */
+const isValidIanaTimezone = (tz: string): boolean => IANAZone.isValidZone(tz);
 
 /**
  * Curated subset of `IWorkflowSettings` that is safe and useful to set from MCP.
