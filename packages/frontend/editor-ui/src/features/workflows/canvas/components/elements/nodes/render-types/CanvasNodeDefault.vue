@@ -55,6 +55,10 @@ const hasExecutionErrors = computed(
 	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
 );
 const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
+const hasSimulatedOutput = computed(
+	() => !!renderData.value.executionSimulationByNodeName[name.value],
+);
+const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasSimulatedOutput.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -74,11 +78,13 @@ const classes = computed(() => {
 		[$style.selected]: isSelected.value,
 		[$style.disabled]:
 			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
-		[$style.success]: Boolean(hasRunData.value && executionStatus.value === 'success'),
+		[$style.success]: Boolean(
+			hasRunData.value && executionStatus.value === 'success' && !hasSimulatedOutput.value,
+		),
 		[$style.error]: hasExecutionErrors.value,
 		[$style.running]: running,
 		[$style.waiting]: waiting,
-		[$style.pinned]: hasPinnedData.value,
+		[$style.pinned]: hasSubstitutedOutput.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
@@ -205,7 +211,7 @@ function onActivate(event: MouseEvent) {
 			v-if="
 				!renderOptions.configuration &&
 				!isDisabled &&
-				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+				!(hasSubstitutedOutput && !nodeHelpers.isProductionExecutionPreview.value)
 			"
 		/>
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />

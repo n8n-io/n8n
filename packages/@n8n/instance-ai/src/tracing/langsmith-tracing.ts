@@ -7,6 +7,7 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import {
 	ROOT_CONTEXT,
 	SpanStatusCode,
@@ -51,7 +52,6 @@ import {
 } from './trace-payloads';
 import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
 import { PURE_REPLAY_TOOLS } from './trace-replay';
-import { isRecord } from '../utils/stream-helpers';
 
 export {
 	buildAgentTraceInputs,

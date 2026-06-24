@@ -1,4 +1,22 @@
-import type { ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
+import { isRecord } from '@n8n/utils';
+
+import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
+
+/**
+ * Human-readable prompt label for a test case. Authored cases use their first
+ * turn; seedThread cases carry no authored conversation, so fall back to the
+ * live (non-seeded) user turn captured in the transcript, then to the thread id.
+ */
+export function caseDisplayPrompt(
+	testCase: { conversation?: ConversationTurn[]; seedThread?: { threadId: string } },
+	transcript?: TranscriptTurn[],
+): string {
+	const authored = testCase.conversation?.[0]?.text;
+	if (authored) return authored;
+	const liveTurn = transcript?.find((t) => !t.seeded && t.userMessage)?.userMessage;
+	if (liveTurn) return liveTurn;
+	return testCase.seedThread ? `[seeded] thread ${testCase.seedThread.threadId.slice(0, 8)}` : '';
+}
 
 /**
  * User-side turns from a captured transcript, flattened as a text block for
@@ -18,7 +36,12 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			const lines: string[] = [`### Turn ${String(i + 1)}`];
+			// Seeded turns are restored prior context — they predate the evaluated
+			// run, and judges must not score them as live behaviour.
+			const seededSuffix = turn.seeded
+				? ' (seeded prior context — predates the evaluated run)'
+				: '';
+			const lines: string[] = [`### Turn ${String(i + 1)}${seededSuffix}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);
@@ -32,6 +55,39 @@ export function transcriptAsText(transcript: TranscriptTurn[]): string {
 /** Concatenated agent narration across a turn's steps (excludes tool interactions). */
 export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
+}
+
+/** Tool id the builder calls to create or modify the workflow graph. */
+export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
+
+// build-workflow calls per turn (a suspend→resume is one call, so approvals don't inflate it).
+export function buildWorkflowCallsPerTurn(transcript: TranscriptTurn[]): number[] {
+	return transcript.map(
+		(turn) =>
+			turn.steps.filter(
+				(step) => step.kind === 'tool-call' && step.toolName === BUILD_WORKFLOW_TOOL_NAME,
+			).length,
+	);
+}
+
+// build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
+// error-forced rebuilds, which generalise across prompts better than the raw call count.
+export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
+	return transcript.map(
+		(turn) =>
+			turn.steps.filter((step) => {
+				if (step.kind !== 'tool-call' || step.toolName !== BUILD_WORKFLOW_TOOL_NAME) {
+					return false;
+				}
+				// step.error = the call threw; step.result.errors = it ran but returned errors — both are failed builds.
+				if (step.error !== undefined) return true;
+				return (
+					isRecord(step.result) &&
+					(step.result.success === false ||
+						(Array.isArray(step.result.errors) && step.result.errors.length > 0))
+				);
+			}).length,
+	);
 }
 
 // Cap each serialized field to bound judge token cost (matches the report's cap).

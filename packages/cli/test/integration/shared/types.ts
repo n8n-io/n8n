@@ -51,7 +51,8 @@ type EndpointGroup =
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
-	| 'encryption-keys';
+	| 'encryption-keys'
+	| 'test-webhooks';
 
 type ModuleName =
 	| 'insights'

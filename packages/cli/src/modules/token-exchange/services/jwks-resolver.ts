@@ -2,6 +2,7 @@ import type crypto from 'node:crypto';
 import { createPublicKey } from 'node:crypto';
 
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import type { Algorithm } from 'jsonwebtoken';
 import { OperationalError } from 'n8n-workflow';
@@ -123,7 +124,10 @@ function parseMaxAge(cacheControl: string | null): number | undefined {
 export class JwksResolverService {
 	private readonly logger: Logger;
 
-	constructor(logger: Logger) {
+	constructor(
+		logger: Logger,
+		private readonly outboundHttp: OutboundHttp,
+	) {
 		this.logger = logger.scoped('token-exchange');
 	}
 
@@ -134,7 +138,13 @@ export class JwksResolverService {
 			defaultTtlSeconds?: number;
 		},
 	): Promise<JwksResolverResult> {
-		const fetcher = options?.fetcher ?? globalThis.fetch;
+		const fetcher =
+			options?.fetcher ??
+			this.outboundHttp
+				.transport({
+					ssrf: 'disabled', // JWKS sources are admin-configured trusted-key endpoints
+				})
+				.asCustomFetch();
 		const defaultTtl = options?.defaultTtlSeconds ?? DEFAULT_TTL_SECONDS;
 		const { url } = source;
 

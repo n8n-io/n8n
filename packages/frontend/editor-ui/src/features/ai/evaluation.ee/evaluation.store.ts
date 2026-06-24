@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
-import type { AddDatasetRowDto } from '@n8n/api-types';
+import type { AddDatasetRowDto, EvaluationConfigDto } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
@@ -15,6 +15,7 @@ export const useEvaluationStore = defineStore(
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
+		const evaluationConfigsByWorkflowId = ref<Record<string, EvaluationConfigDto[]>>({});
 
 		// Store instances
 		const rootStore = useRootStore();
@@ -135,7 +136,12 @@ export const useEvaluationStore = defineStore(
 		// Evaluation config + dataset methods
 
 		const fetchEvaluationConfigs = async (workflowId: string) => {
-			return await evaluationsApi.listEvaluationConfigs(rootStore.restApiContext, workflowId);
+			const configs = await evaluationsApi.listEvaluationConfigs(
+				rootStore.restApiContext,
+				workflowId,
+			);
+			evaluationConfigsByWorkflowId.value[workflowId] = configs;
+			return configs;
 		};
 
 		const getDatasetCandidate = async (params: {
@@ -200,6 +206,7 @@ export const useEvaluationStore = defineStore(
 			// State
 			testRunsById,
 			testCaseExecutionsById,
+			evaluationConfigsByWorkflowId,
 
 			// Computed
 			isLoading,
@@ -214,8 +221,8 @@ export const useEvaluationStore = defineStore(
 			cancelTestRun,
 			cancelTestCase,
 			deleteTestRun,
-			cleanupPolling,
 			fetchEvaluationConfigs,
+			cleanupPolling,
 			getDatasetCandidate,
 			addExecutionToDataset,
 		};

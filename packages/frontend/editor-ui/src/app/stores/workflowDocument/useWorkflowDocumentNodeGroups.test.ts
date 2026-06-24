@@ -101,6 +101,64 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 	});
 
+	describe('restoreGroup', () => {
+		it('recreates a previously deleted group with the same id', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.deleteGroup(group.id);
+
+			nodeGroups.restoreGroup(group);
+
+			expect(nodeGroups.getGroupById(group.id)).toEqual(group);
+			expect(nodeGroups.allGroups.value).toHaveLength(1);
+		});
+
+		it('overwrites the full state of an existing group', () => {
+			const group = nodeGroups.createGroup(['a', 'b', 'c'], 'X');
+
+			nodeGroups.restoreGroup({ id: group.id, name: 'Restored', nodeIds: ['a'] });
+
+			expect(nodeGroups.getGroupById(group.id)).toEqual({
+				id: group.id,
+				name: 'Restored',
+				nodeIds: ['a'],
+			});
+		});
+
+		it('emits an ADD event when the group does not exist yet', () => {
+			const changeSpy = vi.fn();
+			nodeGroups.onNodeGroupsChange(changeSpy);
+
+			nodeGroups.restoreGroup({ id: 'g1', name: 'X', nodeIds: ['a'] });
+
+			expect(changeSpy).toHaveBeenCalledWith({
+				action: 'add',
+				payload: { group: { id: 'g1', name: 'X', nodeIds: ['a'] }, startCollapsed: undefined },
+			});
+		});
+
+		it('emits an UPDATE event when the group already exists', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			const changeSpy = vi.fn();
+			nodeGroups.onNodeGroupsChange(changeSpy);
+
+			nodeGroups.restoreGroup({ id: group.id, name: 'X', nodeIds: ['a'] });
+
+			expect(changeSpy).toHaveBeenCalledWith({
+				action: 'update',
+				payload: { group: { id: group.id, name: 'X', nodeIds: ['a'] } },
+			});
+		});
+
+		it('clones nodeIds so later mutations of the input do not leak in', () => {
+			const restored = { id: 'g1', name: 'X', nodeIds: ['a', 'b'] };
+			nodeGroups.restoreGroup(restored);
+
+			restored.nodeIds.push('c');
+
+			expect(nodeGroups.getGroupById('g1')?.nodeIds).toEqual(['a', 'b']);
+		});
+	});
+
 	describe('addNodesToGroup', () => {
 		it('appends new node ids to an existing group', () => {
 			const group = nodeGroups.createGroup(['a', 'b'], 'X');
