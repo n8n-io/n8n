@@ -69,7 +69,7 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const { userCanClaimOpenAiCredits, claimingCredits, claimCreditsAndGetCredential } =
+const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCreditsAndGetCredential } =
 	useFreeAiCredits();
 const searchQuery = ref('');
 
@@ -156,6 +156,12 @@ const canUseFreeOpenAiCredits = computed(
 	() => credentials !== null && userCanClaimOpenAiCredits.value,
 );
 
+const freeOpenAiCreditsDescription = computed(() =>
+	i18n.baseText('agents.modelSelector.freeCredits.description', {
+		interpolate: { credits: aiCreditsQuota.value },
+	}),
+);
+
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
 	const credentialOptions = getCredentialsForProvider(provider);
@@ -214,7 +220,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 							provider,
 							credentialType: credentialTypes[0],
 							leadingIcon: 'sparkles',
-							description: i18n.baseText('agents.modelSelector.freeCredits.description'),
+							description: freeOpenAiCreditsDescription.value,
 						},
 					},
 				]
@@ -259,7 +265,14 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	return {
 		id: provider,
 		label: definition.displayName,
-		data: { provider, credentialType: credentialTypes[0] },
+		data: {
+			provider,
+			credentialType: credentialTypes[0],
+			badgeLabel:
+				provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
+					? i18n.baseText('agents.modelSelector.freeCredits.badge')
+					: undefined,
+		},
 		children: [
 			...configureCredentialItems,
 			...freeOpenAiCreditsItems,

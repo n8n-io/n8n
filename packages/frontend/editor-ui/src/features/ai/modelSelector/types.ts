@@ -1,6 +1,7 @@
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 
 export interface AiModelSelectorMenuItemData {
+	badgeLabel?: string;
 	description?: string;
 	fullName?: string;
 	parts?: string[];

@@ -4,7 +4,14 @@
 	generic="TData extends AiModelSelectorMenuItemData = AiModelSelectorMenuItemData"
 >
 import { computed, ref, useCssModule, useTemplateRef } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { truncateBeforeLast } from '@n8n/utils';
 import type {
 	AiModelSelectorMenuItem,
@@ -156,18 +163,27 @@ defineExpose({
 					</template>
 				</div>
 			</template>
-			<N8nText v-else :class="ui.class" size="medium" color="text-dark">
-				{{ item.label }}
-			</N8nText>
+			<div v-else :class="[$style.labelWithBadge, ui.class]">
+				<N8nText size="medium" color="text-dark">{{ item.label }}</N8nText>
+				<N8nBadge
+					v-if="item.data?.badgeLabel"
+					:class="$style.badge"
+					theme="secondary"
+					size="xsmall"
+					:show-border="false"
+				>
+					{{ item.data.badgeLabel }}
+				</N8nBadge>
+			</div>
 		</template>
 
 		<template #item-trailing="{ item, ui }">
 			<N8nTooltip
 				v-if="item.data?.description"
-				:content="truncateBeforeLast(item.data.description, 200, 0)"
+				:content="truncateBeforeLast(item.data.description, 320, 0)"
 				:class="ui.class"
 				:content-class="$style.tooltip"
-				placement="right"
+				placement="left"
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
@@ -262,7 +278,7 @@ defineExpose({
 }
 
 .tooltip {
-	z-index: calc(var(--floating-ui--z) + 1) !important;
+	z-index: calc(var(--floating-ui--z) + 1000000) !important;
 }
 
 .flattenedLabel {
@@ -278,5 +294,22 @@ defineExpose({
 	flex-shrink: 0;
 	display: inline-flex;
 	align-items: center;
+}
+
+.labelWithBadge {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.labelWithBadge > :global(.n8n-text) {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.badge {
+	flex-shrink: 0;
 }
 </style>
