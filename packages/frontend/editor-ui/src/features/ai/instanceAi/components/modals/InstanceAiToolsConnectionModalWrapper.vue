@@ -6,6 +6,7 @@ import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBody.vue';
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
@@ -54,6 +55,7 @@ const mcpStore = useInstanceAiMcpStore();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
+const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
@@ -102,9 +104,14 @@ async function connectOrSwapCredential(serverSlug: string, credentialId: string)
 	return Boolean(updated);
 }
 
-void mcpStore.fetchCatalogLazy();
-void mcpStore.fetchConnections();
-const credentialsPromise = credentialsStore.fetchAllCredentials();
+if (isMcpFeatureEnabled.value) {
+	void mcpStore.fetchCatalogLazy();
+	void mcpStore.fetchConnections();
+}
+
+const credentialsPromise = isMcpFeatureEnabled.value
+	? credentialsStore.fetchAllCredentials()
+	: Promise.resolve([]);
 
 // Clear the state on close so the next open starts
 // fresh without every caller needing to pass `data: {}`
@@ -190,8 +197,10 @@ const activeServiceDefinition = computed<ServiceConnectionDefinition | null>(() 
 });
 
 const items = computed<ToolConnectionItem[]>(() => {
-	const catalog = mcpStore.catalog ?? [];
 	const out: ToolConnectionItem[] = [...serviceItems.value];
+	if (!isMcpFeatureEnabled.value || !settingsStore.settings?.mcpAccessEnabled) return out;
+
+	const catalog = mcpStore.catalog ?? [];
 	for (const server of catalog) {
 		const connections = mcpStore.connectionsByServerSlug.get(server.slug) ?? [];
 		if (connections.length === 0) {

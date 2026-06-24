@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIconButton } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -53,26 +53,15 @@ const ICON_MAP: Record<SingletonConnectionType, IconName> = {
 	'browser-use': 'globe',
 };
 
-const addItems = computed<Array<DropdownMenuItemProps<SingletonConnectionType>>>(() => {
-	const items: Array<DropdownMenuItemProps<SingletonConnectionType>> = [];
-	if (!store.isLocalGatewayDisabledByAdmin) {
-		items.push({
-			id: 'computer-use',
-			label: i18n.baseText('instanceAi.connections.add.computerUse'),
-			icon: { type: 'icon', value: ICON_MAP['computer-use'] },
-		});
-	}
-
+const hasAddableComputerUse = computed(() => {
+	if (store.isLocalGatewayDisabledByAdmin) return false;
 	const addedSingletonConnections = new Set(
 		singletonConnections.value.map((connection) => connection.type),
 	);
-	return items.filter((item) => {
-		if (item.id === 'computer-use' && addedSingletonConnections.has(item.id)) return false;
-		return true;
-	});
+	return !addedSingletonConnections.has('computer-use');
 });
 
-const hasAddableConnection = computed(() => isMcpEnabled.value || addItems.value.length > 0);
+const hasAddableConnection = computed(() => isMcpEnabled.value || hasAddableComputerUse.value);
 const addConnectionLabel = computed(() => i18n.baseText('instanceAi.connections.add.label'));
 
 function getSingletonRowActions(
@@ -113,10 +102,6 @@ function openToolsConnectionModal() {
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
-function handleAddSelect(type: SingletonConnectionType) {
-	void openSingletonModal(type);
-}
-
 async function handleSingletonDisconnect(type: SingletonConnectionType) {
 	if (type === 'computer-use') {
 		await store.disconnectComputerUse();
@@ -154,7 +139,6 @@ function openMcpSettings(connectionId: string) {
 			</N8nHeading>
 			<div v-if="hasAddableConnection" :class="$style.headerActions">
 				<N8nIconButton
-					v-if="isMcpEnabled"
 					icon="plus"
 					variant="ghost"
 					size="small"
@@ -163,24 +147,6 @@ function openMcpSettings(connectionId: string) {
 					data-test-id="instance-ai-connections-add"
 					@click="openToolsConnectionModal()"
 				/>
-				<N8nDropdownMenu
-					v-else
-					:items="addItems"
-					placement="bottom-end"
-					:portal-target="props.dropdownPortalTarget"
-					data-test-id="instance-ai-connections-add"
-					@select="handleAddSelect"
-				>
-					<template #trigger>
-						<N8nIconButton
-							icon="plus"
-							variant="ghost"
-							size="small"
-							icon-size="medium"
-							:aria-label="addConnectionLabel"
-						/>
-					</template>
-				</N8nDropdownMenu>
 			</div>
 		</div>
 
@@ -219,9 +185,9 @@ function openMcpSettings(connectionId: string) {
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
 				variant="outline"
 				size="small"
-				:disabled="store.isLocalGatewayDisabledByAdmin"
+				:disabled="!hasAddableConnection"
 				data-test-id="instance-ai-connections-empty-cta"
-				@click="openSingletonModal('computer-use')"
+				@click="openToolsConnectionModal()"
 			/>
 		</div>
 	</div>
