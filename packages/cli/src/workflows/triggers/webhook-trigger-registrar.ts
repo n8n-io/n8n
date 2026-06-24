@@ -155,12 +155,10 @@ export class WebhookTriggerRegistrar {
 
 	/**
 	 * Of the given trigger nodes, returns the ids of those whose desired webhooks
-	 * are not all present in storage. A node is treated atomically: if any one of
-	 * its webhooks is missing, the whole node is returned so it gets re-registered.
+	 * are not all present in storage. If any one of a node's webhooks is missing,
+	 * the whole node is returned so it gets re-registered.
 	 *
-	 * This compares the desired state against the actual local (`webhook_entity`)
-	 * state, so a node whose registration was never completed (e.g. a crash after
-	 * the published version advanced) is reconciled on the next publish.
+	 * This is used to recover from failures during registration.
 	 *
 	 * NOTE: it only considers the local registration, not any remote state
 	 * (e.g., a third-party service that has lost the webhook).
@@ -202,8 +200,7 @@ export class WebhookTriggerRegistrar {
 
 	/**
 	 * Builds the storage entity for a webhook, normalizing its path so static and
-	 * dynamic paths match what is persisted. Shared by registration and the
-	 * unregistered-webhook check so their comparison keys cannot drift.
+	 * dynamic paths match what is persisted.
 	 */
 	private buildNormalizedWebhook(workflow: Workflow, webhookData: IWebhookData): WebhookEntity {
 		const node = workflow.getNode(webhookData.node) as INode;
