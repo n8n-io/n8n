@@ -37,7 +37,7 @@ describe('SlackIntegration', () => {
 		expect(integration.prepareInboundText('@U_BOT hello', { agentUserId: 'U_BOT' })).toBe('hello');
 	});
 
-	it('buffers resume responses because Slack action events lack reliable thread context', async () => {
+	it('sets a thinking status and buffers resume responses for Slack actions', async () => {
 		const thread = {
 			startTyping: jest.fn().mockResolvedValue(undefined),
 		};
