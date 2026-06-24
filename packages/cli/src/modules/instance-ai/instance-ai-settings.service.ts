@@ -16,7 +16,7 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -56,6 +56,10 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 };
 
 const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
+
+type ProxyModelParts =
+	| { provider: 'anthropic'; modelName: string; modelId: `anthropic/${string}` }
+	| { provider: 'openai'; modelName: string; modelId: `openai/${string}` };
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -467,10 +471,41 @@ export class InstanceAiSettingsService {
 		return this.enabled;
 	}
 
-	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
+	/** Resolve just the model name for direct model/user preference routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
 		return prefs.modelName ?? this.extractModelName(this.config.model);
+	}
+
+	/** Resolve provider-aware model parts for AI Assistant proxy routing. */
+	resolveProxyModelParts(): ProxyModelParts {
+		const model = this.config.model.trim();
+		const slash = model.indexOf('/');
+		if (slash <= 0 || slash === model.length - 1) {
+			throw new UserError(
+				`Invalid Instance AI proxy model "${this.config.model}". Expected "anthropic/<model>" or "openai/<model>".`,
+			);
+		}
+
+		const provider = model.slice(0, slash);
+		const modelName = model.slice(slash + 1).trim();
+		if (!modelName) {
+			throw new UserError(
+				`Invalid Instance AI proxy model "${this.config.model}". Model name must not be empty.`,
+			);
+		}
+
+		if (provider === 'anthropic') {
+			return { provider, modelName, modelId: `anthropic/${modelName}` };
+		}
+
+		if (provider === 'openai') {
+			return { provider, modelName, modelId: `openai/${modelName}` };
+		}
+
+		throw new UserError(
+			`Unsupported Instance AI proxy model provider "${provider}". Supported providers: anthropic, openai.`,
+		);
 	}
 
 	/** Resolve the current model configuration for an agent run. */

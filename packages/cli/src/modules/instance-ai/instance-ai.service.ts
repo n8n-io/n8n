@@ -2226,7 +2226,7 @@ export class InstanceAiService {
 
 		const modelId =
 			proxyBaseUrl && tokenManager
-				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
+				? await this.modelService.resolveProxyModel(proxyBaseUrl, tokenManager)
 				: await this.modelService.resolveAgentModelConfig(user);
 
 		const taskStorage = new ThreadTaskStorage(memory);
