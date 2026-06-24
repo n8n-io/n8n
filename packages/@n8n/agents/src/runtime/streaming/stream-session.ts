@@ -2,7 +2,7 @@ import { StreamWriterGuard } from './stream-writer-guard';
 import type { StreamChunk } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
-import type { ExecutionOptions, RunOptions } from '../../types/sdk/agent';
+import type { ExecutionOptions, RunOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentAbortScope, AgentEventBus } from '../state/event-bus';
 
 export interface StreamSessionDeps {
@@ -23,6 +23,11 @@ export interface StreamSessionDeps {
 	cleanupRun: () => Promise<void>;
 	updateState: (status: 'failed' | 'cancelled') => void;
 	emitError: (error: unknown) => void;
+	/**
+	 * Usage + model to stamp on the terminal finish chunk of an aborted run, so a
+	 * cancelled run still bills the tokens consumed before the stop.
+	 */
+	getAbortFinish?: () => { usage?: TokenUsage; model?: string };
 }
 
 /**
@@ -84,7 +89,11 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 			}
 			await deps.cleanupRun();
 			await deps.flushTelemetry(deps.options);
-			await guard.fail(isAbort ? new Error('Agent run was aborted') : error);
+			await guard.fail(
+				isAbort ? new Error('Agent run was aborted') : error,
+				'error',
+				isAbort ? deps.getAbortFinish?.() : undefined,
+			);
 		})
 		.finally(() => {
 			deps.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);

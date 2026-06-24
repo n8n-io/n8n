@@ -2,9 +2,12 @@ import sanitizeHtml from 'sanitize-html';
 
 import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
 
-function sanitizeUserInput(input: string): string {
+function sanitizeUserInput(input: unknown): string {
+	// Only strings and numbers are meaningful display values; sanitize-html
+	// requires a string input, so coerce numbers and drop everything else.
+	const value = typeof input === 'string' ? input : typeof input === 'number' ? String(input) : '';
 	// Sanitize HTML tags and entities
-	let sanitized = sanitizeHtml(input, {
+	let sanitized = sanitizeHtml(value, {
 		allowedTags: [],
 		allowedAttributes: {},
 	});

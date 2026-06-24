@@ -8,7 +8,17 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		await import('./agents-catalog.controller');
+		await import('./agent-threads.controller');
 		await import('./agents.controller');
+		await import('./agents-config.controller');
+		await import('./agents-skills.controller');
+		await import('./agent-knowledge.controller');
+		await import('./agent-publish.controller');
+		await import('./agent-chat.controller');
+		await import('./agent-builder.controller');
+		await import('./agent-integrations.controller');
+		await import('./agent-tasks.controller');
 		await import('./agent-sandbox.controller');
 		await import('./agents-list.controller');
 		await import('./builder/agents-builder-settings.controller');
@@ -24,6 +34,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
 
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
+		Container.get(AgentRuntimeCacheService);
+
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository');
 		Container.get(AgentHistoryRepository);
 
@@ -38,10 +51,12 @@ export class AgentsModule implements ModuleInterface {
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
+		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(N8nChatIntegration));
 
 		// Reconnect Chat and Task services on startup so this main resumes its
 		// integrations and tasks for the role it currently holds.

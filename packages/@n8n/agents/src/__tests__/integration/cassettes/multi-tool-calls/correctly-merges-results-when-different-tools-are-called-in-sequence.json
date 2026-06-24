@@ -1,0 +1,256 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use the add tool for addition and multiply tool for multiplication. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 3 + 4 and also what is 5 * 6?"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add",
+					"description": "Add two numbers",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "multiply",
+					"description": "Multiply two numbers",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013cd56516fd330107edfaf88ee3995922e2dd46f8509213126f6b0224691758b8fd69b6367b15d36aafc77e4b659d3d2c2988ab6bcf9ee1c7fdf77fe92a31969c7a282acc50971ebb07247021db2680eeebe2460b09184b859039b4361042960902bf4823a539437be93757a9d6ed2eda54992420c528477d8094fd2fec58f8b3793333dfb30f8f2d99bd39f323b1b9d40bc7512c45019150268adb40e75383637da9176c0be7e8bc13a53f28ad01a0d4c7ba556214bb79e744e1b41410ea5b24dcc37e8a52ebde3cedc90b6c05e75b31872cca7c4f38ad049a3f96645d2e42b42b12fd7ec0d075039a5822a54bc57fc5ebfcea6d3ed6c1d83f1ae1dea0f62b054cd644edc49aa80415046602582c8fa3b5581389f900106da388e33940aaf14415d47517d7444cb66af84e457cae437bb5bbea3647188a0bb25d5763e305ded73c628ee2d356d0f6bcf9334fd24cfed68d8f7b7323bd5d7afcf4fee86c723884163b1e8b3589228bd0336af83964a058e0f6f16b2a2dc2d98b4a894524fb6b0471082b08fae20e5f0cf7417251b749791359865b3aeadd10fc525564ea25a048101d4cf0c603e061c038b8e2128d67a9e19571c8de12a00cb5e18b07a8d67bf554cf937a798b285e390ae4bffdd75bdb783cb5333bda6c27fcc86f8fef25d86c2ae5d5778e564a9ee1f6dbdc3b5287d9aa90e7a4d9e84a1f1556febfa3e33ac075bf55f82480b2f1dca4569b4ef3bd10c263b596d24a1c5626374687be7910344fdff2688ad5f7eda4dea3d947789d8cec19662bf00d696ccbce8090000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:06Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:06Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:06Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:06Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371e27d3bcb7b-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:09 GMT",
+			"request-id": "req_011CcLBRwQM9zzQRbvMfFzxN",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=AlKTKmCVJLMblZykAR6nLLgmg2_dZ__v6VTs78hKYlw-1782217206.1519153-1.0.1.1-MTerQn1iz9gN6hGIMnNxnhMAkQ9l0KarQDdWG7V.E.A; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-645ac54257fcf04d6d4f070feedf6a17-bf4257c089e0b76c-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. Use the add tool for addition and multiply tool for multiplication. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 3 + 4 and also what is 5 * 6?"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_011PiQsVA6uqi4Lnj8QDxA3V",
+							"name": "add",
+							"input": {
+								"a": 3,
+								"b": 4
+							},
+							"caller": {
+								"type": "direct"
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_015C9ZLohjemuM4AaHZF4ads",
+							"name": "multiply",
+							"input": {
+								"a": 5,
+								"b": 6
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_011PiQsVA6uqi4Lnj8QDxA3V",
+							"content": "{\"result\":7}"
+						},
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_015C9ZLohjemuM4AaHZF4ads",
+							"content": "{\"result\":30}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add",
+					"description": "Add two numbers",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "multiply",
+					"description": "Multiply two numbers",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013bd54cb6edb3010bcfb2b883daa3220f991b4047a2910a0c7de0ab4290846dcca84295225976e8240dfd10fea8f15b4ad5872e4369754174133bb9cd95d2d718796386b300459a308243dcd9424c9d923d0438bc0614442de7f037f84c62934c0a132322a9c6fa4dec6f96abe9e2f8ac5ba2c8a1272d02a9d116a51949faecaf873b97cc08f657c7bfda5c60f37cde71bc8cf942007ef4c0264083a90b449b67296d012f0afdf7208e45ae151066781db68cc110af823a2ad70042a24a94de8b1d8bbd7b68d24c86dd106e0efca32874a561b14954749da59318e287adea35497b83e370960bbc106bd3462dd3c8f3fb1e5e69ced7270918650994340bfd3150ad2e881436a8c925ea51edbefe853dda246071cac232177521b796710ba8e0d9f6e36c3c3d88f2d1577c655dbe9e14f84ecf514de1f8a1ef2a9e6631ee17d0adcbf38c0d8c1c042ab6d7da6c9208170c9a64243f2ef36f721239b07646cef29ec68727972f9dfb5d91bb662ef59965d67d9adbdb56bf6fb17bbda23cb22cb86fdbb3c3ed7fe6b7aae1d389b38b15ff5c93a47240cea1a2d23a05582a2b7f0e295ec5e6f27cf9668b1eaa67fc3d31df7bc89430e0e597f008406c87b37050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:10Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:10Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:10Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:10Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371fceee3cb7b-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:10 GMT",
+			"request-id": "req_011CcLBSFBRvsCwszXdQXQCc",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=7Vt1ztsgS76Z4ysMjTxVbdTaM1.xmrTSFvyENcgMrfU-1782217210.3854907-1.0.1.1-KXzh.q0trOKiVLCgKSFWLDHQneIrGvVNlgpm_CtuPoE; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-a7e4acdcf8e017d0baa9cb968ea6c6de-6261d7783ae82c0d-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]
