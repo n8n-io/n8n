@@ -475,6 +475,7 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
+export { MemoryTaskRegistry } from './runtime/memory-task-registry';
 export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegistry<TUser>;
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
@@ -513,9 +514,10 @@ export type {
 	ResumableStreamContext,
 	ResumableStreamControl,
 	ResumableStreamSource,
+	TraceStatus,
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
-export type { RunTokenUsage } from './stream/usage-accumulator';
+export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );

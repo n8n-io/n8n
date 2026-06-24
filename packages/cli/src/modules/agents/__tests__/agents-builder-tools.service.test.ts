@@ -4,11 +4,26 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type { CredentialTypes } from '@/credential-types';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { NodeTypes } from '@/node-types';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+
+import type { AgentConfigService } from '../agent-config.service';
+import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
@@ -22,19 +37,33 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { NodeTypes } from '@/node-types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-
 const ctx = {
 	resumeData: undefined,
 	suspend: jest.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
+type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
+	Pick<AgentConfigService, 'updateConfig'> &
+	Pick<AgentCustomToolsService, 'buildCustomTool'> &
+	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentSkillsService, 'createSkill'>;
+
 function makeService() {
-	const agentsService = mock<AgentsService>();
+	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
+	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
+	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
+	const agentIntegrationPersistenceService =
+		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkill'>>();
+	const purposeServices = {
+		findById: agentsService.findById,
+		findByProjectId: agentsService.findByProjectId,
+		updateConfig: agentConfigService.updateConfig,
+		buildCustomTool: agentCustomToolsService.buildCustomTool,
+		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		createSkill: agentSkillsService.createSkill,
+	} as jest.Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
@@ -56,7 +85,11 @@ function makeService() {
 	outboundHttp.transport.mockReturnValue(transport);
 
 	const service = new AgentsBuilderToolsService(
-		agentsService,
+		agentsService as unknown as AgentsService,
+		agentConfigService as unknown as AgentConfigService,
+		agentCustomToolsService as unknown as AgentCustomToolsService,
+		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
+		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
 		workflowRepository,
 		agentsToolsService,
@@ -69,9 +102,19 @@ function makeService() {
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 
-	return { service, agentsService, secureRuntime, agentTaskService, agentRepository, nodeTypes };
+	return {
+		service,
+		agentsService: purposeServices,
+		secureRuntime,
+		agentTaskService,
+		agentRepository,
+		nodeTypes,
+		outboundHttp,
+	};
 }
 
 const baseConfig: AgentJsonConfig = {
@@ -189,6 +232,16 @@ describe('AgentsBuilderToolsService', () => {
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
 		});
 
+		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
+			const { service, outboundHttp } = makeService();
+
+			service.getTools(agentId, projectId, credentialProvider, user);
+
+			expect(outboundHttp.transport).toHaveBeenCalledWith(
+				expect.not.objectContaining({ ssrf: 'disabled' }),
+			);
+		});
+
 		it('read_config returns the current config snapshot metadata', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent());
@@ -242,25 +295,21 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					id: agentId,
 					name: 'Current Agent',
-					description: 'The agent being edited',
 					activeVersionId: 'active-current',
 				},
 				{
 					id: 'agent-research',
 					name: 'Research Agent',
-					description: 'Finds information on the web',
 					activeVersionId: 'active-research',
 				},
 				{
 					id: 'agent-draft',
 					name: 'Draft Agent',
-					description: 'Not published yet',
 					activeVersionId: null,
 				},
 				{
 					id: 'agent-risk',
 					name: 'Risk Agent',
-					description: null,
 					activeVersionId: 'active-risk',
 				},
 			] as Agent[]);
@@ -273,7 +322,6 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
-						description: 'Finds information on the web',
 					},
 					{
 						agentId: 'agent-risk',
@@ -286,7 +334,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = { ...currentConfig, description: 'Updated description' };
+			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
@@ -303,7 +351,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -328,7 +376,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: 'stale-hash',
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -361,7 +409,7 @@ describe('AgentsBuilderToolsService', () => {
 			agent.integrations = [scheduleIntegration] as unknown as Agent['integrations'];
 			agentsService.findById.mockResolvedValue(agent);
 			agentsService.updateConfig.mockResolvedValue({
-				config: { ...currentConfig, integrations: [], description: 'Updated description' },
+				config: { ...currentConfig, integrations: [], instructions: 'Updated instructions' },
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -370,7 +418,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -382,7 +430,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({
 					integrations: [],
-					description: 'Updated description',
+					instructions: 'Updated instructions',
 				}),
 			);
 		});
@@ -683,7 +731,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const updatedConfig = {
 				...currentConfig,
-				description: 'Updated description',
+				instructions: 'Updated instructions',
 			};
 			const normalizedConfig = {
 				...updatedConfig,
@@ -702,7 +750,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
