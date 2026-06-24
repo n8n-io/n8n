@@ -1,0 +1,196 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a deployment manager. When asked to deploy, use the deploy_app tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Deploy the app \"stream-service\""
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "deploy_app",
+					"description": "Deploy an application. Requires two rounds of confirmation before proceeding.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"app": {
+								"type": "string",
+								"description": "Application name to deploy"
+							}
+						},
+						"required": ["app"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000ac5544d8fda3010bdf32bd09c83948465a5fad8aada5e2ab5da2d8796ca1ae229b838b6eb0f7611ca7faf0c041260bb7b699b9bdf1b67de9b190fad490736acc97b5c10f7015d18080cc8865b081b4bc0a04742d69e816da136821430a8144641a325ca551cdd8c26a3322f27459e17908114e91f7ec1f362aabf3cd6717d7f53cbc9ddd39bbba91847f908d95926c8c0199500f45efa803aa5ad8c0ea403b06fdf33f0c158ee08bdd1c07454ea0079fa154957d403050594cab7586cd54b6d63e0c1ac487b60b7e322830aab25f1ca11066934ef47e42def08c5735c7b372520bba49a1c2a3ea92fe34f6cb13c679b0c4c0c5d68729b8127b79615f120c901835419814ea422eb1fe49271be20030cb4091cd72815ce1541d30cfb5f3318d0bef387aaf2b932d5ea7affaf84ec320a7adafbeef2c9f6e15e3046f1e8a99d81748e3c2f3ede87cf73f3f0b61c7f2aa75fcb8752bfdb7c780f1968acd33d4156990d476b77696c0cc0b64daaaf52c9f73181908eaad073773266a55e9c39194202e139f38254c03f9bdf85f4ccef9193a67d1f7f7aa38fc1165d90a876203080e6158df8475ab633406b67c08633f0c111d6a3c38cb52affb3c019342f29494ffca59135b6a3e3a2f4ed82bbeaa94742c7436f057587fd958ba8f97b9be862753457fd5eab5c978363a17e039476490427060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:48Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:48Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:48Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:48Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1cdbe40275e-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:39:48 GMT",
+			"request-id": "req_011CcHzpf99goNojZRGawKLg",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=QR.osrILid.qlFNW654OEyf8654xgmWtS.uUWqA6rbY-1782117588.1123955-1.0.1.1-aXIwXW6bxYdgoDJk2hJombIunmvcM466fYUayVwW_aA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e43a12752d9dcde25a751b8101373c84-69efe5b775b50638-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a deployment manager. When asked to deploy, use the deploy_app tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Deploy the app \"stream-service\""
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01MStQboTB23P2VZ2T2nCyHE",
+							"name": "deploy_app",
+							"input": {
+								"app": "stream-service"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01MStQboTB23P2VZ2T2nCyHE",
+							"content": "{\"deployed\":true,\"app\":\"stream-service\",\"steps\":3}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "deploy_app",
+					"description": "Deploy an application. Requires two rounds of confirmation before proceeding.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"app": {
+								"type": "string",
+								"description": "Application name to deploy"
+							}
+						},
+						"required": ["app"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000abd544d8bdb3010bde7570c730c4e88b30d051fcb520a855268a0875284624d6235b2e495c6c986c5ffbd28b1b3763eda5eb6be18bf37f27b6f340cedc872062585203724024bcf23255966f0827ca808331c909874df98bd60e91419cc3037b2563429a4ded6937793c5643e9b2fd2d92cc504b58aff081b314b3f15dfdc72f7453fe6dff3dd878fe97275a83effc2e4420913f4ce444086a0034b1b657367992c63f6e36782815d253cc9e02c66b636a685023dd564731a808a586a133aaceedc6b5bd52cd86dc906ccdea70f09e6322f48e49e246b67c5b062d6f19ea4bac77567a300550595e4a5118bf2bafe954d8b4bb649d0d5dc871e120ce4773a27c19a3c66181ba3a457b1c7764d3ee6161b7298a1752ce44e6a235786b069e0f56946233a5d7adb50b1322edfdebefa1b25473545cfa7c87d3e266ecf313dc7c2e32b436caec52b6d37176a8011c47b061519967f36782c19183c214363e7b2d6de2355c61d4ab20cda6ad692496173b7516fe603d6cec3781cd8932c27ed658fc75358163ac05e1b039e9e6aed0978efc0bbdaaa006e1dfdadb52f8f63072b5a3b4f50799713296d3753f86a48863806ff3d51eb0cd81d25b5ad09f69a0be082409dfb3e3d4fc8fde974d5df86d3553d83003767bedb6537230f48ec451c6c1b24ab04d7dee23fef9ce6ed96cee5969837d7616f35afcf21c065bb7e0300324b6218060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:49Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:49Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:49Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:49Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1d39c3d275e-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Mon, 22 Jun 2026 08:39:49 GMT",
+			"request-id": "req_011CcHzpj9WHgbQgNxBeu8NM",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=r89mveUNkr9RItzEMG.HnDytVjb3aqV42WGH0eoe0tg-1782117589.0526798-1.0.1.1-iwlb5gDtDIPf2u5aaHrwCPQs13eaY.D_94KxZiLSHig; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-99968e5f1bc60e50fc2d6ed62d8e97e5-fe3e1c04e4406a0e-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

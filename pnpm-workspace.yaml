@@ -99,6 +99,7 @@ catalog:
   cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0
+  cross-env: ^7.0.3
   csv-parse: 6.2.1
   electron: ^41.7.2
   esbuild: ^0.28.1
