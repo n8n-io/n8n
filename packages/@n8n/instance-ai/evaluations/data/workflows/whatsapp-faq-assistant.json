@@ -1,0 +1,54 @@
+{
+	"description": "WhatsApp customer support bot: read FAQ from Google Sheets, build context, Gemini matches incoming questions and replies instantly; unresolved questions create a Notion support ticket, alert Slack, and send a holding WhatsApp reply.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a customer sends a WhatsApp message, use Gemini to match their question against our FAQ in Google Sheets and reply instantly. If it cannot resolve it, create a support ticket in Notion and alert the team on Slack."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: WhatsApp Trigger on incoming messages → read FAQ from Google Sheets → Google Gemini matches the question and drafts a reply → If resolved, send the answer back via WhatsApp; if not, create a Notion support ticket and post an alert to Slack. Which FAQ spreadsheet, Notion database, and Slack channel should I wire up?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "I'll wire WhatsApp Trigger → Google Sheets (FAQ) → build FAQ context → Gemini match → resolved check → WhatsApp FAQ reply on match; otherwise Notion ticket, Slack alert, and a holding WhatsApp reply. Ready for me to build it?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, go ahead."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["build", "whatsapp", "gemini", "google-sheets", "notion", "slack", "conditional"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"buildExpectations": [
+		"The workflow is triggered by a WhatsApp Trigger node (n8n-nodes-base.whatsAppTrigger) that listens for incoming customer messages.",
+		"An AI agent or llm chain wired to Gemini is involved in figuring out if the question is resolved from the FAQ",
+		"A Google Sheet faq is present either before the AI agent or as a tool of the AI agent.",
+		"A node that branches into decisions (if node, filter node, etc.) is present after the AI agent.",
+		"If the question is resolved from the FAQ, respond back to the user on WhatsApp.",
+		"If the question is not resolved from the FAQ, create a Notion support ticket, alert Slack, and send a WhatsApp reply to the user."
+	],
+	"executionScenarios": [
+		{
+			"name": "faq-question-matches",
+			"description": "FAQ has an answer for the user request",
+			"dataSetup": "WhatsApp Trigger receives an incoming message asking 'How do I reset my password?'. Google Sheets returns matching rows and Answer='Go to Settings → Security → Reset Password.' Gemini matches the question to the FAQ and concludes it is resolved. The decision routing node after the agent routes to the resolved branch. The WhatsApp send-message node on the resolved branch returns success.",
+			"successCriteria": "The workflow executes without errors on the resolved path only: WhatsApp Trigger → Google Sheets FAQ (before the AI agent or as an agent tool) → AI Agent (Gemini) → decision branch → WhatsApp send reply. A WhatsApp reply is sent containing the password-reset instructions (Settings / Security / Reset Password or equivalent). The Notion, Slack, and holding-reply WhatsApp nodes on the unresolved branch are not executed."
+		},
+		{
+			"name": "faq-question-does-not-match",
+			"description": "FAQ does not have an answer for the user request",
+			"dataSetup": "WhatsApp Trigger receives an incoming message asking 'Can you build a custom ERP integration for our legacy system?'. Google Sheets returns standard FAQ rows (shipping, returns, password reset, etc.) with nothing about custom ERP integrations. Gemini indicates the question is unresolved / no FAQ match. The decision routing node after the agent routes to the unresolved branch. The Notion create-page (or database item) node returns success with a new page id. The Slack post-message node returns success. The WhatsApp holding-reply node on the escalation branch returns success.",
+			"successCriteria": "The workflow executes without errors on the escalation path only: WhatsApp Trigger → Google Sheets FAQ (before the AI agent or as an agent tool) → AI Agent (Gemini) → decision routing node → Notion ticket + Slack alert + WhatsApp holding reply. A Notion support ticket is created containing the customer's question and contact context. A Slack alert is posted to notify the team. A WhatsApp message is sent to the customer acknowledging escalation (holding reply)."
+		}
+	]
+}

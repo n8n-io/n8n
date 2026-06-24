@@ -8,24 +8,20 @@ import {
 	N8nButton,
 	N8nFormInput,
 	N8nHeading,
-	N8nInput,
 	N8nLoading,
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { Role } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useAsyncState } from '@vueuse/core';
-import isEqual from 'lodash/isEqual';
-import sortBy from 'lodash/sortBy';
-import { computed, ref, toRaw, watch } from 'vue';
+import { computed, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
 
+import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
+import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -38,16 +34,31 @@ const settingsStore = useSettingsStore();
 
 const props = defineProps<{ roleSlug?: string }>();
 
-const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
-
-watch(activeTab, (newTab) => {
-	void router.replace({ query: { ...route.query, tab: newTab } });
+const {
+	activeTab,
+	tabOptions,
+	form,
+	isLoading,
+	initialState,
+	isReadOnly,
+	isNew,
+	showEditButtons,
+	showCreateButton,
+	hasUnsavedChanges,
+	displayNameValidationRules,
+	resetForm,
+} = useRoleEditorForm({
+	roleSlug: () => props.roleSlug,
+	viewRoute: VIEWS.PROJECT_ROLE_VIEW,
+	defaultScopes: () =>
+		structuredClone(
+			toRaw(
+				rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes ??
+					[],
+			),
+		),
+	fetchError: 'Error fetching role',
 });
-
-const tabOptions = computed<Array<TabOptions<string>>>(() => [
-	{ label: i18n.baseText('projectRoles.tab.permissions'), value: 'permissions' },
-	{ label: i18n.baseText('projectRoles.tab.assignments'), value: 'assignments' },
-]);
 
 // Dynamic back button text and navigation based on where the user navigated from
 const cameFromProjectSettings = computed(() => route.query.from === VIEWS.PROJECT_SETTINGS);
@@ -65,68 +76,6 @@ const onBackClick = () => {
 		void router.push({ name: VIEWS.PROJECT_ROLES_SETTINGS });
 	}
 };
-
-const defaultForm = () => ({
-	displayName: '',
-	description: '',
-	scopes: structuredClone(
-		toRaw(
-			rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes || [],
-		),
-	),
-});
-
-const initialState = ref<Role | undefined>();
-const { state: form, isLoading } = useAsyncState(
-	async () => {
-		if (!props.roleSlug) {
-			return defaultForm();
-		}
-
-		try {
-			const role = await rolesStore.fetchRoleBySlug({ slug: props.roleSlug });
-			initialState.value = structuredClone(role);
-			return {
-				displayName: role.displayName,
-				description: role.description,
-				scopes: role.scopes,
-			};
-		} catch (error) {
-			showError(error, 'Error fetching role');
-			return defaultForm();
-		}
-	},
-	defaultForm(),
-	{ shallow: false },
-);
-
-// Read-only if system role OR on view route (not edit route)
-const isReadOnly = computed(
-	() => initialState.value?.systemRole === true || route.name === VIEWS.PROJECT_ROLE_VIEW,
-);
-
-const hasUnsavedChanges = computed(() => {
-	if (!initialState.value) return false;
-
-	if (!isEqual(initialState.value.displayName, form.value.displayName)) return true;
-	// We need to explicitly check for an empty string and convert it to null.
-	// Using `??` wouldn't work here because `""` is a valid value and not `null` or `undefined`.
-	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	if (!isEqual(initialState.value.description ?? null, form.value.description || null)) return true;
-	if (!isEqual(sortBy(initialState.value.scopes), sortBy(form.value.scopes))) return true;
-
-	return false;
-});
-
-function resetForm(payload: Role | undefined) {
-	form.value = payload
-		? {
-				displayName: payload.displayName,
-				description: payload.description,
-				scopes: payload.scopes,
-			}
-		: defaultForm();
-}
 
 const scopeTypes = computed(() => {
 	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
@@ -340,103 +289,35 @@ async function deleteRole() {
 	}
 }
 
-const displayNameValidationRules = [
-	{ name: 'REQUIRED' },
-	{ name: 'MIN_LENGTH', config: { minimum: 2 } },
-];
+const editorLabels = computed<RoleEditorLabels>(() => ({
+	newRoleTitle: i18n.baseText('projectRoles.newRole'),
+	roleName: i18n.baseText('projectRoles.roleName'),
+	description: i18n.baseText('projectRoles.description'),
+	optional: i18n.baseText('projectRoles.optional'),
+	systemRoleNotEditable: i18n.baseText('projectRoles.systemRoleNotEditable'),
+	discardChanges: i18n.baseText('projectRoles.discardChanges'),
+	save: i18n.baseText('projectRoles.save'),
+	create: i18n.baseText('projectRoles.create'),
+}));
 </script>
 
 <template>
-	<div class="pb-xl" :class="$style.container">
-		<N8nButton
-			variant="ghost"
-			icon="arrow-left"
-			:class="$style.backButton"
-			text
-			@click="onBackClick"
-		>
-			{{ backButtonText }}
-		</N8nButton>
-		<div class="mb-xl" :class="$style.headerContainer">
-			<div :class="$style.headingContainer">
-				<N8nHeading tag="h1" size="2xlarge" :class="$style.heading">
-					<template v-if="roleSlug"
-						>Role "<N8nTooltip :content="form.displayName" placement="bottom"
-							><span>{{ form.displayName }}</span></N8nTooltip
-						>"</template
-					>
-					<template v-else>{{ i18n.baseText('projectRoles.newRole') }}</template>
-				</N8nHeading>
-			</div>
-			<div v-if="initialState && !isReadOnly && !isLoading" :class="$style.headerActions">
-				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
-					{{ i18n.baseText('projectRoles.discardChanges') }}
-				</N8nButton>
-				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
-					{{ i18n.baseText('projectRoles.save') }}
-				</N8nButton>
-			</div>
-			<template v-else-if="!roleSlug">
-				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
-			</template>
-		</div>
-
-		<div class="mb-l" :class="$style.formContainer">
-			<!-- Read-only: use slot to wrap input with tooltip -->
-			<template v-if="isReadOnly">
-				<N8nFormInput
-					v-model="form.displayName"
-					:label="i18n.baseText('projectRoles.roleName')"
-					class="mb-s"
-					show-required-asterisk
-					required
-				>
-					<N8nTooltip
-						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
-						placement="top"
-					>
-						<N8nInput v-model="form.displayName" :maxlength="100" disabled />
-					</N8nTooltip>
-				</N8nFormInput>
-				<N8nFormInput v-model="form.description" :label="i18n.baseText('projectRoles.description')">
-					<N8nTooltip
-						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
-						placement="top"
-					>
-						<N8nInput
-							v-model="form.description"
-							type="textarea"
-							:placeholder="i18n.baseText('projectRoles.optional')"
-							:maxlength="500"
-							:autosize="{ minRows: 2, maxRows: 4 }"
-							disabled
-						/>
-					</N8nTooltip>
-				</N8nFormInput>
-			</template>
-			<!-- Editable: standard N8nFormInput with full validation -->
-			<template v-else>
-				<N8nFormInput
-					v-model="form.displayName"
-					:label="i18n.baseText('projectRoles.roleName')"
-					validate-on-blur
-					:validation-rules="displayNameValidationRules"
-					class="mb-s"
-					show-required-asterisk
-					required
-					:maxlength="100"
-				/>
-				<N8nFormInput
-					v-model="form.description"
-					:label="i18n.baseText('projectRoles.description')"
-					:placeholder="i18n.baseText('projectRoles.optional')"
-					type="textarea"
-					:maxlength="500"
-					:autosize="{ minRows: 2, maxRows: 4 }"
-				/>
-			</template>
-		</div>
-
+	<RoleEditorLayout
+		v-model:display-name="form.displayName"
+		v-model:description="form.description"
+		:is-new="isNew"
+		:is-read-only="isReadOnly"
+		:show-edit-buttons="showEditButtons"
+		:show-create-button="showCreateButton"
+		:has-unsaved-changes="hasUnsavedChanges"
+		:back-button-text="backButtonText"
+		:labels="editorLabels"
+		:display-name-validation-rules="displayNameValidationRules"
+		@back="onBackClick"
+		@save="handleSubmit"
+		@discard="resetForm(initialState)"
+		@create="handleSubmit"
+	>
 		<div v-if="roleSlug" class="mb-l">
 			<N8nTabs v-model="activeTab" :options="tabOptions" />
 		</div>
@@ -524,17 +405,10 @@ const displayNameValidationRules = [
 		</div>
 
 		<RoleAssignmentsTab v-if="roleSlug && activeTab === 'assignments'" :role-slug="roleSlug" />
-	</div>
+	</RoleEditorLayout>
 </template>
 
 <style lang="css" module>
-.container {
-	max-width: 700px;
-	margin: 0 auto;
-	display: flex;
-	flex-direction: column;
-}
-
 .cardContainer {
 	padding: 8px 16px;
 	border-radius: 4px;
@@ -556,39 +430,6 @@ const displayNameValidationRules = [
 
 .cardTitle {
 	width: 133px;
-}
-
-.backButton {
-	position: absolute;
-	top: 10px;
-	left: 10px;
-}
-
-.headerContainer {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: var(--spacing--sm);
-}
-
-.headingContainer {
-	min-width: 0;
-}
-
-.heading {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.headerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
-.formContainer {
-	max-width: 415px;
 }
 
 .presetsContainer {
