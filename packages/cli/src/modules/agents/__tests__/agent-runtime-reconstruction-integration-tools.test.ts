@@ -1,8 +1,13 @@
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type { AgentsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type {
 	User,
 	CredentialsEntity,
@@ -119,6 +124,8 @@ function makeRuntimeReconstructionService(
 		{ modules } as unknown as AgentsConfig,
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 }
 

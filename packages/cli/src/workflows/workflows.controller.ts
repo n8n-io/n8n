@@ -9,14 +9,15 @@ import {
 	UpdateWorkflowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import {
-	SharedWorkflow,
-	WorkflowEntity,
+	AuthenticatedRequest,
 	ProjectRelationRepository,
 	ProjectRepository,
+	SharedWorkflow,
+	WorkflowEntity,
 	WorkflowRepository,
-	AuthenticatedRequest,
 } from '@n8n/db';
 import {
 	Body,
@@ -36,8 +37,8 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import express from 'express';
 import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
-import { CollaborationService } from '../collaboration/collaboration.service';
 
+import { CollaborationService } from '../collaboration/collaboration.service';
 import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
@@ -46,22 +47,21 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 
+import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import type { IWorkflowResponse } from '@/interfaces';
+import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { AuthService } from '@/auth/auth.service';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -687,11 +687,12 @@ export class WorkflowsController {
 
 	private async fetchWorkflowFromUrl(url: string) {
 		const client = this.outboundHttp.requests({
+			// user-supplied URL
 			ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
 		});
 
 		try {
-			return (await client.request({ method: 'GET', url })) as IWorkflowResponse;
+			return await client.request<IWorkflowResponse>({ method: 'GET', url });
 		} catch (error) {
 			const blockedError = this.findSsrfBlockedError(error);
 			if (blockedError) throw blockedError;
