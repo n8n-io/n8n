@@ -257,6 +257,16 @@ export interface FrontendSettings {
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
 	canvasOnly: boolean;
+	/**
+	 * Client settings for the instance-pull demo module. Drives the role-aware
+	 * "Publishing" UI on each instance.
+	 */
+	instancePull?: {
+		/** Whether the instance-pull demo is enabled (`N8N_INSTANCE_PULL_DEMO`). */
+		enabled: boolean;
+		/** Role of this instance: `dev` raises reviews, `prd` validates and publishes. */
+		role: 'dev' | 'prd';
+	};
 	envFeatureFlags: N8nEnvFeatFlags;
 }
 

@@ -12,6 +12,7 @@ import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import type { InstancePullConfig } from '@/modules/instance-pull.ee/instance-pull.config';
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
@@ -188,6 +189,11 @@ describe('FrontendService', () => {
 		getPublishedCount: jest.fn().mockResolvedValue(7),
 	});
 
+	const instancePullConfig = mock<InstancePullConfig>({
+		enabled: false,
+		role: 'dev',
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -216,6 +222,7 @@ describe('FrontendService', () => {
 				ownershipService,
 				aiUsageService,
 				workflowRepository,
+				instancePullConfig,
 			),
 			license,
 		};

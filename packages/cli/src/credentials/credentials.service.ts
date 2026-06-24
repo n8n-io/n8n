@@ -1441,8 +1441,12 @@ export class CredentialsService {
 				'create',
 			);
 		}
+		// Honor a caller-supplied id only under the instance-pull demo flag (used to
+		// align prd credential ids with their dev source). Otherwise auto-generate.
+		const presetId = process.env.N8N_INSTANCE_PULL_DEMO === 'true' && opts.id ? opts.id : null;
+
 		const encryptedCredential = await this.createEncryptedData({
-			id: null,
+			id: presetId,
 			name: opts.name,
 			type: opts.type,
 			data: opts.data as ICredentialDataDecryptedObject,

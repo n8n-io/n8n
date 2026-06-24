@@ -14,4 +14,5 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	UNPUBLISH = 'unpublish',
 	SHARE = 'share',
 	FAVORITE = 'favorite',
+	RAISE_REVIEW = 'raise-review',
 }

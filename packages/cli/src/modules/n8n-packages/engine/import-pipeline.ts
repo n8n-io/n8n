@@ -23,6 +23,7 @@ import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
+import type { PackageReader } from '../io/package-reader';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { PackageImportConfig } from '../n8n-packages.config';
 
@@ -53,7 +54,21 @@ export class ImportPipeline {
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
 		const context = await this.resolveTarget(request.user, request.projectId, request.folderId);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		return await this.runFromReader(reader, context, request);
+	}
 
+	/**
+	 * Full apply from an explicit {@link PackageReader} + pre-resolved
+	 * {@link ImportContext}. Used by the instance-pull demo to publish a package
+	 * that lives in a git working tree (not a request buffer). `run` is the
+	 * buffer-based entry point that resolves the target then delegates here.
+	 */
+	async runFromReader(
+		reader: PackageReader,
+		context: ImportContext,
+		request: ImportPackageRequest,
+	): Promise<ImportResult> {
 		// PublishAll requires publish scope up front; other policies are checked per workflow
 		await this.workflowPublisher.assertCanPublish(
 			context.user,
@@ -61,7 +76,6 @@ export class ImportPipeline {
 			request.workflowPublishingPolicy,
 		);
 
-		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 
@@ -137,6 +151,39 @@ export class ImportPipeline {
 			matched: credentialApply.matched,
 			stubbed: credentialApply.stubbed,
 		});
+	}
+
+	/**
+	 * Side-effect-free dry run: runs ONLY the importers' `plan()` stages and
+	 * folds their blocking conditions, returning them without ever calling any
+	 * `apply()`. The instance-pull prd poll loop uses this to validate an open
+	 * PR's package against the prd database without writing to it.
+	 *
+	 * Unlike {@link run} this takes an explicit {@link PackageReader} (the
+	 * package lives in a git working tree, not a request buffer) and a
+	 * pre-resolved {@link ImportContext} (no project/scope resolution side
+	 * effects). `request` supplies only the credential/workflow policy knobs;
+	 * its `packageBuffer` is ignored.
+	 */
+	async validate(
+		reader: PackageReader,
+		context: ImportContext,
+		request: ImportPackageRequest,
+	): Promise<BlockingIssue[]> {
+		const manifest = await this.packageParser.getManifest(reader);
+		const workflowsForImport = await this.packageParser.getWorkflows(reader);
+
+		const credentialRequest: CredentialBindingRequest = {
+			requirements: manifest.requirements?.credentials,
+			matchingMode: request.credentialMatchingMode,
+			missingMode: request.credentialMissingMode,
+			credentialBindings: request.credentialBindings,
+		};
+
+		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
+		const workflowPlan = await this.workflowImporter.plan(context, workflowsForImport, request);
+
+		return this.collectBlockingIssues(workflowPlan, credentialPlan, credentialRequest);
 	}
 
 	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */

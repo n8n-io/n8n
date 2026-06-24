@@ -30,8 +30,10 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
@@ -70,6 +72,14 @@ const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+// Instance-pull demo: dev instances can raise a review (open a PR) for a workflow.
+const canRaiseReview = computed(
+	() =>
+		settingsStore.settings.instancePull?.enabled === true &&
+		settingsStore.settings.instancePull?.role === 'dev',
+);
 
 const onExecutionsTab = computed(() => {
 	return [
@@ -194,6 +204,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				!sourceControlStore.isEnterpriseSourceControlEnabled ||
 				onExecutionsTab.value ||
 				sourceControlStore.preferences.branchReadOnly,
+		});
+	}
+
+	if (canRaiseReview.value) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.RAISE_REVIEW,
+			label: locale.baseText('menuActions.raiseReview'),
+			disabled: props.isNewWorkflow || onExecutionsTab.value,
 		});
 	}
 
@@ -349,6 +367,34 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				user_id_sharer: usersStore.currentUser?.id,
 				sub_view: route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
 			});
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.RAISE_REVIEW: {
+			try {
+				const saved = await saveCurrentWorkflow();
+				const workflowId = getWorkflowId(props.id, route.params.workflowId);
+				if (!saved || !workflowId) {
+					return;
+				}
+
+				const { pullRequestUrl } = await makeRestApiRequest<{
+					pullRequestUrl: string;
+					pullRequestNumber: number;
+				}>(rootStore.restApiContext, 'POST', `/instance-pull/raise-review/${workflowId}`);
+
+				const link = `<a href="${pullRequestUrl}" target="_blank">${locale.baseText(
+					'instancePull.raiseReview.toast.success.link',
+				)}</a>`;
+				toast.showMessage({
+					title: locale.baseText('instancePull.raiseReview.toast.success.title'),
+					message: locale.baseText('instancePull.raiseReview.toast.success.message', {
+						interpolate: { link },
+					}),
+					type: 'success',
+				});
+			} catch (error) {
+				toast.showError(error, locale.baseText('instancePull.raiseReview.toast.error.title'));
+			}
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {

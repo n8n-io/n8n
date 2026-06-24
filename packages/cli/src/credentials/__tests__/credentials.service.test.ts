@@ -2440,6 +2440,63 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('createCredential with a supplied id (instance-pull demo flag)', () => {
+		const credentialData = {
+			name: 'Pinned Credential',
+			type: 'apiKey',
+			data: { apiKey: 'test-key' },
+			projectId: 'project-1',
+			id: 'pinned-cred-id',
+		};
+
+		const originalDemoFlag = process.env.N8N_INSTANCE_PULL_DEMO;
+
+		beforeEach(() => {
+			credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+			roleService.combineResourceScopes.mockReturnValue([] as any);
+			sharedCredentialsRepository.create.mockImplementation((data) => data as any);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			externalHooks.run.mockResolvedValue();
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as any);
+			projectService.getProjectRelationsForUser.mockResolvedValue([]);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+		});
+
+		afterEach(() => {
+			if (originalDemoFlag === undefined) {
+				delete process.env.N8N_INSTANCE_PULL_DEMO;
+			} else {
+				process.env.N8N_INSTANCE_PULL_DEMO = originalDemoFlag;
+			}
+		});
+
+		it('persists the supplied id when the demo flag is on', async () => {
+			// ARRANGE
+			process.env.N8N_INSTANCE_PULL_DEMO = 'true';
+			const savedEntities: any[] = [];
+			mockTransactionManager({ onSave: (entity) => savedEntities.push(entity) });
+
+			// ACT
+			await service.createUnmanagedCredential({ ...credentialData }, ownerUser);
+
+			// ASSERT
+			expect(savedEntities[0]).toMatchObject({ id: 'pinned-cred-id' });
+		});
+
+		it('ignores the supplied id when the demo flag is off (auto-generated)', async () => {
+			// ARRANGE
+			delete process.env.N8N_INSTANCE_PULL_DEMO;
+			const savedEntities: any[] = [];
+			mockTransactionManager({ onSave: (entity) => savedEntities.push(entity) });
+
+			// ACT
+			await service.createUnmanagedCredential({ ...credentialData }, ownerUser);
+
+			// ASSERT - id is not carried over from the payload
+			expect(savedEntities[0].id).not.toBe('pinned-cred-id');
+		});
+	});
+
 	describe('createManagedCredential', () => {
 		const credentialData = {
 			name: 'Managed Credential',

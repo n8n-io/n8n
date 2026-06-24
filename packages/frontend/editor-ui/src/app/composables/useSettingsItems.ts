@@ -125,6 +125,18 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
+				id: 'settings-instance-pull',
+				icon: 'git-branch',
+				label: i18n.baseText(
+					settingsStore.instancePull?.role === 'prd'
+						? 'instancePull.requests.title'
+						: 'instancePull.myReviews.title',
+				),
+				position: 'top',
+				available: settingsStore.instancePull?.enabled === true,
+				route: { to: { name: VIEWS.INSTANCE_PULL_SETTINGS } },
+			},
+			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),
