@@ -326,7 +326,9 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 	// are more recent (the orchestrator delegates to children) and should win.
 	for (const tc of node.toolCalls) {
 		const tcArgs = tc.args as Record<string, unknown> | undefined;
-		if (!(tc.toolName === 'executions' && tcArgs?.action === 'run') || tc.isLoading) continue;
+		const isExecutionRun = tc.toolName === 'executions' && tcArgs?.action === 'run';
+		const isVerificationRun = tc.toolName === 'verify-built-workflow';
+		if ((!isExecutionRun && !isVerificationRun) || tc.isLoading) continue;
 		const result = tc.result;
 		const args = tc.args;
 		if (
