@@ -38,14 +38,33 @@ export interface PullRequestReviewComment {
 	author?: string;
 	createdAt: string;
 	updatedAt: string;
+	inReplyToId?: number;
 }
 
 export interface CreatePullRequestReviewComment {
 	body: string;
-	path: string;
-	line: number;
-	side: PullRequestCommentSide;
-	commitId: string;
+	path?: string;
+	line?: number;
+	side?: PullRequestCommentSide;
+	commitId?: string;
+	inReplyToId?: number;
+}
+
+export type PullRequestReviewEvent = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
+
+export interface SubmitPullRequestReview {
+	body?: string;
+	event: PullRequestReviewEvent;
+	commitId?: string;
+}
+
+export interface PullRequestReviewSubmission {
+	id: number;
+	url: string;
+	state: string;
+	body: string;
+	author?: string;
+	submittedAt: string;
 }
 
 /**
@@ -75,4 +94,11 @@ export interface CodeReviewProvider {
 		prNumber: number,
 		comment: CreatePullRequestReviewComment,
 	): Promise<PullRequestReviewComment>;
+
+	deleteReviewComment(commentId: number): Promise<void>;
+
+	submitPullRequestReview(
+		prNumber: number,
+		review: SubmitPullRequestReview,
+	): Promise<PullRequestReviewSubmission>;
 }

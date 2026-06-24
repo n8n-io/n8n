@@ -12,7 +12,9 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
-import ReviewCommentPanel from '../components/ReviewCommentPanel.vue';
+import ReviewNodeDiff from '../components/ReviewNodeDiff.vue';
+import ReviewNodeCommentBadge from '../components/ReviewNodeCommentBadge.vue';
+import ReviewSubmitReviewPopover from '../components/ReviewSubmitReviewPopover.vue';
 import { useSourceControlStore } from '../sourceControl.store';
 import { snapshotToWorkflowDb } from '../reviewWorkflow.utils';
 
@@ -31,6 +33,25 @@ const reviewComments = ref<SourceControlReviewComment[]>([]);
 
 const canComment = computed(() => sourceControlStore.preferences.hasApiToken === true);
 
+const commentedNodeIds = computed(() => {
+	const ids = new Set<string>();
+	for (const comment of reviewComments.value) {
+		const nodeId = comment.anchor?.nodeId;
+		if (nodeId) ids.add(nodeId);
+	}
+	return ids;
+});
+
+const commentCountByNodeId = computed(() => {
+	const counts = new Map<string, number>();
+	for (const comment of reviewComments.value) {
+		const nodeId = comment.anchor?.nodeId;
+		if (!nodeId) continue;
+		counts.set(nodeId, (counts.get(nodeId) ?? 0) + 1);
+	}
+	return counts;
+});
+
 const selectedFile = computed(() => workflows.value.find((w) => w.path === selectedPath.value));
 
 // WorkflowDiffView treats an absent side as fully added/removed.
@@ -46,7 +67,7 @@ const targetWorkflow = computed<IWorkflowDb | undefined>(() =>
 );
 
 const loadComments = async (filePath?: string) => {
-	if (!filePath || !canComment.value) {
+	if (!filePath) {
 		reviewComments.value = [];
 		return;
 	}
@@ -81,6 +102,11 @@ const onCommentSubmitted = (comment: SourceControlReviewComment) => {
 	reviewComments.value = [...reviewComments.value, comment];
 };
 
+const onCommentsDeleted = (deletedCommentIds: number[]) => {
+	const deletedIds = new Set(deletedCommentIds);
+	reviewComments.value = reviewComments.value.filter((comment) => !deletedIds.has(comment.id));
+};
+
 watch(selectedPath, (path) => {
 	void loadComments(path);
 });
@@ -109,6 +135,9 @@ onMounted(loadReview);
 						>#{{ pullRequest.prNumber }} <N8nIcon icon="external-link" size="xsmall"
 					/></N8nText>
 				</N8nLink>
+			</div>
+			<div v-if="canComment && pullRequest" :class="$style.headerActions">
+				<ReviewSubmitReviewPopover :pr-number="pullRequest.prNumber" />
 			</div>
 		</div>
 
@@ -147,14 +176,25 @@ onMounted(loadReview);
 					:tidy-up="true"
 					source="unknown"
 				>
-					<template v-if="canComment" #asideFooter="{ node }">
-						<ReviewCommentPanel
-							v-if="node"
-							:pr-number="Number(prNumber)"
-							:file-path="selectedFile.path"
+					<template #nodeToolbar="{ nodeId }">
+						<ReviewNodeCommentBadge
+							v-if="commentedNodeIds.has(nodeId)"
+							:count="commentCountByNodeId.get(nodeId)"
+						/>
+					</template>
+					<template #asideNodeDiff="{ outputFormat, node, nodeDiffs }">
+						<ReviewNodeDiff
+							v-if="node && selectedFile"
+							:old-string="nodeDiffs.oldString"
+							:new-string="nodeDiffs.newString"
+							:output-format="outputFormat"
 							:node="node"
 							:comments="reviewComments"
+							:pr-number="Number(prNumber)"
+							:file-path="selectedFile.path"
+							:can-comment="canComment"
 							@submitted="onCommentSubmitted"
+							@deleted="onCommentsDeleted"
 						/>
 					</template>
 				</WorkflowDiffView>
@@ -175,6 +215,7 @@ onMounted(loadReview);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--md);
+	width: 100%;
 	padding: var(--spacing--sm) var(--spacing--md);
 	border-bottom: var(--border-width) solid var(--color--foreground);
 }
@@ -183,6 +224,7 @@ onMounted(loadReview);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	flex: 1;
 	min-width: 0;
 }
 
@@ -195,6 +237,11 @@ onMounted(loadReview);
 .externalLink {
 	display: flex;
 	align-items: center;
+}
+
+.headerActions {
+	margin-left: auto;
+	flex-shrink: 0;
 }
 
 .loading {
@@ -231,7 +278,7 @@ onMounted(loadReview);
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border: none;
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius);
 	background: transparent;
 	cursor: pointer;
 	text-align: left;

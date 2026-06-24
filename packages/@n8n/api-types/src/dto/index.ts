@@ -104,6 +104,12 @@ export {
 	type CreateSourceControlReviewCommentRequest,
 	type SourceControlReviewComment,
 } from './source-control/review-comment.dto';
+export {
+	CreateSourceControlSubmitReviewRequestDto,
+	type CreateSourceControlSubmitReviewRequest,
+	type SourceControlReviewSubmission,
+	type SourceControlReviewSubmissionEvent,
+} from './source-control/review-submit.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';

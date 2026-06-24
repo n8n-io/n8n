@@ -6,7 +6,9 @@ import type {
 	CreatePullRequestReviewComment,
 	PullRequestFile,
 	PullRequestReviewComment,
+	PullRequestReviewSubmission,
 	PullRequestSummary,
+	SubmitPullRequestReview,
 } from '../code-review-provider';
 
 interface GitHubProviderOptions {
@@ -49,6 +51,16 @@ interface GitHubReviewComment {
 	user?: { login: string };
 	created_at: string;
 	updated_at: string;
+	in_reply_to_id?: number;
+}
+
+interface GitHubPullRequestReview {
+	id: number;
+	body: string;
+	html_url: string;
+	state: 'PENDING' | 'COMMENTED' | 'APPROVED' | 'CHANGES_REQUESTED' | 'DISMISSED';
+	submitted_at: string;
+	user?: { login: string };
 }
 
 const NORMALIZED_STATUS: Record<string, ReviewFileStatus> = {
@@ -130,6 +142,18 @@ export class GitHubProvider implements CodeReviewProvider {
 			author: comment.user?.login,
 			createdAt: comment.created_at,
 			updatedAt: comment.updated_at,
+			inReplyToId: comment.in_reply_to_id,
+		};
+	}
+
+	private toReviewSubmission(review: GitHubPullRequestReview): PullRequestReviewSubmission {
+		return {
+			id: review.id,
+			body: review.body,
+			url: review.html_url,
+			state: review.state,
+			author: review.user?.login,
+			submittedAt: review.submitted_at,
 		};
 	}
 
@@ -205,17 +229,21 @@ export class GitHubProvider implements CodeReviewProvider {
 		prNumber: number,
 		comment: CreatePullRequestReviewComment,
 	): Promise<PullRequestReviewComment> {
-		const { status, body } = await this.request<GitHubReviewComment>(
-			`${this.repoPath}/pulls/${prNumber}/comments`,
-			{
-				method: 'POST',
-				body: JSON.stringify({
+		const payload = comment.inReplyToId
+			? { body: comment.body, in_reply_to: comment.inReplyToId }
+			: {
 					body: comment.body,
 					commit_id: comment.commitId,
 					path: comment.path,
 					line: comment.line,
 					side: comment.side,
-				}),
+				};
+
+		const { status, body } = await this.request<GitHubReviewComment>(
+			`${this.repoPath}/pulls/${prNumber}/comments`,
+			{
+				method: 'POST',
+				body: JSON.stringify(payload),
 			},
 		);
 		if (status === 422) {
@@ -227,5 +255,42 @@ export class GitHubProvider implements CodeReviewProvider {
 			throw new UserError('Failed to create pull request review comment on GitHub.');
 		}
 		return this.toReviewComment(body);
+	}
+
+	async deleteReviewComment(commentId: number): Promise<void> {
+		const { status } = await this.request<Record<string, never>>(
+			`${this.repoPath}/pulls/comments/${commentId}`,
+			{ method: 'DELETE' },
+		);
+		if (status === 404) {
+			throw new UserError('Pull request review comment was not found.');
+		}
+		if (status >= 400) {
+			throw new UserError('Failed to delete pull request review comment on GitHub.');
+		}
+	}
+
+	async submitPullRequestReview(
+		prNumber: number,
+		review: SubmitPullRequestReview,
+	): Promise<PullRequestReviewSubmission> {
+		const { status, body } = await this.request<GitHubPullRequestReview>(
+			`${this.repoPath}/pulls/${prNumber}/reviews`,
+			{
+				method: 'POST',
+				body: JSON.stringify({
+					commit_id: review.commitId,
+					body: review.body ?? '',
+					event: review.event,
+				}),
+			},
+		);
+		if (status === 422) {
+			throw new UserError('GitHub could not submit the pull request review.');
+		}
+		if (status >= 400) {
+			throw new UserError('Failed to submit pull request review on GitHub.');
+		}
+		return this.toReviewSubmission(body);
 	}
 }

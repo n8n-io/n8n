@@ -3,14 +3,16 @@ import {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	CreateSourceControlReviewCommentRequestDto,
+	CreateSourceControlSubmitReviewRequestDto,
 	type GitCommitInfo,
 	type SourceControlledFile,
 	type SourceControlReviewComment,
 	type SourceControlReviewDetail,
+	type SourceControlReviewSubmission,
 	type SourceControlReviewSummary,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
+import { Get, Post, Patch, Delete, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
@@ -391,6 +393,13 @@ export class SourceControlController {
 		if (!payload.body?.trim()) {
 			throw new BadRequestError('Comment body is required');
 		}
+		if (payload.inReplyToId) {
+			try {
+				return await this.pullRequestReviewService.createReviewComment(prNumber, payload);
+			} catch (error) {
+				throw new BadRequestError((error as { message: string }).message);
+			}
+		}
 		if (!payload.path?.trim()) {
 			throw new BadRequestError('Workflow file path is required');
 		}
@@ -399,6 +408,50 @@ export class SourceControlController {
 		}
 		try {
 			return await this.pullRequestReviewService.createReviewComment(prNumber, payload);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Delete('/reviews/:prNumber/comments/:commentId', {
+		middlewares: [sourceControlEnabledMiddleware],
+	})
+	@GlobalScope('sourceControl:push')
+	async deleteReviewComment(
+		req: AuthenticatedRequest & { params: { prNumber: string; commentId: string } },
+	): Promise<{ deletedCommentIds: number[] }> {
+		const prNumber = Number(req.params.prNumber);
+		const commentId = Number(req.params.commentId);
+		if (!Number.isInteger(prNumber) || prNumber <= 0) {
+			throw new BadRequestError('Invalid pull request number');
+		}
+		if (!Number.isInteger(commentId) || commentId <= 0) {
+			throw new BadRequestError('Invalid comment id');
+		}
+		try {
+			const deletedCommentIds = await this.pullRequestReviewService.deleteReviewComment(
+				prNumber,
+				commentId,
+			);
+			return { deletedCommentIds };
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Post('/reviews/:prNumber/submit', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:push')
+	async submitReview(
+		req: AuthenticatedRequest & { params: { prNumber: string } },
+		_res: express.Response,
+		@Body payload: CreateSourceControlSubmitReviewRequestDto,
+	): Promise<SourceControlReviewSubmission> {
+		const prNumber = Number(req.params.prNumber);
+		if (!Number.isInteger(prNumber) || prNumber <= 0) {
+			throw new BadRequestError('Invalid pull request number');
+		}
+		try {
+			return await this.pullRequestReviewService.submitReview(prNumber, payload);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

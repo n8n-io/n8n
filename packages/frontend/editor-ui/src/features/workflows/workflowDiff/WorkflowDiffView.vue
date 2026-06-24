@@ -314,6 +314,12 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 			<template v-if="$slots.asideFooter" #asideFooter="slotProps">
 				<slot name="asideFooter" v-bind="slotProps" />
 			</template>
+			<template v-if="$slots.asideNodeDiff" #asideNodeDiff="slotProps">
+				<slot name="asideNodeDiff" v-bind="slotProps" />
+			</template>
+			<template v-if="$slots.nodeToolbar" #nodeToolbar="slotProps">
+				<slot name="nodeToolbar" v-bind="slotProps" />
+			</template>
 		</WorkflowDiffContent>
 	</div>
 </template>

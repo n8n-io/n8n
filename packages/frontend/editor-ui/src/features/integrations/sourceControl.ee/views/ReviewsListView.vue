@@ -145,7 +145,7 @@ onMounted(loadReviews);
 	gap: var(--spacing--sm);
 	padding: var(--spacing--sm) var(--spacing--md);
 	border: var(--border-width) solid var(--color--foreground);
-	border-radius: var(--border-radius--large);
+	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 	cursor: pointer;
 
@@ -189,7 +189,7 @@ onMounted(loadReviews);
 	font-size: var(--font-size--3xs);
 	text-transform: uppercase;
 	padding: 0 var(--spacing--3xs);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius);
 	background-color: var(--color--foreground);
 	color: var(--color--text--shade-1);
 }

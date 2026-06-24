@@ -1,9 +1,11 @@
 import type {
 	CreateSourceControlReviewCommentRequest,
+	CreateSourceControlSubmitReviewRequest,
 	ReviewWorkflowFile,
 	ReviewWorkflowSnapshot,
 	SourceControlReviewComment,
 	SourceControlReviewDetail,
+	SourceControlReviewSubmission,
 	SourceControlReviewSummary,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
@@ -129,23 +131,31 @@ export class PullRequestReviewService {
 	): Promise<SourceControlReviewComment[]> {
 		const provider = await this.getProviderOrThrow();
 		const comments = await provider.listReviewComments(prNumber);
-		return comments
-			.filter((comment) => !filePath || comment.path === filePath)
-			.map((comment) => {
-				const parsed = parseReviewCommentBody(comment.body);
-				return {
-					id: comment.id,
-					body: parsed.body,
-					path: comment.path,
-					line: comment.line,
-					side: comment.side,
-					url: comment.url,
-					author: comment.author,
-					createdAt: comment.createdAt,
-					updatedAt: comment.updatedAt,
-					anchor: parsed.anchor,
-				};
-			});
+		const filtered = comments.filter((comment) => !filePath || comment.path === filePath);
+
+		const mapped = filtered.map((comment) => {
+			const parsed = parseReviewCommentBody(comment.body);
+			return {
+				id: comment.id,
+				body: parsed.body,
+				path: comment.path,
+				line: comment.line,
+				side: comment.side,
+				url: comment.url,
+				author: comment.author,
+				createdAt: comment.createdAt,
+				updatedAt: comment.updatedAt,
+				anchor: parsed.anchor,
+				inReplyToId: comment.inReplyToId,
+			};
+		});
+
+		const byId = new Map(mapped.map((comment) => [comment.id, comment]));
+		return mapped.map((comment) => {
+			if (comment.anchor || !comment.inReplyToId) return comment;
+			const parent = byId.get(comment.inReplyToId);
+			return parent?.anchor ? { ...comment, anchor: parent.anchor } : comment;
+		});
 	}
 
 	async createReviewComment(
@@ -153,6 +163,34 @@ export class PullRequestReviewService {
 		request: CreateSourceControlReviewCommentRequest,
 	): Promise<SourceControlReviewComment> {
 		const provider = await this.getProviderOrThrow();
+
+		if (request.inReplyToId) {
+			const created = await provider.createReviewComment(prNumber, {
+				body: request.body,
+				inReplyToId: request.inReplyToId,
+			});
+			const parsed = parseReviewCommentBody(created.body);
+			const existing = await this.listReviewComments(prNumber);
+			const parent = existing.find((comment) => comment.id === request.inReplyToId);
+			return {
+				id: created.id,
+				body: parsed.body,
+				path: created.path,
+				line: created.line,
+				side: created.side,
+				url: created.url,
+				author: created.author,
+				createdAt: created.createdAt,
+				updatedAt: created.updatedAt,
+				anchor: parent?.anchor,
+				inReplyToId: created.inReplyToId,
+			};
+		}
+
+		if (!request.path?.trim() || !request.anchor?.nodeId?.trim()) {
+			throw new UserError('A workflow file path and node anchor are required.');
+		}
+
 		const pr = await provider.getPullRequest(prNumber);
 		const side = request.side ?? 'RIGHT';
 		const commitId = side === 'RIGHT' ? pr.headSha : pr.baseSha;
@@ -187,6 +225,58 @@ export class PullRequestReviewService {
 			createdAt: created.createdAt,
 			updatedAt: created.updatedAt,
 			anchor: parsed.anchor,
+			inReplyToId: created.inReplyToId,
+		};
+	}
+
+	async deleteReviewComment(prNumber: number, commentId: number): Promise<number[]> {
+		const provider = await this.getProviderOrThrow();
+		const comments = await provider.listReviewComments(prNumber);
+		const idsToDelete = this.collectCommentDeleteIds(commentId, comments);
+		for (const id of idsToDelete) {
+			await provider.deleteReviewComment(id);
+		}
+		return idsToDelete;
+	}
+
+	private collectCommentDeleteIds(
+		commentId: number,
+		comments: Array<{ id: number; inReplyToId?: number }>,
+	): number[] {
+		const replyIds = comments
+			.filter((comment) => comment.inReplyToId === commentId)
+			.flatMap((comment) => this.collectCommentDeleteIds(comment.id, comments));
+		return [...replyIds, commentId];
+	}
+
+	async submitReview(
+		prNumber: number,
+		request: CreateSourceControlSubmitReviewRequest,
+	): Promise<SourceControlReviewSubmission> {
+		const provider = await this.getProviderOrThrow();
+		const trimmedBody = request.body?.trim();
+
+		if (request.event === 'COMMENT' && !trimmedBody) {
+			throw new UserError('A review comment is required.');
+		}
+		if (request.event === 'REQUEST_CHANGES' && !trimmedBody) {
+			throw new UserError('Describe the changes you are requesting.');
+		}
+
+		const pr = await provider.getPullRequest(prNumber);
+		const created = await provider.submitPullRequestReview(prNumber, {
+			body: trimmedBody,
+			event: request.event,
+			commitId: pr.headSha,
+		});
+
+		return {
+			id: created.id,
+			body: created.body,
+			url: created.url,
+			state: created.state,
+			author: created.author,
+			submittedAt: created.submittedAt,
 		};
 	}
 }

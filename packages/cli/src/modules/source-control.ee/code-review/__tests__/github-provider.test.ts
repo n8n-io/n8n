@@ -110,4 +110,51 @@ describe('GitHubProvider', () => {
 		const provider = new GitHubProvider(baseOptions);
 		await expect(provider.listOpenPullRequests('main')).rejects.toThrow(UserError);
 	});
+
+	it('deletes a pull request review comment', async () => {
+		const fetchMock = mockFetch(204, {});
+
+		const provider = new GitHubProvider(baseOptions);
+		await provider.deleteReviewComment(42);
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('https://api.github.com/repos/acme/flows/pulls/comments/42');
+		expect((init as RequestInit).method).toBe('DELETE');
+	});
+
+	it('submits a pull request review', async () => {
+		const fetchMock = mockFetch(200, {
+			id: 99,
+			body: 'Looks good',
+			html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-99',
+			state: 'APPROVED',
+			submitted_at: '2026-06-03T00:00:00Z',
+			user: { login: 'alice' },
+		});
+
+		const provider = new GitHubProvider(baseOptions);
+		const review = await provider.submitPullRequestReview(7, {
+			body: 'Looks good',
+			event: 'APPROVE',
+			commitId: 'headsha',
+		});
+
+		expect(review).toEqual({
+			id: 99,
+			body: 'Looks good',
+			url: 'https://github.com/acme/flows/pull/7#pullrequestreview-99',
+			state: 'APPROVED',
+			author: 'alice',
+			submittedAt: '2026-06-03T00:00:00Z',
+		});
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('https://api.github.com/repos/acme/flows/pulls/7/reviews');
+		expect((init as RequestInit).method).toBe('POST');
+		expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+			commit_id: 'headsha',
+			body: 'Looks good',
+			event: 'APPROVE',
+		});
+	});
 });

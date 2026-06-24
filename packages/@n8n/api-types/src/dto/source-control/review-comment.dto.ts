@@ -14,11 +14,14 @@ export interface ReviewCommentAnchor {
 
 export class CreateSourceControlReviewCommentRequestDto extends Z.class({
 	body: z.string().trim().min(1),
-	path: z.string().trim().min(1),
-	anchor: z.object({
-		nodeId: z.string().trim().min(1),
-		jsonPath: z.string().trim().optional(),
-	}),
+	path: z.string().trim().min(1).optional(),
+	anchor: z
+		.object({
+			nodeId: z.string().trim().min(1),
+			jsonPath: z.string().trim().optional(),
+		})
+		.optional(),
+	inReplyToId: z.number().int().positive().optional(),
 	/** Defaults to RIGHT (PR head). */
 	side: z.enum(['LEFT', 'RIGHT']).optional(),
 }) {}
@@ -38,4 +41,5 @@ export interface SourceControlReviewComment {
 	createdAt: string;
 	updatedAt: string;
 	anchor?: ReviewCommentAnchor;
+	inReplyToId?: number;
 }

@@ -1,11 +1,13 @@
 import type {
 	CreateSourceControlReviewCommentRequest,
+	CreateSourceControlSubmitReviewRequest,
 	GitCommitInfo,
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 	SourceControlReviewComment,
 	SourceControlReviewDetail,
+	SourceControlReviewSubmission,
 	SourceControlReviewSummary,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -101,6 +103,31 @@ export const createReviewComment = async (
 		context,
 		'POST',
 		`${sourceControlApiRoot}/reviews/${prNumber}/comments`,
+		payload,
+	);
+};
+
+export const deleteReviewComment = async (
+	context: IRestApiContext,
+	prNumber: number,
+	commentId: number,
+): Promise<{ deletedCommentIds: number[] }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${sourceControlApiRoot}/reviews/${prNumber}/comments/${commentId}`,
+	);
+};
+
+export const submitReview = async (
+	context: IRestApiContext,
+	prNumber: number,
+	payload: CreateSourceControlSubmitReviewRequest,
+): Promise<SourceControlReviewSubmission> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${sourceControlApiRoot}/reviews/${prNumber}/submit`,
 		payload,
 	);
 };
