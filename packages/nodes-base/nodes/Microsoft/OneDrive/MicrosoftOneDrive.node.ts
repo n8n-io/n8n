@@ -7,13 +7,16 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { targetDescription } from './descriptions/TargetDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
 import {
+	getOneDriveCredentialType,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
+	resolveDriveScopeRoot,
 	validateOneDriveFileName,
 } from './GenericFunctions';
 
@@ -52,6 +55,15 @@ export class MicrosoftOneDrive implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -70,9 +82,16 @@ export class MicrosoftOneDrive implements INodeType {
 						description:
 							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Files.ReadWrite.All) on the credential.',
 					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only access via a Microsoft Entra app registration. Choose which user, drive, or site to act on under "Access As".',
+					},
 				],
 				default: 'microsoftOneDriveOAuth2Api',
 			},
+			...targetDescription,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -105,6 +124,61 @@ export class MicrosoftOneDrive implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+
+		// The target (user/drive/site) is per-node, not per-item, so resolve the
+		// app-only scope root once before the loop. `undefined` for OAuth2 (uses /me).
+		const credentialType = getOneDriveCredentialType.call(this);
+		const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
+		const driveScopeRoot = resolveDriveScopeRoot.call(this, false);
+
+		// Copy/Move under app-only need the destination drive. Resolving it can cost a
+		// `GET /<root>/drive?$select=id`, so resolve lazily and cache for the whole run.
+		let resolvedDestinationDriveId: string | undefined;
+		const resolveDestinationDriveId = async (
+			providedDriveId: string,
+			itemIndex: number,
+		): Promise<string | undefined> => {
+			// Explicit destination drive (any auth) wins — supports cross-drive moves.
+			if (providedDriveId) return providedDriveId;
+			// OAuth2: omit to move within the signed-in user's drive (same-drive).
+			if (!driveScopeRoot) return undefined;
+			// SP + `Access As: Drive` — the target id IS the destination drive id.
+			const target = this.getNodeParameter('resourceTarget', itemIndex, 'user') as string;
+			if (target === 'drive') {
+				return this.getNodeParameter(`${target}Target`, itemIndex, '', {
+					extractValue: true,
+				}) as string;
+			}
+			// SP + user/site: resolve the default drive once and cache it.
+			if (resolvedDestinationDriveId === undefined) {
+				const drive = (await microsoftApiRequest.call(
+					this,
+					'GET',
+					'/drive',
+					{},
+					{ $select: 'id' },
+					undefined,
+					{},
+					{ json: true },
+					driveScopeRoot,
+				)) as IDataObject;
+				const driveId = typeof drive?.id === 'string' ? drive.id : '';
+				if (!driveId) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Could not resolve a destination Drive ID for the app-only copy/move',
+						{
+							itemIndex,
+							description:
+								"Set a destination Drive ID — app-only Microsoft Graph can't target a personal (/me) drive.",
+						},
+					);
+				}
+				resolvedDestinationDriveId = driveId;
+			}
+			return resolvedDestinationDriveId;
+		};
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'file') {
@@ -120,6 +194,18 @@ export class MicrosoftOneDrive implements INodeType {
 						if (additionalFields.name) {
 							body.name = additionalFields.name as string;
 						}
+						// App-only Graph cannot copy into /me — ensure a destination drive id.
+						if (isServicePrincipal) {
+							const providedDriveId =
+								typeof parentReference?.driveId === 'string' ? parentReference.driveId : '';
+							const destinationDriveId = await resolveDestinationDriveId(providedDriveId, i);
+							if (destinationDriveId) {
+								body.parentReference = {
+									...(body.parentReference as IDataObject),
+									driveId: destinationDriveId,
+								};
+							}
+						}
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
@@ -129,20 +215,41 @@ export class MicrosoftOneDrive implements INodeType {
 							undefined,
 							{},
 							{ json: true, resolveWithFullResponse: true },
+							driveScopeRoot,
 						);
 						responseData = { location: responseData.headers.location };
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_delete?view=odsp-graph-online
 					if (operation === 'delete') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'DELETE', `/drive/items/${fileId}`);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'DELETE',
+							`/drive/items/${fileId}`,
+							{},
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
+						);
 						responseData = { success: true };
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${fileId}`);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/drive/items/${fileId}`,
+							{},
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
+						);
 
 						const fileName = responseData.name;
 						const downloadUrl = responseData['@microsoft.graph.downloadUrl'];
@@ -168,6 +275,7 @@ export class MicrosoftOneDrive implements INodeType {
 								undefined,
 								{},
 								{ encoding: null, resolveWithFullResponse: true },
+								driveScopeRoot,
 							);
 						} catch (error) {
 							if (downloadUrl) {
@@ -215,10 +323,31 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_get?view=odsp-graph-online
 					if (operation === 'get') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${fileId}`);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/drive/items/${fileId}`,
+							{},
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
+						);
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
+						if (isServicePrincipal) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Search is not supported with the Service Principal credential',
+								{
+									itemIndex: i,
+									description:
+										'App-only Microsoft Graph cannot search a drive. Use File: Get, or an OAuth2 credential.',
+								},
+							);
+						}
 						const query = this.getNodeParameter('query', i) as string;
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
@@ -242,6 +371,11 @@ export class MicrosoftOneDrive implements INodeType {
 							'POST',
 							`/drive/items/${fileId}/createLink`,
 							body,
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
 						);
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_put_content?view=odsp-graph-online#example-upload-a-new-file
@@ -292,6 +426,7 @@ export class MicrosoftOneDrive implements INodeType {
 								undefined,
 								{ 'Content-Type': binaryData.mimeType, 'Content-length': body.length },
 								{},
+								driveScopeRoot,
 							);
 
 							responseData = JSON.parse(responseData as string);
@@ -307,6 +442,8 @@ export class MicrosoftOneDrive implements INodeType {
 								{},
 								undefined,
 								{ 'Content-Type': 'text/plain' },
+								{ json: true },
+								driveScopeRoot,
 							);
 						}
 					}
@@ -328,7 +465,17 @@ export class MicrosoftOneDrive implements INodeType {
 							if (parentFolderId) {
 								endpoint = `/drive/items/${parentFolderId}/children`;
 							}
-							responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
+							responseData = await microsoftApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								body,
+								{},
+								undefined,
+								{},
+								{ json: true },
+								driveScopeRoot,
+							);
 							if (!responseData.id) {
 								break;
 							}
@@ -342,6 +489,12 @@ export class MicrosoftOneDrive implements INodeType {
 							this,
 							'DELETE',
 							`/drive/items/${folderId}`,
+							{},
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
 						);
 						responseData = { success: true };
 					}
@@ -353,10 +506,24 @@ export class MicrosoftOneDrive implements INodeType {
 							'value',
 							'GET',
 							`/drive/items/${folderId}/children`,
+							{},
+							{},
+							driveScopeRoot,
 						);
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
+						if (isServicePrincipal) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Search is not supported with the Service Principal credential',
+								{
+									itemIndex: i,
+									description:
+										'App-only Microsoft Graph cannot search a drive. Use Folder: Get Children, or an OAuth2 credential.',
+								},
+							);
+						}
 						const query = this.getNodeParameter('query', i) as string;
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
@@ -380,6 +547,11 @@ export class MicrosoftOneDrive implements INodeType {
 							'POST',
 							`/drive/items/${folderId}/createLink`,
 							body,
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
 						);
 					}
 				}
@@ -393,6 +565,59 @@ export class MicrosoftOneDrive implements INodeType {
 							'PATCH',
 							`/drive/items/${itemId}`,
 							body,
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
+						);
+					}
+					//https://learn.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_move
+					if (operation === 'move') {
+						// Shared file+folder branch: read the item id under the
+						// resource-appropriate name to match the sibling operations.
+						const itemIdParam = resource === 'file' ? 'fileId' : 'folderId';
+						const itemId = this.getNodeParameter(itemIdParam, i) as string;
+						const parentReference = this.getNodeParameter('parentReference', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const destinationFolderId =
+							typeof parentReference?.id === 'string' ? parentReference.id : '';
+						// `parentReference.id` (destination folder) and `driveId` are body-only
+						// JSON, so they are never path-interpolated and need no encoding.
+						const moveParentReference: IDataObject = {};
+						if (destinationFolderId) {
+							moveParentReference.id = destinationFolderId;
+						}
+
+						const providedDriveId =
+							typeof parentReference?.driveId === 'string' ? parentReference.driveId : '';
+						const destinationDriveId = await resolveDestinationDriveId(providedDriveId, i);
+						if (destinationDriveId) {
+							moveParentReference.driveId = destinationDriveId;
+						}
+
+						const body: IDataObject = {};
+						if (Object.keys(moveParentReference).length > 0) {
+							body.parentReference = moveParentReference;
+						}
+						if (additionalFields.name) {
+							body.name = additionalFields.name as string;
+						}
+
+						// The item id IS interpolated into the URL path, so encode it (the
+						// upload precedent) — `encodeURIComponent` does not neutralize `..`,
+						// but here it keeps any `/ : ? #` from retargeting the request.
+						responseData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/drive/items/${encodeURIComponent(itemId)}`,
+							body,
+							{},
+							undefined,
+							{},
+							{ json: true },
+							driveScopeRoot,
 						);
 					}
 				}
