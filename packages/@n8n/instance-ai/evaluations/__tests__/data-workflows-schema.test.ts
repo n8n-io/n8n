@@ -145,6 +145,21 @@ describe('WorkflowTestCaseSchema', () => {
 		).toThrow();
 	});
 
+	it('rejects a legacy buildExpectations key with a migration hint', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				buildExpectations: ['legacy assertion that would otherwise be silently dropped'],
+			}),
+		).toThrow(/no longer supported/);
+	});
+
+	it('rejects an unknown top-level key instead of silently stripping it', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), outcomeExpectaiton: ['typo'] }),
+		).toThrow(/[Uu]nrecognized key/);
+	});
+
 	it('accepts a credentials entry with a supported type', () => {
 		const parsed = WorkflowTestCaseSchema.parse({
 			...validFixture(),
