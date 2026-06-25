@@ -90,7 +90,7 @@ LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
   --base-url http://localhost:5678 \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
-  --dataset instance-ai-mcp-workflow-evals \
+  --dataset mcp-workflow-evals \
   --baseline-prefix mcp-baseline- \
   --iterations 3 \
   --concurrency 3 \
@@ -117,7 +117,7 @@ LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
   --base-url http://localhost:5678 \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
-  --dataset instance-ai-mcp-workflow-evals \
+  --dataset mcp-workflow-evals \
   --baseline-prefix mcp-baseline- \
   --experiment-name mcp-baseline \
   --iterations 10
@@ -131,7 +131,7 @@ next MCP run. The comparison is skipped on the baseline-creation run itself.
 
 A baseline is not a special LangSmith object — it's just an experiment whose name
 starts with `--baseline-prefix` (`mcp-baseline-`). To find them, open your
-workspace → **Datasets & Experiments** → `instance-ai-mcp-workflow-evals` → the
+workspace → **Datasets & Experiments** → `mcp-workflow-evals` → the
 **Experiments** list: baselines are the rows named `mcp-baseline-<suffix>`,
 while normal runs (e.g. `local-<branch>-<sha>`) are not. With no `mcp-baseline-*`
 experiment yet, every run's comparison is skipped.
