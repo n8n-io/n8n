@@ -1,6 +1,13 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
-import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type {
+	WebhookEntity,
+	WorkflowEntity,
+	WorkflowHistory,
+	WorkflowHistoryRepository,
+	WorkflowPublishedEnvironmentVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -33,6 +40,9 @@ const WEBHOOK_PATH = 'test-webhook';
 
 describe('LiveWebhooks', () => {
 	const workflowRepository = mock<WorkflowRepository>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+	const workflowPublishedEnvVersionRepository =
+		mock<WorkflowPublishedEnvironmentVersionRepository>();
 	const webhookService = mock<WebhookService>();
 	const nodeTypes = mock<NodeTypes>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
@@ -48,6 +58,8 @@ describe('LiveWebhooks', () => {
 			nodeTypes,
 			webhookService,
 			workflowRepository,
+			workflowHistoryRepository,
+			workflowPublishedEnvVersionRepository,
 			workflowStaticDataService,
 			workflowsConfig,
 			workflowPublishedDataService,
@@ -87,6 +99,7 @@ describe('LiveWebhooks', () => {
 			webhookPath: WEBHOOK_PATH,
 			method: httpMethod,
 			isDynamic: false,
+			environmentId: undefined,
 		});
 
 		const webhookNodeType = mock<INodeType>({
@@ -339,6 +352,7 @@ describe('LiveWebhooks', () => {
 				webhookPath: WEBHOOK_PATH,
 				method: httpMethod,
 				isDynamic: false,
+				environmentId: undefined,
 			});
 
 			webhookService.findWebhook.mockResolvedValue(webhookEntity);
@@ -437,6 +451,7 @@ describe('LiveWebhooks', () => {
 				webhookPath,
 				method: httpMethod,
 				isDynamic: false,
+				environmentId: undefined,
 			});
 
 			const webhookNodeType = mock<INodeType>({

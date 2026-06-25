@@ -109,7 +109,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
 | [public.variables](public.variables.md) | 5 |  | BASE TABLE |
-| [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
+| [public.webhook_entity](public.webhook_entity.md) | 7 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
@@ -1252,6 +1252,7 @@ erDiagram
   text value
 }
 "public.webhook_entity" {
+  varchar_36_ environmentId
   varchar method
   varchar node
   integer pathLength

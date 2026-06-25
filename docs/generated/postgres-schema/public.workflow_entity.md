@@ -257,6 +257,7 @@ erDiagram
   varchar_36_ workflowVersionId
 }
 "public.webhook_entity" {
+  varchar_36_ environmentId
   varchar method
   varchar node
   integer pathLength

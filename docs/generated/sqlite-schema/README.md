@@ -109,7 +109,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
 | [variables](variables.md) | 5 |  | table |
-| [webhook_entity](webhook_entity.md) | 6 |  | table |
+| [webhook_entity](webhook_entity.md) | 7 |  | table |
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
@@ -1242,6 +1242,7 @@ erDiagram
   TEXT value
 }
 "webhook_entity" {
+  varchar_36_ environmentId
   varchar method PK
   varchar node
   INTEGER pathLength

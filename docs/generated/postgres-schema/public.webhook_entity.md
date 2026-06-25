@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| environmentId | varchar(36) |  | true |  |  |  |
 | method | varchar |  | false |  |  |  |
 | node | varchar |  | false |  |  |  |
 | pathLength | integer |  | true |  |  |  |
@@ -37,6 +38,7 @@ erDiagram
 "public.webhook_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.webhook_entity" {
+  varchar_36_ environmentId
   varchar method
   varchar node
   integer pathLength

@@ -1,6 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
+import {
+	WorkflowRepository,
+	WorkflowHistoryRepository,
+	WorkflowPublishedEnvironmentVersionRepository,
+	type WorkflowEntity,
+	type WorkflowHistory,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -38,6 +44,8 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowPublishedEnvVersionRepository: WorkflowPublishedEnvironmentVersionRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
@@ -50,22 +58,34 @@ export class LiveWebhooks implements IWebhookManager {
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
 		const webhook = await this.findWebhook(path, httpMethod);
 
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			relations: { activeVersion: true },
-		});
+		let nodes: INode[] | undefined;
+		let effectivePath = path;
+
+		if (webhook.environmentId) {
+			const envData = await this.loadEnvVersionExecutionData(
+				webhook.workflowId,
+				webhook.environmentId,
+			);
+			nodes = envData.publishedVersion.nodes as INode[];
+			// Strip env prefix so path matching works against node parameters
+			const prefixEnd = envData.envSlug.length + 1;
+			effectivePath = path.slice(prefixEnd);
+		} else {
+			const workflowData = await this.workflowRepository.findOne({
+				where: { id: webhook.workflowId },
+				relations: { activeVersion: true },
+			});
+			nodes = workflowData?.activeVersion?.nodes as INode[] | undefined;
+		}
 
 		const isChatWebhookNode = (type: string, webhookId?: string) =>
-			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
+			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === effectivePath;
 
-		const nodes = workflowData?.activeVersion?.nodes;
 		const webhookNode = nodes?.find(
 			({ type, parameters, typeVersion, webhookId }) =>
-				(parameters?.path === path &&
+				(parameters?.path === effectivePath &&
 					(parameters?.httpMethod ?? 'GET') === httpMethod &&
 					'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion)) ||
-				// Chat Trigger has doesn't have configurable path and is always using POST, so
-				// we need to use webhookId for matching
 				isChatWebhookNode(type, webhookId),
 		);
 
@@ -104,9 +124,27 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
-			webhook.workflowId,
-		);
+		let workflowData: WorkflowEntity;
+		let publishedVersion: WorkflowHistory;
+		// The effective path used for node matching — strips the env prefix for env-specific webhooks
+		let effectiveWebhookPath = webhook.webhookPath;
+
+		if (webhook.environmentId) {
+			const envData = await this.loadEnvVersionExecutionData(
+				webhook.workflowId,
+				webhook.environmentId,
+			);
+			workflowData = envData.workflow;
+			publishedVersion = envData.publishedVersion;
+			// Strip "envSlug/" prefix so node lookup matches the original path
+			const prefixEnd = envData.envSlug.length + 1;
+			effectiveWebhookPath = webhook.webhookPath.slice(prefixEnd);
+		} else {
+			({ workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
+				webhook.workflowId,
+			));
+		}
+
 		const { nodes, connections } = publishedVersion;
 
 		// Create a clean workflowData object with only activeVersion nodes/connections
@@ -118,7 +156,7 @@ export class LiveWebhooks implements IWebhookManager {
 			name: workflowData.name,
 			nodes,
 			connections,
-			active: workflowData.activeVersionId !== null,
+			active: workflowData.activeVersionId !== null || webhook.environmentId !== undefined,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -135,7 +173,9 @@ export class LiveWebhooks implements IWebhookManager {
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
-				.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+				.find(
+					(w) => w.httpMethod === httpMethod && w.path === effectiveWebhookPath,
+				) as IWebhookData;
 
 			if (
 				expectedNodeType &&
@@ -227,6 +267,46 @@ export class LiveWebhooks implements IWebhookManager {
 			throw new NotFoundError(`Active version not found for workflow with id "${workflowId}"`);
 		}
 		return { workflow: workflowData, publishedVersion: workflowData.activeVersion };
+	}
+
+	private async loadEnvVersionExecutionData(
+		workflowId: string,
+		environmentId: string,
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory; envSlug: string }> {
+		const envVersions =
+			await this.workflowPublishedEnvVersionRepository.getPublishedVersionsWithEnvironments(
+				workflowId,
+			);
+		const envVersion = envVersions.find((v) => v.environmentId === environmentId);
+
+		if (!envVersion) {
+			throw new NotFoundError(
+				`No published version found for workflow "${workflowId}" in environment "${environmentId}"`,
+			);
+		}
+
+		const publishedVersion = await this.workflowHistoryRepository.findOne({
+			where: { versionId: envVersion.publishedVersionId },
+		});
+
+		if (!publishedVersion) {
+			throw new NotFoundError(
+				`Workflow history snapshot not found for version "${envVersion.publishedVersionId}"`,
+			);
+		}
+
+		const workflowData = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: { shared: true },
+		});
+
+		if (!workflowData) {
+			throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
+		}
+
+		const envSlug = envVersion.environmentName.toLowerCase().replace(/\s+/g, '-');
+
+		return { workflow: workflowData, publishedVersion, envSlug };
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {

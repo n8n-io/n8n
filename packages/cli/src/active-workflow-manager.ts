@@ -148,6 +148,7 @@ export class ActiveWorkflowManager {
 		activation: WorkflowActivateMode,
 		nodeIds?: Set<string>,
 		pathPrefix?: string,
+		environmentId?: string,
 	) {
 		let webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '';
@@ -182,6 +183,10 @@ export class ActiveWorkflowManager {
 
 			if (pathPrefix) {
 				webhook.webhookPath = `${pathPrefix}/${webhook.webhookPath}`;
+			}
+
+			if (environmentId) {
+				webhook.environmentId = environmentId;
 			}
 
 			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
@@ -554,6 +559,7 @@ export class ActiveWorkflowManager {
 				activationMode,
 				undefined,
 				envSlug,
+				environmentId,
 			);
 
 			this.logger.info(

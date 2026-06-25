@@ -213,6 +213,7 @@ import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000
 import { CreateEnvironmentTables1784000000037 } from '../common/1784000000037-CreateEnvironmentTables';
 import { CreateWorkflowPublishedEnvironmentVersion1784000000038 } from '../common/1784000000038-CreateWorkflowPublishedEnvironmentVersion';
 import { CreateEnvironmentCredentialBinding1784000000039 } from '../common/1784000000039-CreateEnvironmentCredentialBinding';
+import { AddEnvironmentIdToWebhookEntity1784000000040 } from '../common/1784000000040-AddEnvironmentIdToWebhookEntity';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -431,4 +432,5 @@ export const postgresMigrations: Migration[] = [
 	CreateEnvironmentTables1784000000037,
 	CreateWorkflowPublishedEnvironmentVersion1784000000038,
 	CreateEnvironmentCredentialBinding1784000000039,
+	AddEnvironmentIdToWebhookEntity1784000000040,
 ];

@@ -22,6 +22,10 @@ export class WebhookEntity {
 	@Column({ nullable: true })
 	pathLength?: number;
 
+	/** Set for env-published webhooks; null for globally-activated webhooks. */
+	@Column({ nullable: true })
+	environmentId?: string;
+
 	/**
 	 * Unique section of webhook path.
 	 *

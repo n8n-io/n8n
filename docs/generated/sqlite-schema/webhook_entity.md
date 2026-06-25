@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "webhook_entity" ("workflowId" varchar(36) NOT NULL, "webhookPath" varchar NOT NULL, "method" varchar NOT NULL, "node" varchar NOT NULL, "webhookId" varchar, "pathLength" integer, PRIMARY KEY ("webhookPath", "method"))
+CREATE TABLE "webhook_entity" ("workflowId" varchar(36) NOT NULL, "webhookPath" varchar NOT NULL, "method" varchar NOT NULL, "node" varchar NOT NULL, "webhookId" varchar, "pathLength" integer, "environmentId" varchar(36), PRIMARY KEY ("webhookPath", "method"))
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "webhook_entity" ("workflowId" varchar(36) NOT NULL, "webhookPath" 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| environmentId | varchar(36) |  | true |  |  |  |
 | method | varchar |  | false |  |  |  |
 | node | varchar |  | false |  |  |  |
 | pathLength | INTEGER |  | true |  |  |  |
@@ -34,7 +35,7 @@ CREATE TABLE "webhook_entity" ("workflowId" varchar(36) NOT NULL, "webhookPath" 
 
 | Name | Definition |
 | ---- | ---------- |
-| idx_webhook_entity_webhook_path_method | CREATE INDEX "idx_webhook_entity_webhook_path_method" ON "webhook_entity" ("webhookId","method","pathLength") |
+| idx_webhook_entity_webhook_path_method | CREATE INDEX "idx_webhook_entity_webhook_path_method" ON "webhook_entity" ("webhookId", "method", "pathLength")  |
 | sqlite_autoindex_webhook_entity_1 | PRIMARY KEY (webhookPath, method) |
 
 ## Relations
@@ -44,6 +45,7 @@ erDiagram
 
 
 "webhook_entity" {
+  varchar_36_ environmentId
   varchar method PK
   varchar node
   INTEGER pathLength
