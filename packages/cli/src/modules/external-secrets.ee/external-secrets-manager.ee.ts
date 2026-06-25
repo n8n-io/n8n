@@ -339,6 +339,78 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	// Private - Provider Management
 	// ========================================
 
+	// @ts-expect-error Staged helper, not wired into callers yet.
+	private async addProviderConnection(
+		providerKey: string,
+		providerType: string,
+		config: SecretsProviderSettings,
+	): Promise<void> {
+		const result = await this.providerLifecycle.initialize(providerType, config);
+
+		if (!result.success || !result.provider) {
+			this.logger.error(`Failed to initialize provider ${providerKey}`, {
+				error: result.error,
+			});
+			return;
+		}
+
+		this.providerRegistry.add(providerKey, result.provider);
+
+		if (config.connected) {
+			await this.retryManager.runWithRetry(
+				providerKey,
+				async () => await this.connectProvider(providerKey),
+			);
+		}
+	}
+
+	// @ts-expect-error Staged helper, not wired into callers yet.
+	private async replaceProviderConnection(
+		providerKey: string,
+		providerType: string,
+		config: SecretsProviderSettings,
+	): Promise<void> {
+		const result = await this.providerLifecycle.initialize(providerType, config);
+
+		if (!result.success || !result.provider) {
+			this.logger.error(`Failed to initialize provider ${providerKey}`, {
+				error: result.error,
+			});
+			await this.removeProviderConnection(providerKey);
+			return;
+		}
+
+		if (config.connected) {
+			const connectResult = await this.providerLifecycle.connect(result.provider);
+			if (!connectResult.success) {
+				this.logger.error(`Failed to connect provider ${providerKey}`, {
+					error: connectResult.error,
+				});
+				await this.providerLifecycle.disconnect(result.provider);
+				await this.removeProviderConnection(providerKey);
+				return;
+			}
+		}
+
+		const existingProvider = this.providerRegistry.get(providerKey);
+		this.providerRegistry.add(providerKey, result.provider);
+
+		if (existingProvider) {
+			this.logger.debug(`Tearing down provider connection: ${providerKey}`);
+			await this.providerLifecycle.disconnect(existingProvider);
+		}
+	}
+
+	private async removeProviderConnection(providerKey: string): Promise<void> {
+		this.retryManager.cancelRetry(providerKey);
+		const existingProvider = this.providerRegistry.get(providerKey);
+		if (existingProvider) {
+			this.logger.debug(`Tearing down provider connection: ${providerKey}`);
+			await this.providerLifecycle.disconnect(existingProvider);
+			this.providerRegistry.remove(providerKey);
+		}
+	}
+
 	private async setupProvider(
 		providerType: string,
 		config: SecretsProviderSettings,
