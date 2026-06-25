@@ -1,6 +1,7 @@
 import FormData from 'form-data';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
-import { NodeApiError, sleep } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import * as workflow from 'n8n-workflow';
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
 import type { Mock } from 'vitest';
 
@@ -1230,7 +1231,7 @@ describe('HttpRequestV3', () => {
 		}
 
 		beforeEach(() => {
-			sleepSpy = vi.spyOn({ sleep }, 'sleep').mockResolvedValue(undefined);
+			sleepSpy = vi.spyOn(workflow, 'sleep').mockResolvedValue(undefined);
 			const baseDescription: INodeTypeBaseDescription = {
 				displayName: 'HTTP Request',
 				name: 'httpRequest',
@@ -1710,6 +1711,29 @@ describe('HttpRequestV3', () => {
 
 			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(2);
 			expect(result[0]).toHaveLength(2);
+		});
+
+		it('should apply sequentialDelay between items', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({
+					'options.sequentialExecution': true,
+					'options.sequentialDelay': 100,
+				}),
+			);
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ r: '1' }))
+				.mockResolvedValueOnce(makeResponse({ r: '2' }))
+				.mockResolvedValueOnce(makeResponse({ r: '3' }));
+
+			await node.execute.call(executeFunctions);
+
+			expect(sleepSpy).toHaveBeenCalledTimes(2); // After item 0, after item 1
+			expect(sleepSpy).toHaveBeenCalledWith(100);
 		});
 	});
 });
