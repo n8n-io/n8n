@@ -53,7 +53,6 @@ erDiagram
 "dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (targetCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"environment_credential_binding" }o--|| "credentials_entity" : "FOREIGN KEY (sourceCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -126,9 +125,10 @@ erDiagram
 }
 "environment_credential_binding" {
   datetime_3_ createdAt
+  varchar_255_ credentialType
   varchar_36_ environmentId FK
   INTEGER id
-  varchar_36_ sourceCredentialId FK
+  varchar_36_ nodeId
   varchar_36_ targetCredentialId FK
   datetime_3_ updatedAt
   varchar_36_ workflowId FK

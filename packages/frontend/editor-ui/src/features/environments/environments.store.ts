@@ -120,7 +120,7 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		projectId: string,
 		workflowId: string,
 		envId: string,
-		bindings: Array<{ sourceCredentialId: string; targetCredentialId: string }>,
+		bindings: Array<{ nodeId: string; credentialType: string; targetCredentialId: string }>,
 	): Promise<void> {
 		const saved = await environmentsApi.replaceCredentialBindings(
 			rootStore.restApiContext,

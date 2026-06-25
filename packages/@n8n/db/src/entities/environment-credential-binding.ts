@@ -24,7 +24,10 @@ export class EnvironmentCredentialBinding extends WithTimestamps {
 	environmentId: string;
 
 	@Column({ type: 'varchar', length: 36 })
-	sourceCredentialId: string;
+	nodeId: string;
+
+	@Column({ type: 'varchar', length: 255 })
+	credentialType: string;
 
 	@Column({ type: 'varchar', length: 36 })
 	targetCredentialId: string;
@@ -36,10 +39,6 @@ export class EnvironmentCredentialBinding extends WithTimestamps {
 	@ManyToOne('ProjectEnvironment', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'environmentId' })
 	environment: Relation<ProjectEnvironment>;
-
-	@ManyToOne('CredentialsEntity', { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'sourceCredentialId' })
-	sourceCredential: Relation<CredentialsEntity>;
 
 	@ManyToOne('CredentialsEntity', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'targetCredentialId' })

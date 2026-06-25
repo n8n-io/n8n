@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { Z } from '../../zod-class';
 
 const credentialBindingSchema = z.object({
-	sourceCredentialId: z.string().min(1),
+	nodeId: z.string().min(1),
+	credentialType: z.string().min(1),
 	targetCredentialId: z.string().min(1),
 });
 

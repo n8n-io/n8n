@@ -47,9 +47,10 @@ erDiagram
 }
 "public.environment_credential_binding" {
   timestamp_3__with_time_zone createdAt
+  varchar_255_ credentialType
   varchar_36_ environmentId FK
   integer id
-  varchar_36_ sourceCredentialId FK
+  varchar_36_ nodeId
   varchar_36_ targetCredentialId FK
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK

@@ -114,27 +114,27 @@ async function onModalOpened() {
 	}
 }
 
-/** Credential IDs used by enabled nodes in the current workflow version */
-const workflowCredentialIds = computed((): Set<string> => {
-	const ids = new Set<string>();
+/** (nodeId, credentialType) slots used by enabled nodes in the current workflow version */
+const workflowCredentialSlots = computed((): Set<string> => {
+	const slots = new Set<string>();
 	for (const node of workflowDocumentStore.value?.allNodes ?? []) {
 		if (node.disabled) continue;
-		for (const cred of Object.values(node.credentials ?? {})) {
-			if (cred.id) ids.add(cred.id);
+		for (const credType of Object.keys(node.credentials ?? {})) {
+			slots.add(`${node.id}:${credType}`);
 		}
 	}
-	return ids;
+	return slots;
 });
 
 /** Returns true when an environment has all required credentials bound */
 function envHasAllBindings(envId: string): boolean {
-	if (workflowCredentialIds.value.size === 0) return true;
+	if (workflowCredentialSlots.value.size === 0) return true;
 	const workflowId = workflowDocumentStore.value.workflowId;
 	const bindings = workflowId
 		? (environmentsStore.credentialBindings[workflowId]?.[envId] ?? [])
 		: [];
-	const boundSources = new Set(bindings.map((b) => b.sourceCredentialId));
-	return [...workflowCredentialIds.value].every((id) => boundSources.has(id));
+	const boundSlots = new Set(bindings.map((b) => `${b.nodeId}:${b.credentialType}`));
+	return [...workflowCredentialSlots.value].every((slot) => boundSlots.has(slot));
 }
 
 onMounted(() => {

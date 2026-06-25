@@ -21,6 +21,8 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export interface MissingBinding {
+	nodeId: string;
+	credentialType: string;
 	credentialId: string;
 	credentialName: string;
 }
@@ -95,21 +97,15 @@ export class ProjectEnvironmentService {
 		dto: UpsertCredentialBindingsDto,
 	): Promise<EnvironmentCredentialBinding[]> {
 		if (dto.bindings.length > 0) {
-			const allIds = dto.bindings.flatMap(
-				(b: { sourceCredentialId: string; targetCredentialId: string }) => [
-					b.sourceCredentialId,
-					b.targetCredentialId,
-				],
-			);
-			const uniqueIds = [...new Set(allIds)];
+			const targetIds = [...new Set(dto.bindings.map((b) => b.targetCredentialId))];
 
 			const owned = await this.sharedCredentialsRepository.find({
-				where: { projectId, credentialsId: In(uniqueIds) },
+				where: { projectId, credentialsId: In(targetIds) },
 				select: ['credentialsId'],
 			});
 			const ownedIds = new Set(owned.map((s) => s.credentialsId));
 
-			const unauthorized = uniqueIds.find((id) => !ownedIds.has(id));
+			const unauthorized = targetIds.find((id) => !ownedIds.has(id));
 			if (unauthorized !== undefined) {
 				throw new BadRequestError(
 					`Credential ${String(unauthorized)} does not belong to project ${projectId}`,
@@ -117,11 +113,11 @@ export class ProjectEnvironmentService {
 			}
 		}
 
-		const bindingsArray: Array<{ sourceCredentialId: string; targetCredentialId: string }> =
-			dto.bindings.map((b: { sourceCredentialId: string; targetCredentialId: string }) => ({
-				sourceCredentialId: b.sourceCredentialId,
-				targetCredentialId: b.targetCredentialId,
-			}));
+		const bindingsArray = dto.bindings.map((b) => ({
+			nodeId: b.nodeId,
+			credentialType: b.credentialType,
+			targetCredentialId: b.targetCredentialId,
+		}));
 		await this.bindingRepository.replaceAll(environmentId, workflowId, bindingsArray);
 		return await this.bindingRepository.findAllByEnvironment(environmentId, workflowId);
 	}
@@ -147,33 +143,33 @@ export class ProjectEnvironmentService {
 		const allBindings: Array<{
 			workflowId: string;
 			environmentId: string;
-			sourceCredentialId: string;
+			nodeId: string;
+			credentialType: string;
 			targetCredentialId: string;
 		}> = [];
 
 		for (const { workflow } of sharedWorkflows) {
 			if (!workflow) continue;
-			const credentialIds = new Set<string>();
 			for (const node of workflow.nodes) {
-				for (const cred of Object.values(node.credentials ?? {})) {
-					if (cred.id) credentialIds.add(cred.id);
+				for (const [credType, cred] of Object.entries(node.credentials ?? {})) {
+					if (!cred.id) continue;
+					allBindings.push(
+						{
+							workflowId: workflow.id,
+							environmentId: dev.id,
+							nodeId: node.id,
+							credentialType: credType,
+							targetCredentialId: cred.id,
+						},
+						{
+							workflowId: workflow.id,
+							environmentId: prod.id,
+							nodeId: node.id,
+							credentialType: credType,
+							targetCredentialId: cred.id,
+						},
+					);
 				}
-			}
-			for (const credId of credentialIds) {
-				allBindings.push(
-					{
-						workflowId: workflow.id,
-						environmentId: dev.id,
-						sourceCredentialId: credId,
-						targetCredentialId: credId,
-					},
-					{
-						workflowId: workflow.id,
-						environmentId: prod.id,
-						sourceCredentialId: credId,
-						targetCredentialId: credId,
-					},
-				);
 			}
 		}
 
@@ -191,35 +187,51 @@ export class ProjectEnvironmentService {
 	): Promise<{ valid: boolean; missingBindings: MissingBinding[] }> {
 		const enabledNodes = nodes.filter((n) => !n.disabled);
 
-		const credentialIds = new Set<string>();
+		// Collect every (nodeId, credentialType) slot that needs a binding
+		const credentialSlots: Array<{ nodeId: string; credentialType: string; credentialId: string }> =
+			[];
 		for (const node of enabledNodes) {
-			for (const cred of Object.values(node.credentials ?? {})) {
-				if (cred.id) credentialIds.add(cred.id);
+			for (const [credType, cred] of Object.entries(node.credentials ?? {})) {
+				if (cred.id)
+					credentialSlots.push({
+						nodeId: node.id,
+						credentialType: credType,
+						credentialId: cred.id,
+					});
 			}
 		}
 
-		if (credentialIds.size === 0) {
+		if (credentialSlots.length === 0) {
 			return { valid: true, missingBindings: [] };
 		}
 
 		const bindings = await this.bindingRepository.findAllByEnvironment(environmentId, workflowId);
-		const boundSourceIds = new Set(
-			bindings.map((b: EnvironmentCredentialBinding) => b.sourceCredentialId),
+		const boundSlotKeys = new Set(
+			bindings.map((b: EnvironmentCredentialBinding) => `${b.nodeId}:${b.credentialType}`),
 		);
 
-		const unboundIds = [...credentialIds].filter((id) => !boundSourceIds.has(id));
-		if (unboundIds.length === 0) {
+		const unboundSlots = credentialSlots.filter(
+			(s) => !boundSlotKeys.has(`${s.nodeId}:${s.credentialType}`),
+		);
+		if (unboundSlots.length === 0) {
 			return { valid: true, missingBindings: [] };
 		}
 
+		const unboundCredentialIds = [...new Set(unboundSlots.map((s) => s.credentialId))];
 		const credentials = await this.credentialsRepository.find({
-			where: { id: In(unboundIds) },
+			where: { id: In(unboundCredentialIds) },
 			select: ['id', 'name'],
 		});
+		const credentialNameById = new Map(credentials.map((c) => [c.id, c.name]));
 
 		return {
 			valid: false,
-			missingBindings: credentials.map((c) => ({ credentialId: c.id, credentialName: c.name })),
+			missingBindings: unboundSlots.map((s) => ({
+				nodeId: s.nodeId,
+				credentialType: s.credentialType,
+				credentialId: s.credentialId,
+				credentialName: credentialNameById.get(s.credentialId) ?? s.credentialId,
+			})),
 		};
 	}
 }

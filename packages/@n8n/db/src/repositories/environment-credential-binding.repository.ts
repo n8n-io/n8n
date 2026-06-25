@@ -12,10 +12,11 @@ export class EnvironmentCredentialBindingRepository extends Repository<Environme
 	async resolveTargetCredentialId(
 		environmentId: string,
 		workflowId: string,
-		sourceCredentialId: string,
+		nodeId: string,
+		credentialType: string,
 	): Promise<string | null> {
 		const row = await this.findOne({
-			where: { environmentId, workflowId, sourceCredentialId },
+			where: { environmentId, workflowId, nodeId, credentialType },
 			select: ['targetCredentialId'],
 		});
 		return row?.targetCredentialId ?? null;
@@ -31,7 +32,7 @@ export class EnvironmentCredentialBindingRepository extends Repository<Environme
 	async replaceAll(
 		environmentId: string,
 		workflowId: string,
-		bindings: Array<{ sourceCredentialId: string; targetCredentialId: string }>,
+		bindings: Array<{ nodeId: string; credentialType: string; targetCredentialId: string }>,
 	): Promise<void> {
 		await this.delete({ environmentId, workflowId });
 		if (bindings.length === 0) return;

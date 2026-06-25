@@ -7,7 +7,8 @@ export class CreateEnvironmentCredentialBinding1784000000039 implements Reversib
 				column('id').int.autoGenerate.primary,
 				column('workflowId').varchar(36).notNull,
 				column('environmentId').varchar(36).notNull,
-				column('sourceCredentialId').varchar(36).notNull,
+				column('nodeId').varchar(36).notNull,
+				column('credentialType').varchar(255).notNull,
 				column('targetCredentialId').varchar(36).notNull,
 			)
 			.withForeignKey('workflowId', {
@@ -20,17 +21,12 @@ export class CreateEnvironmentCredentialBinding1784000000039 implements Reversib
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withForeignKey('sourceCredentialId', {
-				tableName: 'credentials_entity',
-				columnName: 'id',
-				onDelete: 'CASCADE',
-			})
 			.withForeignKey('targetCredentialId', {
 				tableName: 'credentials_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn(['workflowId', 'environmentId', 'sourceCredentialId'], true)
+			.withIndexOn(['workflowId', 'environmentId', 'nodeId', 'credentialType'], true)
 			.withIndexOn(['workflowId', 'environmentId']).withTimestamps;
 	}
 

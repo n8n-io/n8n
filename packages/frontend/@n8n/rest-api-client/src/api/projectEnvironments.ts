@@ -19,7 +19,8 @@ export interface EnvironmentCredentialBinding {
 	id: number;
 	workflowId: string;
 	environmentId: string;
-	sourceCredentialId: string;
+	nodeId: string;
+	credentialType: string;
 	targetCredentialId: string;
 }
 

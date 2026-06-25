@@ -54,9 +54,10 @@ erDiagram
 }
 "environment_credential_binding" {
   datetime_3_ createdAt
+  varchar_255_ credentialType
   varchar_36_ environmentId FK
   INTEGER id
-  varchar_36_ sourceCredentialId FK
+  varchar_36_ nodeId
   varchar_36_ targetCredentialId FK
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
