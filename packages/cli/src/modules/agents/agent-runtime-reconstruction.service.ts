@@ -69,7 +69,7 @@ export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string }>;
+	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
 }
 
 export interface ReconstructAgentRuntimeParams {
@@ -286,7 +286,7 @@ export class AgentRuntimeReconstructionService {
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
 
-		for (const { agentId, agent } of await resolveUniqueSubAgents({
+		for (const { agentId, agent, useWhen } of await resolveUniqueSubAgents({
 			refs: configuredAgents,
 			projectId,
 			agentRepository: this.agentRepository,
@@ -297,6 +297,7 @@ export class AgentRuntimeReconstructionService {
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,
+				...(useWhen ? { useWhen } : {}),
 			});
 		}
 

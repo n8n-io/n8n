@@ -194,7 +194,7 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * Sub-agents the model may choose between. Listed in the system prompt; the
 	 * model selects one by passing its id as `subAgentId`.
 	 */
-	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
+	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
 	/** Parallelism limit for delegated child runs (also used as delegate_subagent batch size). */
 	policy?: DelegateSubAgentPolicy;
 	/** Additional local/deferred tool names the host removes from inline children. */
@@ -280,7 +280,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		.systemInstruction(
 			[
 				`delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. ${inlineProviderToolInstruction} The child cannot see this conversation or your memory, so everything it needs must be in the call.`,
-				'Use a configured subagent ID only when one is listed and its name/description fits the subtask better than a generic inline child.',
+				'Use a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.',
 				...formatAvailableSubAgents(resolvedOptions.availableSubAgents),
 				...formatDelegationPolicyInstructions(resolvedOptions.policy),
 				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
@@ -348,8 +348,8 @@ function formatAvailableSubAgents(
 	return [
 		'Configured subagents are available as specialist options. Use subAgentId: "inline" for the default inline child; pass one of these exact IDs only when that specialist is a better fit:',
 		...availableSubAgents.map((subAgent) => {
-			const description = subAgent.description ? ` - ${subAgent.description}` : '';
-			return `- ${subAgent.id}: ${subAgent.name}${description}`;
+			const useWhen = subAgent.useWhen ? `\n  Use when: ${subAgent.useWhen}` : '';
+			return `- ${subAgent.id}: ${subAgent.name}${useWhen}`;
 		}),
 	];
 }

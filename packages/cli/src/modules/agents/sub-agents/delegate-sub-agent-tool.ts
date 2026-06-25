@@ -18,7 +18,7 @@ import type {
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
 	runner: SubAgentForegroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents?: Array<{ id: string; name: string }>;
+	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
