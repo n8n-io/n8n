@@ -41,6 +41,10 @@ on:
         required: false
         default: ''
 
+# Minimal token. The reusable workflow also declares `contents: read`.
+permissions:
+  contents: read
+
 concurrency:
   group: mcp-evals-${{ github.ref }}
   cancel-in-progress: true
@@ -59,4 +63,11 @@ jobs:
       eval-concurrency: ${{ inputs.eval-concurrency || '6' }}
       model: ${{ inputs.model || 'claude-sonnet-4-6' }}
       experiment-name: ${{ inputs.experiment-name || '' }}
-    secrets: inherit
+    # Pass only the secrets the reusable workflow needs (not `secrets: inherit`).
+    secrets:
+      EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+      N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+      N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+      N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+      EVALS_LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+      EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}

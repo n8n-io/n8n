@@ -54,6 +54,22 @@ on:
         required: false
         type: string
         default: ''
+    # Declared explicitly (not `secrets: inherit`) so the caller passes only what
+    # this workflow needs. All optional — a missing secret resolves to "" (e.g.
+    # LangSmith recording is simply skipped without a key).
+    secrets:
+      EVALS_ANTHROPIC_KEY:
+        required: false
+      N8N_LICENSE_ACTIVATION_KEY:
+        required: false
+      N8N_LICENSE_CERT:
+        required: false
+      N8N_ENCRYPTION_KEY:
+        required: false
+      EVALS_LANGSMITH_ENDPOINT:
+        required: false
+      EVALS_LANGSMITH_API_KEY:
+        required: false
   workflow_dispatch:
     inputs:
       branch:
@@ -110,6 +126,10 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
+          # No post-checkout step needs the token (the build only runs local
+          # `git rev-parse`), and this job uploads artifacts — drop the persisted
+          # credential so it can't leak (zizmor: artipacked).
+          persist-credentials: false
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
