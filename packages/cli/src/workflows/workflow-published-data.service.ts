@@ -25,7 +25,7 @@ export class WorkflowPublishedDataService {
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly cacheService: CacheService,
 	) {
-		this.logger = this.logger.scoped('workflow-publication');
+		this.logger = this.logger.scoped('poll-trigger');
 	}
 
 	/**
