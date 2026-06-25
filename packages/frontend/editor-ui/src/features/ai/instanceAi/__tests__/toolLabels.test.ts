@@ -11,6 +11,10 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
+				'instanceAi.tools.n8n-docs': 'Reading n8n docs',
+				'instanceAi.tools.n8n-docs.lookup': 'Reading n8n docs',
+				'instanceAi.tools.n8n-docs.search': 'Searching n8n docs',
+				'instanceAi.tools.n8n-docs.read': 'Opening n8n docs',
 				'instanceAi.tools.list_skills': 'Checking available skills',
 				'instanceAi.tools.load_skill': 'Opening skill',
 				'instanceAi.tools.load_skill.asset': 'Opening',
@@ -102,6 +106,10 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('load_skill')).toBe('book-open');
 	});
 
+	test('returns book-open for n8n docs tool', () => {
+		expect(getToolIcon('n8n-docs')).toBe('book-open');
+	});
+
 	test('returns settings as default', () => {
 		expect(getToolIcon('unknown-tool')).toBe('settings');
 	});
@@ -147,6 +155,14 @@ describe('useToolLabel', () => {
 	test('getToolLabel falls back to raw tool name when not found', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('unknown-tool')).toBe('unknown-tool');
+	});
+
+	test('getToolLabel returns action-specific n8n docs labels', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('n8n-docs')).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'lookup' })).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'search' })).toBe('Searching n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'read' })).toBe('Opening n8n docs');
 	});
 
 	test('getToggleLabel returns show data for regular tools', () => {

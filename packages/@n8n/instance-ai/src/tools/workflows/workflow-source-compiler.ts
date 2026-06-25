@@ -2,6 +2,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { detectArrayInputCollapse } from './detect-array-input-collapse';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
@@ -82,6 +83,7 @@ function validateCompiledWorkflow(
 	const warnings = [...compilerWarnings];
 	collectValidationIssues(schemaValidation.errors, warnings);
 	collectValidationIssues(schemaValidation.warnings, warnings);
+	warnings.push(...detectArrayInputCollapse(json));
 	return warnings;
 }
 

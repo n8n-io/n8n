@@ -1,7 +1,7 @@
 import { noExcessiveBuildFailures } from './no-excessive-build-failures';
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import type { TranscriptStep, TranscriptTurn } from '../../types';
-import { buildWorkflowCallsPerTurn, failedBuildsPerTurn } from '../../utils/conversation-text';
+import { failedBuildsPerTurn } from '../../utils/conversation-text';
 
 const wf: WorkflowResponse = {
 	id: 'wf',
@@ -28,7 +28,6 @@ const bwErr = (): TranscriptStep => ({
 	toolName: 'build-workflow',
 	error: 'boom',
 });
-const tool = (toolName: string): TranscriptStep => ({ kind: 'tool-call', toolName });
 const approval = (): TranscriptStep => ({
 	kind: 'confirmation',
 	toolName: 'build-workflow',
@@ -36,19 +35,6 @@ const approval = (): TranscriptStep => ({
 	approved: true,
 });
 const turn = (steps: TranscriptStep[]): TranscriptTurn => ({ userMessage: 'do it', steps });
-
-describe('buildWorkflowCallsPerTurn (raw — feeds the per-case batching expectation)', () => {
-	it('counts build-workflow calls per turn; an approval round-trip does not inflate it', () => {
-		expect(buildWorkflowCallsPerTurn([turn([bw(), approval()])])).toEqual([1]);
-		expect(buildWorkflowCallsPerTurn([turn([bw(), approval(), bw()])])).toEqual([2]);
-	});
-
-	it('ignores non-build tools and counts per turn', () => {
-		expect(buildWorkflowCallsPerTurn([turn([tool('nodes'), bw()]), turn([bw(), bw()])])).toEqual([
-			1, 2,
-		]);
-	});
-});
 
 describe('failedBuildsPerTurn (the deterministic check signal)', () => {
 	it('counts only FAILED builds (success:false / errors / error), not successes', () => {

@@ -17,7 +17,7 @@ import { traceable } from 'langsmith/traceable';
 import { join } from 'path';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
-import { parseCliArgs } from './args';
+import { parseCliArgs, partialIsolationWarning } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
@@ -258,8 +258,20 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	}
 
+	// A dedicated dataset and baseline prefix are the two halves of cohort
+	// isolation; overriding only one silently touches shared Instance AI data.
+	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
+	if (isolationWarning) logger.warn(isolationWarning);
+
 	const lsClient = new Client();
-	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
+	const datasetName = await syncDataset(
+		lsClient,
+		args.dataset,
+		logger,
+		args.filter,
+		args.exclude,
+		args.tier,
+	);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
@@ -683,7 +695,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			metadata: {
 				filter: args.filter ?? 'all',
 				exclude: args.exclude ?? null,
+				tier: args.tier ?? null,
 				prebuilt: prebuiltManifest !== undefined,
+				baselinePrefix: args.baselinePrefix,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
@@ -736,6 +750,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			prExperimentName: experimentResults.experimentName,
 			evaluation,
 			testCasesWithFiles,
+			baselinePrefix: args.baselinePrefix,
 			logger,
 		});
 
@@ -1247,16 +1262,20 @@ async function tryRunComparison(config: {
 	prExperimentName: string;
 	evaluation: MultiRunEvaluation;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
+	baselinePrefix: string;
 	logger: EvalLogger;
 }): Promise<ComparisonOutcome> {
-	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
+	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, baselinePrefix, logger } =
+		config;
 
 	try {
-		const baselineName = await findLatestBaseline(lsClient);
+		const baselineName = await findLatestBaseline(lsClient, baselinePrefix);
 		if (!baselineName) {
+			// Strip the trailing hyphen so the hint names the experiment, not the lookup prefix.
+			const baselineExperimentName = baselinePrefix.replace(/-$/, '');
 			logger.verbose(
 				'No baseline experiment found — skipping comparison. ' +
-					'Run with --experiment-name instance-ai-baseline to create one.',
+					`Run with --experiment-name ${baselineExperimentName} to create one.`,
 			);
 			return { kind: 'no_baseline' };
 		}

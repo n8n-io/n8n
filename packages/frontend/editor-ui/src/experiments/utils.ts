@@ -41,6 +41,7 @@ export const enum TemplateClickSource {
 	emptyInstanceCard = 'empty_instance_card',
 	sidebarButton = 'sidebar_button',
 	emptyStateBuilderPrompt = 'empty_state_builder_prompt',
+	instanceAiSplitEmptyState = 'instance_ai_split_empty_state',
 }
 
 export const getTemplatePathByRole = (role: string | null | undefined) => {
