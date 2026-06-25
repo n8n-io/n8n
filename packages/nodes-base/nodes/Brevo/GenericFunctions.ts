@@ -214,7 +214,7 @@ export namespace BrevoNode {
 			return requestOptions;
 		}
 
-		export async function validateAndCompileReceipientEmails(
+		export async function validateAndCompileRecipientEmails(
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
