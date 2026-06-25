@@ -394,6 +394,39 @@ describe('NodeCatalogService', () => {
 				expect.objectContaining({ version: 1 }),
 			);
 		});
+
+		test('reports an error for an unknown requested version instead of downgrading', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypes([
+				{ nodeId: 'n8n-nodes-multi.multi', version: '5' },
+			]);
+
+			// No silent downgrade: the missing version is reported with what's available.
+			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
+			expect(result).toContain("Version '5' not found for node 'n8n-nodes-multi.multi'");
+			expect(result).toContain('Available versions: 1, 2');
+		});
 	});
 
 	describe('getSuggestedNodes', () => {

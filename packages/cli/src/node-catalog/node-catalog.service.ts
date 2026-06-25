@@ -175,10 +175,22 @@ export class NodeCatalogService {
 		for (const id of synthesizeIds) {
 			const nodeId = typeof id === 'string' ? id : id.nodeId;
 			const requestedVersion = typeof id === 'string' ? undefined : id.version;
-			const description = this.selectDescription(nodeId, requestedVersion);
-			if (!description) {
+			const candidates = this.descriptionsById.get(nodeId);
+			if (!candidates?.length) {
 				errors.push(
 					`Node type '${nodeId}' not found. Use search_nodes to find the correct node ID.`,
+				);
+				continue;
+			}
+			const description = this.selectDescription(candidates, requestedVersion);
+			if (!description) {
+				// Explicit version requested but no match: surface an error rather
+				// than silently downgrading to a different version's type defs.
+				const available = [...new Set(candidates.flatMap(nodeVersionNumbers))].sort(
+					(a, b) => a - b,
+				);
+				errors.push(
+					`Version '${requestedVersion}' not found for node '${nodeId}'. Available versions: ${available.join(', ')}.`,
 				);
 				continue;
 			}
@@ -270,22 +282,18 @@ export class NodeCatalogService {
 	}
 
 	/**
-	 * Pick the description to synthesize for a node. Versioned nodes have one
-	 * description per version; honour an explicitly requested version, otherwise
-	 * default to the latest (mirroring the on-disk lookup's default).
+	 * Pick the description to synthesize from a node's versions. Honour an
+	 * explicitly requested version (returning undefined when none matches, so
+	 * the caller can report it), otherwise default to the latest (mirroring the
+	 * on-disk lookup's default).
 	 */
 	private selectDescription(
-		nodeId: string,
+		candidates: INodeTypeDescription[],
 		requestedVersion?: string,
 	): INodeTypeDescription | undefined {
-		const candidates = this.descriptionsById.get(nodeId);
-		if (!candidates?.length) return undefined;
-		if (candidates.length === 1) return candidates[0];
-
 		if (requestedVersion !== undefined) {
 			const wanted = Number.parseFloat(requestedVersion.replace(/^v/, ''));
-			const match = candidates.find((d) => nodeVersionNumbers(d).includes(wanted));
-			if (match) return match;
+			return candidates.find((d) => nodeVersionNumbers(d).includes(wanted));
 		}
 
 		return candidates.reduce((latest, d) =>
