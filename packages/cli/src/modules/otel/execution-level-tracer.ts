@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Exception, Span } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import { registerOtelExecutionWrapper, consumeOtelExecutionWrapper } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import {
@@ -71,6 +72,15 @@ export class ExecutionLevelTracer {
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
 			});
+
+			// Activate this span as the OTEL context around the core execution loop, so
+			// trace.getActiveSpan() resolves during execution and log lines carry the
+			// trace/span ids (log-trace correlation). Consumed by core's WorkflowExecute.
+			registerOtelExecutionWrapper(
+				params.executionId,
+				async (fn) => await context.with(trace.setSpan(context.active(), span), fn),
+			);
+
 			return toTracingParentContext(span);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
@@ -84,28 +94,31 @@ export class ExecutionLevelTracer {
 	endWorkflow(params: EndWorkflowParams): void {
 		try {
 			const tracked = this.activeWorkflowSpans.get(params.executionId);
-			if (!tracked) return;
 
-			const { span } = tracked;
-			span.setAttributes({
-				[ATTR.EXECUTION_MODE]: params.mode,
-				[ATTR.EXECUTION_STATUS]: params.status,
-				[ATTR.EXECUTION_IS_RETRY]: params.isRetry,
-				...(params.retryOf ? { [ATTR.EXECUTION_RETRY_OF]: params.retryOf } : {}),
-			});
-
-			span.setStatus({ code: isError(params.status) ? SpanStatusCode.ERROR : SpanStatusCode.OK });
-			if (isError(params.status) && params.error) {
-				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
-				const recordableException = toRecordableException(params.error);
-				if (recordableException) {
-					span.recordException(recordableException);
-				}
-			}
-
-			//	We don't expect any to be open but we should close any children still running
+			//	Close any child node spans still running. Done before the workflow span
+			//	ends, and even when it is missing, so node spans are never leaked.
 			this.endDanglingNodeSpans(params.executionId);
-			span.end();
+
+			if (tracked) {
+				const { span } = tracked;
+				span.setAttributes({
+					[ATTR.EXECUTION_MODE]: params.mode,
+					[ATTR.EXECUTION_STATUS]: params.status,
+					[ATTR.EXECUTION_IS_RETRY]: params.isRetry,
+					...(params.retryOf ? { [ATTR.EXECUTION_RETRY_OF]: params.retryOf } : {}),
+				});
+
+				span.setStatus({ code: isError(params.status) ? SpanStatusCode.ERROR : SpanStatusCode.OK });
+				if (isError(params.status) && params.error) {
+					span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
+					const recordableException = toRecordableException(params.error);
+					if (recordableException) {
+						span.recordException(recordableException);
+					}
+				}
+
+				span.end();
+			}
 		} catch (error) {
 			this.logger.warn('Failed to end workflow span', {
 				executionId: params.executionId,
@@ -114,6 +127,9 @@ export class ExecutionLevelTracer {
 			throw error;
 		} finally {
 			this.activeWorkflowSpans.delete(params.executionId);
+			// Drop any execution-context wrapper the core loop never consumed (e.g. the
+			// execution failed before the loop ran), so it is not leaked across executions.
+			consumeOtelExecutionWrapper(params.executionId);
 		}
 	}
 

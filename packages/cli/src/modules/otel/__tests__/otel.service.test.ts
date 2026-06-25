@@ -140,6 +140,33 @@ describe('OtelService', () => {
 		});
 	});
 
+	describe('injectTraceContextIntoLogs', () => {
+		it('prepends a trace-context format to the logger when the SDK starts', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+
+			await service.init();
+
+			expect(logger.prependFormat).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not prepend the format when OTEL is disabled', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(disabledSettings);
+
+			await service.init();
+
+			expect(logger.prependFormat).not.toHaveBeenCalled();
+		});
+
+		it('prepends the format only once across restarts', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+
+			await service.init();
+			await service.restart();
+
+			expect(logger.prependFormat).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('restart', () => {
 		it('shuts down existing SDK then reloads settings and starts a new one', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
