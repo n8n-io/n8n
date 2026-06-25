@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { User, type TagEntity } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
 
 import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
@@ -140,6 +141,53 @@ describe('get-workflow-details MCP tool', () => {
 
 			expect(payload.workflow.activeVersion).toBeNull();
 			expect(payload.workflow.activeVersionId).toBeNull();
+		});
+
+		test('returns tags for workflows with assigned tags', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: null,
+				tags: [mock<TagEntity>({ id: 'tag-1', name: 'bug-test', createdAt: new Date() })],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.tags).toEqual([{ id: 'tag-1', name: 'bug-test' }]);
+		});
+
+		test('returns empty tags array for workflows with no tags', async () => {
+			const workflow = createWorkflow({ activeVersionId: null, tags: [] });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.tags).toEqual([]);
 		});
 	});
 });
