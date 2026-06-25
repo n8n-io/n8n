@@ -49,7 +49,24 @@ const toolOptions = computed(() =>
 const showIncludeList = computed(() => inclusionMode.value === 'selected');
 const showExcludeList = computed(() => inclusionMode.value === 'except');
 
+function toolsKey(tools: string[]): string {
+	return JSON.stringify([...tools].sort());
+}
+
+const hasChanges = computed(() => {
+	const saved = initialSettings();
+	if (inclusionMode.value !== saved.inclusionMode) return true;
+	if (inclusionMode.value === 'selected') {
+		return toolsKey(selectedTools.value) !== toolsKey(saved.selectedTools);
+	}
+	if (inclusionMode.value === 'except') {
+		return toolsKey(excludedTools.value) !== toolsKey(saved.excludedTools);
+	}
+	return false;
+});
+
 function handleSave() {
+	if (!hasChanges.value) return;
 	emit('save', {
 		inclusionMode: inclusionMode.value,
 		selectedTools: [...selectedTools.value],
@@ -138,6 +155,7 @@ function handleSave() {
 				variant="solid"
 				size="small"
 				:label="i18n.baseText('tools.connection.settings.save')"
+				:disabled="!hasChanges"
 				data-test-id="tools-connection-settings-save"
 				@click="handleSave"
 			/>
