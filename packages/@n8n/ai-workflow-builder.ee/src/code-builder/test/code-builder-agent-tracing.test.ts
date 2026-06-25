@@ -21,6 +21,7 @@ import { CodeBuilderAgent } from '../code-builder-agent';
 vi.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: vi.fn(),
 	validateWorkflow: vi.fn(),
+	detectStickyLayoutWarnings: vi.fn(() => []),
 	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
 }));
 
