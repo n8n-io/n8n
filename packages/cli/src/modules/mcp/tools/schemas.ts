@@ -12,12 +12,6 @@ export const connectionsSchema = z
 	.custom<IConnections>((_value): _value is IConnections => true)
 	.describe('The node connections, keyed by source node name');
 
-export const nodeGroupSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	nodeIds: z.array(z.string()).describe('IDs of the nodes contained in this group'),
-});
-
 export const tagSchema = z.object({ id: z.string(), name: z.string() }).passthrough();
 
 export const toTagSummary = (tags: Array<{ id: string; name: string }> | undefined | null) =>
@@ -80,7 +74,7 @@ export const successMessageOutputSchema = {
 	message: z.string().describe('Description of the result'),
 } satisfies z.ZodRawShape;
 
-const nodeGroupSchema = z
+export const nodeGroupSchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),
