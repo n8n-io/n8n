@@ -146,17 +146,20 @@ describe('DbConnectionMonitor', () => {
 			);
 		});
 
-		it('should not report recoverable pool teardown errors to error reporter', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = true;
-			pool.connect.mockRejectedValue(new Error('Cannot use a pool after calling end on the pool'));
+		test.each(['Cannot use a pool after calling end on the pool', 'Driver not Connected'])(
+			'should not report recoverable ping error "%s" to error reporter',
+			async (message) => {
+				// @ts-expect-error readonly property
+				dataSource.isInitialized = true;
+				pool.connect.mockRejectedValue(new Error(message));
 
-			// @ts-expect-error private property
-			await monitor.ping();
+				// @ts-expect-error private property
+				await monitor.ping();
 
-			expect(errorReporter.error).not.toHaveBeenCalled();
-			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
-		});
+				expect(errorReporter.error).not.toHaveBeenCalled();
+				expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+			},
+		);
 
 		it('should destroy the pool client when the query times out', async () => {
 			// @ts-expect-error readonly property
@@ -365,7 +368,7 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error private property
 			await monitor.ping();
 
-			expect(dataSource.query).not.toHaveBeenCalled();
+			expect(pool.connect).not.toHaveBeenCalled();
 		});
 
 		it('should execute ping on schedule', () => {
