@@ -574,7 +574,6 @@ describe('ActiveWorkflowManager', () => {
 
 				const wrappedError = executeErrorWorkflowSpy.mock.calls[0][0] as WorkflowActivationError;
 				expect(wrappedError).toBeInstanceOf(WorkflowActivationError);
-				// Generic wrapper message is preserved, but the real reason is now in `description`
 				expect(wrappedError.message).not.toBe(triggerError.message);
 				expect(wrappedError.description).toBe('IMAP connection closed unexpectedly');
 			});
