@@ -30,9 +30,11 @@ import type {
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { iconForTool } from '../../toolIcons';
+import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
 
 const COMPUTER_USE_ITEM_ID = 'computer-use';
+const BROWSER_USE_ITEM_ID = 'browser-use';
 
 interface ServiceConnectionDefinition {
 	id: string;
@@ -163,6 +165,16 @@ function buildItem(
 
 const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => {
 	return [
+		{
+			id: BROWSER_USE_ITEM_ID,
+			titleKey: 'instanceAi.connections.add.browserUse',
+			descriptionKey: 'instanceAi.connections.types.browserUse.description',
+			iconSource: { type: 'icon', name: 'globe' },
+			detailComponent: BrowserUseSetupContent,
+			detailProps: { embedded: true },
+			isAvailable: true,
+			isConnected: settingsStore.isBrowserUseConnected,
+		},
 		{
 			id: COMPUTER_USE_ITEM_ID,
 			titleKey: 'instanceAi.connections.add.computerUse',
