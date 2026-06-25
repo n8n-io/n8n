@@ -131,7 +131,7 @@ describe('ResourceLocator', () => {
 		];
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: TEST_ITEMS,
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		const { getByTestId, getByText, getAllByTestId } = renderComponent();
 
@@ -155,7 +155,7 @@ describe('ResourceLocator', () => {
 	it('renders add resource button', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		const { getByTestId } = renderComponent({
 			props: {
@@ -178,7 +178,7 @@ describe('ResourceLocator', () => {
 	it('creates new resource passing search filter as name', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
 
@@ -224,7 +224,7 @@ describe('ResourceLocator', () => {
 					url: 'https://test.com/test-resource',
 				},
 			],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test Node',
@@ -269,7 +269,7 @@ describe('ResourceLocator', () => {
 		];
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: TEST_ITEMS,
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test Node',
@@ -457,7 +457,7 @@ describe('ResourceLocator', () => {
 		const windowOpenSpy = vi.spyOn(window, 'open');
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 
 		const { getByTestId } = renderComponent({
@@ -488,10 +488,11 @@ describe('ResourceLocator', () => {
 		projectsStore.currentProjectId = undefined as unknown as string;
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 
 		const mockWorkflowDocumentStore = shallowRef({
+			documentId: 'test-workflow@latest',
 			homeProject: { id: 'home-project-456', name: 'Test Project', type: 'team' },
 		});
 
@@ -528,8 +529,8 @@ describe('ResourceLocator', () => {
 		];
 
 		nodeTypesStore.getResourceLocatorResults
-			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: null })
-			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: null });
+			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: undefined })
+			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: undefined });
 
 		const { getByTestId, getByText } = renderComponent({
 			props: {
@@ -611,7 +612,7 @@ describe('ResourceLocator', () => {
 			expect(queryByText('This is taking longer than expected')).toBeInTheDocument();
 
 			if (resolvePromise) {
-				resolvePromise({ results: [], paginationToken: null });
+				resolvePromise({ results: [], paginationToken: undefined });
 			}
 			vi.useRealTimers();
 		}, 10000);
@@ -638,7 +639,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { queryByText } = renderComponent({
@@ -679,7 +680,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [{ name: 'Test Item', value: 'test-item' }],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId, queryByText } = renderComponent({
@@ -736,9 +737,182 @@ describe('ResourceLocator', () => {
 			expect(noticeContainer).not.toBeInTheDocument();
 
 			if (resolvePromise) {
-				resolvePromise({ results: [], paginationToken: null });
+				resolvePromise({ results: [], paginationToken: undefined });
 			}
 			vi.useRealTimers();
+		});
+	});
+
+	describe('credential change resets value', () => {
+		it('should reset value when node credentials change', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Change credentials on the node
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toEqual([
+				[
+					{
+						...modelValue,
+						cachedResultName: '',
+						cachedResultUrl: '',
+						value: '',
+					},
+				],
+			]);
+		});
+
+		it('should not reset value when credentials have not changed', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Re-render with same credentials but different parameter
+			await rerender({
+				node: {
+					...node,
+					parameters: { ...node.parameters, operation: 'list' },
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on initial mount', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node: TEST_NODE_MULTI_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset when value is already empty', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: '',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on first credential assignment', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			// Start with no credentials
+			const node = {
+				...TEST_NODE_MULTI_MODE,
+				credentials: undefined,
+			};
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Assign credentials for the first time
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '1234',
+							name: 'Test Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
 		});
 	});
 
@@ -763,7 +937,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId } = renderComponent({
@@ -781,6 +955,7 @@ describe('ResourceLocator', () => {
 				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
 					expect.anything(),
 					expect.anything(),
+					expect.anything(),
 					testContext,
 				);
 			});
@@ -789,7 +964,7 @@ describe('ResourceLocator', () => {
 		it('passes empty object when no context is injected', async () => {
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId } = renderComponent();
@@ -799,6 +974,7 @@ describe('ResourceLocator', () => {
 
 			await waitFor(() => {
 				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
 					expect.anything(),
 					expect.anything(),
 					{},
@@ -811,7 +987,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 			nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
 
@@ -836,6 +1012,7 @@ describe('ResourceLocator', () => {
 
 			await waitFor(() => {
 				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
 					expect.anything(),
 					expect.anything(),
 					testContext,

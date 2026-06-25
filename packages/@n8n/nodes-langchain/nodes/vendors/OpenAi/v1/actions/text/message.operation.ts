@@ -6,7 +6,12 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { accumulateTokenUsage, jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import {
+	accumulateTokenUsage,
+	jsonParse,
+	NodeOperationError,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
@@ -236,6 +241,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const nodeVersion = this.getNode().typeVersion;
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
+	if (!messages.some((m) => typeof m.content === 'string' && m.content.trim() !== '')) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const maxToolsIterations =

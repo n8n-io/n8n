@@ -10,7 +10,7 @@ export const commonOptions: INodeProperties[] = [
 		default: SYSTEM_MESSAGE,
 		description: 'The message that will be sent to the agent before the conversation starts',
 		builderHint: {
-			message:
+			propertyHint:
 				"Must include: agent's purpose, exact names of connected tools, and response instructions",
 		},
 		typeOptions: {
@@ -38,6 +38,14 @@ export const commonOptions: INodeProperties[] = [
 		default: true,
 		description:
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
+	},
+	{
+		displayName: 'Automatically Passthrough Binary PDFs',
+		name: 'passthroughBinaryPdfs',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether or not binary PDF documents should be automatically passed through to the agent. Useful for models that natively support PDF input (e.g. Google Gemini).',
 	},
 	{
 		displayName: 'Tracing Metadata',

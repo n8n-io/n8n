@@ -1,6 +1,10 @@
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+
+import { ASK_USER_TOOL_ID } from '../tool-ids';
+
+export { ASK_USER_TOOL_ID };
 
 const questionSchema = z.object({
 	id: z.string().describe('Unique question identifier'),
@@ -21,62 +25,73 @@ const answerSchema = z.object({
 	skipped: z.boolean().optional(),
 });
 
+export const askUserInputSchema = z.object({
+	questions: z
+		.array(questionSchema)
+		.min(1)
+		.describe('Questions to present to the user in a paginated wizard'),
+	introMessage: z.string().optional().describe('Brief intro text shown above the first question'),
+});
+
+export const askUserResumeSchema = z.object({
+	approved: z.boolean(),
+	answers: z.array(answerSchema).optional(),
+});
+
 export function createAskUserTool() {
-	return createTool({
-		id: 'ask-user',
-		description:
-			'Ask the user one or more structured questions. Each question can be ' +
-			'single-select (pick one), multi-select (pick many), or free-text. ' +
-			'The agent is suspended until the user responds. ' +
-			'IMPORTANT: The UI already provides a built-in "Something else" free-text ' +
-			'input for every single/multi question, so NEVER include generic catch-all ' +
-			'options like "Something else", "Other", "None of the above", or similar in ' +
-			'the options array — they duplicate the built-in input and confuse users. ' +
-			'Also NEVER add a separate follow-up question asking the user to elaborate ' +
-			'on a previous "other" choice. Keep questions concise and ' +
-			'avoid questions that reference answers to previous questions.',
-		inputSchema: z.object({
-			questions: z
-				.array(questionSchema)
-				.min(1)
-				.describe('Questions to present to the user in a paginated wizard'),
-			introMessage: z
-				.string()
-				.optional()
-				.describe('Brief intro text shown above the first question'),
-		}),
-		outputSchema: z.object({
-			answered: z.boolean(),
-			answers: z
-				.array(
-					z.object({
-						questionId: z.string(),
-						question: z.string(),
-						selectedOptions: z.array(z.string()),
-						customText: z.string().optional(),
-						skipped: z.boolean().optional(),
-					}),
-				)
-				.optional(),
-		}),
-		suspendSchema: z.object({
-			requestId: z.string(),
-			message: z.string(),
-			severity: z.literal('info'),
-			inputType: z.literal('questions'),
-			questions: z.array(questionSchema),
-			introMessage: z.string().optional(),
-		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-			answers: z.array(answerSchema).optional(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+	return new Tool(ASK_USER_TOOL_ID)
+		.description(
+			'Ask the user only when a human choice is needed. Each question can be ' +
+				'single-select (pick one), multi-select (pick many), or free-text. ' +
+				'The agent is suspended until the user responds. ' +
+				'IMPORTANT: The UI already provides a built-in "Something else" free-text ' +
+				'input for every single/multi question, so NEVER include generic catch-all ' +
+				'options like "Something else", "Other", "None of the above", or similar in ' +
+				'the options array — they duplicate the built-in input and confuse users. ' +
+				'Also NEVER add a separate follow-up question asking the user to elaborate ' +
+				'on a previous "other" choice. Keep questions concise and ' +
+				'avoid questions that reference answers to previous questions. ' +
+				'A question is asked at most once: if the user skips or dismisses it (you ' +
+				'receive answered: false, or an individual answer with skipped: true), treat that ' +
+				'as a deliberate "proceed without this" — ' +
+				'make a sensible default assumption where one exists, otherwise leave the detail ' +
+				'for setup, and NEVER re-present a question the user has already answered, deferred, or skipped. ' +
+				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
+		)
+		.input(askUserInputSchema)
+		.output(
+			z.object({
+				answered: z.boolean(),
+				answers: z
+					.array(
+						z.object({
+							questionId: z.string(),
+							question: z.string(),
+							selectedOptions: z.array(z.string()),
+							customText: z.string().optional(),
+							skipped: z.boolean().optional(),
+						}),
+					)
+					.optional(),
+			}),
+		)
+		.suspend(
+			z.object({
+				requestId: z.string(),
+				message: z.string(),
+				severity: z.literal('info'),
+				inputType: z.literal('questions'),
+				questions: z.array(questionSchema),
+				introMessage: z.string().optional(),
+			}),
+		)
+		.resume(askUserResumeSchema)
+		.handler(async (input: z.infer<typeof askUserInputSchema>, ctx) => {
+			const resumeData = ctx.resumeData;
 
 			// First call — always suspend to show questions
 			if (resumeData === undefined || resumeData === null) {
-				await suspend?.({
+				return await ctx.suspend({
 					requestId: nanoid(),
 					message: input.introMessage ?? input.questions[0].question,
 					severity: 'info' as const,
@@ -84,8 +99,6 @@ export function createAskUserTool() {
 					questions: input.questions,
 					introMessage: input.introMessage,
 				});
-				// suspend() never resolves
-				return { answered: false };
 			}
 
 			// User skipped or dismissed
@@ -94,8 +107,10 @@ export function createAskUserTool() {
 			}
 
 			// Merge question text into answers for LLM context
-			const enrichedAnswers = resumeData.answers.map((a) => {
-				const q = input.questions.find((q2) => q2.id === a.questionId);
+			const enrichedAnswers = resumeData.answers.map((a: z.infer<typeof answerSchema>) => {
+				const q = input.questions.find(
+					(q2: z.infer<typeof questionSchema>) => q2.id === a.questionId,
+				);
 				return {
 					...a,
 					question: q?.question ?? a.questionId,
@@ -103,6 +118,6 @@ export function createAskUserTool() {
 			});
 
 			return { answered: true, answers: enrichedAnswers };
-		},
-	});
+		})
+		.build();
 }

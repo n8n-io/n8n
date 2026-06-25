@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class FreshdeskApi implements ICredentialType {
 	name = 'freshdeskApi';
@@ -25,4 +30,21 @@ export class FreshdeskApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.apiKey}}',
+				password: 'X',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://{{$credentials.domain}}.freshdesk.com/api/v2',
+			url: '/agents/me',
+		},
+	};
 }

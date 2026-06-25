@@ -37,13 +37,15 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	async isOidcLoginEnabled(): Promise<boolean> {
-		return await this.getOidcLoginToggle().isChecked();
+		const inputValue = await this.getOidcLoginToggle().locator('input').inputValue();
+		return inputValue === 'Enabled';
 	}
 
 	async enableOidcLogin(): Promise<void> {
 		const isEnabled = await this.isOidcLoginEnabled();
 		if (!isEnabled) {
-			await this.getOidcLoginToggle().click();
+			await this.getOidcLoginToggle().locator('.el-select').click();
+			await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'Enabled' }).click();
 		}
 	}
 

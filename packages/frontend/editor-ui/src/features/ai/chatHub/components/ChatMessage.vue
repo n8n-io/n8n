@@ -467,7 +467,7 @@ onBeforeMount(() => {
 	}
 }
 
-.codeBlockActions > * {
+:global(.n8n-markdown-code-block-actions) > * {
 	margin-top: -2px;
 }
 

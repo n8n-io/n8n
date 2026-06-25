@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getWorkflow
+  x-required-scope: workflow:read
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
@@ -27,6 +28,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 delete:
   x-eov-operation-id: deleteWorkflow
+  x-required-scope: workflow:delete
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
@@ -47,6 +49,7 @@ delete:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
   x-eov-operation-id: updateWorkflow
+  x-required-scope: workflow:update
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow

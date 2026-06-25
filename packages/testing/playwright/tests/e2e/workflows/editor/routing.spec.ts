@@ -65,11 +65,11 @@ test.describe(
 			await n8n.page.keyboard.press('Escape');
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 
-			await expect(n8n.ndv.getContainer()).toBeHidden();
+			await expect(n8n.ndv.container).toBeHidden();
 
 			await n8n.page.goto(ndvUrl);
 
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 		});
 
 		test('should open show warning and drop nodeId from URL if it contained an unknown nodeId', async ({
@@ -83,7 +83,7 @@ test.describe(
 			await n8n.page.keyboard.press('Escape');
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 
-			await expect(n8n.ndv.getContainer()).toBeHidden();
+			await expect(n8n.ndv.container).toBeHidden();
 
 			await n8n.page.goto(ndvUrl + 'thisMessesUpTheNodeId');
 
@@ -107,6 +107,7 @@ test.describe(
 			expect(workflowId).toBeTruthy();
 
 			// Navigate to the workflow with ?new=true query parameter
+			// janitor-disable-next-line no-raw-editor-navigation -- test exercises ?new=true URL routing directly; loader awaited below
 			await n8n.page.goto(`/workflow/${workflowId}?new=true`);
 
 			// Wait for the canvas to load

@@ -1,5 +1,5 @@
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode, INodeType } from 'n8n-workflow';
+import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 
@@ -146,4 +146,20 @@ export function containsExpression(testString: string): boolean {
 
 export function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * When N8N_EXPRESSION_ENGINE=vm, expressions run in an isolate that must be acquired
+ * for this workflow before any code resolves {{ }} in parameters or credentials.
+ */
+export async function withExpressionIsolate<T>(
+	workflow: Workflow,
+	fn: () => Promise<T>,
+): Promise<T> {
+	await workflow.expression.acquireIsolate();
+	try {
+		return await fn();
+	} finally {
+		await workflow.expression.releaseIsolate();
+	}
 }

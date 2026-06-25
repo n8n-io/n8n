@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type { IRunExecutionData, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { assertExecutionDataExists } from '../assertions';
 
@@ -69,7 +69,7 @@ describe('assertExecutionDataExists', () => {
 		it('should include workflow metadata in error', () => {
 			try {
 				assertExecutionDataExists(undefined, mockWorkflow, mockAdditionalData, mode);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error) {
 				expect(error).toBeInstanceOf(UnexpectedError);
 				const unexpectedError = error as UnexpectedError;
@@ -99,7 +99,7 @@ describe('assertExecutionDataExists', () => {
 		it('should include mode in error metadata', () => {
 			try {
 				assertExecutionDataExists(undefined, mockWorkflow, mockAdditionalData, 'webhook');
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error) {
 				const unexpectedError = error as UnexpectedError;
 				expect(unexpectedError.extra?.mode).toBe('webhook');

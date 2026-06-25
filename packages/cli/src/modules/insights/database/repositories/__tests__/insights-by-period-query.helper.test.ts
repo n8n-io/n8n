@@ -18,10 +18,10 @@ describe('getDateRangesCommonTableExpressionQuery', () => {
 		jest.useRealTimers();
 	});
 
-	describe.each([
+	describe.each<[DatabaseConfig['type'], string]>([
 		['sqlite', 'SQLite'],
 		['postgresdb', 'PostgreSQL'],
-	])('%s', (dbType: DatabaseConfig['type']) => {
+	])('%s', (dbType) => {
 		describe('hour periodicity (1 day - startDate == endDate)', () => {
 			test('last 24 hours (endDate is today)', () => {
 				const startDate = now.minus({ days: 1 }).startOf('day').toJSDate();

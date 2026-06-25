@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeUnmount } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
-import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { N8nIcon } from '@n8n/design-system';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 const props = defineProps<{
 	file?: File;
@@ -16,8 +16,17 @@ const emit = defineEmits<{
 
 const loading = ref(true);
 
-const mimeType = computed(() => props.file?.type ?? props.attachment?.mimeType ?? '');
-const fileName = computed(() => props.file?.name ?? props.attachment?.fileName ?? '');
+// A workflow attachment is a resource reference (no bytes) — rendered as a
+// chip; everything below handles the binary file case.
+const workflowAttachment = computed(() =>
+	props.attachment?.type === 'workflow' ? props.attachment : undefined,
+);
+const fileAttachment = computed(() =>
+	props.attachment?.type === 'file' ? props.attachment : undefined,
+);
+
+const mimeType = computed(() => props.file?.type ?? fileAttachment.value?.mimeType ?? '');
+const fileName = computed(() => props.file?.name ?? fileAttachment.value?.fileName ?? '');
 const isImage = computed(() => mimeType.value.startsWith('image/'));
 
 const objectUrl = computed(() => {
@@ -29,16 +38,16 @@ const objectUrl = computed(() => {
 
 const thumbnailSrc = computed(() => {
 	if (objectUrl.value) return objectUrl.value;
-	if (props.attachment && isImage.value) {
-		return `data:${props.attachment.mimeType};base64,${props.attachment.data}`;
+	if (fileAttachment.value && isImage.value) {
+		return `data:${fileAttachment.value.mimeType};base64,${fileAttachment.value.data}`;
 	}
 	return null;
 });
 
 const fallbackFile = computed(() => {
 	if (props.file) return props.file;
-	if (props.attachment) {
-		return new File([], props.attachment.fileName, { type: props.attachment.mimeType });
+	if (fileAttachment.value) {
+		return new File([], fileAttachment.value.fileName, { type: fileAttachment.value.mimeType });
 	}
 	return new File([], 'unknown');
 });
@@ -61,9 +70,18 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div v-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
+	<div
+		v-if="workflowAttachment"
+		:class="$style.resourceChip"
+		data-test-id="attachment-preview-resource"
+	>
+		<N8nIcon icon="workflow" size="small" />
+		<span :class="$style.resourceName">{{ workflowAttachment.name ?? 'Workflow' }}</span>
+		<N8nIcon v-if="workflowAttachment.executionId" icon="play" size="xsmall" />
+	</div>
+	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">
-			<N8nIcon icon="spinner" spin size="small" />
+			<N8nIcon icon="spinner" color="primary" spin size="small" />
 		</div>
 		<img :src="thumbnailSrc" :alt="fileName" :class="$style.thumbnail" @load="handleLoad" />
 		<button
@@ -84,6 +102,28 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+.resourceChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	max-width: 220px;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--foreground--tint-2);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.resourceName {
+	// `min-width: 0` lets the flex item shrink below its content so the ellipsis
+	// kicks in within the chip's max-width instead of overflowing.
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .thumbnailWrapper {
 	position: relative;
 	width: 80px;

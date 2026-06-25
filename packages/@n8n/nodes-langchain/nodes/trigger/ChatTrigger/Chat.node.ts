@@ -41,7 +41,7 @@ export class Chat implements INodeType {
 		usableAsTool: true,
 		displayName: 'Chat',
 		name: 'chat',
-		icon: 'fa:comments',
+		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['input'],
 		version: [1, 1.1, 1.2, 1.3],

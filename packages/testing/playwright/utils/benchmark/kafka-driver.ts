@@ -8,6 +8,8 @@ import type {
 	TriggerSetupContext,
 	PreloadResult,
 	PublishResult,
+	PublishStage,
+	StagedPublishResult,
 	DrainResult,
 	PayloadSize,
 } from './types';
@@ -52,6 +54,24 @@ async function publishAtRate(
 	}
 
 	return { totalPublished: totalMessages, actualDurationMs };
+}
+
+async function publishStagedKafka(
+	kafka: KafkaHelper,
+	topic: string,
+	stages: PublishStage[],
+	payloadSize: PayloadSize,
+): Promise<StagedPublishResult> {
+	const stageRecords: StagedPublishResult['stages'] = [];
+	let totalPublished = 0;
+	for (const stage of stages) {
+		const startTimeMs = Date.now();
+		const result = await publishAtRate(kafka, topic, { ...stage, payloadSize });
+		const endTimeMs = Date.now();
+		stageRecords.push({ stage, result, startTimeMs, endTimeMs });
+		totalPublished += result.totalPublished;
+	}
+	return { totalPublished, stages: stageRecords };
 }
 
 async function preloadQueue(
@@ -108,7 +128,6 @@ async function waitForConsumerGroupDrain(
 		}
 
 		if (lagInfo.totalLag === 0) {
-			// All messages consumed — wait briefly for last execution to finish
 			await new Promise((resolve) => setTimeout(resolve, LAST_EXECUTION_SETTLE_MS));
 			return { drained: true, consumed: expectedCount, durationMs: Date.now() - startTime };
 		}
@@ -209,10 +228,17 @@ export const kafkaDriver: TriggerDriver = {
 
 		return {
 			workflow,
+			scenario: {
+				nodeCount: ctx.scenario.nodeCount,
+				nodeOutputSize,
+				payloadSize,
+			},
 
 			preload: (count) => preloadQueue(kafka, topic, { messageCount: count, payloadSize }),
 
 			publishAtRate: (opts) => publishAtRate(kafka, topic, { ...opts, payloadSize }),
+
+			publishStaged: (stages) => publishStagedKafka(kafka, topic, stages, payloadSize),
 
 			waitForReady: (opts) => kafka.waitForConsumerGroup(groupId, opts),
 

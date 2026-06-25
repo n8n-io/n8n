@@ -9,6 +9,8 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type {
 	AddedNodesAndConnections,
@@ -22,11 +24,11 @@ import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorSh
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type Props = {
 	nodeViewScale: number;
@@ -55,8 +57,8 @@ const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
+const workflowId = useWorkflowId();
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -113,9 +115,19 @@ function toggleFocusPanel() {
 	);
 }
 
+const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
+const instanceAiCapability = useInstanceAiEditorCapability();
+
+// Instance AI supersedes the in-editor builder: when its feature is on, the new
+// button hands the current workflow off to a thread. The behavior is the host's
+// (WorkflowLayout vs the artifact); this component never branches on context.
+async function onInstanceAiCanvasActionClick() {
+	await instanceAiCapability.openWorkflow?.('canvas_action_button');
+}
+
 async function onAskAssistantButtonClick() {
-	// Start builder mode if enabled; privacy setting is respected at payload creation level
-	if (builderStore.isAIBuilderEnabled) {
+	// Open builder when available in this editor, otherwise the assistant.
+	if (aiBuilder.value) {
 		await chatPanelStore.toggle({ mode: 'builder' });
 	} else {
 		await chatPanelStore.toggle({ mode: 'assistant' });
@@ -125,6 +137,7 @@ async function onAskAssistantButtonClick() {
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
+			workflowId: workflowId.value,
 		});
 	}
 }
@@ -206,7 +219,32 @@ function openCommandBar(event: MouseEvent) {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
+		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
+		Instance AI feature is on and the host provides the workflow action.
+		Clicking hands the current workflow off to a new Instance AI thread. -->
+		<N8nButton
+			v-if="
+				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
+			"
+			variant="subtle"
+			icon-only
+			size="large"
+			:aria-label="i18n.baseText('aiAssistant.tooltip')"
+			:class="{ [$style.icon]: true }"
+			data-test-id="instance-ai-canvas-action-button"
+			@click="onInstanceAiCanvasActionClick"
+		>
+			<template #default>
+				<div>
+					<N8nAssistantIcon size="large" />
+				</div>
+			</template>
+		</N8nButton>
+		<!-- Legacy assistant/builder button — only while Instance AI is off. -->
+		<N8nTooltip
+			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
+			placement="left"
+		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
 				variant="subtle"

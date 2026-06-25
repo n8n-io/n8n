@@ -37,7 +37,7 @@ export async function linkedInApiRequest(
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
-			'LinkedIn-Version': '202504',
+			'LinkedIn-Version': '202604',
 		},
 		method,
 		body,

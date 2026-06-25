@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { matchesDisplayOptions, resolveSchema } from './resolve-schema';
+import { matchesDisplayOptions, resolveOneOfSchemas, resolveSchema } from './resolve-schema';
 
 describe('matchesDisplayOptions', () => {
 	describe('show conditions', () => {
@@ -412,5 +412,108 @@ describe('resolveSchema with defaults', () => {
 
 		const result = schema.safeParse(params);
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('resolveOneOfSchemas', () => {
+	const sqlVariants = [
+		{
+			schema: z.string(),
+			required: true,
+			displayOptions: { hide: { useLegacySql: [true] } },
+		},
+		{
+			schema: z.string(),
+			required: true,
+			displayOptions: { show: { useLegacySql: [true] } },
+		},
+	];
+
+	it('accepts a value when the first variant matches (legacy off)', () => {
+		const schema = resolveOneOfSchemas({
+			parameters: { useLegacySql: false },
+			variants: sqlVariants,
+		});
+		expect(schema.safeParse('SELECT 1').success).toBe(true);
+	});
+
+	it('accepts a value when the second variant matches (legacy on)', () => {
+		const schema = resolveOneOfSchemas({
+			parameters: { useLegacySql: true },
+			variants: sqlVariants,
+		});
+		expect(schema.safeParse('SELECT 1').success).toBe(true);
+	});
+
+	it('honours required-when-visible when only one variant matches', () => {
+		// Only the first variant should match (useLegacySql is undefined → not [true])
+		const schema = resolveOneOfSchemas({
+			parameters: {},
+			variants: sqlVariants,
+		});
+		// required: true → undefined should fail
+		expect(schema.safeParse(undefined).success).toBe(false);
+		expect(schema.safeParse('SELECT 1').success).toBe(true);
+	});
+
+	it('rejects non-undefined values when no variant matches', () => {
+		const variants = [
+			{
+				schema: z.string(),
+				required: true,
+				displayOptions: { show: { mode: ['a'] } },
+			},
+			{
+				schema: z.string(),
+				required: true,
+				displayOptions: { show: { mode: ['b'] } },
+			},
+		];
+		const schema = resolveOneOfSchemas({
+			parameters: { mode: 'c' },
+			variants,
+		});
+		expect(schema.safeParse(undefined).success).toBe(true);
+		const result = schema.safeParse('hello');
+		expect(result.success).toBe(false);
+	});
+
+	it('treats variants in order — first match wins', () => {
+		// Both variants match — first variant's required:true should win.
+		const variants = [
+			{
+				schema: z.string(),
+				required: true,
+				displayOptions: { show: { mode: ['x'] } },
+			},
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: { show: { mode: ['x', 'y'] } },
+			},
+		];
+		const schema = resolveOneOfSchemas({
+			parameters: { mode: 'x' },
+			variants,
+		});
+		// First (required) variant wins → undefined fails
+		expect(schema.safeParse(undefined).success).toBe(false);
+	});
+
+	it('honours per-variant defaults when matching displayOptions', () => {
+		const variants = [
+			{
+				schema: z.string(),
+				required: true,
+				displayOptions: { show: { mode: ['a'] } },
+				defaults: { mode: 'a' },
+			},
+		];
+		// mode is absent — variant's default of 'a' fills in and the variant matches
+		const schema = resolveOneOfSchemas({
+			parameters: {},
+			variants,
+		});
+		expect(schema.safeParse('hello').success).toBe(true);
 	});
 });

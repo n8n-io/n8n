@@ -22,6 +22,12 @@ properties:
     type: object
     readOnly: true
     example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
+  nodeGroups:
+    type: array
+    readOnly: true
+    description: Visual groupings of nodes shown as frames on the canvas
+    items:
+      $ref: './workflowNodeGroup.yml'
   authors:
     type: string
     readOnly: true

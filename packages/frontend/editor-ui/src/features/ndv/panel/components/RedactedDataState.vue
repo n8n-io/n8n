@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 import NDVEmptyState from './NDVEmptyState.vue';
 import { I18nT } from 'vue-i18n';
+import { EXECUTION_DATA_REDACTION_DOCS_URL } from '@/app/constants';
 
 defineProps<{
 	title: string;
@@ -26,7 +27,7 @@ const i18n = useI18n();
 		<template v-if="isDynamicCredentials">
 			{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
 		</template>
-		<template v-else>
+		<template v-else-if="canReveal">
 			{{ i18n.baseText('ndv.redacted.description.sentence1') }}<br />
 			<I18nT keypath="ndv.redacted.description.sentence2" tag="span" scope="global">
 				<template #link>
@@ -36,6 +37,18 @@ const i18n = useI18n();
 				</template>
 			</I18nT>
 		</template>
+		<template v-else>
+			{{ i18n.baseText('ndv.redacted.noPermission.description') }}
+		</template>
+		<br />
+		<N8nLink
+			:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+			size="medium"
+			new-window
+			data-test-id="redacted-data-docs-link"
+		>
+			{{ i18n.baseText('generic.learnMore') }}
+		</N8nLink>
 		<template v-if="canReveal" #actions>
 			<N8nButton
 				:label="i18n.baseText('ndv.redacted.revealButton')"

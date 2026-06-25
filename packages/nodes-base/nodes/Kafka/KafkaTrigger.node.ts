@@ -24,6 +24,8 @@ import {
 	configureDataEmitter,
 	getAutoCommitSettings,
 	runWithHeartbeat,
+	toUserFacingConsumerError,
+	type ConsumerErrorHandler,
 } from './utils';
 
 export class KafkaTrigger implements INodeType {
@@ -43,6 +45,16 @@ export class KafkaTrigger implements INodeType {
 			{
 				name: 'kafka',
 				required: true,
+			},
+			{
+				name: 'schemaRegistryApi',
+				required: false,
+				displayName: 'Schema Registry',
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [true],
+					},
+				},
 			},
 		],
 		properties: [
@@ -157,7 +169,6 @@ export class KafkaTrigger implements INodeType {
 				displayName: 'Schema Registry URL',
 				name: 'schemaRegistryUrl',
 				type: 'string',
-				required: true,
 				displayOptions: {
 					show: {
 						useSchemaRegistry: [true],
@@ -165,7 +176,8 @@ export class KafkaTrigger implements INodeType {
 				},
 				placeholder: 'https://schema-registry-domain:8081',
 				default: '',
-				description: 'URL of the schema registry',
+				description:
+					'URL of the schema registry. Only used when no Schema Registry credential is selected.',
 			},
 			{
 				displayName: 'Options',
@@ -383,7 +395,7 @@ export class KafkaTrigger implements INodeType {
 
 		const config = await createConfig(this);
 		const kafka = new apacheKafka(config);
-		const registry = setSchemaRegistry(this);
+		const registry = await setSchemaRegistry(this);
 
 		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
 		if (options.keepBinaryData && nodeVersion < 1.2) {
@@ -475,9 +487,17 @@ export class KafkaTrigger implements INodeType {
 			}
 		};
 
-		const listeners = connectEventListeners(consumer, this.logger);
+		let closeGotCalled = false;
+		const handleConsumerError: ConsumerErrorHandler = (error) => {
+			// Don't surface errors that are a side effect of our own teardown.
+			if (!closeGotCalled) {
+				this.emitError(toUserFacingConsumerError(this.getNode(), error));
+			}
+		};
+		const listeners = connectEventListeners(consumer, this.logger, handleConsumerError);
 
 		const closeFunction = async () => {
+			closeGotCalled = true;
 			try {
 				disconnectEventListeners(listeners);
 				await consumer.stop();

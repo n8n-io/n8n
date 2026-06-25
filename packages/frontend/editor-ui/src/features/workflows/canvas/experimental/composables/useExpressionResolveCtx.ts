@@ -1,32 +1,21 @@
 import type { INodeUi } from '@/Interface';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import type { Workflow } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 
 export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undefined>) {
-	const environmentsStore = useEnvironmentsStore();
-	const workflowsStore = useWorkflowsStore();
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	return computed<ExpressionLocalResolveContext | undefined>(() => {
-		if (!node.value) {
+		if (!node.value || !workflowDocumentStore.value) {
 			return undefined;
 		}
 
 		const runIndex = 0; // not changeable for now
-		const execution = workflowsStore.workflowExecutionData;
+		const execution = workflowExecutionStateStore.value.activeExecution;
 		const nodeName = node.value.name;
 
 		function findInputNode(): ExpressionLocalResolveContext['inputNode'] {
@@ -41,7 +30,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 				};
 			}
 
-			const inputs = workflowObject.value.getParentNodesByDepth(nodeName, 1);
+			const inputs = workflowDocumentStore.value.getParentNodesByDepth(nodeName, 1);
 
 			if (inputs.length > 0) {
 				return {
@@ -56,13 +45,9 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 
 		return {
 			localResolve: true,
-			envVars: environmentsStore.variablesAsObject,
-			workflow: workflowObject.value,
-			execution,
 			nodeName,
 			additionalKeys: {},
 			inputNode: findInputNode(),
-			connections: workflowDocumentStore.value?.connectionsBySourceNode ?? {},
 		};
 	});
 }

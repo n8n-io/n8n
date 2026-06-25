@@ -5,7 +5,55 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';
-import { getMcpWorkflow } from '../tools/workflow-validation.utils';
+import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validation.utils';
+
+jest.mock('@n8n/ai-workflow-builder', () => ({
+	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_sdk_reference', displayTitle: 'SDK Ref' },
+	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow', displayTitle: 'Validate' },
+}));
+
+describe('getSdkReferenceHint', () => {
+	test('returns hint for WorkflowCodeParseError', () => {
+		const error = new Error('parse failed');
+		error.name = 'WorkflowCodeParseError';
+
+		const hint = getSdkReferenceHint(error);
+
+		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('Workflow SDK reference');
+		expect(hint).toContain('validate_workflow');
+	});
+
+	test('returns hint for SyntaxError', () => {
+		const hint = getSdkReferenceHint(
+			new SyntaxError('Code must export a workflow built with the workflow() SDK function.'),
+		);
+
+		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('required SDK patterns');
+	});
+
+	test('uses requested follow-up action', () => {
+		const error = new Error('parse failed');
+		error.name = 'WorkflowCodeParseError';
+
+		const hint = getSdkReferenceHint(error, {
+			afterReference: 'Then retry validation.',
+		});
+
+		expect(hint).toContain('Then retry validation.');
+	});
+
+	test('returns undefined for generic Error', () => {
+		expect(getSdkReferenceHint(new Error('something else'))).toBeUndefined();
+	});
+
+	test('returns undefined for non-error values', () => {
+		expect(getSdkReferenceHint('string')).toBeUndefined();
+		expect(getSdkReferenceHint(null)).toBeUndefined();
+		expect(getSdkReferenceHint(undefined)).toBeUndefined();
+	});
+});
 
 describe('getMcpWorkflow', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

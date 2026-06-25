@@ -9,13 +9,18 @@ export type NamePayload = {
 
 export type NameChangeEvent = ChangeEvent<NamePayload>;
 
-export function useWorkflowDocumentName() {
+export interface WorkflowDocumentNameDeps {
+	syncWorkflowObject: (name: string) => void;
+}
+
+export function useWorkflowDocumentName(deps: WorkflowDocumentNameDeps) {
 	const name = ref<string>('');
 
 	const onNameChange = createEventHook<NameChangeEvent>();
 
 	function applyName(value: string, action: ChangeAction = CHANGE_ACTION.UPDATE) {
 		name.value = value;
+		deps.syncWorkflowObject(value);
 		void onNameChange.trigger({ action, payload: { name: value } });
 	}
 

@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import axios from 'axios';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
@@ -30,13 +30,15 @@ import { executeNpmCommand } from '../npm-utils';
 
 jest.mock('node:fs/promises');
 jest.mock('node:child_process');
-jest.mock('axios');
 jest.mock('../community-node-types-utils', () => ({
 	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../npm-utils', () => ({
 	...jest.requireActual('../npm-utils'),
 	executeNpmCommand: jest.fn(),
+	executeNpmRequest: jest.fn().mockResolvedValue({}),
+	checkIfVersionExistsOrThrow: jest.fn().mockResolvedValue(true),
+	verifyIntegrity: jest.fn().mockResolvedValue(undefined),
 }));
 
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
@@ -54,6 +56,7 @@ describe('CommunityPackagesService', () => {
 		reinstallMissing: false,
 		registry: 'some.random.host',
 		unverifiedEnabled: true,
+		authToken: '',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
@@ -65,6 +68,10 @@ describe('CommunityPackagesService', () => {
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
 
+	const request = jest.fn();
+	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const outboundHttp = mock<OutboundHttp>({ requests });
+
 	const communityPackagesService = new CommunityPackagesService(
 		instanceSettings,
 		logger,
@@ -73,6 +80,7 @@ describe('CommunityPackagesService', () => {
 		publisher,
 		license,
 		config,
+		outboundHttp,
 	);
 
 	beforeEach(() => {
@@ -106,11 +114,22 @@ describe('CommunityPackagesService', () => {
 			).toThrowError();
 		});
 
-		test.each(['invalid', '1.a.b'])('should fail with invalid version', (version) => {
-			expect(() =>
-				communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
-			).toThrow(`Invalid version: ${version}`);
-		});
+		test.each(['1.a.b', '1invalid', '-starts-with-dash'])(
+			'should fail with invalid version',
+			(version) => {
+				expect(() =>
+					communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
+				).toThrow(`Invalid version: ${version}`);
+			},
+		);
+
+		test.each(['beta', 'next', 'latest', 'canary', 'rc-1'])(
+			'should accept npm dist-tag as version',
+			(tag) => {
+				const parsed = communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${tag}`);
+				expect(parsed.version).toBe(tag);
+			},
+		);
 
 		test('should parse valid package name', () => {
 			const name = mockPackageName();
@@ -253,14 +272,20 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('checkNpmPackageStatus()', () => {
-		test('should call axios.post', async () => {
-			await communityPackagesService.checkNpmPackageStatus(mockPackageName());
+		test('should POST the package name to the n8n backend', async () => {
+			const packageName = mockPackageName();
+			await communityPackagesService.checkNpmPackageStatus(packageName);
 
-			expect(axios.post).toHaveBeenCalled();
+			expect(request).toHaveBeenCalledWith({
+				url: 'https://api.n8n.io/api/package',
+				method: 'POST',
+				body: { name: packageName },
+				json: true,
+			});
 		});
 
 		test('should not fail if request fails', async () => {
-			mocked(axios.post).mockImplementation(() => {
+			request.mockImplementation(() => {
 				throw new Error('Something went wrong');
 			});
 
@@ -270,7 +295,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should warn if package is banned', async () => {
-			mocked(axios.post).mockResolvedValue({ data: { status: 'Banned', reason: 'Not good' } });
+			request.mockResolvedValue({ status: 'Banned', reason: 'Not good' });
 
 			const result = (await communityPackagesService.checkNpmPackageStatus(
 				mockPackageName(),
@@ -351,7 +376,6 @@ describe('CommunityPackagesService', () => {
 			'--install-strategy=shallow',
 			'--ignore-scripts=true',
 			'--package-lock=false',
-			`--registry=${testBlockRegistry}`,
 		].join(' ');
 
 		const execMockForThisBlock = ((...args: Parameters<typeof execFile>) => {
@@ -423,14 +447,14 @@ describe('CommunityPackagesService', () => {
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
-				{ cwd: testBlockDownloadDir },
+				['pack', `${PACKAGE_NAME}@latest`, '--quiet'],
+				{ cwd: testBlockDownloadDir, registry: testBlockRegistry, authToken: undefined },
 			);
 
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
 				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
+				{ cwd: testBlockPackageDir, registry: testBlockRegistry, authToken: undefined },
 			);
 
 			// Check execFile was called only for tar command
@@ -478,14 +502,12 @@ describe('CommunityPackagesService', () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
 
 			// ACT & ASSERT
-			await expect(
-				communityPackagesService.updatePackage(
-					installedPackageForUpdateTest.packageName,
-					installedPackageForUpdateTest,
-				),
-			).rejects.toThrow(
-				new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY),
+			const promise = communityPackagesService.updatePackage(
+				installedPackageForUpdateTest.packageName,
+				installedPackageForUpdateTest,
 			);
+			await expect(promise).rejects.toThrow(FeatureNotLicensedError);
+			await expect(promise).rejects.toThrow(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		});
 	});
 

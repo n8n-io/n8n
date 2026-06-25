@@ -22,6 +22,7 @@ import type {
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
 	IExecutionContext,
+	WorkflowExecutionSource,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -104,6 +105,8 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	id: string;
 	retryOf?: string;
+	/** See {@link IExecutionResponse.dataTooLargeToDisplay}. When true, `data` is empty. */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface IExecutionsListResponse {
@@ -184,7 +187,53 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
-	used_dynamic_credentials?: boolean;
+	used_private_credentials?: boolean;
+	execution_source?: WorkflowExecutionSource;
+	mock_data_sources?: string;
+}
+
+export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	/** n8n user ID, present only when the agent run has direct n8n user context. */
+	user_id?: string;
+	/** Fresh user turns only. Resume continuations do not increment this count. */
+	message_count?: number;
+	/** AI SDK usage from agent, title, memory generation, and embedding calls. */
+	token_count?: number;
+	/** Tool invocations only. Resuming a suspended tool does not double-count it. */
+	tool_call_count?: number;
+}
+
+export type AgentRunTelemetryType = 'test' | 'production';
+
+export type AgentTurnTelemetryStatus = 'succeeded' | 'failed';
+
+export type AgentTelemetryMemoryType =
+	| 'none'
+	| 'n8n'
+	| 'n8n_observational'
+	| 'n8n_episodic'
+	| 'n8n_observational_episodic';
+
+export interface IAgentConfigurationTelemetryProperties {
+	model: string | null;
+	channels: string[];
+	tool_types: string[];
+	tool_count: number;
+	num_skills: number;
+	memory_type: AgentTelemetryMemoryType;
+}
+
+export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	/** Internal aggregation key only. This must never be emitted to telemetry. */
+	thread_id: string;
+	run_type: AgentRunTelemetryType;
+	turn_status: AgentTurnTelemetryStatus;
+	configuration: IAgentConfigurationTelemetryProperties;
+	latency_ms: number;
+	cost: number;
+	tool_call_count: number;
 }
 
 // ----------------------------------
