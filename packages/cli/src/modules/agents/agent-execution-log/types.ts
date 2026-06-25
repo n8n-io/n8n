@@ -21,6 +21,7 @@ export type AgentExecutionLogBundle = AgentExecutionLogPayload & {
 
 export interface AgentExecutionLogStore {
 	init?(): Promise<void>;
+	/** `tx` is used only by the DB-backed store; blob stores write outside the database transaction. */
 	write(
 		ref: AgentExecutionLogRef,
 		payload: AgentExecutionLogPayload,

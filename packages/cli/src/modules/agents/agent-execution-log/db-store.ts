@@ -1,6 +1,7 @@
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -31,13 +32,17 @@ export class DbStore implements AgentExecutionLogStore {
 			select: ['id', 'assistantResponse', 'toolCalls', 'timeline', 'error'],
 		});
 
-		if (execution) {
-			execution.assistantResponse = payload.assistantResponse;
-			execution.toolCalls = payload.toolCalls;
-			execution.timeline = payload.timeline;
-			execution.error = payload.error;
-			await repository.save(execution);
+		if (!execution) {
+			throw new UnexpectedError('Agent execution row is missing while writing log payload', {
+				extra: { executionId },
+			});
 		}
+
+		execution.assistantResponse = payload.assistantResponse;
+		execution.toolCalls = payload.toolCalls;
+		execution.timeline = payload.timeline;
+		execution.error = payload.error;
+		await repository.save(execution);
 
 		return measureAgentExecutionLogBundleBytes(payload);
 	}

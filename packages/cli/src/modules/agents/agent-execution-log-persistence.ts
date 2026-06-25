@@ -1,6 +1,7 @@
 import { AgentsConfig } from '@n8n/config';
 import type { EntityManager, ExecutionDataStorageLocation } from '@n8n/db';
 import { Service } from '@n8n/di';
+import chunk from 'lodash/chunk';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DbStore } from './agent-execution-log/db-store';
@@ -15,6 +16,8 @@ import type {
 type StoredAgentExecutionLogRef = AgentExecutionLogRef & {
 	storedAt: ExecutionDataStorageLocation;
 };
+
+const MAX_READ_CONCURRENCY = 50;
 
 @Service()
 export class AgentExecutionLogPersistence {
@@ -51,18 +54,17 @@ export class AgentExecutionLogPersistence {
 
 	async readMany(refs: StoredAgentExecutionLogRef[]) {
 		const bundles = new Map<string, AgentExecutionLogBundle>();
-		const refsByLocation = new Map<ExecutionDataStorageLocation, AgentExecutionLogRef[]>();
 
-		for (const { storedAt, ...ref } of refs) {
-			const group = refsByLocation.get(storedAt) ?? [];
-			group.push(ref);
-			refsByLocation.set(storedAt, group);
-		}
+		for (const [location, group] of this.groupByLocation(refs)) {
+			const store = this.getStoreFor(location);
+			for (const batch of chunk(group, MAX_READ_CONCURRENCY)) {
+				const batchBundles = await Promise.all(
+					batch.map(async (ref) => [ref.executionId, await store.read(ref)] as const),
+				);
 
-		for (const [location, group] of refsByLocation) {
-			const storeBundles = await this.getStoreFor(location).readMany(group);
-			for (const [executionId, bundle] of storeBundles) {
-				bundles.set(executionId, bundle);
+				for (const [executionId, bundle] of batchBundles) {
+					if (bundle) bundles.set(executionId, bundle);
+				}
 			}
 		}
 
@@ -70,6 +72,14 @@ export class AgentExecutionLogPersistence {
 	}
 
 	async delete(refs: StoredAgentExecutionLogRef[]) {
+		await Promise.all(
+			[...this.groupByLocation(refs)].map(async ([location, group]) => {
+				await this.getStoreFor(location).delete(group);
+			}),
+		);
+	}
+
+	private groupByLocation(refs: StoredAgentExecutionLogRef[]) {
 		const refsByLocation = new Map<ExecutionDataStorageLocation, AgentExecutionLogRef[]>();
 
 		for (const { storedAt, ...ref } of refs) {
@@ -78,11 +88,7 @@ export class AgentExecutionLogPersistence {
 			refsByLocation.set(storedAt, group);
 		}
 
-		await Promise.all(
-			[...refsByLocation].map(async ([location, group]) => {
-				await this.getStoreFor(location).delete(group);
-			}),
-		);
+		return refsByLocation;
 	}
 
 	private getStoreFor(location: ExecutionDataStorageLocation): AgentExecutionLogStore {

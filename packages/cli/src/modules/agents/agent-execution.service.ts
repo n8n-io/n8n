@@ -6,7 +6,6 @@ import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } fr
 import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionLogPersistence } from './agent-execution-log-persistence';
-import { measureAgentExecutionLogBundleBytes } from './agent-execution-log/constants';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { AgentExecutionLogPayload } from './agent-execution-log/types';
@@ -107,51 +106,70 @@ export class AgentExecutionService {
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const storedAt = this.agentExecutionLogPersistence.currentLocation;
 		const logPayload = this.toLogPayload(record);
-		const entityLogPayload =
-			storedAt === 'db'
-				? logPayload
-				: { assistantResponse: '', toolCalls: null, timeline: null, error: null };
 
-		const inserted = await this.agentExecutionRepository.manager.transaction(async (tx) => {
-			const repository = tx.getRepository(AgentExecution);
-			const saved = await repository.save(
-				repository.create({
-					threadId,
-					status,
-					startedAt,
-					stoppedAt,
-					duration: record.duration,
-					userMessage: cleanedMessage,
-					assistantResponse: entityLogPayload.assistantResponse,
-					model: record.model,
-					promptTokens: record.usage?.promptTokens ?? null,
-					completionTokens: record.usage?.completionTokens ?? null,
-					totalTokens: record.usage?.totalTokens ?? null,
-					cost: record.totalCost,
-					toolCalls: entityLogPayload.toolCalls,
-					timeline: entityLogPayload.timeline,
-					error: entityLogPayload.error,
-					hitlStatus: hitlStatus ?? null,
-					source: source ?? null,
-					storedAt,
-					logSizeBytes: 0,
-				}),
-			);
+		let writtenExternalLogRef:
+			| {
+					agentId: string;
+					threadId: string;
+					executionId: string;
+					storedAt: AgentExecution['storedAt'];
+			  }
+			| undefined;
 
-			let logSizeBytes: number;
-			if (storedAt === 'db') {
-				logSizeBytes = measureAgentExecutionLogBundleBytes(logPayload);
-			} else {
-				logSizeBytes = await this.agentExecutionLogPersistence.write(
-					{ agentId, threadId, executionId: saved.id },
-					logPayload,
-					storedAt,
-					tx,
-				);
+		const inserted = await (async () => {
+			try {
+				return await this.agentExecutionRepository.manager.transaction(async (tx) => {
+					const repository = tx.getRepository(AgentExecution);
+					const saved = await repository.save(
+						repository.create({
+							threadId,
+							status,
+							startedAt,
+							stoppedAt,
+							duration: record.duration,
+							userMessage: cleanedMessage,
+							assistantResponse: '',
+							model: record.model,
+							promptTokens: record.usage?.promptTokens ?? null,
+							completionTokens: record.usage?.completionTokens ?? null,
+							totalTokens: record.usage?.totalTokens ?? null,
+							cost: record.totalCost,
+							toolCalls: null,
+							timeline: null,
+							error: null,
+							hitlStatus: hitlStatus ?? null,
+							source: source ?? null,
+							storedAt,
+							logSizeBytes: 0,
+						}),
+					);
+
+					const logRef = { agentId, threadId, executionId: saved.id };
+					const logSizeBytes = await this.agentExecutionLogPersistence.write(
+						logRef,
+						logPayload,
+						storedAt,
+						tx,
+					);
+					if (storedAt !== 'db') writtenExternalLogRef = { ...logRef, storedAt };
+					await tx.update(AgentExecution, saved.id, { logSizeBytes });
+					return saved;
+				});
+			} catch (error) {
+				const cleanupRef = writtenExternalLogRef;
+				if (cleanupRef) {
+					await this.agentExecutionLogPersistence.delete([cleanupRef]).catch((cleanupError) => {
+						this.logger.warn('Failed to clean up agent execution log after recording failed', {
+							agentId,
+							threadId,
+							executionId: cleanupRef.executionId,
+							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+						});
+					});
+				}
+				throw error;
 			}
-			await tx.update(AgentExecution, saved.id, { logSizeBytes });
-			return saved;
-		});
+		})();
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.
@@ -261,8 +279,8 @@ export class AgentExecutionService {
 		if (!thread) return false;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.deleteExecutionLogs(agentId, executions);
+		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
 	}
@@ -294,10 +312,9 @@ export class AgentExecutionService {
 
 		return {
 			...page,
-			threads: page.threads.map((t) => ({
-				...t,
-				firstMessage: messageMap.get(t.id) ?? null,
-			})),
+			threads: page.threads.map((thread) =>
+				Object.assign(thread, { firstMessage: messageMap.get(thread.id) ?? null }),
+			),
 		};
 	}
 
@@ -338,7 +355,7 @@ export class AgentExecutionService {
 
 	private async hydrateExecutionLogs(agentId: string, executions: AgentExecution[]) {
 		const externalExecutions = executions.filter((execution) => {
-			return execution.storedAt !== undefined && execution.storedAt !== 'db';
+			return execution.storedAt !== 'db';
 		});
 		if (externalExecutions.length === 0) return executions;
 
@@ -352,7 +369,7 @@ export class AgentExecutionService {
 		);
 
 		return executions.map((execution) => {
-			if (execution.storedAt === undefined || execution.storedAt === 'db') return execution;
+			if (execution.storedAt === 'db') return execution;
 
 			const bundle = bundles.get(execution.id);
 			if (!bundle) {
@@ -379,7 +396,7 @@ export class AgentExecutionService {
 	private async deleteExecutionLogs(agentId: string, executions: AgentExecution[]) {
 		await this.agentExecutionLogPersistence.delete(
 			executions
-				.filter((execution) => execution.storedAt !== undefined && execution.storedAt !== 'db')
+				.filter((execution) => execution.storedAt !== 'db')
 				.map((execution) => ({
 					agentId,
 					threadId: execution.threadId,
