@@ -61,6 +61,10 @@ Additional information about the license model can be found in the [docs](https:
 
 Found a bug 🐛 or have a feature idea ✨? Check our [Contributing Guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) for a setup guide & best practices.
 
+## Tech stack used
+
+![Stack Fingerprint](https://stackfingerprint.vercel.app/api/card?repo=n8n-io/n8n&theme=sakura&layout=tall&size=sm&icons=mono&pills=round)
+
 ## Join the Team
 
 Want to shape the future of automation? Check out our [job posts](https://n8n.io/careers) and join our team!
