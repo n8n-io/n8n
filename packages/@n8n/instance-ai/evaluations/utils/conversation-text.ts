@@ -81,14 +81,22 @@ export function agentTextOf(turn: TranscriptTurn): string {
 /** Tool id the builder calls to create or modify the workflow graph. */
 export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
 
-// build-workflow calls per turn (a suspend→resume is one call, so approvals don't inflate it).
-export function buildWorkflowCallsPerTurn(transcript: TranscriptTurn[]): number[] {
-	return transcript.map(
-		(turn) =>
-			turn.steps.filter(
-				(step) => step.kind === 'tool-call' && step.toolName === BUILD_WORKFLOW_TOOL_NAME,
-			).length,
-	);
+// Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: build-workflow×6") —
+// every tool, every turn; lets it reason from the counts instead of recounting prose.
+export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
+	const lines: string[] = [];
+	transcript.forEach((turn, i) => {
+		const counts = new Map<string, number>();
+		for (const step of turn.steps) {
+			if (step.kind === 'tool-call') {
+				counts.set(step.toolName, (counts.get(step.toolName) ?? 0) + 1);
+			}
+		}
+		if (counts.size === 0) return;
+		const summary = [...counts.entries()].map(([name, n]) => `${name}×${String(n)}`).join(', ');
+		lines.push(`Turn ${String(i + 1)}: ${summary}`);
+	});
+	return lines.length > 0 ? lines.join('\n') : '(no tool calls in any turn)';
 }
 
 // build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —

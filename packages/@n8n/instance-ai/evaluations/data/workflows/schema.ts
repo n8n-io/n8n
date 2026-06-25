@@ -6,14 +6,18 @@ import { SUPPORTED_CREDENTIAL_TYPES } from '../../credentials/seeder';
  *  source of truth shared by the loader schema and the mcp-manifest tier reader. */
 export const DEFAULT_DATASETS = ['full'];
 
+/** A conversation turn's `text`: a string, or an array of lines joined with
+ *  newlines. The array form lets long stage directions be authored readably
+ *  (one line per element) in the JSON file; every consumer still receives a
+ *  single string. Exported as the single source of truth so non-harness readers
+ *  (e.g. the mcp-manifest builder) normalize identically. */
+export const conversationTurnTextSchema = z
+	.union([z.string(), z.array(z.string())])
+	.transform((t) => (Array.isArray(t) ? t.join('\n') : t));
+
 const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
-	// A string, or an array of lines joined with newlines. The array form lets
-	// long stage directions be authored readably (one line per element) in the
-	// JSON file; every consumer still receives a single string.
-	text: z
-		.union([z.string(), z.array(z.string())])
-		.transform((t) => (Array.isArray(t) ? t.join('\n') : t)),
+	text: conversationTurnTextSchema,
 });
 
 const ExecutionScenarioSchema = z.object({

@@ -22,6 +22,7 @@
     "vue": "catalog:frontend"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/chrome": "0.0.300",
