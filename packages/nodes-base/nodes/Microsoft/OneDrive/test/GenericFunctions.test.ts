@@ -518,11 +518,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(caught?.message).not.toContain('%2E');
 		});
 
-		it('coerces a non-string id robustly via String(rawId ?? "")', () => {
-			// number id (e.g. a poll fallback) must not crash before validation
-			expect(() =>
-				getServicePrincipalResourceRoot('user', 12345 as unknown as string, mockNode),
-			).not.toThrow();
+		it('coerces a non-string id robustly via String(rawId ?? "") and stringifies it into the root', () => {
+			// a number id (e.g. a poll fallback) must be coerced, validated, and used
+			expect(getServicePrincipalResourceRoot('user', 12345 as unknown as string, mockNode)).toBe(
+				'/users/12345',
+			);
 		});
 	});
 
@@ -563,6 +563,16 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				validateResourceTargetId('user', '11111111-1111-1111-1111-111111111111', mockNode),
 			).not.toThrow();
 			expect(() => validateResourceTargetId('user', 'jane@contoso.com', mockNode)).not.toThrow();
+		});
+
+		it('accepts a UPN containing "+" (sub-addressing)', () => {
+			expect(() =>
+				validateResourceTargetId('user', 'jane+test@contoso.com', mockNode),
+			).not.toThrow();
+		});
+
+		it('rejects a drive-shaped id ("b!abc") as a user (the "!" is not a valid user id)', () => {
+			expect(() => validateResourceTargetId('user', 'b!abc', mockNode)).toThrow();
 		});
 
 		it('accepts a drive id containing "!"', () => {
@@ -820,7 +830,12 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
-		it('calls requestWithAuthentication exactly once and surfaces a rejection as NodeApiError', async () => {
+		it('delegates to requestWithAuthentication once with no node-side retry, surfacing a rejection as NodeApiError', async () => {
+			// This asserts only the node's delegation contract: it calls
+			// requestWithAuthentication exactly once and adds no retry of its own. The
+			// actual 401 token re-mint is core's job (it re-runs the credential's
+			// preAuthentication) and is covered by the credential's own test in master —
+			// not re-proven here.
 			mockRequestWithAuthentication.mockRejectedValue(new Error('401'));
 
 			const error = await microsoftApiRequest

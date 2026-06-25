@@ -164,6 +164,38 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		}
 	});
 
+	it('SP with Access As: Site and omitted driveId: resolves once via a site-scoped GET then PATCH', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation(
+			buildParams({
+				authentication: 'microsoftEntraServicePrincipalApi',
+				resourceTarget: 'site',
+				parentReference: { id: 'dest-folder' },
+			}),
+		);
+		mockApiRequest.mockImplementation(async (_method, resource) => {
+			if (resource === '/drive') return { id: 'b!siteDrive' };
+			return { id: 'moved-item' };
+		});
+
+		await microsoftOneDrive.execute.call(mockExecuteFunctions);
+
+		const getCalls = mockApiRequest.mock.calls.filter((c) => c[1] === '/drive');
+		expect(getCalls).toHaveLength(1);
+		// GET is scoped to the site root (driveScopeRoot arg) and selects only id
+		expect(getCalls[0][0]).toBe('GET');
+		expect(getCalls[0][3]).toEqual({ $select: 'id' });
+		expect(getCalls[0][7]).toBe('/sites/host,1111,2222');
+		// the PATCH carries the resolved site drive id
+		const patchCalls = mockApiRequest.mock.calls.filter((c) => c[0] === 'PATCH');
+		expect(patchCalls).toHaveLength(1);
+		expect((patchCalls[0][2] as IDataObject).parentReference).toEqual({
+			id: 'dest-folder',
+			driveId: 'b!siteDrive',
+		});
+		// and the PATCH itself is scoped to the same site root
+		expect(patchCalls[0][7]).toBe('/sites/host,1111,2222');
+	});
+
 	it('SP unresolvable destination drive: throws a friendly error and issues no mutating PATCH', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
