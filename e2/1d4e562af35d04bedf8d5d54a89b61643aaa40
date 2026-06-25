@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.vue
+  s_8c3d916101c11c::t_268149183c6e77 89
+  s_8c3d916101c11c::t_7e10c059f9282d 186
+  s_8c3d916101c11c::t_e12cc8a062c810 52-53
+  s_8c3d916101c11c::t_54955c8d0001c1 77
+  s_8c3d916101c11c::t_4b8d6ec6f5dcfb 190
+  s_8c3d916101c11c::t_c10f52bdecea91 178
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.test.ts
+  s_8c3d916101c11c::t_51a33f72e944e8 159,176-179,181,187-188,191,193-194,197
+  s_8c3d916101c11c::t_9cc7643846f668 160-175,180,182-186,189-190,192,195-196,198-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "e21d4e562af35d04bedf8d5d54a89b61643aaa40",
+  "prompts": {},
+  "sessions": {
+    "s_8c3d916101c11c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "537e4911-c9e0-4e23-b9db-b1794a32cb2b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
