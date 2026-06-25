@@ -54,7 +54,12 @@ export type { WebSocketTransportConfig, WorkerTransportConfig } from './transpor
 
 // Sync
 export type { SyncProvider, CreateSyncProvider } from './sync';
-export { BaseSyncProvider, createSyncProvider } from './sync';
+export {
+	BaseSyncProvider,
+	createSyncProvider,
+	HandshakeSyncProvider,
+	createHandshakeSyncProvider,
+} from './sync';
 
 // Protocol
 export {
