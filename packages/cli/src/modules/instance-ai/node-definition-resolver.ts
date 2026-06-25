@@ -11,8 +11,6 @@ import { safeJoinPath } from '@n8n/backend-common';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { BUILTIN_NODES_PACKAGES } from '@/constants';
-
 function getNodesPaths(nodeDefinitionDirs: string[]): string[] {
 	return nodeDefinitionDirs.map((dir) => safeJoinPath(dir, 'nodes'));
 }
@@ -359,7 +357,10 @@ export function resolveNodeTypeDefinition(
  */
 export function resolveBuiltinNodeDefinitionDirs(): string[] {
 	const dirs: string[] = [];
-	for (const packageId of BUILTIN_NODES_PACKAGES) {
+	// Inlined rather than sharing cli's BUILTIN_NODES_PACKAGES: this module is
+	// consumed across package boundaries by the instance-ai eval harness, where
+	// cli's `@/` path alias does not resolve.
+	for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
 		try {
 			const packageJsonPath = require.resolve(`${packageId}/package.json`);
 			const distDir = dirname(packageJsonPath);
