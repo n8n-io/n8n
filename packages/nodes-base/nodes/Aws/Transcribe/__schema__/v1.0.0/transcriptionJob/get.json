@@ -1,14 +1,155 @@
 {
     "type": "object",
     "properties": {
+        "accountId": {
+            "type": "string"
+        },
         "CreationTime": {
             "type": "number"
+        },
+        "jobName": {
+            "type": "string"
         },
         "Media": {
             "type": "object",
             "properties": {
                 "MediaFileUri": {
                     "type": "string"
+                }
+            }
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "audio_segments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "channel_label": {
+                                "type": "string"
+                            },
+                            "end_time": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                }
+                            },
+                            "start_time": {
+                                "type": "string"
+                            },
+                            "transcript": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "channel_labels": {
+                    "type": "object",
+                    "properties": {
+                        "channels": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "channel_label": {
+                                        "type": "string"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "alternatives": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "confidence": {
+                                                                "type": "string"
+                                                            },
+                                                            "content": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "channel_label": {
+                                                    "type": "string"
+                                                },
+                                                "end_time": {
+                                                    "type": "string"
+                                                },
+                                                "start_time": {
+                                                    "type": "string"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "number_of_channels": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "alternatives": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "confidence": {
+                                            "type": "string"
+                                        },
+                                        "content": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "channel_label": {
+                                "type": "string"
+                            },
+                            "end_time": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "start_time": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "transcripts": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "transcript": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -26,6 +167,9 @@
         "StartTime": {
             "type": "number"
         },
+        "status": {
+            "type": "string"
+        },
         "transcript": {
             "type": "string"
         },
@@ -36,5 +180,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

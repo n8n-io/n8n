@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "deletedAt": {
+            "type": "null"
+        },
+        "finished": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "retrySuccessId": {
+            "type": "null"
+        },
+        "status": {
+            "type": "string"
+        },
+        "workflowId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

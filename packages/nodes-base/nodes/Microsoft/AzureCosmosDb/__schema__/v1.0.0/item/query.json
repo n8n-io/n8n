@@ -1,6 +1,21 @@
 {
     "type": "object",
     "properties": {
+        "_attachments": {
+            "type": "string"
+        },
+        "_etag": {
+            "type": "string"
+        },
+        "_rid": {
+            "type": "string"
+        },
+        "_self": {
+            "type": "string"
+        },
+        "_ts": {
+            "type": "integer"
+        },
         "answer": {
             "type": "string"
         },
@@ -34,13 +49,39 @@
                 "FollowUp": {
                     "type": "string"
                 },
+                "Historico": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "createdAt": {
+                                "type": "string"
+                            },
+                            "role": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "IdLead": {
                     "type": "string"
                 },
                 "MensagemTimestamp": {
                     "type": "string"
                 },
+                "Ncolaboladores": {
+                    "type": "string"
+                },
                 "Nome": {
+                    "type": "string"
+                },
+                "NomeEmpresa": {
+                    "type": "string"
+                },
+                "Origem_ultima_conversao": {
                     "type": "string"
                 },
                 "RespostaAgenteTimestamp": {
@@ -79,5 +120,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

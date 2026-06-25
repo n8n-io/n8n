@@ -53,6 +53,9 @@
                 "location": {
                     "type": "boolean"
                 },
+                "maliciousAttachments": {
+                    "type": "integer"
+                },
                 "subscribed": {
                     "type": "boolean"
                 },
@@ -90,11 +93,20 @@
                 "brightness": {
                     "type": "string"
                 },
+                "color": {
+                    "type": "null"
+                },
+                "idPlugin": {
+                    "type": "null"
+                },
                 "idUploadedBackground": {
                     "type": "null"
                 },
                 "size": {
                     "type": "string"
+                },
+                "yPosition": {
+                    "type": "number"
                 }
             }
         },
@@ -148,6 +160,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -197,5 +212,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

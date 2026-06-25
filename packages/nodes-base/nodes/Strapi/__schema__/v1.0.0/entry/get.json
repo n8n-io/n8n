@@ -16,6 +16,9 @@
                 "primaryText": {
                     "type": "string"
                 },
+                "publishedAt": {
+                    "type": "string"
+                },
                 "slug": {
                     "type": "string"
                 },
@@ -28,5 +31,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

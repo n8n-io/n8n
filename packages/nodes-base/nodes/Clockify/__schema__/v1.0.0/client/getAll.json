@@ -10,6 +10,9 @@
         "currencyId": {
             "type": "string"
         },
+        "email": {
+            "type": "null"
+        },
         "id": {
             "type": "string"
         },
@@ -20,5 +23,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

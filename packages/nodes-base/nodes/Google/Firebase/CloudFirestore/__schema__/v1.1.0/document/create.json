@@ -12,7 +12,16 @@
         },
         "_updateTime": {
             "type": "string"
+        },
+        "es_nuevo": {
+            "type": "boolean"
+        },
+        "mensaje": {
+            "type": "string"
+        },
+        "rol": {
+            "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }
