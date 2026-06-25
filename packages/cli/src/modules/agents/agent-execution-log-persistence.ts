@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { EntityManager, ExecutionDataStorageLocation } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,7 +23,6 @@ export class AgentExecutionLogPersistence {
 	private azStore: AgentExecutionLogStore | undefined;
 
 	constructor(
-		private readonly logger: Logger,
 		private readonly config: AgentsConfig,
 		private readonly fsStore: FsStore,
 		private readonly dbStore: DbStore,
@@ -49,10 +47,6 @@ export class AgentExecutionLogPersistence {
 		tx?: EntityManager,
 	) {
 		return await this.getStoreFor(location).write(ref, payload, tx);
-	}
-
-	async read(ref: AgentExecutionLogRef, location: ExecutionDataStorageLocation) {
-		return await this.getStoreFor(location).read(ref);
 	}
 
 	async readMany(refs: StoredAgentExecutionLogRef[]) {
@@ -86,16 +80,7 @@ export class AgentExecutionLogPersistence {
 
 		await Promise.all(
 			[...refsByLocation].map(async ([location, group]) => {
-				const store = this.getStoreForDeletion(location);
-				if (!store) {
-					this.logger.warn('Skipped deleting agent execution logs - store is not initialized', {
-						location,
-						executionIds: group.map((ref) => ref.executionId),
-					});
-					return;
-				}
-
-				await store.delete(group);
+				await this.getStoreFor(location).delete(group);
 			}),
 		);
 	}
@@ -119,25 +104,6 @@ export class AgentExecutionLogPersistence {
 						'Agent execution logs are stored on Azure Blob Storage but the Azure store is not initialized. Check that Azure is configured.',
 					);
 				}
-				return this.azStore;
-		}
-		const _exhaustive: never = location;
-		throw new UnexpectedError(
-			`Unknown agent execution log storage location: ${String(_exhaustive)}`,
-		);
-	}
-
-	private getStoreForDeletion(
-		location: ExecutionDataStorageLocation,
-	): AgentExecutionLogStore | undefined {
-		switch (location) {
-			case 'db':
-				return this.dbStore;
-			case 'fs':
-				return this.fsStore;
-			case 's3':
-				return this.s3Store;
-			case 'az':
 				return this.azStore;
 		}
 		const _exhaustive: never = location;

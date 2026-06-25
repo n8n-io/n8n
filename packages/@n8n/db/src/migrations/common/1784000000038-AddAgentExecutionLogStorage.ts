@@ -9,10 +9,12 @@ export class AddAgentExecutionLogStorage1784000000038 implements ReversibleMigra
 					.varchar(2)
 					.notNull.default("'db'")
 					.withEnumCheck(['db', 'fs', 's3', 'az'])
-					.comment('Where the agent execution log payload is stored.'),
+					.comment(
+						'Where the agent execution log payload is stored. Defaults to db for migrated inline logs.',
+					),
 				column('logSizeBytes')
 					.bigint.notNull.default(0)
-					.comment('Size in bytes of the serialized agent execution log payload.'),
+					.comment('Size in bytes of the serialized agent execution log payload. 0 means unknown.'),
 			],
 			{ recreatesOnSqlite: true },
 		);

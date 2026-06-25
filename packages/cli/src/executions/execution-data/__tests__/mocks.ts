@@ -6,7 +6,7 @@ import type { ExecutionDataPayload } from '../types';
 export const workflowId = '123';
 export const executionId = '456';
 
-export const workflowData: IWorkflowBase = {
+const workflowData: IWorkflowBase = {
 	id: workflowId,
 	name: 'Test Workflow',
 	nodes: [],

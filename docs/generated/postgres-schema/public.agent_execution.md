@@ -12,14 +12,14 @@
 | error | text |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
-| logSizeBytes | bigint | 0 | false |  |  | Size in bytes of the serialized agent execution log payload. |
+| logSizeBytes | bigint | 0 | false |  |  | Size in bytes of the serialized agent execution log payload. 0 means unknown. |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
-| storedAt | varchar(2) | 'db'::character varying | false |  |  | Where the agent execution log payload is stored. |
+| storedAt | varchar(2) | 'db'::character varying | false |  |  | Where the agent execution log payload is stored. Defaults to db for migrated inline logs. |
 | threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
 | timeline | json |  | true |  |  |  |
 | toolCalls | json |  | true |  |  |  |

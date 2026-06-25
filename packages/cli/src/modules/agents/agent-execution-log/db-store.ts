@@ -5,7 +5,10 @@ import { In } from '@n8n/typeorm';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
-import { AGENT_EXECUTION_LOG_BUNDLE_VERSION } from './constants';
+import {
+	AGENT_EXECUTION_LOG_BUNDLE_VERSION,
+	measureAgentExecutionLogBundleBytes,
+} from './constants';
 import type {
 	AgentExecutionLogBundle,
 	AgentExecutionLogPayload,
@@ -36,7 +39,7 @@ export class DbStore implements AgentExecutionLogStore {
 			await repository.save(execution);
 		}
 
-		return this.measureBundleBytes(payload);
+		return measureAgentExecutionLogBundleBytes(payload);
 	}
 
 	async read(
@@ -79,13 +82,6 @@ export class DbStore implements AgentExecutionLogStore {
 		await this.repository.update(
 			{ id: In(refs.map((r) => r.executionId)) },
 			{ assistantResponse: '', toolCalls: null, timeline: null, error: null },
-		);
-	}
-
-	private measureBundleBytes(payload: AgentExecutionLogPayload): number {
-		return Buffer.byteLength(
-			JSON.stringify({ ...payload, version: AGENT_EXECUTION_LOG_BUNDLE_VERSION }),
-			'utf-8',
 		);
 	}
 

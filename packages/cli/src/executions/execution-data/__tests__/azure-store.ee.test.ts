@@ -8,13 +8,13 @@ import type { Readable } from 'node:stream';
 
 import { AzureBlobStore } from '../../blob-storage/azure-blob-store.ee';
 import { AzureStore } from '../azure-store.ee';
+import { executionDataBundleKey } from '../constants';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
 import { ExecutionDataWriteError } from '../execution-data-write.error';
 import { createExecutionRef } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
-const keyFor = (execId: string) =>
-	`workflows/${workflowId}/executions/${execId}/execution_data/bundle.json`;
+const keyFor = (execId: string) => executionDataBundleKey({ ...ref, executionId: execId });
 
 /** An Azure SDK error as surfaced by `AzureBlobService` (wrapped, original on `cause`). */
 const wrappedAzureError = (cause: unknown) =>

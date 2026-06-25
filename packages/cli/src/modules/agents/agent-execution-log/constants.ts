@@ -1,4 +1,4 @@
-import type { AgentExecutionLogRef } from './types';
+import type { AgentExecutionLogPayload, AgentExecutionLogRef } from './types';
 
 export const AGENT_EXECUTION_LOG_BUNDLE_VERSION = 1;
 
@@ -17,3 +17,9 @@ export const agentExecutionLogKey = ({ agentId, threadId, executionId }: AgentEx
 	]
 		.map(encodeURIComponent)
 		.join('/');
+
+export const measureAgentExecutionLogBundleBytes = (payload: AgentExecutionLogPayload) =>
+	Buffer.byteLength(
+		JSON.stringify({ ...payload, version: AGENT_EXECUTION_LOG_BUNDLE_VERSION }),
+		'utf-8',
+	);

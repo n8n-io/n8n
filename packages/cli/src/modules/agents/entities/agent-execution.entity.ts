@@ -91,11 +91,11 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
 
-	/** Where the agent execution log payload is stored. */
+	/** Where the agent execution log payload is stored. Defaults to `db` for migrated inline logs. */
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
 	storedAt: ExecutionDataStorageLocation;
 
-	/** Size in bytes of the serialized agent execution log payload. */
+	/** Size in bytes of the serialized agent execution log payload. `0` means unknown. */
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	logSizeBytes: number;
 }

@@ -1,8 +1,8 @@
 import { Time } from '@n8n/constants';
-import { z } from 'zod';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
+import { STORAGE_MODE_TAGS, storageModeSchema, type StorageMode } from './storage-mode';
 
 /**
  * Known agent sub-feature modules. Add a token here to make it valid in
@@ -12,17 +12,6 @@ import { Config, Env } from '../decorators';
 export const AGENTS_MODULE_NAMES = [] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
-
-export const AGENT_EXECUTION_LOG_STORAGE_MODES = ['database', 'filesystem', 's3', 'azure'] as const;
-
-const agentExecutionLogStorageModeSchema = z.enum(AGENT_EXECUTION_LOG_STORAGE_MODES);
-
-const AGENT_EXECUTION_LOG_STORAGE_MODE_TAGS = {
-	database: 'db',
-	filesystem: 'fs',
-	s3: 's3',
-	azure: 'az',
-} as const;
 
 class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 	constructor(str: string) {
@@ -59,8 +48,8 @@ export class AgentsConfig {
 	modules: AgentsModuleArray = [];
 
 	/** Mode for storing agent execution logs: 'filesystem' (default), 'database', 's3', or 'azure'. */
-	@Env('N8N_AGENT_EXECUTION_LOG_STORAGE_MODE', agentExecutionLogStorageModeSchema)
-	executionLogStorageMode: z.infer<typeof agentExecutionLogStorageModeSchema> = 'filesystem';
+	@Env('N8N_AGENT_EXECUTION_LOG_STORAGE_MODE', storageModeSchema)
+	executionLogStorageMode: StorageMode = 'filesystem';
 
 	/** Enable Daytona sandbox for agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
@@ -99,6 +88,6 @@ export class AgentsConfig {
 	daytonaApiKey: string = '';
 
 	get executionLogStorageModeTag(): 'db' | 'fs' | 's3' | 'az' {
-		return AGENT_EXECUTION_LOG_STORAGE_MODE_TAGS[this.executionLogStorageMode];
+		return STORAGE_MODE_TAGS[this.executionLogStorageMode];
 	}
 }

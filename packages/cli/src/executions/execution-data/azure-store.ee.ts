@@ -3,7 +3,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import { AzureBlobStore } from '../blob-storage/azure-blob-store.ee';
 import { BlobBundleStore } from '../blob-storage/bundle-store';
-import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
+import { EXECUTION_DATA_BUNDLE_VERSION, executionDataBundleKey } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
 import { ExecutionDataWriteError } from './execution-data-write.error';
 import type {
@@ -23,18 +23,9 @@ export class AzureStore
 			blobStore,
 			errorReporter,
 			version: EXECUTION_DATA_BUNDLE_VERSION,
-			key: ({ workflowId, executionId }) =>
-				[
-					'workflows',
-					workflowId,
-					'executions',
-					executionId,
-					'execution_data',
-					EXECUTION_DATA_BUNDLE_FILENAME,
-				].join('/'),
+			key: executionDataBundleKey,
 			getId: ({ executionId }) => executionId,
 			createWriteError: (ref, error) => new ExecutionDataWriteError(ref, error),
-			createCorruptedError: (ref, error) => new CorruptedExecutionDataError(ref, error),
 			corruptedErrorClass: CorruptedExecutionDataError,
 		});
 	}

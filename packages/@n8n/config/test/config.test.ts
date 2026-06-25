@@ -644,6 +644,29 @@ describe('GlobalConfig', () => {
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
 	});
 
+	it('should parse N8N_AGENT_EXECUTION_LOG_STORAGE_MODE from env variables', () => {
+		process.env = {
+			N8N_AGENT_EXECUTION_LOG_STORAGE_MODE: 's3',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.executionLogStorageMode).toBe('s3');
+		expect(config.agents.executionLogStorageModeTag).toBe('s3');
+	});
+
+	it('should fall back to the default for invalid N8N_AGENT_EXECUTION_LOG_STORAGE_MODE values', () => {
+		process.env = {
+			N8N_AGENT_EXECUTION_LOG_STORAGE_MODE: 'invalid-mode',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.executionLogStorageMode).toBe('filesystem');
+		expect(config.agents.executionLogStorageModeTag).toBe('fs');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('Invalid value for N8N_AGENT_EXECUTION_LOG_STORAGE_MODE'),
+		);
+	});
+
 	it('should use values from env variables when defined', () => {
 		process.env = {
 			DB_POSTGRESDB_HOST: 'some-host',

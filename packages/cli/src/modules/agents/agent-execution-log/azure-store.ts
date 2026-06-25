@@ -27,7 +27,6 @@ export class AzureStore
 			key: agentExecutionLogKey,
 			getId: ({ executionId }) => executionId,
 			createWriteError: (ref, error) => new AgentExecutionLogWriteError(ref, error),
-			createCorruptedError: (ref, error) => new CorruptedAgentExecutionLogError(ref, error),
 			corruptedErrorClass: CorruptedAgentExecutionLogError,
 		});
 	}

@@ -1,26 +1,28 @@
 import { Logger } from '@n8n/backend-common';
-import { Config, Env } from '@n8n/config';
+import {
+	Config,
+	Env,
+	STORAGE_MODE_TAGS,
+	STORAGE_MODES,
+	type StorageMode,
+	storageModeSchema,
+} from '@n8n/config';
 import { existsSync, renameSync } from 'node:fs';
 import path from 'node:path';
-import { z } from 'zod';
 
 import { InstanceSettings } from '@/instance-settings';
 import { StoragePathError } from '@/storage-path-conflict.error';
 
-export const EXECUTION_DATA_STORAGE_MODES = ['database', 'filesystem', 's3', 'azure'] as const;
-
-const modeSchema = z.enum(EXECUTION_DATA_STORAGE_MODES);
-
-const MODE_TAGS = { database: 'db', filesystem: 'fs', s3: 's3', azure: 'az' } as const;
+export const EXECUTION_DATA_STORAGE_MODES = STORAGE_MODES;
 
 @Config
 export class StorageConfig {
 	/** Mode for storing execution data: 'database' (default), 'filesystem', 's3', or 'azure'. */
-	@Env('N8N_EXECUTION_DATA_STORAGE_MODE', modeSchema)
-	mode: z.infer<typeof modeSchema> = 'database';
+	@Env('N8N_EXECUTION_DATA_STORAGE_MODE', storageModeSchema)
+	mode: StorageMode = 'database';
 
 	get modeTag(): 'db' | 'fs' | 's3' | 'az' {
-		return MODE_TAGS[this.mode];
+		return STORAGE_MODE_TAGS[this.mode];
 	}
 
 	/** Base path for filesystem storage. Defaults to `~/.n8n/storage`. */

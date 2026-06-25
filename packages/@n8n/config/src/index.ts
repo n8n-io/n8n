@@ -68,6 +68,13 @@ export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
+export {
+	STORAGE_MODE_TAGS,
+	STORAGE_MODES,
+	storageModeSchema,
+	type StorageMode,
+	type StorageModeTag,
+} from './configs/storage-mode';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { MfaConfig } from './configs/mfa.config';

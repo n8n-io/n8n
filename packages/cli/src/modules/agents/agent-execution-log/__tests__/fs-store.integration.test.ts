@@ -29,15 +29,12 @@ const payload: AgentExecutionLogPayload = {
 	error: null,
 };
 
+const executionDirPath = (storagePath: string, executionId = ref.executionId) =>
+	join(storagePath, 'agents', ref.agentId, 'threads', ref.threadId, 'executions', executionId);
+
 const bundlePath = (storagePath: string, executionId = ref.executionId) =>
 	join(
-		storagePath,
-		'agents',
-		ref.agentId,
-		'threads',
-		ref.threadId,
-		'executions',
-		executionId,
+		executionDirPath(storagePath, executionId),
 		'execution_log',
 		AGENT_EXECUTION_LOG_BUNDLE_FILENAME,
 	);
@@ -51,7 +48,7 @@ describe('Agent execution log FsStore', () => {
 		storagePath = await mkdtemp(join(tmpdir(), 'n8n-agent-log-fs-store-test-'));
 		mockInstance(StorageConfig, { storagePath });
 		errorReporter = mockInstance(ErrorReporter);
-		fsStore = new FsStore(Container.get(FsBlobStore), errorReporter);
+		fsStore = new FsStore(Container.get(FsBlobStore), Container.get(StorageConfig), errorReporter);
 	});
 
 	beforeEach(async () => {
@@ -133,5 +130,8 @@ describe('Agent execution log FsStore', () => {
 		await fsStore.delete(ref);
 
 		await expect(fsStore.read(ref)).resolves.toBeNull();
+		await expect(fs.stat(executionDirPath(storagePath))).rejects.toMatchObject({
+			code: 'ENOENT',
+		});
 	});
 });

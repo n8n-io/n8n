@@ -6,7 +6,7 @@ import type { BlobStore } from './types';
 
 const MAX_READ_CONCURRENCY = 50;
 
-type ErrorClass = new (...args: never[]) => Error;
+type CorruptedErrorClass<TRef> = new (ref: TRef, cause: unknown) => Error;
 
 type BlobBundleStoreOptions<
 	TRef,
@@ -19,9 +19,7 @@ type BlobBundleStoreOptions<
 	key: (ref: TRef) => string;
 	getId: (ref: TRef) => string;
 	createWriteError: (ref: TRef, cause: unknown) => Error;
-	createCorruptedError: (ref: TRef, cause: unknown) => Error;
-	corruptedErrorClass: ErrorClass;
-	deleteKeys?: (keys: string[]) => Promise<void>;
+	corruptedErrorClass: CorruptedErrorClass<TRef>;
 };
 
 export class BlobBundleStore<
@@ -41,11 +39,7 @@ export class BlobBundleStore<
 
 	private readonly createWriteError: (ref: TRef, cause: unknown) => Error;
 
-	private readonly createCorruptedError: (ref: TRef, cause: unknown) => Error;
-
-	private readonly corruptedErrorClass: ErrorClass;
-
-	private readonly deleteKeys?: (keys: string[]) => Promise<void>;
+	private readonly corruptedErrorClass: CorruptedErrorClass<TRef>;
 
 	constructor({
 		blobStore,
@@ -54,9 +48,7 @@ export class BlobBundleStore<
 		key,
 		getId,
 		createWriteError,
-		createCorruptedError,
 		corruptedErrorClass,
-		deleteKeys,
 	}: BlobBundleStoreOptions<TRef, TPayload, TBundle>) {
 		this.blobStore = blobStore;
 		this.errorReporter = errorReporter;
@@ -64,9 +56,7 @@ export class BlobBundleStore<
 		this.key = key;
 		this.getId = getId;
 		this.createWriteError = createWriteError;
-		this.createCorruptedError = createCorruptedError;
 		this.corruptedErrorClass = corruptedErrorClass;
-		this.deleteKeys = deleteKeys;
 	}
 
 	async init() {
@@ -91,7 +81,7 @@ export class BlobBundleStore<
 		try {
 			return jsonParse<TBundle>(content.toString('utf-8'));
 		} catch (error) {
-			throw this.createCorruptedError(ref, error);
+			throw new this.corruptedErrorClass(ref, error);
 		}
 	}
 
@@ -115,13 +105,14 @@ export class BlobBundleStore<
 		if (refs.length === 0) return;
 
 		const keys = refs.map((r) => this.key(r));
-		await (this.deleteKeys ?? this.blobStore.delete.bind(this.blobStore))(keys);
+		await this.blobStore.delete(keys);
 	}
 
 	private async tryRead(ref: TRef): Promise<TBundle | null> {
 		try {
 			return await this.read(ref);
 		} catch (error) {
+			// Batch reads tolerate corrupted bundles, but still fail on systemic storage errors.
 			if (error instanceof this.corruptedErrorClass) {
 				this.errorReporter.error(error);
 				return null;

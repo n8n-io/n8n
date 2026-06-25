@@ -1,4 +1,3 @@
-import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
@@ -8,12 +7,10 @@ import type { DbStore } from '../agent-execution-log/db-store';
 import type { FsStore } from '../agent-execution-log/fs-store';
 
 describe('AgentExecutionLogPersistence', () => {
-	it('skips deleting historical S3 logs when the S3 store is not initialized', async () => {
-		const logger = mockLogger();
+	it('fails deleting historical S3 logs when the S3 store is not initialized', async () => {
 		const fsStore = mock<AgentExecutionLogStore>();
 		const dbStore = mock<AgentExecutionLogStore>();
 		const persistence = new AgentExecutionLogPersistence(
-			logger,
 			{ executionLogStorageModeTag: 'fs' } as AgentsConfig,
 			fsStore as unknown as FsStore,
 			dbStore as unknown as DbStore,
@@ -28,11 +25,6 @@ describe('AgentExecutionLogPersistence', () => {
 					storedAt: 's3',
 				},
 			]),
-		).resolves.toBeUndefined();
-
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Skipped deleting agent execution logs - store is not initialized',
-			{ location: 's3', executionIds: ['execution-1'] },
-		);
+		).rejects.toThrow('Agent execution logs are stored on S3 but the S3 store is not initialized');
 	});
 });

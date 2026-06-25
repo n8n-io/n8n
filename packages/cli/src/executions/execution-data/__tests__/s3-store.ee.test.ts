@@ -7,14 +7,14 @@ import type { ObjectStoreService } from 'n8n-core/dist/binary-data/object-store/
 import type { Readable } from 'node:stream';
 
 import { S3BlobStore } from '../../blob-storage/s3-blob-store.ee';
+import { executionDataBundleKey } from '../constants';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
 import { ExecutionDataWriteError } from '../execution-data-write.error';
 import { S3Store } from '../s3-store.ee';
 import { createExecutionRef } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
-const keyFor = (execId: string) =>
-	`workflows/${workflowId}/executions/${execId}/execution_data/bundle.json`;
+const keyFor = (execId: string) => executionDataBundleKey({ ...ref, executionId: execId });
 
 /** An S3 SDK error as surfaced by `ObjectStoreService` (wrapped, original on `cause`). */
 const wrappedS3Error = (cause: unknown) => new Error('Request to S3 failed', { cause });
