@@ -54,6 +54,8 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
+			mock(),
 			instanceSettings,
 			mock(),
 			workflowsConfig,
@@ -181,6 +183,8 @@ describe('ActiveWorkflowManager', () => {
 				nodeTypes,
 				mock(),
 				workflowRepository,
+				mock(),
+				mock(),
 				mock(),
 				mock(),
 				mock(),
@@ -356,6 +360,8 @@ describe('ActiveWorkflowManager', () => {
 				nodeTypes,
 				mock(), // webhookService
 				workflowRepository,
+				mock(), // workflowHistoryRepository
+				mock(), // workflowPublishedEnvVersionRepository
 				activationErrorsService,
 				workflowStaticDataService,
 				mock(), // activeWorkflowsService
@@ -768,6 +774,8 @@ describe('ActiveWorkflowManager', () => {
 				nodeTypes,
 				mock(),
 				workflowRepository,
+				mock(),
+				mock(),
 				mock(),
 				mock(),
 				mock(),

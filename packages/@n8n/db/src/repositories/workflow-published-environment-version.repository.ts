@@ -39,4 +39,26 @@ export class WorkflowPublishedEnvironmentVersionRepository extends Repository<Wo
 		});
 		return Object.fromEntries(records.map((r) => [r.environmentId, r.publishedVersionId]));
 	}
+
+	async getAllDistinctWorkflowIds(): Promise<string[]> {
+		const records = await this.find({ select: ['workflowId'] });
+		return [...new Set(records.map((r) => r.workflowId))];
+	}
+
+	async getPublishedVersionsWithEnvironments(
+		workflowId: string,
+	): Promise<
+		Array<{ environmentId: string; environmentName: string; publishedVersionId: string }>
+	> {
+		const records = await this.find({
+			where: { workflowId },
+			relations: ['environment'],
+			select: ['environmentId', 'publishedVersionId'],
+		});
+		return records.map((r) => ({
+			environmentId: r.environmentId,
+			environmentName: r.environment.name,
+			publishedVersionId: r.publishedVersionId,
+		}));
+	}
 }

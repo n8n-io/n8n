@@ -8,7 +8,11 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublishedEnvironmentVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -75,6 +79,8 @@ export class ActiveWorkflowManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowPublishedEnvVersionRepository: WorkflowPublishedEnvironmentVersionRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly activeWorkflowsService: ActiveWorkflowsService,
@@ -141,6 +147,7 @@ export class ActiveWorkflowManager {
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 		nodeIds?: Set<string>,
+		pathPrefix?: string,
 	) {
 		let webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '';
@@ -171,6 +178,10 @@ export class ActiveWorkflowManager {
 			}
 			if (webhook.webhookPath.endsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
+			}
+
+			if (pathPrefix) {
+				webhook.webhookPath = `${pathPrefix}/${webhook.webhookPath}`;
 			}
 
 			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
@@ -398,15 +409,19 @@ export class ActiveWorkflowManager {
 
 		this.isActivationInProgress = true;
 		try {
-			const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
+			const globalIds = await this.workflowRepository.getAllActiveIds();
+			const envPublishedIds =
+				(await this.workflowPublishedEnvVersionRepository.getAllDistinctWorkflowIds()) ?? [];
 
-			if (dbWorkflowIds.length === 0) return;
+			const allWorkflowIds = [...new Set([...globalIds, ...envPublishedIds])];
+
+			if (allWorkflowIds.length === 0) return;
 
 			if (this.instanceSettings.isLeader) {
 				this.logger.info('Start Active Workflows:');
 			}
 
-			const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
+			const batches = chunk(allWorkflowIds, this.workflowsConfig.activationBatchSize);
 
 			for (const batch of batches) {
 				const activationPromises = batch.map(async (dbWorkflowId) => {
@@ -429,12 +444,26 @@ export class ActiveWorkflowManager {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
+		const envVersions =
+			(await this.workflowPublishedEnvVersionRepository.getPublishedVersionsWithEnvironments(
+				workflowId,
+			)) ?? [];
+		const hasEnvVersions = envVersions.length > 0;
+
 		try {
+			// Global activation for triggers/polls. Skip global webhooks when
+			// env-specific versions are present — those are registered below with
+			// per-environment path prefixes.
 			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
 				shouldPublish: false,
+				skipWebhooks: hasEnvVersions,
 			});
 
-			if (added.webhooks || added.triggersAndPollers) {
+			if (hasEnvVersions) {
+				await this.addWebhooksForEnvironmentVersions(dbWorkflow, envVersions, activationMode);
+			}
+
+			if (added.webhooks || added.triggersAndPollers || hasEnvVersions) {
 				this.logger.info(`Activated workflow ${formatWorkflow(dbWorkflow)}`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
@@ -461,23 +490,76 @@ export class ActiveWorkflowManager {
 				},
 			);
 
-			if (!dbWorkflow.activeVersion) {
-				throw new UnexpectedError('Active version not found for workflow', {
-					extra: { workflowId: dbWorkflow.id },
-				});
+			if (dbWorkflow.activeVersion) {
+				const { nodes, connections } = dbWorkflow.activeVersion;
+				const workflowForError = { ...dbWorkflow, nodes, connections };
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				this.executeErrorWorkflow(error, workflowForError, 'internal');
 			}
-
-			const { nodes, connections } = dbWorkflow.activeVersion;
-			const workflowForError = { ...dbWorkflow, nodes, connections };
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			this.executeErrorWorkflow(error, workflowForError, 'internal');
 
 			// do not keep trying to activate on authorization error
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			if (error.message.includes('Authorization')) return;
 
 			this.addQueuedWorkflowActivation('init', dbWorkflow);
+		}
+	}
+
+	private async addWebhooksForEnvironmentVersions(
+		dbWorkflow: WorkflowEntity,
+		envVersions: Array<{
+			environmentId: string;
+			environmentName: string;
+			publishedVersionId: string;
+		}>,
+		activationMode: WorkflowActivateMode,
+	): Promise<void> {
+		for (const { environmentId, environmentName, publishedVersionId } of envVersions) {
+			const historyRecord = await this.workflowHistoryRepository.findOne({
+				where: { versionId: publishedVersionId },
+			});
+
+			if (!historyRecord) {
+				this.logger.warn(
+					`Skipping env webhook activation: history record not found for version "${publishedVersionId}"`,
+					{ workflowId: dbWorkflow.id, environmentId },
+				);
+				continue;
+			}
+
+			const { nodes, connections } = historyRecord;
+			const workflow = new Workflow({
+				id: dbWorkflow.id,
+				name: dbWorkflow.name,
+				nodes,
+				connections,
+				active: true,
+				nodeTypes: this.nodeTypes,
+				staticData: dbWorkflow.staticData,
+				settings: dbWorkflow.settings,
+			});
+
+			const additionalData = await WorkflowExecuteAdditionalData.getBase({
+				workflowId: workflow.id,
+				workflowSettings: dbWorkflow.settings,
+			});
+
+			// Slug: lowercase with spaces replaced by hyphens (e.g. "My Env" → "my-env")
+			const envSlug = environmentName.toLowerCase().replace(/\s+/g, '-');
+
+			await this.addWebhooks(
+				workflow,
+				additionalData,
+				'trigger',
+				activationMode,
+				undefined,
+				envSlug,
+			);
+
+			this.logger.info(
+				`Activated webhooks for workflow "${dbWorkflow.name}" in environment "${environmentName}"`,
+				{ workflowId: dbWorkflow.id, environmentId, pathPrefix: envSlug },
+			);
 		}
 	}
 
@@ -529,7 +611,10 @@ export class ActiveWorkflowManager {
 		workflowId: WorkflowId,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
-		{ shouldPublish } = { shouldPublish: true },
+		{
+			shouldPublish = true,
+			skipWebhooks = false,
+		}: { shouldPublish?: boolean; skipWebhooks?: boolean } = {},
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -563,7 +648,7 @@ export class ActiveWorkflowManager {
 
 		let workflow: Workflow;
 
-		const shouldAddWebhooks = this.shouldAddWebhooks(activationMode);
+		const shouldAddWebhooks = this.shouldAddWebhooks(activationMode, skipWebhooks);
 		const shouldAddNonWebhookTriggers = this.shouldAddNonWebhookTriggers();
 
 		try {
@@ -1026,7 +1111,9 @@ export class ActiveWorkflowManager {
 	/**
 	 * Whether this instance may add webhooks to the `webhook_entity` table.
 	 */
-	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
+	shouldAddWebhooks(activationMode: WorkflowActivateMode, skip = false) {
+		if (skip) return false;
+
 		// Always try to populate the webhook entity table as well as register the webhooks
 		// to prevent issues with users upgrading from a version < 1.15, where the webhook entity
 		// was cleared on shutdown to anything past 1.28.0, where we stopped populating it on init,
