@@ -47,11 +47,7 @@ let registryCache: ParsedN8nDocsRegistry | undefined;
 let registryFetchedAtMs = 0;
 let registryFetchPromise: Promise<ParsedN8nDocsRegistry> | undefined;
 
-export function getFetchErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
-
-export function normalizeDocsUrl(rawUrl: string): string | undefined {
+function parseDocsUrl(rawUrl: string): URL | undefined {
 	let parsed: URL;
 	try {
 		parsed = new URL(rawUrl);
@@ -63,13 +59,56 @@ export function normalizeDocsUrl(rawUrl: string): string | undefined {
 
 	parsed.hash = '';
 	parsed.search = '';
+	return parsed;
+}
+
+export function getFetchErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+export function normalizeDocsUrl(rawUrl: string): string | undefined {
+	const parsed = parseDocsUrl(rawUrl);
+	if (!parsed) return undefined;
+
+	if (parsed.pathname === '/') return undefined;
+
 	if (parsed.pathname.endsWith('/')) {
-		parsed.pathname = `${parsed.pathname}index.md`;
+		parsed.pathname = `${parsed.pathname.slice(0, -1)}.md`;
 	} else if (!parsed.pathname.endsWith('.md')) {
-		parsed.pathname = `${parsed.pathname.replace(/\/?$/, '/')}index.md`;
+		parsed.pathname = `${parsed.pathname}.md`;
 	}
 
 	return parsed.toString();
+}
+
+export function getDocsUrlCandidates(rawUrl: string): string[] {
+	const parsed = parseDocsUrl(rawUrl);
+	if (!parsed) return [];
+
+	const candidates = new Set<string>();
+	const addCandidate = (pathname: string) => {
+		const candidate = new URL(parsed.toString());
+		candidate.pathname = pathname;
+		candidates.add(candidate.toString());
+	};
+
+	const { pathname } = parsed;
+	if (pathname === '/') {
+		return [];
+	}
+
+	if (pathname.endsWith('.md')) {
+		addCandidate(pathname);
+	} else if (pathname.endsWith('/')) {
+		const pathWithoutTrailingSlash = pathname.slice(0, -1);
+		if (pathWithoutTrailingSlash.length > 0) {
+			addCandidate(`${pathWithoutTrailingSlash}.md`);
+		}
+	} else {
+		addCandidate(`${pathname}.md`);
+	}
+
+	return [...candidates];
 }
 
 export function toPublicDocsUrl(rawUrl: string): string {
@@ -85,9 +124,7 @@ export function toPublicDocsUrl(rawUrl: string): string {
 
 	parsed.hash = '';
 	parsed.search = '';
-	if (parsed.pathname.endsWith('/index.md')) {
-		parsed.pathname = parsed.pathname.slice(0, -'index.md'.length);
-	} else if (parsed.pathname.endsWith('.md')) {
+	if (parsed.pathname.endsWith('.md')) {
 		parsed.pathname = `${parsed.pathname.slice(0, -'.md'.length)}/`;
 	}
 
@@ -95,17 +132,7 @@ export function toPublicDocsUrl(rawUrl: string): string {
 }
 
 function normalizeAllowedDocsFetchUrl(rawUrl: string): string | undefined {
-	let parsed: URL;
-	try {
-		parsed = new URL(rawUrl);
-	} catch {
-		return undefined;
-	}
-
-	if (parsed.protocol !== 'https:' || parsed.hostname !== 'docs.n8n.io') return undefined;
-	parsed.hash = '';
-	parsed.search = '';
-	return parsed.toString();
+	return parseDocsUrl(rawUrl)?.toString();
 }
 
 export function parseN8nDocsRegistry(
@@ -122,7 +149,7 @@ export function parseN8nDocsRegistry(
 			continue;
 		}
 
-		const match = /^-\s+\[([^\]]+)]\((https:\/\/docs\.n8n\.io\/[^)]+)\)\s*$/.exec(line);
+		const match = /^-\s+\[([^\]]+)]\((https:\/\/docs\.n8n\.io\/[^)]+)\)/.exec(line);
 		if (!match?.[1] || !match[2]) continue;
 		const normalizedUrl = normalizeDocsUrl(match[2]);
 		if (!normalizedUrl) continue;

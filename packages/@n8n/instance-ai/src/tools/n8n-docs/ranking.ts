@@ -1,7 +1,7 @@
-import { normalizeDocsUrl, type N8nDocsRegistryEntry } from './registry';
+import { getDocsUrlCandidates, type N8nDocsRegistryEntry } from './registry';
 import type { N8nDocsLookupInput, N8nDocsSearchInput } from './schemas';
 
-const CREDENTIAL_SETUP_DOC_PATH = '/credentials/add-edit-credentials/index.md';
+const CREDENTIAL_SETUP_DOC_PATH = '/build/understand-workflows/create-and-edit-credentials.md';
 const MEANINGFUL_TOKEN_WEIGHT = 2;
 
 type LookupLikeInput = Pick<
@@ -95,6 +95,10 @@ function isCredentialSetupIntent(intent: string | undefined): boolean {
 	return intent === 'credential-setup';
 }
 
+function isGeneralCredentialSetupDocs(entry: N8nDocsRegistryEntry): boolean {
+	return entry.path === CREDENTIAL_SETUP_DOC_PATH;
+}
+
 export function getLookupQuery(input: LookupLikeInput): string {
 	return (
 		input.query ??
@@ -113,10 +117,10 @@ function scoreEntry(
 ): N8nDocsMatch | undefined {
 	const reasons: string[] = [];
 	let score = 0;
-	const normalizedDocumentationUrl = input.documentationUrl
-		? normalizeDocsUrl(input.documentationUrl)
+	const documentationUrlCandidates = input.documentationUrl
+		? new Set(getDocsUrlCandidates(input.documentationUrl))
 		: undefined;
-	const isDocumentationUrlMatch = normalizedDocumentationUrl === entry.url;
+	const isDocumentationUrlMatch = documentationUrlCandidates?.has(entry.url) ?? false;
 
 	if (isDocumentationUrlMatch) {
 		score += 500;
@@ -163,7 +167,7 @@ function scoreEntry(
 			reasons.push('credential docs');
 		}
 
-		if (entry.path === CREDENTIAL_SETUP_DOC_PATH) {
+		if (isGeneralCredentialSetupDocs(entry)) {
 			score += 55;
 			reasons.push('general credential setup docs');
 		}
@@ -211,19 +215,17 @@ export function rankN8nDocsEntries(
 export function pickLookupMatches(matches: N8nDocsMatch[], maxPages: number): N8nDocsMatch[] {
 	if (matches.length <= maxPages) return matches;
 
-	const picked: N8nDocsMatch[] = [];
-	const generalCredentialSetup = matches.find((match) => match.path === CREDENTIAL_SETUP_DOC_PATH);
+	const generalCredentialSetup = matches.find(isGeneralCredentialSetupDocs);
+	if (!generalCredentialSetup || maxPages <= 1) return matches.slice(0, maxPages);
 
-	for (const match of matches) {
-		if (picked.length >= maxPages) break;
-		if (match.path === CREDENTIAL_SETUP_DOC_PATH) continue;
-		picked.push(match);
-	}
+	const firstMatch = matches.find((match) => !isGeneralCredentialSetupDocs(match));
+	if (!firstMatch) return matches.slice(0, maxPages);
+
+	const picked = [firstMatch];
 
 	if (generalCredentialSetup && !picked.some((match) => match.url === generalCredentialSetup.url)) {
-		if (picked.length >= maxPages) picked.pop();
 		picked.push(generalCredentialSetup);
 	}
 
-	return picked;
+	return picked.slice(0, maxPages);
 }

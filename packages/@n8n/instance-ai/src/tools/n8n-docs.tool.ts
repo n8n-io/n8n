@@ -9,6 +9,7 @@ import {
 } from './n8n-docs/ranking';
 import {
 	getFetchErrorMessage,
+	getDocsUrlCandidates,
 	getN8nDocsRegistry,
 	normalizeDocsUrl,
 	N8N_DOCS_REGISTRY_URL,
@@ -36,6 +37,7 @@ import { N8N_DOCS_TOOL_ID } from './tool-ids';
 export { N8N_DOCS_TOOL_ID };
 export {
 	N8N_DOCS_REGISTRY_URL,
+	getDocsUrlCandidates,
 	normalizeDocsUrl,
 	parseN8nDocsRegistry,
 	rankN8nDocsEntries,
@@ -134,7 +136,7 @@ async function handleLookup(context: Pick<InstanceAiContext, 'logger'>, input: N
 		intent: input.intent ?? 'general',
 		registryUrl: N8N_DOCS_REGISTRY_URL,
 		registryFetchedAt: registry.registry.fetchedAt,
-		matches: matches.slice(0, Math.max(DEFAULT_MAX_RESULTS, maxPages)).map(toPublicMatch),
+		matches: pagesToRead.map(toPublicMatch),
 		documents,
 		...(hints.length ? { hint: hints.join(' ') } : {}),
 	};
@@ -153,13 +155,15 @@ async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8n
 		};
 	}
 
-	const normalizedUrl = normalizeDocsUrl(input.url);
-	const entry = normalizedUrl ? registry.registry.byUrl.get(normalizedUrl) : undefined;
+	const docsRegistry = registry.registry;
+	const entry = getDocsUrlCandidates(input.url)
+		.map((candidate) => docsRegistry.byUrl.get(candidate))
+		.find((candidate) => candidate !== undefined);
 	if (!entry) {
 		return {
 			url: input.url,
 			registryUrl: N8N_DOCS_REGISTRY_URL,
-			registryFetchedAt: registry.registry.fetchedAt,
+			registryFetchedAt: docsRegistry.fetchedAt,
 			documents: [],
 			error: 'URL is not an n8n docs registry entry.',
 			...(registry.hint ? { hint: registry.hint } : {}),
@@ -174,7 +178,7 @@ async function handleRead(context: Pick<InstanceAiContext, 'logger'>, input: N8n
 	return {
 		url: toPublicDocsUrl(entry.url),
 		registryUrl: N8N_DOCS_REGISTRY_URL,
-		registryFetchedAt: registry.registry.fetchedAt,
+		registryFetchedAt: docsRegistry.fetchedAt,
 		documents: [await readN8nDocsEntry(entry, maxContentLength)],
 		...(registry.hint ? { hint: registry.hint } : {}),
 	};

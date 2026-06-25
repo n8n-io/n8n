@@ -2,6 +2,7 @@ import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import {
 	createN8nDocsTool,
+	getDocsUrlCandidates,
 	N8N_DOCS_REGISTRY_URL,
 	normalizeDocsUrl,
 	parseN8nDocsRegistry,
@@ -18,27 +19,31 @@ const REGISTRY = `# n8n Docs
 
 ## All documentation
 
-- [Create and edit](https://docs.n8n.io/credentials/add-edit-credentials/index.md)
-- [Gmail](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/index.md)
-- [Google: OAuth2 single service](https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/index.md)
-- [Microsoft credentials](https://docs.n8n.io/integrations/builtin/credentials/microsoft/index.md)
-- [Slack credentials](https://docs.n8n.io/integrations/builtin/credentials/slack/index.md)
-- [2.x](https://docs.n8n.io/release-notes/index.md)
+- [Create and edit credentials](https://docs.n8n.io/build/understand-workflows/create-and-edit-credentials.md): Creating and editing credentials.
+- [Gmail](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail.md): Learn how to use the Gmail node in n8n.
+- [Figma credentials](https://docs.n8n.io/integrations/builtin/credentials/figma.md): Documentation for Figma credentials. Use these credentials to authenticate Figma in n8n.
+- [Google: OAuth2 single service](https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service.md)
+- [Microsoft credentials](https://docs.n8n.io/integrations/builtin/credentials/microsoft.md)
+- [Slack credentials](https://docs.n8n.io/integrations/builtin/credentials/slack.md)
+- [2.x](https://docs.n8n.io/release-notes.md)
 `;
 
 const GOOGLE_OAUTH_URL =
-	'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/index.md';
+	'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service.md';
 const MICROSOFT_CREDENTIALS_URL =
-	'https://docs.n8n.io/integrations/builtin/credentials/microsoft/index.md';
-const SLACK_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/slack/index.md';
-const CREATE_EDIT_URL = 'https://docs.n8n.io/credentials/add-edit-credentials/index.md';
-const GMAIL_NODE_URL =
-	'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/index.md';
+	'https://docs.n8n.io/integrations/builtin/credentials/microsoft.md';
+const SLACK_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/slack.md';
+const FIGMA_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/figma.md';
+const CREATE_EDIT_URL =
+	'https://docs.n8n.io/build/understand-workflows/create-and-edit-credentials.md';
+const GMAIL_NODE_URL = 'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail.md';
 const PUBLIC_GOOGLE_OAUTH_URL =
 	'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/';
 const PUBLIC_MICROSOFT_CREDENTIALS_URL =
 	'https://docs.n8n.io/integrations/builtin/credentials/microsoft/';
-const PUBLIC_CREATE_EDIT_URL = 'https://docs.n8n.io/credentials/add-edit-credentials/';
+const PUBLIC_FIGMA_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/figma/';
+const PUBLIC_CREATE_EDIT_URL =
+	'https://docs.n8n.io/build/understand-workflows/create-and-edit-credentials/';
 
 interface N8nDocsToolResult {
 	query?: string;
@@ -112,14 +117,15 @@ describe('n8n-docs tool', () => {
 	it('parses markdown registry links from llms.txt', () => {
 		const registry = parseN8nDocsRegistry(REGISTRY, '2026-06-23T08:00:00.000Z');
 
-		expect(registry.entries).toHaveLength(6);
+		expect(registry.entries).toHaveLength(7);
 		expect(registry.entries[0]).toEqual({
-			title: 'Create and edit',
+			title: 'Create and edit credentials',
 			url: CREATE_EDIT_URL,
-			path: '/credentials/add-edit-credentials/index.md',
+			path: '/build/understand-workflows/create-and-edit-credentials.md',
 			section: 'All documentation',
 		});
 		expect(registry.byUrl.get(GOOGLE_OAUTH_URL)?.title).toBe('Google: OAuth2 single service');
+		expect(registry.byUrl.get(FIGMA_CREDENTIALS_URL)?.title).toBe('Figma credentials');
 	});
 
 	it('normalizes docs URLs to markdown registry URLs', () => {
@@ -130,6 +136,12 @@ describe('n8n-docs tool', () => {
 		).toBe(GOOGLE_OAUTH_URL);
 		expect(normalizeDocsUrl('http://docs.n8n.io/credentials/')).toBeUndefined();
 		expect(normalizeDocsUrl('https://example.com/credentials/')).toBeUndefined();
+	});
+
+	it('creates markdown candidates for public docs URLs', () => {
+		expect(getDocsUrlCandidates(PUBLIC_FIGMA_CREDENTIALS_URL)).toEqual([FIGMA_CREDENTIALS_URL]);
+		expect(getDocsUrlCandidates(GOOGLE_OAUTH_URL)).toContain(GOOGLE_OAUTH_URL);
+		expect(getDocsUrlCandidates('https://example.com/credentials/')).toEqual([]);
 	});
 
 	it('formats markdown registry URLs as public docs URLs for source attribution', () => {
@@ -228,6 +240,36 @@ describe('n8n-docs tool', () => {
 		);
 	});
 
+	it('lookup matches GitBook markdown credential docs from a public documentation URL', async () => {
+		stubFetchWithMap({
+			[N8N_DOCS_REGISTRY_URL]: REGISTRY,
+			[FIGMA_CREDENTIALS_URL]:
+				'# Figma credentials\n\nOpen the Figma developer apps page and add the OAuth Redirect URL.',
+			[CREATE_EDIT_URL]: '# Create and edit credentials\n\nCredential setup modal guidance.',
+		});
+		const tool = createN8nDocsTool(createMockContext());
+
+		const result = await executeTool<N8nDocsToolResult>(tool, {
+			action: 'lookup',
+			intent: 'credential-setup',
+			credentialType: 'figmaOAuth2Api',
+			credentialDisplayName: 'Figma OAuth2 API',
+			documentationUrl: PUBLIC_FIGMA_CREDENTIALS_URL,
+			maxPages: 2,
+		});
+
+		expect(result.matches?.[0].url).toBe(PUBLIC_FIGMA_CREDENTIALS_URL);
+		expect(result.matches?.[0].reason).toContain('documentation URL match');
+		expect(result.matches?.map((match) => match.url)).toEqual([
+			PUBLIC_FIGMA_CREDENTIALS_URL,
+			PUBLIC_CREATE_EDIT_URL,
+		]);
+		expect(result.documents?.[0].url).toBe(PUBLIC_FIGMA_CREDENTIALS_URL);
+		expect(result.documents?.[1].url).toBe(PUBLIC_CREATE_EDIT_URL);
+		expect(result.documents).toHaveLength(2);
+		expect(result.documents?.[0].content).toContain('Figma developer apps');
+	});
+
 	it('read rejects URLs outside docs.n8n.io', async () => {
 		stubFetchWithMap({ [N8N_DOCS_REGISTRY_URL]: REGISTRY });
 		const tool = createN8nDocsTool(createMockContext());
@@ -260,7 +302,7 @@ describe('n8n-docs tool', () => {
 		expect(result.error).toBe('URL is not an n8n docs registry entry.');
 	});
 
-	it('read accepts a trailing-slash docs URL by normalizing it to index.md', async () => {
+	it('read accepts a trailing-slash docs URL by normalizing it to markdown', async () => {
 		const fetchMock = stubFetchWithMap({
 			[N8N_DOCS_REGISTRY_URL]: REGISTRY,
 			[GOOGLE_OAUTH_URL]: '# Google OAuth\n\nSetup steps.',
@@ -278,6 +320,26 @@ describe('n8n-docs tool', () => {
 		);
 		expect(result.url).toBe(PUBLIC_GOOGLE_OAUTH_URL);
 		expect(result.documents?.[0].url).toBe(PUBLIC_GOOGLE_OAUTH_URL);
+	});
+
+	it('read accepts a public docs URL for a GitBook markdown registry entry', async () => {
+		const fetchMock = stubFetchWithMap({
+			[N8N_DOCS_REGISTRY_URL]: REGISTRY,
+			[FIGMA_CREDENTIALS_URL]: '# Figma credentials\n\nOAuth2 setup steps.',
+		});
+		const tool = createN8nDocsTool(createMockContext());
+
+		const result = await executeTool<N8nDocsToolResult>(tool, {
+			action: 'read',
+			url: PUBLIC_FIGMA_CREDENTIALS_URL,
+		});
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			FIGMA_CREDENTIALS_URL,
+			expect.objectContaining({ redirect: 'follow' }),
+		);
+		expect(result.url).toBe(PUBLIC_FIGMA_CREDENTIALS_URL);
+		expect(result.documents?.[0].url).toBe(PUBLIC_FIGMA_CREDENTIALS_URL);
 	});
 
 	it('uses stale cached registry when refresh fails', async () => {
@@ -335,7 +397,8 @@ describe('n8n-docs tool', () => {
 		const result = await executeTool<N8nDocsToolResult>(tool, {
 			action: 'lookup',
 			query: 'Create and edit credentials',
-			documentationUrl: 'https://docs.n8n.io/credentials/add-edit-credentials/',
+			documentationUrl:
+				'https://docs.n8n.io/build/understand-workflows/create-and-edit-credentials/',
 			maxPages: 1,
 			maxContentLength: 20,
 		});
