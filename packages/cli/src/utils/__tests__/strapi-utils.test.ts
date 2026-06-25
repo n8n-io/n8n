@@ -99,14 +99,13 @@ describe('Strapi utils', () => {
 
 			await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 6000 });
 			expect(request).toHaveBeenCalledWith({
 				url: baseUrl,
 				method: 'GET',
 				headers: { 'Content-Type': 'application/json' },
 				qs: { pagination: { page: 1, pageSize: 25 } },
 				json: true,
-				timeout: 6000,
 			});
 		});
 
@@ -121,7 +120,7 @@ describe('Strapi utils', () => {
 			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
 			expect(result).toEqual([]);
-			expect(request).toHaveBeenCalledWith(expect.objectContaining({ timeout: 6000 }));
+			expect(requests).toHaveBeenCalledWith(expect.objectContaining({ timeout: 6000 }));
 		});
 
 		it('should always include entry IDs in results', async () => {

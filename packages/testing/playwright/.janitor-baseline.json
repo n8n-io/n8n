@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T11:25:37.690Z",
-	"totalViolations": 148,
+	"generated": "2026-06-25T10:17:26.367Z",
+	"totalViolations": 131,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -76,13 +76,7 @@
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 350,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 430,
+				"line": 352,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -169,12 +163,6 @@
 				"line": 15,
 				"message": "WorkflowSharingModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "32955f46012b"
-			},
-			{
-				"rule": "deduplication",
-				"line": 5,
-				"message": "Duplicate locator: this.page.getByTestId(\"workflowShare-modal\") in pages scope",
-				"hash": "0de6cf556dcf"
 			}
 		],
 		"composables/WorkflowComposer.ts": [
@@ -519,32 +507,6 @@
 				"hash": "0eb6824192ab"
 			}
 		],
-		"tests/e2e/workflows/executions/list.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 324,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-trigger-conte...",
-				"hash": "9f1081df0a8a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 326,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })....",
-				"hash": "3b12669e6a7f"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 326,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })",
-				"hash": "ff575079b421"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 332,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-content')",
-				"hash": "10cc160abd6b"
-			}
-		],
 		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -581,52 +543,6 @@
 				"line": 96,
 				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
 				"hash": "e8fc423eeeb7"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "68c3ed65550b"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Chained locator call in test: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "189e3887535d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
-				"hash": "423a23988aea"
-			}
-		],
-		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 44,
-				"message": "Direct page locator call: n8n.page.getByTestId('node-creator-plus-button')",
-				"hash": "2b61afc80039"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 55,
-				"message": "Direct page locator call: n8n.page.getByTestId('execute-node-button')",
-				"hash": "af9330ed3874"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 56,
-				"message": "Direct page locator call: n8n.page.getByTestId('delete-node-button')",
-				"hash": "01554562f936"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 57,
-				"message": "Direct page locator call: n8n.page.getByTestId('disable-node-button')",
-				"hash": "4f683821335f"
 			}
 		],
 		"composables/BuilderWizardComposer.ts": [
@@ -824,7 +740,7 @@
 		"tests/e2e/sharing/workflow-sharing.spec.ts": [
 			{
 				"rule": "api-purity",
-				"line": 123,
+				"line": 124,
 				"message": "Raw API call detected: request.get(",
 				"hash": "5f323328e22b"
 			}
@@ -885,32 +801,12 @@
 				"hash": "0acea681877b"
 			}
 		],
-		"pages/ChatHubWorkflowAgentsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 15,
-				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
-				"hash": "3a8429e96555"
-			}
-		],
 		"pages/WorkflowsPage.ts": [
 			{
 				"rule": "deduplication",
-				"line": 121,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-toggle-dropdown\") in pages scope",
-				"hash": "0bcc0c5c11f6"
-			},
-			{
-				"rule": "deduplication",
-				"line": 36,
+				"line": 38,
 				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
 				"hash": "206b89bd1594"
-			},
-			{
-				"rule": "deduplication",
-				"line": 50,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
-				"hash": "2f37cf533810"
 			}
 		],
 		"pages/WorkerViewPage.ts": [
@@ -919,14 +815,6 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
-			}
-		],
-		"pages/WorkflowCredentialSetupModal.ts": [
-			{
-				"rule": "deduplication",
-				"line": 12,
-				"message": "Duplicate locator: this.page.getByTestId(\"setup-workflow-credentials-modal\") in pages scope",
-				"hash": "bb31fb5ca716"
 			}
 		],
 		"pages/components/VariableModal.ts": [

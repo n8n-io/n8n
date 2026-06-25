@@ -74,7 +74,7 @@ import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionH
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
-const AGENT_EDITOR_MIN_WIDTH = 360;
+const AGENT_EDITOR_MIN_WIDTH = 560;
 
 const route = useRoute();
 const router = useRouter();
@@ -222,7 +222,6 @@ function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
 	agent.value = {
 		...agent.value,
 		name: c.name,
-		description: c.description ?? null,
 	};
 }
 
@@ -673,9 +672,6 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (updates.name !== undefined) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
-	}
-	if (updates.description !== undefined && agent.value) {
-		agent.value = { ...agent.value, description: updates.description ?? null };
 	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
@@ -1240,6 +1236,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:is-builder-configured="isBuilderConfigured"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
+					:is-build-chat-streaming="isBuildChatStreaming"
 					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
 					@build-done="onBuildDone"
@@ -1310,6 +1307,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 <style lang="scss" module>
 .root {
+	--agent-builder-chat-min-width: 20rem;
+	--agent-builder-editor-min-width: 35rem;
+
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -1320,7 +1320,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	height: 100%;
 	min-height: 0;
-	overflow: hidden;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .previewBuilder {
@@ -1329,6 +1332,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .chatResizer {
 	flex-shrink: 0;
+	min-width: var(--agent-builder-chat-min-width);
 
 	:global([data-test-id='resize-handle']) {
 		width: var(--spacing--xs) !important;
@@ -1368,6 +1372,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .editorColumn {
 	flex: 1 1 auto;
-	min-width: 0;
+	min-width: var(--agent-builder-editor-min-width);
 }
 </style>

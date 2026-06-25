@@ -122,7 +122,11 @@ export class AwsSecretsManager extends SecretsProvider {
 		// Drive the AWS SDK's HTTP transport through n8n's outbound client,
 		// so its calls reuse our agents (proxy + TLS) like every other outbound request.
 		// SigV4 signing and the credential chain stay with the SDK.
-		clientConfig.requestHandler = this.outboundHttp.transport({ ssrf: 'disabled' }).getNodeAgent();
+		clientConfig.requestHandler = this.outboundHttp
+			.transport({
+				ssrf: 'disabled', // fixed AWS-resolved Secrets Manager host, not user-controlled
+			})
+			.getNodeAgent();
 
 		const { SecretsManager } = await import('@aws-sdk/client-secrets-manager');
 		this.client = new SecretsManager(clientConfig);

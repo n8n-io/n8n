@@ -7,7 +7,6 @@ import {
 	ToolDescriptor,
 } from '@n8n/agents';
 import {
-	isNodeToolsEnabled,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -24,8 +23,8 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp } from '@n8n/backend-network';
-import { AgentsConfig } from '@n8n/config';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -34,11 +33,10 @@ import { ActiveExecutions } from '@/active-executions';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
-import type { WorkflowRunner } from '@/workflow-runner';
+import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
@@ -71,7 +69,7 @@ export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; description?: string }>;
+	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
 }
 
 export interface ReconstructAgentRuntimeParams {
@@ -133,12 +131,13 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -231,16 +230,21 @@ export class AgentRuntimeReconstructionService {
 		const toolResolver = this.makeToolResolver(projectId, userId);
 		const resolvedTools: BuiltTool[] = [];
 
-		// One proxy-aware transport shared by the agent's model and all its MCP
-		// connections, so they reuse a single connection pool.
+		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+		// Transport for MCP calls
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
 
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: aiProxyFetch,
+				proxyFetch: aiMcpFetch,
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
@@ -265,7 +269,6 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			runtimeProfile,
 			config,
-			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
 			integrationType,
@@ -283,7 +286,7 @@ export class AgentRuntimeReconstructionService {
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
 
-		for (const { agentId, agent } of await resolveUniqueSubAgents({
+		for (const { agentId, agent, useWhen } of await resolveUniqueSubAgents({
 			refs: configuredAgents,
 			projectId,
 			agentRepository: this.agentRepository,
@@ -294,7 +297,7 @@ export class AgentRuntimeReconstructionService {
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,
-				...(agent.description ? { description: agent.description } : {}),
+				...(useWhen ? { useWhen } : {}),
 			});
 		}
 
@@ -303,14 +306,6 @@ export class AgentRuntimeReconstructionService {
 
 	private getMemoryFactory(agentId: string): MemoryFactory {
 		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
-	}
-
-	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
-		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
-	}
-
-	private isNodeToolsModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
@@ -352,7 +347,6 @@ export class AgentRuntimeReconstructionService {
 		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
 		config: AgentJsonConfig;
-		nodeToolsEnabled: boolean;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
 		integrationType?: string;
@@ -366,7 +360,6 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			runtimeProfile,
 			config,
-			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
 			integrationType,
@@ -407,8 +400,12 @@ export class AgentRuntimeReconstructionService {
 						(integrationConfig) => {
 							const integrationDef = integrationRegistry.get(integrationConfig.type);
 							return {
+								contextToolDefinitions: integrationDef?.contextToolDefinitions,
+								actionToolDefinitions: integrationDef?.actionToolDefinitions,
 								contextQueries: integrationDef?.contextQueries,
 								actions: integrationDef?.actions,
+								contextToolGuidance: integrationDef?.contextToolGuidance,
+								actionToolGuidance: integrationDef?.actionToolGuidance,
 							};
 						},
 					);
@@ -428,6 +425,10 @@ export class AgentRuntimeReconstructionService {
 						actionToolName: N8N_CHAT_ACTION_TOOL_NAME,
 						contextQueries: [...n8nChat.contextQueries],
 						actions: [...n8nChat.actions],
+						contextToolDefinitions: [...n8nChat.contextToolDefinitions],
+						actionToolDefinitions: [...n8nChat.actionToolDefinitions],
+						contextToolGuidance: n8nChat.contextToolGuidance,
+						actionToolGuidance: n8nChat.actionToolGuidance,
 					});
 				}
 
@@ -440,10 +441,6 @@ export class AgentRuntimeReconstructionService {
 					);
 				}
 			}
-		}
-
-		if (nodeToolsEnabled) {
-			agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
 		}
 
 		if (runtimeProfile === 'top-level') {

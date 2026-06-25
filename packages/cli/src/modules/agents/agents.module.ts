@@ -8,7 +8,17 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		await import('./agents-catalog.controller');
+		await import('./agent-threads.controller');
 		await import('./agents.controller');
+		await import('./agents-config.controller');
+		await import('./agents-skills.controller');
+		await import('./agent-knowledge.controller');
+		await import('./agent-publish.controller');
+		await import('./agent-chat.controller');
+		await import('./agent-builder.controller');
+		await import('./agent-integrations.controller');
+		await import('./agent-tasks.controller');
 		await import('./agent-sandbox.controller');
 		await import('./agents-list.controller');
 		await import('./builder/agents-builder-settings.controller');

@@ -1,4 +1,4 @@
-import { parseCliArgs } from '../cli/args';
+import { parseCliArgs, partialIsolationWarning } from '../cli/args';
 
 describe('parseCliArgs --base-url', () => {
 	it('defaults to a single localhost URL when --base-url is not provided', () => {
@@ -92,5 +92,51 @@ describe('parseCliArgs --exclude', () => {
 	it('accepts a comma-separated list as a single value', () => {
 		const args = parseCliArgs(['--exclude', 'cross-team,deduplication']);
 		expect(args.exclude).toBe('cross-team,deduplication');
+	});
+});
+
+describe('parseCliArgs --baseline-prefix', () => {
+	it('defaults to the instance-ai baseline prefix', () => {
+		expect(parseCliArgs([]).baselinePrefix).toBe('instance-ai-baseline-');
+	});
+
+	it('appends the required trailing hyphen when missing', () => {
+		// Anchors the prefix match to LangSmith's `-<suffix>` separator so it can't
+		// catch unrelated experiment names (e.g. `mcp-baseline` vs `mcp-baseline2-`).
+		expect(parseCliArgs(['--baseline-prefix', 'mcp-baseline']).baselinePrefix).toBe(
+			'mcp-baseline-',
+		);
+	});
+
+	it('leaves an existing trailing hyphen intact', () => {
+		expect(parseCliArgs(['--baseline-prefix', 'mcp-baseline-']).baselinePrefix).toBe(
+			'mcp-baseline-',
+		);
+	});
+});
+
+describe('partialIsolationWarning', () => {
+	it('returns undefined when both are at their defaults (Instance AI run)', () => {
+		expect(
+			partialIsolationWarning('instance-ai-workflow-evals', 'instance-ai-baseline-'),
+		).toBeUndefined();
+	});
+
+	it('returns undefined when both are overridden (isolated cohort)', () => {
+		expect(
+			partialIsolationWarning('instance-ai-mcp-workflow-evals', 'mcp-baseline-'),
+		).toBeUndefined();
+	});
+
+	it('warns when only the dataset is overridden', () => {
+		expect(
+			partialIsolationWarning('instance-ai-mcp-workflow-evals', 'instance-ai-baseline-'),
+		).toMatch(/Partial LangSmith isolation/);
+	});
+
+	it('warns when only the baseline prefix is overridden', () => {
+		expect(partialIsolationWarning('instance-ai-workflow-evals', 'mcp-baseline-')).toMatch(
+			/Partial LangSmith isolation/,
+		);
 	});
 });

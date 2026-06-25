@@ -1,6 +1,7 @@
 import { expect, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class SettingsEnvironmentPage extends BasePage {
 	async goto(): Promise<void> {
@@ -64,6 +65,6 @@ export class SettingsEnvironmentPage extends BasePage {
 			.getByRole('dialog')
 			.filter({ hasText: 'Disconnect Git repository' });
 		await expect(confirmModal).toBeVisible();
-		await confirmModal.locator('.btn--confirm').click();
+		await new MessageBox(confirmModal).confirmButton.click();
 	}
 }
