@@ -13,6 +13,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ApplicationError } from '@n8n/errors';
 import type { ProjectRole } from '@n8n/permissions';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import {
@@ -25,7 +26,7 @@ import {
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { DateTime } from 'luxon';
-import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';

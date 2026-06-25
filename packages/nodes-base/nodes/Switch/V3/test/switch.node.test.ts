@@ -1,10 +1,11 @@
+import { ApplicationError } from '@n8n/errors';
 import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeOperationError, ApplicationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { SwitchV3 } from '../SwitchV3.node';
 import type { Mocked } from 'vitest';
