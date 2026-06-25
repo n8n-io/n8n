@@ -2719,6 +2719,31 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
+	it('tracks error status when an execution fails to launch', async () => {
+		const { adapter, mockTelemetry, mockWorkflowRunner } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				threadId: 'thread-1',
+			},
+		);
+
+		const launchError = new Error('Failed to run workflow due to missing execution data');
+		mockWorkflowRunner.run.mockRejectedValueOnce(launchError);
+
+		await expect(adapter.run('wf-1')).rejects.toThrow(launchError);
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+			}),
+		);
+	});
+
 	it('populates runnable executionData for a trigger run with no input', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
