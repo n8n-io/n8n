@@ -43,8 +43,12 @@ function hasSuccessfulEvidence(outcome: WorkflowBuildOutcome): boolean {
 	);
 }
 
-function hasPartialCoverageEvidence(outcome: WorkflowBuildOutcome): boolean {
-	return (outcome.verification?.evidence?.nodesNotReached?.length ?? 0) > 0;
+function hasPartialSuccessfulCoverageEvidence(outcome: WorkflowBuildOutcome): boolean {
+	return (
+		outcome.verification?.attempted === true &&
+		outcome.verification.success &&
+		(outcome.verification.evidence?.nodesNotReached?.length ?? 0) > 0
+	);
 }
 
 function hasFailedEvidence(outcome: WorkflowBuildOutcome): boolean {
@@ -71,10 +75,10 @@ function deriveStatus(
 	if (!outcome.submitted) return 'blocked';
 	if (hasSuccessfulEvidence(outcome)) return 'verified';
 	if (hasSetupBlockingEvidence(state, outcome)) return 'needs_setup';
+	if (hasPartialSuccessfulCoverageEvidence(outcome)) return 'not_verifiable';
 
 	switch (outcome.verificationReadiness?.status) {
 		case 'already_verified':
-			if (hasPartialCoverageEvidence(outcome)) return 'ready_to_verify';
 			return 'verified';
 		case 'needs_setup':
 			return 'needs_setup';
@@ -113,6 +117,10 @@ function deriveBlockingReason(
 	}
 	if (outcome.verificationReadiness?.status === 'needs_setup') {
 		return outcome.verificationReadiness.guidance;
+	}
+	if (hasPartialSuccessfulCoverageEvidence(outcome)) {
+		const nodesNotReached = outcome.verification?.evidence?.nodesNotReached ?? [];
+		return `Automatic verification only covered part of the workflow. Unreached nodes need manual testing: ${nodesNotReached.join(', ')}.`;
 	}
 	const outcomeRemediation = outcome.remediation;
 	if (outcomeRemediation && setupRemediationBlocksVerification(outcomeRemediation, outcome)) {
