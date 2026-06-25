@@ -415,7 +415,7 @@ export class ScheduleTrigger implements INodeType {
 										field: ['cronExpression'],
 									},
 								},
-								hint: 'Format: [Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
+								hint: 'Format: [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
 					},
