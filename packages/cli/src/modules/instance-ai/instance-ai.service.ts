@@ -96,6 +96,8 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
+import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
+import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
@@ -489,6 +491,7 @@ export class InstanceAiService {
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
+		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -1330,7 +1333,7 @@ export class InstanceAiService {
 		}
 
 		this.gatewayService.disconnectAll();
-
+		await this.browserSessionService.shutdown();
 		this.sandboxService.stopSandboxExpiryTimers();
 
 		// Thread-scoped sandboxes survive service shutdown so a restarted process
@@ -1747,9 +1750,22 @@ export class InstanceAiService {
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 		});
-		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
-			context.localMcpServer = userGateway;
+
+		// Merge both local gateway and direct browser-use into a single
+		// composite server, since context has a single `localMcpServer`.
+		// Perhaps a better solution would be to have multiple local MCP
+		// servers? But that requires more changes where `localMcpServer`
+		// is currently used
+		const gatewayMcpServer =
+			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
+		const browserMcpServer = localGatewayDisabledGlobally
+			? undefined
+			: this.browserSessionService.findMcpServer(user.id);
+		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
+		if (localMcpServer) {
+			context.localMcpServer = localMcpServer;
 		}
+
 		context.permissions = this.settingsService.getPermissions();
 		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
@@ -1782,16 +1798,33 @@ export class InstanceAiService {
 			};
 		}
 
-		// Compute gateway status for the system prompt
+		browserMcpServer?.setDomainGate({
+			tracker: domainTracker,
+			runId,
+			permissionMode: context.permissions?.fetchUrl,
+		});
+
+		// Compute gateway status for the system prompt. The direct browser
+		// session contributes a `browser` capability even without the daemon.
 		if (localGatewayDisabledGlobally) {
 			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else if (!localGatewayDisabledForUser && userGateway?.isConnected) {
+		} else if (gatewayMcpServer || browserMcpServer) {
+			const capabilities = new Set<string>();
+			if (gatewayMcpServer) {
+				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
+					if (enabled) {
+						capabilities.add(name);
+					}
+				}
+			}
+
+			if (browserMcpServer) {
+				capabilities.add('browser');
+			}
+
 			context.localGatewayStatus = {
 				status: 'connected',
-				capabilities: userGateway
-					.getStatus()
-					.toolCategories.filter(({ enabled }) => enabled)
-					.map(({ name }) => name),
+				capabilities: [...capabilities],
 			};
 		} else {
 			context.localGatewayStatus = {

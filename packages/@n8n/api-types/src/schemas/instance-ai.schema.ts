@@ -577,6 +577,18 @@ export class InstanceAiGatewayCreateCredentialDto extends Z.class({
 	projectId: z.string().optional(),
 }) {}
 
+export interface InstanceAiBrowserCreateLinkResponse {
+	connectUrl: string;
+	expiresAt: string | null;
+	ttlSeconds: number | null;
+}
+
+export interface InstanceAiBrowserStatusResponse {
+	connected: boolean;
+	connectedAt: string | null;
+	toolCategories: ToolCategory[];
+}
+
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
 // ---------------------------------------------------------------------------
