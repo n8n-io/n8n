@@ -26,7 +26,7 @@
 		{
 			"name": "happy-path",
 			"description": "API returns several stories, the top 3 are posted to the corrected channel",
-			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns a list of at least 5 stories, each with a title and url — e.g. 'Show HN: A new Rust web framework', 'Why we migrated off Kubernetes', 'The state of WebAssembly in 2026', 'Postgres 18 is out', 'Ask HN: best note-taking setup?'. The Slack post-message node returns a success response.",
+			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns a list of at least 5 stories, each with a title and url. The Slack post-message node returns a success response.",
 			"successCriteria": "The workflow executes without errors. The stories are posted to #engineering (C04ENGINEER1) — the corrected channel — and NOT to #news (C04NEWS0001). Exactly the top 3 stories are included (the corrected count), not a single story. Each posted entry includes a title and a URL."
 		},
 		{
