@@ -41,20 +41,6 @@ function isObject(obj: unknown): obj is IDataObject {
 	return isPlainObject(obj);
 }
 
-// n8n items require `json` to be an object. Split a top-level array one item per
-// element and wrap non-object elements (bare array of IDs, array of arrays) under `data`.
-export function responseToExecutionItems(
-	response: unknown,
-	itemIndex: number,
-): INodeExecutionData[] {
-	const pairedItem = { item: itemIndex };
-	const toItem = (value: unknown): INodeExecutionData =>
-		isObject(value)
-			? { json: value, pairedItem }
-			: { json: { data: value } as IDataObject, pairedItem };
-	return Array.isArray(response) ? response.map(toItem) : [toItem(response)];
-}
-
 function redactString(str: string, secrets: string[]): string {
 	return secrets.reduce((safe, secret) => safe.split(secret).join(REDACTED), str);
 }

@@ -40,7 +40,6 @@ import {
 	prepareRequestBody,
 	reduceAsync,
 	replaceNullValues,
-	responseToExecutionItems,
 	sanitizeUiMessage,
 	setAgentOptions,
 	updadeQueryParameterConfig,
@@ -1108,7 +1107,23 @@ export class HttpRequestV3 implements INodeType {
 								}
 							}
 
-							returnItems.push(...responseToExecutionItems(response, itemIndex));
+							if (Array.isArray(response)) {
+								response.forEach((item) =>
+									returnItems.push({
+										json: item,
+										pairedItem: {
+											item: itemIndex,
+										},
+									}),
+								);
+							} else {
+								returnItems.push({
+									json: response,
+									pairedItem: {
+										item: itemIndex,
+									},
+								});
+							}
 						}
 					}
 				}
