@@ -2064,19 +2064,18 @@ export interface ExecuteAgentInfo {
  * Context about the calling workflow execution, passed to the agent runtime so
  * it can expose the `fetch_input_data` and (opt-in) `fetch_workflow_context` tools to the agent. The
  * `runExecutionData` is a live reference to the calling execution's run data —
- * safe because nodes execute sequentially while the agent call awaits — and
  * must be treated as read-only.
  */
 export interface ExecuteAgentWorkflowContext {
 	workflowId?: string;
 	workflowName?: string;
-	/** Name of the node that invoked the agent (e.g. the MessageAnAgent node). */
+	/** Name of the node that invoked the agent */
 	callingNodeName: string;
 	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
 	inputData?: INodeExecutionData[];
 	/** Which slice {@link inputData} represents. */
 	inputDataScope?: 'item' | 'all';
-	/** Whether to attach the any-node `fetch_workflow_context` tool. */
+	/** Whether to attach the `fetch_workflow_context` tool. */
 	exposeWorkflowData?: boolean;
 	/** Name and type of every node in the calling workflow. */
 	nodes: Array<{ name: string; type: string }>;

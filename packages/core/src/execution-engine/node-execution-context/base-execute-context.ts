@@ -24,6 +24,7 @@ import type {
 	NodeConnectionType,
 	Result,
 	IExecuteFunctions,
+	ExecuteAgentWorkflowContext,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -185,6 +186,17 @@ export class BaseExecuteContext extends NodeExecutionContext {
 					? [primaryBranch[itemIndex]]
 					: [];
 
+		const workflowContext: ExecuteAgentWorkflowContext = {
+			workflowId: this.workflow.id,
+			workflowName: this.workflow.name,
+			callingNodeName: this.node.name,
+			inputData: scopedInput,
+			inputDataScope,
+			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
+			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
+			runExecutionData: this.runExecutionData,
+		};
+
 		return await this.additionalData.executeAgent(
 			agentInfo.agentId,
 			message,
@@ -193,16 +205,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData,
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
-			{
-				workflowId: this.workflow.id,
-				workflowName: this.workflow.name,
-				callingNodeName: this.node.name,
-				inputData: scopedInput,
-				inputDataScope,
-				exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
-				nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
-				runExecutionData: this.runExecutionData,
-			},
+			workflowContext,
 		);
 	}
 
