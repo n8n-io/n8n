@@ -210,7 +210,7 @@ export class ErrorReporter {
 				.filter((integrationName) => !!eligibleIntegrations[integrationName])
 				.forEach((integrationName) => enabledIntegrations.add(integrationName));
 
-			this.tracing.setTracingImplementation(new SentryTracing(sentry, this));
+			this.tracing.setTracingImplementation(new SentryTracing(sentry));
 		}
 
 		const isProfilingEnabled = profilesSampleRate > 0;

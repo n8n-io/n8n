@@ -1,21 +1,13 @@
-import type { ReportingOptions } from '@n8n/errors';
 import type Sentry from '@sentry/node';
 import { ensureError } from 'n8n-workflow';
 
 import { SpanStatus, type Span, type StartSpanOpts, type Tracer } from './tracing';
 
-export interface TraceErrorReporter {
-	error(error: unknown, options?: ReportingOptions): void;
-}
-
 /**
  * Tracing implementation that uses Sentry to trace spans
  */
 export class SentryTracing implements Tracer {
-	constructor(
-		private readonly sentry: Pick<typeof Sentry, 'startSpan'>,
-		private readonly errorReporter: TraceErrorReporter,
-	) {}
+	constructor(private readonly sentry: Pick<typeof Sentry, 'startSpan'>) {}
 
 	async startSpan<T>(options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T> {
 		return await this.sentry.startSpan(options, async (span) => {
@@ -23,24 +15,11 @@ export class SentryTracing implements Tracer {
 				return await spanCb(span);
 			} catch (e) {
 				const error = ensureError(e);
-				try {
-					const { traceId, spanId, traceFlags } = span.spanContext();
-					span.setStatus({ code: SpanStatus.error, message: error.message });
-					span.setAttributes({
-						'error.type': error.constructor.name,
-						'error.message': error.message,
-					});
-					this.errorReporter.error(error, {
-						shouldBeLogged: false,
-						extra: {
-							trace: {
-								traceId,
-								spanId,
-								traceFlags,
-							},
-						},
-					});
-				} catch {}
+				span.setStatus({ code: SpanStatus.error, message: error.message });
+				span.setAttributes({
+					'error.type': error.constructor.name,
+					'error.message': error.message,
+				});
 				throw e;
 			}
 		});
