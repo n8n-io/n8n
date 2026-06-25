@@ -1,0 +1,44 @@
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_bc047f60603f3a::t_c887353b6d6288 381-387
+  s_bc047f60603f3a::t_44b8428bc05c91 297,299-304
+  s_bc047f60603f3a::t_6b5f546993bc26 270-274,352-354
+  s_bc047f60603f3a::t_18e5d6c0dd7f32 269,305-306,320-321,338,390
+  s_bc047f60603f3a::t_470cfa850202e3 165
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_bc047f60603f3a::t_f757c1898442cf 36-42
+  s_bc047f60603f3a::t_8cd54b7ed7751f 75-82,84-86
+  s_bc047f60603f3a::t_34d2b81a3d7c53 71-74,83
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_bc047f60603f3a::t_23f5e4978673cf 356-357,361,363
+  s_bc047f60603f3a::t_87c8115285f924 336
+  s_bc047f60603f3a::t_72249d8688ab07 358-360,369-378
+  h_8fb27e0cdf6d1e 15,23-25,349-350,355,368
+  s_bc047f60603f3a::t_03ae4c6fef0630 56,58
+  s_bc047f60603f3a::t_18c2001f04c0e3 331-335,346-348,351-353,362,364-367,379-381
+  s_bc047f60603f3a::t_b3aba6077dfb47 418,424-429
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_bc047f60603f3a::t_815042d5b1f950 3
+  s_bc047f60603f3a::t_c5cee90460a152 264,266,276,278-279,282
+  s_bc047f60603f3a::t_b218d9f485c81f 230-263,265,267-275,277,280-281,283-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27a1f5c781916335ce9cbf5caa24140c78e8f399",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_bc047f60603f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76d868d0-5583-4dbf-b7bd-65e3c6e564ed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
