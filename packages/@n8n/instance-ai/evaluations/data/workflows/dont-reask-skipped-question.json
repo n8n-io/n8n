@@ -23,7 +23,7 @@
 	],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"processExpectations": [
 		"When the user skipped a setup detail the agent could decide itself, the agent assumed a sensible default and proceeded to build on a daily morning schedule, rather than blocking on it.",
 		"The agent did not re-present a skipped question — any such question was asked at most once across the conversation.",
 		"The agent treated the skip as a signal to make a reasonable assumption, not as a reason to stall or to switch away from the morning schedule."
