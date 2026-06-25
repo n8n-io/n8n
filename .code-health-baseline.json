@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"generated": "2026-06-04T06:55:45.363Z",
-	"totalViolations": 148,
+	"totalViolations": 159,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -1057,6 +1057,74 @@
 				"line": 184,
 				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
 				"hash": "170e854b445c"
+			}
+		],
+		"packages/@n8n/typeorm/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 118,
+				"message": "reflect-metadata@^0.2.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "558f12c2dd9c"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 122,
+				"message": "uuid@^9.0.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "0304587b7acc"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 67,
+				"message": "@types/node@^18.13.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "0df18a02f2d0"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 72,
+				"message": "@types/uuid@^9.0.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "0bcbecb362c9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 76,
+				"message": "eslint@^8.44.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "0036144a407d"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 78,
+				"message": "pg@^8.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "6cac348bdcc8"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 80,
+				"message": "prettier@^2.8.3 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "869ee9ce64bc"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 81,
+				"message": "rimraf@^4.1.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "48f117898c57"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 84,
+				"message": "source-map-support@^0.5.21 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "c27bcf7b8b06"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 87,
+				"message": "typescript@^5.3.3 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "050d5b2d74e1"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 90,
+				"message": "pg@^8.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "6cac348bdcc8"
 			}
 		]
 	}
