@@ -73,9 +73,11 @@ export async function execute(
 		const qs: IDataObject = {};
 		try {
 			const returnAll = this.getNodeParameter('returnAll', i);
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = encodeURIComponent(
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 			const filters = this.getNodeParameter('filters', i);
 			if (filters.fields) {
 				qs.$select = filters.fields;

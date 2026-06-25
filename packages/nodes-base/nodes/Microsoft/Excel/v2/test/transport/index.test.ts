@@ -344,31 +344,18 @@ describe('Microsoft Excel Transport', () => {
 			);
 		});
 
-		it('routes Service Principal list-search through requestWithAuthentication, scoped to the target drive', async () => {
-			// "Find workbooks" runs in the load-options context. Under the SP credential it must
-			// resolve the chosen drive root (here via the unpersisted-default resourceTarget → user)
-			// and route through requestWithAuthentication, not requestOAuth2.
+		it('blocks the Service Principal list-search (drive search is unsupported app-only)', async () => {
+			// App-only Graph cannot search a drive, so the "From List" workbook picker must throw
+			// (steering the user to "By ID") rather than issue a request that fails at runtime.
 			const loadOptionsRequestWithAuth = vi.fn().mockResolvedValue({ value: [] });
 			mockLoadOptions.helpers.requestWithAuthentication = loadOptionsRequestWithAuth;
-			const params: Record<string, unknown> = {
-				authentication: 'microsoftEntraServicePrincipalApi',
-				userTarget: { value: 'jane@contoso.com' },
-			};
-			mockLoadOptions.getNodeParameter.mockImplementation(
-				(name, fallback) => (name in params ? params[name as string] : fallback) as never,
-			);
+			mockLoadOptions.getNode.mockReturnValue(mockNode);
+			mockLoadOptions.getNodeParameter.mockReturnValue('microsoftEntraServicePrincipalApi');
 
-			await searchWorkbooks.call(mockLoadOptions);
-
-			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith(
-				'microsoftEntraServicePrincipalApi',
+			await expect(searchWorkbooks.call(mockLoadOptions)).rejects.toThrow(
+				'Search is not supported with the Service Principal credential',
 			);
-			expect(loadOptionsRequestWithAuth).toHaveBeenCalledWith(
-				'microsoftEntraServicePrincipalApi',
-				expect.objectContaining({
-					uri: expect.stringContaining("/v1.0/users/jane%40contoso.com/drive/root/search(q='"),
-				}),
-			);
+			expect(loadOptionsRequestWithAuth).not.toHaveBeenCalled();
 			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
 		});
 	});
@@ -456,21 +443,6 @@ describe('Microsoft Excel Transport', () => {
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
 					uri: `${baseUrl}/v1.0/drives/b!abc-123_XYZ/items/WB/workbook/worksheets/WS/usedRange`,
-				}),
-			);
-		});
-
-		it('rebases onto /sites/{composite}/drive with literal commas for the site target', async () => {
-			const site =
-				'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222';
-			setSpParams({ resourceTarget: 'site', siteTarget: { value: site } });
-
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', SCOPED_RESOURCE);
-
-			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
-				'microsoftEntraServicePrincipalApi',
-				expect.objectContaining({
-					uri: `${baseUrl}/v1.0/sites/${site}/drive/items/WB/workbook/worksheets/WS/usedRange`,
 				}),
 			);
 		});
@@ -578,12 +550,6 @@ describe('Microsoft Excel Transport', () => {
 			);
 		});
 
-		it('builds the site root with literal commas', () => {
-			expect(
-				getServicePrincipalResourceRoot('site', 'contoso.sharepoint.com,1111,2222', mockNode),
-			).toBe('/sites/contoso.sharepoint.com,1111,2222');
-		});
-
 		it('rejects an empty id', () => {
 			expect(() => validateResourceTargetId('user', '', mockNode)).toThrow(NodeOperationError);
 		});
@@ -600,12 +566,6 @@ describe('Microsoft Excel Transport', () => {
 			);
 		});
 
-		it('rejects a malformed site composite', () => {
-			expect(() => validateResourceTargetId('site', 'contoso.sharepoint.com', mockNode)).toThrow(
-				NodeOperationError,
-			);
-		});
-
 		it('never interpolates the id into the error message', () => {
 			let message = '';
 			try {
@@ -618,7 +578,7 @@ describe('Microsoft Excel Transport', () => {
 	});
 
 	describe('driveEndpoint', () => {
-		it('appends /drive to a user or site root', () => {
+		it('appends /drive to a user root', () => {
 			expect(driveEndpoint('/users/jane%40contoso.com')).toBe('/users/jane%40contoso.com/drive');
 		});
 

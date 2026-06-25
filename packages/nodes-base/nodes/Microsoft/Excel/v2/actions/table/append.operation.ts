@@ -159,17 +159,23 @@ export async function execute(
 	try {
 		// TODO: At some point it should be possible to use item dependent parameters.
 		//       Is however important to then not make one separate request each.
-		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
-			extractValue: true,
-		}) as string;
+		const workbookId = encodeURIComponent(
+			this.getNodeParameter('workbook', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
-		const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
-			extractValue: true,
-		}) as string;
+		const worksheetId = encodeURIComponent(
+			this.getNodeParameter('worksheet', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
-		const tableId = this.getNodeParameter('table', 0, undefined, {
-			extractValue: true,
-		}) as string;
+		const tableId = encodeURIComponent(
+			this.getNodeParameter('table', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
 		const dataMode = this.getNodeParameter('dataMode', 0) as string;
 

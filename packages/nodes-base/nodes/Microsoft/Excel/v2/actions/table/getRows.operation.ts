@@ -116,17 +116,23 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const qs: IDataObject = {};
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = encodeURIComponent(
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
-			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const worksheetId = encodeURIComponent(
+				this.getNodeParameter('worksheet', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
-			const tableId = this.getNodeParameter('table', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const tableId = encodeURIComponent(
+				this.getNodeParameter('table', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const filters = this.getNodeParameter('filters', i);
 			const returnAll = this.getNodeParameter('returnAll', i);

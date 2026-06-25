@@ -6,13 +6,17 @@ import { parseAddress } from '../helpers/utils';
 export async function getWorksheetColumnRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workbookId = this.getNodeParameter('workbook', undefined, {
-		extractValue: true,
-	}) as string;
+	const workbookId = encodeURIComponent(
+		this.getNodeParameter('workbook', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
-	const worksheetId = this.getNodeParameter('worksheet', undefined, {
-		extractValue: true,
-	}) as string;
+	const worksheetId = encodeURIComponent(
+		this.getNodeParameter('worksheet', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	let range = this.getNodeParameter('range', '') as string;
 	let columns: string[] = [];
@@ -62,17 +66,23 @@ export async function getWorksheetColumnRowSkipColumnToMatchOn(
 export async function getTableColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workbookId = this.getNodeParameter('workbook', undefined, {
-		extractValue: true,
-	}) as string;
+	const workbookId = encodeURIComponent(
+		this.getNodeParameter('workbook', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
-	const worksheetId = this.getNodeParameter('worksheet', undefined, {
-		extractValue: true,
-	}) as string;
+	const worksheetId = encodeURIComponent(
+		this.getNodeParameter('worksheet', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
-	const tableId = this.getNodeParameter('table', undefined, {
-		extractValue: true,
-	}) as string;
+	const tableId = encodeURIComponent(
+		this.getNodeParameter('table', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	const response = await microsoftApiRequest.call(
 		this,
