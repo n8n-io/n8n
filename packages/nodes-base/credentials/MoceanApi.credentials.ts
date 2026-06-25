@@ -12,6 +12,13 @@ export class MoceanApi implements ICredentialType {
 		// Properties can be defined exactly in the same way
 		// as node properties.
 		{
+			displayName: 'API Token',
+			name: 'mocean-api-token',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+		},
+		{
 			displayName: 'API Key',
 			name: 'mocean-api-key',
 			type: 'string',
