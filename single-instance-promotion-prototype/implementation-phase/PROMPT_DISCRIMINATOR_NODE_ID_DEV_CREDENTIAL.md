@@ -1,0 +1,5 @@
+1. "The EnvironmentCredentialBinding is supposed to contain the info about which credential is used in a node that's part of a workflow in a project that has n number of environments defined (could be: dev, staging, prod for example). With this context, explain to me the meaning and relationship of the sourceCredentialId and targetCredentialId columns"
+2. "If sourceCredentialId is always the same, what is its purpose?"
+3. "Would the nodeId that uses the credential be a better suited discriminator? [+ workflow JSON example]"
+4. "But don't I as a user may want to use a different credential on the same type of node in prod, where on dev it's using identical ones?"
+5. "Give me a list of all prompts I've sent you in this session"
