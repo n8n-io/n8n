@@ -135,6 +135,27 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		};
 	}
 
+	async function setCredentialBinding(
+		projectId: string,
+		workflowId: string,
+		envId: string,
+		nodeId: string,
+		credentialType: string,
+		targetCredentialId: string | null,
+	): Promise<void> {
+		if (!credentialBindings.value[workflowId]?.[envId]) {
+			await fetchCredentialBindings(projectId, workflowId, envId);
+		}
+		const existing = credentialBindings.value[workflowId]?.[envId] ?? [];
+		const filtered = existing.filter(
+			(b) => !(b.nodeId === nodeId && b.credentialType === credentialType),
+		);
+		const updated = targetCredentialId
+			? [...filtered, { nodeId, credentialType, targetCredentialId }]
+			: filtered;
+		await saveCredentialBindings(projectId, workflowId, envId, updated);
+	}
+
 	return {
 		environments,
 		publishedVersions,
@@ -149,5 +170,6 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		publishToEnvironment,
 		fetchCredentialBindings,
 		saveCredentialBindings,
+		setCredentialBinding,
 	};
 });

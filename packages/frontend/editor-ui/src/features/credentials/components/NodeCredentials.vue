@@ -38,6 +38,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useEnvironmentsStore } from '@/features/environments/environments.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -118,6 +119,85 @@ const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
+
+const environmentsStore = useEnvironmentsStore();
+
+// Local env selection — intentionally NOT synced back to canvas EnvironmentSelector
+const nodeCredEnvId = ref<string | null>(environmentsStore.selectedEnvironmentId);
+
+const effectiveProjectId = computed(
+	() => props.projectId ?? projectsStore.currentProject?.id ?? '',
+);
+const effectiveWorkflowId = computed(() =>
+	!workflowsStore.isNewWorkflow ? (workflowDocumentStore?.value.workflowId ?? '') : '',
+);
+
+const isEnvMode = computed(
+	() =>
+		environmentsStore.environments.length > 0 &&
+		!!nodeCredEnvId.value &&
+		!!effectiveWorkflowId.value &&
+		!!props.node.id,
+);
+
+watch(
+	nodeCredEnvId,
+	async (envId) => {
+		if (!envId || !effectiveProjectId.value || !effectiveWorkflowId.value) return;
+		if (!environmentsStore.credentialBindings[effectiveWorkflowId.value]?.[envId]) {
+			await environmentsStore.fetchCredentialBindings(
+				effectiveProjectId.value,
+				effectiveWorkflowId.value,
+				envId,
+			);
+		}
+	},
+	{ immediate: true },
+);
+
+function getEnvBinding(credentialType: string) {
+	if (!nodeCredEnvId.value || !effectiveWorkflowId.value) return null;
+	const bindings =
+		environmentsStore.credentialBindings[effectiveWorkflowId.value]?.[nodeCredEnvId.value] ?? [];
+	return (
+		bindings.find((b) => b.nodeId === props.node.id && b.credentialType === credentialType) ?? null
+	);
+}
+
+function getEffectiveSelectedId(type: INodeCredentialDescription): string | undefined {
+	if (isEnvMode.value) return getEnvBinding(type.name)?.targetCredentialId ?? undefined;
+	return getSelectedId(type);
+}
+
+function isEffectiveCredentialExisting(type: INodeCredentialDescription): boolean {
+	if (isEnvMode.value) return !!getEnvBinding(type.name);
+	return isCredentialExisting(type);
+}
+
+async function onEnvCredentialSelected(
+	credentialType: string,
+	credentialId: string | null,
+): Promise<void> {
+	if (
+		!nodeCredEnvId.value ||
+		!effectiveProjectId.value ||
+		!effectiveWorkflowId.value ||
+		!props.node.id
+	)
+		return;
+	try {
+		await environmentsStore.setCredentialBinding(
+			effectiveProjectId.value,
+			effectiveWorkflowId.value,
+			nodeCredEnvId.value,
+			props.node.id,
+			credentialType,
+			credentialId,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeCredentials.environmentBinding.saveError'));
+	}
+}
 
 // Quick connect
 const {
@@ -243,6 +323,7 @@ watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+		if (isEnvMode.value) return;
 
 		if (
 			aiGateway.isEnabled.value &&
@@ -340,7 +421,12 @@ onMounted(() => {
 				// new credential was added
 				case 'createNewCredential':
 					if (result) {
-						onCredentialSelected(credentialType, (result as ICredentialsResponse).id);
+						const newId = (result as ICredentialsResponse).id;
+						if (isEnvMode.value) {
+							await onEnvCredentialSelected(credentialType, newId);
+						} else {
+							onCredentialSelected(credentialType, newId);
+						}
 					}
 					break;
 				case 'updateCredential':
@@ -721,14 +807,6 @@ const quickConnectCredentialType = computed(() => {
 	)?.name;
 });
 
-function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !!quickConnectCredentialType.value;
-}
-
-function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
-}
-
 function canManuallySetUpCredential(credentialTypeName: string): boolean {
 	const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 	if (!credentialType) {
@@ -751,7 +829,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		});
 
 		if (credential) {
-			onCredentialSelected(credentialTypeName, credential.id);
+			if (isEnvMode.value) {
+				await onEnvCredentialSelected(credentialTypeName, credential.id);
+			} else {
+				onCredentialSelected(credentialTypeName, credential.id);
+			}
 			toast.showMessage({
 				title: i18n.baseText('nodeCredentials.quickConnect.credential.created.success'),
 				type: 'success',
@@ -768,6 +850,25 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		v-if="credentialTypesNodeDescriptionDisplayed.length"
 		:class="['node-credentials', $style.container]"
 	>
+		<div
+			v-if="environmentsStore.environments.length > 0 && !standalone"
+			:class="$style.envSelectRow"
+		>
+			<N8nSelect
+				v-model="nodeCredEnvId"
+				size="small"
+				clearable
+				:placeholder="i18n.baseText('nodeCredentials.environmentSelect.placeholder')"
+				data-test-id="node-credentials-env-select"
+			>
+				<N8nOption
+					v-for="env in environmentsStore.environments"
+					:key="env.id"
+					:value="env.id"
+					:label="env.name"
+				/>
+			</N8nSelect>
+		</div>
 		<div v-for="{ type, options } in credentialTypesNodeDescriptionDisplayed" :key="type.name">
 			<N8nInputLabel
 				:label="getCredentialsFieldLabel(type)"
@@ -797,7 +898,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				<div
 					v-else-if="
 						options.length === 0 &&
-						showQuickConnectEmptyState(type) &&
+						!isEffectiveCredentialExisting(type) &&
 						quickConnectCredentialType &&
 						!isAiGatewayManagedCredentials(type.name)
 					"
@@ -829,7 +930,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="showStandardEmptyState(type) && options.length === 0"
+					v-else-if="!isEffectiveCredentialExisting(type) && options.length === 0"
 					:class="$style.standardEmptyContainer"
 					data-test-id="node-credentials-empty-state"
 				>
@@ -857,7 +958,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<div :class="$style.selectContainer">
 						<N8nSelect
 							ref="selectRefs"
-							:model-value="getSelectedId(type)"
+							:model-value="getEffectiveSelectedId(type)"
 							:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 							size="small"
 							filterable
@@ -866,7 +967,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:class="{ [$style.selectWithDynamic]: isCredentialResolvable(type.name) }"
 							@update:model-value="
 								(value: string) =>
-									onCredentialSelected(type.name, value, showMixedCredentials(type))
+									isEnvMode
+										? onEnvCredentialSelected(type.name, value)
+										: onCredentialSelected(type.name, value, showMixedCredentials(type))
 							"
 							@blur="emit('blur', 'credentials')"
 						>
@@ -1251,5 +1354,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .emptySelect {
 	flex: 1;
+}
+
+.envSelectRow {
+	margin-bottom: var(--spacing-xs);
 }
 </style>
