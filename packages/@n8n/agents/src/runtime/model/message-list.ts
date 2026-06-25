@@ -12,9 +12,47 @@ import { stripOrphanedToolMessages } from '../memory/strip-orphaned-tool-message
 export type { SerializedMessageList };
 
 export type LlmContext = {
-	system: SystemModelMessage;
+	system: SystemModelMessage | SystemModelMessage[];
 	messages: ModelMessage[];
 };
+
+/**
+ * Build the system message(s) for an LLM call. When observation-log memory is
+ * present, instructions and observations are sent as separate system messages
+ * so prompt-cache breakpoints on the static instructions are not invalidated
+ * when observations grow append-only.
+ */
+export function buildSystemMessages(
+	baseInstructions: string,
+	observationLogMemory: string | undefined,
+	instructionProviderOptions?: ProviderOptions,
+): SystemModelMessage | SystemModelMessage[] {
+	const trimmedObservations = observationLogMemory?.trim();
+	const cacheOptions = instructionProviderOptions
+		? { providerOptions: instructionProviderOptions }
+		: {};
+
+	if (!trimmedObservations) {
+		return {
+			role: 'system',
+			content: baseInstructions,
+			...cacheOptions,
+		};
+	}
+
+	return [
+		{
+			role: 'system',
+			content: baseInstructions,
+			...cacheOptions,
+		},
+		{
+			role: 'system',
+			content: `\n\n${trimmedObservations}`,
+			...cacheOptions,
+		},
+	];
+}
 
 type MessageSource = 'history' | 'input' | 'response';
 
@@ -225,25 +263,17 @@ export class AgentMessageList {
 
 	/**
 	 * Full LLM context for a generateText / streamText call.
-	 * Returns the system prompt separately (with observation-log memory appended if configured)
-	 * and conversation messages stripped via filterLlmMessages.
+	 * Returns the system prompt separately (observation-log memory in its own
+	 * system message when present) and conversation messages stripped via
+	 * filterLlmMessages.
 	 */
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): LlmContext {
-		let systemPrompt = baseInstructions;
-
-		const observationLogMemory = this.observationLogMemory?.trim();
-		if (observationLogMemory) {
-			systemPrompt += `\n\n${observationLogMemory}`;
-		}
-
-		const system: SystemModelMessage = {
-			role: 'system',
-			content: systemPrompt,
-			...(instructionProviderOptions ? { providerOptions: instructionProviderOptions } : {}),
-		};
-
 		return {
-			system,
+			system: buildSystemMessages(
+				baseInstructions,
+				this.observationLogMemory,
+				instructionProviderOptions,
+			),
 			messages: toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all))),
 		};
 	}

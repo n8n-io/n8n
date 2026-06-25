@@ -1,4 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import type { CheckService } from '../checks/check.service';
@@ -105,6 +107,18 @@ describe('InstanceRegistryController', () => {
 						severity: 'warning',
 					},
 				],
+			});
+		});
+	});
+
+	describe('route access scopes', () => {
+		it('gates getClusterInfo behind the orchestration:read global scope', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				InstanceRegistryController as Controller,
+			);
+			expect(metadata.routes.get('getClusterInfo')?.accessScope).toEqual({
+				scope: 'orchestration:read',
+				globalOnly: true,
 			});
 		});
 	});
