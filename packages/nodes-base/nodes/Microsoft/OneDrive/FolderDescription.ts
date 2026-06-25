@@ -107,6 +107,7 @@ export const folderFields: INodeProperties[] = [
 		displayName: 'Folder ID',
 		name: 'folderId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['delete', 'getChildren'],
@@ -114,6 +115,8 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		description: 'The ID of the folder. Use `root` for the top-level folder.',
+		hint: 'Use `root` for the top-level folder of the drive',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                               folder:move                                  */

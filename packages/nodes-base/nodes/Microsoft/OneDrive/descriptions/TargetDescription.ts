@@ -78,7 +78,7 @@ export const driveTargetRLC: INodeProperties = {
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. b!abc123...',
-			hint: 'The ID of the drive to act on',
+			hint: "The drive's own ID (looks like `b!…`), not a file or folder ID. Get it from `GET /users/{upn}/drive` (the `id` field).",
 		},
 	],
 	description: 'The drive the Service Principal should act on',
