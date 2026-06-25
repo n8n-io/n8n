@@ -5,10 +5,10 @@
  * of automated evaluation results.
  *
  * Git provenance (branch, commit SHA, PR number) is recorded explicitly on the
- * experiment metadata here — in CI from LANGSMITH_BRANCH / LANGSMITH_REVISION_ID /
- * GITHUB_* env vars, locally from `git`. Downstream analytics (BigQuery KPIs) key
- * off these — notably the dev-vs-official split on `branch` — so they can't be
- * left to fragile experiment-name parsing.
+ * experiment metadata in CI from LANGSMITH_BRANCH / LANGSMITH_REVISION_ID /
+ * GITHUB_* env vars. Downstream analytics (BigQuery KPIs) key off `branch` for
+ * the dev-vs-official split, so it can't be left to fragile name parsing. Local
+ * runs are always "dev" (source = 'local'), so they carry no branch here.
  */
 
 import { execSync } from 'node:child_process';
@@ -31,7 +31,7 @@ export function buildCIMetadata(): CIMetadata {
 	const isCI = process.env.GITHUB_ACTIONS === 'true';
 
 	if (!isCI) {
-		return { source: 'local', ...readLocalGitProvenance() };
+		return { source: 'local' };
 	}
 
 	return {
@@ -44,20 +44,6 @@ export function buildCIMetadata(): CIMetadata {
 		// pull_request runs expose the number via GITHUB_REF as `refs/pull/<n>/merge`.
 		prNumber: process.env.GITHUB_REF?.match(/refs\/pull\/(\d+)\//)?.[1],
 	};
-}
-
-/** Best-effort branch + short SHA from local `git`; empty when unavailable. */
-function readLocalGitProvenance(): { branch?: string; commitSha?: string } {
-	try {
-		const run = (cmd: string): string =>
-			execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-		return {
-			branch: run('git rev-parse --abbrev-ref HEAD'),
-			commitSha: run('git rev-parse --short HEAD'),
-		};
-	} catch {
-		return {};
-	}
 }
 
 /**
