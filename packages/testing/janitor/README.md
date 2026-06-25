@@ -233,6 +233,15 @@ janitor test-scoped --runner=vitest --shard=1/2 --coverage
 
 **Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
 
+**Empty `CHANGED_FILES` means "no signal → run everything", not "nothing
+changed".** A `null`/empty value resolves to all packages (`affected-packages`)
+and `RUN_FULL` (`scope`) — never `SKIP`, which would be a false green. ci-filter
+relies on this: on a PR that touches more than `CI_FILTER_MAX_CHANGED_FILES`
+(default 1000) files it emits an empty list instead of the full one, because the
+joined paths would otherwise overflow the kernel's argv/env size limit and the
+test job's shell couldn't even start. Such a change set affects nearly every
+package anyway, so the full-suite fallback is both safe and correct.
+
 **Per-package bailout (force full suite):** `jest.config.*`, `vitest.config.*`,
 `vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
 plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
