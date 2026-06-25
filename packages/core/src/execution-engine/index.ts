@@ -98,6 +98,7 @@ export type * from './interfaces';
 export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
 export * from './partial-execution-utils';
+export { PollTriggerExecutor } from './poll-trigger-executor';
 export { isEngineRequest } from './requests-response';
 export * from './routing-node';
 export * from './scheduled-task-manager';
