@@ -307,6 +307,8 @@ export {
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	instanceAiCredentialHandoffContextSchema,
+	instanceAiHandoffContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -317,6 +319,7 @@ export {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+	InstanceAiEvalRestoreThreadRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -406,6 +409,8 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialHandoffContext,
+	InstanceAiHandoffContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,
@@ -419,6 +424,8 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedWorkflow,
+	InstanceAiEvalSeedDataTable,
 } from './schemas/instance-ai.schema';
 
 export type {

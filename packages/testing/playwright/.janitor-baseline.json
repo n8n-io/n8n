@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T08:21:33.897Z",
-	"totalViolations": 157,
+	"generated": "2026-06-25T09:22:20.446Z",
+	"totalViolations": 135,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -76,13 +76,7 @@
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 350,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 430,
+				"line": 352,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -169,12 +163,6 @@
 				"line": 15,
 				"message": "WorkflowSharingModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "32955f46012b"
-			},
-			{
-				"rule": "deduplication",
-				"line": 5,
-				"message": "Duplicate locator: this.page.getByTestId(\"workflowShare-modal\") in pages scope",
-				"hash": "0de6cf556dcf"
 			}
 		],
 		"composables/WorkflowComposer.ts": [
@@ -499,62 +487,6 @@
 				"hash": "7fcb046dd97c"
 			}
 		],
-		"tests/e2e/workflows/checklist/production-checklist.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 68,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "dcfe3de9f694"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 69,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-error-workflow')",
-				"hash": "e577a775be00"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 86,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "dcfe3de9f694"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 98,
-				"message": "Chained locator call in test: n8n.canvas.getProductionChecklistActionItem().first().get...",
-				"hash": "9dd8a54c4eb2"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 101,
-				"message": "Direct page locator call: n8n.page.locator('body').click({ position: { x: 0, y: 0 } })",
-				"hash": "4d45ef0d0614"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 101,
-				"message": "Direct page locator call: n8n.page.locator('body')",
-				"hash": "977cc8c274c9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 139,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "dcfe3de9f694"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 145,
-				"message": "Chained locator call in test: n8n.canvas .getProductionChecklistActionItem() .first() ....",
-				"hash": "b461f186b890"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 162,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
-				"hash": "daa8dd6de062"
-			}
-		],
 		"tests/e2e/workflows/editor/tags.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -637,52 +569,6 @@
 				"line": 96,
 				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
 				"hash": "e8fc423eeeb7"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "68c3ed65550b"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Chained locator call in test: n8n.page.locator('.el-message-box').locator('button:has-t...",
-				"hash": "189e3887535d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 93,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
-				"hash": "423a23988aea"
-			}
-		],
-		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 44,
-				"message": "Direct page locator call: n8n.page.getByTestId('node-creator-plus-button')",
-				"hash": "2b61afc80039"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 55,
-				"message": "Direct page locator call: n8n.page.getByTestId('execute-node-button')",
-				"hash": "af9330ed3874"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 56,
-				"message": "Direct page locator call: n8n.page.getByTestId('delete-node-button')",
-				"hash": "01554562f936"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 57,
-				"message": "Direct page locator call: n8n.page.getByTestId('disable-node-button')",
-				"hash": "4f683821335f"
 			}
 		],
 		"composables/BuilderWizardComposer.ts": [
@@ -880,7 +766,7 @@
 		"tests/e2e/sharing/workflow-sharing.spec.ts": [
 			{
 				"rule": "api-purity",
-				"line": 123,
+				"line": 124,
 				"message": "Raw API call detected: request.get(",
 				"hash": "5f323328e22b"
 			}
@@ -941,32 +827,12 @@
 				"hash": "0acea681877b"
 			}
 		],
-		"pages/ChatHubWorkflowAgentsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 15,
-				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
-				"hash": "3a8429e96555"
-			}
-		],
 		"pages/WorkflowsPage.ts": [
 			{
 				"rule": "deduplication",
-				"line": 121,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-toggle-dropdown\") in pages scope",
-				"hash": "0bcc0c5c11f6"
-			},
-			{
-				"rule": "deduplication",
-				"line": 36,
+				"line": 38,
 				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
 				"hash": "206b89bd1594"
-			},
-			{
-				"rule": "deduplication",
-				"line": 50,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
-				"hash": "2f37cf533810"
 			}
 		],
 		"pages/WorkerViewPage.ts": [
@@ -975,14 +841,6 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
-			}
-		],
-		"pages/WorkflowCredentialSetupModal.ts": [
-			{
-				"rule": "deduplication",
-				"line": 12,
-				"message": "Duplicate locator: this.page.getByTestId(\"setup-workflow-credentials-modal\") in pages scope",
-				"hash": "bb31fb5ca716"
 			}
 		],
 		"pages/components/VariableModal.ts": [

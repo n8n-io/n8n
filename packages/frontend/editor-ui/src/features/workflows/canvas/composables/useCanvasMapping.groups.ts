@@ -20,7 +20,7 @@ import {
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
-import { createCanvasConnectionId } from '../canvas.utils';
+import { applyOffset, createCanvasConnectionId } from '../canvas.utils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
@@ -228,10 +228,7 @@ export function mapGroupsToVueFlowNodes({
 		out.push({
 			id,
 			type: CANVAS_NODE_GROUP_TYPE,
-			position: {
-				x: titleBar.position.x + offset.x,
-				y: titleBar.position.y + offset.y,
-			},
+			position: applyOffset(titleBar.position, offset),
 			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,

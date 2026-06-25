@@ -1,0 +1,232 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"output_config": {
+				"format": {
+					"type": "json_schema",
+					"schema": {
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"type": "object",
+						"properties": {
+							"city": {
+								"description": "The name of the city",
+								"type": "string"
+							},
+							"country": {
+								"description": "The country the city is in",
+								"type": "string"
+							},
+							"population_millions": {
+								"description": "Approximate population in millions",
+								"type": "number"
+							}
+						},
+						"additionalProperties": false,
+						"required": ["city", "country", "population_millions"]
+					}
+				}
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You answer geography questions. Use the lookup_capital tool when asked about capitals. Always respond with the structured output schema."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is the capital of France? Use the lookup tool."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup_capital",
+					"description": "Look up the capital city of a country",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"country": {
+								"type": "string",
+								"description": "Country name"
+							}
+						},
+						"required": ["country"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_019VHqwdsoDnyXBUSM7CKhX7\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_015vdw7TcKehSqkBhHUs9sLt\",\"name\":\"lookup_capital\",\"input\":{\"country\":\"France\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":878,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":54,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:01Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:01Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:00Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:01Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371c0edffc24f-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:01 GMT",
+			"request-id": "req_011CcLBRY78SFC2c1drq1MHf",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=yIG6fVQXnXJrp86egpVQLLQbYsnxjx9FDpo5cPlp7e4-1782217200.7838233-1.0.1.1-vBCmdUl3TiVq6bL7BQQT98rjAtVvxnuamliS2Rn3DvA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-532ad9499bb6ca06ed73567771a6f055-7731eba0e98107c0-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"output_config": {
+				"format": {
+					"type": "json_schema",
+					"schema": {
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"type": "object",
+						"properties": {
+							"city": {
+								"description": "The name of the city",
+								"type": "string"
+							},
+							"country": {
+								"description": "The country the city is in",
+								"type": "string"
+							},
+							"population_millions": {
+								"description": "Approximate population in millions",
+								"type": "number"
+							}
+						},
+						"additionalProperties": false,
+						"required": ["city", "country", "population_millions"]
+					}
+				}
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You answer geography questions. Use the lookup_capital tool when asked about capitals. Always respond with the structured output schema."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is the capital of France? Use the lookup tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_015vdw7TcKehSqkBhHUs9sLt",
+							"name": "lookup_capital",
+							"input": {
+								"country": "France"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_015vdw7TcKehSqkBhHUs9sLt",
+							"content": "{\"capital\":\"Paris\",\"population_millions\":2.1}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup_capital",
+					"description": "Look up the capital city of a country",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"country": {
+								"type": "string",
+								"description": "Country name"
+							}
+						},
+						"required": ["country"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01BmgntnTtXu9XqZRrL176WS\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"city\\\": \\\"Paris\\\", \\\"country\\\": \\\"France\\\", \\\"population_millions\\\": 2.1}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":956,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":25,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:01Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:03Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371c719e6c24f-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:03 GMT",
+			"request-id": "req_011CcLBRcNrp3VCzsj83ZMYF",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=bE9yU9rh7oz6BorMyY92zJDDYxUsh.RCdwMY6St1i7k-1782217201.773249-1.0.1.1-Uw.wy8uUcXa955h0JxBHm5hL7R5NOh5CNUF_GIIdstc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-380526bf8c4cbb51cae5c82c2dc68cc0-9e0586239a6ff828-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]
