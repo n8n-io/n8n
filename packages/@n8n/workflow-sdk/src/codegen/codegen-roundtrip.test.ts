@@ -14,10 +14,6 @@ import type { WorkflowJSON } from '../types/base';
 import { foldLegacyErrorConnections, normalizeConnections } from '../types/base';
 import { validateWorkflow } from '../validation';
 import {
-	estimateStickyHeightForContent,
-	STICKY_AUTO_MIN_WIDTH,
-} from '../workflow-builder/sticky-text-sizing';
-import {
 	escapeNewlinesInExpressionStrings,
 	isPlaceholderValue,
 } from '../workflow-builder/string-utils';
@@ -2588,7 +2584,10 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				const obj = p as Record<string, unknown>;
 				if (Object.keys(obj).length === 0) return undefined;
 				if (nodeType === 'n8n-nodes-base.stickyNote') {
-					// Strip empty content and non-serializable color values (null, empty object)
+					// Strip empty content and non-serializable color values (null, empty object).
+					// width/height are compared separately (assert-when-present) at the call
+					// site: parse auto-fills a missing sticky dimension from content, so a
+					// fixture that omits one would never roundtrip byte-exact.
 					const cleaned = { ...obj };
 					if (cleaned.content === '') delete cleaned.content;
 					if (cleaned.color === null || cleaned.color === undefined) {
@@ -2599,21 +2598,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					) {
 						delete cleaned.color;
 					}
-					// Mirror the builder's standalone-sticky auto-fill: when only one of
-					// width/height is set, parse derives the other from the content (width
-					// defaults to STICKY_AUTO_MIN_WIDTH, height to a content-fit estimate).
-					// Applied to both sides so it's a no-op on the already-filled parsed
-					// node and back-fills the original, leaving an apples-to-apples compare.
-					const content = typeof obj.content === 'string' ? obj.content : '';
-					let width = typeof cleaned.width === 'number' ? cleaned.width : undefined;
-					let height = typeof cleaned.height === 'number' ? cleaned.height : undefined;
-					if (width !== undefined && height === undefined) {
-						height = estimateStickyHeightForContent(content, width);
-					} else if (height !== undefined && width === undefined) {
-						width = STICKY_AUTO_MIN_WIDTH;
-					}
-					if (width !== undefined) cleaned.width = width;
-					if (height !== undefined) cleaned.height = height;
+					delete cleaned.width;
+					delete cleaned.height;
 					return Object.keys(cleaned).length === 0 ? undefined : cleaned;
 				}
 				// Normalize resource locators (add __rl: true) for fair comparison
@@ -2755,6 +2741,19 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 							expect(normalizeParams(parsedNode.parameters, parsedNode.type)).toEqual(
 								normalizeParams(originalNode.parameters, originalNode.type),
 							);
+
+							// Sticky width/height: parse auto-fills a missing dimension from
+							// content, so only assert the ones the original fixture actually set.
+							if (parsedNode.type === 'n8n-nodes-base.stickyNote') {
+								const origParams = originalNode.parameters as Record<string, unknown> | undefined;
+								const parsedParams = parsedNode.parameters as Record<string, unknown> | undefined;
+								if (typeof origParams?.width === 'number') {
+									expect(parsedParams?.width).toBe(origParams.width);
+								}
+								if (typeof origParams?.height === 'number') {
+									expect(parsedParams?.height).toBe(origParams.height);
+								}
+							}
 
 							if (originalNode.credentials && Object.keys(originalNode.credentials).length > 0) {
 								expect(parsedNode.credentials).toEqual(originalNode.credentials);
