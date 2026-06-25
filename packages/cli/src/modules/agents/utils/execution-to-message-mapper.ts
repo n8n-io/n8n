@@ -1,13 +1,11 @@
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils';
 
+import type { AgentExecutionLogPayload } from '../agent-execution-log/types';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
 
-type ExecutionTranscript = Pick<
-	AgentExecution,
-	'id' | 'userMessage' | 'assistantResponse' | 'toolCalls' | 'timeline' | 'error'
->;
+type ExecutionTranscript = Pick<AgentExecution, 'id'> & AgentExecutionLogPayload;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
 type ToolCallContentPart = AgentPersistedMessageContentPart & {

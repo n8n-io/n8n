@@ -7,7 +7,7 @@ import { AgentExecution } from '../entities/agent-execution.entity';
 export type AgentExecutionLogTargetRow = {
 	id: string;
 	threadId: string;
-	logStoredAt: AgentExecutionLogStorageLocation | null;
+	logStoredAt: AgentExecutionLogStorageLocation;
 };
 
 @Service()
@@ -31,35 +31,6 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			threadId: row.threadId,
 			logStoredAt: row.logStoredAt,
 		}));
-	}
-
-	/**
-	 * The first user-message text in each of the given threads. Used by the
-	 * sessions list to render a preview before the LLM-generated title is
-	 * available.
-	 *
-	 * Excludes resumed runs (empty `userMessage`). Returns one row per thread
-	 * containing the userMessage from that thread's earliest matching run.
-	 */
-	async findFirstUserMessageByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
-		if (threadIds.length === 0) return new Map();
-
-		// Correlated subquery: for each thread, pick the row with the smallest
-		// createdAt that has a non-empty userMessage. Identifiers are double-quoted
-		// so Postgres preserves their camelCase (it lowercases unquoted names),
-		// and the table name is read from metadata so DB_TABLE_PREFIX is respected.
-		const tableName = this.metadata.tablePath;
-		const rows = await this.createQueryBuilder('e')
-			.select(['e."threadId" AS "threadId"', 'e."userMessage" AS "userMessage"'])
-			.where('e."threadId" IN (:...threadIds)', { threadIds })
-			.andWhere('e."userMessage" != \'\'')
-			.andWhere(
-				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" AND e2."userMessage" != \'\')',
-			)
-			.getRawMany<{ threadId: string; userMessage: string }>();
-
-		return new Map(rows.map((r) => [r.threadId, r.userMessage]));
 	}
 
 	/**

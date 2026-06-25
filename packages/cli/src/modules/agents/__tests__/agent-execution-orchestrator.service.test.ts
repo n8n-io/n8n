@@ -373,7 +373,16 @@ describe('AgentExecutionOrchestratorService', () => {
 		const { service, executionService } = makeService();
 		executionService.getThreadDetail.mockResolvedValue({
 			thread: { id: 'thread-1' },
-			executions: [{ id: 'execution-1', userMessage: 'Hi', assistantResponse: 'Hello' }],
+			executions: [
+				{
+					id: 'execution-1',
+					userMessage: 'Hi',
+					assistantResponse: 'Hello',
+					toolCalls: null,
+					timeline: null,
+					error: null,
+				},
+			],
 		} as never);
 
 		await expect(

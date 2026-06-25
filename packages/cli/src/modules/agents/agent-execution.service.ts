@@ -43,12 +43,14 @@ export interface RecordMessageParams {
 
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
-	executions: AgentExecution[];
+	executions: HydratedAgentExecution[];
 }
 
 export interface ThreadListItem extends AgentExecutionThread {
 	firstMessage: string | null;
 }
+
+export type HydratedAgentExecution = AgentExecution & AgentExecutionLogPayload;
 
 const RECORD_MESSAGE_RETRY_ATTEMPTS = 3;
 
@@ -125,16 +127,11 @@ export class AgentExecutionService {
 					startedAt,
 					stoppedAt,
 					duration: record.duration,
-					userMessage: null,
-					assistantResponse: null,
 					model: record.model,
 					promptTokens: record.usage?.promptTokens ?? null,
 					completionTokens: record.usage?.completionTokens ?? null,
 					totalTokens: record.usage?.totalTokens ?? null,
 					cost: record.totalCost,
-					toolCalls: null,
-					timeline: null,
-					error: null,
 					hitlStatus: hitlStatus ?? null,
 					source: source ?? null,
 					logStoredAt: storedAt,
@@ -338,19 +335,11 @@ export class AgentExecutionService {
 			return { threads: [], nextCursor: page.nextCursor };
 		}
 
-		const threadsMissingPreview = page.threads.filter((thread) => !thread.firstMessage);
-		const messageMap =
-			threadsMissingPreview.length > 0
-				? await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
-						threadsMissingPreview.map((t) => t.id),
-					)
-				: new Map<string, string>();
-
 		return {
 			...page,
 			threads: page.threads.map((t) => ({
 				...t,
-				firstMessage: t.firstMessage ?? messageMap.get(t.id) ?? null,
+				firstMessage: t.firstMessage ?? null,
 			})),
 		};
 	}
@@ -368,28 +357,23 @@ export class AgentExecutionService {
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		await this.hydrateExecutions(agentId, executions);
-		return { thread, executions };
+		const hydratedExecutions = await this.hydrateExecutions(agentId, executions);
+		return { thread, executions: hydratedExecutions };
 	}
 
-	private async hydrateExecutions(agentId: string, executions: AgentExecution[]): Promise<void> {
-		const externalTargets = executions
-			.filter((execution) => execution.logStoredAt)
-			.map((execution) => ({
-				agentId,
-				threadId: execution.threadId,
-				executionId: execution.id,
-				storedAt: execution.logStoredAt,
-			}));
-		const bundles = await this.agentExecutionLogPersistence.readMany(externalTargets);
+	private async hydrateExecutions(
+		agentId: string,
+		executions: AgentExecution[],
+	): Promise<HydratedAgentExecution[]> {
+		const targets = executions.map((execution) => ({
+			agentId,
+			threadId: execution.threadId,
+			executionId: execution.id,
+			storedAt: execution.logStoredAt,
+		}));
+		const bundles = await this.agentExecutionLogPersistence.readMany(targets);
 
-		for (const execution of executions) {
-			if (!execution.logStoredAt) {
-				execution.userMessage ??= '';
-				execution.assistantResponse ??= '';
-				continue;
-			}
-
+		return executions.map((execution) => {
 			const bundle = bundles.get(execution.id);
 			if (!bundle) {
 				this.logger.error('Missing agent execution log payload', {
@@ -401,12 +385,14 @@ export class AgentExecutionService {
 				throw new UnexpectedError('Agent execution log payload is missing');
 			}
 
-			execution.userMessage = bundle.userMessage;
-			execution.assistantResponse = bundle.assistantResponse;
-			execution.toolCalls = bundle.toolCalls;
-			execution.timeline = bundle.timeline;
-			execution.error = bundle.error;
-		}
+			return Object.assign(execution, {
+				userMessage: bundle.userMessage,
+				assistantResponse: bundle.assistantResponse,
+				toolCalls: bundle.toolCalls,
+				timeline: bundle.timeline,
+				error: bundle.error,
+			});
+		});
 	}
 
 	/**

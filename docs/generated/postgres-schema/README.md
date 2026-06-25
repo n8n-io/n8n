@@ -10,7 +10,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 6 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 22 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 17 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 18 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 8 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
@@ -307,12 +307,10 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
-  text assistantResponse
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
   integer duration
-  text error
   varchar_16_ hitlStatus
   varchar_36_ id
   bigint logSizeBytes
@@ -324,11 +322,8 @@ erDiagram
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
   varchar_128_ threadId FK
-  json timeline
-  json toolCalls
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
-  text userMessage
 }
 "public.agent_execution_threads" {
   varchar_36_ agentId FK

@@ -51,13 +51,13 @@ describe('AgentExecutionLogPersistence', () => {
 		expect(fsStore.readMany).toHaveBeenCalledWith([{ ...ref, storedAt: 'fs' }]);
 	});
 
-	it('does not read or delete legacy inline rows without storage pointers', async () => {
-		await expect(persistence.readMany([{ ...ref, storedAt: null }])).resolves.toEqual(new Map());
+	it('reads a filesystem-backed log', async () => {
+		const bundle = { ...payload, version: 1 as const };
+		fsStore.read.mockResolvedValue(bundle);
 
-		await persistence.delete([{ ...ref, storedAt: null }]);
+		await expect(persistence.read(ref)).resolves.toEqual(bundle);
 
-		expect(fsStore.readMany).toHaveBeenCalledWith([]);
-		expect(fsStore.delete).not.toHaveBeenCalled();
+		expect(fsStore.read).toHaveBeenCalledWith(ref);
 	});
 
 	it('deletes filesystem-backed logs', async () => {

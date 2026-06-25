@@ -1,6 +1,6 @@
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
 
-export type AgentExecutionLogStorageLocation = 'db' | 'fs' | 's3' | 'az';
+export type AgentExecutionLogStorageLocation = 'fs';
 
 export type AgentExecutionLogRef = {
 	agentId: string;

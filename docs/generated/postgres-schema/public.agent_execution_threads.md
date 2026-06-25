@@ -96,12 +96,10 @@ erDiagram
   varchar_36_ versionId
 }
 "public.agent_execution" {
-  text assistantResponse
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
   integer duration
-  text error
   varchar_16_ hitlStatus
   varchar_36_ id
   bigint logSizeBytes
@@ -113,11 +111,8 @@ erDiagram
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
   varchar_128_ threadId FK
-  json timeline
-  json toolCalls
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
-  text userMessage
 }
 "public.project" {
   timestamp_3__with_time_zone createdAt

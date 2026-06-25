@@ -192,16 +192,14 @@ describe('AgentExecutionService', () => {
 
 			expect(transactionManager.insert).toHaveBeenCalledWith(
 				expect.any(Function),
-				expect.objectContaining({
-					userMessage: null,
-					assistantResponse: null,
-					toolCalls: null,
-					timeline: null,
-					error: null,
-					logStoredAt: 'fs',
-					logSizeBytes: 0,
-				}),
+				expect.objectContaining({ logStoredAt: 'fs', logSizeBytes: 0 }),
 			);
+			const insertedRow = transactionManager.insert.mock.calls[0][1];
+			expect(insertedRow).not.toHaveProperty('userMessage');
+			expect(insertedRow).not.toHaveProperty('assistantResponse');
+			expect(insertedRow).not.toHaveProperty('toolCalls');
+			expect(insertedRow).not.toHaveProperty('timeline');
+			expect(insertedRow).not.toHaveProperty('error');
 			expect(agentExecutionLogPersistence.write).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: 'agent-1',
@@ -540,7 +538,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('getThreads', () => {
-		it('uses thread firstMessage previews before falling back to legacy execution rows', async () => {
+		it('uses thread firstMessage previews without falling back to legacy execution rows', async () => {
 			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
 				threads: [
 					makeThread({ id: 'thread-1', firstMessage: 'External preview' }),
@@ -548,18 +546,12 @@ describe('AgentExecutionService', () => {
 				],
 				nextCursor: null,
 			});
-			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(
-				new Map([['thread-2', 'Legacy preview']]),
-			);
 
 			const result = await service.getThreads('project-1', 'agent-1', 10);
 
-			expect(agentExecutionRepository.findFirstUserMessageByThreadIds).toHaveBeenCalledWith([
-				'thread-2',
-			]);
 			expect(result.threads.map((thread) => thread.firstMessage)).toEqual([
 				'External preview',
-				'Legacy preview',
+				null,
 			]);
 		});
 	});
@@ -567,21 +559,12 @@ describe('AgentExecutionService', () => {
 	describe('getThreadDetail', () => {
 		it('returns thread executions after ownership validation', async () => {
 			const thread = makeThread();
-			const executions = [
-				{
-					id: 'execution-1',
-					threadId: 'thread-1',
-					userMessage: 'Hello',
-					assistantResponse: 'Hi',
-					logStoredAt: null,
-				},
-			] as AgentExecution[];
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
-			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([]);
 
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
-			expect(result).toEqual({ thread, executions });
+			expect(result).toEqual({ thread, executions: [] });
 		});
 
 		it.each([
@@ -602,11 +585,6 @@ describe('AgentExecutionService', () => {
 				{
 					id: 'execution-1',
 					threadId: 'thread-1',
-					userMessage: null,
-					assistantResponse: null,
-					toolCalls: null,
-					timeline: null,
-					error: null,
 					logStoredAt: 'fs',
 				},
 			] as AgentExecution[];

@@ -1,10 +1,11 @@
-import type { AgentExecution } from '../entities/agent-execution.entity';
 import {
 	executionToMessagesDto,
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
 
-function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
+type ExecutionInput = Parameters<typeof executionToMessagesDto>[0];
+
+function execution(overrides: Partial<ExecutionInput> = {}): ExecutionInput {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
@@ -13,7 +14,7 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		timeline: null,
 		error: null,
 		...overrides,
-	} as unknown as AgentExecution;
+	} as ExecutionInput;
 }
 
 describe('execution-to-message-mapper', () => {
@@ -192,9 +193,9 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
-	it('skips nullable inline transcript fields without creating empty messages', () => {
+	it('skips empty external transcript fields without creating empty messages', () => {
 		const result = executionToMessagesDto(
-			execution({ userMessage: null, assistantResponse: null, toolCalls: null, timeline: null }),
+			execution({ userMessage: '', assistantResponse: '', toolCalls: null, timeline: null }),
 		);
 
 		expect(result).toEqual([]);
