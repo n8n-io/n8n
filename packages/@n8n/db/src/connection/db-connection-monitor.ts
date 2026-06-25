@@ -216,15 +216,14 @@ export class DbConnectionMonitor {
 			throw error;
 		}
 
-		// The timeout is enforced by raceTimeout (throws OperationalError, not reported to Sentry).
-		// We deliberately do NOT set pg's `query_timeout`: it rejects with a generic
-		// "Query read timeout" Error that would be Sentry-reported as an unexpected error on every
-		// outage. On timeout we abandon this promise and destroy the connection below; attach a
-		// no-op catch to suppress its eventual rejection (avoids an unhandled-rejection warning).
-		const queryPromise = client.query({ text: 'SELECT 1' });
-		queryPromise.catch(() => {});
-
 		try {
+			// The timeout is enforced by raceTimeout (throws OperationalError, not reported to Sentry).
+			// We deliberately do NOT set pg's `query_timeout`: it rejects with a generic
+			// "Query read timeout" Error that would be Sentry-reported as an unexpected error on every
+			// outage. On timeout we abandon this promise and destroy the connection below; attach a
+			// no-op catch to suppress its eventual rejection (avoids an unhandled-rejection warning).
+			const queryPromise = client.query({ text: 'SELECT 1' });
+			void queryPromise.catch(() => {});
 			await this.raceTimeout(queryPromise);
 			client.release(); // success: return the connection to the pool
 		} catch (error) {

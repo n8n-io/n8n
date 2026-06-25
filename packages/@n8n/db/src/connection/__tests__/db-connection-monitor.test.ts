@@ -178,6 +178,21 @@ describe('DbConnectionMonitor', () => {
 			expect(poolClient.release).toHaveBeenCalledWith(expect.any(Error));
 		});
 
+		it('should destroy the pool client when query creation throws', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			const error = new Error('query failed before returning a promise');
+			poolClient.query.mockImplementation(() => {
+				throw error;
+			});
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(poolClient.release).toHaveBeenCalledWith(expect.any(Error));
+			expect(errorReporter.error).toHaveBeenCalledWith(error);
+		});
+
 		it('should destroy a late-arriving pool client when the connect timeout fires first', async () => {
 			// When the timeout wins the connect race, a client that arrives afterward must be
 			// destroyed to avoid a silent pool leak (the connect promise is not awaited again).
