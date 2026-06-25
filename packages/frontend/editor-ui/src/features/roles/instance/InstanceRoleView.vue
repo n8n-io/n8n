@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router';
 
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
+import InstanceRoleAssignmentsTab from './InstanceRoleAssignmentsTab.vue';
 import ScopeGroupSelector from './components/ScopeGroupSelector.vue';
 import { ALL_INSTANCE_SCOPES } from './instanceRoleScopes';
 
@@ -234,7 +235,9 @@ async function deleteRole() {
 			</div>
 		</div>
 
-		<div v-if="roleSlug && activeTab === 'assignments'"></div>
+		<div v-if="roleSlug && activeTab === 'assignments'">
+			<InstanceRoleAssignmentsTab :role-slug="roleSlug" />
+		</div>
 	</RoleEditorLayout>
 </template>
 

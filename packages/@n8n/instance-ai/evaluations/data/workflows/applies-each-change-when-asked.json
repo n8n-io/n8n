@@ -30,10 +30,12 @@
 	"tags": ["behaviour", "changes-applied", "long-conversation", "batching", "schedule", "slack"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
-		"By the end, the workflow reflects every change the user asked for: it is named 'Daily Standup Bot'; it runs at 8:45am, only on Monday/Wednesday/Friday; the first message's text is assembled in a preceding Set/Edit Fields step that the post references, starts with a 📢 emoji, reads 'Standup in 5 minutes', mentions @here, and includes today's date; there is a second message 30 minutes later that says 'Standup now', mentions @here, and replies in the first message's Slack thread; and if a Slack post fails the workflow continues and posts to a #alerts channel. Nothing the user asked for is missing.",
+	"processExpectations": [
 		"After every change the user asked for, there is a before and after diff in the workflow that shows the change was applied. User request was accurately applied in the workflow.",
 		"The agent did not repeat itself to build: in each turn it applied that message's change(s) in a single build of the workflow, rather than building once per change. A message bundling several changes should still be one build, not one per change."
+	],
+	"outcomeExpectations": [
+		"By the end, the workflow reflects every change the user asked for: it is named 'Daily Standup Bot'; it runs at 8:45am, only on Monday/Wednesday/Friday; the first message's text is assembled in a preceding Set/Edit Fields step that the post references, starts with a 📢 emoji, reads 'Standup in 5 minutes', mentions @here, and includes today's date; there is a second message 30 minutes later that says 'Standup now', mentions @here, and replies in the first message's Slack thread; and if a Slack post fails the workflow continues and posts to a #alerts channel. Nothing the user asked for is missing."
 	],
 	"executionScenarios": [
 		{
