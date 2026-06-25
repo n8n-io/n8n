@@ -3523,6 +3523,9 @@ importers:
       '@n8n/mcp-apps':
         specifier: workspace:*
         version: link:../@n8n/mcp-apps
+      '@n8n/mcp-browser':
+        specifier: workspace:*
+        version: link:../@n8n/mcp-browser
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain

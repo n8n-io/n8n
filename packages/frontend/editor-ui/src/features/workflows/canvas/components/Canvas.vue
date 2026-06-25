@@ -24,11 +24,7 @@ import type {
 	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import {
-	CANVAS_NODE_GROUP_ID_PREFIX,
-	CanvasNodeRenderType,
-	isCanvasGroupNode,
-} from '../canvas.types';
+import { CanvasNodeRenderType, createCanvasGroupNodeId, isCanvasGroupNode } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -656,7 +652,7 @@ function onCanvasGroupToggle(groupId: string) {
 		}
 	} else {
 		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
-		const groupNode = findNode(`${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`);
+		const groupNode = findNode(createCanvasGroupNodeId(groupId));
 		if (groupNode) {
 			removeSelectedNodes([groupNode]);
 		}

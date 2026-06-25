@@ -61,6 +61,7 @@ import type { Push } from '@/push';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
+import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
@@ -111,6 +112,7 @@ describe('InstanceAiController', () => {
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
+		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),

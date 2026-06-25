@@ -11,7 +11,6 @@ import type {
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	CANVAS_NODE_GROUP_ID_PREFIX,
 	CANVAS_NODE_GROUP_TYPE,
 	createCanvasGroupNodeId,
 } from '../canvas.types';
@@ -313,9 +312,9 @@ export function remapCollapsedGroupConnections(
 		}
 
 		const remapped = {
-			source: sourceGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${sourceGroup.id}` : conn.source,
+			source: sourceGroup ? createCanvasGroupNodeId(sourceGroup.id) : conn.source,
 			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
-			target: targetGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${targetGroup.id}` : conn.target,
+			target: targetGroup ? createCanvasGroupNodeId(targetGroup.id) : conn.target,
 			targetHandle: targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
 		};
 
