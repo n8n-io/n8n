@@ -118,4 +118,26 @@ describe('useAiGateway', () => {
 			expect(isCredentialTypeSupported('openAiApi')).toBe(false);
 		});
 	});
+
+	describe('isManagedHiddenParameter()', () => {
+		it('should delegate to the store config', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				managedHiddenParameters: { 'n8n-nodes-base.browserbase': ['modelSource'] },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isManagedHiddenParameter } = useAiGateway();
+			expect(isManagedHiddenParameter('n8n-nodes-base.browserbase', 'modelSource')).toBe(true);
+			expect(isManagedHiddenParameter('n8n-nodes-base.browserbase', 'otherParam')).toBe(false);
+		});
+
+		it('should return false when no config is loaded', () => {
+			const { isManagedHiddenParameter } = useAiGateway();
+			expect(isManagedHiddenParameter('n8n-nodes-base.browserbase', 'modelSource')).toBe(false);
+		});
+	});
 });

@@ -18,6 +18,29 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 	};
 });
 
+// Controllable active node + gateway lookups so the AI Gateway hiding path can be
+// exercised. Defaults match the no-active-node behaviour the other tests rely on.
+let mockActiveNode: unknown = null;
+const mockIsManagedHiddenParameter = vi.fn((_type: string, _param: string) => false);
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return {
+		...actual,
+		injectNDVStore: () => ({
+			value: {
+				get activeNode() {
+					return mockActiveNode;
+				},
+			},
+		}),
+	};
+});
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: () => ({ isManagedHiddenParameter: mockIsManagedHiddenParameter }),
+}));
+
 describe('CollectionParameterLegacy.vue', () => {
 	const pinia = createTestingPinia({
 		initialState: {
@@ -501,6 +524,55 @@ describe('CollectionParameterLegacy.vue', () => {
 			await flushPromises();
 
 			expect(container).toBeInTheDocument();
+		});
+	});
+
+	describe('AI Gateway hidden parameters', () => {
+		const gatewayManagedNode = {
+			type: 'n8n-nodes-base.browserbase',
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		};
+
+		afterEach(() => {
+			mockActiveNode = null;
+			mockIsManagedHiddenParameter.mockReset();
+			mockIsManagedHiddenParameter.mockReturnValue(false);
+		});
+
+		it('removes options the gateway declares hidden when a managed credential is attached', async () => {
+			mockActiveNode = gatewayManagedNode;
+			mockIsManagedHiddenParameter.mockImplementation((_type, param) => param === 'value');
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Currency');
+		});
+
+		it('keeps options when the gateway does not declare them hidden', async () => {
+			mockActiveNode = gatewayManagedNode;
+			mockIsManagedHiddenParameter.mockReturnValue(false);
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
+		});
+
+		it('keeps options when no credential is gateway-managed', async () => {
+			mockActiveNode = {
+				type: 'n8n-nodes-base.browserbase',
+				credentials: { browserbaseApi: { id: 'cred-1', name: 'My Key' } },
+			};
+			mockIsManagedHiddenParameter.mockImplementation((_type, param) => param === 'value');
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
+			expect(mockIsManagedHiddenParameter).not.toHaveBeenCalled();
 		});
 	});
 
