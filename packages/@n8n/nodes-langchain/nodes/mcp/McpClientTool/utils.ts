@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
-import type { McpToolIncludeMode } from './types';
+import type { McpToolHint, McpToolIncludeMode } from './types';
 import type { McpTool } from '../shared/types';
 import { isStructuredContent } from '../shared/utils';
 
@@ -14,11 +14,13 @@ export function getSelectedTools({
 	mode,
 	includeTools,
 	excludeTools,
+	hints,
 	tools,
 }: {
 	mode: McpToolIncludeMode;
 	includeTools?: string[];
 	excludeTools?: string[];
+	hints?: McpToolHint[];
 	tools: McpTool[];
 }) {
 	switch (mode) {
@@ -30,6 +32,12 @@ export function getSelectedTools({
 		case 'except': {
 			const except = new Set(excludeTools ?? []);
 			return tools.filter((tool) => !except.has(tool.name));
+		}
+		case 'hints': {
+			if (!hints?.length) return tools;
+			return tools.filter((tool) =>
+				hints.some((hint) => tool.annotations?.[hint] === true),
+			);
 		}
 		case 'all':
 		default:
