@@ -857,14 +857,15 @@ export class InstanceAiController {
 
 		this.gatewayService.initGateway(userId, payload);
 
+		const status = this.gatewayService.getGatewayStatus(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
 				data: {
-					connected: true,
-					directory: payload.rootPath,
-					hostIdentifier: payload.hostIdentifier ?? null,
-					toolCategories: payload.toolCategories ?? [],
+					connected: status.connected,
+					directory: status.directory,
+					hostIdentifier: status.hostIdentifier,
+					toolCategories: status.toolCategories,
 				},
 			},
 			[userId],

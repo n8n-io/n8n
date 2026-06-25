@@ -101,7 +101,7 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
+import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
@@ -1757,6 +1757,10 @@ export class InstanceAiService {
 		// Perhaps a better solution would be to have multiple local MCP
 		// servers? But that requires more changes where `localMcpServer`
 		// is currently used
+
+		// When Browser Use is disabled instance-wide, hide the gateway's browser tools
+		// too so they are neither advertised to nor callable by the agent.
+		this.gatewayService.applyToolPolicy(user.id);
 		const gatewayMcpServer =
 			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
 		const browserMcpServer = browserUseEnabledGlobally
@@ -1810,6 +1814,7 @@ export class InstanceAiService {
 		if (gatewayMcpServer || browserMcpServer) {
 			const capabilities = new Set<string>();
 			if (gatewayMcpServer) {
+				// getStatus() already drops excluded categories (e.g. browser when disabled).
 				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
 					if (enabled) {
 						capabilities.add(name);
@@ -1818,7 +1823,7 @@ export class InstanceAiService {
 			}
 
 			if (browserMcpServer) {
-				capabilities.add('browser');
+				capabilities.add(BROWSER_TOOL_CATEGORY);
 			}
 
 			context.localGatewayStatus = {
