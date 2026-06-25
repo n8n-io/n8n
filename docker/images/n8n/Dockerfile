@@ -42,7 +42,9 @@ WORKDIR /home/node
 COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+# The Alpine 3.24 base has no /usr/local/bin (node lives in /usr/bin); create it for the symlink.
+RUN mkdir -p /usr/local/bin && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*
