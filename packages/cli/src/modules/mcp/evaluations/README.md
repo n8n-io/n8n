@@ -102,6 +102,9 @@ LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
 - `--baseline-prefix` scopes regression comparison to MCP baselines. Until an
   MCP baseline exists the comparison is simply skipped — an MCP run is never
   compared against `instance-ai-baseline-`.
+- `--dataset` and `--baseline-prefix` are the two halves of isolation — pass
+  both together. Overriding only one logs a **partial isolation** warning, since
+  the run would still write to / compare against shared Instance AI data.
 - The dataset and experiments are created in the workspace your
   `LANGSMITH_API_KEY` belongs to. Use a personal key/workspace to avoid
   cluttering the shared team workspace.

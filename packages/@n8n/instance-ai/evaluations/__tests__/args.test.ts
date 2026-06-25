@@ -1,4 +1,4 @@
-import { parseCliArgs } from '../cli/args';
+import { parseCliArgs, partialIsolationWarning } from '../cli/args';
 
 describe('parseCliArgs --base-url', () => {
 	it('defaults to a single localhost URL when --base-url is not provided', () => {
@@ -111,6 +111,32 @@ describe('parseCliArgs --baseline-prefix', () => {
 	it('leaves an existing trailing hyphen intact', () => {
 		expect(parseCliArgs(['--baseline-prefix', 'mcp-baseline-']).baselinePrefix).toBe(
 			'mcp-baseline-',
+		);
+	});
+});
+
+describe('partialIsolationWarning', () => {
+	it('returns undefined when both are at their defaults (Instance AI run)', () => {
+		expect(
+			partialIsolationWarning('instance-ai-workflow-evals', 'instance-ai-baseline-'),
+		).toBeUndefined();
+	});
+
+	it('returns undefined when both are overridden (isolated cohort)', () => {
+		expect(
+			partialIsolationWarning('instance-ai-mcp-workflow-evals', 'mcp-baseline-'),
+		).toBeUndefined();
+	});
+
+	it('warns when only the dataset is overridden', () => {
+		expect(
+			partialIsolationWarning('instance-ai-mcp-workflow-evals', 'instance-ai-baseline-'),
+		).toMatch(/Partial LangSmith isolation/);
+	});
+
+	it('warns when only the baseline prefix is overridden', () => {
+		expect(partialIsolationWarning('instance-ai-workflow-evals', 'mcp-baseline-')).toMatch(
+			/Partial LangSmith isolation/,
 		);
 	});
 });

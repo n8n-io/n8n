@@ -9,6 +9,9 @@ import { z } from 'zod';
 
 import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
 
+/** Default LangSmith dataset — the shared Instance AI cohort. */
+export const DEFAULT_DATASET = 'instance-ai-workflow-evals';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -84,7 +87,7 @@ const cliArgsSchema = z.object({
 	keepWorkflows: z.boolean().default(false),
 	deletePrebuiltWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
-	dataset: z.string().default('instance-ai-workflow-evals'),
+	dataset: z.string().default(DEFAULT_DATASET),
 	concurrency: z.number().int().positive().default(16),
 	experimentName: z.string().optional(),
 	iterations: z.number().int().positive().default(1),
@@ -137,6 +140,31 @@ export function parseCliArgs(argv: string[]): CliArgs {
 	};
 }
 
+/**
+ * A dedicated `--dataset` and a dedicated `--baseline-prefix` are the two halves
+ * of LangSmith cohort isolation (e.g. for MCP runs). Overriding exactly one of
+ * them still writes to / compares against shared Instance AI data, which is
+ * almost always a mistake. Returns a warning for that mismatched case, or
+ * `undefined` when the pairing is consistent (both shared, or both isolated).
+ *
+ * Leaving BOTH at their defaults is a normal Instance AI run — including
+ * `--tier pr`/`mcp` against the shared dataset, whose example upserts are
+ * idempotent — so it is intentionally not flagged.
+ */
+export function partialIsolationWarning(
+	dataset: string,
+	baselinePrefix: string,
+): string | undefined {
+	const datasetIsolated = dataset !== DEFAULT_DATASET;
+	const baselineIsolated = baselinePrefix !== BASELINE_EXPERIMENT_PREFIX;
+	if (datasetIsolated === baselineIsolated) return undefined;
+	return (
+		`Partial LangSmith isolation: --dataset="${dataset}" with --baseline-prefix="${baselinePrefix}". ` +
+		'Override BOTH for an isolated cohort (e.g. MCP), or leave BOTH at their defaults for an ' +
+		'Instance AI run — overriding only one still touches shared Instance AI data.'
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Raw argument parsing
 // ---------------------------------------------------------------------------
@@ -170,7 +198,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		keepWorkflows: false,
 		deletePrebuiltWorkflows: false,
 		outputDir: undefined,
-		dataset: 'instance-ai-workflow-evals',
+		dataset: DEFAULT_DATASET,
 		concurrency: 16,
 		experimentName: undefined,
 		iterations: 1,

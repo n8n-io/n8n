@@ -17,7 +17,7 @@ import { traceable } from 'langsmith/traceable';
 import { join } from 'path';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
-import { parseCliArgs } from './args';
+import { parseCliArgs, partialIsolationWarning } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
@@ -257,6 +257,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			slugByTestCase: new Map(),
 		};
 	}
+
+	// A dedicated dataset and baseline prefix are the two halves of cohort
+	// isolation; overriding only one silently touches shared Instance AI data.
+	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
+	if (isolationWarning) logger.warn(isolationWarning);
 
 	const lsClient = new Client();
 	const datasetName = await syncDataset(
