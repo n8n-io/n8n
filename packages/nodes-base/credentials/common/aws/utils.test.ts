@@ -54,6 +54,13 @@ function lastCallArg(): FromTemporaryCredentialsCallArg {
 	return calls[calls.length - 1][0] as FromTemporaryCredentialsCallArg;
 }
 
+// `masterCredentials` is always passed as a provider function; invoke it to read
+// the resolved identity the SDK would receive.
+async function resolvedMaster(): Promise<unknown> {
+	const provider = lastCallArg().masterCredentials as () => Promise<unknown>;
+	return await provider();
+}
+
 describe('assumeRole', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -179,7 +186,7 @@ describe('assumeRole', () => {
 				sessionToken: 'assumed-session-token',
 			});
 
-			expect(lastCallArg().masterCredentials).toEqual({
+			expect(await resolvedMaster()).toEqual({
 				accessKeyId: 'sts-access-key',
 				secretAccessKey: 'sts-secret-key',
 				sessionToken: 'sts-session-token',
@@ -200,7 +207,7 @@ describe('assumeRole', () => {
 
 			await assumeRole(credentials, 'us-east-1');
 
-			expect(lastCallArg().masterCredentials).toEqual({
+			expect(await resolvedMaster()).toEqual({
 				accessKeyId: 'sts-access-key',
 				secretAccessKey: 'sts-secret-key',
 			});
@@ -221,7 +228,7 @@ describe('assumeRole', () => {
 
 			await assumeRole(credentials, 'us-east-1');
 
-			expect(lastCallArg().masterCredentials).toEqual({
+			expect(await resolvedMaster()).toEqual({
 				accessKeyId: 'sts-access-key',
 				secretAccessKey: 'sts-secret-key',
 			});
@@ -242,7 +249,7 @@ describe('assumeRole', () => {
 
 			await assumeRole(credentials, 'us-east-1');
 
-			expect(lastCallArg().masterCredentials).toEqual({
+			expect(await resolvedMaster()).toEqual({
 				accessKeyId: 'sts-access-key',
 				secretAccessKey: 'sts-secret-key',
 				sessionToken: 'sts-session-token',
@@ -502,7 +509,7 @@ describe('assumeRole', () => {
 
 			await assumeRole(credentials, 'us-east-1');
 
-			expect(lastCallArg().masterCredentials).toEqual({
+			expect(await resolvedMaster()).toEqual({
 				accessKeyId: 'sts-access-key',
 				secretAccessKey: 'sts-secret-key',
 			});

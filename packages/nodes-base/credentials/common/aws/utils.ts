@@ -21,6 +21,10 @@ import type {
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 
+// ── Private ──────────────────────────────────────────────────────────────────
+
+const SUPPORTED_AWS_REGIONS: ReadonlySet<string> = new Set(regions.map((r) => r.name));
+
 /**
  * Checks if a request body value should be JSON stringified for AWS requests.
  * Returns true for plain objects without Content-Length headers.
@@ -37,35 +41,6 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
 	}
 
 	return false;
-}
-
-const SUPPORTED_AWS_REGIONS: ReadonlySet<string> = new Set(regions.map((r) => r.name));
-
-/**
- * Ensures the region value belongs to the supported AWS regions list before it
- * is interpolated into request URLs or signing options. Anything outside the
- * known set is rejected with a controlled error.
- */
-export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
-	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
-		throw new UserError('Unsupported AWS region');
-	}
-}
-
-/**
- * Parses an AWS service URL to extract the service name and region.
- * Some AWS services are global and don't have a region.
- *
- * @param url - The AWS service URL to parse
- * @returns Object containing the service name and region (null for global services)
- *
- * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
- */
-export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
-	const hostname = url.hostname;
-	// Handle both .amazonaws.com and .amazonaws.com.cn domains
-	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
-	return { service, region };
 }
 
 /**
@@ -100,6 +75,87 @@ function getAwsSigningService(service: string): string {
 }
 
 /**
+ * Validates the three required role fields and returns their trimmed values.
+ * Throws a `UserError` for any field that is absent or whitespace-only.
+ */
+function assertValidRoleCredentials(credentials: AwsAssumeRoleCredentialsType): {
+	roleArn: string;
+	externalId: string;
+	roleSessionName: string;
+} {
+	if (!credentials.roleArn || credentials.roleArn.trim() === '') {
+		throw new UserError('Role ARN is required when assuming a role.');
+	}
+	if (!credentials.externalId || credentials.externalId.trim() === '') {
+		throw new UserError('External ID is required when assuming a role.');
+	}
+	if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
+		throw new UserError('Role Session Name is required when assuming a role.');
+	}
+	return {
+		roleArn: credentials.roleArn.trim(),
+		externalId: credentials.externalId.trim(),
+		roleSessionName: credentials.roleSessionName.trim(),
+	};
+}
+
+/**
+ * Returns an `AwsCredentialIdentityProvider` for the STS AssumeRole call.
+ * Uses system credentials (env / IMDS / container) when `useSystemCredentialsForRole` is set,
+ * otherwise validates and wraps the explicitly provided STS key pair.
+ */
+function buildMasterCredentials(
+	credentials: AwsAssumeRoleCredentialsType,
+	region: AWSRegion,
+): AwsCredentialIdentityProvider {
+	if (credentials.useSystemCredentialsForRole) {
+		return async () => {
+			const sys = await getSystemCredentials(region);
+			if (!sys) {
+				throw new UserError(
+					'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
+				);
+			}
+			return {
+				accessKeyId: sys.accessKeyId,
+				secretAccessKey: sys.secretAccessKey,
+				...(sys.sessionToken ? { sessionToken: sys.sessionToken } : {}),
+			};
+		};
+	}
+
+	if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {
+		throw new UserError('STS Access Key ID is required when not using system credentials.');
+	}
+	if (!credentials.stsSecretAccessKey || credentials.stsSecretAccessKey.trim() === '') {
+		throw new UserError('STS Secret Access Key is required when not using system credentials.');
+	}
+	const identity: AwsCredentialIdentity = {
+		accessKeyId: credentials.stsAccessKeyId.trim(),
+		secretAccessKey: credentials.stsSecretAccessKey.trim(),
+		...(credentials.stsSessionToken?.trim()
+			? { sessionToken: credentials.stsSessionToken.trim() }
+			: {}),
+	};
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	return () => Promise.resolve(identity);
+}
+
+/**
+ * Returns a proxy-aware `NodeHttpHandler` for the STS client, or `undefined` when no proxy applies.
+ */
+function buildStsRequestHandler(region: AWSRegion): NodeHttpHandler | undefined {
+	const stsTarget = `https://sts.${region}.${getAwsDomain(region)}`;
+	const proxyUrl = resolveProxyUrl(stsTarget);
+	if (!proxyUrl) return undefined;
+	// STS is always HTTPS; one agent backs both http/https slots.
+	const proxyAgent = createHttpsProxyAgent(stsTarget, proxyUrl);
+	return new NodeHttpHandler({ httpAgent: proxyAgent, httpsAgent: proxyAgent });
+}
+
+// ── Exports ───────────────────────────────────────────────────────────────────
+
+/**
  * AWS credentials test configuration for validating AWS credentials.
  * Uses the STS GetCallerIdentity action to verify that the provided credentials are valid.
  * Automatically handles both standard AWS regions and China regions with appropriate endpoints.
@@ -113,6 +169,33 @@ export const awsCredentialsTest: ICredentialTestRequest = {
 		method: 'POST',
 	},
 };
+
+/**
+ * Ensures the region value belongs to the supported AWS regions list before it
+ * is interpolated into request URLs or signing options. Anything outside the
+ * known set is rejected with a controlled error.
+ */
+export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
+	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
+		throw new UserError('Unsupported AWS region');
+	}
+}
+
+/**
+ * Parses an AWS service URL to extract the service name and region.
+ * Some AWS services are global and don't have a region.
+ *
+ * @param url - The AWS service URL to parse
+ * @returns Object containing the service name and region (null for global services)
+ *
+ * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
+ */
+export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
+	const hostname = url.hostname;
+	// Handle both .amazonaws.com and .amazonaws.com.cn domains
+	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
+	return { service, region };
+}
 
 /**
  * Prepares AWS request options for signing by constructing the proper endpoint URL,
@@ -259,17 +342,12 @@ export function awsGetSignInOptionsAndUpdateRequest(
 }
 
 /**
- * Assumes an AWS IAM role using STS (Security Token Service) and returns temporary credentials.
- * This function supports two modes for providing credentials for the STS call:
- * 1. Using system credentials (environment variables, instance metadata, etc.)
- * 2. Using manually provided STS credentials
+ * Assumes an AWS IAM role via STS and returns temporary credentials.
+ * Supports two master-credential modes: system credentials (env / IMDS / container)
+ * or an explicitly provided STS key pair.
  *
- * @param credentials - The assume role credentials configuration
- * @param region - AWS region for the STS endpoint
- * @returns Promise resolving to temporary credentials for the assumed role
- * @throws {UserError} When credentials fail validation or the STS AssumeRole call is rejected
- *
- * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html STS AssumeRole API}
+ * @throws {UserError} When inputs fail validation or the STS AssumeRole call is rejected.
+ * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html}
  */
 export async function assumeRole(
 	credentials: AwsAssumeRoleCredentialsType,
@@ -280,69 +358,17 @@ export async function assumeRole(
 	sessionToken: string;
 }> {
 	assertSupportedAwsRegion(region);
+	const { roleArn, externalId, roleSessionName } = assertValidRoleCredentials(credentials);
 
-	if (!credentials.roleArn || credentials.roleArn.trim() === '') {
-		throw new UserError('Role ARN is required when assuming a role.');
-	}
-	if (!credentials.externalId || credentials.externalId.trim() === '') {
-		throw new UserError('External ID is required when assuming a role.');
-	}
-	if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
-		throw new UserError('Role Session Name is required when assuming a role.');
-	}
-
-	let masterCredentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
-
-	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
-
-	if (useSystemCredentialsForRole) {
-		masterCredentials = async () => {
-			const sys = await getSystemCredentials(region);
-			if (!sys) {
-				throw new UserError(
-					'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
-				);
-			}
-			return {
-				accessKeyId: sys.accessKeyId,
-				secretAccessKey: sys.secretAccessKey,
-				...(sys.sessionToken ? { sessionToken: sys.sessionToken } : {}),
-			};
-		};
-	} else {
-		if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {
-			throw new UserError('STS Access Key ID is required when not using system credentials.');
-		}
-		if (!credentials.stsSecretAccessKey || credentials.stsSecretAccessKey.trim() === '') {
-			throw new UserError('STS Secret Access Key is required when not using system credentials.');
-		}
-		masterCredentials = {
-			accessKeyId: credentials.stsAccessKeyId.trim(),
-			secretAccessKey: credentials.stsSecretAccessKey.trim(),
-			...(credentials.stsSessionToken?.trim()
-				? { sessionToken: credentials.stsSessionToken.trim() }
-				: {}),
-		};
-	}
-
-	const stsTarget = `https://sts.${region}.${getAwsDomain(region)}`;
-	const proxyUrl = resolveProxyUrl(stsTarget);
-	let requestHandler: NodeHttpHandler | undefined;
-	if (proxyUrl) {
-		// STS is always HTTPS; one agent backs both http/https slots.
-		const proxyAgent = createHttpsProxyAgent(stsTarget, proxyUrl);
-		requestHandler = new NodeHttpHandler({ httpAgent: proxyAgent, httpsAgent: proxyAgent });
-	}
+	const masterCredentials = buildMasterCredentials(credentials, region);
+	const requestHandler = buildStsRequestHandler(region);
 
 	// Lazy-load the AWS SDK so the ~1.5 MB umbrella (Cognito/SSO clients) isn't
 	// pulled in at startup for workflows that never assume an AWS role.
 	const { fromTemporaryCredentials } = await import('@aws-sdk/credential-providers');
 	const provider = fromTemporaryCredentials({
-		params: {
-			RoleArn: credentials.roleArn.trim(),
-			RoleSessionName: credentials.roleSessionName.trim(),
-			ExternalId: credentials.externalId.trim(),
-		},
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		params: { RoleArn: roleArn, RoleSessionName: roleSessionName, ExternalId: externalId },
 		masterCredentials,
 		clientConfig: {
 			region,
@@ -350,18 +376,17 @@ export async function assumeRole(
 		},
 	});
 
-	let resolved;
 	try {
-		resolved = await provider();
+		const resolved = await provider();
+		return {
+			accessKeyId: resolved.accessKeyId,
+			secretAccessKey: resolved.secretAccessKey,
+			sessionToken: resolved.sessionToken ?? '',
+		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		throw new UserError(`STS AssumeRole failed: ${message}`);
 	}
-	return {
-		accessKeyId: resolved.accessKeyId,
-		secretAccessKey: resolved.secretAccessKey,
-		sessionToken: resolved.sessionToken ?? '',
-	};
 }
 
 export function signOptions(
