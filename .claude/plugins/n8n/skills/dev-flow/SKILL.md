@@ -87,9 +87,9 @@ ticket ID — every phase references it.
 
 ## Autonomy & loop discipline
 
-Run autonomously. The plan is settled by **agent consensus**, not a user gate. The only stop is
-**one confirmation before opening the PR** (Phase 6), because a PR is outward-facing. If the user
-said "fully autonomous", skip that too.
+Run autonomously end-to-end. The plan is settled by **agent consensus**, not a user gate. There is
+**no stop before the PR**: once the review loop is clean, open the PR automatically as **ready for
+review** (not a draft) so all CI jobs run, then go straight to watching it (Phase 7).
 
 Every loop in this skill is **bounded** to avoid spinning forever:
 - Cap each convergence loop at **3 rounds** by default. The cap is per convergence attempt: a
@@ -238,10 +238,11 @@ After fixing, **re-run the affected review lenses** on the new diff. Repeat fix 
 **no `[BLOCKER]` or `[MAJOR]` findings remain** and the package test suite is green — or the
 3-round cap is hit, then escalate with the unresolved findings. Commit fixes atomically.
 
-## Phase 6 — Open the PR
+## Phase 6 — Open the PR (automatic, ready for review)
 
-**Confirm with the user first** (the one gate; skip if "fully autonomous"): summarize scope,
-packages touched, tests added, and the review findings that were resolved.
+**No user gate** — open the PR automatically as soon as the review loop is clean. Print a one-line
+summary (scope, packages touched, tests added, findings resolved) for the record, but do not wait
+for approval.
 
 Push the branch and invoke the repo's PR skill so the title passes `check-pr-title` CI:
 
@@ -252,6 +253,10 @@ Push the branch and invoke the repo's PR skill so the title passes `check-pr-tit
 Ensure the PR body links the Linear ticket. For a security fix, keep the title and body in neutral
 language (no vulnerability type, no Linear slug that reveals it). Capture the PR number for the watch
 phase: `pr=$(gh pr view --json number -q .number)`.
+
+The PR must be **ready for review, not a draft**, so every configured CI job runs. If
+`/n8n:create-pr` opened a draft, mark it ready immediately: `gh pr ready "$pr"`. Then proceed
+directly to Phase 7.
 
 ## Phase 7 — Watch the PR, re-enter the code loop on any finding
 
