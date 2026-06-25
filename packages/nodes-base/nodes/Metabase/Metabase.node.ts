@@ -23,8 +23,22 @@ export class Metabase implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
-				name: 'metabaseApi',
+				name: 'metabaseKeyApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['metabaseKeyApi'],
+					},
+				},
+			},
+			{
+				name: 'metabaseUserApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['metabaseUserApi'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
@@ -33,6 +47,22 @@ export class Metabase implements INodeType {
 			headers: {},
 		},
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Api Key',
+						value: 'metabaseKeyApi',
+					},
+					{
+						name: 'User Auth',
+						value: 'metabaseUserApi',
+					},
+				],
+				default: 'metabaseKeyApi',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
