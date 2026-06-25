@@ -20,6 +20,20 @@ import {
 	scopedSessionHint,
 } from '../descriptions';
 
+/**
+ * Rewrites the auth portion of any `mongodb://` or `mongodb+srv://`
+ * URI substring in `message` to `mongodb(+srv)://[REDACTED]@`. Used to
+ * normalise driver error messages before they are surfaced via
+ * NodeOperationError; some driver errors (notably URL-parse failures)
+ * include the input URI verbatim.
+ */
+export function sanitizeMongoUriInMessage(message: string): string {
+	return message.replace(
+		/mongodb(\+srv)?:\/\/[^:\s/?#]+:[^@\s/?#]+@/gi,
+		'mongodb$1://[REDACTED]@',
+	);
+}
+
 export class MemoryMongoDbChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MongoDB Chat Memory',
@@ -165,7 +179,8 @@ export class MemoryMongoDbChat implements INodeType {
 			};
 		} catch (error) {
 			void client.close();
-			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
+			const sanitized = sanitizeMongoUriInMessage(error?.message ?? '');
+			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${sanitized}`);
 		}
 	}
 }
