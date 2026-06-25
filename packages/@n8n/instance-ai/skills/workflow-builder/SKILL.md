@@ -370,12 +370,13 @@ column names.
 - For unresolved resource-locator fields (values shaped like `{ __rl: true,
   mode, value }`, such as Slack channel or Google Sheets document selectors),
   use the resource-locator object shape instead of a raw `placeholder()`
-  string. Default to the locator's `list` mode (the node's default — it gives
-  the user a searchable picker at setup) with an empty value and a
+  string. Prefer the locator's picker (`list`) mode when it offers one, since
+  it gives the user a searchable picker at setup, with an empty value and a
   `cachedResultName` hint, for example `{ __rl: true, mode: 'list', value: '',
-  cachedResultName: 'Select support channel to monitor' }`. Use `name`/`url`
-  mode only when you know the resource by that exact value, and `id` mode only
-  when you have a concrete ID — never `id` with an empty or placeholder value.
+  cachedResultName: 'Select support channel to monitor' }`. Not every locator
+  has a `list` mode; when it doesn't, use a `name`/`url` mode with the known
+  value, or `id` mode only when you have a concrete ID. Never use `id` with an
+  empty or placeholder value.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field
