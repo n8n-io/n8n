@@ -81,16 +81,6 @@ export function agentTextOf(turn: TranscriptTurn): string {
 /** Tool id the builder calls to create or modify the workflow graph. */
 export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
 
-// build-workflow calls per turn (a suspend→resume is one call, so approvals don't inflate it).
-export function buildWorkflowCallsPerTurn(transcript: TranscriptTurn[]): number[] {
-	return transcript.map(
-		(turn) =>
-			turn.steps.filter(
-				(step) => step.kind === 'tool-call' && step.toolName === BUILD_WORKFLOW_TOOL_NAME,
-			).length,
-	);
-}
-
 // Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: build-workflow×6") —
 // every tool, every turn; lets it reason from the counts instead of recounting prose.
 export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
