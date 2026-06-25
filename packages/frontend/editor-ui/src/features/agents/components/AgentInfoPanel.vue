@@ -1,29 +1,42 @@
 <script setup lang="ts">
 /**
- * Combined editor for the core agent fields: name, model (delegated to the
- * canonical ChatHub ModelSelector), and instructions. Credential selection is
- * handled inside the model picker — no separate credential field.
+ * Combined editor for the core agent fields: name, model, and instructions.
+ * Credential selection is handled inside the model picker — no separate
+ * credential field.
  */
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ChatHubProvider } from '@n8n/api-types';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { useToast } from '@/app/composables/useToast';
+import { useAgentProjectId } from '../composables/useAgentProjectId';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import shared from '../styles/agent-panel.module.scss';
-import AgentPanelHeader from './AgentPanelHeader.vue';
-
-import type { AgentJsonConfig } from '../types';
-import { CATALOG_TO_CHATHUB } from '../provider-mapping';
+import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
+import { useModelCatalog } from '../composables/useModelCatalog';
+import {
+	type AgentModelOption,
+	type AgentModelProvider,
+	type AgentModelSelection,
+	isAgentModelProvider,
+	type AgentModelsByProvider,
+} from '../model-providers';
 import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
-import { parseModelString, modelToString } from '../utils/model-string';
+import type { AgentJsonConfig } from '../types';
+import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import AgentModelSelector from './AgentModelSelector.vue';
-import { useToast } from '@/app/composables/useToast';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		disabled?: boolean;
+		embedded?: boolean;
+		projectId?: string;
+	}>(),
 	{
 		disabled: false,
 		embedded: false,
@@ -32,27 +45,72 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
 const { showError } = useToast();
+const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
-function onModelChange(selection: { model: string; credentialId: string | null }) {
-	if (!selection.credentialId) {
+const projectId = useAgentProjectId(() => props.projectId);
+
+const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
+	usersStore.currentUserId ?? 'anonymous',
+	projectId,
+);
+
+watch(
+	projectId,
+	(id) => {
+		if (id) void ensureLoaded(id);
+	},
+	{ immediate: true },
+);
+
+const filteredAgents = computed<AgentModelsByProvider>(() =>
+	getModelsForPicker(credentialsByProvider.value),
+);
+
+const selectedAgent = computed<AgentModelOption | null>(() => {
+	const modelStr = modelToString(props.config?.model);
+	if (!modelStr) return null;
+	const parsed = parseModelString(modelStr);
+	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
+
+	const registryEntry = filteredAgents.value[parsed.provider]?.models.find(
+		(m) => m.model === parsed.name,
+	);
+	if (registryEntry) return registryEntry;
+
+	return {
+		provider: parsed.provider,
+		model: parsed.name,
+		name: parsed.name,
+		description: null,
+		createdAt: null,
+		metadata: {
+			functionCalling: false,
+			available: true,
+		},
+	};
+});
+
+function onModelChange(selection: AgentModelSelection) {
+	const credentialId = credentialsByProvider.value?.[selection.provider];
+	if (!credentialId) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
-	const parsed = parseModelString(selection.model);
-	const nextProviderTool = parsed
-		? (PROVIDER_CAPABILITIES[parsed.provider]?.webSearch ?? false)
-		: false;
+	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	const nextProviderTool = PROVIDER_CAPABILITIES[selection.provider]?.webSearch ?? false;
 	emit('update:config', {
-		model: selection.model,
-		credential: selection.credentialId,
+		model,
+		credential: credentialId,
 		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
 	});
 }
 
-function onSelectCredential(provider: ChatHubProvider, credentialId: string | null) {
+function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
+	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
-	if (parsed && CATALOG_TO_CHATHUB[parsed.provider] === provider && credentialId) {
+	if (parsed?.provider === provider && credentialId) {
 		emit('update:config', { credential: credentialId });
 	}
 }
@@ -92,7 +150,13 @@ function onInstructionsInput(value: string) {
 				}}</N8nText></label
 			>
 			<AgentModelSelector
-				:model="modelToString(props.config?.model)"
+				:selected-model="selectedAgent"
+				:credentials="credentialsByProvider"
+				:models-by-provider="filteredAgents"
+				:is-loading="isLoading"
+				:project-id="projectId"
+				:warn-missing-credentials="true"
+				horizontal
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"

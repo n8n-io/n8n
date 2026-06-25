@@ -33,6 +33,11 @@ issues/comments.
 - Use the tool node id from discovery, usually ending in \`Tool\`.
 - Put fixed values in \`nodeParameters\`; use complete n8n expressions for values the agent should decide at runtime:
   \`={{ $fromAI('url', 'The URL to inspect', 'string') }}\`.
+- For stable dynamic selectors such as Linear team/teamId, Slack channel, calendar,
+  project, board, database, table, model, or other "Name or ID" fields, load skill
+  \`agent-builder-resource-locators\` and follow it. Do not use \`$fromAI\` for
+  these fields; resolve them at build time and write the exact returned
+  \`parameterValue\` into \`nodeParameters\`.
 - Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
 - Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
@@ -74,6 +79,12 @@ export default new Tool('tool_name')
 - Live crawling, fetching, and API integrations need workflow or node tools, not custom tools.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.
+- \`get_resource_locator_options\` response values are builder-time config values. Write
+  \`parameterValue\` exactly as returned. For resource locators this is an object with
+  \`__rl\`, \`mode\`, and \`value\`; for classic dynamic options it is the raw ID/value.
+- If \`get_resource_locator_options\` returns \`missing_credentials\`, call \`ask_credential\`
+  for one of the returned credential slots and retry. Do not fall back to \`$fromAI\`
+  for required stable resource IDs.
 - Do not invent node type names, workflow names, credential ids, or provider tool keys.
 - If a required node-tool credential is skipped, add the tool and omit only that credential slot.
 - \`build_custom_tool\` stores code only; the config still needs a \`{ "type": "custom", "id": "<returned id>" }\` tool ref.

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
+	taskIdentifiersFromConfig,
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig, AgentResource } from '../types';
 
@@ -24,6 +25,7 @@ describe('buildAgentConfigFingerprint', () => {
 			{ type: 'custom', id: 'alpha' },
 		],
 		skills: [{ type: 'skill', id: 'summarize_notes' }],
+		tasks: [{ type: 'task', id: 'daily_digest', enabled: true }],
 		memory: { enabled: true, storage: 'n8n' },
 	};
 
@@ -37,6 +39,7 @@ describe('buildAgentConfigFingerprint', () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['telegram', 'slack']);
 		expect(fp.tools).toEqual(['alpha', 'zulu']);
 		expect(fp.skills).toEqual(['summarize_notes']);
+		expect(fp.tasks).toEqual(['daily_digest']);
 		expect(fp.triggers).toEqual(['slack', 'telegram']);
 	});
 
@@ -86,6 +89,28 @@ describe('buildAgentConfigFingerprint', () => {
 		);
 	});
 
+	it('changes config_version when a task is added', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withExtra: AgentJsonConfig = {
+			...baseConfig,
+			tasks: [...(baseConfig.tasks ?? []), { type: 'task', id: 'weekly_report', enabled: true }],
+		};
+		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
+	it('changes config_version when a task is removed', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withoutTasks: AgentJsonConfig = {
+			...baseConfig,
+			tasks: [],
+		};
+		expect((await buildAgentConfigFingerprint(withoutTasks, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
 	it('changes config_version when the model changes', async () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, []);
 		const b = await buildAgentConfigFingerprint({ ...baseConfig, model: 'gpt-5' }, []);
@@ -102,7 +127,25 @@ describe('buildAgentConfigFingerprint', () => {
 		expect(fp.instructions).toBe('');
 		expect(fp.tools).toEqual([]);
 		expect(fp.skills).toEqual([]);
+		expect(fp.tasks).toEqual([]);
 		expect(fp.model).toBeNull();
+	});
+});
+
+describe('taskIdentifiersFromConfig', () => {
+	it('sorts and dedupes task ids', () => {
+		expect(
+			taskIdentifiersFromConfig({
+				name: 'x',
+				model: 'gpt-4',
+				instructions: 'do things',
+				tasks: [
+					{ type: 'task', id: 'z-task', enabled: true },
+					{ type: 'task', id: 'a-task', enabled: true },
+					{ type: 'task', id: 'z-task', enabled: false },
+				],
+			}),
+		).toEqual(['a-task', 'z-task']);
 	});
 });
 

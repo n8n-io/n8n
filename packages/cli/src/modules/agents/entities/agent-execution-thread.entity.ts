@@ -40,6 +40,17 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 8, nullable: true })
 	emoji: string | null;
 
+	/**
+	 * Parent session thread id that delegated this run, for navigating back to
+	 * it. Holds another thread's id, so it matches the id column width (128).
+	 */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	parentThreadId: string | null;
+
+	/** Saved agent id of the parent that delegated this run. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	parentAgentId: string | null;
+
 	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })
 	project: Project;

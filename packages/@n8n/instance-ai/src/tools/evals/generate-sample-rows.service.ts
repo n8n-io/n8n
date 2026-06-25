@@ -1,10 +1,11 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import { isRecord } from './column-ref-utils';
 import { detectAiNodes } from './detect-ai-nodes';
 import type { Logger } from '../../logger';
-import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agents';
+import { HAIKU_MODEL } from '../../utils/eval-agents';
+import { generateValidatedJson } from '../../utils/generate-validated-json';
 
 const FACET_COUNT = 5;
 const DEFAULT_ROW_COUNT = 25;
@@ -207,7 +208,7 @@ export interface RunBatchInput {
 	context: AgentContext | undefined;
 	columns: string[];
 	realExamples?: ReadonlyArray<Record<string, unknown>>;
-	logger?: Pick<Logger, 'warn'>;
+	logger: Pick<Logger, 'warn'>;
 }
 
 function normalizeBatchRow(
@@ -228,61 +229,44 @@ function normalizeBatchRow(
 	return row;
 }
 
-function stripMarkdownFences(text: string): string {
-	const trimmed = text.trim();
-	const fencedMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
-	return fencedMatch ? fencedMatch[1].trim() : trimmed;
-}
-
 export async function runBatch(input: RunBatchInput): Promise<Array<Record<string, string>>> {
 	const requestedRowCount = Math.max(0, Math.floor(input.rowCount));
 	if (requestedRowCount <= 0) return [];
-	try {
-		const generatedColumns = input.columns.filter((column) => !isExpectedOutputColumn(column));
-		const agent = createEvalAgent('eval-sample-rows', {
-			model: HAIKU_MODEL,
-			instructions: BATCH_SYSTEM_INSTRUCTIONS,
-		});
-		const realExamplesBlock = buildRealExamplesBlock(input.realExamples, generatedColumns);
-		const sections = [buildAgentContextBlock(input.context)];
-		if (realExamplesBlock) sections.push(realExamplesBlock);
-		sections.push(FORMAT_INFERENCE);
-		sections.push(
-			[
-				`Variation focus for this batch: length = ${input.facet.length}; mode = ${input.facet.edgeMode}.`,
-				input.facet.instructions,
-			].join('\n'),
-		);
-		sections.push(
-			[
-				`Columns: ${generatedColumns.join(', ')}`,
-				`Generate exactly ${requestedRowCount} rows.`,
-			].join('\n'),
-		);
-		const userText = sections.join('\n\n');
-		const result = await agent.generate(userText);
-		const text = extractText(result);
-		const parsed: unknown = JSON.parse(stripMarkdownFences(text));
-		const validated = batchRowSchema.safeParse(parsed);
-		if (!validated.success) {
-			input.logger?.warn('generate-sample-rows: invalid batch rows returned', {
-				rowCount: requestedRowCount,
-				facet: input.facet.edgeMode,
-				issues: validated.error.issues,
-			});
-			return [];
-		}
-		return validated.data
-			.slice(0, requestedRowCount)
-			.map((rawRow) => normalizeBatchRow(rawRow, input.columns));
-	} catch (error) {
-		input.logger?.warn('generate-sample-rows: batch generation failed', {
+	const generatedColumns = input.columns.filter((column) => !isExpectedOutputColumn(column));
+	const realExamplesBlock = buildRealExamplesBlock(input.realExamples, generatedColumns);
+	const sections = [buildAgentContextBlock(input.context)];
+	if (realExamplesBlock) sections.push(realExamplesBlock);
+	sections.push(FORMAT_INFERENCE);
+	sections.push(
+		[
+			`Variation focus for this batch: length = ${input.facet.length}; mode = ${input.facet.edgeMode}.`,
+			input.facet.instructions,
+		].join('\n'),
+	);
+	sections.push(
+		[`Columns: ${generatedColumns.join(', ')}`, `Generate exactly ${requestedRowCount} rows.`].join(
+			'\n',
+		),
+	);
+
+	const result = await generateValidatedJson('eval-sample-rows', {
+		model: HAIKU_MODEL,
+		instructions: BATCH_SYSTEM_INSTRUCTIONS,
+		userText: sections.join('\n\n'),
+		schema: batchRowSchema,
+	});
+	if (!result.ok) {
+		input.logger.warn('generate-sample-rows: batch generation failed', {
 			rowCount: requestedRowCount,
 			facet: input.facet.edgeMode,
-			error,
+			reason: result.reason,
+			issues: result.issues,
 		});
 		return [];
 	}
+	return result.data
+		.slice(0, requestedRowCount)
+		.map((rawRow) => normalizeBatchRow(rawRow, input.columns));
 }
 
 export interface GenerateSampleRowsInput {
@@ -299,7 +283,7 @@ export interface GenerateSampleRowsInput {
 	 * generator produces new in-domain inputs instead of paraphrasing them.
 	 */
 	realExamples?: ReadonlyArray<Record<string, unknown>>;
-	logger?: Pick<Logger, 'warn'>;
+	logger: Pick<Logger, 'warn'>;
 }
 
 function resolveAgentContext(

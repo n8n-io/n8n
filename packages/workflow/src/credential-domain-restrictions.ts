@@ -1,5 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
-
+import { UserError } from './errors';
 import { NodeOperationError } from './errors/node-operation.error';
 import type {
 	ICredentialDataDecryptedObject,
@@ -130,7 +129,7 @@ export function isDomainAllowed(options: { url: string; allowedDomains: string }
 	return false;
 }
 
-/** Throws `ApplicationError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
+/** Throws `UserError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
 export function assertUrlAllowed(options: {
 	url: string;
 	allowedDomains?: string;
@@ -141,7 +140,7 @@ export function assertUrlAllowed(options: {
 	if (isDomainAllowed({ url, allowedDomains })) return;
 
 	const message = `Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`;
-	throw node ? new NodeOperationError(node, message) : new ApplicationError(message);
+	throw node ? new NodeOperationError(node, message) : new UserError(message);
 }
 
 /** Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all. */

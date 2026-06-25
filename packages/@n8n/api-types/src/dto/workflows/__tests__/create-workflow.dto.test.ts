@@ -88,9 +88,40 @@ describe('CreateWorkflowDto', () => {
 					],
 				},
 			},
+			{
+				// `parentFolder` is not an accepted input; it must be tolerated (stripped), not rejected
+				name: 'with parentFolder object (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: { id: 'folder123', name: 'Some Folder' },
+				},
+			},
+			{
+				name: 'with parentFolder null (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: null,
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should strip parentFolder from the parsed payload', () => {
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Workflow',
+				nodes: [],
+				connections: {},
+				parentFolder: { id: 'folder123', name: 'Some Folder' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('parentFolder');
 		});
 
 		test('should transform tags from objects to string array', () => {
@@ -108,7 +139,7 @@ describe('CreateWorkflowDto', () => {
 			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
 		});
 
-		test('should preserve workflow custom telemetry tag settings', () => {
+		test('should preserve workflow custom span attribute settings', () => {
 			const settings = {
 				customTelemetryTags: [
 					{ key: 'env', value: 'production' },
@@ -127,7 +158,7 @@ describe('CreateWorkflowDto', () => {
 			expect(result.data?.settings).toEqual(settings);
 		});
 
-		test('should preserve workflow custom telemetry tag settings with keys that are unique after trim', () => {
+		test('should preserve workflow custom span attribute settings with keys that are unique after trim', () => {
 			const settings = {
 				customTelemetryTags: [
 					{ key: '  env  ', value: 'production' },
@@ -185,7 +216,7 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings'],
 			},
 			{
-				name: 'workflow custom telemetry tags as fixed collection object',
+				name: 'workflow custom span attributes as fixed collection object',
 				request: {
 					name: 'Test',
 					nodes: [],
@@ -199,7 +230,7 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags'],
 			},
 			{
-				name: 'workflow custom telemetry tag with extra field',
+				name: 'workflow custom span attribute with extra field',
 				request: {
 					name: 'Test',
 					nodes: [],
@@ -211,7 +242,7 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
 			},
 			{
-				name: 'duplicate workflow custom telemetry tag keys',
+				name: 'duplicate workflow custom span attribute keys',
 				request: {
 					name: 'Test',
 					nodes: [],
@@ -226,7 +257,7 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags'],
 			},
 			{
-				name: 'duplicate workflow custom telemetry tag keys after trim',
+				name: 'duplicate workflow custom span attribute keys after trim',
 				request: {
 					name: 'Test',
 					nodes: [],
@@ -241,7 +272,7 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags'],
 			},
 			{
-				name: 'empty workflow custom telemetry tag key',
+				name: 'empty workflow custom span attribute key',
 				request: {
 					name: 'Test',
 					nodes: [],
@@ -253,7 +284,7 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
-				name: 'whitespace-only workflow custom telemetry tag key',
+				name: 'whitespace-only workflow custom span attribute key',
 				request: {
 					name: 'Test',
 					nodes: [],

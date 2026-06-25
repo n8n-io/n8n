@@ -1,34 +1,14 @@
 import { UnexpectedError } from 'n8n-workflow';
-import { Transform, type Readable } from 'node:stream';
+import { Transform } from 'node:stream';
 
 import type { BinaryData } from './types';
 
 export { assertDir, exists } from '@n8n/backend-common';
 
-const STORED_MODES = ['filesystem', 'filesystem-v2', 's3', 'database'] as const;
+const STORED_MODES = ['filesystem', 'filesystem-v2', 's3', 'azure', 'database'] as const;
 
 export function isStoredMode(mode: string): mode is BinaryData.StoredMode {
 	return STORED_MODES.includes(mode as BinaryData.StoredMode);
-}
-
-/** Converts a readable stream to a buffer */
-export async function streamToBuffer(stream: Readable) {
-	return await new Promise<Buffer>((resolve, reject) => {
-		const chunks: Buffer[] = [];
-		stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-		stream.on('end', () => resolve(Buffer.concat(chunks)));
-		stream.once('error', (cause) => {
-			if ('code' in cause && cause.code === 'Z_DATA_ERROR')
-				reject(new UnexpectedError('Failed to decompress response', { cause }));
-			else reject(cause);
-		});
-	});
-}
-
-/** Converts a buffer or a readable stream to a buffer */
-export async function binaryToBuffer(body: Buffer | Readable) {
-	if (Buffer.isBuffer(body)) return body;
-	return await streamToBuffer(body);
 }
 
 /**

@@ -1,17 +1,22 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import mysql2 from 'mysql2/promise';
 import type { Connection, OkPacket } from 'mysql2/promise';
 
 const mockConnection = mock<Connection>();
-const createConnection = jest.fn().mockResolvedValue(mockConnection);
-jest.mock('mysql2/promise', () => ({ createConnection }));
 
-afterEach(() => jest.clearAllMocks());
-
-describe('Test MySqlV1, update - identifier escaping', () => {
+// The harness loads the node from dist via require(), so vi.mock cannot intercept its
+// `mysql2/promise` import. mysql2 is externalized, so the test and the node share the same
+// module instance — spy on it instead. Re-applied per test since restoreMocks resets spies.
+beforeEach(() => {
+	vi.spyOn(mysql2, 'createConnection').mockResolvedValue(mockConnection);
 	mockConnection.query.mockResolvedValue([{ affectedRows: 1 } as unknown as OkPacket, []]);
 	mockConnection.end.mockResolvedValue(undefined as any);
+});
 
+afterEach(() => vi.clearAllMocks());
+
+describe('Test MySqlV1, update - identifier escaping', () => {
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['update.workflow.json'],
 		customAssertions() {
@@ -33,9 +38,6 @@ describe('Test MySqlV1, update - identifier escaping', () => {
 });
 
 describe('Test MySqlV1, update - table name with backtick', () => {
-	mockConnection.query.mockResolvedValue([{ affectedRows: 1 } as unknown as OkPacket, []]);
-	mockConnection.end.mockResolvedValue(undefined as any);
-
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['update-backtick.workflow.json'],
 		customAssertions() {

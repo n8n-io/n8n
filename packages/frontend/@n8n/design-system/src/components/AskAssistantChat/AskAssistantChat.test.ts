@@ -44,7 +44,7 @@ const stubs = [
 	'N8nButton',
 	'N8nIcon',
 	'N8nIconButton',
-	'N8nPromptInput',
+	'N8nChatInput',
 	'AssistantIcon',
 	'AssistantText',
 	'InlineAskAssistantButton',
@@ -283,7 +283,7 @@ describe('AskAssistantChat', () => {
 		});
 
 		expect(wrapper.container).toMatchSnapshot();
-		// The maxCharacterLength prop is passed to the N8nPromptInput component
+		// The maxCharacterLength prop is passed to the N8nChatInput component
 		// but the textarea element itself doesn't have this attribute
 		// We can verify the component receives the prop via snapshot
 	});
@@ -1484,17 +1484,17 @@ describe('AskAssistantChat', () => {
 	});
 
 	describe('onSendMessage', () => {
-		it('should emit message when N8nPromptInput submits', async () => {
+		it('should emit message when N8nChatInput submits', async () => {
 			const wrapper = mount(AskAssistantChat, {
 				global: {
 					directives: { n8nHtml },
 					stubs: {
 						...Object.fromEntries(
-							stubs.filter((stub) => stub !== 'N8nPromptInput').map((stub) => [stub, true]),
+							stubs.filter((stub) => stub !== 'N8nChatInput').map((stub) => [stub, true]),
 						),
 						MessageWrapper: MessageWrapperStub,
-						N8nPromptInput: {
-							name: 'n8n-prompt-input',
+						N8nChatInput: {
+							name: 'n8n-chat-input',
 							props: [
 								'modelValue',
 								'placeholder',
@@ -1531,7 +1531,7 @@ describe('AskAssistantChat', () => {
 								};
 							},
 							template: `
-								<div data-test-id="chat-input" class="prompt-input-stub">
+								<div data-test-id="chat-input" class="chat-input-stub">
 									<textarea :value="modelValue" @input="updateValue"></textarea>
 									<button @click="handleSubmit">Send</button>
 								</div>

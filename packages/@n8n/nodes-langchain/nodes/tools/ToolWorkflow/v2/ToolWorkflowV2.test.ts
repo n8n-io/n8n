@@ -1,5 +1,5 @@
 import { DynamicTool } from '@langchain/core/tools';
-import { ApplicationError, NodeOperationError, sleepWithAbort } from 'n8n-workflow';
+import { NodeOperationError, sleepWithAbort, UnexpectedError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeExecutionData,
@@ -912,7 +912,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const executeWorkflowMock = vi.fn().mockImplementation(() => {
 				// Simulate abort during execution
 				abortController.abort();
-				throw new ApplicationError('Workflow execution failed');
+				throw new UnexpectedError('Workflow execution failed');
 			});
 
 			const contextWithRetryNode = createAbortSignalContext(

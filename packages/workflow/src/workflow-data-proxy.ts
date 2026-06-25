@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
+import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -51,6 +51,26 @@ const PAIRED_ITEM_METHOD = {
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
+
+/**
+ * Whether the runtime can compile expressions. The expression engine compiles
+ * expressions via `new Function`, which throws when the process is started with
+ * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
+ * This is a process-wide invariant, so we probe once and cache the result.
+ */
+let codeGenerationAllowed: boolean | undefined;
+const isCodeGenerationAllowed = (): boolean => {
+	if (codeGenerationAllowed === undefined) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+			new Function('return 1');
+			codeGenerationAllowed = true;
+		} catch {
+			codeGenerationAllowed = false;
+		}
+	}
+	return codeGenerationAllowed;
+};
 
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
@@ -311,7 +331,7 @@ export class WorkflowDataProxy {
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
-						throw new ApplicationError('Could not find sibling parameter on node', {
+						throw new UnexpectedError('Could not find sibling parameter on node', {
 							extra: { nodeName, parameter: key },
 						});
 					}
@@ -1421,7 +1441,9 @@ export class WorkflowDataProxy {
 					if (property === 'first') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.first() should have no arguments');
+								throw createExpressionError(
+									"$input.first() takes no arguments. To get items from a specific upstream node, use $('NodeName').first() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;
@@ -1434,7 +1456,9 @@ export class WorkflowDataProxy {
 					if (property === 'last') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.last() should have no arguments');
+								throw createExpressionError(
+									"$input.last() takes no arguments. To get items from a specific upstream node, use $('NodeName').last() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;
@@ -1492,6 +1516,15 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				if (!isCodeGenerationAllowed()) {
+					throw new ExpressionError(
+						"$evaluateExpression can't be used in the Code node while task runners run in secure mode",
+						{
+							description:
+								'Secure-mode task runners disable evaluating strings as code, which expressions rely on. Evaluate the expression in a node field instead, for example an Edit Fields (Set) node before the Code node.',
+						},
+					);
+				}
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
 					`=${expression}`,

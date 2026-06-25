@@ -77,6 +77,13 @@ vi.mock('../lifecycles/introspection-analysis', () => ({
 	createIntrospectionAnalysisLifecycle: () => ({}),
 }));
 
+// Stub the code-builder module so importing `../cli` doesn't drag in the heavy
+// langchain / workflow-builder graph. `runEvaluation` is mocked below, so the
+// generation path never actually invokes `CodeWorkflowBuilder`.
+vi.mock('@/code-builder', () => ({
+	CodeWorkflowBuilder: vi.fn(),
+}));
+
 vi.mock('../index', () => ({
 	runEvaluation: (...args: unknown[]): unknown => mockRunEvaluation(...args),
 	createConsoleLifecycle: (...args: unknown[]): unknown => mockCreateConsoleLifecycle(...args),
@@ -173,6 +180,13 @@ describe('CLI', () => {
 	// Mock process.exit to prevent test termination
 	let mockExit: MockInstance;
 	const originalEnv = process.env;
+
+	// Warm the module cache once so the first test's `await import('../cli')`
+	// doesn't pay cold-compile cost against the default 5s test timeout on a
+	// loaded CI runner. Later imports resolve from cache.
+	beforeAll(async () => {
+		await import('../cli');
+	}, 30_000);
 
 	beforeEach(() => {
 		vi.clearAllMocks();

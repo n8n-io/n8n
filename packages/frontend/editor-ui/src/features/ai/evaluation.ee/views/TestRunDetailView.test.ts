@@ -206,6 +206,18 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
+	it('renders the execution view link on failed cases alongside the rerun button', async () => {
+		// mockTestCases has one success and one error case, both with an
+		// executionId. The link must show for both so a failed case is still
+		// clickable through to its execution; only the failed case also gets
+		// the rerun button.
+		const { getAllByTestId } = renderComponent();
+		await waitFor(() => {
+			expect(getAllByTestId('test-case-view-link')).toHaveLength(mockTestCases.length);
+			expect(getAllByTestId('test-case-rerun-button')).toHaveLength(1);
+		});
+	});
+
 	it('does not render a partial-failure callout — failures are surfaced per-card via RunStatusPill', async () => {
 		const { container, queryByText } = renderComponent();
 		await waitFor(() => {
@@ -360,11 +372,71 @@ describe('TestRunDetailView', () => {
 		const rerunButton = await waitFor(() => getByTestId('test-case-rerun-button'));
 		await fireEvent.click(rerunButton);
 
-		await waitFor(() => expect(startSpy).toHaveBeenCalledWith('test-workflow-id'));
+		// mockTestRun has no evaluationConfigId, so options should be undefined
+		await waitFor(() => expect(startSpy).toHaveBeenCalledWith('test-workflow-id', undefined));
 		await waitFor(() => {
 			expect(mockRouter.push).toHaveBeenCalledWith({
 				name: VIEWS.EVALUATION_RUNS_DETAIL,
 				params: { workflowId: 'test-workflow-id', runId: 'freshly-created-run-id' },
+			});
+		});
+	});
+
+	it('re-runs with config args when the run has an evaluationConfigId', async () => {
+		const runWithConfig: TestRunRecord = {
+			...mockTestRun,
+			evaluationConfigId: 'config-abc',
+		};
+		const localPinia = createTestingPinia({
+			initialState: {
+				evaluation: {
+					testRunsById: {
+						'test-run-id': runWithConfig,
+						'previous-run-id': mockPreviousRun,
+					},
+				},
+				workflows: {
+					workflowsById: { 'test-workflow-id': mockWorkflow },
+				},
+			},
+			stubActions: false,
+		});
+		const localStore = useEvaluationStore(localPinia);
+		const startSpy = vi.spyOn(localStore, 'startTestRun').mockResolvedValue({
+			success: true,
+			testRunId: 'config-run-id',
+		});
+		vi.spyOn(localStore, 'fetchTestRuns').mockResolvedValue([runWithConfig, mockPreviousRun]);
+		vi.spyOn(localStore, 'fetchTestCaseExecutions').mockImplementation(async () => {
+			localStore.testCaseExecutionsById = mockTestCases.reduce(
+				(acc, testCase) => {
+					acc[testCase.id] = testCase as TestCaseExecutionRecord;
+					return acc;
+				},
+				{} as Record<string, TestCaseExecutionRecord>,
+			);
+			return mockTestCases as TestCaseExecutionRecord[];
+		});
+		vi.mocked(localStore.getTestRun).mockResolvedValue(runWithConfig);
+
+		const { getByTestId } = renderComponent({
+			pinia: localPinia,
+			global: { provide: { [WorkflowIdKey]: computed(() => 'test-workflow-id') } },
+		});
+
+		const rerunButton = await waitFor(() => getByTestId('test-case-rerun-button'));
+		await fireEvent.click(rerunButton);
+
+		await waitFor(() =>
+			expect(startSpy).toHaveBeenCalledWith('test-workflow-id', {
+				evaluationConfigId: 'config-abc',
+				compileFromConfig: true,
+			}),
+		);
+		await waitFor(() => {
+			expect(mockRouter.push).toHaveBeenCalledWith({
+				name: VIEWS.EVALUATION_RUNS_DETAIL,
+				params: { workflowId: 'test-workflow-id', runId: 'config-run-id' },
 			});
 		});
 	});

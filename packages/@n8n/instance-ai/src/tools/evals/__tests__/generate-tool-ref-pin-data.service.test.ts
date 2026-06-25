@@ -1,19 +1,20 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('../../../utils/eval-agents', () => {
-	const actual: object = jest.requireActual('../../../utils/eval-agents');
-	return { ...actual, createEvalAgent: jest.fn(), extractText: jest.fn() };
+vi.mock('../../../utils/eval-agents', async () => {
+	const actual: object = await vi.importActual('../../../utils/eval-agents');
+	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
 import { createEvalAgent, extractText } from '../../../utils/eval-agents';
 import type { ToolRef } from '../detect-tool-refs.service';
 import { generateToolRefPinData } from '../generate-tool-ref-pin-data.service';
 
-const mockCreateEvalAgent = createEvalAgent as jest.MockedFunction<typeof createEvalAgent>;
-const mockExtractText = extractText as jest.MockedFunction<typeof extractText>;
+const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
+const mockExtractText = extractText as MockedFunction<typeof extractText>;
 
 function setupAgentMock(responseText: string) {
-	const generate = jest.fn().mockResolvedValue({ messages: [] });
+	const generate = vi.fn().mockResolvedValue({ messages: [] });
 	mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 		typeof createEvalAgent
 	>);
@@ -48,7 +49,7 @@ const agentNode: WorkflowJSON['nodes'][number] = {
 } as WorkflowJSON['nodes'][number];
 
 describe('generateToolRefPinData', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('returns {} when no refs are passed', async () => {
 		const result = await generateToolRefPinData({
@@ -151,7 +152,7 @@ describe('generateToolRefPinData', () => {
 	});
 
 	it('returns {} when the LLM call throws', async () => {
-		const generate = jest.fn().mockRejectedValue(new Error('boom'));
+		const generate = vi.fn().mockRejectedValue(new Error('boom'));
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);

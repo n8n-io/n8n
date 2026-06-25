@@ -1,14 +1,20 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel } from 'ai';
+import type { LanguageModel, OnStepFinishEvent, OnStepStartEvent, smoothStream } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
-import type { BuiltTool } from './tool';
-import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
-import type { AgentEvent, AgentEventHandler } from '../runtime/event';
+import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
+import type {
+	AgentEvent,
+	AgentEventHandler,
+	SubAgentCompletedPayload,
+	SubAgentStartedPayload,
+} from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONValue } from '../utils/json';
+
+export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
 export type FinishReason =
 	| 'stop'
@@ -26,6 +32,8 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	/** Estimated cost in USD, computed from models.dev pricing. */
 	cost?: number;
 	inputTokenDetails?: {
+		/** Uncached input tokens (billed at the full input rate). */
+		noCache?: number;
 		cacheRead?: number;
 		cacheWrite?: number;
 	};
@@ -90,6 +98,22 @@ export type StreamChunk = ContentMetadata &
 				type: 'tool-execution-start';
 				toolCallId: string;
 				toolName: string;
+				/** Epoch ms when the handler started, measured on the runtime. */
+				startTime: number;
+		  }
+		| {
+				/**
+				 * Emitted as soon as an individual tool handler settles, bridged from
+				 * the runtime event bus. Lets consumers flip a concurrent tool call to
+				 * its terminal state immediately, instead of waiting for the batched
+				 * `tool-result` chunks emitted only after the whole batch settles.
+				 */
+				type: 'tool-execution-end';
+				toolCallId: string;
+				toolName: string;
+				isError: boolean;
+				/** Epoch ms when the handler settled, measured on the runtime. */
+				endTime: number;
 		  }
 		| {
 				type: 'tool-result';
@@ -97,6 +121,7 @@ export type StreamChunk = ContentMetadata &
 				toolName: string;
 				output: unknown;
 				isError?: boolean;
+				canceled?: boolean;
 		  }
 		| {
 				type: 'tool-call-suspended';
@@ -110,14 +135,14 @@ export type StreamChunk = ContentMetadata &
 		  }
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
+		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
+		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
 		| {
 				type: 'finish';
 				finishReason: FinishReason;
 				usage?: TokenUsage;
 				model?: string;
 				structuredOutput?: unknown;
-				subAgentUsage?: SubAgentUsage[];
-				totalCost?: number;
 		  }
 		| { type: 'error'; error: unknown }
 	);
@@ -136,10 +161,21 @@ export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
-	/** Inherited telemetry from a parent agent. Used internally by asTool(). */
+	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
+	smoothStream?: SmoothStreamOptions | false;
+	/**
+	 * Request the provider's raw stream events so a run aborted mid-turn can still
+	 * be billed for the tokens it consumed before the stop. Off by default — only
+	 * hosts that bill stopped runs (e.g. Instance AI) need it; leaving it off avoids
+	 * streaming raw provider events that nothing consumes.
+	 */
+	recoverUsageOnAbort?: boolean;
+	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	onStepStart?: (event: OnStepStartEvent) => void | Promise<void>;
+	onStepFinish?: (event: OnStepFinishEvent) => void | Promise<void>;
 }
 
 export interface PersistedExecutionOptions {
@@ -151,16 +187,7 @@ export interface ToolResultEntry {
 	input: unknown;
 	output: unknown;
 	transformed?: boolean;
-}
-
-/** Token usage from a sub-agent called via .asTool(). */
-export interface SubAgentUsage {
-	/** Name of the sub-agent. */
-	agent: string;
-	/** Model used by the sub-agent. */
-	model?: string;
-	/** Token usage for the sub-agent call. */
-	usage: TokenUsage;
+	canceled?: boolean;
 }
 
 export interface GenerateResult {
@@ -175,10 +202,6 @@ export interface GenerateResult {
 	providerMetadata?: Record<string, unknown>;
 	/** Tool calls made during the run (with merged results when available). */
 	toolCalls?: ToolResultEntry[];
-	/** Token usage from sub-agents called via .asTool(). */
-	subAgentUsage?: SubAgentUsage[];
-	/** Total cost (USD) including this agent + all sub-agents. */
-	totalCost?: number;
 	/**
 	 * Present when the run suspended awaiting tool resume (HITL).
 	 * Call `agent.resume('generate', data, { runId, toolCallId })` to resume.
@@ -198,6 +221,8 @@ export interface GenerateResult {
 	 * callers can handle them without try/catch.
 	 */
 	error?: unknown;
+	/** Return a snapshot of the agent state for this run. */
+	getState(): SerializableAgentState;
 }
 
 export interface StreamResult {
@@ -205,6 +230,11 @@ export interface StreamResult {
 	runId: string;
 	/** The readable stream of chunks. */
 	stream: ReadableStream<StreamChunk>;
+	/**
+	 * Return the current agent state for this run.
+	 * May be called while streaming or after the stream closes.
+	 */
+	getState(): SerializableAgentState;
 }
 
 export interface ResumeOptions {
@@ -225,10 +255,6 @@ export interface BuiltAgent {
 	): Promise<StreamResult>;
 
 	on(event: AgentEvent, handler: AgentEventHandler): void;
-
-	asTool(description: string): BuiltTool;
-
-	getState(): SerializableAgentState;
 
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
 	abort(): void;
@@ -257,11 +283,11 @@ export interface BuiltAgent {
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult>;
 
-	/** Approve a tool that uses requiresApproval or needsApprovalFn */
+	/** Approve a tool that uses requireApproval or needsApprovalFn */
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 
-	/** Deny a tool that uses requiresApproval or needsApprovalFn */
+	/** Deny a tool that uses requireApproval or needsApprovalFn */
 	deny(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	deny(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 }

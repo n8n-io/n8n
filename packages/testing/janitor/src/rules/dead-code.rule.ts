@@ -1,32 +1,27 @@
-import * as fs from 'node:fs';
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
-import { isMethodFix, isPropertyFix } from '../types.js';
-import type { Violation, FixResult } from '../types.js';
-import { getRelativePath } from '../utils/paths.js';
+import type { Violation } from '../types.js';
+import { matchesPatterns } from '../utils/paths.js';
 
 /**
  * Dead Code Rule
  *
- * Finds and optionally removes unused methods, properties, and classes.
- * Uses reference tracing to detect code that isn't used anywhere in the codebase.
+ * Finds unused methods, properties, and classes via reference tracing.
  *
  * Detects:
  * - Unused public methods (no external references)
  * - Unused public properties (no external references)
  * - Dead classes (entire class not referenced externally)
  * - Empty classes (no public members)
- *
- * Supports auto-fixing with --fix --write
  */
-export class DeadCodeRule extends BaseRule {
+export class DeadCodeRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'dead-code';
 	readonly name = 'Dead Code';
-	readonly description = 'Find and remove unused methods, properties, and classes';
+	readonly description = 'Find unused methods, properties, and classes';
 	readonly severity = 'warning' as const;
-	readonly fixable = true;
 
 	getTargetGlobs(): string[] {
 		const config = getConfig();
@@ -38,7 +33,25 @@ export class DeadCodeRule extends BaseRule {
 		];
 	}
 
-	analyze(project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		// Reference resolution needs the whole suite loaded (a method used only by a
+		// test must be seen as referenced) — so load broadly and filter to targets below.
+		return {
+			packages: ['.'],
+			spec: { globs: ['**/*.ts', '!**/*.d.ts', '!node_modules/**'], resolveDependencies: true },
+		};
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(
+		project: Project,
+		files: SourceFile[] = project
+			.getSourceFiles()
+			.filter((f) => matchesPatterns(f.getFilePath(), this.getTargetGlobs())),
+	): Violation[] {
 		const violations: Violation[] = [];
 
 		for (const file of files) {
@@ -75,7 +88,7 @@ export class DeadCodeRule extends BaseRule {
 		classDecl: ReturnType<SourceFile['getClasses']>[0],
 		className: string,
 	): Violation {
-		return this.createViolation(
+		return this.fileViolation(
 			file,
 			classDecl.getStartLineNumber(),
 			0,
@@ -103,7 +116,7 @@ export class DeadCodeRule extends BaseRule {
 				!this.hasTextUsage(project, file, methodName)
 			) {
 				violations.push(
-					this.createViolation(
+					this.fileViolation(
 						file,
 						method.getStartLineNumber(),
 						0,
@@ -133,7 +146,7 @@ export class DeadCodeRule extends BaseRule {
 			const propName = prop.getName();
 			if (!this.hasExternalReferences(file, prop) && !this.hasTextUsage(project, file, propName)) {
 				violations.push(
-					this.createViolation(
+					this.fileViolation(
 						file,
 						prop.getStartLineNumber(),
 						0,
@@ -188,131 +201,5 @@ export class DeadCodeRule extends BaseRule {
 				ref.getSourceFile() !== sourceFile ||
 				ref.getStartLineNumber() !== node.getStartLineNumber(),
 		);
-	}
-
-	fix(project: Project, violations: Violation[], write: boolean): FixResult[] {
-		const results: FixResult[] = [];
-		const byFile = this.groupViolationsByFile(violations);
-		const filesToDelete = new Set<string>();
-
-		for (const [filePath, fileViolations] of byFile) {
-			const sourceFile = project.getSourceFile(filePath);
-			if (!sourceFile) continue;
-
-			// Check if entire file should be deleted
-			if (this.shouldDeleteFile(sourceFile, fileViolations)) {
-				filesToDelete.add(filePath);
-				results.push(this.createFixResult(filePath, 'remove-file', write));
-				continue;
-			}
-
-			// Process individual member removals
-			results.push(...this.processFileViolations(sourceFile, filePath, fileViolations, write));
-		}
-
-		// Apply changes
-		if (write) {
-			project.saveSync();
-			this.deleteFiles(filesToDelete);
-		}
-
-		return results;
-	}
-
-	private groupViolationsByFile(violations: Violation[]): Map<string, Violation[]> {
-		const byFile = new Map<string, Violation[]>();
-		for (const v of violations) {
-			if (!v.fixable || !v.fixData) continue;
-			const existing = byFile.get(v.file) ?? [];
-			existing.push(v);
-			byFile.set(v.file, existing);
-		}
-		return byFile;
-	}
-
-	private shouldDeleteFile(sourceFile: SourceFile, fileViolations: Violation[]): boolean {
-		const deadClassViolations = fileViolations.filter((v) => v.fixData?.type === 'class');
-		const allClassesInFile = sourceFile.getClasses();
-		return deadClassViolations.length === allClassesInFile.length && allClassesInFile.length > 0;
-	}
-
-	private createFixResult(
-		filePath: string,
-		action: 'remove-file' | 'remove-method' | 'remove-property',
-		write: boolean,
-		target?: string,
-	): FixResult {
-		return {
-			file: getRelativePath(filePath),
-			action,
-			target,
-			applied: write,
-		};
-	}
-
-	private processFileViolations(
-		sourceFile: SourceFile,
-		filePath: string,
-		fileViolations: Violation[],
-		write: boolean,
-	): FixResult[] {
-		const results: FixResult[] = [];
-
-		for (const violation of fileViolations) {
-			const fixData = violation.fixData;
-			if (!fixData) continue;
-			if (!isMethodFix(fixData) && !isPropertyFix(fixData)) continue;
-
-			const classDecl = sourceFile.getClass(fixData.className);
-			if (!classDecl) continue;
-
-			const result = this.removeMember(classDecl, filePath, fixData, write);
-			if (result) results.push(result);
-		}
-
-		return results;
-	}
-
-	private removeMember(
-		classDecl: ReturnType<SourceFile['getClass']>,
-		filePath: string,
-		fixData: { type: 'method' | 'property'; className: string; memberName: string },
-		write: boolean,
-	): FixResult | null {
-		if (!classDecl) return null;
-
-		if (fixData.type === 'method') {
-			const method = classDecl.getMethod(fixData.memberName);
-			if (method) {
-				if (write) method.remove();
-				return this.createFixResult(
-					filePath,
-					'remove-method',
-					write,
-					`${fixData.className}.${fixData.memberName}()`,
-				);
-			}
-		} else if (fixData.type === 'property') {
-			const prop = classDecl.getProperty(fixData.memberName);
-			if (prop) {
-				if (write) prop.remove();
-				return this.createFixResult(
-					filePath,
-					'remove-property',
-					write,
-					`${fixData.className}.${fixData.memberName}`,
-				);
-			}
-		}
-
-		return null;
-	}
-
-	private deleteFiles(filesToDelete: Set<string>): void {
-		for (const filePath of filesToDelete) {
-			if (fs.existsSync(filePath)) {
-				fs.unlinkSync(filePath);
-			}
-		}
 	}
 }

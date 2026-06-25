@@ -14,6 +14,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 import {
 	useProjectAgentsList,
+	removeProjectAgentFromListCache,
+	upsertProjectAgentsListCache,
 	__clearProjectAgentsListCacheForTests,
 } from '../composables/useProjectAgentsList';
 
@@ -74,5 +76,40 @@ describe('useProjectAgentsList', () => {
 		listAgents.mockResolvedValueOnce([{ id: 'a1', name: 'Agent One' }]);
 		const next = await ensureLoaded();
 		expect(next).toEqual([{ id: 'a1', name: 'Agent One' }]);
+	});
+
+	it('reactively upserts cached agents after publish or create', async () => {
+		listAgents.mockResolvedValueOnce([{ id: 'a1', name: 'Agent One', activeVersionId: null }]);
+		const { list, ensureLoaded } = useProjectAgentsList(ref('p1'));
+
+		await ensureLoaded();
+		upsertProjectAgentsListCache('p1', {
+			id: 'a1',
+			name: 'Agent One',
+			activeVersionId: 'version-1',
+		} as never);
+		upsertProjectAgentsListCache('p1', {
+			id: 'a2',
+			name: 'Agent Two',
+			activeVersionId: null,
+		} as never);
+
+		expect(list.value).toEqual([
+			{ id: 'a2', name: 'Agent Two', activeVersionId: null },
+			{ id: 'a1', name: 'Agent One', activeVersionId: 'version-1' },
+		]);
+	});
+
+	it('reactively removes cached agents after delete', async () => {
+		listAgents.mockResolvedValueOnce([
+			{ id: 'a1', name: 'Agent One' },
+			{ id: 'a2', name: 'Agent Two' },
+		]);
+		const { list, ensureLoaded } = useProjectAgentsList(ref('p1'));
+
+		await ensureLoaded();
+		removeProjectAgentFromListCache('p1', 'a1');
+
+		expect(list.value).toEqual([{ id: 'a2', name: 'Agent Two' }]);
 	});
 });

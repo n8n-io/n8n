@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { AGENT_TASK_OBJECTIVE_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -9,17 +9,25 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import AgentTaskModal from '../components/AgentTaskModal.vue';
+import { formatScheduleDateTime } from '../utils/scheduleBuilder';
 
 // Components use `data-testid`; the global setup configures `data-test-id`.
 configure({ testIdAttribute: 'data-testid' });
 
 vi.mock('@n8n/i18n', () => {
-	const i18n = { baseText: (key: string) => key };
+	const i18n = {
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
+			options?.interpolate?.occurrence ? `${key} ${options.interpolate.occurrence}` : key,
+	};
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
 
+const { rootStoreMock } = vi.hoisted(() => ({
+	rootStoreMock: { restApiContext: {}, timezone: 'UTC' },
+}));
+
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {}, timezone: 'UTC' }),
+	useRootStore: () => rootStoreMock,
 }));
 
 const createAgentTaskSpy = vi.fn();
@@ -110,11 +118,18 @@ describe('AgentTaskModal', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.useRealTimers();
+		rootStoreMock.timezone = 'UTC';
 		createTestingPinia({ stubActions: false });
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
 		confirmSpy.mockResolvedValue(MODAL_CONFIRM);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	it('creates a published task with the form values', async () => {
@@ -208,6 +223,28 @@ describe('AgentTaskModal', () => {
 		await fireEvent.click(getByTestId('agent-task-toggle'));
 
 		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
+	});
+
+	it('formats the next run preview in the user timezone', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-01-01T13:00:00.000Z'));
+		rootStoreMock.timezone = 'America/New_York';
+		const browserTimezone = 'UTC';
+		const originalResolvedOptions = new Intl.DateTimeFormat().resolvedOptions();
+		vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
+			...originalResolvedOptions,
+			timeZone: browserTimezone,
+		});
+
+		const { getByText } = renderModal({ task: makeTask({ cronExpression: '0 9 * * *' }) });
+
+		const nextRunInUserTimezone = formatScheduleDateTime(
+			new Date('2026-01-01T14:00:00.000Z'),
+			browserTimezone,
+		);
+		expect(
+			getByText(`agents.builder.tasks.schedule.nextOccurrence ${nextRunInUserTimezone}`),
+		).toBeInTheDocument();
 	});
 
 	it('runs an existing task and shows a success toast', async () => {

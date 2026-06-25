@@ -54,8 +54,36 @@ describe('AgentExecutionThreadRepository', () => {
 				taskId: null,
 				taskVersionId: null,
 				sessionNumber: 8,
+				parentThreadId: null,
+				parentAgentId: null,
 			});
 			expect(result).toEqual({ thread: saved, created: true });
+		});
+
+		it('stores subagent origin metadata when creating a thread', async () => {
+			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
+			const scopedRepository = makeScopedRepository(saved);
+			const trx = { getRepository: jest.fn().mockReturnValue(scopedRepository) };
+			entityManager.transaction.mockImplementationOnce(async (_isolation, callback) => {
+				return await callback(trx as never);
+			});
+
+			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', {
+				parentThreadId: 'parent-thread-1',
+				parentAgentId: 'parent-agent-1',
+			});
+
+			expect(scopedRepository.create).toHaveBeenCalledWith({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'project-1',
+				taskId: null,
+				taskVersionId: null,
+				sessionNumber: 8,
+				parentThreadId: 'parent-thread-1',
+				parentAgentId: 'parent-agent-1',
+			});
 		});
 
 		it('stores the published task snapshot version when supplied', async () => {
@@ -71,6 +99,7 @@ describe('AgentExecutionThreadRepository', () => {
 				'agent-1',
 				'Support agent',
 				'project-1',
+				undefined,
 				'task-1',
 				'version-1',
 			);

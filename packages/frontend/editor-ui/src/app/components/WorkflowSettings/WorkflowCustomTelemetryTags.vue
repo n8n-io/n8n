@@ -57,9 +57,9 @@ const getTagErrors = (tagsToValidate: ICustomTelemetryTag[]) => {
 	const seen = new Set<string>();
 	return tagsToValidate.map((tag) => {
 		const trimmedKey = tag.key.trim();
-		if (!trimmedKey) return i18n.baseText('workflowSettings.customTelemetryTags.error.emptyKey');
+		if (!trimmedKey) return i18n.baseText('workflowSettings.customSpanAttributes.error.emptyKey');
 		if (seen.has(trimmedKey)) {
-			return i18n.baseText('workflowSettings.customTelemetryTags.error.duplicateKey');
+			return i18n.baseText('workflowSettings.customSpanAttributes.error.duplicateKey');
 		}
 		seen.add(trimmedKey);
 		return null;
@@ -85,14 +85,14 @@ const areControlsDisabled = computed(() => props.isReadOnly || isSaving.value);
 const configuredTagsCount = computed(() => tags.value.length);
 const hasConfiguredTags = computed(() => configuredTagsCount.value > 0);
 const configuredTagsCountLabel = computed(() =>
-	i18n.baseText('workflowSettings.customTelemetryTags.configuredCount' as BaseTextKey, {
+	i18n.baseText('workflowSettings.customSpanAttributes.configuredCount' as BaseTextKey, {
 		adjustToNumber: configuredTagsCount.value,
 		interpolate: { count: configuredTagsCount.value },
 	}),
 );
 const configureButtonAriaLabel = computed(() => {
-	const label = `${i18n.baseText('workflowSettings.customTelemetryTags.configure')} ${i18n
-		.baseText('workflowSettings.customTelemetryTags.displayName')
+	const label = `${i18n.baseText('workflowSettings.customSpanAttributes.configure')} ${i18n
+		.baseText('workflowSettings.customSpanAttributes.displayName')
 		.toLowerCase()}`;
 
 	return hasConfiguredTags.value
@@ -173,10 +173,10 @@ const onModalOpenChange = (open: boolean) => {
 		>
 			<ElCol :span="10" :class="$style.settingName">
 				<label>
-					{{ i18n.baseText('workflowSettings.customTelemetryTags.displayName') }}
+					{{ i18n.baseText('workflowSettings.customSpanAttributes.displayName') }}
 					<N8nTooltip placement="top">
 						<template #content>
-							{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
+							{{ i18n.baseText('workflowSettings.customSpanAttributes.description') }}
 						</template>
 						<N8nIcon icon="circle-help" />
 					</N8nTooltip>
@@ -193,7 +193,7 @@ const onModalOpenChange = (open: boolean) => {
 						data-test-id="workflow-settings-custom-telemetry-tags-configure"
 						@click="openModal"
 					>
-						{{ i18n.baseText('workflowSettings.customTelemetryTags.configure') }}
+						{{ i18n.baseText('workflowSettings.customSpanAttributes.configure') }}
 					</N8nButton>
 					<span
 						v-if="hasConfiguredTags"
@@ -228,20 +228,20 @@ const onModalOpenChange = (open: boolean) => {
 						@click="cancelModal"
 					/>
 					<N8nDialogTitle>
-						{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.title') }}
+						{{ i18n.baseText('workflowSettings.customSpanAttributes.modal.title') }}
 					</N8nDialogTitle>
 				</div>
 				<N8nDialogDescription :class="$style.customTelemetryTagsModalDescription">
-					{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
+					{{ i18n.baseText('workflowSettings.customSpanAttributes.description') }}
 					{{ ' ' }}
-					{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.learnMore') }}
+					{{ i18n.baseText('workflowSettings.customSpanAttributes.modal.learnMore') }}
 					{{ ' ' }}
 					<a
 						:class="$style.customTelemetryTagsDocsLink"
 						:href="OPEN_TELEMETRY_DOCS_URL"
 						target="_blank"
 					>
-						{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.documentation') }}
+						{{ i18n.baseText('workflowSettings.customSpanAttributes.modal.documentation') }}
 						<N8nIcon icon="arrow-up-right" size="xsmall" />
 					</a>
 				</N8nDialogDescription>
@@ -260,7 +260,7 @@ const onModalOpenChange = (open: boolean) => {
 						:class="$style.customTelemetryTagsField"
 						:label="
 							index === 0
-								? i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName')
+								? i18n.baseText('workflowSettings.customSpanAttributes.tag.key.displayName')
 								: undefined
 						"
 						size="small"
@@ -272,10 +272,10 @@ const onModalOpenChange = (open: boolean) => {
 							size="medium"
 							:disabled="areControlsDisabled"
 							:placeholder="
-								i18n.baseText('workflowSettings.customTelemetryTags.tag.key.placeholder')
+								i18n.baseText('workflowSettings.customSpanAttributes.tag.key.placeholder')
 							"
 							:aria-label="
-								i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName')
+								i18n.baseText('workflowSettings.customSpanAttributes.tag.key.displayName')
 							"
 							data-test-id="workflow-settings-custom-telemetry-tags-key"
 							@update:model-value="updateDraftTag(index, 'key', String($event))"
@@ -285,7 +285,7 @@ const onModalOpenChange = (open: boolean) => {
 						:class="$style.customTelemetryTagsField"
 						:label="
 							index === 0
-								? i18n.baseText('workflowSettings.customTelemetryTags.tag.value.displayName')
+								? i18n.baseText('workflowSettings.customSpanAttributes.tag.value.displayName')
 								: undefined
 						"
 						size="small"
@@ -297,10 +297,10 @@ const onModalOpenChange = (open: boolean) => {
 							size="medium"
 							:disabled="areControlsDisabled"
 							:placeholder="
-								i18n.baseText('workflowSettings.customTelemetryTags.tag.value.placeholder')
+								i18n.baseText('workflowSettings.customSpanAttributes.tag.value.placeholder')
 							"
 							:aria-label="
-								i18n.baseText('workflowSettings.customTelemetryTags.tag.value.displayName')
+								i18n.baseText('workflowSettings.customSpanAttributes.tag.value.displayName')
 							"
 							data-test-id="workflow-settings-custom-telemetry-tags-value"
 							@update:model-value="updateDraftTag(index, 'value', String($event))"
@@ -311,8 +311,8 @@ const onModalOpenChange = (open: boolean) => {
 						variant="ghost"
 						size="small"
 						:disabled="areControlsDisabled"
-						:title="i18n.baseText('workflowSettings.customTelemetryTags.delete')"
-						:aria-label="i18n.baseText('workflowSettings.customTelemetryTags.delete')"
+						:title="i18n.baseText('workflowSettings.customSpanAttributes.delete')"
+						:aria-label="i18n.baseText('workflowSettings.customSpanAttributes.delete')"
 						data-test-id="workflow-settings-custom-telemetry-tags-delete"
 						@click="deleteTag(index)"
 					/>
@@ -327,7 +327,7 @@ const onModalOpenChange = (open: boolean) => {
 					data-test-id="workflow-settings-custom-telemetry-tags-add"
 					@click="addTag"
 				>
-					{{ i18n.baseText('workflowSettings.customTelemetryTags.placeholder') }}
+					{{ i18n.baseText('workflowSettings.customSpanAttributes.placeholder') }}
 				</N8nButton>
 				<N8nText
 					v-if="draftValidationError"

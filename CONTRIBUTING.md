@@ -135,6 +135,21 @@ brew install actionlint
 ```
 > **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
 
+#### tbls (for database schema docs)
+
+The database schema docs under [`docs/generated/`](docs/generated) are generated from the migrations with [tbls](https://github.com/k1LoW/tbls). If you plan to modify DB migrations, you'll need **either** tbls installed **or** Docker available.
+
+**macOS (Homebrew):**
+```bash
+brew install tbls
+```
+
+For other platforms, see the [tbls install guide](https://github.com/k1LoW/tbls#install).
+
+> **Note:** tbls is only required if you're modifying DB migrations. It runs automatically via git hooks when migration files are changed.
+
+---
+
 ### Actual n8n setup
 
 > **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!

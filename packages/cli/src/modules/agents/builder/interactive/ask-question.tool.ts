@@ -27,11 +27,12 @@ export function buildAskQuestionTool(): BuiltTool {
 				ctx: InterruptibleToolContext<AskQuestionInput, AskQuestionResume>,
 			) => {
 				if (ctx.resumeData !== undefined) return ctx.resumeData;
-				// A single concrete option has no real choice — auto-pick it so the
-				// LLM doesn't render a card the user can only confirm. Open-ended
-				// questions use an empty options array and still suspend (the card
-				// renders a freeform-only input).
-				if (input.options.length === 1) {
+				// A single single-select option has no real choice — auto-pick it so
+				// the LLM doesn't render a card the user can only confirm. Multi-select
+				// questions still render so the user can decide whether to select the
+				// one option, and open-ended questions (empty options array) still
+				// suspend to show the freeform-only card.
+				if (input.options.length === 1 && input.allowMultiple !== true) {
 					return { values: [input.options[0].value] };
 				}
 				return await ctx.suspend(input);

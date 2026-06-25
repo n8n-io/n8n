@@ -507,7 +507,8 @@ export class FacebookGraphApi implements INodeType {
 					// Unknown Graph API response, we'll dump everything in the response item
 					errorItem = error;
 				}
-				returnItems.push({ json: { ...errorItem } });
+
+				returnItems.push({ json: { error: errorItem }, pairedItem: { item: itemIndex } });
 
 				continue;
 			}
@@ -519,11 +520,11 @@ export class FacebookGraphApi implements INodeType {
 					});
 				}
 
-				returnItems.push({ json: { message: response } });
+				returnItems.push({ json: { message: response }, pairedItem: { item: itemIndex } });
 				continue;
 			}
 
-			returnItems.push({ json: response });
+			returnItems.push({ json: response, pairedItem: { item: itemIndex } });
 		}
 
 		return [returnItems];
