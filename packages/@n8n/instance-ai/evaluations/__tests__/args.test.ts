@@ -94,3 +94,23 @@ describe('parseCliArgs --exclude', () => {
 		expect(args.exclude).toBe('cross-team,deduplication');
 	});
 });
+
+describe('parseCliArgs --baseline-prefix', () => {
+	it('defaults to the instance-ai baseline prefix', () => {
+		expect(parseCliArgs([]).baselinePrefix).toBe('instance-ai-baseline-');
+	});
+
+	it('appends the required trailing hyphen when missing', () => {
+		// Anchors the prefix match to LangSmith's `-<suffix>` separator so it can't
+		// catch unrelated experiment names (e.g. `mcp-baseline` vs `mcp-baseline2-`).
+		expect(parseCliArgs(['--baseline-prefix', 'mcp-baseline']).baselinePrefix).toBe(
+			'mcp-baseline-',
+		);
+	});
+
+	it('leaves an existing trailing hyphen intact', () => {
+		expect(parseCliArgs(['--baseline-prefix', 'mcp-baseline-']).baselinePrefix).toBe(
+			'mcp-baseline-',
+		);
+	});
+});

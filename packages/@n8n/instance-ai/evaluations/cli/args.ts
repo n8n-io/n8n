@@ -90,7 +90,15 @@ const cliArgsSchema = z.object({
 	iterations: z.number().int().positive().default(1),
 	pinAiRoots: z.array(z.string().min(1)).optional(),
 	tier: z.string().min(1).optional(),
-	baselinePrefix: z.string().min(1).default(BASELINE_EXPERIMENT_PREFIX),
+	// Normalize to a trailing hyphen. The baseline lookup matches by prefix and
+	// LangSmith always appends `-<suffix>` to the experiment name, so the hyphen
+	// anchors the match to that separator — without it `mcp-baseline` would also
+	// match unrelated names like `mcp-baseline2-...`. Mirrors BASELINE_EXPERIMENT_PREFIX.
+	baselinePrefix: z
+		.string()
+		.min(1)
+		.transform((s) => (s.endsWith('-') ? s : `${s}-`))
+		.default(BASELINE_EXPERIMENT_PREFIX),
 });
 
 // ---------------------------------------------------------------------------
