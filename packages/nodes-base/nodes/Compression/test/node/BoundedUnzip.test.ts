@@ -52,8 +52,10 @@ function createZipOfNestedArchivesWithDataDescriptors(memberNames: string[]): {
  * Builds a valid, small ZIP64 archive holding a single entry. The entry's true
  * uncompressed size is stored in a ZIP64 extended-information extra field, while
  * the central-directory uncompressed-size field carries the 0xFFFFFFFF ZIP64
- * sentinel. Several real-world writers always emit ZIP64-format entries, so this
- * mirrors the archive reported in NODE-5325.
+ * sentinel. A ZIP64 end-of-central-directory record and its locator are emitted
+ * too, flagging the whole archive as ZIP64 — without that flag a spec-conforming
+ * reader ignores the per-entry extra field. Several real-world writers always
+ * emit ZIP64-format archives, so this mirrors the archive reported in NODE-5325.
  */
 function createZip64Archive(realSize: number, options?: { leadingExtraField?: boolean }): Buffer {
 	const base = Buffer.from(
@@ -65,9 +67,9 @@ function createZip64Archive(realSize: number, options?: { leadingExtraField?: bo
 	if (cdOffset === -1 || eocdOffset === -1) throw new Error('Could not locate zip records');
 
 	// Optionally precede the ZIP64 block with an unrelated extra field, as real
-	// writers do (e.g. an NTFS timestamp block), so the parser must skip it.
+	// writers do (e.g. an NTFS timestamp block), so the reader must skip it.
 	// Header id 0x9999, data size 2: a 6-byte block so the ZIP64 block that
-	// follows is not 4-byte aligned, forcing the parser to honour the declared
+	// follows is not 4-byte aligned, forcing the reader to honour the declared
 	// block length when skipping.
 	const leading = options?.leadingExtraField
 		? Buffer.from([0x99, 0x99, 0x02, 0x00, 0x00, 0x00])
@@ -85,10 +87,32 @@ function createZip64Archive(realSize: number, options?: { leadingExtraField?: bo
 	cdHeader.writeUInt32LE(0xffffffff, 24); // uncompressed size -> ZIP64 sentinel
 	cdHeader.writeUInt16LE(base.readUInt16LE(cdOffset + 30) + extra.length, 30); // grow extra field len
 
-	const eocd = Buffer.from(base.subarray(eocdOffset));
-	eocd.writeUInt32LE(eocd.readUInt32LE(12) + extra.length, 12); // grow central directory size
+	const centralDir = Buffer.concat([cdHeader, extra]);
+	const cdSize = centralDir.length;
 
-	return Buffer.concat([base.subarray(0, cdOffset), cdHeader, extra, eocd]);
+	// ZIP64 end-of-central-directory record (56 bytes).
+	const zip64Eocd = Buffer.alloc(56);
+	zip64Eocd.writeUInt32LE(0x06064b50, 0); // signature
+	zip64Eocd.writeBigUInt64LE(44n, 4); // size of the record following this field
+	zip64Eocd.writeUInt16LE(45, 12); // version made by
+	zip64Eocd.writeUInt16LE(45, 14); // version needed to extract
+	zip64Eocd.writeBigUInt64LE(1n, 24); // entries on this disk
+	zip64Eocd.writeBigUInt64LE(1n, 32); // total entries
+	zip64Eocd.writeBigUInt64LE(BigInt(cdSize), 40); // central directory size
+	zip64Eocd.writeBigUInt64LE(BigInt(cdOffset), 48); // central directory offset
+	const zip64EocdOffset = cdOffset + cdSize;
+
+	// ZIP64 end-of-central-directory locator (20 bytes).
+	const zip64Locator = Buffer.alloc(20);
+	zip64Locator.writeUInt32LE(0x07064b50, 0); // signature
+	zip64Locator.writeBigUInt64LE(BigInt(zip64EocdOffset), 8); // offset of the ZIP64 EOCD record
+	zip64Locator.writeUInt32LE(1, 16); // total number of disks
+
+	const eocd = Buffer.from(base.subarray(eocdOffset));
+	eocd.writeUInt32LE(cdSize, 12); // central directory size
+	eocd.writeUInt32LE(cdOffset, 16); // central directory offset
+
+	return Buffer.concat([base.subarray(0, cdOffset), centralDir, zip64Eocd, zip64Locator, eocd]);
 }
 
 function createZipWithUnsupportedCompression(): Buffer {
