@@ -2756,7 +2756,14 @@ export class WorkflowExecute {
 
 					if (executionData.source === null || pairedItemData === undefined) {
 						// Source data is missing for some reason so we can not figure out the item
-						errorItems.push(item);
+						errorItems.push({
+							...item,
+							// json: {
+							// 	...item.json,
+							// 	...(!('execution_status' in item.json) && { execution_status: 'error' }),
+							// },
+							json: this.addExecutionStatus(item.json, 'error'),
+						});
 					} else {
 						const pairedItemInputIndex = pairedItemData.input || 0;
 
@@ -2769,19 +2776,28 @@ export class WorkflowExecute {
 						);
 
 						if (constPairedItem === null) {
-							errorItems.push(item);
+							errorItems.push({
+								...item,
+								json: this.addExecutionStatus(item.json, 'error'),
+							});
 						} else {
+							const pairedJson = constPairedItem.json ?? {};
 							errorItems.push({
 								...item,
 								json: {
-									...constPairedItem.json,
+									...pairedJson,
 									...item.json,
+									...(!('execution_status' in item.json) &&
+										!('execution_status' in pairedJson) && { execution_status: 'error' }),
 								},
 							});
 						}
 					}
 				} else {
-					successItems.push(item);
+					successItems.push({
+						...item,
+						json: this.addExecutionStatus(item.json, 'success'),
+					});
 				}
 			}
 
@@ -2879,6 +2895,15 @@ export class WorkflowExecute {
 				}
 			});
 		});
+	}
+
+	private addExecutionStatus(json: IDataObject, status: 'success' | 'error'): IDataObject {
+		return {
+			...json,
+			...(!('execution_status' in json) && {
+				execution_status: status,
+			}),
+		};
 	}
 
 	private get isCancelled() {
