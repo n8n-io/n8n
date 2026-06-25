@@ -17,7 +17,13 @@ import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
-import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
+import {
+	DEFAULT_QUEUE_NAME,
+	poolQueueName,
+	resolveQueueName,
+	resolveWorkerPoolName,
+} from './queue-name';
+import { WorkerPoolsService } from './worker-pools.service';
 import type {
 	JobQueue,
 	Job,
@@ -52,6 +58,7 @@ export class ScalingService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
+		private readonly workerPoolsService: WorkerPoolsService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -674,6 +681,10 @@ export class ScalingService {
 			return waitMs;
 		}
 
+		// Pool queues are created lazily, so on a fresh leader they may be absent from `queueByName`;
+		// instantiate them first, else pooled jobs are missed and their executions wrongly crashed.
+		await this.ensurePoolQueuesExist();
+
 		const runningJobs = await this.findJobsByStatus(['active', 'waiting']);
 		const queuedIds = new Set(runningJobs.map((job) => job.data.executionId));
 
@@ -693,6 +704,14 @@ export class ScalingService {
 		// dangling executions outside this check, so speed up next cycle
 
 		return storedIds.length >= this.queueRecoveryContext.batchSize ? waitMs / 2 : waitMs;
+	}
+
+	/** Instantiate any pool queues registered by workers but not yet created on this instance. */
+	private async ensurePoolQueuesExist() {
+		if (!this.globalConfig.queue.workerPool.enabled) return;
+
+		const pools = await this.workerPoolsService.getAvailablePools();
+		await Promise.all(pools.map(async (pool) => await this.getOrCreateQueue(poolQueueName(pool))));
 	}
 
 	private toErrorMsg(error: unknown) {

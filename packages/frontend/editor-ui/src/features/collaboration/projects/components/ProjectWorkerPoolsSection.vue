@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const onUpdate = (value: string) => {
-	emit('update:defaultPool', value === '' ? '' : value);
+	emit('update:defaultPool', value || null);
 };
 </script>
 
