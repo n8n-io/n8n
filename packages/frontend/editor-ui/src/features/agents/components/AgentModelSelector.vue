@@ -69,13 +69,18 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCreditsAndGetCredential } =
-	useFreeAiCredits();
 const searchQuery = ref('');
 
 const selectedCredentialId = computed(() =>
 	selectedModel ? credentials?.[selectedModel.provider] : undefined,
 );
+
+const projectHasOpenAiCredential = computed(() =>
+	Boolean(credentials?.[FREE_OPENAI_CREDITS_PROVIDER]),
+);
+
+const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCreditsAndGetCredential } =
+	useFreeAiCredits({ hasOpenAiCredential: projectHasOpenAiCredential });
 
 const selectedCredential = computed(() =>
 	selectedCredentialId.value
@@ -153,7 +158,7 @@ function freeOpenAiCreditsItemId(): string {
 }
 
 const canUseFreeOpenAiCredits = computed(
-	() => credentials !== null && userCanClaimOpenAiCredits.value,
+	() => credentials !== null && canCreateCredentials.value && userCanClaimOpenAiCredits.value,
 );
 
 const freeOpenAiCreditsDescription = computed(() =>
@@ -221,6 +226,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 							credentialType: credentialTypes[0],
 							leadingIcon: 'sparkles',
 							description: freeOpenAiCreditsDescription.value,
+							descriptionTooltipTeleported: false,
 						},
 					},
 				]
@@ -235,6 +241,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				data: {
 					provider,
 					description: model.description ?? undefined,
+					descriptionTooltipTeleported: false,
 					fullName: `${model.name} ${model.model}`,
 					credentialType: credentialTypes[0],
 				},
@@ -274,8 +281,8 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					: undefined,
 		},
 		children: [
-			...configureCredentialItems,
 			...freeOpenAiCreditsItems,
+			...configureCredentialItems,
 			...credentialItems,
 			...modelItems,
 			...statusItems,
@@ -303,11 +310,11 @@ const menu = computed(() => {
 	});
 });
 
-function isSearchableModelItem(item: MenuItem): boolean {
-	return item.id.includes('::model::') && !item.disabled;
+function isSearchableItem(item: MenuItem): boolean {
+	return (item.id.includes('::model::') || item.id.includes('::freeCredits::')) && !item.disabled;
 }
 
-function collectMatchingModelItems(
+function collectMatchingItems(
 	item: MenuItem,
 	query: string,
 	parts: string[],
@@ -320,19 +327,19 @@ function collectMatchingModelItems(
 
 	if (children.length === 0) {
 		const searchText = `${item.data?.fullName ?? item.label}`.toLowerCase();
-		if (!isSearchableModelItem(item) || (!isMatched && !searchText.includes(query))) return [];
+		if (!isSearchableItem(item) || (!isMatched && !searchText.includes(query))) return [];
 		return [
 			{
 				...item,
 				divided: false,
-				data: item.data ? { ...item.data, parts: currentParts } : undefined,
+				data: item.data
+					? { ...item.data, parts: currentParts, descriptionTooltipTeleported: true }
+					: undefined,
 			},
 		];
 	}
 
-	return children.flatMap((child) =>
-		collectMatchingModelItems(child, query, currentParts, isMatched),
-	);
+	return children.flatMap((child) => collectMatchingItems(child, query, currentParts, isMatched));
 }
 
 const filteredMenu = computed(() => {
@@ -340,7 +347,7 @@ const filteredMenu = computed(() => {
 	if (!query) return menu.value;
 
 	return menu.value.flatMap<MenuItem>((providerItem) => {
-		const results = collectMatchingModelItems(providerItem, query, []);
+		const results = collectMatchingItems(providerItem, query, []);
 		if (results.length <= MAX_SEARCH_RESULTS_PER_PROVIDER) return results;
 
 		return [
@@ -390,6 +397,8 @@ async function onSelect(id: string) {
 	}
 
 	if (action === 'freeCredits' && providerId === FREE_OPENAI_CREDITS_PROVIDER) {
+		if (!canUseFreeOpenAiCredits.value) return;
+
 		const credential = await claimCreditsAndGetCredential(
 			'agentBuilderModelSelector',
 			createCredentialProjectId.value,

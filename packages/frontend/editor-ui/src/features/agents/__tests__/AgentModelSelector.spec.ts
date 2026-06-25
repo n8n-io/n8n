@@ -9,7 +9,7 @@ type TestMenuItem = {
 	id: string;
 	label: string;
 	children?: TestMenuItem[];
-	data?: { badgeLabel?: string; description?: string };
+	data?: { badgeLabel?: string; description?: string; descriptionTooltipTeleported?: boolean };
 };
 
 const credentialsByType = vi.hoisted(() => ({
@@ -24,6 +24,7 @@ const freeAiCreditsState = vi.hoisted(() => ({
 	claimingCredits: { value: false },
 	claimCreditsAndGetCredential: vi.fn(),
 }));
+const canCreateCredentials = vi.hoisted(() => ({ value: true }));
 const openNewCredential = vi.hoisted(() => vi.fn());
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
@@ -56,7 +57,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/permissions', () => ({
-	getResourcePermissions: () => ({ credential: { create: true } }),
+	getResourcePermissions: () => ({ credential: { create: canCreateCredentials.value } }),
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -154,9 +155,20 @@ function getProviderItem(wrapper: VueWrapper, provider: string) {
 	);
 }
 
+function getMenuItemByLabel(items: TestMenuItem[], label: string): TestMenuItem | undefined {
+	for (const item of items) {
+		if (item.label === label) return item;
+		const child = getMenuItemByLabel(item.children ?? [], label);
+		if (child) return child;
+	}
+
+	return undefined;
+}
+
 function getFreeOpenAiCreditsItem(wrapper: VueWrapper) {
-	return getProviderItem(wrapper, 'openai')?.children?.find(
-		(item) => item.label === 'Use free OpenAI credits',
+	return getMenuItemByLabel(
+		getDropdown(wrapper).props('items') as TestMenuItem[],
+		'Use free OpenAI credits',
 	);
 }
 
@@ -169,6 +181,7 @@ describe('AgentModelSelector', () => {
 		freeAiCreditsState.userCanClaimOpenAiCredits.value = false;
 		freeAiCreditsState.claimingCredits.value = false;
 		freeAiCreditsState.claimCreditsAndGetCredential.mockReset();
+		canCreateCredentials.value = true;
 	});
 
 	it('surfaces a stale selected credential as missing', async () => {
@@ -216,12 +229,17 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({});
 		const openAiItem = getProviderItem(wrapper, 'openai');
 		const freeCreditsItem = getFreeOpenAiCreditsItem(wrapper);
+		const openAiChildLabels = openAiItem?.children?.map((item) => item.label) ?? [];
 
 		expect(openAiItem?.data?.badgeLabel).toBe('free credits');
 		expect(JSON.stringify(openAiItem?.children ?? [])).toContain('Use free OpenAI credits');
+		expect(openAiChildLabels.indexOf('Use free OpenAI credits')).toBeLessThan(
+			openAiChildLabels.indexOf('Configure credentials'),
+		);
 		expect(freeCreditsItem?.data?.description).toBe(
 			'Get 100 free OpenAI API credits. Try it with gpt-5-mini.',
 		);
+		expect(freeCreditsItem?.data?.descriptionTooltipTeleported).toBe(false);
 		expect(freeCreditsItem?.data?.description).not.toContain('These free credits are only for');
 		expect(baseText).toHaveBeenCalledWith('agents.modelSelector.freeCredits.description', {
 			interpolate: { credits: 100 },
@@ -246,6 +264,39 @@ describe('AgentModelSelector', () => {
 
 		expect(openAiItem?.data?.badgeLabel).toBeUndefined();
 		expect(JSON.stringify(openAiItem?.children ?? [])).not.toContain('Use free OpenAI credits');
+	});
+
+	it('does not offer or claim free OpenAI credits without credential-create permission', async () => {
+		credentialsByType.value = {};
+		freeAiCreditsState.userCanClaimOpenAiCredits.value = true;
+		canCreateCredentials.value = false;
+
+		const wrapper = await mountSelector({});
+		const openAiItem = getProviderItem(wrapper, 'openai');
+
+		expect(openAiItem?.data?.badgeLabel).toBeUndefined();
+		expect(JSON.stringify(openAiItem?.children ?? [])).not.toContain('Use free OpenAI credits');
+
+		getDropdown(wrapper).vm.$emit('select', 'openai::freeCredits::gpt-5-mini');
+		await flushPromises();
+
+		expect(freeAiCreditsState.claimCreditsAndGetCredential).not.toHaveBeenCalled();
+	});
+
+	it('keeps free OpenAI credits searchable by provider and action label', async () => {
+		credentialsByType.value = {};
+		freeAiCreditsState.userCanClaimOpenAiCredits.value = true;
+
+		const wrapper = await mountSelector({});
+		const dropdown = getDropdown(wrapper);
+
+		dropdown.vm.$emit('search', 'free');
+		await wrapper.vm.$nextTick();
+		expect(getFreeOpenAiCreditsItem(wrapper)?.label).toBe('Use free OpenAI credits');
+
+		dropdown.vm.$emit('search', 'openai');
+		await wrapper.vm.$nextTick();
+		expect(getFreeOpenAiCreditsItem(wrapper)?.label).toBe('Use free OpenAI credits');
 	});
 
 	it('claims free OpenAI credits and selects gpt-5-mini', async () => {

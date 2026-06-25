@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -11,13 +11,17 @@ import { useI18n } from '@n8n/i18n';
 
 const showSuccessCallout = ref(false);
 
+type UseFreeAiCreditsOptions = {
+	hasOpenAiCredential?: MaybeRefOrGetter<boolean>;
+};
+
 export type FreeAiCreditsClaimSource =
 	| 'chatHubAutoClaim'
 	| 'freeAiCreditsCallout'
 	| 'instanceAiWorkflowSetup'
 	| 'agentBuilderModelSelector';
 
-export function useFreeAiCredits() {
+export function useFreeAiCredits(options: UseFreeAiCreditsOptions = {}) {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const settingsStore = useSettingsStore();
@@ -32,11 +36,15 @@ export function useFreeAiCredits() {
 
 	const aiCreditsQuota = computed(() => settingsStore.aiCreditsQuota);
 
-	const userHasOpenAiCredentialAlready = computed(() =>
-		credentialsStore.allCredentials.some(
+	const userHasOpenAiCredentialAlready = computed(() => {
+		if (options.hasOpenAiCredential !== undefined) {
+			return toValue(options.hasOpenAiCredential);
+		}
+
+		return credentialsStore.allCredentials.some(
 			(credential) => credential.type === OPEN_AI_API_CREDENTIAL_TYPE,
-		),
-	);
+		);
+	});
 
 	const userHasClaimedAiCreditsAlready = computed(
 		() => !!usersStore.currentUser?.settings?.userClaimedAiCredits,

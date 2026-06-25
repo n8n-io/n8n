@@ -182,8 +182,8 @@ defineExpose({
 				v-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
 				:class="ui.class"
-				:content-class="$style.tooltip"
 				placement="left"
+				:teleported="item.data.descriptionTooltipTeleported ?? true"
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
@@ -275,10 +275,6 @@ defineExpose({
 
 .infoIcon {
 	margin-inline: var(--spacing--5xs);
-}
-
-.tooltip {
-	z-index: calc(var(--floating-ui--z) + 1000000) !important;
 }
 
 .flattenedLabel {

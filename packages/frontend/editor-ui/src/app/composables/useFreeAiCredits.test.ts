@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 
 const credentialsStore = vi.hoisted(() => ({
 	allCredentials: [] as Array<{ type: string }>,
@@ -91,5 +92,26 @@ describe('useFreeAiCredits', () => {
 		expect(telemetry.track).toHaveBeenCalledWith('User claimed OpenAI credits', {
 			source: 'agentBuilderModelSelector',
 		});
+	});
+
+	it('can use a project-scoped OpenAI credential check for eligibility', async () => {
+		credentialsStore.allCredentials = [{ type: 'openAiApi' }];
+		const { useFreeAiCredits } = await import('./useFreeAiCredits');
+
+		const { userCanClaimOpenAiCredits } = useFreeAiCredits({
+			hasOpenAiCredential: ref(false),
+		});
+
+		expect(userCanClaimOpenAiCredits.value).toBe(true);
+	});
+
+	it('blocks eligibility when the project-scoped check finds an OpenAI credential', async () => {
+		const { useFreeAiCredits } = await import('./useFreeAiCredits');
+
+		const { userCanClaimOpenAiCredits } = useFreeAiCredits({
+			hasOpenAiCredential: ref(true),
+		});
+
+		expect(userCanClaimOpenAiCredits.value).toBe(false);
 	});
 });
