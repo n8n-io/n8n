@@ -120,6 +120,48 @@ describe('WorkflowCanvas', () => {
 		expect(container.querySelector('[data-id="1"]')).not.toBeInTheDocument();
 	});
 
+	it('expands every group when groupExpansionMode is "all"', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent({ props: { groupExpansionMode: 'all' } });
+
+		// An expanded group renders its member node; a collapsed one hides it.
+		await waitFor(() => expect(container.querySelector('[data-id="1"]')).toBeInTheDocument());
+	});
+
+	it('keeps groups without an errored node collapsed when groupExpansionMode is "errored"', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent({ props: { groupExpansionMode: 'errored' } });
+
+		await waitFor(() =>
+			expect(
+				container.querySelector(`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g1"]`),
+			).toBeInTheDocument(),
+		);
+		expect(container.querySelector('[data-id="1"]')).not.toBeInTheDocument();
+	});
+
 	it('should handle empty nodes and connections gracefully', async () => {
 		const { container } = renderComponent();
 
