@@ -3,19 +3,26 @@ import type Sentry from '@sentry/node';
 import type { Mock } from 'vitest';
 import { mock, mockClear } from 'vitest-mock-extended';
 
-import { SentryTracing } from '../sentry-tracing';
+import { SentryTracing, type TraceErrorReporter } from '../sentry-tracing';
 import { SpanStatus, type Span } from '../tracing';
 
 describe('SentryTracing', () => {
 	let sentryTracing: SentryTracing;
+	const traceContext = {
+		traceId: 'trace-id',
+		spanId: 'span-id',
+		traceFlags: 1,
+	};
 	const mockSentry = mock({
 		startSpan: vi.fn(),
 	});
+	const mockErrorReporter = mock<TraceErrorReporter>();
 
 	beforeEach(() => {
 		mockClear(mockSentry);
+		mockClear(mockErrorReporter);
 
-		sentryTracing = new SentryTracing(mockSentry);
+		sentryTracing = new SentryTracing(mockSentry, mockErrorReporter);
 	});
 
 	describe('startSpan', () => {
@@ -66,7 +73,9 @@ describe('SentryTracing', () => {
 			const callback = vi.fn().mockRejectedValue(error);
 
 			mockSentry.startSpan.mockImplementation(async (_opts, cb) => {
-				return await cb(mock<Span>());
+				const span = mock<Span>();
+				vi.mocked(span.spanContext).mockReturnValue(traceContext);
+				return await cb(span);
 			});
 
 			await expect(sentryTracing.startSpan(options, callback)).rejects.toThrow('Callback error');
@@ -131,20 +140,26 @@ describe('SentryTracing', () => {
 
 		beforeEach(() => {
 			span = mock<Span>();
+			vi.mocked(span.spanContext).mockReturnValue(traceContext);
 			mockSentry.startSpan.mockImplementation(async (_opts, cb) => await cb(span));
 		});
 
-		it('should record the exception and set error status/attributes when the callback throws', async () => {
+		it('should report the exception and set error status/attributes when the callback throws', async () => {
 			const error = new TypeError('boom');
 			const callback = vi.fn().mockRejectedValue(error);
 
 			await expect(sentryTracing.startSpan({ name: 'span' }, callback)).rejects.toBe(error);
 
-			expect(span.recordException).toHaveBeenCalledWith(error);
 			expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.error, message: 'boom' });
 			expect(span.setAttributes).toHaveBeenCalledWith({
 				'error.type': 'TypeError',
 				'error.message': 'boom',
+			});
+			expect(mockErrorReporter.error).toHaveBeenCalledWith(error, {
+				shouldBeLogged: false,
+				extra: {
+					trace: traceContext,
+				},
 			});
 		});
 
@@ -156,7 +171,6 @@ describe('SentryTracing', () => {
 			);
 
 			const wrapped = expect.objectContaining({ cause: 'string failure' });
-			expect(span.recordException).toHaveBeenCalledWith(wrapped);
 			expect(span.setStatus).toHaveBeenCalledWith({
 				code: SpanStatus.error,
 				message: 'Error that was not an instance of Error was thrown',
@@ -165,6 +179,12 @@ describe('SentryTracing', () => {
 				'error.type': 'Error',
 				'error.message': 'Error that was not an instance of Error was thrown',
 			});
+			expect(mockErrorReporter.error).toHaveBeenCalledWith(wrapped, {
+				shouldBeLogged: false,
+				extra: {
+					trace: traceContext,
+				},
+			});
 		});
 
 		it('should not touch the span on success', async () => {
@@ -172,9 +192,19 @@ describe('SentryTracing', () => {
 
 			await expect(sentryTracing.startSpan({ name: 'span' }, callback)).resolves.toBe('ok');
 
-			expect(span.recordException).not.toHaveBeenCalled();
 			expect(span.setStatus).not.toHaveBeenCalled();
 			expect(span.setAttributes).not.toHaveBeenCalled();
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should preserve the original callback error when reporting fails', async () => {
+			const error = new Error('boom');
+			const callback = vi.fn().mockRejectedValue(error);
+			mockErrorReporter.error.mockImplementation(() => {
+				throw new Error('reporting failed');
+			});
+
+			await expect(sentryTracing.startSpan({ name: 'span' }, callback)).rejects.toBe(error);
 		});
 	});
 });
