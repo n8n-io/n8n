@@ -161,17 +161,21 @@ useKeybindings({
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .left {
 	display: flex;
 	align-items: center;
-	flex: 1 1 auto;
-	min-width: 0;
+	flex: 0 0 auto;
+	min-width: max-content;
 }
 
 .left :global(.n8n-breadcrumbs) {
-	min-width: 0;
+	min-width: max-content;
 }
 
 .left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
@@ -191,6 +195,7 @@ useKeybindings({
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
+	flex-shrink: 0;
 }
 
 .switcherLabel {
@@ -210,6 +215,7 @@ useKeybindings({
 	align-items: center;
 	gap: var(--spacing--5xs);
 	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .sessionMenu {
