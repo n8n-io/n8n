@@ -66,8 +66,6 @@ import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
-import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
-import { getProjectPoolSettings } from '@n8n/rest-api-client/api/orchestration';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -155,103 +153,6 @@ const {
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
-type WorkerPoolCategory = 'production' | 'manual' | 'evaluation';
-type WorkerPoolSettingKey =
-	| 'workerPoolOverrideProduction'
-	| 'workerPoolOverrideManual'
-	| 'workerPoolOverrideEvaluation';
-
-const workerPoolNames = ref<string[]>([]);
-const globalPoolAssignment = ref<Partial<Record<WorkerPoolCategory, string>>>({});
-const projectPoolAssignment = ref<Partial<Record<WorkerPoolCategory, string>>>({});
-const projectAllowedPools = ref<string[]>([]);
-
-const workerPoolSettingKeys = {
-	production: 'workerPoolOverrideProduction',
-	manual: 'workerPoolOverrideManual',
-	evaluation: 'workerPoolOverrideEvaluation',
-} satisfies Record<WorkerPoolCategory, WorkerPoolSettingKey>;
-
-const instanceRegistryStore = useInstanceRegistryStore();
-
-const loadWorkerPoolOptions = async () => {
-	await instanceRegistryStore.fetchClusterInfo();
-
-	const clusterInfo = instanceRegistryStore.clusterInfo;
-	const instances = clusterInfo?.instances ?? [];
-	const poolNames = new Set<string>();
-
-	for (const instance of instances) {
-		if ('poolName' in instance && typeof instance.poolName === 'string' && instance.poolName) {
-			poolNames.add(instance.poolName);
-		}
-	}
-
-	workerPoolNames.value = Array.from(poolNames).sort();
-
-	if (clusterInfo?.poolAssignment) {
-		globalPoolAssignment.value = clusterInfo.poolAssignment;
-	}
-
-	const projectId = workflowDocumentStore.value?.homeProject?.id;
-	if (projectId) {
-		try {
-			const projectSettings = await getProjectPoolSettings(rootStore.restApiContext, projectId);
-			projectPoolAssignment.value = projectSettings.assignment;
-			projectAllowedPools.value = projectSettings.allowedPools;
-		} catch {
-			// Fall back to instance defaults if project settings unavailable
-		}
-	}
-};
-
-const workerPoolOptionsForCategory = (category: WorkerPoolCategory) => {
-	const effectiveDefault =
-		projectPoolAssignment.value[category] ?? globalPoolAssignment.value[category];
-	const poolName =
-		effectiveDefault || i18n.baseText('workflowSettings.workerPool.default').toLowerCase();
-	const defaultLabel = i18n.baseText('workflowSettings.workerPool.defaultWithPool', {
-		interpolate: { poolName },
-	});
-
-	let availablePools = workerPoolNames.value;
-	if (projectAllowedPools.value.length > 0) {
-		const allowed = new Set(projectAllowedPools.value);
-		availablePools = workerPoolNames.value.filter((name) => allowed.has(name));
-	}
-
-	const options = [
-		{ key: 'DEFAULT', value: defaultLabel },
-		...availablePools.map((name) => ({ key: name, value: name })),
-	];
-
-	const currentOverride = workflowSettings.value[workerPoolSettingKeys[category]];
-	if (
-		currentOverride &&
-		currentOverride !== 'DEFAULT' &&
-		!availablePools.includes(currentOverride)
-	) {
-		options.push({
-			key: currentOverride,
-			value: `${currentOverride} (${i18n.baseText('workflowSettings.workerPool.notAllowed')})`,
-		});
-	}
-
-	return options;
-};
-
-const selectedWorkerPool = (category: WorkerPoolCategory) => {
-	return workflowSettings.value[workerPoolSettingKeys[category]] || 'DEFAULT';
-};
-
-const onWorkerPoolChange = (category: WorkerPoolCategory, value: string) => {
-	const settingKey = workerPoolSettingKeys[category];
-
-	// Send empty string (not `delete`) so the backend's PATCH-merge of `settings`
-	// actually overwrites any previously-stored override. `removeDefaultValues`
-	// strips empty-string overrides before persisting to keep the JSON tidy.
-	workflowSettings.value[settingKey] = value === 'DEFAULT' ? '' : value;
-};
 
 const isSelectedResolverEditable = computed(() => {
 	const resolverId = workflowSettings.value.credentialResolverId;
@@ -977,10 +878,6 @@ onMounted(async () => {
 			);
 		}
 
-		if (settingsStore.isQueueModeEnabled) {
-			promises.push(loadWorkerPoolOptions());
-		}
-
 		await Promise.all(promises);
 	} catch (error) {
 		toast.showError(error, 'Problem loading settings', {
@@ -1030,9 +927,6 @@ onMounted(async () => {
 	}
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
-	}
-	if (workflowSettingsData.priority === undefined) {
-		workflowSettingsData.priority = 'default';
 	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
@@ -1750,125 +1644,6 @@ onBeforeUnmount(() => {
 									@update:model-value="toggleAvailableInMCP"
 								></ElSwitch>
 							</N8nTooltip>
-						</div>
-					</ElCol>
-				</ElRow>
-				<template v-if="settingsStore.isQueueModeEnabled && workerPoolNames.length > 0">
-					<ElRow>
-						<ElCol :span="10" :class="$style['setting-name']">
-							{{ i18n.baseText('workflowSettings.workerPool.production') }}
-							<N8nTooltip placement="top">
-								<template #content>
-									<div
-										v-text="i18n.baseText('workflowSettings.workerPool.production.tooltip')"
-									></div>
-								</template>
-								<N8nIcon icon="circle-help" />
-							</N8nTooltip>
-						</ElCol>
-						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								:model-value="selectedWorkerPool('production')"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-worker-pool-production"
-								@update:model-value="(val: string) => onWorkerPoolChange('production', val)"
-							>
-								<N8nOption
-									v-for="option of workerPoolOptionsForCategory('production')"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
-								/>
-							</N8nSelect>
-						</ElCol>
-					</ElRow>
-					<ElRow>
-						<ElCol :span="10" :class="$style['setting-name']">
-							{{ i18n.baseText('workflowSettings.workerPool.manual') }}
-							<N8nTooltip placement="top">
-								<template #content>
-									<div v-text="i18n.baseText('workflowSettings.workerPool.manual.tooltip')"></div>
-								</template>
-								<N8nIcon icon="circle-help" />
-							</N8nTooltip>
-						</ElCol>
-						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								:model-value="selectedWorkerPool('manual')"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-worker-pool-manual"
-								@update:model-value="(val: string) => onWorkerPoolChange('manual', val)"
-							>
-								<N8nOption
-									v-for="option of workerPoolOptionsForCategory('manual')"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
-								/>
-							</N8nSelect>
-						</ElCol>
-					</ElRow>
-					<ElRow>
-						<ElCol :span="10" :class="$style['setting-name']">
-							{{ i18n.baseText('workflowSettings.workerPool.evaluation') }}
-							<N8nTooltip placement="top">
-								<template #content>
-									<div
-										v-text="i18n.baseText('workflowSettings.workerPool.evaluation.tooltip')"
-									></div>
-								</template>
-								<N8nIcon icon="circle-help" />
-							</N8nTooltip>
-						</ElCol>
-						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								:model-value="selectedWorkerPool('evaluation')"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-worker-pool-evaluation"
-								@update:model-value="(val: string) => onWorkerPoolChange('evaluation', val)"
-							>
-								<N8nOption
-									v-for="option of workerPoolOptionsForCategory('evaluation')"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
-								/>
-							</N8nSelect>
-						</ElCol>
-					</ElRow>
-				</template>
-				<ElRow data-test-id="workflow-settings-priority">
-					<ElCol :span="10" :class="$style['setting-name']">
-						<label for="priority">
-							{{ i18n.baseText('workflowSettings.priority') }}
-							<N8nTooltip placement="top">
-								<template #content>
-									{{ i18n.baseText('workflowSettings.priority.tooltip') }}
-								</template>
-								<N8nIcon icon="circle-help" />
-							</N8nTooltip>
-						</label>
-					</ElCol>
-					<ElCol :span="14">
-						<div class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="workflowSettings.priority"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-priority-select"
-								size="medium"
-							>
-								<N8nOption
-									:label="i18n.baseText('workflowSettings.priority.options.default')"
-									value="default"
-								/>
-								<N8nOption
-									:label="i18n.baseText('workflowSettings.priority.options.high')"
-									value="high"
-								/>
-							</N8nSelect>
 						</div>
 					</ElCol>
 				</ElRow>

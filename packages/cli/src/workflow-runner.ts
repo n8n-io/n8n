@@ -26,6 +26,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createRunExecutionData,
+	ensureError,
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
@@ -48,9 +49,8 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks'
 import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
-import { poolQueueName } from '@/scaling/queue-name';
-import { getExecutionCategory } from '@/scaling/execution-category';
 import type { PoolConfigService } from '@/scaling/pool-config.service';
+import { DEFAULT_QUEUE_NAME } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -517,7 +517,18 @@ export class WorkflowRunner {
 			this.poolConfigService = Container.get(PoolConfigService);
 		}
 
-		const { queueName, poolName } = await this.getQueueForWorkflow(data);
+		// A pool-resolution failure must not abort the execution: fall back to the default queue.
+		let queueName: string;
+		let poolName: string | undefined;
+		try {
+			({ queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data));
+		} catch (error) {
+			this.logger.warn(
+				`Failed to resolve worker pool for execution ${executionId}, falling back to default queue: ${ensureError(error).message}`,
+			);
+			queueName = DEFAULT_QUEUE_NAME;
+			poolName = undefined;
+		}
 
 		const jobData: JobData = {
 			workflowId,
@@ -542,9 +553,7 @@ export class WorkflowRunner {
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			const isHighPriorityProduction = !realtime && data.workflowData.settings?.priority === 'high';
-			const jobPriority = realtime ? 50 : isHighPriorityProduction ? 25 : 100;
-			job = await this.scalingService.addJob(jobData, { priority: jobPriority, queueName });
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100, queueName });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 
@@ -682,45 +691,6 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
-	}
-
-	private async getQueueForWorkflow(
-		data: IWorkflowExecutionDataProcess,
-	): Promise<{ queueName: string; poolName: string | undefined }> {
-		const category = getExecutionCategory(data.executionMode);
-
-		const workflowPool = this.getWorkflowPool(data, category);
-		if (workflowPool) {
-			return { queueName: poolQueueName(workflowPool), poolName: workflowPool };
-		}
-
-		if (category && data.projectId) {
-			const projectPool = await this.poolConfigService.getProjectPool(data.projectId, category);
-			if (projectPool) {
-				return { queueName: poolQueueName(projectPool), poolName: projectPool };
-			}
-		}
-
-		const poolAssignment = await this.poolConfigService.getPoolAssignment();
-		const poolName = category ? poolAssignment[category] : undefined;
-
-		return { queueName: poolQueueName(poolName), poolName };
-	}
-
-	private getWorkflowPool(
-		data: IWorkflowExecutionDataProcess,
-		category: ReturnType<typeof getExecutionCategory>,
-	): string | undefined {
-		switch (category) {
-			case 'production':
-				return data.workflowData.settings?.workerPoolOverrideProduction;
-			case 'manual':
-				return data.workflowData.settings?.workerPoolOverrideManual;
-			case 'evaluation':
-				return data.workflowData.settings?.workerPoolOverrideEvaluation;
-			default:
-				return undefined;
-		}
 	}
 
 	/**

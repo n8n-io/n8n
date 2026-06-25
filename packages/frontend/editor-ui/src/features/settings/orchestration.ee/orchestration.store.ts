@@ -1,16 +1,11 @@
 import { defineStore } from 'pinia';
-import type { PoolAssignment, UpdateWorkerPoolAssignmentDto, WorkerStatus } from '@n8n/api-types';
+import type { WorkerStatus } from '@n8n/api-types';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
-import {
-	getWorkerPools,
-	sendGetWorkerStatus,
-	updateWorkerPoolAssignment,
-} from '@n8n/rest-api-client/api/orchestration';
+import { sendGetWorkerStatus } from '@n8n/rest-api-client/api/orchestration';
 
 export const WORKER_HISTORY_LENGTH = 100;
 const STALE_SECONDS = 120 * 1000;
-const WORKER_POOLS_POLL_INTERVAL_MS = 10_000;
 
 export interface IOrchestrationStoreState {
 	initialStatusReceived: boolean;
@@ -20,9 +15,6 @@ export interface IOrchestrationStoreState {
 	};
 	workersLastUpdated: { [id: string]: number };
 	statusInterval: NodeJS.Timeout | null;
-	availablePools: string[];
-	poolAssignment: PoolAssignment | null;
-	workerPoolsInterval: NodeJS.Timeout | null;
 }
 
 export interface IWorkerHistoryItem {
@@ -37,9 +29,6 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		workersHistory: {},
 		workersLastUpdated: {},
 		statusInterval: null,
-		availablePools: [],
-		poolAssignment: null,
-		workerPoolsInterval: null,
 	}),
 	actions: {
 		updateWorkerStatus(data: WorkerStatus) {
@@ -87,33 +76,6 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		},
 		getWorkerStatusHistory(workerId: string): IWorkerHistoryItem[] {
 			return this.workersHistory[workerId] ?? [];
-		},
-		async fetchWorkerPools() {
-			const rootStore = useRootStore();
-			const response = await getWorkerPools(rootStore.restApiContext);
-			this.availablePools = response.pools;
-			this.poolAssignment = response.assignment;
-		},
-		startWorkerPoolsPolling() {
-			if (this.workerPoolsInterval) return;
-			this.workerPoolsInterval = setInterval(async () => {
-				try {
-					await this.fetchWorkerPools();
-				} catch {
-					// Swallow errors during polling — surfacing a toast every 10s would be noisy.
-					// The initial fetch on mount surfaces errors to the user.
-				}
-			}, WORKER_POOLS_POLL_INTERVAL_MS);
-		},
-		stopWorkerPoolsPolling() {
-			if (this.workerPoolsInterval) {
-				clearInterval(this.workerPoolsInterval);
-				this.workerPoolsInterval = null;
-			}
-		},
-		async updateWorkerPoolAssignment(dto: UpdateWorkerPoolAssignmentDto) {
-			const rootStore = useRootStore();
-			this.poolAssignment = await updateWorkerPoolAssignment(rootStore.restApiContext, dto);
 		},
 	},
 });

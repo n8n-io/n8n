@@ -2,7 +2,6 @@ import type { InstanceRegistration } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import type { InstanceRegistryService } from '@/modules/instance-registry/instance-registry.service';
-import type { PoolConfigService } from '@/scaling/pool-config.service';
 import { WorkerPoolsService } from '@/scaling/worker-pools.service';
 
 const buildWorker = (overrides: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
@@ -18,9 +17,8 @@ const buildWorker = (overrides: Partial<InstanceRegistration> = {}): InstanceReg
 });
 
 describe('WorkerPoolsService', () => {
-	const poolConfigService = mock<PoolConfigService>();
 	const instanceRegistryService = mock<InstanceRegistryService>();
-	const service = new WorkerPoolsService(poolConfigService, instanceRegistryService);
+	const service = new WorkerPoolsService(instanceRegistryService);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -63,21 +61,6 @@ describe('WorkerPoolsService', () => {
 			]);
 
 			await expect(service.getAvailablePools()).resolves.toEqual([]);
-		});
-	});
-
-	describe('getPoolsState', () => {
-		it('should return pools and assignment together', async () => {
-			instanceRegistryService.getAllInstances.mockResolvedValue([buildWorker({ poolName: 'gpu' })]);
-			poolConfigService.getPoolAssignment.mockResolvedValue({ production: 'gpu' });
-
-			const result = await service.getPoolsState();
-
-			expect(result).toEqual({
-				pools: ['gpu'],
-				assignment: { production: 'gpu' },
-			});
-			expect(poolConfigService.getPoolAssignment).toHaveBeenCalledTimes(1);
 		});
 	});
 });

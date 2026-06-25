@@ -7,7 +7,7 @@ describe('ScalingModeConfig.workerPool', () => {
 
 	beforeEach(() => {
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
@@ -18,6 +18,18 @@ describe('ScalingModeConfig.workerPool', () => {
 		process.env = {};
 		const config = Container.get(ScalingModeConfig);
 		expect(config.workerPool.name).toBe('');
+	});
+
+	test('worker pools are disabled by default', () => {
+		process.env = {};
+		const config = Container.get(ScalingModeConfig);
+		expect(config.workerPool.enabled).toBe(false);
+	});
+
+	test('enables worker pools when N8N_WORKER_POOLS_ENABLED is true', () => {
+		process.env = { N8N_WORKER_POOLS_ENABLED: 'true' };
+		const config = Container.get(ScalingModeConfig);
+		expect(config.workerPool.enabled).toBe(true);
 	});
 
 	test('accepts a valid label', () => {
@@ -41,7 +53,7 @@ describe('ScalingModeConfig.workerPool', () => {
 		['dot', 'g.pu'],
 		['too long', 'a'.repeat(64)],
 	])('falls back to default and warns on invalid label (%s)', (_label, value) => {
-		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		process.env = { N8N_WORKER_POOL_NAME: value };
 
 		const config = Container.get(ScalingModeConfig);

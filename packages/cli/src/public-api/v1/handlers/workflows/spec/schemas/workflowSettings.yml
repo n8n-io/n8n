@@ -99,15 +99,3 @@ properties:
           type: string
         value:
           type: string
-  workerPoolOverrideProduction:
-    type: string
-    description: Worker pool override for production executions.
-    example: gpu
-  workerPoolOverrideManual:
-    type: string
-    description: Worker pool override for manual executions.
-    example: gpu
-  workerPoolOverrideEvaluation:
-    type: string
-    description: Worker pool override for evaluation executions.
-    example: gpu
