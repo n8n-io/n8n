@@ -1,11 +1,7 @@
-ARG NODE_VERSION=24.16.0
-
-# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# Bump the digest together with the tag when updating the base image.
-# Digest pins to dhi.io/node:24.16.0-alpine3.24-dev (Node 24.16.0, Alpine 3.24, DHI dev variant).
+# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# The tag is the human-readable version; Docker resolves by the digest. Bump the tag and
+# digest together when updating the base image.
 FROM dhi.io/node:24.16.0-alpine3.24-dev@sha256:0fda302d7d6f2436b27edc9392bd6a4f8ae9ce86e9837c2b8676abdf26a4a7fb
-
-ARG NODE_VERSION
 
 # Install all dependencies in a single layer to minimize image size
 RUN apk add --no-cache busybox-binsh && \
@@ -22,7 +18,7 @@ RUN apk add --no-cache busybox-binsh && \
     # libs Node uses (the openssl CLI binary isn't needed at runtime).
     apk add --no-cache \
         openssh \
-        graphicsmagick `# unpinned to track the base image; the GPL fonts it pulls are an OS-layer dependency and do not affect n8n's own license` \
+        graphicsmagick \
         tini \
         tzdata \
         ca-certificates \
