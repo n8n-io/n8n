@@ -62,7 +62,10 @@ export { SecurityConfig } from './configs/security.config';
 export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
+	EGRESS_PROTECTION_MODES,
+	EGRESS_PROTECTION_MODE_DEFAULT,
 } from './configs/ssrf-protection.config';
+export type { EgressProtectionMode } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';

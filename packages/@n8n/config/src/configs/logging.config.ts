@@ -35,6 +35,7 @@ export const LOG_SCOPES = [
 	'workflow-history-compaction',
 	'data-table-csv-import',
 	'ssrf-protection',
+	'egress-protection',
 	'token-exchange',
 	'instance-ai',
 	'agents',
