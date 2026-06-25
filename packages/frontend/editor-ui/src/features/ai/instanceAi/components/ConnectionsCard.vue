@@ -37,8 +37,8 @@ const singletonConnections = computed(() => store.connections);
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
 const isVisible = computed(
 	() =>
-		!store.isLocalGatewayDisabledByAdmin &&
-		(store.gatewayStatusLoaded || store.browserStatusLoaded || store.isLocalGatewayDisabled) ||
+		(!store.isLocalGatewayDisabledByAdmin &&
+			(store.gatewayStatusLoaded || store.browserStatusLoaded || store.isLocalGatewayDisabled)) ||
 		isMcpEnabled.value,
 );
 
