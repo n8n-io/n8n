@@ -35,7 +35,9 @@ jobs:
 
       - name: Checkout
         if: steps.gate.outputs.ok == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Build roster snapshot (NDJSON, with content)
         if: steps.gate.outputs.ok == 'true'
@@ -54,14 +56,14 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: steps.gate.outputs.ok == 'true'
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_EVAL_ROSTER_SA }}
 
       - name: Set up gcloud
         if: steps.gate.outputs.ok == 'true'
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
 
       - name: Load snapshot into BigQuery
         if: steps.gate.outputs.ok == 'true'
