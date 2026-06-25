@@ -6,6 +6,13 @@ export class Redis implements ICredentialType {
 	documentationUrl = 'redis';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Cluster Mode',
+			name: 'clusterMode',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect to a Redis Cluster instead of a standalone Redis instance',
+		},
+		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
@@ -26,6 +33,8 @@ export class Redis implements ICredentialType {
 			name: 'host',
 			type: 'string',
 			default: 'localhost',
+			description:
+				'For cluster mode, provide any node in the cluster - other nodes will be discovered automatically',
 		},
 		{
 			displayName: 'Port',
@@ -37,6 +46,11 @@ export class Redis implements ICredentialType {
 			displayName: 'Database Number',
 			name: 'database',
 			type: 'number',
+			displayOptions: {
+				show: {
+					clusterMode: [false],
+				},
+			},
 			default: 0,
 		},
 		{
