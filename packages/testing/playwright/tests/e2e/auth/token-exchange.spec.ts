@@ -7,8 +7,6 @@ import {
 	mintExternalJwtWithKey,
 } from '../../../helpers/jwt-helper';
 
-const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange';
-
 test.use({
 	capability: {
 		env: {
@@ -45,12 +43,7 @@ test.describe(
 			}) => {
 				const subjectToken = mintExternalJwt();
 
-				const exchangeResponse = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: subjectToken,
-					},
-				});
+				const exchangeResponse = await api.tokenExchange.exchange({ subjectToken });
 
 				console.log('Exchange response', await exchangeResponse.text());
 
@@ -66,9 +59,7 @@ test.describe(
 				});
 
 				// Use the issued token to call the public API
-				const workflowsResponse = await api.request.get('/api/v1/workflows', {
-					headers: { 'x-n8n-api-key': body.access_token },
-				});
+				const workflowsResponse = await api.tokenExchange.getWorkflows(body.access_token);
 
 				expect(workflowsResponse.ok()).toBe(true);
 			});
@@ -84,20 +75,13 @@ test.describe(
 					role: 'global:admin',
 				});
 
-				const exchangeResponse = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: subjectToken,
-					},
-				});
+				const exchangeResponse = await api.tokenExchange.exchange({ subjectToken });
 
 				expect(exchangeResponse.ok()).toBe(true);
 				const { access_token: accessToken } = await exchangeResponse.json();
 
 				// Verify the provisioned user exists via the public API
-				const usersResponse = await api.request.get('/api/v1/users', {
-					headers: { 'x-n8n-api-key': accessToken },
-				});
+				const usersResponse = await api.tokenExchange.getUsers(accessToken);
 
 				expect(usersResponse.ok()).toBe(true);
 				const { data: users } = await usersResponse.json();
@@ -118,37 +102,25 @@ test.describe(
 					role: 'global:member',
 				});
 
-				const exchangeResponse = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: subjectToken,
-						actor_token: actorToken,
-					},
-				});
+				const exchangeResponse = await api.tokenExchange.exchange({ subjectToken, actorToken });
 
 				expect(exchangeResponse.ok()).toBe(true);
 				const { access_token: accessToken } = await exchangeResponse.json();
 
 				// Use the delegation token to create a workflow
-				const createResponse = await api.request.post('/api/v1/workflows', {
-					headers: {
-						'x-n8n-api-key': accessToken,
-						'content-type': 'application/json',
-					},
-					data: {
-						name: 'Delegation Test Workflow',
-						nodes: [
-							{
-								name: 'Start',
-								type: 'n8n-nodes-base.manualTrigger',
-								typeVersion: 1,
-								position: [250, 300],
-								parameters: {},
-							},
-						],
-						connections: {},
-						settings: { executionOrder: 'v1' },
-					},
+				const createResponse = await api.tokenExchange.createWorkflow(accessToken, {
+					name: 'Delegation Test Workflow',
+					nodes: [
+						{
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [250, 300],
+							parameters: {},
+						},
+					],
+					connections: {},
+					settings: { executionOrder: 'v1' },
 				});
 
 				expect(createResponse.ok()).toBe(true);
@@ -165,12 +137,7 @@ test.describe(
 				const subjectTtlSeconds = 6;
 				const subjectToken = mintExternalJwt({ exp: now + subjectTtlSeconds });
 
-				const exchangeResponse = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: subjectToken,
-					},
-				});
+				const exchangeResponse = await api.tokenExchange.exchange({ subjectToken });
 				expect(exchangeResponse.ok()).toBe(true);
 
 				const { access_token: accessToken, expires_in: expiresIn } = await exchangeResponse.json();
@@ -180,9 +147,7 @@ test.describe(
 				expect(expiresIn).toBeLessThanOrEqual(subjectTtlSeconds);
 
 				// Token is usable immediately after exchange
-				const immediateResponse = await api.request.get('/api/v1/workflows', {
-					headers: { 'x-n8n-api-key': accessToken },
-				});
+				const immediateResponse = await api.tokenExchange.getWorkflows(accessToken);
 				expect(immediateResponse.ok()).toBe(true);
 
 				// Real-clock rejection of expired access tokens is covered by
@@ -205,12 +170,7 @@ test.describe(
 
 				// Prime the replay cache with a successful exchange, then reuse the same jti.
 				const replayedToken = mintExternalJwt();
-				const firstReplay = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: replayedToken,
-					},
-				});
+				const firstReplay = await api.tokenExchange.exchange({ subjectToken: replayedToken });
 				expect(firstReplay.ok()).toBe(true);
 
 				const cases: Array<{ name: string; token: string }> = [
@@ -220,12 +180,7 @@ test.describe(
 				];
 
 				for (const { name, token } of cases) {
-					const response = await api.request.post('/rest/auth/oauth/token', {
-						form: {
-							grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-							subject_token: token,
-						},
-					});
+					const response = await api.tokenExchange.exchange({ subjectToken: token });
 					expect(response.status(), name).toBe(400);
 					const body = await response.json();
 					expect(body.error, name).toBe('invalid_grant');
@@ -235,12 +190,7 @@ test.describe(
 			test('should reject JWT with missing required claims @auth:owner', async ({ api }) => {
 				const token = mintExternalJwt({ sub: '' });
 
-				const response = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: token,
-					},
-				});
+				const response = await api.tokenExchange.exchange({ subjectToken: token });
 
 				expect(response.status()).toBe(400);
 			});
@@ -253,10 +203,7 @@ test.describe(
 				const now = Math.floor(Date.now() / 1000);
 				const token = mintExternalJwt({ exp: now + 30 });
 
-				const response = await api.request.post('/rest/auth/embed', {
-					data: { token },
-					maxRedirects: 0,
-				});
+				const response = await api.tokenExchange.embedLogin(token, { method: 'POST' });
 
 				// Embed endpoint redirects on success
 				expect(response.status()).toBe(302);
@@ -270,11 +217,9 @@ test.describe(
 				const cookieMatch = cookies?.match(/n8n-auth=([^;]+)/);
 				expect(cookieMatch).toBeTruthy();
 
-				const settingsResponse = await api.request.get('/rest/settings', {
-					headers: {
-						cookie: `n8n-auth=${cookieMatch![1]}`,
-					},
-				});
+				const settingsResponse = await api.tokenExchange.getSettingsWithCookie(
+					`n8n-auth=${cookieMatch![1]}`,
+				);
 				expect(settingsResponse.ok()).toBe(true);
 			});
 
@@ -282,10 +227,7 @@ test.describe(
 				const now = Math.floor(Date.now() / 1000);
 				const token = mintExternalJwt({ exp: now + 30 });
 
-				const response = await api.request.get(
-					`/rest/auth/embed?token=${encodeURIComponent(token)}`,
-					{ maxRedirects: 0 },
-				);
+				const response = await api.tokenExchange.embedLogin(token, { method: 'GET' });
 
 				expect(response.status()).toBe(302);
 
@@ -299,10 +241,7 @@ test.describe(
 				// Lifetime of 120s exceeds the 60s MAX_TOKEN_LIFETIME for embed
 				const token = mintExternalJwt({ exp: now + 120 });
 
-				const response = await api.request.post('/rest/auth/embed', {
-					data: { token },
-					maxRedirects: 0,
-				});
+				const response = await api.tokenExchange.embedLogin(token, { method: 'POST' });
 
 				// Should fail — token lifetime exceeds maximum
 				expect(response.ok()).toBe(false);

@@ -16,6 +16,16 @@ import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { Workflow } from 'n8n-workflow';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 // Mock canvas event bus - using hoisted to ensure proper initialization order
 const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
@@ -33,6 +43,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 // Mock workflowDocumentStore - using hoisted for proper initialization
 const mockDocumentStore = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
+	workflowId: 'test-workflow',
 	name: '',
 	setName: vi.fn(),
 	setNodes: vi.fn(),
@@ -58,14 +69,6 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockDocumentStore }),
 }));
 
-// Mock useWorkflowState - using hoisted for proper initialization
-const mockWorkflowState = vi.hoisted(() => ({
-	touchParametersLastUpdatedAt: vi.fn(),
-}));
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => mockWorkflowState),
-}));
-
 // Mock useCanvasOperations - using hoisted for proper initialization
 const mockCanvasOperations = vi.hoisted(() => ({
 	deleteNode: vi.fn(),
@@ -78,8 +81,10 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn(() => mockCanvasOperations),
 }));
 
-// Mock nodeTypesUtils
-vi.mock('@/app/utils/nodeTypesUtils', () => ({
+// Mock nodeTypesUtils — keep real exports (e.g. getNodeSubtitle, used by
+// useNodeHelpers) and override only the auth helpers under test.
+vi.mock('@/app/utils/nodeTypesUtils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/utils/nodeTypesUtils')>()),
 	getMainAuthField: vi.fn(),
 	getAuthTypeForNodeCredential: vi.fn(),
 }));

@@ -1,5 +1,6 @@
 import { Agent, Memory } from '@n8n/agents';
 
+import { applyAgentThinking } from './apply-agent-thinking';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
@@ -54,7 +55,12 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change).
-	const mcpTools = await mcpManager.getRegularTools(mcpServers, context.logger);
+	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
+	const mcpTools = await mcpManager.getRegularTools(
+		mcpServers,
+		context.logger,
+		requireMcpToolApproval,
+	);
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
 		: createToolRegistry();
@@ -64,7 +70,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	);
 
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
-		context.logger?.warn('Skipped MCP tool with unsafe name', {
+		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -126,17 +132,18 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const sandboxWorkspaceAvailable = Boolean(orchestrationContext?.workspace);
 	const systemPrompt = getSystemPrompt({
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
-		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
-		sandboxWorkspaceAvailable,
+		workspaceRoot:
+			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
+				? orchestrationContext.workspaceRoot
+				: undefined,
 	});
 
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
@@ -153,6 +160,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		})
 		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (options.thinkingEnabled !== false) {
+		applyAgentThinking(agent, modelId);
+	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
@@ -181,6 +191,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		}
 
 		agent.memory(mem);
+	}
+	if (options.onMemoryTaskEvent) {
+		agent.memoryTaskObserver(options.onMemoryTaskEvent);
 	}
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,

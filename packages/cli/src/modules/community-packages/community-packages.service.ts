@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
+import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import axios from 'axios';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -43,6 +43,8 @@ export function isValidVersionSpecifier(version: string): boolean {
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
+
 const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
@@ -61,6 +63,8 @@ export class CommunityPackagesService {
 
 	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
@@ -69,7 +73,13 @@ export class CommunityPackagesService {
 		private readonly publisher: Publisher,
 		private readonly license: License,
 		private readonly config: CommunityPackagesConfig,
-	) {}
+		outboundHttp: OutboundHttp,
+	) {
+		this.http = outboundHttp.requests({
+			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+	}
 
 	async init() {
 		await this.ensurePackageJson();
@@ -193,13 +203,14 @@ export class CommunityPackagesService {
 		const N8N_BACKEND_SERVICE_URL = 'https://api.n8n.io/api/package';
 
 		try {
-			const response = await axios.post<CommunityPackages.PackageStatusCheck>(
-				N8N_BACKEND_SERVICE_URL,
-				{ name: packageName },
-				{ method: 'POST' },
-			);
+			const response = await this.http.request<CommunityPackages.PackageStatusCheck>({
+				url: N8N_BACKEND_SERVICE_URL,
+				method: 'POST',
+				body: { name: packageName },
+				json: true,
+			});
 
-			if (response.data.status !== NPM_PACKAGE_STATUS_GOOD) return response.data;
+			if (response.status !== NPM_PACKAGE_STATUS_GOOD) return response;
 		} catch {
 			// service unreachable, do nothing
 		}

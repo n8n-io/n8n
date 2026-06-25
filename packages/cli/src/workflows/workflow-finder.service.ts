@@ -5,7 +5,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
@@ -29,24 +29,7 @@ export class WorkflowFinderService {
 			em?: EntityManager;
 		} = {},
 	) {
-		let where: FindOptionsWhere<SharedWorkflow> = {};
-
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const [projectRoles, workflowRoles] = await Promise.all([
-				this.roleService.rolesWithScope('project', scopes, options.em),
-				this.roleService.rolesWithScope('workflow', scopes, options.em),
-			]);
-
-			where = {
-				role: In(workflowRoles),
-				project: {
-					projectRelations: {
-						role: In(projectRoles),
-						userId: user.id,
-					},
-				},
-			};
-		}
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
@@ -61,6 +44,52 @@ export class WorkflowFinderService {
 		}
 
 		return sharedWorkflow.workflow;
+	}
+
+	/**
+	 * Read-access check that projects only `versionId` and `updatedAt` from the
+	 * workflow row — skips the heavyweight `nodes`/`connections`/`settings` JSON
+	 * columns. Use for cache-validity checks where the body isn't needed.
+	 */
+	async findWorkflowHeadForUser(
+		workflowId: string,
+		user: User,
+		scopes: Scope[],
+	): Promise<{ versionId: string; updatedAt: Date } | null> {
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
+		const sw = await this.sharedWorkflowRepository.findOne({
+			where: { workflowId, ...where },
+			relations: { workflow: true },
+			select: {
+				workflowId: true,
+				workflow: { id: true, versionId: true, updatedAt: true },
+			},
+		});
+		if (!sw?.workflow) return null;
+		return { versionId: sw.workflow.versionId, updatedAt: sw.workflow.updatedAt };
+	}
+
+	private async buildSingleWorkflowReadWhere(
+		user: User,
+		scopes: Scope[],
+		em?: EntityManager,
+	): Promise<FindOptionsWhere<SharedWorkflow>> {
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
+
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', scopes, em),
+			this.roleService.rolesWithScope('workflow', scopes, em),
+		]);
+
+		return {
+			role: In(workflowRoles),
+			project: {
+				projectRelations: {
+					role: In(projectRoles),
+					userId: user.id,
+				},
+			},
+		};
 	}
 
 	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
@@ -147,6 +176,45 @@ export class WorkflowFinderService {
 			workflows.push(workflow);
 		}
 		return workflows;
+	}
+
+	/**
+	 * Finds owned workflows in a project that may match package workflows either
+	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
+	 * authored on this instance).
+	 */
+	async findOwnedWorkflowsBySourceWorkflowIds(
+		projectId: string,
+		sourceWorkflowIds: string[],
+		options: { includeActiveVersion?: boolean; includeParentFolder?: boolean } = {},
+	): Promise<WorkflowEntity[]> {
+		if (sourceWorkflowIds.length === 0) return [];
+
+		const workflowRelations = {
+			activeVersion: options.includeActiveVersion,
+			parentFolder: options.includeParentFolder,
+		};
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: [
+				{
+					projectId,
+					role: 'workflow:owner',
+					workflow: { sourceWorkflowId: In(sourceWorkflowIds), isArchived: false },
+				},
+				{
+					projectId,
+					role: 'workflow:owner',
+					workflow: {
+						id: In(sourceWorkflowIds),
+						sourceWorkflowId: IsNull(),
+						isArchived: false,
+					},
+				},
+			],
+			relations: { workflow: workflowRelations },
+		});
+
+		return sharedWorkflows.map(({ workflow }) => workflow);
 	}
 
 	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {

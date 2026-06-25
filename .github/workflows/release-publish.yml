@@ -43,7 +43,7 @@ jobs:
     needs: [determine-version-info]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment: npm
     permissions:
       id-token: write

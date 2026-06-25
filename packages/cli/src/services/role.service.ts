@@ -1,4 +1,8 @@
-import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
+import type {
+	RoleAssignmentsResponse,
+	RoleMembersResponse,
+	RoleProjectMembersResponse,
+} from '@n8n/api-types';
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -21,6 +25,7 @@ import type {
 	Scope,
 	Role as RoleDTO,
 	AssignableProjectRole,
+	AssignableGlobalRole,
 	RoleNamespace,
 } from '@n8n/permissions';
 import {
@@ -58,6 +63,14 @@ export class RoleService {
 			usedByUsers,
 			usedByProjects,
 		};
+	}
+
+	async getRoleMembers(slug: string): Promise<RoleMembersResponse> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) throw new NotFoundError('Role not found'); // 404
+		if (role.roleType !== 'global') throw new BadRequestError('Role is not a global role'); // 400
+		const members = await this.roleRepository.findUsersWithGlobalRole(role.slug);
+		return { members, total: members.length };
 	}
 
 	async getAllRoles(withCount: boolean = false): Promise<RoleDTO[]> {
@@ -352,11 +365,11 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole) {
+	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {
-			// This is a custom role, there for we need to check if
+			// This is a custom role, therefore we need to check if
 			// custom roles are licensed
 			return this.license.isCustomRolesLicensed();
 		}

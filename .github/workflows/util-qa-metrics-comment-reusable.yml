@@ -11,7 +11,7 @@ on:
         description: 'Number of days for the rolling baseline'
         required: false
         type: number
-        default: 14
+        default: 30
 
 jobs:
   post-comment:

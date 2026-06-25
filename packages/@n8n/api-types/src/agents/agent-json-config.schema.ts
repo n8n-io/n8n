@@ -1,18 +1,11 @@
 import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
-
-const SemanticRecallSchema = z.object({
-	topK: z.number().int().min(1).max(100),
-	scope: z.enum(['thread', 'resource']).optional(),
-	messageRange: z
-		.object({
-			before: z.number().int().min(0),
-			after: z.number().int().min(0),
-		})
-		.optional(),
-	embedder: z.string().optional(),
-});
+import {
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_MAX_CHILDREN_MAX,
+	SUB_AGENT_MAX_CHILDREN_MIN,
+} from './sub-agent.schema';
 
 export const AgentModelSchema = z
 	.string()
@@ -60,7 +53,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
-	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
@@ -77,13 +69,48 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
-const SubAgentConfigSchema = z.object({
-	agentId: z.string().trim().min(1),
-});
+export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
+
+const SubAgentConfigSchema = z
+	.object({
+		agentId: z.string().trim().min(1),
+		useWhen: z.string().trim().max(SUB_AGENT_USE_WHEN_MAX_LENGTH).optional(),
+	})
+	.strict();
+
+export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
+const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
+
+const SubAgentDifficultyModelConfigSchema = z
+	.object({
+		model: AgentModelSchema,
+		credential: z.string().trim(),
+	})
+	.strict();
 
 const SubAgentsConfigSchema = z
 	.object({
+		maxChildren: z
+			.number()
+			.int()
+			.min(SUB_AGENT_MAX_CHILDREN_MIN)
+			.max(SUB_AGENT_MAX_CHILDREN_MAX)
+			.optional()
+			.describe(
+				`Maximum number of child sub-agent runs this parent agent may run in parallel. Defaults to ${SUB_AGENT_MAX_CHILDREN_DEFAULT} when unset.`,
+			),
 		agents: z.array(SubAgentConfigSchema).optional(),
+		modelsByDifficulty: z
+			.object({
+				low: SubAgentDifficultyModelConfigSchema.optional(),
+				medium: SubAgentDifficultyModelConfigSchema.optional(),
+				high: SubAgentDifficultyModelConfigSchema.optional(),
+			})
+			.strict()
+			.optional()
+			.describe(
+				'Optional inline sub-agent model mappings by task difficulty. Missing mappings fall back to the parent agent model.',
+			),
 	})
 	.strict();
 
@@ -237,6 +264,7 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 			type: z.literal('node'),
 			name: z.string().min(1),
 			description: z.string().optional(),
+			inputSchema: z.never().optional(),
 			node: NodeConfigSchema,
 			requireApproval: z.boolean().optional(),
 		})
@@ -245,7 +273,6 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
-	description: z.string().max(512).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
@@ -267,7 +294,7 @@ export const AgentJsonConfigSchema = z.object({
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
-			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
+			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z
 				.number()
 				.int()
@@ -277,11 +304,6 @@ export const AgentJsonConfigSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
-			nodeTools: z
-				.object({
-					enabled: z.boolean(),
-				})
-				.optional(),
 		})
 		.optional(),
 });
@@ -307,6 +329,7 @@ export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
+export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
 
 export interface ConfigValidationError {
 	path: string;
@@ -333,12 +356,4 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
-}
-
-export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
-	return config?.nodeTools?.enabled === true;
-}
-
-export function isSubAgentsEnabled(subAgents: AgentJsonConfig['subAgents']): boolean {
-	return (subAgents?.agents?.length ?? 0) > 0;
 }

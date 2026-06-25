@@ -29,19 +29,24 @@ function setupAgentMock(responseText: string) {
 	mockExtractText.mockReturnValue(responseText);
 }
 
-type GenerateMock = Mock<(...args: [string]) => Promise<{ messages: [] }>>;
+type GenerateArg = Array<{ content: Array<{ text: string }> }>;
+type GenerateMock = Mock<(...args: [GenerateArg]) => Promise<{ messages: [] }>>;
 
 function createGenerateMock(): GenerateMock {
-	return vi.fn<(arg: string) => Promise<{ messages: [] }>>().mockResolvedValue({ messages: [] });
+	return vi
+		.fn<(arg: GenerateArg) => Promise<{ messages: [] }>>()
+		.mockResolvedValue({ messages: [] });
 }
 
 function getPromptText(generate: GenerateMock): string {
 	const firstCall = generate.mock.calls[0];
 	if (!firstCall) throw new Error('Expected generate to be called');
-	return firstCall[0];
+	return firstCall[0][0].content[0].text;
 }
 
 const WF: WorkflowJSON = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
+
+const mockLogger = { warn: vi.fn() };
 
 describe('generateSampleRows', () => {
 	beforeEach(() => vi.clearAllMocks());
@@ -49,6 +54,7 @@ describe('generateSampleRows', () => {
 	it('returns parsed input rows from valid JSON across batches', async () => {
 		setupAgentMock(JSON.stringify([{ input: 'q1' }]));
 		const rows = await generateSampleRows({
+			logger: mockLogger,
 			workflow: WF,
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
@@ -60,6 +66,7 @@ describe('generateSampleRows', () => {
 	it('coerces non-string cell values to strings', async () => {
 		setupAgentMock(JSON.stringify([{ input: 42, expected_output: true }]));
 		const rows = await generateSampleRows({
+			logger: mockLogger,
 			workflow: WF,
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
@@ -70,6 +77,7 @@ describe('generateSampleRows', () => {
 	it('fills missing columns with empty strings', async () => {
 		setupAgentMock(JSON.stringify([{ input: 'q1' }]));
 		const rows = await generateSampleRows({
+			logger: mockLogger,
 			workflow: WF,
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
@@ -80,6 +88,7 @@ describe('generateSampleRows', () => {
 	it('returns single fallback row when every batch fails to parse', async () => {
 		setupAgentMock('not json');
 		const rows = await generateSampleRows({
+			logger: mockLogger,
 			workflow: WF,
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
@@ -93,6 +102,7 @@ describe('generateSampleRows', () => {
 			typeof createEvalAgent
 		>);
 		const rows = await generateSampleRows({
+			logger: mockLogger,
 			workflow: WF,
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
@@ -141,6 +151,7 @@ describe('runBatch', () => {
 	it('returns parsed input rows on success', async () => {
 		setupAgentMock(JSON.stringify([{ input: 'q1' }]));
 		const rows = await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 1,
 			context: BATCH_CONTEXT,
@@ -152,6 +163,7 @@ describe('runBatch', () => {
 	it('caps over-generated rows to the requested batch size', async () => {
 		setupAgentMock(JSON.stringify([{ input: 'q1' }, { input: 'q2' }, { input: 'q3' }]));
 		const rows = await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 2,
 			context: BATCH_CONTEXT,
@@ -168,6 +180,7 @@ describe('runBatch', () => {
 		mockExtractText.mockReturnValue(JSON.stringify([{ input: 'q1' }]));
 
 		await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 1,
 			context: BATCH_CONTEXT,
@@ -185,6 +198,7 @@ describe('runBatch', () => {
 			typeof createEvalAgent
 		>);
 		const rows = await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 1,
 			context: BATCH_CONTEXT,
@@ -207,13 +221,13 @@ describe('runBatch', () => {
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 		const [message, metadata] = logger.warn.mock.calls[0];
 		expect(message).toBe('generate-sample-rows: batch generation failed');
-		expect(metadata).toEqual(expect.objectContaining({ rowCount: 1 }));
-		expect(metadata?.error).toBeInstanceOf(SyntaxError);
+		expect(metadata).toEqual(expect.objectContaining({ rowCount: 1, reason: 'invalid_json' }));
 	});
 
 	it('returns empty array when JSON is malformed', async () => {
 		setupAgentMock('not json');
 		const rows = await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 1,
 			context: BATCH_CONTEXT,
@@ -225,6 +239,7 @@ describe('runBatch', () => {
 	it('returns empty array when schema validation fails', async () => {
 		setupAgentMock(JSON.stringify({ not: 'an array' }));
 		const rows = await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 1,
 			context: BATCH_CONTEXT,
@@ -236,6 +251,7 @@ describe('runBatch', () => {
 	it('strips markdown fences from the response', async () => {
 		setupAgentMock('```json\n[{"input":"q","expected_output":"a"}]\n```');
 		const rows = await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 1,
 			context: BATCH_CONTEXT,
@@ -251,6 +267,7 @@ describe('runBatch', () => {
 		>);
 		mockExtractText.mockReturnValue(JSON.stringify([]));
 		await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 7,
 			context: BATCH_CONTEXT,
@@ -268,6 +285,7 @@ describe('runBatch', () => {
 			typeof createEvalAgent
 		>);
 		const rows = await runBatch({
+			logger: mockLogger,
 			facet: BATCH_FACET,
 			rowCount: 0,
 			context: BATCH_CONTEXT,
@@ -289,6 +307,7 @@ describe('runBatch', () => {
 			>);
 			mockExtractText.mockReturnValue(JSON.stringify([]));
 			await runBatch({
+				logger: mockLogger,
 				facet: BATCH_FACET,
 				rowCount: 1,
 				context: BATCH_CONTEXT,
@@ -309,6 +328,7 @@ describe('runBatch', () => {
 			>);
 			mockExtractText.mockReturnValue(JSON.stringify([]));
 			await runBatch({
+				logger: mockLogger,
 				facet: BATCH_FACET,
 				rowCount: 1,
 				context: BATCH_CONTEXT,
@@ -324,6 +344,7 @@ describe('runBatch', () => {
 			>);
 			mockExtractText.mockReturnValue(JSON.stringify([]));
 			await runBatch({
+				logger: mockLogger,
 				facet: BATCH_FACET,
 				rowCount: 1,
 				context: BATCH_CONTEXT,
@@ -348,6 +369,7 @@ describe('runBatch', () => {
 			mockExtractText.mockReturnValue(JSON.stringify([]));
 			const examples = Array.from({ length: 13 }, (_, i) => ({ user_query: `q${i}` }));
 			await runBatch({
+				logger: mockLogger,
 				facet: BATCH_FACET,
 				rowCount: 1,
 				context: BATCH_CONTEXT,
@@ -369,6 +391,7 @@ describe('runBatch', () => {
 			mockExtractText.mockReturnValue(JSON.stringify([]));
 			const longValue = 'x'.repeat(500);
 			await runBatch({
+				logger: mockLogger,
 				facet: BATCH_FACET,
 				rowCount: 1,
 				context: BATCH_CONTEXT,
@@ -479,7 +502,12 @@ describe('generateSampleRows orchestration', () => {
 			typeof createEvalAgent
 		>);
 		mockExtractText.mockReturnValue(JSON.stringify([{ input: 'r' }]));
-		await generateSampleRows({ workflow: WF, columns: ['input'], rowCount: 25 });
+		await generateSampleRows({
+			logger: mockLogger,
+			workflow: WF,
+			columns: ['input'],
+			rowCount: 25,
+		});
 		expect(generate).toHaveBeenCalledTimes(5);
 	});
 
@@ -489,7 +517,7 @@ describe('generateSampleRows orchestration', () => {
 			typeof createEvalAgent
 		>);
 		mockExtractText.mockReturnValue(JSON.stringify([{ input: 'r' }]));
-		await generateSampleRows({ workflow: WF, columns: ['input'], rowCount: 3 });
+		await generateSampleRows({ logger: mockLogger, workflow: WF, columns: ['input'], rowCount: 3 });
 		expect(generate).toHaveBeenCalledTimes(3);
 	});
 
@@ -511,6 +539,7 @@ describe('generateSampleRows orchestration', () => {
 			.mockReturnValueOnce(JSON.stringify([{ input: 'd' }]))
 			.mockReturnValueOnce(JSON.stringify([{ input: 'e' }]));
 		const rows = await generateSampleRows({
+			logger: mockLogger,
 			workflow: WF,
 			columns: ['input'],
 			rowCount: 5,
@@ -527,7 +556,7 @@ describe('generateSampleRows orchestration', () => {
 		mockExtractText.mockReturnValue(
 			JSON.stringify(Array.from({ length: 5 }, () => ({ input: 'x' }))),
 		);
-		const rows = await generateSampleRows({ workflow: WF, columns: ['input'] });
+		const rows = await generateSampleRows({ logger: mockLogger, workflow: WF, columns: ['input'] });
 		expect(rows).toHaveLength(25);
 	});
 
@@ -552,6 +581,7 @@ describe('generateSampleRows orchestration', () => {
 		>);
 		mockExtractText.mockReturnValue(JSON.stringify([]));
 		await generateSampleRows({
+			logger: mockLogger,
 			workflow: wf,
 			columns: ['input'],
 			rowCount: 5,
@@ -589,7 +619,7 @@ describe('generateSampleRows orchestration', () => {
 			typeof createEvalAgent
 		>);
 		mockExtractText.mockReturnValue(JSON.stringify([]));
-		await generateSampleRows({ workflow: wf, columns: ['input'], rowCount: 5 });
+		await generateSampleRows({ logger: mockLogger, workflow: wf, columns: ['input'], rowCount: 5 });
 		const promptText = getPromptText(generate);
 		expect(promptText).toContain('FIRST-AGENT-SYSTEM');
 		expect(promptText).not.toContain('SECOND-AGENT-SYSTEM');

@@ -4,7 +4,7 @@
  * Consumed by:
  * - Code Builder Agent (ai-workflow-builder.ee)
  * - MCP Server (external SDK reference)
- * - Instance AI builder sub-agent
+ * - Instance AI workflow-builder skill
  */
 export const WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
 
@@ -26,16 +26,25 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
 3. **Use \`executeOnce: true\` for single-execution nodes**
    - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
    - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
+   - If a node fetches shared context independently but is chained after a multi-item source, set \`executeOnce: true\` so it does not run once per incoming item
+   - Duplicate notifications, duplicate API calls, or repeated shared-context fetches usually mean a downstream node is missing \`executeOnce: true\` or should be on a parallel branch
    - Example: \`config: { ..., executeOnce: true }\`
 
-4. **Pick the right control-flow primitive**
+4. **Use raw HTTP bodies for XML, SOAP, and plain-text payloads**
+   - For HTTP Request nodes that send XML, SOAP, CSV, or plain text, set \`sendBody: true\`, \`contentType: 'raw'\`, put the payload in \`body\`, and set \`rawContentType\` to the matching media type such as \`'text/xml'\` or \`'application/xml'\`.
+   - Do NOT set \`specifyBody\`, \`jsonBody\`, or \`bodyParameters\` for raw payloads.
+   - Use \`contentType: 'json'\` and \`specifyBody: 'json'\` only when the request body is valid JSON. Never put XML or SOAP strings in \`jsonBody\`.
+   - This still applies when a previous Code or Set node builds the XML string: do NOT set \`jsonBody: expr('{{ $json.soapBody }}')\` or similar. Reference that value from the HTTP Request \`body\` field with \`contentType: 'raw'\`.
+
+5. **Pick the right control-flow primitive**
    - **Per-item loop with side effects (fetch, embed, write)** → \`splitInBatches\` with \`batchSize: 1\` feeding the per-item work, loop back via \`nextBatch\`. No \`IF\` gate before it.
    - **Drop items that don't match a predicate** → \`filter\`. It emits 0 items when nothing matches, and the chain stops cleanly.
    - **Two mutually exclusive paths that both do real work** → \`IF\` (\`onTrue\` / \`onFalse\`).
    - **Many mutually exclusive paths keyed off a value** → \`switch\` (\`onCase\`).
+   - A Filter or IF only selects items; it does not perform a requested side effect. If the user asks to archive, update, delete, send, or create only matching items, wire the corresponding action node on the matching path.
    - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.
 
-5. **Input and output indices are 0-based — \`.input(0)\` is the FIRST input**
+6. **Input and output indices are 0-based — \`.input(0)\` is the FIRST input**
    - \`.input(0)\` and \`.output(0)\` refer to the **first** input/output. \`.input(1)\` and \`.output(1)\` refer to the **second**. \`.input(1)\` is NOT the first input — it is the second one.
    - This applies everywhere indices are passed: \`.input(n)\`, \`.output(n)\`, \`.onCase(n, ...)\` for switch outputs, and any \`outputIndex\` argument.
    - When wiring N branches to a Merge node, the indices are \`0, 1, ..., N-1\` — never \`1, 2, ..., N\`.

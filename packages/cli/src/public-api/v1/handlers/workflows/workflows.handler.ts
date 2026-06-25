@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -183,7 +184,7 @@ const workflowHandlers: WorkflowHandlers = {
 				}
 			}
 
-			if (['global:owner', 'global:admin'].includes(req.user.role.slug)) {
+			if (hasGlobalScope(req.user, ['workflow:read'])) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
@@ -248,6 +249,7 @@ const workflowHandlers: WorkflowHandlers = {
 				'isArchived',
 				'nodes',
 				'connections',
+				'nodeGroups',
 				'settings',
 				'staticData',
 				'meta',
@@ -302,6 +304,7 @@ const workflowHandlers: WorkflowHandlers = {
 			Object.assign(updateData, req.body);
 
 			try {
+				// Credential tamper protection is enforced centrally in WorkflowService.update
 				const updatedWorkflow = await Container.get(WorkflowService).update(
 					req.user,
 					updateData,

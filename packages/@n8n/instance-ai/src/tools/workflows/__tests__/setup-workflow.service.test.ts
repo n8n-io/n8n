@@ -23,6 +23,8 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			list: vi.fn(),
 			get: vi.fn(),
 			getAsWorkflowJSON: vi.fn(),
+			getWorkflowHead: vi.fn(),
+			getWorkflowSnapshot: vi.fn(),
 			createFromWorkflowJSON: vi.fn(),
 			updateFromWorkflowJSON: vi.fn(),
 			archive: vi.fn(),
@@ -66,6 +68,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			updateRows: vi.fn(),
 			deleteRows: vi.fn(),
 		},
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
 	};
 }

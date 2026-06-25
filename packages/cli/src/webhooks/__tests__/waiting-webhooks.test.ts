@@ -1,4 +1,4 @@
-import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -9,6 +9,7 @@ import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -34,14 +35,14 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 
 describe('WaitingWebhooks', () => {
 	const TEST_HMAC_SECRET = 'test-hmac-secret-key';
-	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const mockWebhookService = mock<WebhookService>();
 	const mockInstanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET });
 	const mockEventService = mock<EventService>();
 	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
 		mock(),
-		executionRepository,
+		executionPersistence,
 		mockWebhookService,
 		mockInstanceSettings,
 		mockEventService,
@@ -56,7 +57,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Arrange
 		 */
-		executionRepository.findSingleExecution.mockResolvedValue(undefined);
+		executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
 		/**
 		 * Act
@@ -76,7 +77,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Arrange
 		 */
-		executionRepository.findSingleExecution.mockResolvedValue(
+		executionPersistence.findSingleExecution.mockResolvedValue(
 			mock<IExecutionResponse>({ status: 'running' }),
 		);
 
@@ -98,7 +99,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Arrange
 		 */
-		executionRepository.findSingleExecution.mockResolvedValue(
+		executionPersistence.findSingleExecution.mockResolvedValue(
 			mock<IExecutionResponse>({ finished: true, workflowData: { nodes: [] } }),
 		);
 
@@ -276,7 +277,7 @@ describe('WaitingWebhooks', () => {
 					staticData: {},
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const mockStatus = jest.fn().mockReturnThis();
 			const mockRender = jest.fn();
@@ -336,7 +337,7 @@ describe('WaitingWebhooks', () => {
 					staticData: {},
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const mockStatus = jest.fn().mockReturnThis();
 			const mockRender = jest.fn();
@@ -521,7 +522,7 @@ describe('WaitingWebhooks', () => {
 			mockExecution.data.resultData.error = undefined;
 			mockExecution.data.resumeToken = undefined;
 
-			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
 
 			const mockReq = mock<WaitingWebhookRequest>({
 				params: { path: executionId, suffix: undefined },
@@ -651,7 +652,7 @@ describe('WaitingWebhooks', () => {
 			mockExecution.data.resultData.error = undefined;
 			mockExecution.data.resumeToken = undefined;
 
-			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
 
 			const mockReq = mock<WaitingWebhookRequest>({
 				params: { path: executionId, suffix: undefined },
@@ -788,7 +789,7 @@ describe('WaitingWebhooks', () => {
 			mockExecution.data.resultData.error = undefined;
 			mockExecution.data.resumeToken = undefined;
 
-			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
 
 			const mockReq = mock<WaitingWebhookRequest>({
 				params: { path: executionId, suffix: undefined },
@@ -925,7 +926,7 @@ describe('WaitingWebhooks', () => {
 			mockExecution.data.resultData.error = undefined;
 			mockExecution.data.resumeToken = undefined;
 
-			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
 
 			const mockReq = mock<WaitingWebhookRequest>({
 				params: { path: executionId, suffix: undefined },
@@ -1057,7 +1058,7 @@ describe('WaitingWebhooks', () => {
 			mockExecution.data.resultData.error = undefined;
 			mockExecution.data.resumeToken = undefined;
 
-			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+			executionPersistence.findSingleExecution.mockResolvedValue(mockExecution);
 
 			const mockReq = mock<WaitingWebhookRequest>({
 				params: { path: executionId, suffix: undefined },
@@ -1193,7 +1194,7 @@ describe('WaitingWebhooks', () => {
 
 		beforeEach(() => {
 			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
-			executionRepository.findSingleExecution.mockResolvedValue(
+			executionPersistence.findSingleExecution.mockResolvedValue(
 				createMockExecution({
 					nodeType: 'n8n-nodes-base.wait',
 					nodeName: 'WaitNode',
@@ -1256,7 +1257,7 @@ describe('WaitingWebhooks', () => {
 
 		it('should not emit for send-and-wait already-responded requests', async () => {
 			const sendAndWaitNodeId = 'send-and-wait-node-id';
-			executionRepository.findSingleExecution.mockResolvedValue(
+			executionPersistence.findSingleExecution.mockResolvedValue(
 				createMockExecution({
 					nodeType: 'n8n-nodes-base.sendAndWait',
 					nodeName: 'SendAndWaitNode',
@@ -1281,7 +1282,7 @@ describe('WaitingWebhooks', () => {
 
 		it('should not emit for active send-and-wait webhook call', async () => {
 			const sendAndWaitNodeId = 'send-and-wait-node-id';
-			executionRepository.findSingleExecution.mockResolvedValue(
+			executionPersistence.findSingleExecution.mockResolvedValue(
 				createMockExecution({
 					nodeType: 'n8n-nodes-base.emailSend',
 					nodeName: 'SendAndWaitNode',

@@ -96,9 +96,11 @@ export function useWorkflowsEmptyState() {
 			return i18n.baseText('workflows.empty.description.readOnlyEnv');
 		} else if (!projectPermissions.value.workflow.create) {
 			return i18n.baseText('workflows.empty.description.noPermission');
-		} else {
+		} else if (showRecommendedTemplatesInline.value) {
 			return i18n.baseText('workflows.empty.description');
 		}
+
+		return '';
 	});
 
 	return {

@@ -13,10 +13,7 @@ export const getRoles = async (context: IRestApiContext): Promise<AllRolesMap> =
 	return await makeRestApiRequest(context, 'GET', '/roles?withUsageCount=true');
 };
 
-export const createProjectRole = async (
-	context: IRestApiContext,
-	body: CreateRoleDto,
-): Promise<Role> => {
+export const createRole = async (context: IRestApiContext, body: CreateRoleDto): Promise<Role> => {
 	return await makeRestApiRequest(context, 'POST', '/roles', body);
 };
 
@@ -27,7 +24,7 @@ export const getRoleBySlug = async (
 	return await makeRestApiRequest(context, 'GET', `/roles/${body.slug}?withUsageCount=true`);
 };
 
-export const updateProjectRole = async (
+export const updateRole = async (
 	context: IRestApiContext,
 	slug: string,
 	body: UpdateRoleDto,
@@ -35,7 +32,7 @@ export const updateProjectRole = async (
 	return await makeRestApiRequest(context, 'PATCH', `/roles/${slug}`, body);
 };
 
-export const deleteProjectRole = async (context: IRestApiContext, slug: string): Promise<Role> => {
+export const deleteRole = async (context: IRestApiContext, slug: string): Promise<Role> => {
 	return await makeRestApiRequest(context, 'DELETE', `/roles/${slug}`);
 };
 

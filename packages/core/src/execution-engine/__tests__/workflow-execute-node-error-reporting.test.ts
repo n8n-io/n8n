@@ -32,10 +32,11 @@ const mockContainer = Container as Mocked<typeof Container>;
 
 function makeAdditionalData(
 	waitPromise: ReturnType<typeof createDeferredPromise<IRun>>,
+	overrides: Partial<IWorkflowExecuteAdditionalData> = {},
 ): IWorkflowExecuteAdditionalData {
 	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
 	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
-	return mock<IWorkflowExecuteAdditionalData>({ hooks });
+	return mock<IWorkflowExecuteAdditionalData>({ hooks, ...overrides });
 }
 
 describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
@@ -76,7 +77,10 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 	 * once execution has finished. Wires the throwing node into mockNodeTypes and
 	 * suppresses checkForWorkflowIssues
 	 */
-	async function runWorkflowThatThrows(error: unknown): Promise<void> {
+	async function runWorkflowThatThrows(
+		error: unknown,
+		additionalDataOverrides: Partial<IWorkflowExecuteAdditionalData> = {},
+	): Promise<void> {
 		const nodeType = mock<INodeType>({
 			description: {
 				name: 'manualTrigger',
@@ -103,7 +107,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		});
 
 		const waitPromise = createDeferredPromise<IRun>();
-		const additionalData = makeAdditionalData(waitPromise);
+		const additionalData = makeAdditionalData(waitPromise, additionalDataOverrides);
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 		vi.spyOn(
@@ -137,12 +141,12 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(mockErrorReporter.error).toHaveBeenCalledWith(
 			causeError,
 			expect.objectContaining({
-				extra: {
+				extra: expect.objectContaining({
 					nodeName: 'ThrowingNode',
 					nodeType: 'n8n-nodes-base.manualTrigger',
 					nodeVersion: expect.any(Number),
 					workflowId: 'test-error',
-				},
+				}),
 			}),
 		);
 	});
@@ -199,5 +203,38 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(reported.stack).not.toContain('first-value');
 		expect(reported.stack).not.toContain('second-value');
 		expect(reported.stack).toContain('at '); // call frame
+	});
+
+	it('should include executionId and a deep-link executionUrl when both are available', async () => {
+		const baseError = new UnexpectedError('boom');
+
+		await runWorkflowThatThrows(baseError, {
+			executionId: 'exec-42',
+			instanceBaseUrl: 'https://n8n.example.com/',
+		});
+
+		expect(mockErrorReporter.error).toHaveBeenCalledWith(
+			baseError,
+			expect.objectContaining({
+				extra: expect.objectContaining({
+					executionId: 'exec-42',
+					workflowId: 'test-error',
+					executionUrl: 'https://n8n.example.com/workflow/test-error/executions/exec-42',
+				}),
+			}),
+		);
+	});
+
+	it('should omit executionUrl when instanceBaseUrl is not known', async () => {
+		const baseError = new UnexpectedError('boom');
+
+		await runWorkflowThatThrows(baseError, {
+			executionId: 'exec-42',
+			instanceBaseUrl: '',
+		});
+
+		const [, options] = mockErrorReporter.error.mock.calls[0] as [Error, { extra: object }];
+		expect(options.extra).toMatchObject({ executionId: 'exec-42' });
+		expect((options.extra as { executionUrl?: string }).executionUrl).toBeUndefined();
 	});
 });

@@ -1,5 +1,9 @@
 import type { RunnableAgentJsonConfig } from './agent-json-config.schema';
 
+export const SUB_AGENT_MAX_CHILDREN_MIN = 1;
+export const SUB_AGENT_MAX_CHILDREN_MAX = 20;
+export const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
+
 /**
  * A sub-agent is always a saved n8n agent — optionally pinned to a published
  * version.
@@ -17,8 +21,6 @@ export interface ResolvedSubAgentSource {
 
 export interface SubAgentRunPolicy {
 	maxChildren?: number;
-	/** Host-enforced wall-clock timeout for a child run — the n8n runner aborts the child. */
-	timeoutMs?: number;
 }
 
 /**

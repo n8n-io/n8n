@@ -3,6 +3,8 @@ import type {
 	MultiRunEvaluation,
 	TestCaseAggregation,
 	ExecutionScenarioAggregation,
+	BuildExpectationAggregation,
+	BuildExpectationResult,
 } from '../types';
 
 /**
@@ -92,7 +94,30 @@ export function aggregateResults(
 			});
 		}
 
-		testCases.push({ testCase, runs, buildSuccessCount, executionScenarios });
+		// Aggregate each build expectation as a measured unit alongside scenarios.
+		// `incomplete` verdicts are excluded from the count (denominator = evaluated runs).
+		const buildExpectations: BuildExpectationAggregation[] = (testCase.buildExpectations ?? []).map(
+			(expectation) => {
+				const expRuns = runs
+					.map((r) => (r.buildExpectationResults ?? []).find((e) => e.expectation === expectation))
+					.filter((e): e is BuildExpectationResult => e !== undefined);
+				const evaluated = expRuns.filter((e) => !e.incomplete);
+				const passCount = evaluated.filter((e) => e.pass).length;
+				const n = evaluated.length;
+				const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
+				return {
+					expectation,
+					runs: expRuns,
+					evaluatedCount: n,
+					passCount,
+					passRate: n > 0 ? passCount / n : 0,
+					passAtK: passAtKValues,
+					passHatK: passHatKValues,
+				};
+			},
+		);
+
+		testCases.push({ testCase, runs, buildSuccessCount, executionScenarios, buildExpectations });
 	}
 
 	return { totalRuns, testCases };
