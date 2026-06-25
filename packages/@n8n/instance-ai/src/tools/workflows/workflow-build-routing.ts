@@ -5,6 +5,13 @@ import type {
 	WorkflowVerificationReadiness,
 } from '../../workflow-loop/workflow-loop-state';
 
+type WorkflowBuildRoutingInput = Omit<
+	WorkflowBuildOutcome,
+	'verificationReadiness' | 'setupRequirement'
+> & {
+	workflowNeedsSetup?: boolean;
+};
+
 function hasSetupCredentials(
 	outcome: Pick<WorkflowBuildOutcome, 'mockedCredentialTypes' | 'mockedCredentialsByNode'>,
 ): boolean {
@@ -15,7 +22,10 @@ function hasSetupCredentials(
 }
 
 function determineVerificationReadiness(
-	outcome: Pick<WorkflowBuildOutcome, 'submitted' | 'workflowId' | 'triggerNodes'>,
+	outcome: Pick<
+		WorkflowBuildRoutingInput,
+		'submitted' | 'workflowId' | 'triggerNodes' | 'workflowNeedsSetup'
+	>,
 ): WorkflowVerificationReadiness {
 	if (!outcome.submitted) {
 		return {
@@ -33,6 +43,14 @@ function determineVerificationReadiness(
 		};
 	}
 
+	if (outcome.workflowNeedsSetup) {
+		return {
+			status: 'needs_setup',
+			reason: 'workflow-needs-setup',
+			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
+		};
+	}
+
 	if (!outcome.triggerNodes?.some((node) => isMockableTriggerNodeType(node.nodeType))) {
 		return {
 			status: 'not_verifiable',
@@ -46,12 +64,13 @@ function determineVerificationReadiness(
 
 function determineSetupRequirement(
 	outcome: Pick<
-		WorkflowBuildOutcome,
+		WorkflowBuildRoutingInput,
 		| 'submitted'
 		| 'workflowId'
 		| 'mockedCredentialTypes'
 		| 'mockedCredentialsByNode'
 		| 'hasUnresolvedPlaceholders'
+		| 'workflowNeedsSetup'
 	>,
 ): WorkflowSetupRequirement {
 	if (!outcome.submitted || !outcome.workflowId) {
@@ -74,14 +93,21 @@ function determineSetupRequirement(
 		};
 	}
 
+	if (outcome.workflowNeedsSetup) {
+		return {
+			status: 'required',
+			reason: 'workflow-needs-setup',
+			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
+		};
+	}
+
 	return { status: 'not_required' };
 }
 
-export function withDeterministicRouting(
-	outcome: Omit<WorkflowBuildOutcome, 'verificationReadiness' | 'setupRequirement'>,
-): WorkflowBuildOutcome {
+export function withDeterministicRouting(outcome: WorkflowBuildRoutingInput): WorkflowBuildOutcome {
+	const { workflowNeedsSetup, ...buildOutcome } = outcome;
 	return {
-		...outcome,
+		...buildOutcome,
 		verificationReadiness: determineVerificationReadiness(outcome),
 		setupRequirement: determineSetupRequirement(outcome),
 	};
