@@ -2,22 +2,23 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import { apiRequest } from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/transport', () => ({
+vi.mock('../../../v2/transport', () => ({
 	apiRequest: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 }));
 
 describe('GoogleSheet', () => {
 	let googleSheet: GoogleSheet;
 	const mockExecuteFunctions: Partial<IExecuteFunctions> = {
-		getNode: jest.fn(),
+		getNode: vi.fn(),
 	};
 	const spreadsheetId = 'test-spreadsheet-id';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		googleSheet = new GoogleSheet(spreadsheetId, mockExecuteFunctions as IExecuteFunctions);
 	});
 
@@ -46,7 +47,7 @@ describe('GoogleSheet', () => {
 				],
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await googleSheet.getData(range, valueRenderMode);
 
@@ -239,6 +240,38 @@ describe('GoogleSheet', () => {
 			expect(result).toEqual([{ name: 'John', age: '30', city: 'NY' }]);
 		});
 
+		it('should ignore undefined lookup values without throwing (OR)', async () => {
+			const lookupValues = [{ lookupColumn: 'age', lookupValue: undefined }];
+
+			const result = await googleSheet.lookupValues({
+				inputData,
+				keyRowIndex: 0,
+				dataStartRowIndex: 1,
+				lookupValues,
+				returnAllMatches: true,
+				combineFilters: 'OR',
+				nodeVersion: 4.5,
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		it('should ignore undefined lookup values without throwing (AND)', async () => {
+			const lookupValues = [{ lookupColumn: 'age', lookupValue: undefined }];
+
+			const result = await googleSheet.lookupValues({
+				inputData,
+				keyRowIndex: 0,
+				dataStartRowIndex: 1,
+				lookupValues,
+				returnAllMatches: true,
+				combineFilters: 'AND',
+				nodeVersion: 4.5,
+			});
+
+			expect(result).toEqual([]);
+		});
+
 		it('should throw error for invalid key row', async () => {
 			const lookupValues = [{ lookupColumn: 'age', lookupValue: '30' }];
 
@@ -270,7 +303,7 @@ describe('GoogleSheet', () => {
 					['Jane', '25'],
 				],
 			};
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockAppendResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockAppendResponse);
 
 			await googleSheet.appendSheetData({
 				inputData,
@@ -280,6 +313,61 @@ describe('GoogleSheet', () => {
 			});
 
 			expect(apiRequest.call).toHaveBeenCalled();
+		});
+
+		it('should use columnNamesHint instead of calling getData for column names', async () => {
+			const inputData = [{ name: 'John', age: '30' }];
+			(apiRequest.call as Mock).mockResolvedValue({ values: [['John', '30']] });
+
+			googleSheet.setColumnNamesHint(['name', 'age']);
+
+			await googleSheet.appendSheetData({
+				inputData,
+				range: 'Sheet1!A:B',
+				keyRowIndex: 1,
+				valueInputMode: 'USER_ENTERED',
+				lastRow: 3,
+			});
+
+			// Only the PUT for the data row — no GET for column names
+			expect(apiRequest.call).toHaveBeenCalledTimes(1);
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'PUT',
+				expect.stringContaining('/values/'),
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('should clear columnNamesHint after use and fall back to getData on next call', async () => {
+			const inputData = [{ name: 'John', age: '30' }];
+			(apiRequest.call as Mock)
+				.mockResolvedValueOnce({ values: [['John', '30']] }) // first PUT
+				.mockResolvedValueOnce({ values: [['name', 'age']] }) // second call: GET column names
+				.mockResolvedValueOnce({ values: [['John', '30']] }); // second PUT
+
+			googleSheet.setColumnNamesHint(['name', 'age']);
+
+			await googleSheet.appendSheetData({
+				inputData,
+				range: 'Sheet1!A:B',
+				keyRowIndex: 1,
+				valueInputMode: 'USER_ENTERED',
+				lastRow: 3,
+			});
+			expect(apiRequest.call).toHaveBeenCalledTimes(1);
+
+			// Second call — hint was cleared, must fetch column names via getData
+			await googleSheet.appendSheetData({
+				inputData,
+				range: 'Sheet1!A:B',
+				keyRowIndex: 1,
+				valueInputMode: 'USER_ENTERED',
+				lastRow: 3,
+			});
+			// GET for column names + PUT = 2 more calls
+			expect(apiRequest.call).toHaveBeenCalledTimes(3);
 		});
 	});
 
@@ -350,7 +438,7 @@ describe('GoogleSheet', () => {
 				],
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await googleSheet.spreadsheetGetSheets();
 
@@ -374,7 +462,7 @@ describe('GoogleSheet', () => {
 		};
 
 		beforeEach(() => {
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 		});
 
 		it('should find sheet by name', async () => {
@@ -424,7 +512,7 @@ describe('GoogleSheet', () => {
 				],
 			};
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
+			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
 
 			const result = await googleSheet.getDataRange('123');
 
@@ -490,7 +578,7 @@ describe('GoogleSheet', () => {
 	describe('appendData', () => {
 		beforeEach(() => {
 			// Mock getData to return existing data
-			(apiRequest.call as jest.Mock).mockImplementation(async (_, method, _url) => {
+			(apiRequest.call as Mock).mockImplementation(async (_, method, _url) => {
 				if (method === 'GET') {
 					return { values: [['existing', 'row']] };
 				}
@@ -713,7 +801,7 @@ describe('GoogleSheet', () => {
 
 	describe('getColumnValues', () => {
 		beforeEach(() => {
-			(apiRequest.call as jest.Mock).mockResolvedValue({
+			(apiRequest.call as Mock).mockResolvedValue({
 				values: [['header'], ['value1'], ['value2']],
 			});
 		});
@@ -755,7 +843,7 @@ describe('GoogleSheet', () => {
 		});
 
 		it('should throw error when column data cannot be retrieved', async () => {
-			(apiRequest.call as jest.Mock).mockResolvedValue({ values: undefined });
+			(apiRequest.call as Mock).mockResolvedValue({ values: undefined });
 
 			await expect(
 				googleSheet.getColumnValues({
@@ -771,18 +859,16 @@ describe('GoogleSheet', () => {
 	describe('prepareDataForUpdateOrUpsert', () => {
 		beforeEach(() => {
 			// Mock getData responses
-			(apiRequest.call as jest.Mock).mockImplementation(
-				(_: unknown, _method: unknown, url: string) => {
-					if (url.includes('/values/Sheet1!A1:C1')) {
-						return { values: [['Name', 'Age', 'City']] };
-					}
-					// Match the actual URL pattern generated by getColumnValues
-					if (url.includes('/values/Sheet1!A1:A10') || url.includes('/values/Sheet1%21A1%3AA10')) {
-						return { values: [['Name'], ['John'], ['Jane']] };
-					}
-					return {};
-				},
-			);
+			(apiRequest.call as Mock).mockImplementation((_: unknown, _method: unknown, url: string) => {
+				if (url.includes('/values/Sheet1!A1:C1')) {
+					return { values: [['Name', 'Age', 'City']] };
+				}
+				// Match the actual URL pattern generated by getColumnValues
+				if (url.includes('/values/Sheet1!A1:A10') || url.includes('/values/Sheet1%21A1%3AA10')) {
+					return { values: [['Name'], ['John'], ['Jane']] };
+				}
+				return {};
+			});
 		});
 
 		it('should prepare update data for existing records', async () => {
@@ -823,7 +909,7 @@ describe('GoogleSheet', () => {
 		});
 
 		it('should throw error when key row cannot be retrieved', async () => {
-			(apiRequest.call as jest.Mock).mockResolvedValue({ values: undefined });
+			(apiRequest.call as Mock).mockResolvedValue({ values: undefined });
 
 			const inputData = [{ Name: 'John' }];
 

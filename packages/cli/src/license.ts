@@ -255,6 +255,14 @@ export class License implements LicenseProvider {
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
+	isCertValid(): boolean {
+		return this.manager?.isValid(false /* useLogger */) ?? false;
+	}
+
+	hasFeatureInCert(feature: BooleanLicenseFeature): boolean {
+		return this.manager?.hasFeatureEnabled(feature, false) ?? false;
+	}
+
 	/** @deprecated Use `LicenseState.isDynamicCredentialsLicensed` instead. */
 	isDynamicCredentialsEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);

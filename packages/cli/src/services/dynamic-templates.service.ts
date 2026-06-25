@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import axios from 'axios';
 
 export const REQUEST_TIMEOUT_MS = 5000;
 
@@ -9,24 +9,31 @@ type DynamicTemplate = Record<string, unknown>;
 
 @Service()
 export class DynamicTemplatesService {
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+		outboundHttp: OutboundHttp,
+	) {
+		this.http = outboundHttp.requests({
+			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+	}
 
 	async fetchDynamicTemplates(): Promise<DynamicTemplate[]> {
 		if (!this.globalConfig.templates.dynamicTemplatesHost) {
 			return [];
 		}
 		try {
-			const response = await axios.get<{ templates: DynamicTemplate[] }>(
-				this.globalConfig.templates.dynamicTemplatesHost,
-				{
-					headers: { 'Content-Type': 'application/json' },
-					timeout: REQUEST_TIMEOUT_MS,
-				},
-			);
-			return response.data.templates;
+			const response = await this.http.request<{ templates: DynamicTemplate[] }>({
+				url: this.globalConfig.templates.dynamicTemplatesHost,
+				method: 'GET',
+				headers: { 'Content-Type': 'application/json' },
+				json: true,
+			});
+			return response.templates;
 		} catch (error) {
 			this.logger.error('Error fetching dynamic templates', { error });
 			throw error;

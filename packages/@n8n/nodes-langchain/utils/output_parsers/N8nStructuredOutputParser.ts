@@ -7,6 +7,10 @@ import { z } from 'zod';
 
 import { logAiEvent } from '@n8n/ai-utilities';
 import { unwrapNestedOutput } from '../helpers';
+import {
+	MODEL_OUTPUT_PARSER_ERROR_DESCRIPTION,
+	MODEL_OUTPUT_PARSER_ERROR_MESSAGE,
+} from './langchainParserError';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -92,11 +96,11 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				this.context.getNode(),
 				isEmptyOutput
 					? 'The AI model returned an empty response to the Structured Output Parser'
-					: "Model output doesn't fit required format",
+					: MODEL_OUTPUT_PARSER_ERROR_MESSAGE,
 				{
 					description: isEmptyOutput
 						? "This usually happens when the model runs out of tokens before it can generate the structured output. Try reducing the prompt length, increasing the model's max output tokens, or simplifying the output schema. To continue the execution when this happens, change the 'On Error' parameter in the root node's settings."
-						: "To continue the execution when this happens, change the 'On Error' parameter in the root node's settings",
+						: MODEL_OUTPUT_PARSER_ERROR_DESCRIPTION,
 				},
 			);
 

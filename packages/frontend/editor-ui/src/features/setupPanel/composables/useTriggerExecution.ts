@@ -4,10 +4,11 @@ import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
 import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composables/useNodeExecution';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 /**
  * Wraps `useNodeExecution` with listening-hint logic for setup-panel cards.
@@ -20,7 +21,7 @@ export function useTriggerExecution(
 ) {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const logsStore = useLogsStore();
 
 	const {
@@ -48,7 +49,8 @@ export function useTriggerExecution(
 		return (
 			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
 			logsStore.isOpen &&
-			workflowsStore.chatPartialExecutionDestinationNode === nodeValue.value?.name
+			useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
+				.chatPartialExecutionDestinationNode === nodeValue.value?.name
 		);
 	});
 
@@ -74,9 +76,10 @@ export function useTriggerExecution(
 
 	const hasUpstreamIssues = computed(() => {
 		if (!nodeValue.value) return false;
-		const parentNames = workflowsStore.workflowObject.getParentNodes(nodeValue.value.name, 'ALL');
+		const parentNames =
+			workflowDocumentStore.value?.getParentNodes(nodeValue.value.name, 'ALL') ?? [];
 		return parentNames.some((name) => {
-			const parentNode = workflowsStore.getNodeByName(name);
+			const parentNode = workflowDocumentStore.value?.getNodeByName(name);
 			return parentNode?.issues?.parameters || parentNode?.issues?.credentials;
 		});
 	});

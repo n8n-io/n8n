@@ -1,15 +1,15 @@
-import { describe, it, expect } from '@jest/globals';
-
 import {
 	JS_METHODS,
 	filterMethodsFromPath,
 	parseVersion,
 	isPlaceholderValue,
+	containsPlaceholderMarker,
 	isResourceLocatorLike,
 	normalizeResourceLocators,
 	escapeNewlinesInStringLiterals,
 	escapeNewlinesInExpressionStrings,
 	generateDeterministicNodeId,
+	generateDeterministicGroupId,
 } from './string-utils';
 
 describe('workflow-builder/string-utils', () => {
@@ -103,6 +103,38 @@ describe('workflow-builder/string-utils', () => {
 
 		it('returns false for string that only starts with prefix', () => {
 			expect(isPlaceholderValue('<__PLACEHOLDER_VALUE__')).toBe(false);
+		});
+	});
+
+	describe('containsPlaceholderMarker', () => {
+		it('returns true for bare placeholder string', () => {
+			expect(containsPlaceholderMarker('<__PLACEHOLDER_VALUE__test__>')).toBe(true);
+		});
+
+		it('returns true for expr()-wrapped placeholder (leading "=")', () => {
+			expect(containsPlaceholderMarker('=<__PLACEHOLDER_VALUE__test__>')).toBe(true);
+		});
+
+		it('returns true for placeholder embedded in an expression block', () => {
+			expect(containsPlaceholderMarker('={{ "prefix-" + "<__PLACEHOLDER_VALUE__name__>" }}')).toBe(
+				true,
+			);
+		});
+
+		it('returns false for literal strings without the marker', () => {
+			expect(containsPlaceholderMarker('regular string')).toBe(false);
+			expect(containsPlaceholderMarker('=expression')).toBe(false);
+		});
+
+		it('returns false for incomplete marker (missing closing)', () => {
+			expect(containsPlaceholderMarker('<__PLACEHOLDER_VALUE__test')).toBe(false);
+		});
+
+		it('returns false for non-string values', () => {
+			expect(containsPlaceholderMarker(123)).toBe(false);
+			expect(containsPlaceholderMarker(null)).toBe(false);
+			expect(containsPlaceholderMarker(undefined)).toBe(false);
+			expect(containsPlaceholderMarker({})).toBe(false);
 		});
 	});
 
@@ -243,6 +275,35 @@ describe('workflow-builder/string-utils', () => {
 			const id1 = generateDeterministicNodeId('wf1', 'type', 'name1');
 			const id2 = generateDeterministicNodeId('wf1', 'type', 'name2');
 			expect(id1).not.toBe(id2);
+		});
+	});
+
+	describe('generateDeterministicGroupId', () => {
+		it('generates UUID format', () => {
+			const id = generateDeterministicGroupId('wf1', 'My Group');
+			expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+		});
+
+		it('is deterministic for same inputs', () => {
+			expect(generateDeterministicGroupId('wf1', 'G')).toBe(
+				generateDeterministicGroupId('wf1', 'G'),
+			);
+		});
+
+		it('produces different IDs for a different workflow or group name', () => {
+			expect(generateDeterministicGroupId('wf1', 'G')).not.toBe(
+				generateDeterministicGroupId('wf2', 'G'),
+			);
+			expect(generateDeterministicGroupId('wf1', 'A')).not.toBe(
+				generateDeterministicGroupId('wf1', 'B'),
+			);
+		});
+
+		it('produces a different id than a node id for the same workflow and name', () => {
+			// The ':group:' seed segment keeps group ids disjoint from node ids.
+			expect(generateDeterministicGroupId('wf1', 'Ingestion')).not.toBe(
+				generateDeterministicNodeId('wf1', 'n8n-nodes-base.set', 'Ingestion'),
+			);
 		});
 	});
 });

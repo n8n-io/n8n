@@ -2,15 +2,17 @@ import { setNodeValidator } from './set-node-validator';
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { PluginContext } from '../types';
 
-// Helper to create a mock node instance
+// Helper to create a mock node instance.
+// Defaults to version 3.4 because assignment validation applies to Set v3.3+.
 function createMockNode(
 	type: string,
 	config: { parameters?: Record<string, unknown> } = {},
+	version: string = '3.4',
 ): NodeInstance<string, string, unknown> {
 	return {
 		type,
 		name: 'Test Node',
-		version: '1',
+		version,
 		config: {
 			parameters: config.parameters ?? {},
 		},
@@ -35,6 +37,15 @@ function createMockPluginContext(): PluginContext {
 	};
 }
 
+function createAssignment(name: string, value: unknown, type: string) {
+	return {
+		id: `${name}-assignment`,
+		name,
+		value,
+		type,
+	};
+}
+
 describe('setNodeValidator', () => {
 	describe('metadata', () => {
 		it('has correct id', () => {
@@ -55,7 +66,7 @@ describe('setNodeValidator', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {
 					assignments: {
-						assignments: [{ name: 'password', value: 'secret123', type: 'string' }],
+						assignments: [createAssignment('password', 'secret123', 'string')],
 					},
 				},
 			});
@@ -75,7 +86,7 @@ describe('setNodeValidator', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {
 					assignments: {
-						assignments: [{ name: 'api_key', value: 'key123', type: 'string' }],
+						assignments: [createAssignment('api_key', 'key123', 'string')],
 					},
 				},
 			});
@@ -95,7 +106,7 @@ describe('setNodeValidator', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {
 					assignments: {
-						assignments: [{ name: 'secret', value: 'mysecret', type: 'string' }],
+						assignments: [createAssignment('secret', 'mysecret', 'string')],
 					},
 				},
 			});
@@ -115,7 +126,7 @@ describe('setNodeValidator', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {
 					assignments: {
-						assignments: [{ name: 'token', value: 'mytoken', type: 'string' }],
+						assignments: [createAssignment('token', 'mytoken', 'string')],
 					},
 				},
 			});
@@ -136,8 +147,8 @@ describe('setNodeValidator', () => {
 				parameters: {
 					assignments: {
 						assignments: [
-							{ name: 'username', value: 'john', type: 'string' },
-							{ name: 'email', value: 'john@example.com', type: 'string' },
+							createAssignment('username', 'john', 'string'),
+							createAssignment('email', 'john@example.com', 'string'),
 						],
 					},
 				},
@@ -169,13 +180,99 @@ describe('setNodeValidator', () => {
 			expect(issues).toHaveLength(0);
 		});
 
+		it.each(['1', '2'])('skips validation for legacy Set node version %s', (version) => {
+			const node = createMockNode(
+				'n8n-nodes-base.set',
+				{
+					parameters: {
+						mode: 'keepAllExistingFields',
+						assignments: {
+							assignments: [{ name: 'password', value: 'secret', type: 'string' }],
+						},
+					},
+				},
+				version,
+			);
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it.each(['3', '3.1', '3.2'])(
+			'returns SET_INVALID_MODE error for unsupported Set node mode on version %s',
+			(version) => {
+				const node = createMockNode(
+					'n8n-nodes-base.set',
+					{
+						parameters: {
+							mode: 'keepAllExistingFields',
+							assignments: {
+								assignments: [{ name: 'caption', value: '={{ $json.title }}', type: 'string' }],
+							},
+						},
+					},
+					version,
+				);
+				const ctx = createMockPluginContext();
+
+				const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+				expect(issues).toEqual([
+					expect.objectContaining({
+						code: 'SET_INVALID_MODE',
+						severity: 'error',
+						parameterPath: 'parameters.mode',
+					}),
+				]);
+			},
+		);
+
+		it.each(['3', '3.1', '3.2'])(
+			'skips assignment validation for Set node version %s',
+			(version) => {
+				const node = createMockNode(
+					'n8n-nodes-base.set',
+					{
+						parameters: {
+							mode: 'manual',
+							assignments: {
+								assignments: [{ name: 'password', value: 'secret', type: 'string' }],
+							},
+						},
+					},
+					version,
+				);
+				const ctx = createMockPluginContext();
+
+				const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+				expect(issues).toHaveLength(0);
+			},
+		);
+
+		it('allows raw mode because it is a valid Set node output mode', () => {
+			const node = createMockNode('n8n-nodes-base.set', {
+				parameters: {
+					mode: 'raw',
+					jsonOutput: '={{ { id: $json.id, title: $json.title } }}',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
 		it('returns warnings for multiple credential-like fields', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {
 					assignments: {
 						assignments: [
-							{ name: 'password', value: 'secret', type: 'string' },
-							{ name: 'api_key', value: 'key', type: 'string' },
+							createAssignment('password', 'secret', 'string'),
+							createAssignment('api_key', 'key', 'string'),
 						],
 					},
 				},
@@ -191,7 +288,7 @@ describe('setNodeValidator', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {
 					assignments: {
-						assignments: [{ name: 'password', value: 'secret', type: 'string' }],
+						assignments: [createAssignment('password', 'secret', 'string')],
 					},
 				},
 			});
@@ -201,6 +298,122 @@ describe('setNodeValidator', () => {
 			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues[0]?.nodeName).toBe('My Set Node');
+		});
+
+		it('returns SET_INVALID_MODE error for unsupported Set node modes', () => {
+			const node = createMockNode('n8n-nodes-base.set', {
+				parameters: {
+					mode: 'keepAllExistingFields',
+					includeOtherFields: true,
+					assignments: {
+						assignments: [createAssignment('caption', '={{ $json.title }}', 'string')],
+					},
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'SET_INVALID_MODE',
+					severity: 'error',
+				}),
+			);
+		});
+
+		it('returns SET_INVALID_ASSIGNMENT error when a manual assignment is missing an id', () => {
+			const node = createMockNode('n8n-nodes-base.set', {
+				parameters: {
+					mode: 'manual',
+					includeOtherFields: true,
+					assignments: {
+						assignments: [{ name: 'caption', value: '={{ $json.title }}', type: 'string' }],
+					},
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'SET_INVALID_ASSIGNMENT',
+					severity: 'error',
+					parameterPath: 'parameters.assignments.assignments[0].id',
+				}),
+			);
+		});
+
+		it('returns SET_INVALID_ASSIGNMENT error when a manual assignment omits value', () => {
+			const node = createMockNode('n8n-nodes-base.set', {
+				parameters: {
+					mode: 'manual',
+					assignments: {
+						assignments: [{ id: 'caption-assignment', name: 'caption', type: 'string' }],
+					},
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'SET_INVALID_ASSIGNMENT',
+					severity: 'error',
+					parameterPath: 'parameters.assignments.assignments[0].value',
+				}),
+			);
+		});
+
+		it('returns SET_INVALID_ASSIGNMENT error when a manual assignment has explicit undefined value', () => {
+			const node = createMockNode('n8n-nodes-base.set', {
+				parameters: {
+					mode: 'manual',
+					assignments: {
+						assignments: [
+							{
+								id: 'caption-assignment',
+								name: 'caption',
+								type: 'string',
+								value: undefined,
+							},
+						],
+					},
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'SET_INVALID_ASSIGNMENT',
+					severity: 'error',
+					parameterPath: 'parameters.assignments.assignments[0].value',
+				}),
+			);
+		});
+
+		it('returns no issues for a canonical manual Set v3.4 assignment shape', () => {
+			const node = createMockNode('n8n-nodes-base.set', {
+				parameters: {
+					mode: 'manual',
+					includeOtherFields: true,
+					assignments: {
+						assignments: [
+							createAssignment('caption', '={{ $json.title }}', 'string'),
+							createAssignment('score', 12, 'number'),
+						],
+					},
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
 		});
 	});
 });

@@ -72,9 +72,10 @@ export class SecretProvidersProjectController {
 			req.user.id,
 			// When creating a connection for a project, the project owns the connection
 			'secretsProviderConnection:owner',
+			req.user.role?.slug,
 		);
 
-		const connection = this.connectionsService.toPublicConnection(savedConnection);
+		const connection = await this.connectionsService.toPublicConnection(savedConnection);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
 			body.providerKey,
@@ -109,7 +110,7 @@ export class SecretProvidersProjectController {
 			projectId,
 		);
 
-		const connection = this.connectionsService.toPublicConnection(connectionEntity);
+		const connection = await this.connectionsService.toPublicConnection(connectionEntity);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
 			providerKey,
@@ -142,9 +143,10 @@ export class SecretProvidersProjectController {
 			providerKey,
 			updates,
 			req.user.id,
+			req.user.role?.slug,
 		);
 
-		const connection = this.connectionsService.toPublicConnection(updated);
+		const connection = await this.connectionsService.toPublicConnection(updated);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
 			providerKey,
@@ -191,6 +193,10 @@ export class SecretProvidersProjectController {
 			user: req.user,
 		});
 
-		return await this.connectionsService.testConnection(providerKey, req.user.id);
+		return await this.connectionsService.testConnection(
+			providerKey,
+			req.user.id,
+			req.user.role?.slug,
+		);
 	}
 }

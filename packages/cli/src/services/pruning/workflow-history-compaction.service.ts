@@ -29,7 +29,7 @@ import { strict } from 'node:assert';
  *    by `trimmingMinimumAgeDays` and `trimmingTimeWindowDays`
  *
  * 2. For each workflow, fetch all versions in that window and leave behind
- *    only one version every minute to four hours, depending on the size of the
+ *    only one version every minute to ten hours, depending on the size of the
  *    workflow.
  *
  * Neither of these operations will remove active or named versions, and a version
@@ -162,10 +162,10 @@ export class WorkflowHistoryCompactionService {
 					RULES.makeMergeDependingOnSizeRule(
 						new Map([
 							[0, 60 * 1_000],
-							[100, 5 * 60 * 1_000],
-							[1000, 30 * 60 * 1_000],
-							[5000, 60 * 60 * 1_000],
-							[10000, 4 * 60 * 60 * 1_000],
+							[100, 10 * 60 * 1_000],
+							[1000, 2 * 60 * 60 * 1_000],
+							[5000, 5 * 60 * 60 * 1_000],
+							[10000, 10 * 60 * 60 * 1_000],
 						]),
 					),
 				],

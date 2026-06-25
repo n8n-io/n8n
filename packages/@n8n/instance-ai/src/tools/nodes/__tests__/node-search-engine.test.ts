@@ -50,6 +50,21 @@ const agentNode = makeNode({
 			ai_memory: { required: false },
 			ai_tool: { required: false, displayOptions: { show: { hasTools: [true] } } },
 		},
+		extraTypeDefContent: [
+			{
+				content:
+					'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
+			},
+		],
+	},
+});
+
+const openAiNode = makeNode({
+	name: '@n8n/n8n-nodes-langchain.openAi',
+	displayName: 'OpenAI',
+	description: 'OpenAI node for chat, assistants, and legacy operations',
+	builderHint: {
+		searchHint: 'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model',
 	},
 });
 
@@ -88,16 +103,48 @@ const expressionOutputNode = makeNode({
 	outputs: '={{["main","ai_tool"]}}',
 });
 
+const dataTableToolNode = makeNode({
+	name: 'n8n-nodes-base.dataTableTool',
+	displayName: 'n8n Data Table Tool',
+	description: 'Read, create, update, and delete rows in n8n data tables from an AI agent',
+	outputs: ['ai_tool'],
+});
+
+const googleCalendarNode = makeNode({
+	name: 'n8n-nodes-base.googleCalendar',
+	displayName: 'Google Calendar',
+	description: 'Consume Google Calendar API',
+});
+
+const googleCalendarToolNode = makeNode({
+	name: 'n8n-nodes-base.googleCalendarTool',
+	displayName: 'Google Calendar Tool',
+	description: 'Consume Google Calendar API as a tool for AI agents',
+	outputs: ['ai_tool'],
+});
+
+const slackToolNode = makeNode({
+	name: 'n8n-nodes-base.slackTool',
+	displayName: 'Slack Tool',
+	description: 'Send messages to Slack from an AI agent',
+	outputs: ['ai_tool'],
+});
+
 const allNodes = [
 	httpNode,
 	setNode,
 	slackNode,
 	agentNode,
+	openAiNode,
 	openAiLmNode,
 	memoryNode,
 	embeddingNode,
 	vectorStoreNode,
 	expressionOutputNode,
+	dataTableToolNode,
+	googleCalendarNode,
+	googleCalendarToolNode,
+	slackToolNode,
 ];
 
 // ---------------------------------------------------------------------------
@@ -128,6 +175,23 @@ describe('NodeSearchEngine', () => {
 			expect(results[0].name).toBe('n8n-nodes-base.httpRequest');
 		});
 
+		it('should find nodes by description fallback', () => {
+			const results = engine.searchByName('requests');
+			expect(results.map((r) => r.name)).toContain('n8n-nodes-base.httpRequest');
+		});
+
+		it('should return fresh cached result objects', () => {
+			const first = engine.searchByName('AI Agent');
+			const agentResult = first.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
+			expect(agentResult).toBeDefined();
+			agentResult!.displayName = 'Mutated Agent';
+
+			const second = engine.searchByName('AI Agent');
+			expect(second.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent')?.displayName).toBe(
+				'AI Agent',
+			);
+		});
+
 		it('should respect the limit parameter', () => {
 			const results = engine.searchByName('n', 2);
 			expect(results.length).toBeLessThanOrEqual(2);
@@ -138,6 +202,33 @@ describe('NodeSearchEngine', () => {
 			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
 			expect(agentResult).toBeDefined();
 			expect(agentResult?.builderHintMessage).toBe('Use an AI Agent for autonomous task execution');
+		});
+
+		it('should include builder search hint when present', () => {
+			const results = engine.searchByName('OpenAI');
+			const openAiResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.openAi');
+			expect(openAiResult).toBeDefined();
+			expect(openAiResult?.builderHintMessage).toBe(
+				'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model',
+			);
+			expect(engine.formatResult(openAiResult!)).toContain(
+				'<builder_hint>For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model</builder_hint>',
+			);
+		});
+
+		it('should NOT surface builderHint.extraTypeDefContent in search results', () => {
+			const results = engine.searchByName('AI Agent');
+			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
+			expect(agentResult).toBeDefined();
+			// Result type has no extraTypeDefContent field; assert it never leaks in
+			// via untyped assignment either.
+			expect(agentResult).not.toHaveProperty('extraTypeDefContent');
+			expect(JSON.stringify(agentResult)).not.toContain('<patterns>');
+			expect(JSON.stringify(agentResult)).not.toContain('basic');
+			// The formatted XML the LLM actually sees must not contain the example.
+			const xml = engine.formatResult(agentResult!);
+			expect(xml).not.toContain('<patterns>');
+			expect(xml).not.toContain('const agent = node');
 		});
 
 		it('should include subnode requirements when present', () => {
@@ -164,6 +255,19 @@ describe('NodeSearchEngine', () => {
 			const results = engine.searchByName('HTTP');
 			const httpResult = results.find((r) => r.name === 'n8n-nodes-base.httpRequest');
 			expect(httpResult?.version).toBe(1);
+		});
+
+		it('should handle multi-word queries by splitting into terms', () => {
+			const results = engine.searchByName('data table tool');
+			const dataTableResult = results.find((r) => r.name === 'n8n-nodes-base.dataTableTool');
+			expect(dataTableResult).toBeDefined();
+		});
+
+		it('should find nodes when multi-word query matches display name partially', () => {
+			const results = engine.searchByName('google calendar');
+			const names = results.map((r) => r.name);
+			expect(names).toContain('n8n-nodes-base.googleCalendar');
+			expect(names).toContain('n8n-nodes-base.googleCalendarTool');
 		});
 	});
 
@@ -200,6 +304,24 @@ describe('NodeSearchEngine', () => {
 		it('should respect the limit parameter', () => {
 			const results = engine.searchByConnectionType('ai_languageModel', 1);
 			expect(results.length).toBeLessThanOrEqual(1);
+		});
+
+		it('should find tool nodes with multi-word name filter', () => {
+			const results = engine.searchByConnectionType('ai_tool', 10, 'data table tool');
+			const dataTableResult = results.find((r) => r.name === 'n8n-nodes-base.dataTableTool');
+			expect(dataTableResult).toBeDefined();
+		});
+
+		it('should find google calendar tool via connectionType + query', () => {
+			const results = engine.searchByConnectionType('ai_tool', 10, 'google calendar');
+			const calendarTool = results.find((r) => r.name === 'n8n-nodes-base.googleCalendarTool');
+			expect(calendarTool).toBeDefined();
+		});
+
+		it('should not return regular nodes when filtering by connectionType', () => {
+			const results = engine.searchByConnectionType('ai_tool', 10, 'google calendar');
+			const regularCalendar = results.find((r) => r.name === 'n8n-nodes-base.googleCalendar');
+			expect(regularCalendar).toBeUndefined();
 		});
 	});
 

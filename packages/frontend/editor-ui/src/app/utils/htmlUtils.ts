@@ -19,7 +19,7 @@ export function sanitizeHtml(dirtyHtml: string) {
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
 				// href is allowed but we allow only https and relative URLs
-				if (name === 'href' && !value.match(/^https?:\/\//gm) && !value.startsWith('/')) {
+				if (name === 'href' && !value.match(/^https?:\/\//) && !value.startsWith('/')) {
 					return '';
 				}
 				return `${name}="${escapeAttrValue(value)}"`;

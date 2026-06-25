@@ -1,4 +1,4 @@
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
 
@@ -139,6 +139,35 @@ describe('N8nPopover', () => {
 			const popover = await wrapper.findByRole('dialog');
 
 			expect(popover.contains(document.activeElement)).toBe(false);
+		});
+
+		it('should suppress focus restore on close when suppressAutoFocus is true', async () => {
+			const triggerHandle = document.createElement('button');
+			triggerHandle.textContent = 'trigger';
+			document.body.appendChild(triggerHandle);
+
+			const externalInput = document.createElement('input');
+			document.body.appendChild(externalInput);
+
+			const wrapper = render(N8nPopover, {
+				props: { open: true, suppressAutoFocus: true },
+				slots: {
+					trigger: '<button>trigger</button>',
+					content: '<input />',
+				},
+			});
+			await wrapper.findByRole('dialog');
+
+			externalInput.focus();
+			expect(document.activeElement).toBe(externalInput);
+
+			await wrapper.rerender({ open: false, suppressAutoFocus: true });
+			await waitFor(() => expect(wrapper.queryByRole('dialog')).not.toBeInTheDocument());
+
+			expect(document.activeElement).toBe(externalInput);
+
+			triggerHandle.remove();
+			externalInput.remove();
 		});
 	});
 });

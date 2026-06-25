@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { sleep } from 'n8n-workflow';
 
 import config from '@/config';
@@ -11,6 +12,7 @@ import { TaskBrokerAuthService } from '../task-broker-auth.service';
 describe('TaskBrokerAuthService', () => {
 	config.set('taskRunners.authToken', 'random-secret');
 
+	const TTL = 100; // 100 ms
 	const globalConfig = mockInstance(GlobalConfig, {
 		cache: {
 			backend: 'memory',
@@ -21,11 +23,11 @@ describe('TaskBrokerAuthService', () => {
 		},
 		taskRunners: {
 			authToken: 'random-secret',
+			grantTokenTtl: TTL / Time.seconds.toMilliseconds, // Convert ms to seconds
 		},
 	});
-	const TTL = 100;
 	const cacheService = new CacheService(globalConfig);
-	const authService = new TaskBrokerAuthService(globalConfig, cacheService, TTL);
+	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 
 	beforeEach(() => {
 		jest.clearAllMocks();

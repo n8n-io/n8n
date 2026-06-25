@@ -122,6 +122,25 @@ function validateReferencedParameters(
 	}
 }
 
+// Quote-aware parser: only rewrites `$<digit>` placeholders found outside string
+// literals, so values inside quotes (e.g. `'$5'`) are left untouched.
+export const prepareSafeQuery = (rawQuery: string, replacements?: QueryValues): QueryWithValues => {
+	if (replacements === undefined) {
+		return { query: rawQuery, values: [] };
+	}
+
+	const regex = /\$(\d+)(?::name)?/g;
+	const matches = findParameterMatches(rawQuery, regex);
+	const validMatches = filterValidMatches(matches, rawQuery);
+
+	validateReferencedParameters(validMatches, replacements);
+
+	const query = processParameterReplacements(rawQuery, validMatches, replacements);
+	const values = extractValuesFromMatches(validMatches, replacements);
+
+	return { query, values };
+};
+
 export const prepareQueryAndReplacements = (
 	rawQuery: string,
 	nodeVersion: number,
@@ -132,16 +151,7 @@ export const prepareQueryAndReplacements = (
 	}
 
 	if (nodeVersion >= 2.5) {
-		const regex = /\$(\d+)(?::name)?/g;
-		const matches = findParameterMatches(rawQuery, regex);
-		const validMatches = filterValidMatches(matches, rawQuery);
-
-		validateReferencedParameters(validMatches, replacements);
-
-		const query = processParameterReplacements(rawQuery, validMatches, replacements);
-		const values = extractValuesFromMatches(validMatches, replacements);
-
-		return { query, values };
+		return prepareSafeQuery(rawQuery, replacements);
 	}
 
 	return prepareQueryLegacy(rawQuery, replacements);

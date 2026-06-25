@@ -47,7 +47,7 @@ jobs:
           echo "Package '$PACKAGE_NAME' does not exist on NPM yet. Proceeding with publish."
 
       - name: Configure NPM token
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_INITIAL_PUBLISH_TOKEN }}" > ~/.npmrc
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN }}" > ~/.npmrc
 
       - name: Publish package
         working-directory: ${{ github.event.inputs.package-path }}

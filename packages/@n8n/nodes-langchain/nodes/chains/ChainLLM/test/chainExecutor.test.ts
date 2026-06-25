@@ -2,8 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import * as tracing from '@utils/tracing';
@@ -12,25 +13,25 @@ import { executeChain, NaiveJsonOutputParser } from '../methods/chainExecutor';
 import * as chainExecutor from '../methods/chainExecutor';
 import * as promptUtils from '../methods/promptUtils';
 
-jest.mock('@utils/tracing', () => ({
-	getTracingConfig: jest.fn(() => ({})),
+vi.mock('@utils/tracing', () => ({
+	getTracingConfig: vi.fn(() => ({})),
 }));
 
-jest.mock('../methods/promptUtils', () => ({
-	createPromptTemplate: jest.fn(),
-	getAgentStepsParser: jest.fn(),
+vi.mock('../methods/promptUtils', () => ({
+	createPromptTemplate: vi.fn(),
+	getAgentStepsParser: vi.fn(),
 }));
 
 describe('chainExecutor', () => {
-	let mockContext: jest.Mocked<IExecuteFunctions>;
+	let mockContext: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
 		mockContext = mock<IExecuteFunctions>();
-		mockContext.getExecutionCancelSignal = jest.fn().mockReturnValue(undefined);
-		mockContext.getNode = jest.fn().mockReturnValue({
+		mockContext.getExecutionCancelSignal = vi.fn().mockReturnValue(undefined);
+		mockContext.getNode = vi.fn().mockReturnValue({
 			typeVersion: 1.5,
 		});
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getOutputParserForLLM', () => {
@@ -132,7 +133,7 @@ describe('chainExecutor', () => {
 
 		it('should use parent class parser for malformed JSON', async () => {
 			const parser = new NaiveJsonOutputParser();
-			const superParseSpy = jest.spyOn(JsonOutputParser.prototype, 'parse').mockResolvedValue({
+			const superParseSpy = vi.spyOn(JsonOutputParser.prototype, 'parse').mockResolvedValue({
 				parsed: 'content',
 			});
 
@@ -150,7 +151,7 @@ describe('chainExecutor', () => {
 
 			// Mock the parent class parse method
 			const mockParsedResult = { result: 'success', code: 200 };
-			const superParseSpy = jest
+			const superParseSpy = vi
 				.spyOn(JsonOutputParser.prototype, 'parse')
 				.mockResolvedValue(mockParsedResult);
 
@@ -226,20 +227,20 @@ describe('chainExecutor', () => {
 			});
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue('Test response'),
+				invoke: vi.fn().mockResolvedValue('Test response'),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeStringOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeStringOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeStringOutputParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
+			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -277,20 +278,20 @@ describe('chainExecutor', () => {
 			});
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue({ result: 'Test response' }),
+				invoke: vi.fn().mockResolvedValue({ result: 'Test response' }),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
+			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -326,20 +327,20 @@ describe('chainExecutor', () => {
 			const mockOutputParser = mock<N8nOutputParser>();
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue({ result: 'Test response' }),
+				invoke: vi.fn().mockResolvedValue({ result: 'Test response' }),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
+			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -364,20 +365,20 @@ describe('chainExecutor', () => {
 			});
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue('Test response'),
+				invoke: vi.fn().mockResolvedValue('Test response'),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeStringOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeStringOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeStringOutputParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
+			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -399,20 +400,20 @@ describe('chainExecutor', () => {
 			const mockChatPromptTemplate = ChatPromptTemplate.fromMessages([]);
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue('Test chat response'),
+				invoke: vi.fn().mockResolvedValue('Test chat response'),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeStringOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeStringOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeStringOutputParserMock,
 			});
 
 			mockChatPromptTemplate.pipe = pipeMock;
-			fakeChatModel.pipe = jest.fn();
+			fakeChatModel.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockChatPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockChatPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -438,19 +439,19 @@ describe('chainExecutor', () => {
 			});
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue('{"result": "json data"}'),
+				invoke: vi.fn().mockResolvedValue('{"result": "json data"}'),
 			};
 
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
 
-			mockPromptTemplate.pipe = jest.fn().mockReturnValue({
+			mockPromptTemplate.pipe = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
 			});
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -472,19 +473,19 @@ describe('chainExecutor', () => {
 			});
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue('{"result": "json data"}'),
+				invoke: vi.fn().mockResolvedValue('{"result": "json data"}'),
 			};
 
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
 
-			mockPromptTemplate.pipe = jest.fn().mockReturnValue({
+			mockPromptTemplate.pipe = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
 			});
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -497,13 +498,13 @@ describe('chainExecutor', () => {
 		});
 
 		it('should use getAgentStepsParser for version 1.9+ when output parser is provided', async () => {
-			mockContext.getNode = jest.fn().mockReturnValue({
+			mockContext.getNode = vi.fn().mockReturnValue({
 				typeVersion: 1.9,
 			});
 
 			const fakeLLM = new FakeChatModel({});
 			const mockOutputParser = mock<N8nOutputParser>({
-				getFormatInstructions: jest.fn().mockReturnValue('Format as JSON'),
+				getFormatInstructions: vi.fn().mockReturnValue('Format as JSON'),
 			});
 
 			const mockPromptTemplate = new PromptTemplate({
@@ -512,24 +513,24 @@ describe('chainExecutor', () => {
 				partialVariables: { formatInstructions: 'Format as JSON' },
 			});
 
-			const mockAgentStepsParser = jest.fn().mockResolvedValue({ result: 'parsed' });
-			(promptUtils.getAgentStepsParser as jest.Mock).mockReturnValue(mockAgentStepsParser);
+			const mockAgentStepsParser = vi.fn().mockResolvedValue({ result: 'parsed' });
+			(promptUtils.getAgentStepsParser as Mock).mockReturnValue(mockAgentStepsParser);
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue({ result: 'parsed' }),
+				invoke: vi.fn().mockResolvedValue({ result: 'parsed' }),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeAgentStepsParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeAgentStepsParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeAgentStepsParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
+			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -545,13 +546,13 @@ describe('chainExecutor', () => {
 		});
 
 		it('should use direct output parser for versions < 1.9 when output parser is provided', async () => {
-			mockContext.getNode = jest.fn().mockReturnValue({
+			mockContext.getNode = vi.fn().mockReturnValue({
 				typeVersion: 1.8,
 			});
 
 			const fakeLLM = new FakeChatModel({});
 			const mockOutputParser = mock<N8nOutputParser>({
-				getFormatInstructions: jest.fn().mockReturnValue('Format as JSON'),
+				getFormatInstructions: vi.fn().mockReturnValue('Format as JSON'),
 			});
 
 			const mockPromptTemplate = new PromptTemplate({
@@ -561,20 +562,20 @@ describe('chainExecutor', () => {
 			});
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue({ result: 'parsed' }),
+				invoke: vi.fn().mockResolvedValue({ result: 'parsed' }),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeOutputParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
+			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -598,22 +599,22 @@ describe('chainExecutor', () => {
 			});
 
 			const mockChain = {
-				invoke: jest.fn().mockResolvedValue('Test response'),
+				invoke: vi.fn().mockResolvedValue('Test response'),
 			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeStringOutputParserMock = jest.fn().mockReturnValue({
+			const withConfigMock = vi.fn().mockReturnValue(mockChain);
+			const pipeStringOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
-			const pipeMock = jest.fn().mockReturnValue({
+			const pipeMock = vi.fn().mockReturnValue({
 				pipe: pipeStringOutputParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
-			fakeLLM.withFallbacks = jest.fn().mockReturnValue(fakeLLM);
-			fakeFallbackLLM.pipe = jest.fn();
+			fakeLLM.pipe = vi.fn();
+			fakeLLM.withFallbacks = vi.fn().mockReturnValue(fakeLLM);
+			fakeFallbackLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,

@@ -147,6 +147,19 @@ export class OwnershipService {
 		}
 	}
 
+	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: { projectId, role: 'workflow:owner' },
+			select: ['workflowId'],
+		});
+		await Promise.all(
+			rows.map(
+				async ({ workflowId }) =>
+					await this.cacheService.deleteFromHash('workflow-project', workflowId),
+			),
+		);
+	}
+
 	addOwnedByAndSharedWith(
 		rawWorkflow: ListQueryDb.Workflow.WithSharing,
 	): ListQueryDb.Workflow.WithOwnedByAndSharedWith;
@@ -221,25 +234,36 @@ export class OwnershipService {
 		});
 	}
 
-	async setupOwner(payload: OwnerSetupRequestDto) {
+	async setupOwner(
+		payload: OwnerSetupRequestDto,
+		options?: { overwriteExisting?: boolean; passwordIsHashed?: boolean },
+	) {
 		const { email, firstName, lastName, password } = payload;
-		if (await this.hasInstanceOwner()) {
+
+		if (!options?.overwriteExisting && (await this.hasInstanceOwner())) {
 			this.logger.debug(
 				'Request to claim instance ownership failed because instance owner already exists',
 			);
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let shellUser = await this.userRepository.findOneOrFail({
+		let shellUser = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			relations: ['role'],
 		});
 
-		shellUser.email = email;
+		if (!shellUser) {
+			this.logger.error('Could not find shell user with global:owner role');
+			throw new BadRequestError('Instance owner shell user not found');
+		}
+
+		shellUser.email = email.toLowerCase();
 		shellUser.firstName = firstName;
 		shellUser.lastName = lastName;
 		shellUser.lastActiveAt = new Date();
-		shellUser.password = await this.passwordUtility.hash(password);
+		shellUser.password = options?.passwordIsHashed
+			? password
+			: await this.passwordUtility.hash(password);
 
 		shellUser = await this.userRepository.save(shellUser, { transaction: false });
 

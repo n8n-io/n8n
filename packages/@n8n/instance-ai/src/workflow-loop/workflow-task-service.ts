@@ -4,6 +4,7 @@ import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
+	WorkflowLoopState,
 } from './workflow-loop-state';
 import type { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
 
@@ -28,6 +29,11 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 	async getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined> {
 		const item = await this.storage.getWorkItem(this.threadId, workItemId);
 		return item?.lastBuildOutcome ?? undefined;
+	}
+
+	async getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined> {
+		const item = await this.storage.getWorkItem(this.threadId, workItemId);
+		return item?.state ?? undefined;
 	}
 
 	async updateBuildOutcome(

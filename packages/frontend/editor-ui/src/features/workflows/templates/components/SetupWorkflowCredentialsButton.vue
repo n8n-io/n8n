@@ -38,7 +38,9 @@ const allCredentialsFilled = computed(() => {
 		return true;
 	}
 
-	const nodes = workflowDocumentStore?.value?.getNodes() ?? [];
+	// Disabled nodes are skipped during execution, so their unfilled
+	// credentials must not keep the setup button visible.
+	const nodes = (workflowDocumentStore?.value?.allNodes ?? []).filter((node) => !node.disabled);
 	if (!nodes.length) {
 		return true;
 	}
@@ -63,7 +65,7 @@ const showButton = computed(() => {
 	}
 
 	if (isSetupPanelFeatureEnabled.value) {
-		return (workflowDocumentStore?.value?.getNodes() ?? []).length > 0;
+		return (workflowDocumentStore?.value?.allNodes ?? []).length > 0 && !allCredentialsFilled.value;
 	}
 
 	if (isTemplateSetupCompleted.value) {

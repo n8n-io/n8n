@@ -1,7 +1,7 @@
 import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
-import { paginatedRequest } from '../strapi-utils';
+import { paginatedRequest } from '@/utils/strapi-utils';
 
-jest.mock('../strapi-utils', () => ({
+jest.mock('@/utils/strapi-utils', () => ({
 	paginatedRequest: jest.fn(),
 }));
 

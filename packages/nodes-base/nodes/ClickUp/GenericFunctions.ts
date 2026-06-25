@@ -41,6 +41,9 @@ export async function clickupApiRequest(
 			const oAuth2Options: IOAuth2Options = {
 				keepBearer: false,
 				tokenType: 'Bearer',
+				// ClickUp's access token doesn't expire and
+				// ClickUp does not return refresh tokens
+				skipTokenRefresh: true,
 			};
 			return await this.helpers.requestOAuth2.call(
 				this,

@@ -24,7 +24,7 @@ function createMockEvaluator(
 ): Evaluator {
 	return {
 		name,
-		evaluate: jest.fn().mockResolvedValue(feedback),
+		evaluate: vi.fn().mockResolvedValue(feedback),
 	};
 }
 
@@ -32,7 +32,7 @@ function createMockEvaluator(
 function createFailingEvaluator(name: string, error: Error): Evaluator {
 	return {
 		name,
-		evaluate: jest.fn().mockRejectedValue(error),
+		evaluate: vi.fn().mockRejectedValue(error),
 	};
 }
 
@@ -45,7 +45,7 @@ describe('Runner - Local Mode', () => {
 				{ prompt: 'Create workflow C' },
 			];
 
-			const generateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
+			const generateWorkflow = vi.fn().mockResolvedValue(createMockWorkflow());
 			const evaluator = createMockEvaluator('test');
 
 			const config: RunConfig = {
@@ -79,7 +79,7 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator1, evaluator2, evaluator3],
 				logger: silentLogger,
 			};
@@ -105,7 +105,7 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [goodEvaluator, badEvaluator],
 				logger: silentLogger,
 			};
@@ -120,7 +120,7 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should skip and continue when workflow generation fails', async () => {
-			const generateWorkflow = jest
+			const generateWorkflow = vi
 				.fn()
 				.mockResolvedValueOnce(createMockWorkflow())
 				.mockRejectedValueOnce(new Error('Generation failed'))
@@ -153,7 +153,7 @@ describe('Runner - Local Mode', () => {
 
 			const evaluator: Evaluator = {
 				name: 'contextual',
-				evaluate: jest.fn(evaluate),
+				evaluate: vi.fn(evaluate),
 			};
 
 			const config: RunConfig = {
@@ -164,7 +164,7 @@ describe('Runner - Local Mode', () => {
 						context: { dos: 'Use Slack', donts: 'No HTTP' },
 					},
 				],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator],
 				logger: silentLogger,
 			};
@@ -184,13 +184,13 @@ describe('Runner - Local Mode', () => {
 
 			const evaluator: Evaluator = {
 				name: 'merged',
-				evaluate: jest.fn(evaluate),
+				evaluate: vi.fn(evaluate),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test', context: { donts: 'No HTTP' } }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator],
 				context: { dos: 'Use Slack' },
 				logger: silentLogger,
@@ -214,7 +214,7 @@ describe('Runner - Local Mode', () => {
 			const config1: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [highScoreEvaluator],
 				logger: silentLogger,
 			};
@@ -227,7 +227,7 @@ describe('Runner - Local Mode', () => {
 			const config2: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [lowScoreEvaluator],
 				logger: silentLogger,
 			};
@@ -253,7 +253,7 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator1, evaluator2],
 				lifecycle,
 				logger: silentLogger,
@@ -270,13 +270,13 @@ describe('Runner - Local Mode', () => {
 	describe('Lifecycle Hooks', () => {
 		it('should call onStart at beginning of run', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onStart: jest.fn(),
+				onStart: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
 				lifecycle,
 				logger: silentLogger,
@@ -290,13 +290,13 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onExampleStart before each example', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onExampleStart: jest.fn(),
+				onExampleStart: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test 1' }, { prompt: 'Test 2' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
 				lifecycle,
 				logger: silentLogger,
@@ -313,13 +313,13 @@ describe('Runner - Local Mode', () => {
 		it('should call onWorkflowGenerated after generation', async () => {
 			const workflow = createMockWorkflow('Generated');
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onWorkflowGenerated: jest.fn(),
+				onWorkflowGenerated: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(workflow),
+				generateWorkflow: vi.fn().mockResolvedValue(workflow),
 				evaluators: [],
 				lifecycle,
 				logger: silentLogger,
@@ -336,7 +336,7 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onEvaluatorComplete after each evaluator', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onEvaluatorComplete: jest.fn(),
+				onEvaluatorComplete: vi.fn(),
 			};
 
 			const feedback1: Feedback[] = [
@@ -349,7 +349,7 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [
 					createMockEvaluator('eval1', feedback1),
 					createMockEvaluator('eval2', feedback2),
@@ -369,13 +369,13 @@ describe('Runner - Local Mode', () => {
 		it('should call onEvaluatorError when evaluator fails', async () => {
 			const error = new Error('Evaluator crashed');
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onEvaluatorError: jest.fn(),
+				onEvaluatorError: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createFailingEvaluator('failing', error)],
 				lifecycle,
 				logger: silentLogger,
@@ -389,13 +389,13 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onExampleComplete after each example', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onExampleComplete: jest.fn(),
+				onExampleComplete: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createMockEvaluator('test')],
 				lifecycle,
 				logger: silentLogger,
@@ -416,13 +416,13 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onEnd with summary at end of run', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onEnd: jest.fn(),
+				onEnd: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createMockEvaluator('test')],
 				lifecycle,
 				logger: silentLogger,

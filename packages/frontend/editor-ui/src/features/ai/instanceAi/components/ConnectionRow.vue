@@ -1,0 +1,166 @@
+<script lang="ts" setup>
+import { computed } from 'vue';
+import { N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+
+type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
+type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+export type ConnectionRowIcon = IconName | { type: 'file'; src: string };
+
+const props = defineProps<{
+	name: string;
+	subtitle: string;
+	icon: ConnectionRowIcon;
+	status: ConnectionStatus;
+	actions: RowAction[];
+	dropdownPortalTarget?: HTMLElement;
+}>();
+
+const iconSource = computed<{ type: 'icon'; name: IconName } | { type: 'file'; src: string }>(
+	() => {
+		if (typeof props.icon === 'string') return { type: 'icon', name: props.icon };
+		return props.icon;
+	},
+);
+
+const emit = defineEmits<{
+	connect: [];
+	disconnect: [];
+	openSettings: [];
+	remove: [];
+}>();
+
+const i18n = useI18n();
+
+const ACTION_LABEL_KEYS: Record<RowAction, BaseTextKey> = {
+	connect: 'instanceAi.connections.row.connect',
+	disconnect: 'instanceAi.connections.row.disconnect',
+	settings: 'instanceAi.connections.row.settings',
+	remove: 'instanceAi.connections.row.remove',
+};
+
+const ACTION_ORDER: RowAction[] = ['connect', 'settings', 'disconnect', 'remove'];
+
+const menuItems = computed<Array<DropdownMenuItemProps<RowAction>>>(() =>
+	ACTION_ORDER.filter((a) => props.actions.includes(a)).map((a) => ({
+		id: a,
+		label: i18n.baseText(ACTION_LABEL_KEYS[a]),
+	})),
+);
+
+const statusTooltip = computed(() => {
+	if (props.status === 'connected')
+		return i18n.baseText('instanceAi.connections.row.status.connected');
+	if (props.status === 'waiting') return i18n.baseText('instanceAi.connections.row.status.waiting');
+	return i18n.baseText('instanceAi.connections.row.status.disconnected');
+});
+
+function handleSelect(action: RowAction) {
+	if (action === 'connect') emit('connect');
+	else if (action === 'disconnect') emit('disconnect');
+	else if (action === 'settings') emit('openSettings');
+	else if (action === 'remove') emit('remove');
+}
+</script>
+
+<template>
+	<div :class="$style.row">
+		<span :class="$style.iconWrap">
+			<img
+				v-if="iconSource.type === 'file'"
+				:src="iconSource.src"
+				alt=""
+				aria-hidden="true"
+				loading="lazy"
+				referrerpolicy="no-referrer"
+				:class="$style.iconImage"
+			/>
+			<N8nIcon v-else :icon="iconSource.name" size="large" :class="$style.icon" />
+		</span>
+		<div :class="$style.labels">
+			<N8nText bold size="small" :class="$style.name">{{ name }}</N8nText>
+			<N8nText size="xsmall" color="text-light">{{ subtitle }}</N8nText>
+		</div>
+		<span
+			:class="[
+				$style.dot,
+				status === 'connected' && $style.dotConnected,
+				status === 'waiting' && $style.dotWaiting,
+				status === 'disconnected' && $style.dotDisconnected,
+			]"
+			:title="statusTooltip"
+		/>
+		<N8nDropdownMenu
+			v-if="menuItems.length > 0"
+			:items="menuItems"
+			placement="bottom-end"
+			:portal-target="dropdownPortalTarget"
+			@select="handleSelect"
+		/>
+	</div>
+</template>
+
+<style lang="scss" module>
+.row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) 0;
+	margin-left: var(--spacing--2xs);
+}
+
+.iconWrap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--4xs);
+	background: var(--color--foreground--tint-1);
+	border-radius: var(--radius);
+	flex-shrink: 0;
+}
+
+.icon {
+	color: var(--color--text);
+}
+
+.iconImage {
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+	display: block;
+}
+
+.labels {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: var(--spacing--5xs);
+}
+
+.name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.dotConnected {
+	background: var(--color--success);
+}
+
+.dotWaiting {
+	background: var(--color--warning);
+}
+
+.dotDisconnected {
+	background: var(--color--danger);
+}
+</style>

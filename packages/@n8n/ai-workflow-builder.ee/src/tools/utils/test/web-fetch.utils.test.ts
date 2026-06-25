@@ -1,43 +1,46 @@
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
-import dns from 'dns';
+import axios, { type AxiosRequestConfig } from 'axios';
+import { createResultError, createResultOk } from 'n8n-workflow';
+import type { LookupFunction } from 'node:net';
+import { Readable } from 'node:stream';
+import type { Mock } from 'vitest';
 
+import { WEB_FETCH_MAX_BYTES } from '../../../constants';
+import { CrossHostRedirectError, type SsrfGuard } from '../ssrf-guard';
 import {
 	normalizeHost,
-	isBlockedUrl,
 	fetchUrl,
 	extractReadableContent,
 	isUrlInUserMessages,
 } from '../web-fetch.utils';
 
-// Mock dns module
-jest.mock('dns', () => ({
-	resolve4: jest.fn(),
-	resolve6: jest.fn(),
-}));
+vi.mock('axios', () => ({ __esModule: true, default: { get: vi.fn() } }));
 
-const mockResolve4 = dns.resolve4 as unknown as jest.Mock;
-const mockResolve6 = dns.resolve6 as unknown as jest.Mock;
+const mockGet = axios.get as Mock;
 
-type DnsCallback = (error: Error | null, addresses: string[]) => void;
-
-// Helper to make dns.resolve return values via callback
-function mockDnsResolve(v4: string[] = [], v6: string[] = []) {
-	mockResolve4.mockImplementation((_hostname: string, done: DnsCallback) => done(null, v4));
-	mockResolve6.mockImplementation((_hostname: string, done: DnsCallback) => done(null, v6));
+/** Build a guard whose IP checks pass by default; override per test. */
+function makeGuard(overrides: Partial<SsrfGuard> = {}): SsrfGuard {
+	return {
+		validateUrl: vi.fn(async () => createResultOk(undefined)),
+		validateRedirectSync: vi.fn(),
+		createSecureLookup: vi.fn((): LookupFunction => (() => {}) as unknown as LookupFunction),
+		...overrides,
+	};
 }
 
-function mockDnsResolveError() {
-	mockResolve4.mockImplementation((_hostname: string, done: DnsCallback) =>
-		done(new Error('ENOTFOUND'), []),
-	);
-	mockResolve6.mockImplementation((_hostname: string, done: DnsCallback) =>
-		done(new Error('ENOTFOUND'), []),
-	);
+/** Build an axios-style response wrapping a Node stream body. */
+function axiosResponse(body: string | Buffer, contentType: string, responseUrl: string) {
+	return {
+		data: Readable.from([Buffer.from(body)]),
+		status: 200,
+		headers: { 'content-type': contentType },
+		request: { res: { responseUrl } },
+	};
 }
 
 describe('web-fetch.utils', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('normalizeHost', () => {
@@ -58,185 +61,98 @@ describe('web-fetch.utils', () => {
 		});
 	});
 
-	describe('isBlockedUrl', () => {
-		describe('scheme blocking', () => {
-			it('should block non-HTTP schemes', async () => {
-				expect(await isBlockedUrl('ftp://example.com')).toBe(true);
-				expect(await isBlockedUrl('file:///etc/passwd')).toBe(true);
-				expect(await isBlockedUrl('javascript:alert(1)')).toBe(true);
-			});
-
-			it('should block invalid URLs', async () => {
-				expect(await isBlockedUrl('not-a-url')).toBe(true);
-			});
-		});
-
-		describe('localhost blocking', () => {
-			it('should block localhost', async () => {
-				expect(await isBlockedUrl('http://localhost')).toBe(true);
-				expect(await isBlockedUrl('http://localhost:8080')).toBe(true);
-			});
-
-			it('should block 127.0.0.1', async () => {
-				expect(await isBlockedUrl('http://127.0.0.1')).toBe(true);
-				expect(await isBlockedUrl('http://127.0.0.1:3000')).toBe(true);
-			});
-
-			it('should block IPv6 loopback', async () => {
-				expect(await isBlockedUrl('http://[::1]')).toBe(true);
-			});
-		});
-
-		describe('TLD blocking', () => {
-			it('should block .local TLD', async () => {
-				expect(await isBlockedUrl('http://myhost.local')).toBe(true);
-			});
-
-			it('should block .internal TLD', async () => {
-				expect(await isBlockedUrl('http://service.internal')).toBe(true);
-			});
-		});
-
-		describe('metadata service blocking', () => {
-			it('should block AWS metadata IP', async () => {
-				expect(await isBlockedUrl('http://169.254.169.254/latest/meta-data')).toBe(true);
-			});
-
-			it('should block Google metadata hostname', async () => {
-				expect(await isBlockedUrl('http://metadata.google.internal')).toBe(true);
-			});
-		});
-
-		describe('private IP blocking', () => {
-			it('should block 10.x.x.x range', async () => {
-				expect(await isBlockedUrl('http://10.0.0.1')).toBe(true);
-				expect(await isBlockedUrl('http://10.255.255.255')).toBe(true);
-			});
-
-			it('should block 172.16-31.x.x range', async () => {
-				expect(await isBlockedUrl('http://172.16.0.1')).toBe(true);
-				expect(await isBlockedUrl('http://172.31.255.255')).toBe(true);
-			});
-
-			it('should block 192.168.x.x range', async () => {
-				expect(await isBlockedUrl('http://192.168.1.1')).toBe(true);
-				expect(await isBlockedUrl('http://192.168.0.100')).toBe(true);
-			});
-
-			it('should block link-local 169.254.x.x range', async () => {
-				expect(await isBlockedUrl('http://169.254.1.1')).toBe(true);
-			});
-
-			it('should block 0.0.0.0', async () => {
-				expect(await isBlockedUrl('http://0.0.0.0')).toBe(true);
-			});
-		});
-
-		describe('DNS resolution checks', () => {
-			it('should allow public URLs with public DNS resolution', async () => {
-				mockDnsResolve(['93.184.216.34']);
-				expect(await isBlockedUrl('https://example.com')).toBe(false);
-			});
-
-			it('should block hostnames resolving to private IPs', async () => {
-				mockDnsResolve(['192.168.1.1']);
-				expect(await isBlockedUrl('https://evil.example.com')).toBe(true);
-			});
-
-			it('should block hostnames resolving to loopback', async () => {
-				mockDnsResolve(['127.0.0.1']);
-				expect(await isBlockedUrl('https://evil.example.com')).toBe(true);
-			});
-
-			it('should block when DNS fails', async () => {
-				mockDnsResolveError();
-				expect(await isBlockedUrl('https://nonexistent.example.com')).toBe(true);
-			});
-
-			it('should block private IPv6 addresses', async () => {
-				mockDnsResolve([], ['::1']);
-				expect(await isBlockedUrl('https://evil.example.com')).toBe(true);
-			});
-
-			it('should block link-local IPv6 addresses', async () => {
-				mockDnsResolve([], ['fe80::1']);
-				expect(await isBlockedUrl('https://evil.example.com')).toBe(true);
-			});
-
-			it('should block unique local IPv6 (fc/fd)', async () => {
-				mockDnsResolve([], ['fd00::1']);
-				expect(await isBlockedUrl('https://evil.example.com')).toBe(true);
-			});
-		});
-	});
-
 	describe('fetchUrl', () => {
-		const originalFetch = globalThis.fetch;
+		it('returns success with body for a same-host response', async () => {
+			mockGet.mockResolvedValue(
+				axiosResponse(
+					'<html><body>Hello</body></html>',
+					'text/html; charset=utf-8',
+					'https://example.com/page',
+				),
+			);
 
-		afterEach(() => {
-			globalThis.fetch = originalFetch;
+			const result = await fetchUrl('https://example.com/page', makeGuard());
+			expect(result.status).toBe('success');
+			expect(result.body).toContain('Hello');
+			expect(result.httpStatus).toBe(200);
+			expect(result.finalUrl).toBe('https://example.com/page');
 		});
 
-		it('should detect PDF content type and return unsupported', async () => {
-			globalThis.fetch = jest.fn().mockResolvedValue({
-				url: 'https://example.com/doc.pdf',
-				headers: new Headers({ 'content-type': 'application/pdf' }),
-				body: null,
+		it('runs a pre-flight SSRF check before connecting', async () => {
+			const guard = makeGuard({
+				validateUrl: vi.fn(async () => createResultError(new Error('blocked'))),
 			});
 
-			const result = await fetchUrl('https://example.com/doc.pdf');
-			expect(result.status).toBe('unsupported');
-			expect(result.reason).toBe('pdf');
+			const result = await fetchUrl('http://10.0.0.1', guard);
+			expect(result.status).toBe('blocked');
+			expect(guard.validateUrl).toHaveBeenCalledWith('http://10.0.0.1');
+			expect(mockGet).not.toHaveBeenCalled();
 		});
 
-		it('should detect cross-host redirect', async () => {
-			globalThis.fetch = jest.fn().mockResolvedValue({
-				url: 'https://other-domain.com/page',
-				headers: new Headers({ 'content-type': 'text/html' }),
-				body: null,
-			});
+		it('wires the secure lookup and a redirect-validating beforeRedirect into the request', async () => {
+			const guard = makeGuard();
+			mockGet.mockResolvedValue(axiosResponse('', 'text/html', 'https://example.com/page'));
 
-			const result = await fetchUrl('https://example.com/page');
+			await fetchUrl('https://example.com/page', guard);
+
+			expect(guard.createSecureLookup).toHaveBeenCalled();
+			const config = (mockGet.mock.calls[0] as [string, AxiosRequestConfig])[1];
+			expect(config.lookup).toBeDefined();
+			expect(config.maxRedirects).toBeGreaterThan(0);
+
+			const beforeRedirect = config.beforeRedirect as unknown as (opts: { href: string }) => void;
+
+			// Same-host redirect: validated but allowed to proceed.
+			expect(() => beforeRedirect({ href: 'https://example.com/other' })).not.toThrow();
+			expect(guard.validateRedirectSync).toHaveBeenCalledWith('https://example.com/other');
+
+			// Cross-host redirect: halted so the caller can run domain approval.
+			expect(() => beforeRedirect({ href: 'https://evil.com/x' })).toThrow(CrossHostRedirectError);
+		});
+
+		it('returns redirect_new_host when axios surfaces a cross-host redirect', async () => {
+			const wrapped = new Error('redirected', {
+				cause: new CrossHostRedirectError('https://other-domain.com/page'),
+			});
+			mockGet.mockRejectedValue(wrapped);
+
+			const result = await fetchUrl('https://example.com/page', makeGuard());
 			expect(result.status).toBe('redirect_new_host');
 			expect(result.finalUrl).toBe('https://other-domain.com/page');
 		});
 
-		it('should return success with body for same-host response', async () => {
-			const encoder = new TextEncoder();
-			const body = encoder.encode('<html><body>Hello</body></html>');
+		it('returns blocked when axios surfaces an SSRF-blocked error', async () => {
+			const ssrfErr = new Error('blocked ip');
+			ssrfErr.name = 'SsrfBlockedIpError';
+			mockGet.mockRejectedValue(new Error('connect failed', { cause: ssrfErr }));
 
-			globalThis.fetch = jest.fn().mockResolvedValue({
-				url: 'https://example.com/page',
-				status: 200,
-				headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
-				body: {
-					getReader: () => ({
-						read: jest
-							.fn()
-							.mockResolvedValueOnce({ done: false, value: body })
-							.mockResolvedValueOnce({ done: true }),
-						cancel: jest.fn(),
-					}),
-				},
-			});
-
-			const result = await fetchUrl('https://example.com/page');
-			expect(result.status).toBe('success');
-			expect(result.body).toContain('Hello');
-			expect(result.httpStatus).toBe(200);
+			const result = await fetchUrl('https://evil.example.com', makeGuard());
+			expect(result.status).toBe('blocked');
 		});
 
-		it('should handle empty body', async () => {
-			globalThis.fetch = jest.fn().mockResolvedValue({
-				url: 'https://example.com/page',
-				status: 200,
-				headers: new Headers({ 'content-type': 'text/html' }),
-				body: null,
-			});
+		it('rethrows non-SSRF, non-redirect errors', async () => {
+			mockGet.mockRejectedValue(new Error('ECONNABORTED'));
+			await expect(fetchUrl('https://example.com', makeGuard())).rejects.toThrow('ECONNABORTED');
+		});
 
-			const result = await fetchUrl('https://example.com/page');
+		it('detects PDF content type and returns unsupported', async () => {
+			const response = axiosResponse('%PDF-1.4', 'application/pdf', 'https://example.com/doc.pdf');
+			const destroySpy = vi.spyOn(response.data, 'destroy');
+			mockGet.mockResolvedValue(response);
+
+			const result = await fetchUrl('https://example.com/doc.pdf', makeGuard());
+			expect(result.status).toBe('unsupported');
+			expect(result.reason).toBe('pdf');
+			expect(destroySpy).toHaveBeenCalled();
+		});
+
+		it('caps the body at the maximum byte size', async () => {
+			const oversized = Buffer.alloc(WEB_FETCH_MAX_BYTES + 1024, 0x61);
+			mockGet.mockResolvedValue(axiosResponse(oversized, 'text/html', 'https://example.com/big'));
+
+			const result = await fetchUrl('https://example.com/big', makeGuard());
 			expect(result.status).toBe('success');
-			expect(result.body).toBe('');
+			expect(result.body?.length).toBe(WEB_FETCH_MAX_BYTES);
 		});
 	});
 

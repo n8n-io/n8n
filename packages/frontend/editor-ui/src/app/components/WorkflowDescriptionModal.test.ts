@@ -10,6 +10,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { STORES } from '@n8n/stores';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
@@ -79,19 +80,12 @@ describe('WorkflowDescriptionModal', () => {
 		toast = useToast();
 
 		// Reset mocks
-		workflowsStore.saveWorkflowDescription = vi.fn().mockResolvedValue(undefined);
-		workflowsStore.workflow = {
+		workflowsStore.updateWorkflow.mockResolvedValue({
 			id: 'test-workflow-id',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			versionId: '1',
-			nodes: [],
-			connections: {},
-		};
+			description: '',
+			versionId: '2',
+		} as IWorkflowDb);
+		workflowsStore.workflowId = 'test-workflow-id';
 		uiStore.markStateClean();
 	});
 
@@ -155,12 +149,18 @@ describe('WorkflowDescriptionModal', () => {
 
 			await userEvent.type(textarea, '{Esc}');
 
-			expect(workflowsStore.saveWorkflowDescription).not.toHaveBeenCalled();
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('Save and Cancel functionality', () => {
 		it('should save description when save button is clicked', async () => {
+			workflowsStore.updateWorkflow.mockResolvedValue({
+				id: 'test-workflow-id',
+				description: 'New description',
+				versionId: '2',
+			} as IWorkflowDb);
+
 			const { getByTestId } = renderModal({
 				props: {
 					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -180,9 +180,9 @@ describe('WorkflowDescriptionModal', () => {
 			const saveButton = getByTestId('workflow-description-save-button');
 			await userEvent.click(saveButton);
 
-			expect(workflowsStore.saveWorkflowDescription).toHaveBeenCalledWith(
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'test-workflow-id',
-				'New description',
+				expect.objectContaining({ description: 'New description' }),
 			);
 			expect(telemetry.track).toHaveBeenCalledWith('User set workflow description', {
 				workflow_id: 'test-workflow-id',
@@ -191,6 +191,12 @@ describe('WorkflowDescriptionModal', () => {
 		});
 
 		it('should save empty string when description is cleared', async () => {
+			workflowsStore.updateWorkflow.mockResolvedValue({
+				id: 'test-workflow-id',
+				description: '',
+				versionId: '2',
+			} as IWorkflowDb);
+
 			const { getByTestId } = renderModal({
 				props: {
 					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -209,7 +215,10 @@ describe('WorkflowDescriptionModal', () => {
 			const saveButton = getByTestId('workflow-description-save-button');
 			await userEvent.click(saveButton);
 
-			expect(workflowsStore.saveWorkflowDescription).toHaveBeenCalledWith('test-workflow-id', '');
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'test-workflow-id',
+				expect.objectContaining({ description: '' }),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith('User set workflow description', {
 				workflow_id: 'test-workflow-id',
 				description: '',
@@ -274,7 +283,7 @@ describe('WorkflowDescriptionModal', () => {
 			await userEvent.keyboard('{Enter}');
 
 			// Should not save since canSave is false
-			expect(workflowsStore.saveWorkflowDescription).not.toHaveBeenCalled();
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should enable save button when description changes', async () => {
@@ -298,7 +307,7 @@ describe('WorkflowDescriptionModal', () => {
 		});
 
 		it('should disable cancel button during save', async () => {
-			workflowsStore.saveWorkflowDescription = vi.fn(
+			workflowsStore.updateWorkflow.mockImplementation(
 				async () => await new Promise((resolve) => setTimeout(resolve, 100)),
 			);
 
@@ -346,9 +355,9 @@ describe('WorkflowDescriptionModal', () => {
 			await userEvent.type(textarea, 'New description');
 			await userEvent.keyboard('{Enter}');
 
-			expect(workflowsStore.saveWorkflowDescription).toHaveBeenCalledWith(
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'test-workflow-id',
-				'New description',
+				expect.objectContaining({ description: 'New description' }),
 			);
 		});
 
@@ -371,14 +380,14 @@ describe('WorkflowDescriptionModal', () => {
 			await userEvent.type(textarea, 'Line 2');
 
 			expect(textarea).toHaveValue('Line 1\nLine 2');
-			expect(workflowsStore.saveWorkflowDescription).not.toHaveBeenCalled();
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('Error handling', () => {
 		it('should show error toast when save fails', async () => {
 			const error = new Error('Save failed');
-			workflowsStore.saveWorkflowDescription = vi.fn().mockRejectedValue(error);
+			workflowsStore.updateWorkflow.mockRejectedValue(error);
 
 			const { getByTestId } = renderModal({
 				props: {
@@ -408,7 +417,7 @@ describe('WorkflowDescriptionModal', () => {
 
 		it('should keep text on error', async () => {
 			const error = new Error('Save failed');
-			workflowsStore.saveWorkflowDescription = vi.fn().mockRejectedValue(error);
+			workflowsStore.updateWorkflow.mockRejectedValue(error);
 
 			const { getByTestId } = renderModal({
 				props: {
@@ -439,7 +448,7 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show base tooltip when MCP is disabled', async () => {
 			// Ensure MCP is disabled
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false };
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false, mcpManagedByEnv: false };
 
 			const { getByTestId } = renderModal({
 				props: {
@@ -466,7 +475,7 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show MCP tooltip when MCP is enabled', async () => {
 			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true };
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true, mcpManagedByEnv: false };
 
 			const { getByTestId } = renderModal({
 				props: {

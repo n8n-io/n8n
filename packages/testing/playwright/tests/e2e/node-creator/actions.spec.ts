@@ -19,7 +19,7 @@ test.describe(
 
 			await expect(n8n.canvas.nodeCreator.getActiveSubcategory()).toContainText(editImageNode);
 			await n8n.canvas.nodeCreator.selectItem('Crop Image');
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 			await n8n.page.keyboard.press('Escape');
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
@@ -35,7 +35,7 @@ test.describe(
 			await n8n.canvas.nodeCreator.searchFor('rename');
 			await n8n.canvas.nodeCreator.selectItem('Rename');
 
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 			await n8n.page.keyboard.press('Escape');
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);

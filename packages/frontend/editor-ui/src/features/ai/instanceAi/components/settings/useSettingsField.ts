@@ -46,7 +46,10 @@ export function useSettingsField() {
 	function getBool(key: BoolField & keyof InstanceAiAdminSettingsUpdateRequest): boolean {
 		const draftVal = store.draft[key];
 		if (draftVal !== undefined) return Boolean(draftVal);
-		return store.settings?.[key] ?? false;
+		const fromSettings = store.settings?.[key];
+		if (fromSettings !== undefined) return Boolean(fromSettings);
+		if (key === 'enabled') return true;
+		return false;
 	}
 
 	function getPreferenceString(
