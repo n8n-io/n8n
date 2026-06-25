@@ -294,10 +294,11 @@ describe('ExternalSecretsManager', () => {
 			setUpdateDate: jest.fn(),
 		};
 
-		it('should tear down existing provider, set up new one, refresh cache, and broadcast', async () => {
+		it('should replace existing provider, refresh cache, and broadcast', async () => {
 			const existingProvider = new DummyProvider();
 			await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
 			mockProviderRegistry.add('my-vault', existingProvider);
+			mockProviderRegistry.add.mockClear();
 
 			const decryptedSettings = { key: 'value' };
 			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
@@ -313,10 +314,10 @@ describe('ExternalSecretsManager', () => {
 
 			await manager.syncProviderConnection('my-vault');
 
-			// Tears down existing provider
-			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('my-vault');
+			// Replaces without removing the provider key first
+			expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
+			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault', newProvider);
 			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
-			expect(mockProviderRegistry.remove).toHaveBeenCalledWith('my-vault');
 
 			// Sets up new provider with decrypted settings
 			expect(mockCipher.decryptV2).toHaveBeenCalledWith('encrypted-data');

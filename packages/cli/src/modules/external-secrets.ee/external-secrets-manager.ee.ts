@@ -139,8 +139,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async syncProviderConnection(providerKey: string): Promise<void> {
-		await this.tearDownProviderConnection(providerKey);
-
 		const connection = await this.secretsProviderConnectionRepository.findOne({
 			where: { providerKey },
 		});
@@ -149,16 +147,25 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		// Skip disabled connections — they should not be loaded into the provider registry.
 		if (connection?.isEnabled) {
 			const settings = await this.decryptSettings(connection.encryptedSettings);
-			await this.setupProvider(
-				connection.type,
-				{ connected: true, connectedAt: null, settings },
-				providerKey,
-			);
+			const connectionSettings: SecretsProviderSettings = {
+				connected: true,
+				connectedAt: null,
+				settings,
+			};
+
+			if (this.providerRegistry.has(providerKey)) {
+				await this.replaceProviderConnection(providerKey, connection.type, connectionSettings);
+			} else {
+				await this.addProviderConnection(providerKey, connection.type, connectionSettings);
+			}
 
 			const provider = this.providerRegistry.get(providerKey);
 			if (provider) {
 				await this.secretsCache.refreshProvider(providerKey, provider);
 			}
+		} else {
+			this.retryManager.cancelRetry(providerKey);
+			await this.removeProviderConnection(providerKey);
 		}
 
 		this.broadcastReload();
@@ -489,28 +496,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		}
 	}
 
-	private async setupProvider(
-		providerType: string,
-		config: SecretsProviderSettings,
-		providerKey?: string,
-	): Promise<void> {
-		const key = providerKey ?? providerType;
-		const result = await this.providerLifecycle.initialize(providerType, config);
-
-		if (!result.success || !result.provider) {
-			this.logger.error(`Failed to initialize provider ${key}`, {
-				error: result.error,
-			});
-			return;
-		}
-
-		this.providerRegistry.add(key, result.provider);
-
-		if (config.connected) {
-			await this.retryManager.runWithRetry(key, async () => await this.connectProvider(key));
-		}
-	}
-
 	private async connectProvider(name: string): Promise<ProviderConnectResult> {
 		const provider = this.providerRegistry.get(name);
 		if (!provider) {
@@ -532,16 +517,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			await this.replaceProviderConnection(name, name, config);
 		} else {
 			await this.addProviderConnection(name, name, config);
-		}
-	}
-
-	private async tearDownProviderConnection(providerKey: string): Promise<void> {
-		this.retryManager.cancelRetry(providerKey);
-		const existingProvider = this.providerRegistry.get(providerKey);
-		if (existingProvider) {
-			this.logger.debug(`Tearing down provider connection: ${providerKey}`);
-			await this.providerLifecycle.disconnect(existingProvider);
-			this.providerRegistry.remove(providerKey);
 		}
 	}
 
