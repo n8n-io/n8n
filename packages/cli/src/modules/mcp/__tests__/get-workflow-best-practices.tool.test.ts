@@ -90,6 +90,20 @@ describe('get-workflow-best-practices MCP tool', () => {
 		);
 	});
 
+	test('documents the default Extract from File output key for document processing', async () => {
+		const tool = createTool();
+		const result = await tool.handler(
+			{ technique: WorkflowTechnique.DOCUMENT_PROCESSING },
+			{} as never,
+		);
+
+		const documentation = result.structuredContent?.documentation;
+
+		expect(documentation).toContain('access with {{ $json.data }}');
+		expect(documentation).toContain('destinationKey');
+		expect(documentation).not.toContain('access with {{ $json.text }}');
+	});
+
 	test('returns a friendly message for a known technique without documentation', async () => {
 		const tool = createTool();
 		const result = await tool.handler({ technique: WorkflowTechnique.MONITORING }, {} as never);
