@@ -6,6 +6,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { ObjectStoreService } from 'n8n-core/dist/binary-data/object-store/object-store.service.ee';
 import type { Readable } from 'node:stream';
 
+import { S3BlobStore } from '../../blob-storage/s3-blob-store.ee';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
 import { ExecutionDataWriteError } from '../execution-data-write.error';
 import { S3Store } from '../s3-store.ee';
@@ -33,7 +34,7 @@ describe('S3Store', () => {
 	beforeEach(() => {
 		objectStoreService = mock<ObjectStoreService>();
 		errorReporter = mock<ErrorReporter>();
-		s3Store = new S3Store(objectStoreService, errorReporter);
+		s3Store = new S3Store(new S3BlobStore(objectStoreService), errorReporter);
 	});
 
 	describe('write', () => {

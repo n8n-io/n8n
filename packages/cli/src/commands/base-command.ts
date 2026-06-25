@@ -7,7 +7,7 @@ import {
 	ModuleRegistry,
 	ModulesConfig,
 } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -285,10 +285,13 @@ export abstract class BaseCommand<F = never> {
 		}
 
 		const executionDataMode = Container.get(StorageConfig).mode;
+		const agentExecutionLogMode = Container.get(AgentsConfig).executionLogStorageMode;
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
 		const isAzureConfigured = Container.get(AzureBlobConfig).containerName !== '';
 		const isExecutionDataS3Mode = executionDataMode === 's3';
 		const isExecutionDataAzureMode = executionDataMode === 'azure';
+		const isAgentExecutionLogS3Mode = agentExecutionLogMode === 's3';
+		const isAgentExecutionLogAzureMode = agentExecutionLogMode === 'azure';
 		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
 		const isExecutionDataAzureLicensed = Container.get(LicenseState).isExecutionDataAzureLicensed();
 
@@ -322,6 +325,36 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
+		if (isAgentExecutionLogS3Mode) {
+			if (!isExecutionDataS3Licensed) {
+				this.logger.error(
+					'S3 agent execution log storage requires a valid license. Either set `N8N_AGENT_EXECUTION_LOG_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (!isS3Configured) {
+				this.logger.error(
+					'S3 agent execution log storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		if (isAgentExecutionLogAzureMode) {
+			if (!isExecutionDataAzureLicensed) {
+				this.logger.error(
+					'Azure Blob agent execution log storage requires a valid license. Either set `N8N_AGENT_EXECUTION_LOG_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (!isAzureConfigured) {
+				this.logger.error(
+					'Azure Blob agent execution log storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
 		try {
 			const objectStoreService = await this.initObjectStoreIfConfigured();
 			if (objectStoreService) {
@@ -331,7 +364,7 @@ export abstract class BaseCommand<F = never> {
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
 			}
 		} catch {
-			if (isS3WriteMode || isExecutionDataS3Mode) {
+			if (isS3WriteMode || isExecutionDataS3Mode || isAgentExecutionLogS3Mode) {
 				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
 				process.exit(1);
 			}
@@ -344,7 +377,7 @@ export abstract class BaseCommand<F = never> {
 				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
 			}
 		} catch {
-			if (isAzureWriteMode || isExecutionDataAzureMode) {
+			if (isAzureWriteMode || isExecutionDataAzureMode || isAgentExecutionLogAzureMode) {
 				this.logger.error(
 					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
 				);
@@ -367,6 +400,12 @@ export abstract class BaseCommand<F = never> {
 		const { S3Store } = await import('@/executions/execution-data/s3-store.ee');
 		Container.get(ExecutionPersistence).setS3Store(Container.get(S3Store));
 
+		const { AgentExecutionLogPersistence } = await import(
+			'@/modules/agents/agent-execution-log-persistence'
+		);
+		const { S3Store: AgentS3Store } = await import('@/modules/agents/agent-execution-log/s3-store');
+		Container.get(AgentExecutionLogPersistence).setS3Store(Container.get(AgentS3Store));
+
 		return objectStoreService;
 	}
 
@@ -381,6 +420,14 @@ export abstract class BaseCommand<F = never> {
 
 		const { AzureStore } = await import('@/executions/execution-data/azure-store.ee');
 		Container.get(ExecutionPersistence).setAzStore(Container.get(AzureStore));
+
+		const { AgentExecutionLogPersistence } = await import(
+			'@/modules/agents/agent-execution-log-persistence'
+		);
+		const { AzureStore: AgentAzureStore } = await import(
+			'@/modules/agents/agent-execution-log/azure-store'
+		);
+		Container.get(AgentExecutionLogPersistence).setAzStore(Container.get(AgentAzureStore));
 
 		return azureBlobService;
 	}

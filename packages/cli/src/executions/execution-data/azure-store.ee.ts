@@ -1,9 +1,9 @@
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter } from 'n8n-core';
-import { AzureBlobService } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
+import { AzureBlobStore } from '../blob-storage/azure-blob-store.ee';
 import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
 import { ExecutionDataWriteError } from './execution-data-write.error';
@@ -20,7 +20,7 @@ const MAX_DELETE_CONCURRENCY = 50;
 @Service()
 export class AzureStore implements ExecutionDataStore {
 	constructor(
-		private readonly azureBlob: AzureBlobService,
+		private readonly blobStore: AzureBlobStore,
 		private readonly reporter: ErrorReporter,
 	) {}
 
@@ -31,27 +31,18 @@ export class AzureStore implements ExecutionDataStore {
 		);
 
 		try {
-			await this.azureBlob.put(this.key(ref), body, { mimeType: 'application/json' });
+			return await this.blobStore.write(this.key(ref), body, { mimeType: 'application/json' });
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
 		}
-
-		return body.length;
 	}
 
 	async read(ref: ExecutionRef): Promise<ExecutionDataBundle | null> {
-		let content: string;
+		const content = await this.blobStore.read(this.key(ref));
+		if (!content) return null;
 
 		try {
-			const buffer = await this.azureBlob.get(this.key(ref), { mode: 'buffer' });
-			content = buffer.toString('utf-8');
-		} catch (error) {
-			if (this.isNotFound(error)) return null;
-			throw error;
-		}
-
-		try {
-			return jsonParse<ExecutionDataBundle>(content);
+			return jsonParse<ExecutionDataBundle>(content.toString('utf-8'));
 		} catch (error) {
 			throw new CorruptedExecutionDataError(ref, error);
 		}
@@ -77,8 +68,7 @@ export class AzureStore implements ExecutionDataStore {
 		if (refs.length === 0) return;
 
 		for (const batch of chunk(refs, MAX_DELETE_CONCURRENCY)) {
-			// eslint-disable-next-line @typescript-eslint/promise-function-async
-			await Promise.all(batch.map((r) => this.azureBlob.delete(this.key(r))));
+			await this.blobStore.delete(batch.map((r) => this.key(r)));
 		}
 	}
 
@@ -103,12 +93,5 @@ export class AzureStore implements ExecutionDataStore {
 			}
 			throw error;
 		}
-	}
-
-	private isNotFound(error: unknown): boolean {
-		const original = ensureError(error).cause ?? error;
-		if (typeof original !== 'object' || original === null) return false;
-		const code = 'code' in original ? original.code : undefined;
-		return code === 'BlobNotFound';
 	}
 }

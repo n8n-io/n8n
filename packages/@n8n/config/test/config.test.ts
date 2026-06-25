@@ -602,6 +602,8 @@ describe('GlobalConfig', () => {
 		agents: {
 			checkpointTtlSeconds: 345600,
 			modules: [],
+			executionLogStorageMode: 'filesystem',
+			executionLogStorageModeTag: 'fs',
 			sandboxEnabled: false,
 			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -662,7 +664,9 @@ describe('GlobalConfig', () => {
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
 		};
 		const config = Container.get(GlobalConfig);
+		const { executionLogStorageModeTag, ...defaultAgentsConfig } = defaultConfig.agents;
 
+		expect(config.agents.executionLogStorageModeTag).toBe(executionLogStorageModeTag);
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
@@ -714,7 +718,7 @@ describe('GlobalConfig', () => {
 				responseBodyReadTimeout: 300000,
 			},
 			agents: {
-				...defaultConfig.agents,
+				...defaultAgentsConfig,
 				sandboxEphemeral: true,
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
 			},

@@ -1,4 +1,3 @@
-import { assertDir } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
@@ -6,6 +5,7 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { FsBlobStore } from '../blob-storage/fs-blob-store';
 import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
 import { ExecutionDataWriteError } from './execution-data-write.error';
@@ -22,50 +22,30 @@ const MAX_READ_CONCURRENCY = 50;
 @Service()
 export class FsStore implements ExecutionDataStore {
 	constructor(
+		private readonly blobStore: FsBlobStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	async init() {
-		await assertDir(this.storageConfig.storagePath);
+		await this.blobStore.init?.();
 	}
 
 	async write(ref: ExecutionRef, payload: ExecutionDataPayload): Promise<number> {
-		const writePath = this.resolveBundlePath(ref);
-		await assertDir(path.dirname(writePath));
-
-		// for atomicity, first write to temp file and then rename
-		const tempPath = `${writePath}.tmp.${Date.now()}`;
-		let success = false;
-
 		try {
 			const serialized = jsonStringify({ ...payload, version: EXECUTION_DATA_BUNDLE_VERSION });
-			await fs.writeFile(tempPath, serialized, 'utf-8');
-			await fs.rename(tempPath, writePath);
-			success = true;
-			return Buffer.byteLength(serialized, 'utf-8');
+			return await this.blobStore.write(this.key(ref), Buffer.from(serialized, 'utf-8'));
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
-		} finally {
-			if (!success)
-				await fs.rm(tempPath, { force: true }).catch((e) => this.errorReporter.error(e));
 		}
 	}
 
 	async read(ref: ExecutionRef) {
-		const bundlePath = this.resolveBundlePath(ref);
-
-		let content: string;
-
-		try {
-			content = await fs.readFile(bundlePath, 'utf-8');
-		} catch (error) {
-			if (this.isFileNotFound(error)) return null;
-			throw error;
-		}
+		const content = await this.blobStore.read(this.key(ref));
+		if (!content) return null;
 
 		try {
-			return jsonParse<ExecutionDataBundle>(content);
+			return jsonParse<ExecutionDataBundle>(content.toString('utf-8'));
 		} catch (error) {
 			throw new CorruptedExecutionDataError(ref, error);
 		}
@@ -107,18 +87,15 @@ export class FsStore implements ExecutionDataStore {
 		);
 	}
 
-	private resolveBundlePath(ref: ExecutionRef) {
-		return path.join(
-			this.resolveExecutionDir(ref),
+	private key({ workflowId, executionId }: ExecutionRef) {
+		return [
+			'workflows',
+			workflowId,
+			'executions',
+			executionId,
 			'execution_data',
 			EXECUTION_DATA_BUNDLE_FILENAME,
-		);
-	}
-
-	private isFileNotFound(error: unknown): error is NodeJS.ErrnoException {
-		return (
-			error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT'
-		);
+		].join('/');
 	}
 
 	/**

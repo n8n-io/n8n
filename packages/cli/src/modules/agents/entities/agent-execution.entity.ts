@@ -1,4 +1,10 @@
-import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
+import {
+	bigintStringToNumber,
+	DateTimeColumn,
+	type ExecutionDataStorageLocation,
+	JsonColumn,
+	WithTimestampsAndStringId,
+} from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
@@ -84,4 +90,12 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	/** Where the run originated, e.g. 'chat', 'slack'. */
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
+
+	/** Where the agent execution log payload is stored. */
+	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
+	storedAt: ExecutionDataStorageLocation;
+
+	/** Size in bytes of the serialized agent execution log payload. */
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
+	logSizeBytes: number;
 }

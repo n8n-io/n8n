@@ -4,8 +4,10 @@ import { Service } from '@n8n/di';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import { AgentExecutionLogPersistence } from './agent-execution-log-persistence';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
+import type { AgentExecutionLogPayload } from './agent-execution-log/types';
 import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
@@ -53,6 +55,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
 		private readonly telemetry: Telemetry,
+		private readonly agentExecutionLogPersistence: AgentExecutionLogPersistence,
 	) {}
 
 	/**
@@ -100,6 +103,8 @@ export class AgentExecutionService {
 		const status: AgentExecution['status'] = record.error ? 'error' : 'success';
 		const startedAt = new Date(record.startTime);
 		const stoppedAt = new Date(record.startTime + record.duration);
+		const storedAt = this.agentExecutionLogPersistence.currentLocation;
+		const logPayload = this.toLogPayload(record);
 
 		const inserted = await this.agentExecutionRepository.save(
 			this.agentExecutionRepository.create({
@@ -120,8 +125,17 @@ export class AgentExecutionService {
 				error: record.error,
 				hitlStatus: hitlStatus ?? null,
 				source: source ?? null,
+				storedAt,
+				logSizeBytes: 0,
 			}),
 		);
+
+		const logSizeBytes = await this.agentExecutionLogPersistence.write(
+			{ agentId, threadId, executionId: inserted.id },
+			logPayload,
+			storedAt,
+		);
+		await this.agentExecutionRepository.update(inserted.id, { logSizeBytes });
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.
@@ -230,6 +244,17 @@ export class AgentExecutionService {
 		});
 		if (!thread) return false;
 
+		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.agentExecutionLogPersistence.delete(
+			executions
+				.filter((execution) => execution.storedAt !== undefined)
+				.map((execution) => ({
+					agentId,
+					threadId: execution.threadId,
+					executionId: execution.id,
+					storedAt: execution.storedAt,
+				})),
+		);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
@@ -282,7 +307,8 @@ export class AgentExecutionService {
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		return { thread, executions };
+		const hydratedExecutions = await this.hydrateExecutionLogs(thread.agentId, executions);
+		return { thread, executions: hydratedExecutions };
 	}
 
 	/**
@@ -292,6 +318,44 @@ export class AgentExecutionService {
 	 */
 	async findThreadById(threadId: string): Promise<AgentExecutionThread | null> {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+	}
+
+	private toLogPayload(record: MessageRecord): AgentExecutionLogPayload {
+		return {
+			assistantResponse: record.assistantResponse,
+			toolCalls: record.toolCalls.length > 0 ? record.toolCalls : null,
+			timeline: record.timeline.length > 0 ? record.timeline : null,
+			error: record.error,
+		};
+	}
+
+	private async hydrateExecutionLogs(agentId: string, executions: AgentExecution[]) {
+		const externalExecutions = executions.filter((execution) => {
+			return execution.storedAt !== undefined && execution.storedAt !== 'db';
+		});
+		if (externalExecutions.length === 0) return executions;
+
+		const bundles = await this.agentExecutionLogPersistence.readMany(
+			externalExecutions.map((execution) => ({
+				agentId,
+				threadId: execution.threadId,
+				executionId: execution.id,
+				storedAt: execution.storedAt,
+			})),
+		);
+
+		return executions.map((execution) => {
+			const bundle = bundles.get(execution.id);
+			if (!bundle) return execution;
+
+			Object.assign(execution, {
+				assistantResponse: bundle.assistantResponse,
+				toolCalls: bundle.toolCalls,
+				timeline: bundle.timeline,
+				error: bundle.error,
+			});
+			return execution;
+		});
 	}
 }
 

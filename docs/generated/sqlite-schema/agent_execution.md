@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text NOT NULL, "assistantResponse" text NOT NULL, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "toolCalls" text, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_execution_status" CHECK (("status" IN ('success', 'error'))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (("hitlStatus" IN ('suspended', 'resumed'))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text NOT NULL, "assistantResponse" text NOT NULL, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "toolCalls" text, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "logSizeBytes" bigint NOT NULL DEFAULT (0), CONSTRAINT "CHK_agent_execution_status" CHECK ((("status" IN ('success', 'error')))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((("hitlStatus" IN ('suspended', 'resumed')))), CONSTRAINT "CHK_agent_execution_storedAt" CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -23,12 +23,14 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | error | TEXT |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
+| logSizeBytes | bigint | 0 | false |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | INTEGER |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | datetime(3) |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | stoppedAt | datetime(3) |  | true |  |  |  |
+| storedAt | varchar(2) | 'db' | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | timeline | TEXT |  | true |  |  |  |
 | toolCalls | TEXT |  | true |  |  |  |
@@ -40,8 +42,9 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("status" IN ('success', 'error'))) |
-| - | CHECK | CHECK (("hitlStatus" IN ('suspended', 'resumed'))) |
+| - | CHECK | CHECK ((("status" IN ('success', 'error')))) |
+| - | CHECK | CHECK ((("hitlStatus" IN ('suspended', 'resumed')))) |
+| - | CHECK | CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -69,12 +72,14 @@ erDiagram
   TEXT error
   varchar_16_ hitlStatus
   varchar_36_ id PK
+  bigint logSizeBytes
   varchar_255_ model
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   TEXT toolCalls

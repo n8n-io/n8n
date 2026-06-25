@@ -103,12 +103,14 @@ erDiagram
   TEXT error
   varchar_16_ hitlStatus
   varchar_36_ id PK
+  bigint logSizeBytes
   varchar_255_ model
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   TEXT toolCalls

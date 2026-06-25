@@ -9,6 +9,7 @@ import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { FsBlobStore } from '../../blob-storage/fs-blob-store';
 import { EXECUTION_DATA_BUNDLE_FILENAME } from '../constants';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
 import { ExecutionDataWriteError } from '../execution-data-write.error';
@@ -47,8 +48,10 @@ afterAll(async () => {
 describe('init', () => {
 	it('should create storage dir if absent', async () => {
 		const customPath = join(storagePath, 'custom-init-dir');
+		const customStorageConfig = mock<StorageConfig>({ storagePath: customPath });
 		const customFsStore = new FsStore(
-			mock<StorageConfig>({ storagePath: customPath }),
+			new FsBlobStore(customStorageConfig, Container.get(ErrorReporter)),
+			customStorageConfig,
 			Container.get(ErrorReporter),
 		);
 

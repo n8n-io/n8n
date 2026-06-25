@@ -6,6 +6,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { AzureBlobService } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee';
 import type { Readable } from 'node:stream';
 
+import { AzureBlobStore } from '../../blob-storage/azure-blob-store.ee';
 import { AzureStore } from '../azure-store.ee';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
 import { ExecutionDataWriteError } from '../execution-data-write.error';
@@ -34,7 +35,7 @@ describe('AzureStore', () => {
 	beforeEach(() => {
 		azureBlob = mock<AzureBlobService>();
 		errorReporter = mock<ErrorReporter>();
-		azureStore = new AzureStore(azureBlob, errorReporter);
+		azureStore = new AzureStore(new AzureBlobStore(azureBlob), errorReporter);
 	});
 
 	describe('write', () => {

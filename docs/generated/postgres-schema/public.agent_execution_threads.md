@@ -102,12 +102,14 @@ erDiagram
   text error
   varchar_16_ hitlStatus
   varchar_36_ id
+  bigint logSizeBytes
   varchar_255_ model
   integer promptTokens
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   json timeline
   json toolCalls

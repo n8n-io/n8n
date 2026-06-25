@@ -1,0 +1,3 @@
+export const AGENT_EXECUTION_LOG_BUNDLE_VERSION = 1;
+
+export const AGENT_EXECUTION_LOG_BUNDLE_FILENAME = 'bundle.json';

@@ -1,9 +1,9 @@
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter } from 'n8n-core';
-import { ObjectStoreService } from 'n8n-core/dist/binary-data/object-store/object-store.service.ee';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
+import { S3BlobStore } from '../blob-storage/s3-blob-store.ee';
 import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
 import { ExecutionDataWriteError } from './execution-data-write.error';
@@ -19,7 +19,7 @@ const MAX_READ_MANY_CONCURRENCY = 50;
 @Service()
 export class S3Store implements ExecutionDataStore {
 	constructor(
-		private readonly objectStore: ObjectStoreService,
+		private readonly blobStore: S3BlobStore,
 		private readonly reporter: ErrorReporter,
 	) {}
 
@@ -30,29 +30,18 @@ export class S3Store implements ExecutionDataStore {
 		);
 
 		try {
-			await this.objectStore.put(this.key(ref), body, {
-				mimeType: 'application/json',
-			});
+			return await this.blobStore.write(this.key(ref), body, { mimeType: 'application/json' });
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
 		}
-
-		return body.length;
 	}
 
 	async read(ref: ExecutionRef) {
-		let content: string;
+		const content = await this.blobStore.read(this.key(ref));
+		if (!content) return null;
 
 		try {
-			const buffer = await this.objectStore.get(this.key(ref), { mode: 'buffer' });
-			content = buffer.toString('utf-8');
-		} catch (error) {
-			if (this.isNotFound(error)) return null;
-			throw error;
-		}
-
-		try {
-			return jsonParse<ExecutionDataBundle>(content);
+			return jsonParse<ExecutionDataBundle>(content.toString('utf-8'));
 		} catch (error) {
 			throw new CorruptedExecutionDataError(ref, error);
 		}
@@ -78,7 +67,7 @@ export class S3Store implements ExecutionDataStore {
 		const refs = Array.isArray(ref) ? ref : [ref];
 		if (refs.length === 0) return;
 
-		await this.objectStore.deleteByKeys(refs.map((r) => this.key(r)));
+		await this.blobStore.delete(refs.map((r) => this.key(r)));
 	}
 
 	// ----------------
@@ -94,13 +83,6 @@ export class S3Store implements ExecutionDataStore {
 			'execution_data',
 			EXECUTION_DATA_BUNDLE_FILENAME,
 		].join('/');
-	}
-
-	private isNotFound(error: unknown) {
-		const original = ensureError(error).cause ?? error;
-		if (typeof original !== 'object' || original === null) return false;
-		const name = 'name' in original ? original.name : undefined;
-		return name === 'NoSuchKey' || name === 'NotFound';
 	}
 
 	private async tryRead(ref: ExecutionRef) {
