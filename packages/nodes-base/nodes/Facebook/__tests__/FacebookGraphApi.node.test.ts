@@ -114,7 +114,7 @@ describe('FacebookGraphApi node — error handling', () => {
 	let node: FacebookGraphApi;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		node = new FacebookGraphApi();
 
@@ -146,7 +146,7 @@ describe('FacebookGraphApi node — error handling', () => {
 	it('throws when the request fails and continueOnFail is disabled', async () => {
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 		mockExecuteFunctions.helpers = {
-			request: jest.fn().mockRejectedValue({ statusCode: 400 }),
+			request: vi.fn().mockRejectedValue({ statusCode: 400 }),
 		} as never;
 
 		await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow();
@@ -155,7 +155,7 @@ describe('FacebookGraphApi node — error handling', () => {
 	it('routes the failed item to the error output when continueOnFail is enabled', async () => {
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 		mockExecuteFunctions.helpers = {
-			request: jest.fn().mockRejectedValue({
+			request: vi.fn().mockRejectedValue({
 				statusCode: 400,
 				response: {
 					body: { error: { message: 'Invalid token', type: 'OAuthException', code: 190 } },
@@ -178,7 +178,7 @@ describe('FacebookGraphApi node — error handling', () => {
 	it('marks a non-JSON string response as an error item when continueOnFail is enabled', async () => {
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 		mockExecuteFunctions.helpers = {
-			request: jest.fn().mockResolvedValue('<html>not json</html>'),
+			request: vi.fn().mockResolvedValue('<html>not json</html>'),
 		} as never;
 
 		const result = await node.execute.call(mockExecuteFunctions);
