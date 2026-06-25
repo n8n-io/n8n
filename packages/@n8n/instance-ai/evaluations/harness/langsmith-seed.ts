@@ -216,9 +216,13 @@ async function reconstructWithClient(
 	sourceProject: string,
 ): Promise<ReconstructedSeed> {
 	const runs: Run[] = [];
+	// Fetch only the run_types reconstruction uses — root `chain` turns + `tool` runs.
+	// Paging every run_type (the llm/nested bulk is usually the majority) multiplied
+	// /runs/query calls and tripped LangSmith rate limits on long threads. No is_root
+	// filter: tools are non-root, so it can't be expressed as a single boolean.
 	for await (const run of client.listRuns({
 		projectName: sourceProject,
-		filter: `and(eq(metadata_key, "thread_id"), eq(metadata_value, "${ref.threadId}"))`,
+		filter: `and(eq(thread_id, "${ref.threadId}"), or(eq(run_type, "chain"), eq(run_type, "tool")))`,
 	})) {
 		runs.push(run);
 	}
