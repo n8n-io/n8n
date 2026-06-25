@@ -31,6 +31,8 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { EgressPolicyService } from '@/egress/egress-policy.service';
+import { EgressCalibrationService } from '@/egress/egress-calibration.service';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
@@ -134,6 +136,8 @@ describe('Start - AuthRolesService initialization', () => {
 			BinaryDataConfig,
 			mockInstance(BinaryDataConfig, { initialize: jest.fn().mockResolvedValue(undefined) }),
 		);
+		Container.set(EgressPolicyService, mockInstance(EgressPolicyService));
+		Container.set(EgressCalibrationService, mockInstance(EgressCalibrationService));
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing

@@ -23,6 +23,11 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
+import { EgressPolicyService } from '@/egress/egress-policy.service';
+import { EgressCalibrationService } from '@/egress/egress-calibration.service';
+
+mockInstance(EgressPolicyService);
+mockInstance(EgressCalibrationService);
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 const workflowRepository = mockInstance(WorkflowRepository);
