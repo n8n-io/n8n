@@ -210,7 +210,8 @@ import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/
 import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
 import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
 import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
-import { DropAgentExecutionFallbackColumns1784000000037 } from '../common/1784000000037-DropAgentExecutionFallbackColumns';
+import { DropAgentDescriptionFromAgents1784000000037 } from '../common/1784000000037-DropAgentDescriptionFromAgents';
+import { DropAgentExecutionFallbackColumns1784000000038 } from '../common/1784000000038-DropAgentExecutionFallbackColumns';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -426,5 +427,6 @@ export const postgresMigrations: Migration[] = [
 	AllowAzureStoredAt1784000000034,
 	AddUniqueAgentFileNames1784000000035,
 	CreateInstanceAiThreadGrantTable1784000000036,
-	DropAgentExecutionFallbackColumns1784000000037,
+	DropAgentDescriptionFromAgents1784000000037,
+	DropAgentExecutionFallbackColumns1784000000038,
 ];
