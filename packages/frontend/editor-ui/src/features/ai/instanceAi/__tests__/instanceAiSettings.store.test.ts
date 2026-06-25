@@ -348,7 +348,7 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('connections', () => {
-		it('is empty when the gateway is disabled for the user', () => {
+		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: true,
@@ -356,10 +356,14 @@ describe('useInstanceAiSettingsStore', () => {
 				cloudManaged: false,
 			});
 
-			expect(store.connections).toEqual([]);
+			expect(store.connections).toHaveLength(1);
+			expect(store.connections[0]).toMatchObject({
+				type: 'browser-use',
+				status: 'disconnected',
+			});
 		});
 
-		it('shows a disconnected Computer Use row when enabled but not paired', () => {
+		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -368,9 +372,13 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 			setUserPreference(store, { localGatewayDisabled: false });
 
-			expect(store.connections).toHaveLength(1);
+			expect(store.connections).toHaveLength(2);
 			expect(store.connections[0]).toMatchObject({
 				type: 'computer-use',
+				status: 'disconnected',
+			});
+			expect(store.connections[1]).toMatchObject({
+				type: 'browser-use',
 				status: 'disconnected',
 			});
 		});
@@ -403,7 +411,7 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 		});
 
-		it('omits the Browser Use row when connected without a browser tool category', async () => {
+		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -419,8 +427,9 @@ describe('useInstanceAiSettingsStore', () => {
 			setUserPreference(store, { localGatewayDisabled: false });
 			await store.fetchGatewayStatus();
 
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0].type).toBe('computer-use');
+			expect(store.connections).toHaveLength(2);
+			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
+			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
 		});
 	});
 

@@ -286,28 +286,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
-			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
-			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
-				Container.get(PrometheusMetricsService);
-			}
-
-			// we instantiate the publication services early to register their multi-main event handlers
-			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				const { WorkflowPublicationOutboxConsumer } = await import(
-					'@/workflows/publication/workflow-publication-outbox-consumer'
-				);
-				const { PublishedWorkflowEnqueuer } = await import(
-					'@/workflows/publication/published-workflow-enqueuer'
-				);
-				const { PublishedWorkflowTriggerDeactivator } = await import(
-					'@/workflows/publication/published-workflow-trigger-deactivator'
-				);
-				Container.get(WorkflowPublicationOutboxConsumer);
-				Container.get(PublishedWorkflowEnqueuer);
-				Container.get(PublishedWorkflowTriggerDeactivator);
-			}
-
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 
@@ -434,6 +412,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer'
 			);
+			const { WorkflowPublicationOutboxCleanupService } = await import(
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+			);
+
+			// Import for its side effect: registering the trigger deactivator's
+			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
+			await import('@/workflows/publication/published-workflow-trigger-deactivator');
 
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain
@@ -448,6 +433,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				.catch((error) => {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				});
+
+			Container.get(WorkflowPublicationOutboxCleanupService).init();
 		} else {
 			await this.activeWorkflowManager.init();
 		}

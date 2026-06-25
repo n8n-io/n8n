@@ -73,6 +73,15 @@ vi.mock('@/stores/pushConnection.store', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
 
@@ -356,7 +365,9 @@ describe('LogsPanel', () => {
 		expect(rendered.getByText(/Running/)).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
-		workflowsStore.addNodeExecutionStartedData({
+		useExecutionDataStore(
+			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+		).addNodeExecutionStartedData({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
@@ -396,7 +407,9 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
 		setExecutionData({
-			...workflowsStore.workflowExecutionData!,
+			...useExecutionDataStore(
+				createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+			).getExecutionSnapshot()!,
 			id: '1234',
 			status: 'success',
 			finished: true,

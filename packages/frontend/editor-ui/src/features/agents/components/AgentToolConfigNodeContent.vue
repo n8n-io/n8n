@@ -44,7 +44,6 @@ defineExpose({
 		:initial-node="props.initialNode"
 		:existing-tool-names="props.existingToolNames"
 		:project-id="props.projectId"
-		:hide-ask-assistant="true"
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"

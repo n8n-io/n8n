@@ -89,6 +89,22 @@ const groupedExecutionErrors = computed(() => {
 		<N8nIcon icon="power" :size="size" />
 	</div>
 	<div
+		v-else-if="executionSimulation"
+		data-test-id="canvas-node-status-simulated"
+		:class="[...commonClasses, $style.simulated]"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				{{
+					i18n.baseText('node.simulatedOutput.tooltip', {
+						interpolate: { reason: executionSimulation.reason },
+					})
+				}}
+			</template>
+			<N8nIcon icon="flask-conical" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
 		v-else-if="hasExecutionErrors && !hideNodeIssues"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-issues"
@@ -114,22 +130,6 @@ const groupedExecutionErrors = computed(() => {
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
 		<!-- Do nothing, unknown means the node never executed -->
-	</div>
-	<div
-		v-else-if="executionSimulation"
-		data-test-id="canvas-node-status-simulated"
-		:class="[...commonClasses, $style.simulated]"
-	>
-		<N8nTooltip :show-after="500" placement="bottom">
-			<template #content>
-				{{
-					i18n.baseText('node.simulatedOutput.tooltip', {
-						interpolate: { reason: executionSimulation.reason },
-					})
-				}}
-			</template>
-			<N8nIcon icon="flask-conical" :size="size" />
-		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"

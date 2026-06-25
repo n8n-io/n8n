@@ -48,12 +48,16 @@ export interface BuiltMemory {
 		},
 	): Promise<AgentDbMessage[]>;
 	/**
-	 * Append messages to a thread. Each entry must be a full {@link AgentDbMessage}:
-	 * stable string `id` and `createdAt` (the runtime sets both when messages pass through
-	 * its internal list). Custom backends must persist and return those fields from
-	 * `getMessages` so ordering, pagination (`before` / limit), and filters stay consistent;
-	 * when both a column and serialized JSON exist, treat the stored sort key / column as
-	 * authoritative for `createdAt` on load.
+	 * Upsert messages into a thread by `id`: insert messages with a new `id`, and replace
+	 * in place (preserving position) any whose `id` already exists. Implementations MUST be
+	 * idempotent on `id` — the runtime persists a turn's input eagerly (so it survives an
+	 * aborted or abandoned-HITL turn) and again at end of turn, so the same message id is
+	 * saved more than once; an append-only backend would duplicate it. Each entry must be a
+	 * full {@link AgentDbMessage}: stable string `id` and `createdAt` (the runtime sets both
+	 * when messages pass through its internal list). Custom backends must persist and return
+	 * those fields from `getMessages` so ordering, pagination (`before` / limit), and filters
+	 * stay consistent; when both a column and serialized JSON exist, treat the stored sort
+	 * key / column as authoritative for `createdAt` on load.
 	 */
 	saveMessages(args: {
 		threadId: string;

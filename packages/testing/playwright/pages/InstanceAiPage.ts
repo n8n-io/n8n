@@ -16,7 +16,7 @@ export class InstanceAiPage extends BasePage {
 		this.workflowSetup = new InstanceAiWorkflowSetup(
 			page.getByTestId('instance-ai-workflow-setup'),
 		);
-		this.credentialModal = new CredentialModal(page.getByTestId('editCredential-modal'));
+		this.credentialModal = CredentialModal.fromPage(page);
 	}
 
 	private get container(): Locator {

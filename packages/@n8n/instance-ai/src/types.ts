@@ -7,12 +7,13 @@ import type {
 	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
 import type {
 	TaskList,
-	InstanceAiAttachment,
+	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -36,6 +37,7 @@ import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { IterationLog } from './storage/iteration-log';
+import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -761,6 +763,13 @@ export interface InstanceAiContext {
 	allowedRunWorkflowNames?: ReadonlySet<string>;
 	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
 	requireRunWorkflowApproval?: boolean;
+	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
+	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
+	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
+	sessionApprovedToolKeys?: ReadonlySet<string>;
+	/** Persist a thread-level "always allow" grant for the given key. Invoked by a tool when it
+	 *  resumes from a `scope: 'session'` approval. No-op in contexts without persistence. */
+	grantSessionToolApproval?: (key: string) => Promise<void>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -778,9 +787,9 @@ export interface InstanceAiContext {
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow and submit-workflow on every
-	 * successful create, and hydrated at run start from the persisted plan
-	 * graph when — and only when — the plan is still `active` or
+	 * cycle**. Populated by build-workflow on every successful create, and
+	 * hydrated at run start from the persisted plan graph when — and only when —
+	 * the plan is still `active` or
 	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
 	 * the window closes as soon as the plan settles. Consumed by the delete
 	 * handler to skip the confirmation gate when the agent cleans up its own
@@ -788,12 +797,21 @@ export interface InstanceAiContext {
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
-	 * Attachments from the current user message. Runtime-only — not persisted.
-	 * Used to register `parse-file` and supply data to the parser.
+	 * File attachments from the current user message. Runtime-only — not
+	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
-	currentUserAttachments?: InstanceAiAttachment[];
+	currentUserAttachments?: InstanceAiFileAttachment[];
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
+	/** Optional telemetry sink for domain tools. */
+	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
+	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
+	workspace?: Workspace;
+	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
+	threadId?: string;
+	/** Thread memory adapter used for thread-local metadata. */
+	threadMemory?: PatchableThreadMemory;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
@@ -1311,15 +1329,6 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
-	/**
-	 * Persist the current user message to thread memory immediately, so it
-	 * survives a restart that happens while the orchestrator is suspended on
-	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
-	 * loop completion, which a suspended run never reaches — without this the
-	 * user's bubble is invisible on reload until the turn eventually completes.
-	 * Idempotent: safe to call multiple times within a run.
-	 */
-	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */
@@ -1355,4 +1364,7 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
+	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
+	thinkingEnabled?: boolean;
+	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }

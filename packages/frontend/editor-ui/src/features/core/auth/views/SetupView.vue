@@ -96,7 +96,8 @@ const onSubmit = async (values: { [key: string]: string | boolean }) => {
 			} catch {}
 		}
 		if (forceRedirectedHere) {
-			await router.push({ name: VIEWS.HOMEPAGE });
+			// Route through root so the guard can land the new owner on Instance AI when enabled.
+			await router.push('/');
 		} else {
 			await router.push({ name: VIEWS.USERS_SETTINGS });
 		}

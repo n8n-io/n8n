@@ -25,7 +25,7 @@
 	"complexity": "simple",
 	"tags": ["build", "schedule", "http-request", "gmail", "conditional"],
 	"triggerType": "schedule",
-	"datasets": ["pr", "full"],
+	"datasets": ["mcp", "pr", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",

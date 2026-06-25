@@ -63,6 +63,7 @@ Each branch's items are capped at 10 for artifact size. The full untruncated tot
 7. Check the **success criteria** against the execution trace and node outputs
 8. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
 9. **0 items flowing into a downstream node = that node doesn't run.** This is n8n's default branching behavior, not a defect. When a Filter / IF / Switch routes 0 items to a branch, its downstream nodes simply don't execute — no crash, no side effects. **Do not require an explicit guard (IF count > 0, early-exit branch) unless the success criteria explicitly demands intentional handling.** Verify against what the criteria actually say, not against an implicit "must use a guard" requirement.
+10. **\`pass\` must match your final verdict.** If your reasoning concludes all success criteria are met, set \`pass: true\`. Do not leave \`pass: false\` after talking yourself into a pass.
 
 ## Failure categories
 
@@ -78,12 +79,22 @@ NOT failure categories:
 - HTTP responses coming from the LLM mock instead of real APIs — this is expected
 - Trigger nodes having pinned/generated data instead of real events — this is expected
 - Placeholder or unresolved credential ID values in node configs — these are auto-substituted by the framework and never the cause of a failure
+- Unset or placeholder resource IDs (e.g. Google Sheets document ID) when the success criteria explicitly allows deferred setup — not a builder_issue if mappings/structure are correct and the user-facing path still runs. An empty string in a resource-locator \`value\` field (not a placeholder) IS a builder_issue.
+
+## Deferred setup scenarios
+
+When success criteria say document/resource IDs may be unset or placeholder pre-setup:
+- Judge structure, column mappings, and whether the user-facing completion step ran.
+- Do not fail solely because a backend integration node logged config issues for an unset document when mock execution synthesized eval-safe IDs and the scenario's dataSetup steered a successful append.
+- DO fail when \`__rl.value\` is an empty string — that is a builder misconfiguration, not deferred setup.
 
 ## Output format
 
 Return ONLY the structured result object with a top-level \`results\` array.
 Every result object must include \`failureCategory\` and \`rootCause\`.
 Use \`null\` for both fields when the checklist item passes.
+
+**Lead with the issue, then show your reasoning.** Reason through the trace, mock responses, and data flow to reach a definitive verdict — that analysis is what keeps you accurate, so keep the insight. Just make it digestible: open \`reasoning\` with one sentence stating what failed and why (the root cause), then back it with the evidence that matters — the relevant trace step, the mock response shape, the exact error and field. Keep \`rootCause\` to a crisp sentence or two naming the culprit node and cause. Stay focused on the single root cause: don't recap how mocking works, re-narrate the whole trace start-to-finish, or list every downstream node that didn't run. A reader should grasp the issue on the first pass and still find the mock/trace detail that backs it.
 
 For passes:
 

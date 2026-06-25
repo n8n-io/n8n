@@ -46,6 +46,7 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 
 const hostRequire = createRequire(__filename);
@@ -135,35 +136,6 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  * described above. Keep this in sync with the catalog entry on upgrades.
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
-
-function assertSafeWorkspaceRelativePath(path: string): void {
-	const segments = path.split('/');
-	if (
-		path.length === 0 ||
-		path.startsWith('/') ||
-		path.includes('\\') ||
-		path.includes('\0') ||
-		segments.some((segment) => segment === '..')
-	) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-}
-
-function joinWorkspacePath(root: string, path: string): string {
-	assertSafeWorkspaceRelativePath(path);
-
-	const normalizedRoot = root.replace(/\/+$/, '') || '/';
-	const normalizedPath = path
-		.split('/')
-		.filter((segment) => segment.length > 0 && segment !== '.')
-		.join('/');
-
-	if (normalizedPath.length === 0) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-
-	return normalizedRoot === '/' ? `/${normalizedPath}` : `${normalizedRoot}/${normalizedPath}`;
-}
 
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
@@ -262,12 +234,16 @@ try {
   }
   const validation = wf.validate();
   const json = wf.toJSON({ tidyUp: true });
+  const declaredOutputJson = typeof wf.generatePinData === 'function'
+    ? wf.generatePinData().toJSON({ tidyUp: true })
+    : undefined;
+  const declaredOutputFixtures = declaredOutputJson?.pinData;
   const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
   // JSON.stringify drops the credential keys entirely and the server can't resolve them.
   const replacer = (k, v) => v === undefined ? null : v;
-  console.log(JSON.stringify({ success: true, workflow: json, warnings }, replacer));
+  console.log(JSON.stringify({ success: true, workflow: json, declaredOutputFixtures, warnings }, replacer));
 } catch (e) {
   console.log(JSON.stringify({ success: false, errors: [e instanceof Error ? e.message : String(e)] }));
   process.exit(1);

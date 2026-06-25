@@ -88,9 +88,40 @@ describe('CreateWorkflowDto', () => {
 					],
 				},
 			},
+			{
+				// `parentFolder` is not an accepted input; it must be tolerated (stripped), not rejected
+				name: 'with parentFolder object (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: { id: 'folder123', name: 'Some Folder' },
+				},
+			},
+			{
+				name: 'with parentFolder null (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: null,
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should strip parentFolder from the parsed payload', () => {
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Workflow',
+				nodes: [],
+				connections: {},
+				parentFolder: { id: 'folder123', name: 'Some Folder' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('parentFolder');
 		});
 
 		test('should transform tags from objects to string array', () => {

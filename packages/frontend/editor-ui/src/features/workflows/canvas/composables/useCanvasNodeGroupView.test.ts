@@ -3,13 +3,19 @@ import { useWorkflowDocumentNodeGroups } from '@/app/stores/workflowDocument/use
 import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
 import { useCanvasNodeGroupView } from './useCanvasNodeGroupView';
 import type { NodeGroupLayoutComponent } from './useCanvasNodeGroupLayout';
+import type { GroupExpansionMode } from '../canvas.types';
 
 function setup(
 	initialGroups: Array<{ id: string; name: string; nodeIds: string[] }> = [],
 	{
 		workflowId = 'wf-test',
 		isGroupingEnabled = () => true,
-	}: { workflowId?: string; isGroupingEnabled?: () => boolean } = {},
+		getGroupExpansionMode,
+	}: {
+		workflowId?: string;
+		isGroupingEnabled?: () => boolean;
+		getGroupExpansionMode?: () => GroupExpansionMode | undefined;
+	} = {},
 ) {
 	const nodeGroups = useWorkflowDocumentNodeGroups();
 	if (initialGroups.length > 0) {
@@ -20,6 +26,7 @@ function setup(
 		getCurrentGroupIds: () => nodeGroups.allGroups.value.map((group) => group.id),
 		onNodeGroupsChange: nodeGroups.onNodeGroupsChange,
 		isGroupingEnabled,
+		getGroupExpansionMode,
 	});
 	return { nodeGroups, view };
 }
@@ -75,6 +82,21 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g2')).toBe(true);
 		});
 
+		it('does not clobber persisted state when restoring before groups are loaded', () => {
+			localStorage.setItem(
+				LOCAL_STORAGE_CANVAS_GROUP_EXPANDED,
+				JSON.stringify({ 'wf-test': ['g1'] }),
+			);
+
+			// Canvas mounts before the document hydrates its groups: the initial
+			// restore sees no groups and must leave the saved state untouched.
+			const { nodeGroups, view } = setup();
+			expect(readStored()).toEqual(['g1']);
+
+			nodeGroups.setNodeGroups([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+		});
+
 		it('drops persisted ids whose groups are no longer present', () => {
 			localStorage.setItem(
 				LOCAL_STORAGE_CANVAS_GROUP_EXPANDED,
@@ -115,6 +137,94 @@ describe('useCanvasNodeGroupView', () => {
 			expect(b.view.isGroupCollapsed('g1')).toBe(true);
 			expect(readStored('wf-a')).toEqual(['g1']);
 			expect(readStored('wf-b')).toEqual([]);
+		});
+	});
+
+	describe.each(['all', 'errored'] as const)('host-managed expansion (%s)', (mode) => {
+		it('seeds every group collapsed, ignoring persisted state', () => {
+			localStorage.setItem(
+				LOCAL_STORAGE_CANVAS_GROUP_EXPANDED,
+				JSON.stringify({ 'wf-test': ['g1'] }),
+			);
+
+			const { view } = setup(
+				[
+					{ id: 'g1', name: 'A', nodeIds: ['a'] },
+					{ id: 'g2', name: 'B', nodeIds: ['b'] },
+				],
+				{ getGroupExpansionMode: () => mode },
+			);
+
+			expect(view.isGroupCollapsed('g1')).toBe(true);
+			expect(view.isGroupCollapsed('g2')).toBe(true);
+		});
+
+		it('lets the canvas expand a group via setGroupExpanded', () => {
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
+				getGroupExpansionMode: () => mode,
+			});
+
+			view.setGroupExpanded('g1', true);
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+		});
+
+		it('never writes persisted view state', () => {
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], {
+				getGroupExpansionMode: () => mode,
+			});
+
+			view.setGroupExpanded('g1', true);
+
+			expect(readStored()).toBeUndefined();
+		});
+	});
+
+	describe('reinitialize (document swap under a persistent canvas)', () => {
+		it('rebinds to the swapped document and re-seeds its groups', () => {
+			const versionA = useWorkflowDocumentNodeGroups();
+			versionA.setNodeGroups([{ id: 'a1', name: 'A', nodeIds: ['n1'] }]);
+			const versionB = useWorkflowDocumentNodeGroups();
+			versionB.setNodeGroups([{ id: 'b1', name: 'B', nodeIds: ['n2'] }]);
+
+			let active = versionA;
+			const view = useCanvasNodeGroupView({
+				workflowId: () => 'wf',
+				getCurrentGroupIds: () => active.allGroups.value.map((group) => group.id),
+				onNodeGroupsChange: (handler) => active.onNodeGroupsChange(handler),
+				isGroupingEnabled: () => true,
+				getGroupExpansionMode: () => 'all',
+			});
+
+			view.setGroupExpanded('a1', true);
+			expect(view.isGroupCollapsed('a1')).toBe(false);
+
+			// Swap the document and reinitialize: the expanded set is re-seeded for
+			// version B's groups, dropping version A's stale expansion.
+			active = versionB;
+			view.reinitialize();
+			expect(view.isGroupCollapsed('a1')).toBe(true);
+			expect(view.isGroupCollapsed('b1')).toBe(true);
+		});
+
+		it('hears change events from the swapped document after rebinding', () => {
+			// b1 is persisted expanded, so hearing version B's SET event restores it.
+			localStorage.setItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED, JSON.stringify({ wf: ['b1'] }));
+			const versionA = useWorkflowDocumentNodeGroups();
+			const versionB = useWorkflowDocumentNodeGroups();
+
+			let active = versionA;
+			const view = useCanvasNodeGroupView({
+				workflowId: () => 'wf',
+				getCurrentGroupIds: () => active.allGroups.value.map((group) => group.id),
+				onNodeGroupsChange: (handler) => active.onNodeGroupsChange(handler),
+				isGroupingEnabled: () => true,
+			});
+
+			active = versionB;
+			view.reinitialize();
+
+			versionB.setNodeGroups([{ id: 'b1', name: 'B', nodeIds: ['n2'] }]);
+			expect(view.isGroupCollapsed('b1')).toBe(false);
 		});
 	});
 

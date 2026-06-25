@@ -207,5 +207,37 @@ describe('Microsoft Outlook Transport', () => {
 				);
 			});
 		});
+
+		describe('credential type resolution', () => {
+			it('should use microsoftOutlookOAuth2Api when authentication is not set (backward compatibility)', async () => {
+				mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({});
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftOutlookOAuth2Api',
+				);
+				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+					'microsoftOutlookOAuth2Api',
+					expect.anything(),
+				);
+			});
+
+			it('should route through microsoftOAuth2Api when the generic credential is selected', async () => {
+				mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({});
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+					'microsoftOAuth2Api',
+					expect.anything(),
+				);
+			});
+		});
 	});
 });
