@@ -179,6 +179,10 @@ export function driveEndpoint(root: string): string {
  * `(name, fallback, options)`, execute is `(name, itemIndex, fallback, options)` —
  * so the RLC is read (with `extractValue`) without coupling transport to either
  * signature. Validation + encoding happen in `getServicePrincipalResourceRoot`.
+ *
+ * `resourceTarget`/the target RLC are `noDataExpression` (per-node, not per-item),
+ * so `itemIndex` exists only to satisfy the execute `getNodeParameter` signature —
+ * the resolved root is the same for every item in the run.
  */
 export function resolveDriveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -240,9 +244,8 @@ export async function microsoftApiRequest(
 		// resource here means a call site built the wrong path (programmer error,
 		// not user input), so fail loudly instead of slicing the wrong prefix.
 		if (!resource.startsWith('/drive')) {
-			throw new OperationalError(
-				`microsoftApiRequest: scoped resource must start with "/drive" (got "${resource}")`,
-			);
+			// Static message — never interpolate `resource`, so no id can reach a log.
+			throw new OperationalError('microsoftApiRequest: a scoped resource must start with "/drive"');
 		}
 		// `driveEndpoint` already lands on the drive (`/drives/{id}` as-is, or
 		// `/users|sites/{id}/drive`), so drop the leading `/drive` from `resource`.
@@ -410,12 +413,14 @@ export async function getPath(
 	itemId: string,
 ): Promise<string> {
 	// `getPath`'s only production caller is the trigger `poll`, so resolve the scope
-	// root with the poll signature and let transport compose the scoped URL.
+	// root with the poll signature and pass the resource-form path so transport can
+	// scope it. Do not convert this back to an absolute `/me` uri — that would bypass
+	// scoping and break the app-only (Service Principal) case.
 	const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${itemId}`,
+		`/drive/items/${encodeURIComponent(itemId)}`,
 		{},
 		{},
 		undefined,
