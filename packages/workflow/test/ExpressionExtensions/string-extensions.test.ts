@@ -3,6 +3,19 @@ import { DateTime } from 'luxon';
 
 import { evaluate, asDateTime } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors';
+import { stringExtensions } from '../../src/extensions/string-extensions';
+
+// Direct handles to the pure functions. The VM expression engine swallows a
+// thrown extension error into `undefined` and normalises error messages, so the
+// `evaluate()` harness can't distinguish "returns undefined" from "throws", nor
+// pin a specific error message. Calling the exported functions directly exercises
+// the real (mutated) source so those contracts are asserted.
+const fns = stringExtensions.functions;
+const extractEmail = fns.extractEmail as (v: string) => string | undefined;
+const extractUrl = fns.extractUrl as (v: string) => string | undefined;
+const extractDomain = fns.extractDomain as (v: string) => string | undefined;
+const parseJson = fns.parseJson as (v: string) => unknown;
+const removeMarkdown = fns.removeMarkdown as (v: string) => string;
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {
@@ -355,6 +368,270 @@ describe('Data Transformation Functions', () => {
 
 		test('.base64Decode should work on a string', () => {
 			expect(evaluate('={{ "bjhuIHRlc3Q=".base64Decode() }}')).toBe('n8n test');
+		});
+
+		describe('strengthened behaviours', () => {
+			describe('.hash', () => {
+				test('should default to md5 when no algorithm is given', () => {
+					// pins the `?? 'md5'` default and the optional-chaining on the missing arg
+					expect(evaluate('={{ "hello".hash() }}')).toEqual(evaluate('={{ "hello".hash("md5") }}'));
+					expect(evaluate('={{ "hello".hash() }}')).toEqual('5d41402abc4b2a76b9719d911017c592');
+				});
+
+				test('should base64-encode when algorithm is base64', () => {
+					expect(evaluate('={{ "hello".hash("base64") }}')).toEqual('aGVsbG8=');
+				});
+			});
+
+			describe('.toDateTime', () => {
+				// Each numeric format interprets the timestamp on a different scale; if the
+				// matching branch is skipped it falls through to DateTime.fromFormat and
+				// produces an invalid DateTime (NaN year), so asserting the year pins the branch.
+				test('should interpret the "s" (seconds) format', () => {
+					expect(asDateTime(evaluate('={{ "1708695471".toDateTime("s") }}')).year).toEqual(2024);
+				});
+
+				test('should interpret the "ms" (milliseconds) format', () => {
+					expect(asDateTime(evaluate('={{ "1708695471000".toDateTime("ms") }}')).year).toEqual(
+						2024,
+					);
+				});
+
+				test('should interpret the "us" (microseconds) format', () => {
+					expect(asDateTime(evaluate('={{ "1708695471000000".toDateTime("us") }}')).year).toEqual(
+						2024,
+					);
+				});
+
+				test('should interpret the "excel" (days since 1900) format', () => {
+					expect(asDateTime(evaluate('={{ "45345".toDateTime("excel") }}')).year).toEqual(2024);
+				});
+
+				test('the numeric formats are not interchangeable', () => {
+					// the same number lands in different years depending on the scale
+					expect(asDateTime(evaluate('={{ "1000000000".toDateTime("s") }}')).year).toEqual(2001);
+					expect(asDateTime(evaluate('={{ "1000000000".toDateTime("ms") }}')).year).toEqual(1970);
+				});
+			});
+
+			describe('.urlEncode / .urlDecode', () => {
+				// The `allChars` flag toggles encodeURI/decodeURI (URI-syntax chars preserved)
+				// vs encodeURIComponent/decodeURIComponent (everything encoded). Pinning a
+				// reserved char like `=` distinguishes the two branches.
+				test('urlEncode(false) encodes reserved characters', () => {
+					expect(evaluate('={{ "name=Nathan Automat".urlEncode(false) }}')).toEqual(
+						'name%3DNathan%20Automat',
+					);
+				});
+
+				test('urlEncode(true) preserves reserved characters', () => {
+					expect(evaluate('={{ "name=Nathan Automat".urlEncode(true) }}')).toEqual(
+						'name=Nathan%20Automat',
+					);
+				});
+
+				test('urlEncode defaults to encoding reserved characters', () => {
+					expect(evaluate('={{ "name=Nathan Automat".urlEncode() }}')).toEqual(
+						'name%3DNathan%20Automat',
+					);
+				});
+
+				test('urlDecode(false) decodes reserved characters', () => {
+					expect(evaluate('={{ "name%3DNathan%20Automat".urlDecode(false) }}')).toEqual(
+						'name=Nathan Automat',
+					);
+				});
+
+				test('urlDecode(true) preserves reserved escape sequences', () => {
+					expect(evaluate('={{ "name%3DNathan%20Automat".urlDecode(true) }}')).toEqual(
+						'name%3DNathan Automat',
+					);
+				});
+
+				test('urlDecode defaults to decoding reserved characters', () => {
+					expect(evaluate('={{ "name%3DNathan%20Automat".urlDecode() }}')).toEqual(
+						'name=Nathan Automat',
+					);
+				});
+			});
+
+			describe('.toInt', () => {
+				test('should strip currency symbols before parsing', () => {
+					expect(evaluate('={{ "$5".toInt() }}')).toEqual(5);
+				});
+
+				test('should throw when the value is not an integer', () => {
+					expect(() => evaluate('={{ "abc".toInt() }}')).toThrow('cannot convert to integer');
+				});
+			});
+
+			describe('.toFloat', () => {
+				test('should strip currency symbols before parsing', () => {
+					expect(evaluate('={{ "$1.5".toFloat() }}')).toEqual(1.5);
+				});
+
+				test('should reject a comma decimal separator', () => {
+					expect(() => evaluate('={{ "1,5".toFloat() }}')).toThrow(
+						'cannot convert to float, expected . as decimal separator',
+					);
+				});
+
+				test('should throw when the value is not a number', () => {
+					expect(() => evaluate('={{ "abc".toFloat() }}')).toThrow('cannot convert to float');
+				});
+			});
+
+			describe('.toNumber', () => {
+				test('should convert a numeric string', () => {
+					expect(evaluate('={{ "42".toNumber() }}')).toEqual(42);
+					expect(evaluate('={{ "1.23E10".toNumber() }}')).toEqual(12300000000);
+				});
+
+				test('should strip currency symbols before parsing', () => {
+					expect(evaluate('={{ "$42".toNumber() }}')).toEqual(42);
+				});
+
+				test('should throw when the value is not a number', () => {
+					expect(() => evaluate('={{ "abc".toNumber() }}')).toThrow('cannot convert to number');
+				});
+			});
+
+			describe('.quote', () => {
+				test('should escape backslashes in the input', () => {
+					expect(evaluate('={{ "a\\\\b".quote() }}')).toEqual('"a\\\\b"');
+				});
+
+				test('should support a custom quote character', () => {
+					expect(evaluate('={{ "test".quote("\'") }}')).toEqual("'test'");
+				});
+			});
+
+			describe('.isNumeric', () => {
+				test('should reject values containing whitespace even if otherwise numeric', () => {
+					// Number(' 5 ') is 5, so without the space guard this would be true
+					expect(evaluate('={{ " 5 ".isNumeric() }}')).toEqual(false);
+				});
+			});
+
+			describe('.isEmail', () => {
+				test('should reject an otherwise-valid email embedded in a longer string', () => {
+					// regex matches the substring; the manual space guard rejects it
+					expect(evaluate('={{ "valid@example.com extra".isEmail() }}')).toEqual(false);
+				});
+			});
+
+			describe('.replaceSpecialChars', () => {
+				test('should transliterate accented characters to ASCII', () => {
+					expect(evaluate('={{ "déjà".replaceSpecialChars() }}')).toEqual('deja');
+				});
+
+				test('should replace untransliterable characters with a question mark', () => {
+					// pins the { unknown: '?' } option — without it the emoji is dropped
+					expect(evaluate('={{ "a🎉b".replaceSpecialChars() }}')).toEqual('a?b');
+				});
+			});
+
+			describe('.extractEmail', () => {
+				test('should return undefined when no email is present', () => {
+					expect(evaluate('={{ "no email here".extractEmail() }}')).toBeUndefined();
+				});
+			});
+
+			describe('.extractUrl', () => {
+				test('should return undefined when no URL is present', () => {
+					expect(evaluate('={{ "no url here".extractUrl() }}')).toBeUndefined();
+				});
+			});
+
+			describe('.removeMarkdown', () => {
+				test.each([
+					['*bold*, [link]()', 'bold, link'],
+					['# Heading', 'Heading'],
+					['**strong** and _em_', 'strong and em'],
+					['~~strike~~', 'strike'],
+					['> quote', ' quote'],
+					['![alt](img.png)', ''],
+					['[text](http://x.com)', 'text'],
+					['- item', 'item'],
+					['1. item', 'item'],
+					['`code`', 'code'],
+					['text with footnote[^1]', 'text with footnote'],
+				])('should strip markdown from %p', (input, expected) => {
+					expect(evaluate(`={{ "${input}".removeMarkdown() }}`)).toEqual(expected);
+				});
+			});
+
+			describe('.toTitleCase', () => {
+				test('should capitalize words but leave short prepositions lowercase', () => {
+					expect(evaluate('={{ "quick a brown FOX".toTitleCase() }}')).toEqual('Quick a Brown FOX');
+				});
+			});
+
+			// Asserted by calling the source directly — see the note on `fns` above.
+			describe('direct function contracts', () => {
+				describe('.extractEmail', () => {
+					test('returns the email when present', () => {
+						expect(extractEmail('say hi to me@example.com please')).toEqual('me@example.com');
+					});
+
+					test('returns undefined when no email is present', () => {
+						expect(extractEmail('no email here')).toBeUndefined();
+					});
+				});
+
+				describe('.extractUrl', () => {
+					test('returns the url when present', () => {
+						expect(extractUrl('go to http://n8n.io now')).toEqual('http://n8n.io');
+					});
+
+					test('returns undefined when no url is present', () => {
+						expect(extractUrl('no url here')).toBeUndefined();
+					});
+				});
+
+				describe('.extractDomain', () => {
+					test('extracts the domain from an email', () => {
+						expect(extractDomain('me@example.com')).toEqual('example.com');
+					});
+
+					test('extracts the domain from a url', () => {
+						expect(extractDomain('http://n8n.io/workflows')).toEqual('n8n.io');
+					});
+
+					test('returns undefined when neither email nor domain is present', () => {
+						expect(extractDomain('tel:+1-555-123-4567')).toBeUndefined();
+					});
+				});
+
+				// Multiline markdown cases — easier to express as direct calls than through
+				// the expression string harness (no newline escaping).
+				describe('.removeMarkdown (multiline)', () => {
+					test.each([
+						['setext header underline is removed', 'Title\n===\nbody', 'Title\n\nbody'],
+						['runs of blank lines collapse to one', 'para1\n\n\n\npara2', 'para1\n\npara2'],
+						['atx header markers are stripped', '## Heading ##', 'Heading '],
+						['blockquote markers are stripped', 'a > b > c', 'a  b  c'],
+						['triple emphasis is unwrapped', '___bold___', 'bold'],
+					])('%s', (_name, input, expected) => {
+						expect(removeMarkdown(input)).toEqual(expected);
+					});
+				});
+
+				describe('.parseJson', () => {
+					test('parses valid JSON', () => {
+						expect(parseJson('{"a":1}')).toEqual({ a: 1 });
+					});
+
+					test('throws a quote-specific message for single-quoted JSON', () => {
+						expect(() => parseJson("{'a':1}")).toThrow("Check you're using double quotes");
+					});
+
+					test('throws a generic message for other invalid JSON', () => {
+						// anchored so the quote-specific message ("Parsing failed. Check ...") does not match
+						expect(() => parseJson('not json at all')).toThrow(/Parsing failed$/);
+					});
+				});
+			});
 		});
 	});
 });
