@@ -25,7 +25,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
           </div>
           <ul>
             <li v-for="item in items" :key="item.id">
-              <button :data-test-id="'action-' + item.id" @click="$emit('select', item.id)">
+              <button :data-test-id="'action-' + item.id" :disabled="item.disabled" @click="$emit('select', item.id)">
                 <slot name="menuItem" v-bind="item" />
               </button>
             </li>
@@ -58,6 +58,19 @@ const mockRoles = {
 const mockActions: Array<ActionDropdownItem<Role>> = [
 	{ id: ROLE.Member, label: 'Member' },
 	{ id: ROLE.Admin, label: 'Admin' },
+];
+
+const CUSTOM_ROLE_SLUG = 'custom:developer';
+
+const mockRolesWithCustom = {
+	...mockRoles,
+	[CUSTOM_ROLE_SLUG]: { label: 'Developer', desc: 'Developer role description' },
+};
+
+const mockActionsWithCustom: Array<ActionDropdownItem<string>> = [
+	...mockActions,
+	{ id: CUSTOM_ROLE_SLUG, label: 'Developer' },
+	{ id: 'custom:unlicensed', label: 'Unlicensed Role', disabled: true },
 ];
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -110,6 +123,41 @@ describe('SettingsUsersRoleCell', () => {
 		renderComponent({ props: { loading: true } });
 
 		expect(screen.getByRole('button', { name: 'Member' })).toBeDisabled();
+	});
+
+	describe('custom instance roles', () => {
+		it('should display the label of a custom role assigned to the user', () => {
+			renderComponent({
+				props: {
+					data: { ...mockUser, role: CUSTOM_ROLE_SLUG },
+					roles: mockRolesWithCustom,
+					actions: mockActionsWithCustom,
+				},
+			});
+
+			expect(screen.getByRole('button', { name: 'Developer' })).toBeInTheDocument();
+		});
+
+		it('should emit "update:role" with the custom role slug when selected', async () => {
+			const { emitted } = renderComponent({
+				props: { roles: mockRolesWithCustom, actions: mockActionsWithCustom },
+			});
+			const user = userEvent.setup();
+
+			await user.click(screen.getByTestId(`action-${CUSTOM_ROLE_SLUG}`));
+
+			expect(emitted()).toHaveProperty('update:role');
+			expect(emitted()['update:role'][0]).toEqual([{ role: CUSTOM_ROLE_SLUG, userId: '1' }]);
+		});
+
+		it('should render disabled custom role as a disabled button in the dropdown', () => {
+			renderComponent({
+				props: { roles: mockRolesWithCustom, actions: mockActionsWithCustom },
+			});
+
+			const disabledButton = screen.getByTestId('action-custom:unlicensed');
+			expect(disabledButton).toBeDisabled();
+		});
 	});
 
 	it('should not update displayed role until prop changes', async () => {

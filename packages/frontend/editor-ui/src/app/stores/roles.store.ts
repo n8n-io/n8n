@@ -2,6 +2,7 @@ import {
 	type AllRolesMap,
 	type Role,
 	GLOBAL_OWNER_ROLE_SLUG,
+	GLOBAL_CHAT_USER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_CHAT_USER_ROLE_SLUG,
 } from '@n8n/permissions';
@@ -58,7 +59,14 @@ export const useRolesStore = defineStore('roles', () => {
 	const processedInstanceRoles = computed<AllRolesMap['global']>(() =>
 		roles.value.global
 			.filter((role) => role.slug !== GLOBAL_OWNER_ROLE_SLUG)
+			.filter(
+				(role) => settingsStore.isChatFeatureEnabled || role.slug !== GLOBAL_CHAT_USER_ROLE_SLUG,
+			)
 			.sort(sortByOrderThenName(globalRoleOrderMap.value)),
+	);
+
+	const customInstanceRoles = computed<AllRolesMap['global']>(() =>
+		processedInstanceRoles.value.filter((role) => !role.systemRole),
 	);
 
 	const processedProjectRoles = computed<AllRolesMap['project']>(() =>
@@ -117,6 +125,7 @@ export const useRolesStore = defineStore('roles', () => {
 		roles,
 		processedProjectRoles,
 		processedInstanceRoles,
+		customInstanceRoles,
 		processedCredentialRoles,
 		processedWorkflowRoles,
 		fetchRoles,
