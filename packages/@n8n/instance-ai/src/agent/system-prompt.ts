@@ -14,6 +14,7 @@ interface SystemPromptOptions {
 	formBaseUrl?: string;
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
+	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	browserAvailable?: boolean;
@@ -110,6 +111,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		formBaseUrl,
 		localGateway,
 		toolSearchEnabled,
+		mcpToolSearchEnabled,
 		licenseHints,
 		browserAvailable,
 		branchReadOnly,
@@ -163,11 +165,17 @@ ${
 	toolSearchEnabled
 		? `## Tool Discovery
 
-You have additional tools available beyond the ones listed above — including credential management, workflow operations, node browsing, data tables, filesystem access, and external MCP integrations.
+You have additional tools available beyond the ones listed above — including credential management, workflow operations, node browsing, data tables, filesystem access${mcpToolSearchEnabled ? ', and connected MCP integrations' : ''}.
 
-When you need a capability not covered by your current tools, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation.
+${
+	mcpToolSearchEnabled
+		? `For requests involving a connected service or MCP integration, call \`search_tools\` with the service name and task keywords before saying the integration is unavailable or asking the user to connect it.
 
-Examples: search "credential" for the credentials tool, search "file" for filesystem tools, search "workflow" for workflow management.
+`
+		: ''
+}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation.
+
+Examples: ${mcpToolSearchEnabled ? 'search "notion page" or "linear issue" for the corresponding MCP tool, ' : ''}search "credential" for the credentials tool, search "file" for filesystem tools, search "workflow" for workflow management.
 
 `
 		: ''
