@@ -11,18 +11,16 @@ import {
 	UserError,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
-import type { Request } from 'aws4';
-import {
-	AWS_GLOBAL_DOMAIN,
-	type AwsCredentialsTypeBase,
-	regions,
-	type AWSRegion,
-	type AwsAssumeRoleCredentialsType,
-	type AwsSecurityHeaders,
-} from './types';
-import { sign } from 'aws4';
 
+import { getAwsDomain, regions, type AWSRegion } from './regions';
 import { getSystemCredentials } from './system-credentials-utils';
+import type {
+	AwsCredentialsTypeBase,
+	AwsAssumeRoleCredentialsType,
+	AwsSecurityHeaders,
+} from './types';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
 /**
  * Checks if a request body value should be JSON stringified for AWS requests.
@@ -53,16 +51,6 @@ export function assertSupportedAwsRegion(region: unknown): asserts region is AWS
 	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
 		throw new UserError('Unsupported AWS region');
 	}
-}
-
-/**
- * Gets the AWS domain for a specific region.
- *
- * @param region - The AWS region to get the domain for
- * @returns The AWS domain for the region, or the global domain if region not found
- */
-export function getAwsDomain(region: AWSRegion): string {
-	return regions.find((r) => r.name === region)?.domain ?? AWS_GLOBAL_DOMAIN;
 }
 
 /**
@@ -309,7 +297,7 @@ export async function assumeRole(
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
 
 	if (useSystemCredentialsForRole) {
-		const systemCredentials = await getSystemCredentials();
+		const systemCredentials = await getSystemCredentials(region);
 		if (!systemCredentials) {
 			throw new UserError(
 				'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
@@ -346,7 +334,7 @@ export async function assumeRole(
 	const params = new URLSearchParams({
 		Action: 'AssumeRole',
 		Version: '2011-06-15',
-		RoleArn: assumeRoleBody.RoleArn!,
+		RoleArn: assumeRoleBody.RoleArn,
 		RoleSessionName: assumeRoleBody.RoleSessionName,
 	});
 	if (assumeRoleBody.ExternalId) {
