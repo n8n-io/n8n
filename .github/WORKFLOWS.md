@@ -181,6 +181,7 @@ These only run if specific files changed:
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `packages/@n8n/instance-ai/evaluations/data/workflows/**`              | `util-eval-roster-snapshot.yml` | master |
 
 ### On PR Review
 

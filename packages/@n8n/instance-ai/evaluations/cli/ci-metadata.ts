@@ -4,9 +4,11 @@
  * Distinguishes CI runs from local development runs and tracks provenance
  * of automated evaluation results.
  *
- * Note: git info (commit SHA, branch) is tracked by LangSmith automatically
- * via LANGSMITH_REVISION_ID and LANGSMITH_BRANCH env vars — set them in the
- * CI workflow and the SDK picks them up.
+ * Git provenance (branch, commit SHA, PR number) is recorded explicitly on the
+ * experiment metadata here — in CI from LANGSMITH_BRANCH / LANGSMITH_REVISION_ID /
+ * GITHUB_* env vars, locally from `git`. Downstream analytics (BigQuery KPIs) key
+ * off these — notably the dev-vs-official split on `branch` — so they can't be
+ * left to fragile experiment-name parsing.
  */
 
 import { execSync } from 'node:child_process';
@@ -17,20 +19,45 @@ export interface CIMetadata {
 	trigger?: string;
 	/** GitHub Actions run ID for linking back to the workflow run */
 	runId?: string;
+	/** Git branch the run was built from. Drives the dev-vs-official KPI split. */
+	branch?: string;
+	/** Commit SHA the run was built from. */
+	commitSha?: string;
+	/** Pull-request number, when the run was triggered by a `pull_request` event. */
+	prNumber?: string;
 }
 
 export function buildCIMetadata(): CIMetadata {
 	const isCI = process.env.GITHUB_ACTIONS === 'true';
 
 	if (!isCI) {
-		return { source: 'local' };
+		return { source: 'local', ...readLocalGitProvenance() };
 	}
 
 	return {
 		source: 'ci',
 		trigger: process.env.GITHUB_EVENT_NAME,
 		runId: process.env.GITHUB_RUN_ID,
+		branch:
+			process.env.LANGSMITH_BRANCH ?? process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME,
+		commitSha: process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA,
+		// pull_request runs expose the number via GITHUB_REF as `refs/pull/<n>/merge`.
+		prNumber: process.env.GITHUB_REF?.match(/refs\/pull\/(\d+)\//)?.[1],
 	};
+}
+
+/** Best-effort branch + short SHA from local `git`; empty when unavailable. */
+function readLocalGitProvenance(): { branch?: string; commitSha?: string } {
+	try {
+		const run = (cmd: string): string =>
+			execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+		return {
+			branch: run('git rev-parse --abbrev-ref HEAD'),
+			commitSha: run('git rev-parse --short HEAD'),
+		};
+	} catch {
+		return {};
+	}
 }
 
 /**
