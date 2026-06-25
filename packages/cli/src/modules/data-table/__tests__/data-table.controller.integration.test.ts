@@ -101,6 +101,24 @@ describe('POST /projects/:projectId/data-tables', () => {
 		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(400);
 	});
 
+	test('should return 409 when column name conflicts with system columns', async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		for (const systemColumnName of ['id', 'ID', 'createdAt', 'updatedAt']) {
+			const payload = {
+				name: `Table with ${systemColumnName}`,
+				columns: [{ name: systemColumnName, type: 'string' }],
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${project.id}/data-tables`)
+				.send(payload)
+				.expect(409);
+
+			expect(response.body.message).toContain('reserved');
+		}
+	});
+
 	test('should not create data table if user has project:viewer role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		await linkUserToProject(member, project, 'project:viewer');
