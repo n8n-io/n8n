@@ -66,6 +66,7 @@ import {
 	type PlannedTaskRecord,
 	type PlannedTaskService,
 	type PlannedWorkflowVerification,
+	type OrchestrationRunTerminationState,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type ServiceProxyConfig,
@@ -3020,6 +3021,11 @@ export class InstanceAiService {
 				tracing.orchestratorRun = actorRun;
 			}
 
+			const runTermination: OrchestrationRunTerminationState = {};
+			orchestrationContext.requestRunTermination = (reason) => {
+				runTermination.reason ??= reason;
+			};
+
 			const agent = await createInstanceAgent({
 				modelId,
 				context,
@@ -3045,6 +3051,7 @@ export class InstanceAiService {
 							eventBus: this.eventBus,
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
+							shouldTerminate: () => runTermination.reason !== undefined,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
@@ -3056,6 +3063,7 @@ export class InstanceAiService {
 						eventBus: this.eventBus,
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
+						shouldTerminate: () => runTermination.reason !== undefined,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 			if (result.status === 'suspended') {
@@ -3075,6 +3083,7 @@ export class InstanceAiService {
 						modelId,
 						checkpoint,
 						plannedBuild,
+						runTermination,
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -3192,14 +3201,16 @@ export class InstanceAiService {
 					messageId,
 				});
 			}
-			this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
-				messageGroupId,
-				correlationId: messageId,
-				workSummary: result.workSummary,
-				suppressCompletedFallback:
-					checkpoint?.isCheckpointFollowUp === true ||
-					plannedBuild?.isPlannedBuildFollowUp === true,
-			});
+			if (runTermination.reason === undefined) {
+				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
+					messageGroupId,
+					correlationId: messageId,
+					workSummary: result.workSummary,
+					suppressCompletedFallback:
+						checkpoint?.isCheckpointFollowUp === true ||
+						plannedBuild?.isPlannedBuildFollowUp === true,
+				});
+			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: finalStatus,
@@ -3714,6 +3725,10 @@ export class InstanceAiService {
 		}
 
 		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		const runTermination: OrchestrationRunTerminationState = {};
+		environment.orchestrationContext.requestRunTermination = (reason) => {
+			runTermination.reason ??= reason;
+		};
 		let agent;
 		try {
 			agent = await createInstanceAgent({
@@ -3750,6 +3765,7 @@ export class InstanceAiService {
 				checkpoint: orphan.checkpointTaskId
 					? { isCheckpointFollowUp: true, checkpointTaskId: orphan.checkpointTaskId }
 					: undefined,
+				runTermination,
 			},
 		};
 	}
@@ -3800,6 +3816,7 @@ export class InstanceAiService {
 			messageGroupId,
 			checkpoint,
 			plannedBuild,
+			runTermination,
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
@@ -3880,6 +3897,7 @@ export class InstanceAiService {
 			modelId,
 			checkpoint,
 			plannedBuild,
+			runTermination,
 		});
 		return true;
 	}
@@ -3906,6 +3924,7 @@ export class InstanceAiService {
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 			plannedBuild?: PlannedBuildFollowUp;
+			runTermination?: OrchestrationRunTerminationState;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -3949,6 +3968,7 @@ export class InstanceAiService {
 							logger: this.logger,
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
+							shouldTerminate: () => opts.runTermination?.reason !== undefined,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
@@ -3961,6 +3981,7 @@ export class InstanceAiService {
 						logger: this.logger,
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
+						shouldTerminate: () => opts.runTermination?.reason !== undefined,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 
@@ -3982,6 +4003,7 @@ export class InstanceAiService {
 						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 						checkpoint: opts.checkpoint,
 						plannedBuild: opts.plannedBuild,
+						runTermination: opts.runTermination,
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -4094,13 +4116,15 @@ export class InstanceAiService {
 					},
 				);
 			}
-			this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
-				messageGroupId,
-				workSummary: result.workSummary,
-				suppressCompletedFallback:
-					opts.checkpoint?.isCheckpointFollowUp === true ||
-					opts.plannedBuild?.isPlannedBuildFollowUp === true,
-			});
+			if (opts.runTermination?.reason === undefined) {
+				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
+					messageGroupId,
+					workSummary: result.workSummary,
+					suppressCompletedFallback:
+						opts.checkpoint?.isCheckpointFollowUp === true ||
+						opts.plannedBuild?.isPlannedBuildFollowUp === true,
+				});
+			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,

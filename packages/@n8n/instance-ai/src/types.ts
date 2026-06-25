@@ -1232,6 +1232,12 @@ export interface WorkflowTaskService {
 
 // ── Orchestration context (plan + delegate tools) ───────────────────────────
 
+export type OrchestrationRunTerminationReason = 'planned-tasks-scheduled';
+
+export interface OrchestrationRunTerminationState {
+	reason?: OrchestrationRunTerminationReason;
+}
+
 export interface OrchestrationContext {
 	threadId: string;
 	runId: string;
@@ -1294,6 +1300,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
+	/** End the current orchestrator stream once a tool result has reached the UI. */
+	requestRunTermination?: (reason: OrchestrationRunTerminationReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */

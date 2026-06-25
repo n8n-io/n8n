@@ -26,6 +26,7 @@ export interface StreamRunOptions {
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	onActivity?: () => void;
+	shouldTerminate?: () => boolean;
 	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 }
@@ -81,6 +82,7 @@ async function consumeStream(
 			signal: options.signal,
 			logger: options.logger,
 			onActivity: options.onActivity,
+			shouldTerminate: options.shouldTerminate,
 			outputRedaction: options.outputRedaction,
 		},
 		control: { mode: 'manual' },

@@ -1,7 +1,11 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext, ModelConfig } from '../types';
+import type {
+	InstanceAiTraceContext,
+	ModelConfig,
+	OrchestrationRunTerminationState,
+} from '../types';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
@@ -40,6 +44,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 		isSupportingWorkflowTask?: boolean;
 		savedOutcome?: WorkflowBuildOutcome;
 	};
+	/** Shared signal used to end resumed orchestration once a tool hands off work. */
+	runTermination?: OrchestrationRunTerminationState;
 }
 
 /**

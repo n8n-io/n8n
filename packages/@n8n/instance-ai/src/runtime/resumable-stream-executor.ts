@@ -33,6 +33,8 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
+	/** Stop consuming after the current chunk has been mapped and published. */
+	shouldTerminate?: () => boolean;
 	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 }
@@ -289,6 +291,7 @@ function publishRedactedEvents(
 
 interface StreamPassResult {
 	cancelled: boolean;
+	terminated: boolean;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
 	error?: unknown;
@@ -352,6 +355,7 @@ async function consumeStreamPass(args: {
 			}
 			return {
 				cancelled: true,
+				terminated: false,
 				hasError,
 				drainedCorrectionsForResume,
 				currentResponseId,
@@ -413,10 +417,26 @@ async function consumeStreamPass(args: {
 			publishCorrections(options.context, corrections);
 			drainedCorrectionsForResume.push(...corrections);
 		}
+
+		if (options.context.shouldTerminate?.() === true) {
+			return {
+				cancelled: false,
+				terminated: true,
+				suspension,
+				hasError,
+				error,
+				pendingConfirmation,
+				confirmationEvent,
+				drainedCorrectionsForResume,
+				currentResponseId,
+				nativeStepIndex,
+			};
+		}
 	}
 
 	return {
 		cancelled: false,
+		terminated: false,
 		suspension,
 		hasError,
 		error,
@@ -475,6 +495,17 @@ export async function executeResumableStream(
 
 		if (options.context.signal.aborted) {
 			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+		}
+
+		if (pass.terminated) {
+			return {
+				status: hasError ? 'errored' : 'completed',
+				agentRunId: activeAgentRunId,
+				text,
+				...(error !== undefined ? { error } : {}),
+				workSummary: workSummaryAccumulator.toSummary(),
+				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
+			};
 		}
 
 		if (!suspension) {

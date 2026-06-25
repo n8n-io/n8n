@@ -623,6 +623,8 @@ export type {
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
+	OrchestrationRunTerminationReason,
+	OrchestrationRunTerminationState,
 	SpawnBackgroundTaskOptions,
 	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
