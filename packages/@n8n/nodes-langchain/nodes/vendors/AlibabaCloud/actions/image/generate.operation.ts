@@ -6,43 +6,6 @@ import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Model',
-		name: 'modelId',
-		type: 'options',
-		options: [
-			{
-				name: 'Qwen Image',
-				value: 'qwen-image',
-				description: 'Qwen image generation model',
-			},
-			{
-				name: 'Qwen Image Max',
-				value: 'qwen-image-max',
-				description: 'Most capable Qwen image generation model',
-			},
-			{
-				name: 'Qwen Image Plus',
-				value: 'qwen-image-plus',
-				description: 'Enhanced Qwen image generation model',
-			},
-			{
-				name: 'Wan 2.6 T2I',
-				value: 'wan2.6-t2i',
-				description: 'Wanx image generation model',
-			},
-			{
-				name: 'Z-Image Turbo',
-				value: 'z-image-turbo',
-				description: 'Fast image generation model',
-			},
-		],
-		default: 'z-image-turbo',
-		description: 'The model to use for image generation',
-		displayOptions: {
-			show: { '@version': [1] },
-		},
-	},
-	{
 		...modelRLC('imageGenerationModelSearch'),
 		displayOptions: {
 			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
