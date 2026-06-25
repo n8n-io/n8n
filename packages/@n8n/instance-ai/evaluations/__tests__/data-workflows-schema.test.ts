@@ -9,7 +9,7 @@ vi.mock('fs', () => ({
 import { readdirSync, readFileSync } from 'fs';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
-import { WorkflowTestCaseSchema } from '../data/workflows/schema';
+import { WorkflowTestCaseSchema, conversationTurnTextSchema } from '../data/workflows/schema';
 
 const mockedReaddir = vi.mocked(readdirSync);
 const mockedReadFile = vi.mocked(readFileSync);
@@ -42,6 +42,14 @@ describe('WorkflowTestCaseSchema', () => {
 
 	it('rejects an empty conversation', () => {
 		expect(() => WorkflowTestCaseSchema.parse({ ...validFixture(), conversation: [] })).toThrow();
+	});
+
+	it('normalizes an array-form turn text to a newline-joined string', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [{ role: 'user', text: ['line 1', 'line 2'] }],
+		});
+		expect(parsed.conversation[0].text).toBe('line 1\nline 2');
 	});
 
 	it('rejects an empty executionScenarios array', () => {
@@ -210,5 +218,17 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 		mockedReadFile.mockReturnValue(JSON.stringify({ conversation: [] }));
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/demo\.json/);
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/executionScenarios/);
+	});
+});
+
+describe('conversationTurnTextSchema', () => {
+	it('passes a plain string through unchanged', () => {
+		expect(conversationTurnTextSchema.parse('one line')).toBe('one line');
+	});
+
+	it('joins an array of lines with newlines', () => {
+		// The mcp-manifest builder reuses this, so the array form must normalize
+		// to a string before its buildPromptFromConversation calls .text.trim().
+		expect(conversationTurnTextSchema.parse(['line 1', 'line 2'])).toBe('line 1\nline 2');
 	});
 });
