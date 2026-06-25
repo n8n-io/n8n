@@ -20,6 +20,8 @@ import type {
 // In-memory filesystem (fake)
 // ---------------------------------------------------------------------------
 
+const fileDate = new Date('2026-01-01T00:00:00.000Z');
+
 export class InMemoryFilesystem extends BaseFilesystem {
 	readonly id: string;
 	readonly name = 'InMemoryFilesystem';
@@ -176,15 +178,14 @@ export class InMemoryFilesystem extends BaseFilesystem {
 	async stat(filePath: string): Promise<FileStat> {
 		await this.ensureReady();
 		const p = this.normalizePath(filePath);
-		const now = new Date();
 		if (this.dirs.has(p)) {
 			return {
 				name: p.split('/').pop() ?? '/',
 				path: filePath,
 				type: 'directory',
 				size: 0,
-				createdAt: now,
-				modifiedAt: now,
+				createdAt: fileDate,
+				modifiedAt: fileDate,
 			};
 		}
 		const buf = this.files.get(p);
@@ -194,8 +195,8 @@ export class InMemoryFilesystem extends BaseFilesystem {
 			path: filePath,
 			type: 'file',
 			size: buf.length,
-			createdAt: now,
-			modifiedAt: now,
+			createdAt: fileDate,
+			modifiedAt: fileDate,
 		};
 	}
 

@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
+import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
 import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '@/modules/token-exchange/token-exchange.schemas';
@@ -30,6 +31,10 @@ const { privateKey, publicKey } = generateKeyPairSync('rsa', {
 const ISSUER = 'https://issuer.test';
 const KID = 'test-kid';
 
+// A second trusted issuer signed by the same key pair under a distinct kid.
+const ISSUER_B = 'https://issuer-b.test';
+const KID_B = 'test-kid-b';
+
 function makeExternalJwt(
 	overrides: Partial<{
 		sub: string;
@@ -42,6 +47,7 @@ function makeExternalJwt(
 		family_name: string;
 		role: string;
 	}> = {},
+	kid: string = KID,
 ): string {
 	const now = Math.floor(Date.now() / 1000);
 	return jwt.sign(
@@ -55,7 +61,7 @@ function makeExternalJwt(
 			...overrides,
 		},
 		privateKey,
-		{ algorithm: 'RS256', keyid: KID },
+		{ algorithm: 'RS256', keyid: kid },
 	);
 }
 
@@ -82,6 +88,15 @@ beforeAll(async () => {
 			algorithms: ['RS256'],
 			key: publicKey,
 			issuer: ISSUER,
+			expectedAudience: 'n8n',
+			allowedRoles: ['global:member', 'global:admin'],
+		},
+		{
+			type: 'static',
+			kid: KID_B,
+			algorithms: ['RS256'],
+			key: publicKey,
+			issuer: ISSUER_B,
 			expectedAudience: 'n8n',
 			allowedRoles: ['global:member', 'global:admin'],
 		},
@@ -166,7 +181,10 @@ describe('POST /auth/oauth/token', () => {
 
 		// AuthIdentity linked
 		const identity = await Container.get(AuthIdentityRepository).findOne({
-			where: { providerId: 'ext-jit-1', providerType: 'token-exchange' },
+			where: {
+				providerId: qualifiedProviderId(ISSUER, 'ext-jit-1'),
+				providerType: 'token-exchange',
+			},
 		});
 		expect(identity).not.toBeNull();
 		expect(identity!.userId).toBe(user!.id);
@@ -174,6 +192,50 @@ describe('POST /auth/oauth/token', () => {
 		// Personal project created
 		const project = await Container.get(ProjectRepository).getPersonalProjectForUser(user!.id);
 		expect(project).toBeDefined();
+	});
+
+	it('keeps an identical subject from two issuers on separate accounts', async () => {
+		const sharedSub = 'ext-shared';
+
+		const tokenA = makeExternalJwt({ sub: sharedSub, iss: ISSUER, email: 'a@example.com' }, KID);
+		const tokenB = makeExternalJwt(
+			{ sub: sharedSub, iss: ISSUER_B, email: 'b@example.com' },
+			KID_B,
+		);
+
+		const responseA = await postToken({
+			grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
+			subject_token: tokenA,
+		}).expect(200);
+		const responseB = await postToken({
+			grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
+			subject_token: tokenB,
+		}).expect(200);
+
+		const decodedA = jwtService.verify<IssuedJwtPayload>(
+			(responseA.body as TokenExchangeSuccessResponse).access_token,
+		);
+		const decodedB = jwtService.verify<IssuedJwtPayload>(
+			(responseB.body as TokenExchangeSuccessResponse).access_token,
+		);
+
+		// Each issuer resolves to its own local user despite the shared subject.
+		expect(decodedB.sub).not.toBe(decodedA.sub);
+
+		const identityRepo = Container.get(AuthIdentityRepository);
+		expect(await identityRepo.countBy({ providerType: 'token-exchange' })).toBe(2);
+		expect(
+			await identityRepo.findOneBy({
+				providerId: qualifiedProviderId(ISSUER, sharedSub),
+				providerType: 'token-exchange',
+			}),
+		).not.toBeNull();
+		expect(
+			await identityRepo.findOneBy({
+				providerId: qualifiedProviderId(ISSUER_B, sharedSub),
+				providerType: 'token-exchange',
+			}),
+		).not.toBeNull();
 	});
 
 	it('should exchange subject + actor tokens and include act claim in issued token', async () => {

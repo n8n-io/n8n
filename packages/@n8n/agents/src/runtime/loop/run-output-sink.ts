@@ -38,7 +38,7 @@ export interface ModelTurnResult {
 /** Per-iteration inputs for the LLM call, assembled by the shared loop. */
 export interface ModelCallContext {
 	model: LanguageModel;
-	system: SystemModelMessage;
+	system: SystemModelMessage | SystemModelMessage[];
 	messages: ModelMessage[];
 	abortSignal: AbortSignal;
 	hasTools: boolean;

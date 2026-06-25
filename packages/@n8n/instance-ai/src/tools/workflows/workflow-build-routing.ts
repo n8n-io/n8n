@@ -5,7 +5,7 @@ import type {
 	WorkflowVerificationReadiness,
 } from '../../workflow-loop/workflow-loop-state';
 
-function hasMockedCredentials(
+function hasSetupCredentials(
 	outcome: Pick<WorkflowBuildOutcome, 'mockedCredentialTypes' | 'mockedCredentialsByNode'>,
 ): boolean {
 	return (
@@ -14,31 +14,8 @@ function hasMockedCredentials(
 	);
 }
 
-function hasCredentialVerificationData(
-	outcome: Pick<WorkflowBuildOutcome, 'mockedNodeNames' | 'nodeSimulationPlan'>,
-): boolean {
-	const mocked = outcome.mockedNodeNames ?? [];
-	if (mocked.length === 0) return false;
-	const simulated = new Set(
-		(outcome.nodeSimulationPlan ?? [])
-			.filter((verdict) => verdict.verdict === 'simulate')
-			.map((verdict) => verdict.nodeName),
-	);
-	return mocked.every((name) => simulated.has(name));
-}
-
 function determineVerificationReadiness(
-	outcome: Pick<
-		WorkflowBuildOutcome,
-		| 'submitted'
-		| 'workflowId'
-		| 'triggerNodes'
-		| 'mockedCredentialTypes'
-		| 'mockedCredentialsByNode'
-		| 'mockedNodeNames'
-		| 'nodeSimulationPlan'
-		| 'hasUnresolvedPlaceholders'
-	>,
+	outcome: Pick<WorkflowBuildOutcome, 'submitted' | 'workflowId' | 'triggerNodes'>,
 ): WorkflowVerificationReadiness {
 	if (!outcome.submitted) {
 		return {
@@ -53,22 +30,6 @@ function determineVerificationReadiness(
 			status: 'not_verifiable',
 			reason: 'missing-workflow-id',
 			guidance: 'The build outcome does not include a workflow ID.',
-		};
-	}
-
-	if (outcome.hasUnresolvedPlaceholders) {
-		return {
-			status: 'needs_setup',
-			reason: 'unresolved-placeholders',
-			guidance: 'Route the workflow through setup before verification.',
-		};
-	}
-
-	if (hasMockedCredentials(outcome) && !hasCredentialVerificationData(outcome)) {
-		return {
-			status: 'needs_setup',
-			reason: 'missing-mocked-credential-pin-data',
-			guidance: 'Route the workflow through setup because mocked credentials cannot be verified.',
 		};
 	}
 
@@ -105,7 +66,7 @@ function determineSetupRequirement(
 		};
 	}
 
-	if (hasMockedCredentials(outcome)) {
+	if (hasSetupCredentials(outcome)) {
 		return {
 			status: 'required',
 			reason: 'mocked-credentials',
