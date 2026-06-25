@@ -21,6 +21,7 @@ import {
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
+	applyOffset,
 	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
@@ -184,7 +185,7 @@ export function useCanvasMapping({
 				id: node.id,
 				label: node.name,
 				type: 'canvas-node',
-				position: { x: node.position[0] + offset.x, y: node.position[1] + offset.y },
+				position: applyOffset(node.position, offset),
 				data,
 				...additionalProperties[node.id],
 				draggable: node.draggable,

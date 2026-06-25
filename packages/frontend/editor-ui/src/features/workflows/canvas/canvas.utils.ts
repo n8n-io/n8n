@@ -31,6 +31,19 @@ import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocumen
 export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
 
 /**
+ * Adds an `{ x, y }` offset to a position (a `{ x, y }` or a `[x, y]` tuple),
+ * returning a new `{ x, y }`.
+ */
+export function applyOffset(
+	position: { x: number; y: number } | [number, number],
+	offset: { x: number; y: number },
+): { x: number; y: number } {
+	const x = Array.isArray(position) ? position[0] : position.x;
+	const y = Array.isArray(position) ? position[1] : position.y;
+	return { x: x + offset.x, y: y + offset.y };
+}
+
+/**
  * Display size for a node with `Default` render type — pulls port counts from
  * render data and forwards to `calculateNodeSize`. Single source of truth for
  * "what size would this node render at?" outside of the actual VueFlow runtime.

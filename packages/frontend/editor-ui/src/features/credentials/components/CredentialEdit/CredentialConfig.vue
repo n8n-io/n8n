@@ -298,10 +298,13 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 // (artifact) closes them so the conversation comes into view.
 async function onInstanceAiCredentialHelpClick() {
 	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
-		name: props.credentialType.name,
+		credentialType: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
+		nodeType: activeNode.value?.type,
 		id: props.credentialId || undefined,
+		documentationUrl: documentationUrl.value || undefined,
+		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
 	});
 	if (shouldCloseModal) {
 		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);

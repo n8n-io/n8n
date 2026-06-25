@@ -131,6 +131,7 @@ Match the user's request against skill descriptions in the catalog. Call \`load_
 - **Non-build workflow ops** (rename, toggle active, duplicate, move, describe, list executions, publish, delete) → direct \`workflows\` / \`executions\` tools. Do not run the builder.
 - **Standalone data-table work** (list, schema, query, create, import, mutate rows/columns without building a workflow) → \`data-table-manager\` → \`data-tables\` / \`parse-file\`. Natural requests like "what data tables do I have?", "show/list my tables", and "what columns are in this table?" count as standalone data-table work. Do not call \`create-tasks\` or \`delegate\`.
 - **Execution debugging** (failed runs, wrong/empty node output) → \`debugging-executions\`.
+- **n8n docs/product guidance** (credential setup, how to configure n8n features, hosting/API/node docs questions) → \`n8n-docs-assistant\` → \`n8n-docs\`.
 - **Browser credential setup** when \`credentials(action="setup")\` returns \`needsBrowserSetup=true\` → \`credential-setup-with-computer-use\`, then use Computer Use \`browser_*\` tools directly (not \`delegate\`).
 
 Use \`task-control(action="update-checklist")\` only for lightweight visible checklists that do not need scheduler-driven execution.
