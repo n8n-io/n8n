@@ -138,6 +138,18 @@ function buildDsn(dbType, provisioned, docker) {
 	return `postgres://${conn.username}:${conn.password}@${host}:${conn.port}/${conn.database}?sslmode=disable&search_path=public`;
 }
 
+/** Pre-pulls the tbls image, retrying on transient registry/network errors. */
+async function pullImageWithRetry(image, env, attempts = 3) {
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		const code = await run('docker', ['pull', image], env);
+		if (code === 0) return;
+		if (attempt === attempts) fail(`docker pull ${image} failed after ${attempts} attempts`);
+		const delayMs = 5000 * attempt;
+		console.warn(`docker pull failed (attempt ${attempt}/${attempts}); retrying in ${delayMs}ms…`);
+		await new Promise((res) => setTimeout(res, delayMs));
+	}
+}
+
 /** Invokes tbls (binary locally, Docker image in CI). */
 async function tbls(command, dbType, dsn, docker) {
 	const config = `.tbls.${dbType}.yml`;
@@ -146,6 +158,10 @@ async function tbls(command, dbType, dsn, docker) {
 	args.push('-c', config);
 
 	if (docker) {
+		// Pull up front with retry so a flaky registry/network doesn't fail the
+		// run; `docker run` then uses the cached image.
+		await pullImageWithRetry(TBLS_IMAGE, env);
+
 		const dockerArgs = [
 			'run',
 			'--rm',
