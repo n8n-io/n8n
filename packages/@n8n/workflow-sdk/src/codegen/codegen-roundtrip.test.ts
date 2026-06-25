@@ -14,6 +14,10 @@ import type { WorkflowJSON } from '../types/base';
 import { foldLegacyErrorConnections, normalizeConnections } from '../types/base';
 import { validateWorkflow } from '../validation';
 import {
+	estimateStickyHeightForContent,
+	STICKY_AUTO_MIN_WIDTH,
+} from '../workflow-builder/sticky-text-sizing';
+import {
 	escapeNewlinesInExpressionStrings,
 	isPlaceholderValue,
 } from '../workflow-builder/string-utils';
@@ -2595,6 +2599,21 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					) {
 						delete cleaned.color;
 					}
+					// Mirror the builder's standalone-sticky auto-fill: when only one of
+					// width/height is set, parse derives the other from the content (width
+					// defaults to STICKY_AUTO_MIN_WIDTH, height to a content-fit estimate).
+					// Applied to both sides so it's a no-op on the already-filled parsed
+					// node and back-fills the original, leaving an apples-to-apples compare.
+					const content = typeof obj.content === 'string' ? obj.content : '';
+					let width = typeof cleaned.width === 'number' ? cleaned.width : undefined;
+					let height = typeof cleaned.height === 'number' ? cleaned.height : undefined;
+					if (width !== undefined && height === undefined) {
+						height = estimateStickyHeightForContent(content, width);
+					} else if (height !== undefined && width === undefined) {
+						width = STICKY_AUTO_MIN_WIDTH;
+					}
+					if (width !== undefined) cleaned.width = width;
+					if (height !== undefined) cleaned.height = height;
 					return Object.keys(cleaned).length === 0 ? undefined : cleaned;
 				}
 				// Normalize resource locators (add __rl: true) for fair comparison
