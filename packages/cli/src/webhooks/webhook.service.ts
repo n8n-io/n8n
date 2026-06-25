@@ -292,7 +292,7 @@ export class WebhookService {
 				continue;
 			}
 
-			nodeWebhookPath = nodeWebhookPath.toString();
+			nodeWebhookPath = nodeWebhookPath.toString().trim();
 
 			if (nodeWebhookPath.startsWith('/')) {
 				nodeWebhookPath = nodeWebhookPath.slice(1);
