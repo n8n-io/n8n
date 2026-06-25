@@ -56,6 +56,7 @@ import {
 	truncateToTitle,
 	generateTitleForRun,
 	patchThread,
+	orchestratorAgentId,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -248,8 +249,6 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 		typeof part.text === 'string'
 	);
 }
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
@@ -1094,14 +1093,14 @@ export class InstanceAiService {
 		this.eventBus.publish(threadId, {
 			type: 'run-start',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			userId: user.id,
 			payload: { messageId, messageGroupId },
 		});
 		this.eventBus.publish(threadId, {
 			type: 'text-delta',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			responseId: `test-background-start:${runId}`,
 			payload: { text: messageText },
 		});
@@ -1110,7 +1109,7 @@ export class InstanceAiService {
 			runId,
 			agentId,
 			payload: {
-				parentId: ORCHESTRATOR_AGENT_ID,
+				parentId: orchestratorAgentId(runId),
 				role: 'workflow-builder',
 				tools: [],
 				taskId,
@@ -1179,7 +1178,7 @@ export class InstanceAiService {
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			userId: user.id,
 			payload: { status: 'completed' },
 		});
@@ -1708,7 +1707,7 @@ export class InstanceAiService {
 		this.eventBus.publish(threadId, {
 			type: 'tasks-update',
 			runId: graph.planRunId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(graph.planRunId),
 			payload: { tasks },
 		});
 	}
@@ -1730,7 +1729,7 @@ export class InstanceAiService {
 			this.eventBus.publish(threadId, {
 				type: 'tasks-update',
 				runId: graph.planRunId,
-				agentId: ORCHESTRATOR_AGENT_ID,
+				agentId: orchestratorAgentId(graph.planRunId),
 				payload: { tasks: { tasks: [] }, planItems: [] },
 			});
 		} catch (error) {
@@ -1950,7 +1949,7 @@ export class InstanceAiService {
 			messageGroupId,
 			userId: user.id,
 			projectId: boundProjectId,
-			orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
+			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
 			checkpointStore: this.checkpointStore,
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
@@ -2795,7 +2794,7 @@ export class InstanceAiService {
 			this.eventBus.publish(threadId, {
 				type: 'run-start',
 				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
+				agentId: orchestratorAgentId(runId),
 				userId: user.id,
 				payload: { messageId, messageGroupId, ...(traceId ? { traceId } : {}) },
 			});
@@ -2809,7 +2808,7 @@ export class InstanceAiService {
 				this.eventBus.publish(threadId, {
 					type: 'run-finish',
 					runId,
-					agentId: ORCHESTRATOR_AGENT_ID,
+					agentId: orchestratorAgentId(runId),
 					payload: { status: 'cancelled', reason: 'user_cancelled' },
 				});
 				return;
@@ -2823,7 +2822,7 @@ export class InstanceAiService {
 							threadId,
 							runId,
 							tracing,
-							agentId: ORCHESTRATOR_AGENT_ID,
+							agentId: orchestratorAgentId(runId),
 							userId: user.id,
 							messageGroupId,
 							messageId,
@@ -2955,7 +2954,7 @@ export class InstanceAiService {
 				this.eventBus.publish(threadId, {
 					type: 'tasks-update',
 					runId,
-					agentId: ORCHESTRATOR_AGENT_ID,
+					agentId: orchestratorAgentId(runId),
 					payload: { tasks: existingTasks },
 				});
 			}
@@ -3066,7 +3065,7 @@ export class InstanceAiService {
 					tags: ['orchestrator'],
 					metadata: {
 						agent_role: 'orchestrator',
-						agent_id: ORCHESTRATOR_AGENT_ID,
+						agent_id: orchestratorAgentId(runId),
 						execution_mode: 'foreground',
 						trace_kind: tracing.traceKind,
 					},
@@ -3097,7 +3096,7 @@ export class InstanceAiService {
 						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
 							threadId,
 							runId,
-							agentId: ORCHESTRATOR_AGENT_ID,
+							agentId: orchestratorAgentId(runId),
 							signal,
 							eventBus: this.eventBus,
 							logger: this.logger,
@@ -3108,7 +3107,7 @@ export class InstanceAiService {
 				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
 						threadId,
 						runId,
-						agentId: ORCHESTRATOR_AGENT_ID,
+						agentId: orchestratorAgentId(runId),
 						signal,
 						eventBus: this.eventBus,
 						logger: this.logger,
@@ -3243,7 +3242,7 @@ export class InstanceAiService {
 					threadId,
 					runId,
 					tracing,
-					agentId: ORCHESTRATOR_AGENT_ID,
+					agentId: orchestratorAgentId(runId),
 					userId: user.id,
 					messageGroupId,
 					messageId,
@@ -3364,7 +3363,7 @@ export class InstanceAiService {
 				threadId,
 				runId,
 				tracing,
-				agentId: ORCHESTRATOR_AGENT_ID,
+				agentId: orchestratorAgentId(runId),
 				userId: user.id,
 				messageGroupId,
 				messageId,
@@ -3398,7 +3397,7 @@ export class InstanceAiService {
 			this.eventBus.publish(threadId, {
 				type: 'run-finish',
 				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
+				agentId: orchestratorAgentId(runId),
 				payload: {
 					status: 'error',
 					reason: userFacingErrorMessage,
@@ -4001,7 +4000,7 @@ export class InstanceAiService {
 						return await resumeAgentRun(agent, resumeData, resumeOptions, {
 							threadId: opts.threadId,
 							runId: opts.runId,
-							agentId: ORCHESTRATOR_AGENT_ID,
+							agentId: orchestratorAgentId(opts.runId),
 							signal: opts.signal,
 							eventBus: this.eventBus,
 							logger: this.logger,
@@ -4013,7 +4012,7 @@ export class InstanceAiService {
 				: await resumeAgentRun(agent, resumeData, resumeOptions, {
 						threadId: opts.threadId,
 						runId: opts.runId,
-						agentId: ORCHESTRATOR_AGENT_ID,
+						agentId: orchestratorAgentId(opts.runId),
 						signal: opts.signal,
 						eventBus: this.eventBus,
 						logger: this.logger,
@@ -4146,7 +4145,7 @@ export class InstanceAiService {
 						threadId: opts.threadId,
 						runId: opts.runId,
 						tracing: opts.tracing,
-						agentId: ORCHESTRATOR_AGENT_ID,
+						agentId: orchestratorAgentId(opts.runId),
 						userId: opts.user.id,
 						messageGroupId,
 					},
@@ -4257,7 +4256,7 @@ export class InstanceAiService {
 				threadId: opts.threadId,
 				runId: opts.runId,
 				tracing: opts.tracing,
-				agentId: ORCHESTRATOR_AGENT_ID,
+				agentId: orchestratorAgentId(opts.runId),
 				userId: opts.user.id,
 				messageGroupId,
 			};
@@ -4291,7 +4290,7 @@ export class InstanceAiService {
 			this.eventBus.publish(opts.threadId, {
 				type: 'run-finish',
 				runId: opts.runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
+				agentId: orchestratorAgentId(opts.runId),
 				payload: {
 					status: 'error',
 					reason: userFacingErrorMessage,
@@ -4699,7 +4698,7 @@ export class InstanceAiService {
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			payload: {
 				status: effectiveStatus,
 				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
@@ -4856,7 +4855,7 @@ export class InstanceAiService {
 			this.eventBus.publish(threadId, {
 				type: 'thread-title-updated',
 				runId: '',
-				agentId: ORCHESTRATOR_AGENT_ID,
+				agentId: 'orchestrator',
 				payload: { title: llmTitle },
 			});
 		} catch (error) {
