@@ -792,6 +792,7 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should allow reinvite for a custom role', async () => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: 'true' };
 			rolesStore.customInstanceRoles = [
 				{
 					slug: 'custom:developer',
@@ -925,6 +926,7 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should use displayName from custom role in success toast message', async () => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: 'true' };
 			rolesStore.customInstanceRoles = [
 				{
 					slug: 'custom:developer',
