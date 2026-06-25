@@ -4,30 +4,30 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| runId | varchar(255) |  | false |  |  |  |
 | agentId | varchar(255) |  | true |  | [public.agents](public.agents.md) |  |
-| state | text |  | true |  |  |  |
-| expired | boolean | false | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| expired | boolean | false | false |  |  |  |
+| runId | varchar(255) |  | false |  |  |  |
+| state | text |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_5e31c210f896d539964bf99fe32 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
+| PK_50a27cbafa6806c9b162304b5fd | PRIMARY KEY | PRIMARY KEY ("runId") |
 | agent_checkpoints_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_checkpoints_expired_not_null | n | NOT NULL expired |
 | agent_checkpoints_runId_not_null | n | NOT NULL "runId" |
 | agent_checkpoints_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| FK_5e31c210f896d539964bf99fe32 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
-| PK_50a27cbafa6806c9b162304b5fd | PRIMARY KEY | PRIMARY KEY ("runId") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_50a27cbafa6806c9b162304b5fd | CREATE UNIQUE INDEX "PK_50a27cbafa6806c9b162304b5fd" ON public.agent_checkpoints USING btree ("runId") |
 | IDX_5e31c210f896d539964bf99fe3 | CREATE INDEX "IDX_5e31c210f896d539964bf99fe3" ON public.agent_checkpoints USING btree ("agentId") |
+| PK_50a27cbafa6806c9b162304b5fd | CREATE UNIQUE INDEX "PK_50a27cbafa6806c9b162304b5fd" ON public.agent_checkpoints USING btree ("runId") |
 
 ## Relations
 
@@ -37,26 +37,25 @@ erDiagram
 "public.agent_checkpoints" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 
 "public.agent_checkpoints" {
-  varchar_255_ runId
   varchar_255_ agentId FK
-  text state
-  boolean expired
   timestamp_3__with_time_zone createdAt
+  boolean expired
+  varchar_255_ runId
+  text state
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
-  varchar_36_ id
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  json integrations
-  json schema
-  json tools
-  json skills
-  varchar_36_ versionId
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   varchar_36_ activeVersionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  json integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  json schema
+  json skills
+  json tools
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
 }
 ```
 

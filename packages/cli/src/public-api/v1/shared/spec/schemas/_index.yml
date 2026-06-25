@@ -6,6 +6,8 @@ Execution:
   $ref: './../../../handlers/executions/spec/schemas/execution.yml'
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
+WorkflowNodeGroup:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowNodeGroup.yml'
 Tag:
   $ref: './../../../handlers/tags/spec/schemas/tag.yml'
 Workflow:

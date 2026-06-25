@@ -7,7 +7,7 @@ test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI background lifecycle @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(
@@ -16,7 +16,7 @@ test.describe(
 			async ({ api, n8n }, testInfo) => {
 				test.skip(
 					testInfo.project.name.includes('multi-main'),
-					'Background task simulation state is process-local and not stable in multi-main mode',
+					'Background task simulation is not yet stable on the multi-main project',
 				);
 
 				const owner = await api.signin('owner');

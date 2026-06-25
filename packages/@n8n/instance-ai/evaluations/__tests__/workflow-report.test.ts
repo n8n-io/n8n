@@ -38,6 +38,27 @@ describe('build expectations in the workflow report', () => {
 		expect(html).toContain('&#10007;'); // fail icon
 	});
 
+	it('links to the LLM debug report when run debug was captured', () => {
+		const html = generateWorkflowReport([
+			{
+				...resultWith([]),
+				fileSlug: 'slack-notifier',
+				runDebug: [
+					{
+						threadId: 'thread-1',
+						runId: 'run-1',
+						startedAt: 1,
+						steps: [],
+						workflowCode: [],
+					},
+				],
+			},
+		]);
+
+		expect(html).toContain('workflow-eval-llm-debug.html#tc-slack-notifier');
+		expect(html).toContain('LLM steps →');
+	});
+
 	it('renders an incomplete verdict neutrally and keeps it out of the count', () => {
 		const html = generateWorkflowReport([
 			resultWith([
@@ -110,5 +131,28 @@ describe('transcript rendering', () => {
 		};
 		const html = generateWorkflowReport([result]);
 		expect(html).toContain('<span class="transcript-inline-arg">workflow-builder</span>');
+	});
+
+	it('surfaces a skipped ask-user answer so it is not mistaken for unanswered', () => {
+		const result: WorkflowTestCaseResult = {
+			testCase: TEST_CASE,
+			workflowBuildSuccess: true,
+			executionScenarioResults: [],
+			transcript: [
+				{
+					userMessage: 'Build it',
+					steps: [
+						{
+							kind: 'ask-user',
+							questions: [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }],
+							answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
+						},
+					],
+				},
+			],
+		};
+		const html = generateWorkflowReport([result]);
+		expect(html).toContain('👤 (skipped)');
+		expect(html).toContain('ask-user (with answers)');
 	});
 });

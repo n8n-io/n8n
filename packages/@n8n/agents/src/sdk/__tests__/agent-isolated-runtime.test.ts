@@ -1,9 +1,9 @@
 import * as aiModule from 'ai';
 import type { Mock } from 'vitest';
 
-import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
-import type { AgentEventBus } from '../../runtime/event-bus';
-import { AgentEvent } from '../../runtime/event-bus';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
+import type { AgentEventBus } from '../../runtime/state/event-bus';
+import { AgentEvent } from '../../runtime/state/event-bus';
 import type { StreamChunk } from '../../types';
 import { Agent } from '../agent';
 

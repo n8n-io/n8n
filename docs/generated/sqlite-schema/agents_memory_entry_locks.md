@@ -16,20 +16,20 @@ CREATE TABLE "agents_memory_entry_locks" ("agentId" varchar(36) NOT NULL, "resou
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
-| resourceId | varchar(255) |  | false |  | [agents_resources](agents_resources.md) |  |
-| holderId | varchar(64) |  | false |  |  |  |
-| heldUntil | datetime(3) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| heldUntil | datetime(3) |  | false |  |  |  |
+| holderId | varchar(64) |  | false |  |  |  |
+| resourceId | varchar(255) |  | false |  | [agents_resources](agents_resources.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
-| resourceId | PRIMARY KEY | PRIMARY KEY (resourceId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
+| resourceId | PRIMARY KEY | PRIMARY KEY (resourceId) |
 | sqlite_autoindex_agents_memory_entry_locks_1 | PRIMARY KEY | PRIMARY KEY (agentId, resourceId) |
 
 ## Indexes
@@ -49,30 +49,29 @@ erDiagram
 
 "agents_memory_entry_locks" {
   varchar_36_ agentId PK
-  varchar_255_ resourceId PK
-  varchar_64_ holderId
-  datetime_3_ heldUntil
   datetime_3_ createdAt
+  datetime_3_ heldUntil
+  varchar_64_ holderId
+  varchar_255_ resourceId PK
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 "agents_resources" {
+  datetime_3_ createdAt
   varchar_255_ id PK
   TEXT metadata
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

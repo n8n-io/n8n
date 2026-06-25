@@ -1,8 +1,5 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-
-import { isRecord } from '../../utils/stream-helpers';
-
-export { isRecord };
 
 export type WorkflowNode = WorkflowJSON['nodes'][number];
 
@@ -286,21 +283,24 @@ export function extractNamedRefMatches(text: string): NamedRefMatch[] {
  * Returns names of nodes connected into `agentNodeName` via any `ai_*`
  * connection type — i.e. tools, memory, output parsers, etc.
  */
+export function connectionSlotTargetsNode(slot: unknown, targetNodeName: string): boolean {
+	if (!Array.isArray(slot)) return false;
+	for (const inner of slot) {
+		if (!Array.isArray(inner)) continue;
+		for (const conn of inner) {
+			if (isRecord(conn) && conn.node === targetNodeName) return true;
+		}
+	}
+	return false;
+}
+
 export function findAgentSubComponents(workflow: WorkflowJSON, agentNodeName: string): string[] {
 	const subs = new Set<string>();
 	for (const [sourceName, byType] of Object.entries(workflow.connections ?? {})) {
 		if (!isRecord(byType)) continue;
 		for (const [connType, slot] of Object.entries(byType)) {
-			if (!connType.startsWith('ai_')) continue;
-			if (!Array.isArray(slot)) continue;
-			for (const inner of slot) {
-				if (!Array.isArray(inner)) continue;
-				for (const conn of inner) {
-					if (isRecord(conn) && conn.node === agentNodeName) {
-						subs.add(sourceName);
-						break;
-					}
-				}
+			if (connType.startsWith('ai_') && connectionSlotTargetsNode(slot, agentNodeName)) {
+				subs.add(sourceName);
 			}
 		}
 	}

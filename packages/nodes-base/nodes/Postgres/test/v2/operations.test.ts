@@ -17,7 +17,7 @@ import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 
-const runQueries: QueriesRunner = jest.fn().mockResolvedValue([]);
+const runQueries: QueriesRunner = vi.fn().mockResolvedValue([]);
 
 const node: INode = {
 	id: '1',
@@ -65,7 +65,7 @@ const createMockDb = (columnInfo: ColumnInfo[]) => {
 // if node parameters copied from canvas all default parameters has to be added manually as JSON would not have them
 describe('Test PostgresV2, deleteTable operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('deleteCommand: delete, should call runQueries with', async () => {
@@ -231,7 +231,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 
 describe('Test PostgresV2, executeQuery operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should call runQueries with', async () => {
@@ -465,8 +465,8 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
-		jest.spyOn(utils, 'isJSON');
-		jest.spyOn(utils, 'stringToArray');
+		vi.spyOn(utils, 'isJSON');
+		vi.spyOn(utils, 'stringToArray');
 
 		await executeQuery.execute.call(
 			createMockExecuteFunction(nodeParameters),
@@ -491,8 +491,8 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
-		jest.spyOn(utils, 'isJSON');
-		jest.spyOn(utils, 'stringToArray');
+		vi.spyOn(utils, 'isJSON');
+		vi.spyOn(utils, 'stringToArray');
 
 		await executeQuery.execute.call(
 			createMockExecuteFunction(nodeParameters),
@@ -590,7 +590,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 describe('Test PostgresV2, insert operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('dataMode: define, should call runQueries with', async () => {
@@ -734,8 +734,8 @@ describe('Test PostgresV2, insert operation', () => {
 	});
 
 	it('dataMode: define, should accept an array with values if column is of type json', async () => {
-		const convertValuesToJsonWithPgpSpy = jest.spyOn(utils, 'convertValuesToJsonWithPgp');
-		const hasJsonDataTypeInSchemaSpy = jest.spyOn(utils, 'hasJsonDataTypeInSchema');
+		const convertValuesToJsonWithPgpSpy = vi.spyOn(utils, 'convertValuesToJsonWithPgp');
+		const hasJsonDataTypeInSchemaSpy = vi.spyOn(utils, 'hasJsonDataTypeInSchema');
 
 		const values = [
 			{ value: { id: 1, json: [], foo: 'data 1' }, expected: { id: 1, json: '[]', foo: 'data 1' } },
@@ -934,7 +934,7 @@ describe('Test PostgresV2, insert operation', () => {
 
 describe('Test PostgresV2, select operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returnAll, should call runQueries with', async () => {
@@ -1089,7 +1089,7 @@ describe('Test PostgresV2, select operation', () => {
 
 describe('Test PostgresV2, update operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('dataMode: define, should call runQueries with', async () => {

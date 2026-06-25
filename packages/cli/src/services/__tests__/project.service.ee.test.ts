@@ -1,5 +1,5 @@
 import type { ProjectRelation } from '@n8n/api-types';
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	type Project,
 	type ProjectRepository,
@@ -35,6 +35,7 @@ describe('ProjectService', () => {
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const ownershipService = mock<OwnershipService>();
+	const logger = mock<Logger>();
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
 		projectRepository,
@@ -44,6 +45,7 @@ describe('ProjectService', () => {
 		mock(),
 		moduleRegistry,
 		ownershipService,
+		logger,
 	);
 
 	beforeEach(() => {
@@ -617,27 +619,19 @@ describe('ProjectService', () => {
 			await projectService.deleteProject(user, project.id);
 
 			expect(agentRepository.findByProjectId).toHaveBeenCalledWith(project.id);
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith('agent-1');
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith('agent-2');
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
+				project.id,
+				'agent-1',
+				user.id,
+			);
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
+				project.id,
+				'agent-2',
+				user.id,
+			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[1]).toBeLessThan(
 				projectRepository.remove.mock.invocationCallOrder[0],
 			);
-		});
-
-		it('skips agent knowledge cleanup when the agents module is inactive', async () => {
-			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			manager.findOne.mockResolvedValueOnce(project);
-			projectRepository.remove.mockResolvedValueOnce(project);
-			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
-			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
-			moduleRegistry.isActive.mockReturnValue(false);
-			projectRelationRepository.findBy.mockResolvedValueOnce([]);
-
-			await projectService.deleteProject(user, project.id);
-
-			expect(agentRepository.findByProjectId).not.toHaveBeenCalled();
-			expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
-			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});
 });

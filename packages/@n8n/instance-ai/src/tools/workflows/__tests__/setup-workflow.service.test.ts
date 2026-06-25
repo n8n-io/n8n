@@ -68,6 +68,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			updateRows: vi.fn(),
 			deleteRows: vi.fn(),
 		},
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
 	};
 }

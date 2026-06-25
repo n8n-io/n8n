@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ActiveWorkflowTriggers } from 'n8n-core';
+import type { ActiveWorkflowTriggers, Span, Tracing } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
@@ -10,9 +10,12 @@ import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigge
 import { createWorkflow, logger, node } from './trigger-test-utils';
 
 describe('NonWebhookTriggerRegistrar', () => {
+	const tracing = mock<Tracing>();
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	});
 
 	test('resolves trigger and poll node ids', () => {
@@ -20,6 +23,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			logger,
 			mock<ActiveWorkflowTriggers>(),
 			mock<TriggerExecutionContextFactory>(),
+			tracing,
 		);
 		const workflow = createWorkflow([
 			node('trigger-a', 'trigger'),
@@ -37,7 +41,12 @@ describe('NonWebhookTriggerRegistrar', () => {
 		const getPollFunctions = jest.fn();
 		factory.getExecuteTriggerFunctions.mockReturnValue(getTriggerFunctions);
 		factory.getExecutePollFunctions.mockReturnValue(getPollFunctions);
-		const registrar = new NonWebhookTriggerRegistrar(logger, activeWorkflowTriggers, factory);
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			activeWorkflowTriggers,
+			factory,
+			tracing,
+		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger'), node('poll-a', 'poll')]);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const dbWorkflow = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' });
@@ -70,6 +79,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 			logger,
 			activeWorkflowTriggers,
 			mock<TriggerExecutionContextFactory>(),
+			tracing,
 		);
 
 		await registrar.deregister('wf-1', 'poll-a');
@@ -82,7 +92,12 @@ describe('NonWebhookTriggerRegistrar', () => {
 		const factory = mock<TriggerExecutionContextFactory>();
 		factory.getExecuteTriggerFunctions.mockReturnValue(jest.fn());
 		factory.getExecutePollFunctions.mockReturnValue(jest.fn());
-		const registrar = new NonWebhookTriggerRegistrar(logger, activeWorkflowTriggers, factory);
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			activeWorkflowTriggers,
+			factory,
+			tracing,
+		);
 		const workflow = createWorkflow([node('trigger-a', 'trigger')]);
 		const context = {
 			activationMode: 'update' as const,

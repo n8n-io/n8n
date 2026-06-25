@@ -1,21 +1,32 @@
 import { Logger } from '@n8n/backend-common';
-import { CronLoggingConfig, GlobalConfig } from '@n8n/config';
+import { CronLoggingConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { CronJob, CronTime } from 'cron';
-import type { CronContext, Workflow } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import type { CronContext } from 'n8n-workflow';
 
-import { ErrorReporter } from '@/errors';
 import { InstanceSettings } from '@/instance-settings';
 
 type CronKey = string; // see `ScheduledTaskManager.toCronKey`
-type Cron = { job: CronJob; summary: string; ctx: CronContext };
-type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
+type RegisteredCron = { job: CronJob; summary: string; ctx: ScheduledTaskContext };
+type CronsByGroup = Map<string, Map<CronKey, RegisteredCron>>;
+
+export type ScheduledTaskGroup = {
+	type: string;
+	id: string;
+};
+
+export type ScheduledTaskContext = {
+	group: ScheduledTaskGroup;
+	targetId: string;
+	timezone: string;
+	expression: string;
+	recurrence?: CronContext['recurrence'];
+};
 
 @Service()
 export class ScheduledTaskManager {
-	readonly cronsByWorkflow: CronsByWorkflow = new Map();
+	private readonly cronsByGroupType = new Map<string, CronsByGroup>();
 
 	private logInterval?: NodeJS.Timeout;
 
@@ -23,10 +34,12 @@ export class ScheduledTaskManager {
 	private get loggableCrons() {
 		const loggableCrons: Record<string, string[]> = {};
 
-		for (const [workflowId, crons] of this.cronsByWorkflow) {
-			loggableCrons[`workflowId-${workflowId}`] = Array.from(crons.values()).map(
-				({ summary }) => summary,
-			);
+		for (const [groupType, cronsByGroup] of this.cronsByGroupType) {
+			for (const [groupId, crons] of cronsByGroup) {
+				loggableCrons[`${groupType}GroupId-${groupId}`] = Array.from(crons.values()).map(
+					({ summary }) => summary,
+				);
+			}
 		}
 
 		return loggableCrons;
@@ -36,12 +49,6 @@ export class ScheduledTaskManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		{ activeInterval }: CronLoggingConfig,
-		private readonly errorReporter: ErrorReporter,
-		// `globalConfig` carries `N8N_MIN_SCHEDULE_INTERVAL_SECONDS`. It's
-		// optional only so upstream test fixtures (and any non-DI caller) can
-		// construct a manager without wiring it. In production, DI always
-		// injects it; an absent value is treated as "no minimum" downstream.
-		private readonly globalConfig?: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('cron');
 
@@ -51,34 +58,46 @@ export class ScheduledTaskManager {
 			if (Object.keys(this.loggableCrons).length === 0) return;
 			this.logger.debug('Currently active crons', { active: this.loggableCrons });
 		}, activeInterval * Time.minutes.toMilliseconds);
+		this.logInterval.unref?.();
 	}
 
 	/**
 	 * @param onTick - Callback invoked when the cron fires.
 	 */
-	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void) {
-		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
+	register(ctx: ScheduledTaskContext, onTick: (scheduledTime: Date) => void): boolean {
+		const { group, targetId, timezone, expression, recurrence } = ctx;
+
+		if (!this.instanceSettings.isLeader) {
+			this.logger.debug('Skipped cron registration on follower instance', {
+				groupType: group.type,
+				groupId: group.id,
+				targetId,
+				timezone,
+				expression,
+				recurrence,
+				instanceRole: this.instanceSettings.instanceRole,
+			});
+			return false;
+		}
 
 		const summary = recurrence?.activated
 			? `${expression} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
 			: expression;
 
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
-		const key = this.toCronKey({ workflowId, nodeId, expression, timezone, recurrence });
+		const groupCrons = this.getGroupCrons(group);
+		const key = this.toCronKey(ctx);
 
-		if (workflowCrons?.has(key)) {
-			this.errorReporter.error('Skipped registration for already registered cron', {
-				tags: { cron: 'duplicate' },
-				extra: {
-					workflowId,
-					timezone,
-					nodeId,
-					expression,
-					recurrence,
-					instanceRole: this.instanceSettings.instanceRole,
-				},
+		if (groupCrons?.has(key)) {
+			this.logger.warn('Skipped registration for already registered cron', {
+				groupType: group.type,
+				groupId: group.id,
+				targetId,
+				timezone,
+				expression,
+				recurrence,
+				instanceRole: this.instanceSettings.instanceRole,
 			});
-			return;
+			return false;
 		}
 
 		// `scheduledTime` always holds the canonical time of the upcoming
@@ -88,8 +107,6 @@ export class ScheduledTaskManager {
 		const computeNext = (): Date => cronTime.sendAt().toJSDate();
 		let scheduledTime: Date = computeNext();
 
-		this.assertMinScheduleInterval(cronTime, ctx);
-
 		const handleTick = () => {
 			if (!this.instanceSettings.isLeader) return;
 
@@ -98,9 +115,10 @@ export class ScheduledTaskManager {
 			const firedFor = scheduledTime;
 			scheduledTime = computeNext();
 
-			this.logger.debug('Executing cron for workflow', {
-				workflowId,
-				nodeId,
+			this.logger.debug('Executing cron', {
+				groupType: group.type,
+				groupId: group.id,
+				targetId,
 				cron: summary,
 				instanceRole: this.instanceSettings.instanceRole,
 			});
@@ -116,38 +134,37 @@ export class ScheduledTaskManager {
 			timezone,
 		);
 
-		const cron: Cron = { job, summary, ctx };
+		this.setCron(group, key, { job, summary, ctx });
 
-		if (!workflowCrons) {
-			this.cronsByWorkflow.set(workflowId, new Map([[key, cron]]));
-		} else {
-			workflowCrons.set(key, cron);
-		}
-
-		this.logger.debug('Registered cron for workflow', {
-			workflowId,
+		this.logger.debug('Registered cron', {
+			groupType: group.type,
+			groupId: group.id,
+			targetId,
 			cron: summary,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
+
+		return true;
 	}
 
-	/** Returns whether any crons were registered for the workflow and got stopped. */
-	deregisterCrons(workflowId: string): boolean {
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+	/** Returns whether any crons were registered for the group and got stopped. */
+	deregisterGroup(group: ScheduledTaskGroup): boolean {
+		const groupCrons = this.getGroupCrons(group);
 
-		if (!workflowCrons || workflowCrons.size === 0) return false;
+		if (!groupCrons || groupCrons.size === 0) return false;
 
 		const summaries: string[] = [];
 
-		for (const cron of workflowCrons.values()) {
+		for (const cron of groupCrons.values()) {
 			summaries.push(cron.summary);
 			void cron.job.stop();
 		}
 
-		this.cronsByWorkflow.delete(workflowId);
+		this.deleteGroupCrons(group);
 
-		this.logger.info('Deregistered all crons for workflow', {
-			workflowId,
+		this.logger.info('Deregistered all crons', {
+			groupType: group.type,
+			groupId: group.id,
 			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
@@ -155,87 +172,100 @@ export class ScheduledTaskManager {
 		return true;
 	}
 
-	/** Ids of workflows that currently have crons registered. */
-	getWorkflowIdsWithCrons(): string[] {
-		return Array.from(this.cronsByWorkflow.keys());
+	getGroupIds(groupType: string): string[] {
+		return Array.from(this.cronsByGroupType.get(groupType)?.keys() ?? []);
 	}
 
-	/** Deregister the crons registered for a single node of a workflow. */
-	deregisterCron(workflowId: string, nodeId: string) {
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+	getTargetIds(group: ScheduledTaskGroup): string[] {
+		const groupCrons = this.getGroupCrons(group);
+		if (!groupCrons) return [];
 
-		if (!workflowCrons || workflowCrons.size === 0) return;
+		const targetIds = new Set<string>();
+		for (const cron of groupCrons.values()) {
+			targetIds.add(cron.ctx.targetId);
+		}
+
+		return Array.from(targetIds);
+	}
+
+	/** Deregister the crons registered for a single target of a group. */
+	deregisterTarget(group: ScheduledTaskGroup, targetId: string): void {
+		const groupCrons = this.getGroupCrons(group);
+
+		if (!groupCrons || groupCrons.size === 0) return;
 
 		const summaries: string[] = [];
 
-		for (const [key, cron] of workflowCrons) {
-			if (cron.ctx.nodeId !== nodeId) continue;
+		for (const [key, cron] of groupCrons) {
+			if (cron.ctx.targetId !== targetId) continue;
 			summaries.push(cron.summary);
 			void cron.job.stop();
-			workflowCrons.delete(key);
+			groupCrons.delete(key);
 		}
 
-		if (workflowCrons.size === 0) this.cronsByWorkflow.delete(workflowId);
+		if (groupCrons.size === 0) this.deleteGroupCrons(group);
 
 		if (summaries.length === 0) return;
 
-		this.logger.info('Deregistered crons for node', {
-			workflowId,
-			nodeId,
+		this.logger.info('Deregistered crons', {
+			groupType: group.type,
+			groupId: group.id,
+			targetId,
 			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
 	}
 
-	/** Whether any crons are currently registered for the workflow. */
-	hasCrons(workflowId: string) {
-		const workflowCrons = this.cronsByWorkflow.get(workflowId);
-		return workflowCrons !== undefined && workflowCrons.size > 0;
+	hasGroup(group: ScheduledTaskGroup): boolean {
+		const groupCrons = this.getGroupCrons(group);
+		return groupCrons !== undefined && groupCrons.size > 0;
 	}
 
-	deregisterAllCrons() {
-		for (const workflowId of this.cronsByWorkflow.keys()) {
-			this.deregisterCrons(workflowId);
-		}
-
-		clearInterval(this.logInterval);
-		this.logInterval = undefined;
+	hasTarget(group: ScheduledTaskGroup, targetId: string): boolean {
+		return this.getTargetIds(group).includes(targetId);
 	}
 
-	/**
-	 * Enforces `N8N_MIN_SCHEDULE_INTERVAL_SECONDS`. The minimum is computed by
-	 * taking two consecutive next-fire times from the cron expression — this
-	 * works uniformly for cron strings and for any of the Schedule Trigger's
-	 * higher-level rule shapes, since they are all canonicalised to a cron
-	 * expression before reaching this point. Set the env var to 0 to disable.
-	 *
-	 * Optional chaining and the `?? 0` fallback let upstream test fixtures
-	 * (and any caller that hasn't wired `globalConfig` through DI) reach this
-	 * method without crashing — an absent config means "no minimum", which is
-	 * the same opt-in default the env var produces.
-	 */
-	private assertMinScheduleInterval(cronTime: CronTime, ctx: CronContext) {
-		const minSeconds = this.globalConfig?.workflows?.minScheduleIntervalSeconds ?? 0;
-		if (!Number.isFinite(minSeconds) || minSeconds <= 0) return;
-
-		const next = cronTime.sendAt().toMillis();
-		const after = cronTime.getNextDateFrom(new Date(next)).toMillis();
-		const intervalSeconds = (after - next) / 1000;
-
-		if (intervalSeconds < minSeconds) {
-			throw new UserError(
-				`Schedule interval too short: minimum allowed is ${minSeconds}s, requested ~${Math.ceil(intervalSeconds)}s`,
-				{ extra: { workflowId: ctx.workflowId, nodeId: ctx.nodeId, expression: ctx.expression } },
-			);
+	deregisterGroups(groupType: string): void {
+		for (const groupId of this.getGroupIds(groupType)) {
+			this.deregisterGroup({ type: groupType, id: groupId });
 		}
 	}
 
-	private toCronKey(ctx: CronContext): CronKey {
-		const { recurrence, ...rest } = ctx;
+	private getGroupCrons(group: ScheduledTaskGroup) {
+		return this.cronsByGroupType.get(group.type)?.get(group.id);
+	}
+
+	private deleteGroupCrons(group: ScheduledTaskGroup) {
+		const cronsByGroup = this.cronsByGroupType.get(group.type);
+		if (!cronsByGroup) return;
+
+		cronsByGroup.delete(group.id);
+		if (cronsByGroup.size === 0) this.cronsByGroupType.delete(group.type);
+	}
+
+	private setCron(group: ScheduledTaskGroup, key: CronKey, cron: RegisteredCron) {
+		let cronsByGroup = this.cronsByGroupType.get(group.type);
+		if (!cronsByGroup) {
+			cronsByGroup = new Map();
+			this.cronsByGroupType.set(group.type, cronsByGroup);
+		}
+
+		const groupCrons = cronsByGroup.get(group.id);
+		if (!groupCrons) {
+			cronsByGroup.set(group.id, new Map([[key, cron]]));
+		} else {
+			groupCrons.set(key, cron);
+		}
+	}
+
+	private toCronKey(ctx: ScheduledTaskContext): CronKey {
+		const { recurrence, group, ...rest } = ctx;
 		const flattened: Record<string, unknown> = !recurrence
-			? rest
+			? { ...rest, groupType: group.type, groupId: group.id }
 			: {
 					...rest,
+					groupType: group.type,
+					groupId: group.id,
 					recurrenceActivated: recurrence.activated,
 					...(recurrence.activated && {
 						recurrenceIndex: recurrence.index,

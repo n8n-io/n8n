@@ -13,6 +13,7 @@ export {
 export { generateNanoId } from '@n8n/utils';
 export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
+export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';
 export { separate } from './utils/separate';
 export { sql } from './utils/sql';

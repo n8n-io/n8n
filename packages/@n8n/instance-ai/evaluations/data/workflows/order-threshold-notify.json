@@ -1,0 +1,31 @@
+{
+	"description": "MCP-only reference case: a single-prompt, outcome-judgeable workflow. A webhook receives an order and forwards only orders over a threshold; smaller orders are dropped. No build preconditions or AI nodes — all standard, mockable nodes.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a webhook workflow that receives an order as JSON with `id` and `total` fields. When the order total is greater than 100, send a POST request to https://hooks.example.com/notify with a JSON body containing the order id and total. Orders of 100 or less should be ignored — do nothing."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["webhook", "http-request", "if", "branching", "conditional"],
+	"triggerType": "webhook",
+	"datasets": ["mcp"],
+	"outcomeExpectations": [
+		"The workflow has a Webhook trigger and an IF (or Filter) node that branches on the order total being greater than 100.",
+		"On the over-100 branch an HTTP Request node sends a POST to https://hooks.example.com/notify whose body contains the order id and total; the 100-or-less path makes no HTTP request."
+	],
+	"executionScenarios": [
+		{
+			"name": "large-order-forwarded",
+			"description": "An order over the threshold is forwarded to the notify endpoint",
+			"dataSetup": "The webhook receives { \"id\": \"ORD-501\", \"total\": 150 }. The POST to https://hooks.example.com/notify returns { \"ok\": true }.",
+			"successCriteria": "The workflow executes without errors. Because the total (150) is greater than 100, an HTTP POST is made to https://hooks.example.com/notify and its body includes the order id 'ORD-501' and the total 150."
+		},
+		{
+			"name": "small-order-ignored",
+			"description": "An order at or below the threshold is dropped without notifying",
+			"dataSetup": "The webhook receives { \"id\": \"ORD-502\", \"total\": 80 }. No external services should be called.",
+			"successCriteria": "The workflow executes without errors and makes no HTTP request to https://hooks.example.com/notify, because the total (80) is not greater than 100."
+		}
+	]
+}

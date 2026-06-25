@@ -3,7 +3,7 @@ import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 import type { Mock } from 'vitest';
 
 // The Daytona SDK is consumed in source via `loadDaytona()` (which `require()`s
-// @daytonaio/sdk — a path the test runner can't resolve in this monorepo), so we
+// @daytona/sdk — a path the test runner can't resolve in this monorepo), so we
 // mock the shared sandbox module. The mock classes live in vi.hoisted
 // so they are shared between the mock factory and the test (`instanceof` checks in
 // source must see the same DaytonaError the test constructs).

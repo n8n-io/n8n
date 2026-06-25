@@ -70,10 +70,10 @@ describe('UserRepository', () => {
 			]);
 		});
 
-		test('exposes `jsonSizeBytes` as a number and `workflowVersionId`', async () => {
+		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution(
-				{ jsonSizeBytes: 4096, workflowVersionId: 'v-123' },
+				{ jsonSizeBytes: 4096, binaryDataSizeBytes: 2048, workflowVersionId: 'v-123' },
 				workflow,
 			);
 
@@ -86,6 +86,7 @@ describe('UserRepository', () => {
 
 			expect(summary.id).toBe(execution.id);
 			expect(summary.jsonSizeBytes).toBe(4096);
+			expect(summary.binaryDataSizeBytes).toBe(2048);
 			expect(summary.workflowVersionId).toBe('v-123');
 		});
 	});
