@@ -184,6 +184,12 @@ If the saved workflow is only a draft, misses the intended outcome, or has weak
 evidence, edit the same workflow source file and call `build-workflow` with the
 same `filePath`, then inspect and verify again.
 
+Do not tell the user a workflow is fixed, verified, tested, or working from a
+successful build, save, or static `validate` alone — only from a
+`verify-built-workflow` or `executions` run that exercised the failing path, or
+state explicitly that you could not verify and why. Never dismiss a live
+execution error as a harness or stale-state artifact without re-running.
+
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
@@ -381,6 +387,19 @@ column names.
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
   `channel`). Missing optional fields make expression-path validation fail.
+- Match real cardinality in mock `output`. When a node's real response is a
+  collection (HTTP list endpoints, search results, a top-level array such as
+  Binance klines or a bare array of IDs), declare at least two items so
+  single-item assumptions like `$input.first()` break during verification
+  instead of on the user's first run. A single-item mock hides array-vs-single
+  bugs.
+- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
+  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
+  expressions intentionally read `$json.json.*`. Correct:
+  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
+  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
+  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
+  this rule applies to SDK `node({ output: [...] })` mocks.
 
 Use this import shape unless the task needs fewer symbols:
 

@@ -1,3 +1,4 @@
+import { createRemediation } from '../remediation';
 import {
 	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
@@ -69,6 +70,32 @@ describe('deriveWorkflowVerificationObligation', () => {
 		);
 	});
 
+	it('does not let setup remediation preempt ready-to-verify builds', () => {
+		const setupRemediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance: 'Route through setup.',
+		});
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState({ lastRemediation: setupRemediation }),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({
+				hasUnresolvedPlaceholders: true,
+				remediation: setupRemediation,
+				setupRequirement: {
+					status: 'required',
+					reason: 'unresolved-placeholders',
+					guidance: 'Route through setup.',
+				},
+				verificationReadiness: { status: 'ready' },
+			}),
+		});
+
+		expect(obligation.status).toBe('ready_to_verify');
+		expect(obligation.blockingReason).toBeUndefined();
+	});
+
 	it('marks successful structured evidence as verified', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState(),
@@ -88,7 +115,7 @@ describe('deriveWorkflowVerificationObligation', () => {
 		expect(obligation.evidence?.executionId).toBe('exec-1');
 	});
 
-	it('does not mark partial-coverage evidence as verified', () => {
+	it('treats partial-coverage evidence as a manual warning completion', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState(),
 			attempts: [makeAttempt()],
@@ -103,7 +130,9 @@ describe('deriveWorkflowVerificationObligation', () => {
 			}),
 		});
 
-		expect(obligation.status).toBe('ready_to_verify');
+		expect(obligation.status).toBe('not_verifiable');
+		expect(obligation.policy).toBe('manual');
+		expect(obligation.blockingReason).toContain('Send Email');
 	});
 
 	it('treats not-verifiable outcomes as manual warning completions', () => {
@@ -243,7 +272,7 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 		expect(obligation.evidence?.executionId).toBe('exec-1');
 	});
 
-	it('does not mark already-verified outcomes as verified when evidence is partial', () => {
+	it('treats partial already-verified outcomes as manual warning completions', () => {
 		const obligation = deriveWorkflowVerificationObligationFromOutcome(
 			'thread-1',
 			makeOutcome({
@@ -258,7 +287,9 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 			}),
 		);
 
-		expect(obligation.status).toBe('ready_to_verify');
+		expect(obligation.status).toBe('not_verifiable');
+		expect(obligation.policy).toBe('manual');
+		expect(obligation.blockingReason).toContain('Send Email');
 	});
 
 	it('marks setup-blocked failed evidence as needs setup from outcome-only records', () => {

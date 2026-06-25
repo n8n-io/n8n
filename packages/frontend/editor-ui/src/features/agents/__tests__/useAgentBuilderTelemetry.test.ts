@@ -4,6 +4,7 @@ import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetr
 import type { AgentJsonConfig, AgentResource } from '../types';
 
 const agentTelemetryMock = vi.hoisted(() => ({
+	trackEditedConfig: vi.fn(),
 	trackAddedTasks: vi.fn(),
 	trackRemovedTasks: vi.fn(),
 }));
@@ -18,6 +19,20 @@ function configWithTasks(...taskIds: string[]): AgentJsonConfig {
 		model: 'gpt-4',
 		instructions: 'Help users.',
 		tasks: taskIds.map((id) => ({ type: 'task', id, enabled: true })),
+	};
+}
+
+function configWithSubAgents(...agentIds: string[]): AgentJsonConfig {
+	return {
+		name: 'Agent One',
+		model: 'gpt-4',
+		instructions: 'Help users.',
+		subAgents: {
+			agents: agentIds.map((agentId) => ({
+				agentId,
+				useWhen: `Use for ${agentId} work.`,
+			})),
+		},
 	};
 }
 
@@ -65,6 +80,24 @@ describe('useAgentBuilderTelemetry', () => {
 			status: 'draft',
 		});
 		expect(agentTelemetryMock.trackRemovedTasks).not.toHaveBeenCalled();
+	});
+
+	it('flushConfigEdits emits subAgents config edits', async () => {
+		const { deps, telemetry } = makeTelemetryDeps(configWithSubAgents('agent-2'));
+		const nextConfig = configWithSubAgents('agent-2', 'agent-3');
+
+		telemetry.recordConfigEdit({ subAgents: nextConfig.subAgents });
+		deps.savedConfig.value = nextConfig;
+		deps.localConfig.value = nextConfig;
+		telemetry.flushConfigEdits();
+
+		await vi.waitFor(() => expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledOnce());
+		expect(agentTelemetryMock.trackEditedConfig).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			part: 'subAgents',
+			configVersion: expect.any(String),
+			status: 'draft',
+		});
 	});
 
 	it('trackTasksChanged emits once per removed task', async () => {
