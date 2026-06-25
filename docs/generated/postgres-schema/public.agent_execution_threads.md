@@ -8,6 +8,7 @@
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
+| firstMessage | text |  | true |  |  | First non-empty user message for session-list previews without reading execution log blobs. |
 | id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) |  |  |
 | parentAgentId | varchar(36) |  | true |  |  | Saved agent id of the parent that delegated this subagent run. |
 | parentThreadId | varchar(128) |  | true |  |  | Parent session thread id that delegated this subagent run. |
@@ -66,6 +67,7 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
+  text firstMessage
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
@@ -102,6 +104,8 @@ erDiagram
   text error
   varchar_16_ hitlStatus
   varchar_36_ id
+  bigint logSizeBytes
+  varchar_2_ logStoredAt
   varchar_255_ model
   integer promptTokens
   varchar_32_ source

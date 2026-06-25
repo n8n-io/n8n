@@ -192,6 +192,14 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it('skips nullable inline transcript fields without creating empty messages', () => {
+		const result = executionToMessagesDto(
+			execution({ userMessage: null, assistantResponse: null, toolCalls: null, timeline: null }),
+		);
+
+		expect(result).toEqual([]);
+	});
+
 	it('settles an earlier suspended tool call from a later resumed execution', () => {
 		const result = executionsToMessagesDto([
 			execution({

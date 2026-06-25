@@ -40,6 +40,10 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 8, nullable: true })
 	emoji: string | null;
 
+	/** First non-empty user message, denormalized so session lists avoid log blob reads. */
+	@Column({ type: 'text', nullable: true })
+	firstMessage: string | null;
+
 	/**
 	 * Parent session thread id that delegated this run, for navigating back to
 	 * it. Holds another thread's id, so it matches the id column width (128).

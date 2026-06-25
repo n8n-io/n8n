@@ -1,11 +1,17 @@
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type ValueTransformer } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
+import type { AgentExecutionLogStorageLocation } from '../agent-execution-log/types';
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
 
 export type AgentExecutionStatus = 'success' | 'error';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
+
+const bigintStringToNumber: ValueTransformer = {
+	to: (value: number) => value,
+	from: (value: number | string) => (typeof value === 'string' ? Number(value) : value),
+};
 
 /**
  * One agent run within a thread — the unit recorded for each user/agent
@@ -48,11 +54,11 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	 * Cleaned user input. Empty for resumed runs (HITL continuations) where
 	 * the user input belongs to an earlier suspended run in the same thread.
 	 */
-	@Column({ type: 'text' })
-	userMessage: string;
+	@Column({ type: 'text', nullable: true })
+	userMessage: string | null;
 
-	@Column({ type: 'text' })
-	assistantResponse: string;
+	@Column({ type: 'text', nullable: true })
+	assistantResponse: string | null;
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	model: string | null;
@@ -84,4 +90,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	/** Where the run originated, e.g. 'chat', 'slack'. */
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
+
+	@Column({ type: 'varchar', length: 2, nullable: true })
+	logStoredAt: AgentExecutionLogStorageLocation | null;
+
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
+	logSizeBytes: number;
 }

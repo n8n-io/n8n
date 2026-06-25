@@ -91,6 +91,7 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
+  text firstMessage
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

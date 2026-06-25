@@ -15,7 +15,8 @@ type ToolCallContentPart = AgentPersistedMessageContentPart & {
 	toolCallId: string;
 };
 
-function textPart(text: string): AgentPersistedMessageContentPart | null {
+function textPart(text: string | null): AgentPersistedMessageContentPart | null {
+	if (text === null) return null;
 	if (!text.trim()) return null;
 	return { type: 'text', text };
 }
@@ -23,7 +24,7 @@ function textPart(text: string): AgentPersistedMessageContentPart | null {
 function textMessageDto(
 	id: string,
 	role: AgentPersistedMessageDto['role'],
-	text: string,
+	text: string | null,
 ): AgentPersistedMessageDto | null {
 	const contentPart = textPart(text);
 	if (!contentPart) return null;

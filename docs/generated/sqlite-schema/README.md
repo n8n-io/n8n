@@ -10,8 +10,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
-| [agent_execution](agent_execution.md) | 20 |  | table |
-| [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
+| [agent_execution](agent_execution.md) | 22 |  | table |
+| [agent_execution_threads](agent_execution_threads.md) | 18 |  | table |
 | [agent_files](agent_files.md) | 8 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
@@ -303,6 +303,8 @@ erDiagram
   TEXT error
   varchar_16_ hitlStatus
   varchar_36_ id PK
+  bigint logSizeBytes
+  varchar_2_ logStoredAt
   varchar_255_ model
   INTEGER promptTokens
   varchar_32_ source
@@ -321,6 +323,7 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
+  TEXT firstMessage
   varchar_128_ id PK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| assistantResponse | text |  | false |  |  |  |
+| assistantResponse | text |  | true |  |  |  |
 | completionTokens | integer |  | true |  |  |  |
 | cost | double precision |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -12,6 +12,8 @@
 | error | text |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
+| logSizeBytes | bigint | 0 | false |  |  | Byte size of the external agent execution log payload. 0 means unknown or legacy inline data. |
+| logStoredAt | varchar(2) | NULL::character varying | true |  |  | Storage location for the external agent execution log payload. |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
@@ -23,7 +25,7 @@
 | toolCalls | json |  | true |  |  |  |
 | totalTokens | integer |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| userMessage | text |  | false |  |  |  |
+| userMessage | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -33,14 +35,14 @@
 | CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
-| agent_execution_assistantResponse_not_null | n | NOT NULL "assistantResponse" |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
 | agent_execution_id_not_null | n | NOT NULL id |
+| agent_execution_logSizeBytes_not_null | n | NOT NULL "logSizeBytes" |
+| agent_execution_logStoredAt_check | CHECK | CHECK ((("logStoredAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | agent_execution_status_not_null | n | NOT NULL status |
 | agent_execution_threadId_not_null | n | NOT NULL "threadId" |
 | agent_execution_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| agent_execution_userMessage_not_null | n | NOT NULL "userMessage" |
 
 ## Indexes
 
@@ -65,6 +67,8 @@ erDiagram
   text error
   varchar_16_ hitlStatus
   varchar_36_ id
+  bigint logSizeBytes
+  varchar_2_ logStoredAt
   varchar_255_ model
   integer promptTokens
   varchar_32_ source
@@ -83,6 +87,7 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
+  text firstMessage
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

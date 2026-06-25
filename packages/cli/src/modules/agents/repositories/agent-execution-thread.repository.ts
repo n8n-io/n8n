@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, LessThan, Repository, type EntityManager } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 
@@ -62,35 +62,59 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		taskId?: string | null,
 		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
-		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
-			const repository = entityManager.getRepository(AgentExecutionThread);
-			const existing = await repository.findOneBy({ id: threadId });
-			if (existing) {
-				return { thread: existing, created: false };
-			}
+		return await this.manager.transaction(
+			'SERIALIZABLE',
+			async (entityManager) =>
+				await this.findOrCreateWithManager(
+					entityManager,
+					threadId,
+					agentId,
+					agentName,
+					projectId,
+					metadata,
+					taskId,
+					taskVersionId,
+				),
+		);
+	}
 
-			const maxResult = await repository
-				.createQueryBuilder('t')
-				.select('MAX(t.sessionNumber)', 'max')
-				.where('t.projectId = :projectId', { projectId })
-				.getRawOne<{ max: number | null }>();
+	async findOrCreateWithManager(
+		entityManager: EntityManager,
+		threadId: string,
+		agentId: string,
+		agentName: string,
+		projectId: string,
+		metadata?: AgentExecutionThreadMetadata,
+		taskId?: string | null,
+		taskVersionId?: string | null,
+	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
+		const repository = entityManager.getRepository(AgentExecutionThread);
+		const existing = await repository.findOneBy({ id: threadId });
+		if (existing) {
+			return { thread: existing, created: false };
+		}
 
-			const sessionNumber = (maxResult?.max ?? 0) + 1;
+		const maxResult = await repository
+			.createQueryBuilder('t')
+			.select('MAX(t.sessionNumber)', 'max')
+			.where('t.projectId = :projectId', { projectId })
+			.getRawOne<{ max: number | null }>();
 
-			const thread = repository.create({
-				id: threadId,
-				agentId,
-				agentName,
-				projectId,
-				taskId: taskId ?? null,
-				taskVersionId: taskVersionId ?? null,
-				sessionNumber,
-				parentThreadId: metadata?.parentThreadId ?? null,
-				parentAgentId: metadata?.parentAgentId ?? null,
-			});
-			const saved = await repository.save(thread);
-			return { thread: saved, created: true };
+		const sessionNumber = (maxResult?.max ?? 0) + 1;
+
+		const thread = repository.create({
+			id: threadId,
+			agentId,
+			agentName,
+			projectId,
+			taskId: taskId ?? null,
+			taskVersionId: taskVersionId ?? null,
+			sessionNumber,
+			parentThreadId: metadata?.parentThreadId ?? null,
+			parentAgentId: metadata?.parentAgentId ?? null,
 		});
+		const saved = await repository.save(thread);
+		return { thread: saved, created: true };
 	}
 
 	/**
@@ -153,6 +177,15 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			.set(set)
 			.where('id = :threadId', { threadId })
 			.setParameters({ promptTokens, completionTokens, cost, duration })
+			.execute();
+	}
+
+	async setFirstMessageIfMissing(threadId: string, firstMessage: string): Promise<void> {
+		await this.createQueryBuilder()
+			.update(AgentExecutionThread)
+			.set({ firstMessage })
+			.where('id = :threadId', { threadId })
+			.andWhere('"firstMessage" IS NULL')
 			.execute();
 	}
 

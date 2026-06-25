@@ -111,6 +111,7 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
+  TEXT firstMessage
   varchar_128_ id PK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

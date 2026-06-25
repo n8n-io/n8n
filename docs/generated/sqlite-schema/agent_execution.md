@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text NOT NULL, "assistantResponse" text NOT NULL, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "toolCalls" text, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_execution_status" CHECK (("status" IN ('success', 'error'))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (("hitlStatus" IN ('suspended', 'resumed'))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "assistantResponse" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "toolCalls" text, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "logStoredAt" varchar(2) DEFAULT (NULL), "logSizeBytes" bigint NOT NULL DEFAULT (0), CONSTRAINT "CHK_agent_execution_status" CHECK (((("status" IN ('success', 'error'))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (((("hitlStatus" IN ('suspended', 'resumed'))))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -15,7 +15,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| assistantResponse | TEXT |  | false |  |  |  |
+| assistantResponse | TEXT |  | true |  |  |  |
 | completionTokens | INTEGER |  | true |  |  |  |
 | cost | REAL |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -23,6 +23,8 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | error | TEXT |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
+| logSizeBytes | bigint | 0 | false |  |  |  |
+| logStoredAt | varchar(2) | NULL | true |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | INTEGER |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
@@ -34,14 +36,14 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | toolCalls | TEXT |  | true |  |  |  |
 | totalTokens | INTEGER |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| userMessage | TEXT |  | false |  |  |  |
+| userMessage | TEXT |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("status" IN ('success', 'error'))) |
-| - | CHECK | CHECK (("hitlStatus" IN ('suspended', 'resumed'))) |
+| - | CHECK | CHECK (((("status" IN ('success', 'error'))))) |
+| - | CHECK | CHECK (((("hitlStatus" IN ('suspended', 'resumed'))))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -69,6 +71,8 @@ erDiagram
   TEXT error
   varchar_16_ hitlStatus
   varchar_36_ id PK
+  bigint logSizeBytes
+  varchar_2_ logStoredAt
   varchar_255_ model
   INTEGER promptTokens
   varchar_32_ source
@@ -87,6 +91,7 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
+  TEXT firstMessage
   varchar_128_ id PK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

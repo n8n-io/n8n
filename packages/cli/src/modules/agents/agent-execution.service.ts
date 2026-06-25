@@ -1,9 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import { AgentExecutionLogPersistence } from './agent-execution-log-persistence';
+import type { AgentExecutionLogPayload } from './agent-execution-log/types';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord } from './execution-recorder';
@@ -45,12 +50,15 @@ export interface ThreadListItem extends AgentExecutionThread {
 	firstMessage: string | null;
 }
 
+const RECORD_MESSAGE_RETRY_ATTEMPTS = 3;
+
 @Service()
 export class AgentExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
+		private readonly agentExecutionLogPersistence: AgentExecutionLogPersistence,
 		private readonly n8nMemory: N8nMemory,
 		private readonly telemetry: Telemetry,
 	) {}
@@ -73,24 +81,6 @@ export class AgentExecutionService {
 			taskVersionId,
 		} = params;
 
-		// Ensure the thread exists and bump its updatedAt
-		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
-			threadId,
-			agentId,
-			agentName,
-			projectId,
-			threadMetadata,
-			taskId,
-			taskVersionId,
-		);
-		if (!created) {
-			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
-			// Sync title from the SDK memory thread if we don't have one yet
-			if (!thread.title) {
-				await this.syncTitleFromMemory(threadId, agentId);
-			}
-		}
-
 		// Replace platform mentions (e.g. Slack's <@U0ANB4K6611> or plain @U0ANB4K6611)
 		const cleanedMessage = params.userMessage
 			.replace(/<@[A-Z0-9]+>/gi, `@${agentName}`)
@@ -100,44 +90,91 @@ export class AgentExecutionService {
 		const status: AgentExecution['status'] = record.error ? 'error' : 'success';
 		const startedAt = new Date(record.startTime);
 		const stoppedAt = new Date(record.startTime + record.duration);
+		const executionId = generateNanoId();
+		const logRef = { agentId, threadId, executionId };
+		const logPayload: AgentExecutionLogPayload = {
+			userMessage: cleanedMessage,
+			assistantResponse: record.assistantResponse,
+			toolCalls: record.toolCalls.length > 0 ? record.toolCalls : null,
+			timeline: record.timeline.length > 0 ? record.timeline : null,
+			error: record.error,
+		};
+		const storedAt = this.agentExecutionLogPersistence.getWriteStorageLocation();
 
-		const inserted = await this.agentExecutionRepository.save(
-			this.agentExecutionRepository.create({
-				threadId,
-				status,
-				startedAt,
-				stoppedAt,
-				duration: record.duration,
-				userMessage: cleanedMessage,
-				assistantResponse: record.assistantResponse,
-				model: record.model,
-				promptTokens: record.usage?.promptTokens ?? null,
-				completionTokens: record.usage?.completionTokens ?? null,
-				totalTokens: record.usage?.totalTokens ?? null,
-				cost: record.totalCost,
-				toolCalls: record.toolCalls.length > 0 ? record.toolCalls : null,
-				timeline: record.timeline.length > 0 ? record.timeline : null,
-				error: record.error,
-				hitlStatus: hitlStatus ?? null,
-				source: source ?? null,
-			}),
+		const { thread, created, insertedId } = await this.runSerializableRecordTransaction(
+			async (tx) => {
+				const threadResult = await this.agentExecutionThreadRepository.findOrCreateWithManager(
+					tx,
+					threadId,
+					agentId,
+					agentName,
+					projectId,
+					threadMetadata,
+					taskId,
+					taskVersionId,
+				);
+
+				if (!threadResult.created) {
+					await tx.update(AgentExecutionThread, { id: threadId }, { updatedAt: new Date() });
+				}
+
+				await tx.insert(AgentExecution, {
+					id: executionId,
+					threadId,
+					status,
+					startedAt,
+					stoppedAt,
+					duration: record.duration,
+					userMessage: null,
+					assistantResponse: null,
+					model: record.model,
+					promptTokens: record.usage?.promptTokens ?? null,
+					completionTokens: record.usage?.completionTokens ?? null,
+					totalTokens: record.usage?.totalTokens ?? null,
+					cost: record.totalCost,
+					toolCalls: null,
+					timeline: null,
+					error: null,
+					hitlStatus: hitlStatus ?? null,
+					source: source ?? null,
+					logStoredAt: storedAt,
+					logSizeBytes: 0,
+				});
+
+				const { sizeBytes } = await this.agentExecutionLogPersistence.write(logRef, logPayload);
+				await tx.update(AgentExecution, { id: executionId }, { logSizeBytes: sizeBytes });
+
+				if (!threadResult.thread.firstMessage && cleanedMessage) {
+					await tx
+						.createQueryBuilder()
+						.update(AgentExecutionThread)
+						.set({ firstMessage: cleanedMessage })
+						.where('id = :threadId', { threadId })
+						.andWhere('"firstMessage" IS NULL')
+						.execute();
+				}
+
+				if (record.usage) {
+					await this.incrementUsageWithManager(tx, threadId, {
+						promptTokens: record.usage.promptTokens,
+						completionTokens: record.usage.completionTokens,
+						cost: record.totalCost ?? 0,
+						duration: record.duration,
+					});
+				}
+
+				return {
+					thread: threadResult.thread,
+					created: threadResult.created,
+					insertedId: executionId,
+				};
+			},
 		);
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.
 		if (hitlStatus === 'resumed' && record.model) {
 			await this.backfillSuspendedExecutions(threadId, record.model);
-		}
-
-		// Atomically increment token/cost/duration counters on the thread
-		if (record.usage) {
-			await this.agentExecutionThreadRepository.incrementUsage(
-				threadId,
-				record.usage.promptTokens,
-				record.usage.completionTokens,
-				record.totalCost ?? 0,
-				record.duration,
-			);
 		}
 
 		if (params.telemetry) {
@@ -163,21 +200,57 @@ export class AgentExecutionService {
 		}
 
 		this.logger.debug('Recorded agent execution', {
-			executionId: inserted.id,
+			executionId: insertedId,
 			threadId,
 			agentId,
 			status,
 			duration: record.duration,
 		});
 
-		// Title generation now runs synchronously (sync: true) before the stream
-		// ends, so by this point the memory thread should have the title.
-		// Sync it to our execution thread on the first message.
-		if (created) {
+		if (created || !thread.title) {
 			await this.syncTitleFromMemory(threadId, agentId);
 		}
 
-		return inserted.id;
+		return insertedId;
+	}
+
+	private async runSerializableRecordTransaction<T>(
+		operation: (tx: EntityManager) => Promise<T>,
+	): Promise<T> {
+		for (let attempt = 0; ; attempt++) {
+			try {
+				return await this.agentExecutionRepository.manager.transaction('SERIALIZABLE', operation);
+			} catch (error) {
+				if (attempt >= RECORD_MESSAGE_RETRY_ATTEMPTS - 1 || !isRetriableRecordWriteError(error)) {
+					throw error;
+				}
+			}
+		}
+	}
+
+	private async incrementUsageWithManager(
+		tx: EntityManager,
+		threadId: string,
+		usage: { promptTokens: number; completionTokens: number; cost: number; duration: number },
+	): Promise<void> {
+		const set: Record<string, () => string> = {
+			totalPromptTokens: () => '"totalPromptTokens" + :promptTokens',
+			totalCompletionTokens: () => '"totalCompletionTokens" + :completionTokens',
+		};
+		if (usage.cost > 0) {
+			set.totalCost = () => '"totalCost" + :cost';
+		}
+		if (usage.duration > 0) {
+			set.totalDuration = () => '"totalDuration" + :duration';
+		}
+
+		await tx
+			.createQueryBuilder()
+			.update(AgentExecutionThread)
+			.set(set)
+			.where('id = :threadId', { threadId })
+			.setParameters(usage)
+			.execute();
 	}
 
 	/**
@@ -230,7 +303,16 @@ export class AgentExecutionService {
 		});
 		if (!thread) return false;
 
+		const logTargets = await this.agentExecutionRepository.findLogTargetsByThreadId(threadId);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
+		await this.agentExecutionLogPersistence.delete(
+			logTargets.map((target) => ({
+				agentId,
+				threadId: target.threadId,
+				executionId: target.id,
+				storedAt: target.logStoredAt,
+			})),
+		);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
 	}
@@ -256,15 +338,19 @@ export class AgentExecutionService {
 			return { threads: [], nextCursor: page.nextCursor };
 		}
 
-		const messageMap = await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
-			page.threads.map((t) => t.id),
-		);
+		const threadsMissingPreview = page.threads.filter((thread) => !thread.firstMessage);
+		const messageMap =
+			threadsMissingPreview.length > 0
+				? await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
+						threadsMissingPreview.map((t) => t.id),
+					)
+				: new Map<string, string>();
 
 		return {
 			...page,
 			threads: page.threads.map((t) => ({
 				...t,
-				firstMessage: messageMap.get(t.id) ?? null,
+				firstMessage: t.firstMessage ?? messageMap.get(t.id) ?? null,
 			})),
 		};
 	}
@@ -282,7 +368,45 @@ export class AgentExecutionService {
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateExecutions(agentId, executions);
 		return { thread, executions };
+	}
+
+	private async hydrateExecutions(agentId: string, executions: AgentExecution[]): Promise<void> {
+		const externalTargets = executions
+			.filter((execution) => execution.logStoredAt)
+			.map((execution) => ({
+				agentId,
+				threadId: execution.threadId,
+				executionId: execution.id,
+				storedAt: execution.logStoredAt,
+			}));
+		const bundles = await this.agentExecutionLogPersistence.readMany(externalTargets);
+
+		for (const execution of executions) {
+			if (!execution.logStoredAt) {
+				execution.userMessage ??= '';
+				execution.assistantResponse ??= '';
+				continue;
+			}
+
+			const bundle = bundles.get(execution.id);
+			if (!bundle) {
+				this.logger.error('Missing agent execution log payload', {
+					agentId,
+					threadId: execution.threadId,
+					executionId: execution.id,
+					storedAt: execution.logStoredAt,
+				});
+				throw new UnexpectedError('Agent execution log payload is missing');
+			}
+
+			execution.userMessage = bundle.userMessage;
+			execution.assistantResponse = bundle.assistantResponse;
+			execution.toolCalls = bundle.toolCalls;
+			execution.timeline = bundle.timeline;
+			execution.error = bundle.error;
+		}
 	}
 
 	/**
@@ -308,4 +432,18 @@ export function threadBelongsTo(
 	if (thread.projectId !== projectId) return false;
 	if (thread.agentId !== agentId) return false;
 	return true;
+}
+
+function isRetriableRecordWriteError(error: unknown): boolean {
+	if (!(error instanceof Error) || !('driverError' in error)) return false;
+	const { driverError } = error;
+	if (typeof driverError !== 'object' || driverError === null || !('code' in driverError)) {
+		return false;
+	}
+
+	const { code } = driverError;
+	return (
+		typeof code === 'string' &&
+		(code === '40001' || code === '40P01' || code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED')
+	);
 }
