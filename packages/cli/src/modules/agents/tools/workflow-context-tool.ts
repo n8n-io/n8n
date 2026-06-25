@@ -3,7 +3,12 @@ import { Tool } from '@n8n/agents/tool';
 import type { ExecuteAgentWorkflowContext, INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { trimItems, runQuery } from './agent-data-utils';
+import {
+	trimItems,
+	queryItems,
+	ITEM_SHAPE_HINT,
+	QUERY_WHEN_TRUNCATED_HINT,
+} from './agent-data-utils';
 
 const DESCRIPTION =
 	'Inspect data produced by OTHER earlier nodes in this workflow. ' +
@@ -48,73 +53,63 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 						.string()
 						.optional()
 						.describe(
-							'JMESPath query to retrieve a specific part of the node output, untrimmed. The output is ' +
-								'a JSON array of item objects (index the first item as `[0]`, not `items[0]`; there is ' +
-								'no `json` wrapper) — e.g. `[0]`, `[0].fieldName`, `[*].fieldName`. Use only when a ' +
-								'previous non-query result came back truncated.',
+							`JMESPath query to retrieve a specific part of the node output, untrimmed. ${ITEM_SHAPE_HINT} ${QUERY_WHEN_TRUNCATED_HINT}`,
 						),
 				}),
 			)
 			.systemInstruction(
 				'To inspect data produced by OTHER earlier nodes in this workflow, call ' +
 					'fetch_workflow_context with no arguments to list executed nodes, then with a nodeName ' +
-					'to read that node output. A node output is a JSON array of item objects (index the first ' +
-					'item as `[0]`, not `items[0]`; there is no `json` wrapper). Pass a JMESPath query with a ' +
-					'nodeName only when a previous result came back truncated — never re-query data you already ' +
-					'received in full.',
+					`to read that node output. ${ITEM_SHAPE_HINT} For a query, also pass a nodeName. ${QUERY_WHEN_TRUNCATED_HINT}`,
 			)
 			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback
-			.handler(async (input) => {
-				const { nodeName, query } = input as { nodeName?: string; query?: string };
-				const runData = context.runExecutionData.resultData.runData;
+			.handler(async ({ nodeName, query }) => {
+				try {
+					const runData = context.runExecutionData.resultData.runData;
 
-				if (!nodeName) {
-					if (query) {
-						return { error: 'Specify a nodeName to run a query against that node output.' };
+					if (!nodeName) {
+						if (query) {
+							return { error: 'Specify a nodeName to run a query against that node output.' };
+						}
+						return {
+							workflow: { id: context.workflowId ?? null, name: context.workflowName ?? null },
+							invokedBy: context.callingNodeName,
+							executedNodes: Object.entries(runData).map(([name, runs]) => ({
+								name,
+								type: nodeTypesByName.get(name) ?? 'unknown',
+								status: runs[runs.length - 1]?.executionStatus ?? 'unknown',
+								runs: runs.length,
+								items: lastRunMainItemCount(runs),
+							})),
+						};
 					}
-					return {
-						workflow: { id: context.workflowId ?? null, name: context.workflowName ?? null },
-						invokedBy: context.callingNodeName,
-						executedNodes: Object.entries(runData).map(([name, runs]) => ({
-							name,
-							type: nodeTypesByName.get(name) ?? 'unknown',
-							status: runs[runs.length - 1]?.executionStatus ?? 'unknown',
-							runs: runs.length,
-							items: lastRunMainItemCount(runs),
-						})),
-					};
-				}
 
-				const runs = Object.hasOwn(runData, nodeName) ? runData[nodeName] : undefined;
-				if (!runs?.length) {
-					return {
-						error: `No execution data found for node '${nodeName}'.`,
-						availableNodes: Object.keys(runData),
-					};
-				}
+					const runs = Object.hasOwn(runData, nodeName) ? runData[nodeName] : undefined;
+					if (!runs?.length) {
+						return {
+							error: `No execution data found for node '${nodeName}'.`,
+							availableNodes: Object.keys(runData),
+						};
+					}
 
-				const allItems = lastRunMainItems(runs);
+					const allItems = lastRunMainItems(runs);
 
-				if (query) {
+					if (query) {
+						return { nodeName, query, ...queryItems(allItems, query) };
+					}
+
+					const { items, truncated } = trimItems(allItems);
 					return {
 						nodeName,
-						query,
-						...runQuery(
-							allItems.map((item) => item.json),
-							query,
-						),
+						status: runs[runs.length - 1]?.executionStatus ?? 'unknown',
+						runs: runs.length,
+						totalItems: allItems.length,
+						items,
+						truncated,
 					};
+				} catch (error) {
+					return { error: `Failed to read workflow context: ${(error as Error).message}` };
 				}
-
-				const { items, truncated } = trimItems(allItems);
-				return {
-					nodeName,
-					status: runs[runs.length - 1]?.executionStatus ?? 'unknown',
-					runs: runs.length,
-					totalItems: allItems.length,
-					items,
-					truncated,
-				};
 			})
 			.build()
 	);

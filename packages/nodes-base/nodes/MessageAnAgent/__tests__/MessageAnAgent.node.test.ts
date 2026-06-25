@@ -481,4 +481,23 @@ describe('MessageAnAgent Node', () => {
 			0,
 		);
 	});
+
+	it('does not invoke the agent in "Once for All Items" mode with no input items', async () => {
+		executeFunctions.getInputData.mockReturnValue([]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Summarize all items';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'allItems';
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+		expect(result[0]).toHaveLength(0);
+	});
 });

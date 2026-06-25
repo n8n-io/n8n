@@ -66,14 +66,14 @@ describe('createInputDataTool', () => {
 		expect(result.totalItems).toBe(1);
 	});
 
-	it('runs a JMESPath query against the full input json', async () => {
+	it('queries fields under the json wrapper across all input items', async () => {
 		const tool = createInputDataTool(
 			makeContext([{ json: { id: 1 } }, { json: { id: 2 } }], 'all'),
 		);
 
-		const result = await tool.handler!({ query: '[*].id' }, makeCtx());
+		const result = await tool.handler!({ query: '[*].json.id' }, makeCtx());
 
-		expect(result).toEqual({ query: '[*].id', result: [1, 2], truncated: false });
+		expect(result).toEqual({ query: '[*].json.id', result: [1, 2], truncated: false });
 	});
 
 	it('returns an error payload for an unsafe query', async () => {
@@ -85,5 +85,20 @@ describe('createInputDataTool', () => {
 		};
 
 		expect(result.error).toContain('Query failed');
+	});
+
+	it('defaults to scope item with no items when context omits inputData and scope', async () => {
+		const tool = createInputDataTool({
+			workflowId: 'wf-1',
+			workflowName: 'Order processing',
+			callingNodeName: 'Message an Agent',
+			exposeWorkflowData: false,
+			nodes: [],
+			runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+		});
+
+		const result = await tool.handler!({}, makeCtx());
+
+		expect(result).toEqual({ scope: 'item', totalItems: 0, items: [], truncated: false });
 	});
 });

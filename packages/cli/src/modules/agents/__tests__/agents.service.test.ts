@@ -2067,7 +2067,7 @@ describe('AgentsService', () => {
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
 
-			const setupAgentWithToolSpy = () => {
+			const setupAgentWithToolSpy = (declaredTools: Array<{ name: string }> = []) => {
 				const schema: AgentJsonConfig = {
 					name: 'Test Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -2087,7 +2087,7 @@ describe('AgentsService', () => {
 						name: 'Test Agent',
 						structuredOutput: jest.fn(),
 						tool: toolFn,
-						declaredTools: [],
+						declaredTools,
 						stream: jest.fn().mockResolvedValue({
 							stream: {
 								getReader: () => ({
@@ -2166,6 +2166,31 @@ describe('AgentsService', () => {
 					userId,
 					projectId,
 				);
+
+				expect(toolFn).not.toHaveBeenCalled();
+			});
+
+			it('surfaces an error when the agent already declares a reserved tool name', async () => {
+				const toolFn = setupAgentWithToolSpy([{ name: 'fetch_input_data' }]);
+				const workflowContext: ExecuteAgentWorkflowContext = {
+					...baseContext,
+					exposeWorkflowData: false,
+				};
+
+				await expect(
+					service.executeForWorkflow(
+						agentId,
+						'hello',
+						'execution-1',
+						'thread-1',
+						userId,
+						projectId,
+						undefined,
+						undefined,
+						undefined,
+						workflowContext,
+					),
+				).rejects.toThrow('"fetch_input_data"');
 
 				expect(toolFn).not.toHaveBeenCalled();
 			});

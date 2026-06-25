@@ -3,7 +3,12 @@ import { Tool } from '@n8n/agents/tool';
 import type { ExecuteAgentWorkflowContext } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { trimItems, runQuery } from './agent-data-utils';
+import {
+	trimItems,
+	queryItems,
+	ITEM_SHAPE_HINT,
+	QUERY_WHEN_TRUNCATED_HINT,
+} from './agent-data-utils';
 
 const DESCRIPTION =
 	'Read the data passed into this agent step. ' +
@@ -32,36 +37,27 @@ export function createInputDataTool(context: ExecuteAgentWorkflowContext): Built
 						.string()
 						.optional()
 						.describe(
-							'JMESPath query to retrieve a specific part of the input, untrimmed. The data is a ' +
-								'JSON array of item objects (index the first item as `[0]`, not `items[0]`; there is ' +
-								'no `json` wrapper) — e.g. `[0]`, `[0].fieldName`, `[*].fieldName`. Use only when a ' +
-								'previous non-query result came back truncated.',
+							`JMESPath query to retrieve a specific part of the input, untrimmed. ${ITEM_SHAPE_HINT} ${QUERY_WHEN_TRUNCATED_HINT}`,
 						),
 				}),
 			)
 			.systemInstruction(
 				`You were invoked from the n8n workflow '${workflowLabel}' by its node '${context.callingNodeName}'. ` +
 					`Call fetch_input_data to read the data passed into this step (${scopeText}); use it whenever ` +
-					'the message references the input. The returned data is a JSON array of item objects (index the ' +
-					'first item as `[0]`, not `items[0]`; there is no `json` wrapper). Only pass a JMESPath query ' +
-					'when a previous result came back truncated — never re-query data you already received in full.',
+					`the message references the input. ${ITEM_SHAPE_HINT} ${QUERY_WHEN_TRUNCATED_HINT}`,
 			)
 			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback
-			.handler(async (input) => {
-				const { query } = input as { query?: string };
+			.handler(async ({ query }) => {
+				try {
+					if (query) {
+						return { query, ...queryItems(items, query) };
+					}
 
-				if (query) {
-					return {
-						query,
-						...runQuery(
-							items.map((item) => item.json),
-							query,
-						),
-					};
+					const { items: trimmed, truncated } = trimItems(items);
+					return { scope, totalItems: items.length, items: trimmed, truncated };
+				} catch (error) {
+					return { error: `Failed to read input data: ${(error as Error).message}` };
 				}
-
-				const { items: trimmed, truncated } = trimItems(items);
-				return { scope, totalItems: items.length, items: trimmed, truncated };
 			})
 			.build()
 	);

@@ -195,16 +195,16 @@ describe('createWorkflowContextTool', () => {
 		});
 	});
 
-	it('runs a JMESPath query against a node last-run output', async () => {
+	it('queries fields under the json wrapper of a node last-run output', async () => {
 		const tool = createWorkflowContextTool(
 			makeContext({ Webhook: [makeTaskData([{ id: 1 }, { id: 2 }])] }),
 		);
 
-		const result = await tool.handler!({ nodeName: 'Webhook', query: '[*].id' }, makeCtx());
+		const result = await tool.handler!({ nodeName: 'Webhook', query: '[*].json.id' }, makeCtx());
 
 		expect(result).toEqual({
 			nodeName: 'Webhook',
-			query: '[*].id',
+			query: '[*].json.id',
 			result: [1, 2],
 			truncated: false,
 		});
@@ -216,5 +216,28 @@ describe('createWorkflowContextTool', () => {
 		const result = (await tool.handler!({ query: '[*].a' }, makeCtx())) as { error: string };
 
 		expect(result.error).toContain('Specify a nodeName');
+	});
+
+	it('returns an empty executedNodes list when no node has run', async () => {
+		const tool = createWorkflowContextTool(makeContext({}));
+
+		const result = await tool.handler!({}, makeCtx());
+
+		expect(result).toEqual({
+			workflow: { id: 'wf-1', name: 'Order processing' },
+			invokedBy: 'Message an Agent',
+			executedNodes: [],
+		});
+	});
+
+	it('returns a recoverable error payload when run data is malformed', async () => {
+		const tool = createWorkflowContextTool(
+			// `main` is not an array of branches — materializing it would throw.
+			makeContext({ Webhook: [makeTaskData([], { data: { main: 42 } as never })] }),
+		);
+
+		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx())) as { error: string };
+
+		expect(result.error).toContain('Failed to read workflow context');
 	});
 });

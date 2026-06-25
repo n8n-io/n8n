@@ -596,5 +596,96 @@ describe('ExecuteContext', () => {
 				}),
 			);
 		});
+
+		it('flattens every main branch when scope is all', async () => {
+			const multiBranchInput: ITaskDataConnections = {
+				main: [[{ json: { branch: 0 } }], null, [{ json: { branch: 2 } }]],
+			};
+			const multiBranchAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			multiBranchAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const multiBranchContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				multiBranchAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				multiBranchInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await multiBranchContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(multiBranchAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				multiBranchAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
+					inputDataScope: 'all',
+				}),
+			);
+		});
+
+		it('scopes to an empty array when itemIndex is out of range', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const outOfRangeAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			outOfRangeAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const outOfRangeContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				outOfRangeAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await outOfRangeContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				5,
+			);
+
+			expect(outOfRangeAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-5',
+				outOfRangeAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+			);
+		});
 	});
 });
