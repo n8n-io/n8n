@@ -856,6 +856,7 @@ export class InstanceAiController {
 		await this.assertGatewayEnabled(userId);
 
 		this.gatewayService.initGateway(userId, payload);
+		this.gatewayService.applyToolPolicy(userId);
 
 		const status = this.gatewayService.getGatewayStatus(userId);
 		this.push.sendToUsers(
@@ -933,6 +934,7 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
+		this.gatewayService.applyToolPolicy(req.user.id);
 		return this.gatewayService.getGatewayStatus(req.user.id);
 	}
 

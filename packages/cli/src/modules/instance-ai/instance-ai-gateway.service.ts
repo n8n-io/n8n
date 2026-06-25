@@ -116,7 +116,6 @@ export class InstanceAiGatewayService {
 		hostIdentifier: string | null;
 		toolCategories: ToolCategory[];
 	} {
-		this.applyToolPolicy(userId);
 		return this.registry.getGatewayStatus(userId);
 	}
 

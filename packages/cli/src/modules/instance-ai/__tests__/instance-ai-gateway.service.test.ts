@@ -40,13 +40,14 @@ describe('InstanceAiGatewayService', () => {
 		});
 	});
 
-	describe('getGatewayStatus browser-use policy', () => {
-		it('hides the browser category when Browser Use is disabled', () => {
+	describe('applyToolPolicy', () => {
+		it('hides the browser category from the status when Browser Use is disabled', () => {
 			settingsService.isBrowserUseEnabled.mockReturnValue(false);
 			service.initGateway('user-1', CAPABILITIES);
 
-			const categoryNames = service.getGatewayStatus('user-1').toolCategories.map((c) => c.name);
+			service.applyToolPolicy('user-1');
 
+			const categoryNames = service.getGatewayStatus('user-1').toolCategories.map((c) => c.name);
 			expect(categoryNames).toEqual(['files', 'shell']);
 		});
 
@@ -54,8 +55,9 @@ describe('InstanceAiGatewayService', () => {
 			settingsService.isBrowserUseEnabled.mockReturnValue(true);
 			service.initGateway('user-1', CAPABILITIES);
 
-			const categoryNames = service.getGatewayStatus('user-1').toolCategories.map((c) => c.name);
+			service.applyToolPolicy('user-1');
 
+			const categoryNames = service.getGatewayStatus('user-1').toolCategories.map((c) => c.name);
 			expect(categoryNames).toContain('browser');
 		});
 	});
