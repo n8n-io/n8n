@@ -63,10 +63,10 @@ export class AgentExecutionLogPersistence {
 		return bundles;
 	}
 
-	async delete(refs: ExternalAgentExecutionLogRef[]) {
+	async deleteExternal(refs: ExternalAgentExecutionLogRef[]) {
 		await Promise.all(
 			[...this.groupByLocation(refs)].map(async ([location, group]) => {
-				const store = this.getStoreForDelete(location, group);
+				const store = this.getExternalStoreForCleanup(location, group);
 				if (store) await store.delete(group);
 			}),
 		);
@@ -86,34 +86,45 @@ export class AgentExecutionLogPersistence {
 		return refsByLocation;
 	}
 
-	private getStoreForDelete(
+	private getExternalStoreForCleanup(
 		location: ExternalAgentExecutionLogRef['storedAt'],
 		refs: AgentExecutionLogRef[],
+	): DeletableAgentExecutionLogStore | undefined {
+		const store = this.getExternalStore(location);
+		if (store) return store;
+
+		const storeName = this.externalStoreName(location);
+		this.logger.warn(
+			`Skipped deleting ${storeName} agent execution logs - ${storeName} store is not initialized`,
+			{
+				executionIds: refs.map((r) => r.executionId),
+			},
+		);
+		return undefined;
+	}
+
+	private getStoreFor(location: ExecutionDataStorageLocation): AgentExecutionLogStore {
+		if (location === 'db') return this.dbStore;
+
+		const store = this.getExternalStore(location);
+		if (store) return store;
+
+		const storageName = this.externalStorageName(location);
+		const storeName = this.externalStoreName(location);
+		throw new UnexpectedError(
+			`Agent execution logs are stored on ${storageName} but the ${storeName} store is not initialized. Check that ${storeName} is configured.`,
+		);
+	}
+
+	private getExternalStore(
+		location: ExternalAgentExecutionLogRef['storedAt'],
 	): DeletableAgentExecutionLogStore | undefined {
 		switch (location) {
 			case 'fs':
 				return this.fsStore;
 			case 's3':
-				if (!this.s3Store) {
-					this.logger.warn(
-						'Skipped deleting S3 agent execution logs - S3 store is not initialized',
-						{
-							executionIds: refs.map((r) => r.executionId),
-						},
-					);
-					return undefined;
-				}
 				return this.s3Store;
 			case 'az':
-				if (!this.azStore) {
-					this.logger.warn(
-						'Skipped deleting Azure agent execution logs - Azure store is not initialized',
-						{
-							executionIds: refs.map((r) => r.executionId),
-						},
-					);
-					return undefined;
-				}
 				return this.azStore;
 		}
 		const _exhaustive: never = location;
@@ -122,30 +133,11 @@ export class AgentExecutionLogPersistence {
 		);
 	}
 
-	private getStoreFor(location: ExecutionDataStorageLocation): AgentExecutionLogStore {
-		switch (location) {
-			case 'db':
-				return this.dbStore;
-			case 'fs':
-				return this.fsStore;
-			case 's3':
-				if (!this.s3Store) {
-					throw new UnexpectedError(
-						'Agent execution logs are stored on S3 but the S3 store is not initialized. Check that S3 is configured.',
-					);
-				}
-				return this.s3Store;
-			case 'az':
-				if (!this.azStore) {
-					throw new UnexpectedError(
-						'Agent execution logs are stored on Azure Blob Storage but the Azure store is not initialized. Check that Azure is configured.',
-					);
-				}
-				return this.azStore;
-		}
-		const _exhaustive: never = location;
-		throw new UnexpectedError(
-			`Unknown agent execution log storage location: ${String(_exhaustive)}`,
-		);
+	private externalStoreName(location: ExternalAgentExecutionLogRef['storedAt']) {
+		return location === 'az' ? 'Azure' : location.toUpperCase();
+	}
+
+	private externalStorageName(location: ExternalAgentExecutionLogRef['storedAt']) {
+		return location === 'az' ? 'Azure Blob Storage' : this.externalStoreName(location);
 	}
 }

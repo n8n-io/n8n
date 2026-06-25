@@ -154,14 +154,16 @@ export class AgentExecutionService {
 			} catch (error) {
 				const cleanupRef = writtenExternalLogRef;
 				if (cleanupRef) {
-					await this.agentExecutionLogPersistence.delete([cleanupRef]).catch((cleanupError) => {
-						this.logger.warn('Failed to clean up agent execution log after recording failed', {
-							agentId,
-							threadId,
-							executionId: cleanupRef.executionId,
-							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+					await this.agentExecutionLogPersistence
+						.deleteExternal([cleanupRef])
+						.catch((cleanupError) => {
+							this.logger.warn('Failed to clean up agent execution log after recording failed', {
+								agentId,
+								threadId,
+								executionId: cleanupRef.executionId,
+								error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+							});
 						});
-					});
 				}
 				throw error;
 			}
@@ -278,7 +280,7 @@ export class AgentExecutionService {
 		const externalLogRefs = this.toExternalLogRefs(agentId, executions);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
-		await this.agentExecutionLogPersistence.delete(externalLogRefs).catch((error) => {
+		await this.agentExecutionLogPersistence.deleteExternal(externalLogRefs).catch((error) => {
 			this.logger.warn('Failed to clean up agent execution logs after deleting thread', {
 				agentId,
 				threadId,

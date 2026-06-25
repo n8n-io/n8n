@@ -91,7 +91,7 @@ describe('AgentExecutionService', () => {
 			currentLocation: 'fs',
 			write: jest.fn().mockResolvedValue(42),
 			readMany: jest.fn().mockResolvedValue(new Map()),
-			delete: jest.fn().mockResolvedValue(undefined),
+			deleteExternal: jest.fn().mockResolvedValue(undefined),
 			setS3Store: jest.fn(),
 			setAzStore: jest.fn(),
 		} as unknown as jest.Mocked<AgentExecutionLogPersistence> & {
@@ -589,7 +589,7 @@ describe('AgentExecutionService', () => {
 			});
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
-			expect(agentExecutionLogPersistence.delete).toHaveBeenCalledWith([
+			expect(agentExecutionLogPersistence.deleteExternal).toHaveBeenCalledWith([
 				{
 					agentId: 'agent-1',
 					threadId: 'thread-1',
@@ -602,7 +602,7 @@ describe('AgentExecutionService', () => {
 				agentExecutionThreadRepository.delete.mock.invocationCallOrder[0],
 			);
 			expect(agentExecutionThreadRepository.delete.mock.invocationCallOrder[0]).toBeLessThan(
-				agentExecutionLogPersistence.delete.mock.invocationCallOrder[0],
+				agentExecutionLogPersistence.deleteExternal.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -625,7 +625,7 @@ describe('AgentExecutionService', () => {
 				'memory cleanup failed',
 			);
 
-			expect(agentExecutionLogPersistence.delete).not.toHaveBeenCalled();
+			expect(agentExecutionLogPersistence.deleteExternal).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
 		});
 
@@ -642,13 +642,15 @@ describe('AgentExecutionService', () => {
 					storedAt: 'fs',
 				},
 			] as AgentExecution[]);
-			agentExecutionLogPersistence.delete.mockRejectedValue(new Error('log cleanup failed'));
+			agentExecutionLogPersistence.deleteExternal.mockRejectedValue(
+				new Error('log cleanup failed'),
+			);
 
 			await expect(service.deleteThread('project-1', 'agent-1', 'thread-1')).resolves.toBe(true);
 
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
-			expect(agentExecutionLogPersistence.delete).toHaveBeenCalledWith([
+			expect(agentExecutionLogPersistence.deleteExternal).toHaveBeenCalledWith([
 				{
 					agentId: 'agent-1',
 					threadId: 'thread-1',

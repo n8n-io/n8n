@@ -68,7 +68,7 @@ describe('AgentExecutionLogPersistence', () => {
 		const { persistence } = createPersistence(logger);
 
 		await expect(
-			persistence.delete([
+			persistence.deleteExternal([
 				{
 					agentId: 'agent-1',
 					threadId: 'thread-1',
