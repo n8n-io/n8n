@@ -27,6 +27,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
 	/** Set when the suspended run was a planned-task checkpoint follow-up.
