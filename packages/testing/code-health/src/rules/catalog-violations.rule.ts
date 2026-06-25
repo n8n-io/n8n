@@ -46,6 +46,7 @@ export class CatalogViolationsRule extends BaseRule<CodeHealthContext> {
 
 		for (const pkgInfo of packages) {
 			for (const dep of pkgInfo.deps) {
+				if (dep.section === 'peerDependencies') continue;
 				if (dep.usesCatalog || dep.version.startsWith('workspace:')) continue;
 
 				const catalogMatch = findInCatalog(catalogData, dep.name);
@@ -78,6 +79,7 @@ export class CatalogViolationsRule extends BaseRule<CodeHealthContext> {
 
 		for (const pkgInfo of packages) {
 			for (const dep of pkgInfo.deps) {
+				if (dep.section === 'peerDependencies') continue;
 				if (dep.usesCatalog || dep.version.startsWith('workspace:')) continue;
 				if (findInCatalog(catalogData, dep.name).found) continue;
 
