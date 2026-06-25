@@ -37,6 +37,9 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'anthropic') {
+		// Haiku models reject adaptive thinking (400), which silently fails the
+		// call and degrades dependent output (e.g. empty simulation fixtures).
+		if (resolveModelId(modelId)?.includes('haiku')) return;
 		agent.thinking('anthropic', { mode: 'adaptive' });
 		return;
 	}

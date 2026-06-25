@@ -28,6 +28,12 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
 	});
 
+	it('skips adaptive thinking for Anthropic Haiku models', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'anthropic/claude-haiku-4-5-20251001');
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
 	it('enables OpenAI reasoning for supported models', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'openai/gpt-5.5');
