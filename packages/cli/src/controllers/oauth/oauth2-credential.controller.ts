@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
-import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { ClientOAuth2, parseOAuth2Scopes } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import omit from 'lodash/omit';
@@ -171,8 +171,11 @@ export class OAuth2CredentialController {
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`,
-			scopes: split(credential.scope ?? 'openid', ','),
-			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
+			scopes: Array.isArray(credential.scope)
+				? parseOAuth2Scopes(credential.scope)
+				: split(credential.scope ?? 'openid', ','),
+			scopesSeparator:
+				!Array.isArray(credential.scope) && credential.scope?.includes(',') ? ',' : ' ',
 			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
 		};

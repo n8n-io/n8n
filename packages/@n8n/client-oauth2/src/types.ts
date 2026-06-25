@@ -10,7 +10,11 @@ export interface OAuth2CredentialData {
 	accessTokenUrl: string;
 	authentication?: OAuth2AuthenticationMethod;
 	authUrl?: string;
-	scope?: string;
+	/**
+	 * OAuth2 scopes. Usually a space-separated string, but credential fields
+	 * defined as `multiOptions` provide the selected scopes as an array.
+	 */
+	scope?: string | string[];
 	authQueryParameters?: string;
 	additionalBodyProperties?: string;
 	grantType: OAuth2GrantType;

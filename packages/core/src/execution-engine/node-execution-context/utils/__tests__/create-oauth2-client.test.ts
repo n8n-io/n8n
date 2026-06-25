@@ -10,7 +10,8 @@ const { mockGetToken, mockSign, mockCreateToken, MockClientOAuth2 } = vi.hoisted
 	MockClientOAuth2: vi.fn(),
 }));
 
-vi.mock('@n8n/client-oauth2', () => ({
+vi.mock('@n8n/client-oauth2', async (importActual) => ({
+	...(await importActual()),
 	ClientOAuth2: MockClientOAuth2,
 }));
 
@@ -112,5 +113,36 @@ describe('createOAuth2Client - scope handling', () => {
 		expect(MockClientOAuth2).toHaveBeenCalledWith(
 			expect.objectContaining({ scopes: ['read', 'write'] }),
 		);
+	});
+
+	test('should accept scopes provided as an array (multiOptions credential field)', async () => {
+		mockThis.getCredentials.mockResolvedValue({ ...baseCredentials, scope: ['read', 'write'] });
+
+		await call();
+
+		expect(MockClientOAuth2).toHaveBeenCalledWith(
+			expect.objectContaining({ scopes: ['read', 'write'] }),
+		);
+	});
+
+	test('should trim and filter empty entries from a scopes array', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...baseCredentials,
+			scope: [' read ', '', 'write'],
+		});
+
+		await call();
+
+		expect(MockClientOAuth2).toHaveBeenCalledWith(
+			expect.objectContaining({ scopes: ['read', 'write'] }),
+		);
+	});
+
+	test('should pass undefined scopes when scope is an empty array', async () => {
+		mockThis.getCredentials.mockResolvedValue({ ...baseCredentials, scope: [] });
+
+		await call();
+
+		expect(MockClientOAuth2).toHaveBeenCalledWith(expect.objectContaining({ scopes: undefined }));
 	});
 });
