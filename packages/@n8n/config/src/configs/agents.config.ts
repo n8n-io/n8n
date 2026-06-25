@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = ['node-tools-searcher'] as const;
+export const AGENTS_MODULE_NAMES = [] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -17,9 +17,15 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 		super(str);
 
 		for (const name of this) {
+			const moduleName: string = name;
 			if (!AGENTS_MODULE_NAMES.includes(name)) {
+				const validTokens = AGENTS_MODULE_NAMES.join(', ');
 				throw new Error(
-					`Unknown agents module: "${name}". Valid tokens: ${AGENTS_MODULE_NAMES.join(', ')}.`,
+					`Unknown agents module: "${moduleName}". ${
+						validTokens
+							? `Valid tokens: ${validTokens}.`
+							: 'No agents modules are currently supported.'
+					}`,
 				);
 			}
 		}
@@ -35,12 +41,7 @@ export class AgentsConfig {
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Currently known:
-	 * - `node-tools-searcher` — surfaces the "Built-in node tools" toggle in
-	 *   the agent editor.
-	 *
-	 * Gates the UI surface only — existing agents persisted with a given
-	 * capability turned on continue to run even if its token is removed here.
+	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];

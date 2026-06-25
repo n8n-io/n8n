@@ -1,6 +1,7 @@
 import { SandboxManager, type SandboxRuntimeConfig } from '@anthropic-ai/sandbox-runtime';
 import { rgPath } from '@vscode/ripgrep';
 import { spawn } from 'child_process';
+import path from 'node:path';
 import { z } from 'zod';
 
 import { getSettingsDir } from '../../config';
@@ -33,22 +34,29 @@ const inputSchema = z.object({
 	cwd: z.string().optional().describe('Working directory for the command'),
 });
 
+function resolveCommandPath(dir: string, cwd: string | undefined) {
+	return path.resolve(dir, cwd ?? '.');
+}
+
 export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	name: 'shell_execute',
 	description: 'Execute a shell command and return stdout, stderr, and exit code',
 	inputSchema,
 	annotations: { destructiveHint: true },
-	getAffectedResources({ command }) {
+	getAffectedResources({ command, cwd }, { dir }) {
+		const resolvedPath = resolveCommandPath(dir, cwd);
+		const resource = buildShellResource(command, resolvedPath);
+		const description = `Execute shell command: ${command} in ${resolvedPath}`;
 		return [
 			{
 				toolGroup: 'shell' as const,
-				resource: buildShellResource(command),
-				description: `Execute shell command: ${command}`,
+				resource,
+				description,
 			},
 		];
 	},
 	async execute({ command, timeout = 30_000, cwd }, { dir }) {
-		return await runCommand(command, { timeout, dir, cwd: cwd ?? dir });
+		return await runCommand(command, { timeout, dir, cwd: resolveCommandPath(dir, cwd) });
 	},
 };
 

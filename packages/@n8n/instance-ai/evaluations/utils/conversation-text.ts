@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils';
+
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
 /**
@@ -30,6 +32,27 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
 }
 
+/**
+ * User-side turns from an authored conversation (test-case JSON), flattened the
+ * same way as userTurnsAsText. The prebuilt/MCP path has no captured transcript,
+ * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
+ * text from the authored conversation instead of receiving an empty prompt.
+ *
+ * Accepts `undefined` because `testCase.conversation` is optional (seedThread-only
+ * cases carry none) and callers pass it straight through — no conversation → ''.
+ */
+export function conversationUserTurnsAsText(conversation: ConversationTurn[] | undefined): string {
+	if (!conversation) return '';
+	const turns = conversation
+		.filter((t) => t.role === 'user')
+		.map((t) => t.text)
+		.filter((text) => text.length > 0);
+
+	if (turns.length === 0) return '';
+	if (turns.length === 1) return turns[0];
+	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
+}
+
 /** Full transcript (agent narration + tool interactions, in order) as plain text for LLM-judged checks. */
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
@@ -53,6 +76,39 @@ export function transcriptAsText(transcript: TranscriptTurn[]): string {
 /** Concatenated agent narration across a turn's steps (excludes tool interactions). */
 export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
+}
+
+/** Tool id the builder calls to create or modify the workflow graph. */
+export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
+
+// build-workflow calls per turn (a suspend→resume is one call, so approvals don't inflate it).
+export function buildWorkflowCallsPerTurn(transcript: TranscriptTurn[]): number[] {
+	return transcript.map(
+		(turn) =>
+			turn.steps.filter(
+				(step) => step.kind === 'tool-call' && step.toolName === BUILD_WORKFLOW_TOOL_NAME,
+			).length,
+	);
+}
+
+// build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
+// error-forced rebuilds, which generalise across prompts better than the raw call count.
+export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
+	return transcript.map(
+		(turn) =>
+			turn.steps.filter((step) => {
+				if (step.kind !== 'tool-call' || step.toolName !== BUILD_WORKFLOW_TOOL_NAME) {
+					return false;
+				}
+				// step.error = the call threw; step.result.errors = it ran but returned errors — both are failed builds.
+				if (step.error !== undefined) return true;
+				return (
+					isRecord(step.result) &&
+					(step.result.success === false ||
+						(Array.isArray(step.result.errors) && step.result.errors.length > 0))
+				);
+			}).length,
+	);
 }
 
 // Cap each serialized field to bound judge token cost (matches the report's cap).

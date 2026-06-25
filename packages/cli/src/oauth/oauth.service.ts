@@ -133,6 +133,7 @@ export class OauthService {
 		// In the future, enabling SSRF "per feature" could be refined through configuration.
 		this.http = outboundHttp.requests({
 			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
+			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -1031,7 +1032,6 @@ export class OauthService {
 			method: 'POST',
 			body: registerPayload,
 			json: true,
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 		const registrationValidation =
 			dynamicClientRegistrationResponseSchema.safeParse(registerResult);
@@ -1103,7 +1103,6 @@ export class OauthService {
 			method: 'POST',
 			headers: { ...data },
 			encoding: 'text',
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
@@ -1189,7 +1188,6 @@ export class OauthService {
 				'content-type': 'application/x-www-form-urlencoded',
 			},
 			encoding: 'text',
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
@@ -1242,7 +1240,6 @@ export class OauthService {
 			method: 'GET',
 			json: true,
 			returnFullResponse: true,
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 		if (response.statusCode !== 200) {
 			throw new OperationalError(`Request failed with status code ${response.statusCode}`);
