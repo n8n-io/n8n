@@ -344,7 +344,7 @@ export class WooCommerce implements INodeType {
 							qs.max_price = options.maxPrice as string;
 						}
 						if (options.minPrice) {
-							qs.max_price = options.minPrice as string;
+							qs.min_price = options.minPrice as string;
 						}
 						if (options.order) {
 							qs.order = options.order as string;
