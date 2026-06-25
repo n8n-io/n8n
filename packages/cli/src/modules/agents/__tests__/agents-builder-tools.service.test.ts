@@ -4,7 +4,13 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -96,6 +102,8 @@ function makeService() {
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 
 	return {
@@ -105,6 +113,7 @@ function makeService() {
 		agentTaskService,
 		agentRepository,
 		nodeTypes,
+		outboundHttp,
 	};
 }
 
@@ -223,6 +232,16 @@ describe('AgentsBuilderToolsService', () => {
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
 		});
 
+		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
+			const { service, outboundHttp } = makeService();
+
+			service.getTools(agentId, projectId, credentialProvider, user);
+
+			expect(outboundHttp.transport).toHaveBeenCalledWith(
+				expect.not.objectContaining({ ssrf: 'disabled' }),
+			);
+		});
+
 		it('read_config returns the current config snapshot metadata', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent());
@@ -276,25 +295,21 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					id: agentId,
 					name: 'Current Agent',
-					description: 'The agent being edited',
 					activeVersionId: 'active-current',
 				},
 				{
 					id: 'agent-research',
 					name: 'Research Agent',
-					description: 'Finds information on the web',
 					activeVersionId: 'active-research',
 				},
 				{
 					id: 'agent-draft',
 					name: 'Draft Agent',
-					description: 'Not published yet',
 					activeVersionId: null,
 				},
 				{
 					id: 'agent-risk',
 					name: 'Risk Agent',
-					description: null,
 					activeVersionId: 'active-risk',
 				},
 			] as Agent[]);
@@ -307,7 +322,6 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
-						description: 'Finds information on the web',
 					},
 					{
 						agentId: 'agent-risk',
@@ -320,7 +334,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = { ...currentConfig, description: 'Updated description' };
+			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
@@ -337,7 +351,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -362,7 +376,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: 'stale-hash',
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -395,7 +409,7 @@ describe('AgentsBuilderToolsService', () => {
 			agent.integrations = [scheduleIntegration] as unknown as Agent['integrations'];
 			agentsService.findById.mockResolvedValue(agent);
 			agentsService.updateConfig.mockResolvedValue({
-				config: { ...currentConfig, integrations: [], description: 'Updated description' },
+				config: { ...currentConfig, integrations: [], instructions: 'Updated instructions' },
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -404,7 +418,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -416,7 +430,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({
 					integrations: [],
-					description: 'Updated description',
+					instructions: 'Updated instructions',
 				}),
 			);
 		});
@@ -717,7 +731,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const updatedConfig = {
 				...currentConfig,
-				description: 'Updated description',
+				instructions: 'Updated instructions',
 			};
 			const normalizedConfig = {
 				...updatedConfig,
@@ -736,7 +750,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,

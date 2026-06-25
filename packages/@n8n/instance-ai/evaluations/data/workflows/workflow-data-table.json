@@ -25,7 +25,7 @@
 	"complexity": "complex",
 	"tags": ["build", "schedule", "data-table", "n8n-api"],
 	"triggerType": "schedule",
-	"datasets": ["pr", "full"],
+	"datasets": ["mcp", "pr", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",

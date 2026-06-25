@@ -94,6 +94,8 @@ Return ONLY the structured result object with a top-level \`results\` array.
 Every result object must include \`failureCategory\` and \`rootCause\`.
 Use \`null\` for both fields when the checklist item passes.
 
+**Lead with the issue, then show your reasoning.** Reason through the trace, mock responses, and data flow to reach a definitive verdict — that analysis is what keeps you accurate, so keep the insight. Just make it digestible: open \`reasoning\` with one sentence stating what failed and why (the root cause), then back it with the evidence that matters — the relevant trace step, the mock response shape, the exact error and field. Keep \`rootCause\` to a crisp sentence or two naming the culprit node and cause. Stay focused on the single root cause: don't recap how mocking works, re-narrate the whole trace start-to-finish, or list every downstream node that didn't run. A reader should grasp the issue on the first pass and still find the mock/trace detail that backs it.
+
 For passes:
 
 \`\`\`json

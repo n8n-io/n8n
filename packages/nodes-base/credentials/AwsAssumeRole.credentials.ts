@@ -6,7 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-import { type AwsAssumeRoleCredentialsType, type AWSRegion } from './common/aws/types';
+import { type AWSRegion } from './common/aws/regions';
+import { type AwsAssumeRoleCredentialsType } from './common/aws/types';
 import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 import {
 	assumeRole,
