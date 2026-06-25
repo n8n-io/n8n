@@ -44,6 +44,14 @@ export class LogsPanel {
 		return this.root.getByTestId('logs-overview-body').getByRole('treeitem', { selected: true });
 	}
 
+	getActionsButton(): Locator {
+		return this.root.getByRole('button', { name: 'Actions' });
+	}
+
+	getSyncSelectionMenuItem(): Locator {
+		return this.root.getByTestId('logs-panel-actions-item-toggleSyncSelection');
+	}
+
 	getManualChatModal(): Locator {
 		return this.root.getByTestId('canvas-chat');
 	}
@@ -70,6 +78,10 @@ export class LogsPanel {
 
 	async open(): Promise<void> {
 		await this.root.getByTestId('logs-overview-header').click();
+	}
+
+	async openActions(): Promise<void> {
+		await this.getActionsButton().click();
 	}
 
 	async clickLogEntryAtRow(rowIndex: number): Promise<void> {
