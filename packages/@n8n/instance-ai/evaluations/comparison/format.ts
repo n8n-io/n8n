@@ -34,6 +34,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 interface FormatOptions {
 	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
@@ -446,7 +447,7 @@ function renderPerTestCaseDetails(
 	lines.push('');
 	const renderName = (tc: TestCaseAggregation): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ? `\`${slug}\`` : `\`${tc.testCase.conversation[0].text.slice(0, 70)}\``;
+		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
@@ -568,7 +569,7 @@ function renderFailureDetails(
 	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
 		const slug = fileSlug
 			? `${fileSlug}/${scenarioName}`
-			: `${tc.testCase.conversation[0].text.slice(0, 50).trim()} / ${scenarioName}`;
+			: `${caseDisplayPrompt(tc.testCase).slice(0, 50).trim()} / ${scenarioName}`;
 		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
 		for (const fr of failedRuns) {
 			const tag = fr.category ? ` [${fr.category}]` : '';
@@ -878,30 +879,28 @@ function formatTerminalPerTestCase(
 
 	const nameOf = (tc: TestCaseAggregation, max: number): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ?? tc.testCase.conversation[0].text.slice(0, max);
+		return slug ?? caseDisplayPrompt(tc.testCase).slice(0, max);
 	};
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
+			const units = [
+				...tc.executionScenarios,
+				...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
+			];
 			const meanPassAtK =
-				tc.executionScenarios.length > 0
+				units.length > 0
 					? Math.round(
-							(tc.executionScenarios.reduce(
-								(sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0),
-								0,
-							) /
-								tc.executionScenarios.length) *
+							(units.reduce((sum, u) => sum + (u.passAtK[u.passAtK.length - 1] ?? 0), 0) /
+								units.length) *
 								100,
 						)
 					: 0;
 			const meanPassHatK =
-				tc.executionScenarios.length > 0
+				units.length > 0
 					? Math.round(
-							(tc.executionScenarios.reduce(
-								(sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0),
-								0,
-							) /
-								tc.executionScenarios.length) *
+							(units.reduce((sum, u) => sum + (u.passHatK[u.passHatK.length - 1] ?? 0), 0) /
+								units.length) *
 								100,
 						)
 					: 0;
@@ -963,6 +962,15 @@ function formatTerminalPerTestCase(
 						lines.push(TERMINAL_INDENT + `        error: ${errs.join('; ').slice(0, 200)}`);
 					}
 					lines.push(TERMINAL_INDENT + `        diagnosis: ${sr.reasoning.slice(0, 200)}`);
+				}
+			}
+			for (const ea of tc.buildExpectations) {
+				const er = ea.runs[0];
+				if (!er) continue;
+				const status = er.incomplete ? 'SKIP' : er.pass ? 'PASS' : 'FAIL';
+				lines.push(TERMINAL_INDENT + `  ${status}  expectation: ${ea.expectation.slice(0, 80)}`);
+				if (status === 'FAIL') {
+					lines.push(TERMINAL_INDENT + `        ${er.reason.slice(0, 200)}`);
 				}
 			}
 		}

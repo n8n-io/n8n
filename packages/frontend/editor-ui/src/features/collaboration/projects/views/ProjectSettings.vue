@@ -615,6 +615,7 @@ onMounted(async () => {
 						<N8nIconPicker
 							v-model="projectIcon"
 							:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+							show-color-picker
 							@update:model-value="onIconUpdated"
 						/>
 						<N8nFormInput

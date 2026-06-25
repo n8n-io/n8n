@@ -1,8 +1,9 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 
 import { FacebookGraphApi } from '../FacebookGraphApi.node';
+import type { Mock } from 'vitest';
 
 describe('FacebookGraphApi node — binary upload', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
@@ -16,7 +17,7 @@ describe('FacebookGraphApi node — binary upload', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		node = new FacebookGraphApi();
 
@@ -34,10 +35,10 @@ describe('FacebookGraphApi node — binary upload', () => {
 		mockExecuteFunctions.getCredentials.mockResolvedValue({ accessToken: 'TOKEN' });
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 		mockExecuteFunctions.helpers = {
-			request: jest.fn().mockResolvedValue({ id: 'photo-id' }),
-			requestWithAuthentication: jest.fn(),
-			assertBinaryData: jest.fn().mockReturnValue(binaryDescriptor),
-			getBinaryDataBuffer: jest.fn().mockResolvedValue(binaryDataBuffer),
+			request: vi.fn().mockResolvedValue({ id: 'photo-id' }),
+			requestWithAuthentication: vi.fn(),
+			assertBinaryData: vi.fn().mockReturnValue(binaryDescriptor),
+			getBinaryDataBuffer: vi.fn().mockResolvedValue(binaryDataBuffer),
 		} as any;
 	});
 
@@ -65,7 +66,7 @@ describe('FacebookGraphApi node — binary upload', () => {
 
 		await node.execute.call(mockExecuteFunctions);
 
-		const requestMock = mockExecuteFunctions.helpers.request as jest.Mock;
+		const requestMock = mockExecuteFunctions.helpers.request as Mock;
 		expect(requestMock).toHaveBeenCalledTimes(1);
 
 		const requestArg = requestMock.mock.calls[0][0];
@@ -90,7 +91,7 @@ describe('FacebookGraphApi node — binary upload', () => {
 
 		await node.execute.call(mockExecuteFunctions);
 
-		const requestArg = (mockExecuteFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+		const requestArg = (mockExecuteFunctions.helpers.request as Mock).mock.calls[0][0];
 		expect(Object.keys(requestArg.formData)).toEqual(['source']);
 		expect(requestArg.formData.source.value).toBe(binaryDataBuffer);
 		expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(0, 'data');
@@ -101,7 +102,7 @@ describe('FacebookGraphApi node — binary upload', () => {
 
 		await node.execute.call(mockExecuteFunctions);
 
-		const requestArg = (mockExecuteFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+		const requestArg = (mockExecuteFunctions.helpers.request as Mock).mock.calls[0][0];
 		expect(requestArg.formData).toBeUndefined();
 		expect(mockExecuteFunctions.helpers.assertBinaryData).not.toHaveBeenCalled();
 		expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).not.toHaveBeenCalled();

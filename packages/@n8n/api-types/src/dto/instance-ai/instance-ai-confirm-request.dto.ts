@@ -15,6 +15,9 @@ const approvalConfirmSchema = z.object({
 	kind: z.literal('approval'),
 	approved: z.boolean(),
 	userInput: z.string().optional(),
+	/** `'session'` grants the same tool/action without re-asking for the rest of the
+	 *  thread ("always allow"). Absent/`'once'` approves this single request only. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 /** Q&A wizard submission (inputType='questions'). */

@@ -1,13 +1,21 @@
 import { Service } from '@n8n/di';
-import type { Thread, Author } from 'chat';
+import type { Thread, Author, Message } from 'chat';
+import type { Logger } from 'n8n-workflow';
 
 import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from './integration-tool-definitions';
 import type {
 	IntegrationAction,
+	IntegrationActionDefinition,
 	IntegrationActionResult,
 	IntegrationContextQuery,
+	IntegrationContextQueryDefinition,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
@@ -32,6 +40,34 @@ export interface AgentChatIntegrationBuilderGuidance {
 	capabilities: string[];
 	useIntegrationWhen: string[];
 	useNodeToolWhen: string[];
+}
+
+export interface PlatformAgentContext {
+	agentUserId?: string;
+}
+
+export interface BridgeStatusHandle {
+	clearBeforeResponse(): Promise<void>;
+}
+
+export interface BridgeExecutionContext {
+	platformAgentContext: PlatformAgentContext;
+	forceBuffered?: boolean;
+	statusHandle?: BridgeStatusHandle;
+}
+
+export type BridgeResumeExecutionContext = Pick<
+	BridgeExecutionContext,
+	'forceBuffered' | 'statusHandle'
+>;
+
+export interface BridgeMessageContextParams {
+	chat: ChatInstance;
+	thread: Thread<unknown, unknown>;
+	message: Message<unknown>;
+	logger: Logger;
+	agentId: string;
+	statusRetry?: AbortController;
 }
 
 /**
@@ -72,17 +108,38 @@ export abstract class AgentChatIntegration {
 	/**
 	 * Component types this platform supports in integration action cards.
 	 * Omit to signal that the platform has no rich card surface.
+	 * Typed by the shared list so a new component type must be added to
+	 * `RICH_CARD_COMPONENT_TYPES` in `@n8n/api-types` first — which in turn
+	 * forces the wire schema and the n8n chat renderer to handle it.
 	 */
-	readonly supportedComponents?: string[];
+	readonly supportedComponents?: readonly RichCardComponentType[];
+
+	/** Read-only context query definitions exposed through the generated context tool. */
+	readonly contextToolDefinitions: IntegrationContextQueryDefinition[] =
+		resolveIntegrationContextQueryDefinitions([
+			'get_current_message_context',
+			'get_current_subject',
+		]);
+
+	/** Side-effecting action definitions exposed through the generated action tool. */
+	readonly actionToolDefinitions: IntegrationActionDefinition[] =
+		resolveIntegrationActionDefinitions(['respond']);
+
+	/** Optional additional guidance appended to the generated context tool description. */
+	readonly contextToolGuidance?: string[];
+
+	/** Optional additional guidance appended to the generated action tool description. */
+	readonly actionToolGuidance?: string[];
 
 	/** Read-only context queries exposed through the generated integration context tool. */
-	readonly contextQueries: IntegrationContextQuery[] = [
-		'get_current_message_context',
-		'get_current_subject',
-	];
+	get contextQueries(): IntegrationContextQuery[] {
+		return this.contextToolDefinitions.map((definition) => definition.name);
+	}
 
 	/** Side-effecting actions exposed through the generated integration action tool. */
-	readonly actions: IntegrationAction[] = ['respond'];
+	get actions(): IntegrationAction[] {
+		return this.actionToolDefinitions.map((definition) => definition.name);
+	}
 
 	/**
 	 * True if this platform has a small callback_data limit (Telegram: 64 bytes).
@@ -96,6 +153,21 @@ export abstract class AgentChatIntegration {
 	 * message instead of streaming text deltas via post-and-edit.
 	 */
 	readonly disableStreaming: boolean = false;
+
+	/**
+	 * True when this integration is an internal channel (e.g. the in-app n8n
+	 * chat) that must not appear in the public integrations catalog or the
+	 * add-trigger UI.
+	 */
+	readonly internal: boolean = false;
+
+	/**
+	 * True when this integration needs a platform Chat SDK instance (adapter +
+	 * credential) to execute actions and context queries. Internal channels
+	 * (e.g. the in-app n8n chat) set this to false — the executors then skip
+	 * `getChatInstance` and delegate directly with `chat: undefined`.
+	 */
+	readonly requiresChatInstance: boolean = true;
 
 	/**
 	 * True if this integration must run on the leader main only.
@@ -178,6 +250,31 @@ export abstract class AgentChatIntegration {
 	isUserAllowed?(author: Author, settings: AgentIntegrationConfig | undefined): boolean;
 
 	/**
+	 * Optional platform context needed by the bridge before execution. Slack uses
+	 * this to persist the bot user ID and strip self-mentions from inbound text.
+	 */
+	getPlatformAgentContext?(chat: ChatInstance): PlatformAgentContext;
+
+	/** Optional text normalization before the message is handed to the agent. */
+	prepareInboundText?(text: string, context: PlatformAgentContext): string;
+
+	/**
+	 * Optional per-message execution policy for platform-specific bridge behavior,
+	 * such as status indicators or forcing buffered output for a specific thread.
+	 */
+	createBridgeExecutionContext?(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext>;
+
+	/** Optional stream/status policy for responses after interactive resume actions. */
+	createResumeExecutionContext?(params: {
+		chat: ChatInstance;
+		thread: Thread<unknown, unknown>;
+		logger: Logger;
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext>;
+
+	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,
 	 * Slack `search_users`). The central executor handles only the cross-platform
 	 * message-context queries before delegating here.
@@ -200,7 +297,8 @@ export abstract class AgentChatIntegration {
 
 /** Per-platform context-query execution params. */
 export interface PlatformContextQueryParams {
-	chat: ChatInstance;
+	/** `undefined` only for integrations with `requiresChatInstance === false`. */
+	chat: ChatInstance | undefined;
 	descriptor: IntegrationToolConnectionDescriptor;
 	query: IntegrationContextQuery;
 	input: Record<string, unknown>;
@@ -208,7 +306,8 @@ export interface PlatformContextQueryParams {
 
 /** Per-platform action-execution params. */
 export interface PlatformActionParams {
-	chat: ChatInstance;
+	/** `undefined` only for integrations with `requiresChatInstance === false`. */
+	chat: ChatInstance | undefined;
 	descriptor: IntegrationToolConnectionDescriptor;
 	action: IntegrationAction;
 	input: Record<string, unknown>;
@@ -242,5 +341,10 @@ export class ChatIntegrationRegistry {
 
 	list(): AgentChatIntegration[] {
 		return [...this.integrations.values()];
+	}
+
+	/** Registered integrations that appear in the public catalog (excludes internal channels). */
+	listPublic(): AgentChatIntegration[] {
+		return this.list().filter((integration) => !integration.internal);
 	}
 }

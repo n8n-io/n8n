@@ -44,6 +44,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxEnabled: sandboxStatus.enabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
+			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 		};
 	}
 
@@ -67,6 +68,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiMcpRegistryConnection } = await import(
 			'./entities/instance-ai-mcp-registry-connection.entity'
 		);
+		const { InstanceAiThreadGrant } = await import('./entities/instance-ai-thread-grant.entity');
 
 		return [
 			InstanceAiThread,
@@ -80,6 +82,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiObservationCursor,
 			InstanceAiObservationLock,
 			InstanceAiMcpRegistryConnection,
+			InstanceAiThreadGrant,
 		];
 	}
 

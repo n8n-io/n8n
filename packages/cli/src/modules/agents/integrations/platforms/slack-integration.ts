@@ -1,19 +1,33 @@
 import { Service } from '@n8n/di';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
+	type PlatformAgentContext,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
+import type { ChatInstance } from '../chat-integration.service';
 import { loadSlackAdapter } from '../esm-loader';
-import type {
-	IntegrationAction,
-	IntegrationActionResult,
-	IntegrationContextQuery,
-} from '../integration-tools';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from '../integration-tool-definitions';
+import { connectionUnavailable } from '../integration-helpers';
+import type { IntegrationActionResult } from '../integration-tools';
+import {
+	createSlackBridgeExecutionContext,
+	createSlackResumeExecutionContext,
+	getSlackPlatformAgentContext,
+	prepareSlackInboundText,
+} from './slack-bridge-behavior';
 import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
+import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
 
 /**
  * Slack platform integration.
@@ -48,7 +62,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly supportedComponents = [
+	readonly supportedComponents: readonly RichCardComponentType[] = [
 		'section',
 		'button',
 		'select',
@@ -58,7 +72,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
-	readonly contextQueries: IntegrationContextQuery[] = [
+	readonly contextToolDefinitions = resolveIntegrationContextQueryDefinitions([
 		'get_current_message_context',
 		'get_current_subject',
 		'get_current_user',
@@ -67,16 +81,38 @@ export class SlackIntegration extends AgentChatIntegration {
 		'get_channel_info',
 		'search_users',
 		'search_channels',
+	]);
+
+	readonly actionToolDefinitions = [
+		...resolveIntegrationActionDefinitions(['respond', 'send_dm', 'send_channel_message']),
+		...SLACK_ACTION_TOOL_DEFINITIONS,
 	];
 
-	readonly actions: IntegrationAction[] = [
-		'respond',
-		'send_dm',
-		'send_channel_message',
-		'add_reaction',
-	];
+	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
+		return getSlackPlatformAgentContext(chat);
+	}
+
+	prepareInboundText(text: string, context: PlatformAgentContext): string {
+		return prepareSlackInboundText(text, context);
+	}
+
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		return await createSlackBridgeExecutionContext(params);
+	}
+
+	async createResumeExecutionContext(params: {
+		chat: ChatInstance;
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return await createSlackResumeExecutionContext(params);
+	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeSlackContextQuery({
 			chat: params.chat,
 			query: params.query,
@@ -85,6 +121,7 @@ export class SlackIntegration extends AgentChatIntegration {
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeSlackAction({
 			chat: params.chat,
 			descriptor: params.descriptor,

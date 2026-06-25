@@ -1,6 +1,6 @@
 import type { LanguageModel } from 'ai';
 
-import { createEmbeddingModel, createModel } from '../model-factory';
+import { createEmbeddingModel, createModel } from '../model/model-factory';
 
 type ProviderOpts = {
 	apiKey?: string;

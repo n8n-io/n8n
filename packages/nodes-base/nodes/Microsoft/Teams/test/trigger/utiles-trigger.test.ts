@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -11,10 +11,11 @@ import {
 	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
 import { microsoftApiRequest } from '../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../v2/transport', () => ({
+vi.mock('../../v2/transport', () => ({
 	microsoftApiRequest: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 }));
 
@@ -25,12 +26,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mock();
 		mockHookFunctions = mock();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('fetchAllTeams', () => {
 		it('should fetch all teams and map them correctly', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+			(microsoftApiRequest.call as Mock).mockResolvedValue({
 				value: [
 					{ id: 'team1', displayName: 'Team 1' },
 					{ id: 'team2', displayName: 'Team 2' },
@@ -51,7 +52,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should throw an error if getTeams fails', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(new Error('Failed to fetch teams'));
+			(microsoftApiRequest.call as Mock).mockRejectedValue(new Error('Failed to fetch teams'));
 
 			await expect(fetchAllTeams.call(mockLoadOptionsFunctions)).rejects.toThrow(
 				'Failed to fetch teams',
@@ -61,7 +62,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 	describe('fetchAllChannels', () => {
 		it('should fetch all channels for a team and map them correctly', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+			(microsoftApiRequest.call as Mock).mockResolvedValue({
 				value: [
 					{ id: 'channel1', displayName: 'Channel 1' },
 					{ id: 'channel2', displayName: 'Channel 2' },
@@ -82,9 +83,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should throw an error if getChannels fails', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(
-				new Error('Failed to fetch channels'),
-			);
+			(microsoftApiRequest.call as Mock).mockRejectedValue(new Error('Failed to fetch channels'));
 
 			await expect(fetchAllChannels.call(mockLoadOptionsFunctions, 'team1')).rejects.toThrow(
 				'Failed to fetch channels',
@@ -94,7 +93,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 	describe('createSubscription', () => {
 		it('should create a subscription and return the subscription ID', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+			(microsoftApiRequest.call as Mock).mockResolvedValue({
 				id: 'subscription123',
 				resource: '/resource/path',
 				notificationUrl: 'https://webhook.url',
@@ -116,7 +115,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should include clientState in the subscription body when provided', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+			(microsoftApiRequest.call as Mock).mockResolvedValue({
 				id: 'subscription123',
 				resource: '/resource/path',
 				notificationUrl: 'https://webhook.url',
@@ -139,7 +138,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should omit clientState from the subscription body when not provided', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+			(microsoftApiRequest.call as Mock).mockResolvedValue({
 				id: 'subscription123',
 				resource: '/resource/path',
 				notificationUrl: 'https://webhook.url',
@@ -148,7 +147,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 			await createSubscription.call(mockHookFunctions, 'https://webhook.url', '/resource/path');
 
-			const requestBody = (microsoftApiRequest.call as jest.Mock).mock.calls[0][3] as Record<
+			const requestBody = (microsoftApiRequest.call as Mock).mock.calls[0][3] as Record<
 				string,
 				unknown
 			>;
@@ -160,7 +159,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				message: 'API request failed',
 				httpCode: '400',
 			});
-			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(error);
+			(microsoftApiRequest.call as Mock).mockRejectedValue(error);
 
 			await expect(
 				createSubscription.call(mockHookFunctions, 'https://webhook.url', '/resource/path'),
@@ -187,28 +186,28 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 		beforeEach(() => {
 			mockWebhookFunctions = {
-				getRequestObject: jest.fn(),
-				getWorkflowStaticData: jest.fn(),
+				getRequestObject: vi.fn(),
+				getWorkflowStaticData: vi.fn(),
 			};
 		});
 
 		it('should return true when no secret is stored (backward compatibility)', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{ clientState: 'anything' }] },
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
 			expect(result).toBe(true);
 		});
 
 		it('should return true when clientState matches the stored secret', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: {
 					value: [{ clientState: 'expected-secret' }],
 				},
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			});
 
@@ -217,10 +216,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should return false when clientState does not match the stored secret', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{ clientState: 'wrong-secret-aa' }] },
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			});
 
@@ -229,10 +228,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should return false when clientState is missing from the notification', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{}] },
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			});
 
@@ -241,7 +240,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should return true when all notifications in a batch have matching clientState', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: {
 					value: [
 						{ clientState: 'expected-secret' },
@@ -250,7 +249,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					],
 				},
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			});
 
@@ -259,7 +258,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should return false when any notification in a batch has mismatched clientState', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: {
 					value: [
 						{ clientState: 'expected-secret' },
@@ -268,7 +267,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					],
 				},
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			});
 
@@ -277,12 +276,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should return false when any notification in a batch is missing clientState', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: {
 					value: [{ clientState: 'expected-secret' }, {}, { clientState: 'expected-secret' }],
 				},
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			});
 
@@ -361,7 +360,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		it('should return the correct resource path for newTeamMember event with watchAllTeams', async () => {
 			mockHookFunctions.getNodeParameter.mockReturnValueOnce(true);
 
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValueOnce({
+			(microsoftApiRequest.call as Mock).mockResolvedValueOnce({
 				value: [
 					{ id: 'team1', displayName: 'Team 1' },
 					{ id: 'team2', displayName: 'Team 2' },

@@ -1,6 +1,6 @@
 import { CredentialsHelper } from '@nodes-testing/credentials-helper';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { convertN8nRequestToAxios } from 'n8n-core/dist/execution-engine/node-execution-context/utils/request-helpers/http-request';
+import { convertN8nRequestToAxios } from '@n8n/backend-network/testing';
 import type {
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
+import type { MockInstance } from 'vitest';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
@@ -128,8 +129,8 @@ describe('Microsoft Entra Node', () => {
 				},
 			};
 			const context = {
-				getNode: jest.fn().mockReturnValue({ name: 'Microsoft Entra ID' }),
-				getNodeParameter: jest.fn((parameterName: string) => {
+				getNode: vi.fn().mockReturnValue({ name: 'Microsoft Entra ID' }),
+				getNodeParameter: vi.fn((parameterName: string) => {
 					if (parameterName === 'resource') return 'user';
 					if (parameterName === 'operation') return 'delete';
 					return '';
@@ -147,12 +148,12 @@ describe('Microsoft Entra Node', () => {
 		it('should load group properties', async () => {
 			const mockContext = {
 				helpers: {
-					requestWithAuthentication: jest
+					requestWithAuthentication: vi
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.groups),
 				},
-				getCurrentNodeParameter: jest.fn(),
-				getCredentials: jest.fn().mockResolvedValue({
+				getCurrentNodeParameter: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -168,12 +169,12 @@ describe('Microsoft Entra Node', () => {
 		it('should load user properties', async () => {
 			const mockContext = {
 				helpers: {
-					requestWithAuthentication: jest
+					requestWithAuthentication: vi
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.users),
 				},
-				getCurrentNodeParameter: jest.fn(),
-				getCredentials: jest.fn().mockResolvedValue({
+				getCurrentNodeParameter: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -196,12 +197,12 @@ describe('Microsoft Entra Node', () => {
 				})),
 				'@odata.nextLink': '',
 			};
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 			const mockContext = {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -235,12 +236,12 @@ describe('Microsoft Entra Node', () => {
 				})),
 				'@odata.nextLink': '',
 			};
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 			const mockContext = {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -289,12 +290,12 @@ describe('Microsoft Entra Node', () => {
 			},
 		};
 
-		let updateCredentialsSpy: jest.SpyInstance;
+		let updateCredentialsSpy: MockInstance;
 
 		beforeEach(() => {
-			jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
+			vi.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
 
-			updateCredentialsSpy = jest
+			updateCredentialsSpy = vi
 				.spyOn(CredentialsHelper.prototype, 'updateCredentialsOauthTokenData')
 				.mockResolvedValue();
 
@@ -341,7 +342,7 @@ describe('Microsoft Entra Node', () => {
 		});
 
 		afterAll(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		testHarness.setupTest(

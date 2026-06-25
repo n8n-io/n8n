@@ -537,7 +537,7 @@ export class FacebookGraphApi implements INodeType {
 				continue;
 			}
 
-			returnItems.push({ json: response });
+			returnItems.push({ json: response, pairedItem: { item: itemIndex } });
 		}
 
 		return [returnItems];

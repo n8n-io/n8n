@@ -30,6 +30,16 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const documentId = createWorkflowDocumentId('1');
 const opts: PushHandlerOptions = {
 	router: mock<Router>(),
@@ -621,6 +631,81 @@ describe('executionFinished', () => {
 
 		expect(fetchSpy).toHaveBeenCalledWith('exec-x');
 	});
+
+	it('processes a late finish for the execution this document just stopped', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		// The stop poll already cleared the active id (the stop endpoint persists
+		// `canceled` before the scaling-mode worker aborts), so the worker's late
+		// finish only matches via the stopped-execution marker. It must still be
+		// processed so trimmed run-data placeholders get backfilled from the API.
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue(undefined);
+		vi.spyOn(workflowExecutionStateStore, 'stoppedExecutionId', 'get').mockReturnValue(
+			'stopped-exec',
+		);
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(null);
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'stopped-exec', workflowId: '1', status: 'canceled' },
+			},
+			opts,
+		);
+
+		// The marker is consumed before processing so a duplicate push is inert.
+		expect(workflowExecutionStateStore.clearStoppedExecutionId).toHaveBeenCalled();
+		expect(fetchSpy).toHaveBeenCalledWith('stopped-exec');
+	});
+
+	it('ignores a finish that does not match the stopped-execution marker', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue(undefined);
+		vi.spyOn(workflowExecutionStateStore, 'stoppedExecutionId', 'get').mockReturnValue(
+			'stopped-exec',
+		);
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById');
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'foreign-exec', workflowId: '1', status: 'success' },
+			},
+			opts,
+		);
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.clearStoppedExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('does not let a stale stopped-execution marker hijack a newer run', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		// A new run is being tracked; the old stopped execution's late finish must
+		// be dropped (processing it would clear the new run's tracking).
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('new-exec');
+		vi.spyOn(workflowExecutionStateStore, 'stoppedExecutionId', 'get').mockReturnValue('old-exec');
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById');
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'old-exec', workflowId: '1', status: 'canceled' },
+			},
+			opts,
+		);
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.clearStoppedExecutionId).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.setActiveExecutionId).not.toHaveBeenCalled();
+	});
 });
 
 describe('manual execution stats tracking', () => {
@@ -671,11 +756,13 @@ describe('manual execution stats tracking', () => {
 		it('shows success toast when executed node has run data', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send Telegram';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -702,11 +789,13 @@ describe('manual execution stats tracking', () => {
 		it('shows warning toast when executed node was not reached', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -731,11 +820,13 @@ describe('manual execution stats tracking', () => {
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {

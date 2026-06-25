@@ -1,7 +1,6 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialTypes } from '@/credential-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -38,9 +37,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'CredentialsEntity',
+		'SharedCredentials',
+	]);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	testServer.license.enable(LICENSE_FEATURES.N8N_PACKAGES);
 	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
 });
 
@@ -86,7 +89,7 @@ async function buildImportPackage(): Promise<Buffer> {
 			connections: {},
 			versionId: 'wire-version-id',
 			parentFolderId: null,
-			active: false,
+			isPublished: false,
 			isArchived: false,
 		}),
 	);
@@ -145,6 +148,7 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					publishing: { state: 'unchanged' },
 					status: 'created',
 				},
 			],
@@ -152,8 +156,30 @@ describe('POST /n8n-packages/import', () => {
 				workflows: { 'wf-http-source': expect.any(String) },
 				credentials: {},
 			},
+			credentials: {
+				matched: [],
+				stubbed: [],
+			},
 		});
 
+		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('accepts a request that supplies every documented form field', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('folderId', '')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('credentialBindings', '{}')
+			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'new')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
 	});
 
@@ -179,22 +205,19 @@ describe('POST /n8n-packages/import', () => {
 
 		expect(response.statusCode).toBe(409);
 		expect(response.body).toMatchObject({
-			code: 409,
-			message: expect.stringContaining('already exist in the target project'),
-			meta: {
-				code: 'WORKFLOW_CONFLICT',
-				conflicts: [
-					{
-						sourceWorkflowId: 'wf-http-source',
-						existingWorkflowId,
-						name: 'HTTP Imported',
-					},
-				],
-			},
+			message: expect.stringContaining('Import blocked'),
+			issues: [
+				{
+					type: 'workflow-conflict',
+					sourceWorkflowId: 'wf-http-source',
+					existingWorkflowId,
+					name: 'HTTP Imported',
+				},
+			],
 		});
 	});
 
-	test('returns 422 when credential references cannot be resolved', async () => {
+	test('returns 422 when credential references cannot be resolved under must-preexist', async () => {
 		const tarBuffer = await buildImportPackageBuffer(
 			[
 				serializedWorkflowWithCredential({
@@ -210,17 +233,48 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('workflowConflictPolicy', 'fail')
+			.field('credentialMissingMode', 'must-preexist')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(422);
 		expect(response.body).toMatchObject({
-			message: expect.stringContaining('credential reference'),
-			failures: [
+			message: expect.stringContaining('Import blocked'),
+			issues: [
 				expect.objectContaining({
+					type: 'credential-unresolved',
 					kind: 'not_found',
 					sourceId: 'non-existent-credential',
 				}),
 			],
 		});
+	});
+
+	test('creates stub credentials by default when references are missing', async () => {
+		const tarBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-stub',
+					name: 'Stub Credential Workflow',
+					credentialId: 'missing-credential',
+					credentialName: 'Missing',
+				}),
+			],
+			{ sourceId: 'http-integration-credential-stub' },
+		);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.credentials).toEqual({
+			matched: [],
+			stubbed: ['missing-credential'],
+		});
+		expect(response.body.bindings.credentials).toEqual({
+			'missing-credential': expect.any(String),
+		});
+		expect(response.body.workflows).toHaveLength(1);
 	});
 });

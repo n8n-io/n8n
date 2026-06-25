@@ -1,20 +1,22 @@
 import { z } from 'zod';
 
-jest.mock('@n8n/instance-ai', () => ({
-	workflowLoopStateSchema: z.string(),
-	attemptRecordSchema: z.object({}),
-	workflowBuildOutcomeSchema: z.string(),
-	buildAgentTreeFromEvents: jest.fn(() => ({
-		agentId: 'agent-root',
-		role: 'orchestrator',
-		status: 'active',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [],
-	})),
-}));
+jest.mock('@n8n/instance-ai', () => {
+	return {
+		workflowLoopStateSchema: z.string(),
+		attemptRecordSchema: z.object({}),
+		workflowBuildOutcomeSchema: z.string(),
+		buildAgentTreeFromEvents: jest.fn(() => ({
+			agentId: 'agent-root',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [],
+			timeline: [],
+		})),
+	};
+});
 
 // The controller imports validation helpers via the parsers subpath so they
 // don't pull in native agent. Re-export the real implementation for the test.
@@ -26,6 +28,8 @@ jest.mock('../eval/execution.service', () => ({
 
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -48,6 +52,7 @@ import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -57,6 +62,8 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
+import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -98,12 +105,17 @@ describe('InstanceAiController', () => {
 	const credentialsService = mock<CredentialsService>();
 	const projectService = mock<ProjectService>();
 
+	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+	const evalThreadRestore = mock<EvalThreadRestoreService>();
+
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		evalCredentialAllowlists,
+		evalThreadRestore,
 		eventBus,
 		moduleRegistry,
 		push,
@@ -126,6 +138,7 @@ describe('InstanceAiController', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
 			timeZone: 'Europe/Helsinki',
+			attachments: undefined,
 		});
 
 		it('should require instanceAi:message scope', () => {
@@ -145,6 +158,7 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				payload.message,
 				payload.attachments,
+				payload.context,
 				payload.timeZone,
 				payload.pushRef,
 			);
@@ -165,6 +179,7 @@ describe('InstanceAiController', () => {
 				message: 'build me a workflow',
 				pushRef: 'iframe-push-ref-123',
 				timeZone: 'UTC',
+				attachments: undefined,
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
@@ -177,8 +192,41 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				payloadWithPushRef.message,
 				payloadWithPushRef.attachments,
+				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+			);
+		});
+
+		it('should forward handoff context to startRun', async () => {
+			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				message: 'How do I set up Gmail OAuth?',
+				context: {
+					source: 'credential-modal',
+					credential: {
+						credentialType: 'gmailOAuth2Api',
+						displayName: 'Gmail OAuth2 API',
+						documentationUrl:
+							'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+					},
+				},
+				timeZone: 'UTC',
+				attachments: undefined,
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-3');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithContext);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithContext.message,
+				payloadWithContext.attachments,
+				payloadWithContext.context,
+				payloadWithContext.timeZone,
+				payloadWithContext.pushRef,
 			);
 		});
 
@@ -200,7 +248,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
 				message: 'see attached',
-				attachments: [{ data: '', mimeType: 'application/zip', fileName: 'archive.zip' }],
+				attachments: [
+					{ type: 'file', data: '', mimeType: 'application/zip', fileName: 'archive.zip' },
+				],
 				timeZone: 'UTC',
 			});
 
@@ -217,8 +267,8 @@ describe('InstanceAiController', () => {
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
 				message: 'see attached',
 				attachments: [
-					{ data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
-					{ data: '', mimeType: 'image/png', fileName: 'photo.png' },
+					{ type: 'file', data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
+					{ type: 'file', data: '', mimeType: 'image/png', fileName: 'photo.png' },
 				],
 				timeZone: 'UTC',
 			});
@@ -481,6 +531,153 @@ describe('InstanceAiController', () => {
 			await expect(
 				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('executeWithLlmMock', () => {
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('executeWithLlmMock')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+	});
+
+	describe('setThreadCredentialAllowlist', () => {
+		const payload = { threadId: THREAD_ID, credentialIds: ['cred-1', 'cred-2'] };
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('setThreadCredentialAllowlist')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should pin the allowlist for an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.setThreadCredentialAllowlist(
+				req,
+				res,
+				payload as InstanceAiEvalCredentialAllowlistRequest,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(evalCredentialAllowlists.get(THREAD_ID)).toEqual(['cred-1', 'cred-2']);
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.setThreadCredentialAllowlist(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialAllowlistRequest,
+				),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('restoreEvalThread', () => {
+		const seedMessages = [
+			{ id: 'm1', type: 'llm', role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' },
+		];
+		const seedWorkflow = { id: 'wf-1', name: 'Seeded', nodes: [], connections: {} };
+		const payload = {
+			threadId: THREAD_ID,
+			messages: seedMessages,
+			workflows: [seedWorkflow],
+		} as InstanceAiEvalRestoreThreadRequest;
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('restoreEvalThread')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+
+		it('should recreate referenced workflows in the thread project, then seed messages', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+
+			const result = await controller.restoreEvalThread(req, res, payload);
+
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				expect.any(Map),
+			);
+			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				seedMessages,
+			);
+			expect(result).toEqual({
+				ok: true,
+				threadId: THREAD_ID,
+				restored: 1,
+				workflowIds: ['wf-1'],
+				dataTableIds: [],
+			});
+		});
+
+		it('should recreate data tables first and pass their id map to workflow restore', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			const idMap = new Map([['dt-old-1234', 'dt-new']]);
+			evalThreadRestore.restoreDataTables.mockResolvedValue(idMap);
+
+			const dataTable = {
+				id: 'dt-old-1234',
+				name: 'FAQs',
+				columns: [{ name: 'a', type: 'string' as const }],
+			};
+			const result = await controller.restoreEvalThread(req, res, {
+				...payload,
+				dataTables: [dataTable],
+			} as InstanceAiEvalRestoreThreadRequest);
+
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1');
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				idMap,
+			);
+			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('should roll back created workflows and data tables when a later step fails', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+			evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
+			memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow('boom');
+
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
+			expect(evalThreadRestore.deleteDataTables).toHaveBeenCalledWith(['dt-new'], 'project-1');
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(NotFoundError);
+			expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
+		});
+
+		it("should reject another user's thread", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should reject a thread without a project binding', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue(undefined);
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1001,6 +1198,72 @@ describe('InstanceAiController', () => {
 			await controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes());
 
 			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+		});
+
+		describe('connection cleanup', () => {
+			const unsubscribeRequest = jest.fn();
+			const unsubscribeDisconnect = jest.fn();
+
+			/** Open the SSE stream and return the handlers registered on res events. */
+			const openStream = async () => {
+				gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+				const gateway = mock<LocalGateway>({ isConnected: true });
+				gateway.onRequest.mockReturnValue(unsubscribeRequest);
+				gateway.onDisconnect.mockReturnValue(unsubscribeDisconnect);
+				gatewayService.getLocalGateway.mockReturnValue(gateway);
+
+				const res = makeFlushableRes();
+				await controller.gatewayEvents(makeGatewayReq('session-key'), res);
+
+				const handlerFor = (event: string) =>
+					(res.once as jest.Mock).mock.calls.find(([name]) => name === event)?.[1] as
+						| (() => void)
+						| undefined;
+				return { onClose: handlerFor('close'), onFinish: handlerFor('finish') };
+			};
+
+			it("should start the disconnect grace timer on res 'close'", async () => {
+				// Client-drop detection must hang off res 'close' — req 'close' tracks the
+				// request message (already complete for a GET) and res 'finish' only fires
+				// on server-initiated end, so neither fires when the daemon dies.
+				const { onClose } = await openStream();
+				expect(onClose).toBeDefined();
+
+				onClose!();
+
+				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledWith(
+					USER_ID,
+					expect.any(Function),
+				);
+				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
+				expect(unsubscribeDisconnect).toHaveBeenCalledTimes(1);
+			});
+
+			it('should push disconnected state when the grace timer fires', async () => {
+				const { onClose } = await openStream();
+
+				onClose!();
+				const [, onTimerFired] = gatewayService.startDisconnectTimer.mock.calls[0];
+				onTimerFired();
+
+				expect(push.sendToUsers).toHaveBeenCalledWith(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+					},
+					[USER_ID],
+				);
+			});
+
+			it("should run cleanup only once when both 'close' and 'finish' fire", async () => {
+				const { onClose, onFinish } = await openStream();
+
+				onClose!();
+				onFinish!();
+
+				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledTimes(1);
+				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 

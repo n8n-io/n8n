@@ -5,6 +5,7 @@ import { useCanvasNodeGroupDrag } from './useCanvasNodeGroupDrag';
 import { CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
@@ -62,6 +63,7 @@ describe('useCanvasNodeGroupDrag', () => {
 	function setup(opts?: {
 		groups?: Array<{ id: string; nodeIds: string[] }>;
 		getNodeDisplaySize?: (id: string) => { width: number; height: number } | undefined;
+		getNodeVisualOffset?: (id: string) => { x: number; y: number };
 	}) {
 		updateNodeMock.mockClear();
 		findNodeMock.mockReset();
@@ -83,6 +85,7 @@ describe('useCanvasNodeGroupDrag', () => {
 			getGroupForNode,
 			isNodeInGroup,
 			getNodeDisplaySize: opts?.getNodeDisplaySize,
+			getNodeVisualOffset: opts?.getNodeVisualOffset,
 		});
 		return { drag, getGroupForNode, isNodeInGroup };
 	}
@@ -185,21 +188,37 @@ describe('useCanvasNodeGroupDrag', () => {
 		]);
 	});
 
-	it('emits moves when drag has zero delta', () => {
-		// VueFlow fires drag-stop for click-without-drag — emit unchanged
-		// positions for consistency with single-node behaviour.
+	it('emits no moves when drag has zero delta', () => {
+		// VueFlow fires drag-stop for click-without-drag — committing the
+		// unchanged positions would bake live push offsets into the document.
 		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
 		const moves = drag.processNodeDragStop(makeEvent(groupNode));
-		// Zero delta; positions are unchanged.
+		expect(moves).toEqual([]);
+	});
+
+	it('does not bake push offsets when a pushed group title bar is clicked without moving', () => {
+		const { drag } = setup({ getNodeVisualOffset: () => ({ x: 0, y: 216 }) });
+		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
+		drag.onNodeDragStart(makeEvent(groupNode));
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
+		expect(moves).toEqual([]);
+	});
+
+	it('bakes push offsets into member moves when the group actually moved', () => {
+		const { drag } = setup({ getNodeVisualOffset: () => ({ x: 0, y: 216 }) });
+		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
+		drag.onNodeDragStart(makeEvent(groupNode));
+		groupNode.position = { x: 50, y: 0 };
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
 		expect(moves).toEqual([
-			{ id: 'a', position: { x: 100, y: 200 } },
-			{ id: 'b', position: { x: 300, y: 200 } },
+			{ id: 'a', position: { x: 150, y: 416 } },
+			{ id: 'b', position: { x: 350, y: 416 } },
 		]);
 	});
 
-	describe('multi-select drag (AC #11)', () => {
+	describe('multi-select drag', () => {
 		it('propagates Δ to the group nodes when the title bar is part of a multi-select drag', () => {
 			const { drag } = setup();
 			const groupNode = makeGroupGraphNode('group:g1', 0, 0);
@@ -234,6 +253,41 @@ describe('useCanvasNodeGroupDrag', () => {
 			expect(aMoves[0].position).toEqual({ x: 110, y: 210 });
 		});
 
+		it('moves both groups when dragging a multi-selection of two title bars', () => {
+			// Repro: VueFlow fires both selectionDragStart and nodeDragStart on
+			// multi-select — the per-node handler must not clobber the selection
+			// snapshots (otherwise the non-clicked group "bounces back" on stop).
+			const { drag } = setup();
+			const groupA = makeGroupGraphNode('group:g1', 0, 0);
+			const groupB = makeGroupGraphNode('group:g2', 0, 0);
+			const selEvent = makeSelectionEvent(groupA, groupB);
+
+			// Replay both events VueFlow emits for the clicked node.
+			drag.onSelectionDragStart(selEvent);
+			drag.onNodeDragStart({ ...selEvent, node: groupA });
+
+			// Move the selection by (10, 20).
+			groupA.position = { x: 10, y: 20 };
+			groupB.position = { x: 10, y: 20 };
+			drag.onSelectionDrag(selEvent);
+			drag.onNodeDrag({ ...selEvent, node: groupA });
+
+			expect(updateNodeMock).toHaveBeenCalledWith('a', { position: { x: 110, y: 220 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('b', { position: { x: 310, y: 220 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('c', { position: { x: 510, y: 520 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('d', { position: { x: 710, y: 520 } });
+
+			const moves = drag.processSelectionDragStop(selEvent);
+			expect(moves).toEqual(
+				expect.arrayContaining([
+					{ id: 'a', position: { x: 110, y: 220 } },
+					{ id: 'b', position: { x: 310, y: 220 } },
+					{ id: 'c', position: { x: 510, y: 520 } },
+					{ id: 'd', position: { x: 710, y: 520 } },
+				]),
+			);
+		});
+
 		it('syncs the owning group title bar from live node positions when a group node is dragged', () => {
 			// Title bar must track the live cursor — store positions only
 			// catch up on drag-stop.
@@ -253,9 +307,35 @@ describe('useCanvasNodeGroupDrag', () => {
 				x: snapToGrid(120 - GROUP_PADDING_X),
 				y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 			});
-			expect(patch.width).toBe(280 + 2 * GROUP_PADDING_X);
+			expect(patch.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 			expect(patch.data.foo).toBe('bar'); // preserves other data fields
 			expect(patch.data.nodesRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
+		});
+
+		it('keeps a pushed group title bar at its visual position while a member is dragged', () => {
+			const nodeDimensions: Record<string, { width: number; height: number }> = {
+				a: { width: 100, height: 80 },
+				b: { width: 100, height: 80 },
+			};
+			const { drag } = setup({
+				getNodeDisplaySize: (id) => nodeDimensions[id],
+				getNodeVisualOffset: () => ({ x: 0, y: 216 }),
+			});
+			findNodeMock.mockImplementation((id: string) => (id === 'group:g1' ? { id } : undefined));
+
+			// 'a' is rendered at stored + push offset (100, 416); the drag moved it by (20, 20).
+			const node = makeRegularGraphNode('a', 120, 436);
+			drag.onNodeDrag(makeEvent(node));
+
+			const updater = updateNodeMock.mock.calls.find((call) => call[0] === 'group:g1')![1];
+			const patch = updater({ data: {} });
+			// Unmoved member 'b' contributes its visual position (300, 416), not its
+			// store position (300, 200) — the title bar must not jump up by the offset.
+			expect(patch.data.nodesRect).toEqual({ x: 120, y: 416, width: 280, height: 100 });
+			expect(patch.position).toEqual({
+				x: snapToGrid(120 - GROUP_PADDING_X),
+				y: snapToGrid(416 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+			});
 		});
 
 		it('syncs the owning group title bar during multi-node node drag', () => {

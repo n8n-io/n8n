@@ -71,7 +71,6 @@ Complete reference for n8n's `.github/` folder.
 │  │ Schedule │───▶│  Nightly/Weekly Jobs             │    ┌────────────┐   │
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
-│                  │  ├─ test-workflows-nightly       │    └────────────┘   │
 │                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
@@ -267,7 +266,7 @@ release-publish.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
-test-workflows-nightly.yml
+test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
 
 test-e2e-vm-expressions-nightly.yml
@@ -365,8 +364,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.15.0, 26.x)
-│   └─ Coverage only on 24.15.0
+├─ unit-test (matrix: Node 22.x, 24.16.0, 26.x)
+│   └─ Coverage only on 24.16.0
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -384,7 +383,6 @@ Push to master/1.x
 | Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
-| Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
@@ -406,7 +404,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.15.0'
+  node-version:        # default: '24.16.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -509,7 +507,7 @@ Team ownership mappings in `CODEOWNERS`:
 | `blacksmith-2vcpu-ubuntu-2204`      | 2    | Standard builds, E2E shards |
 | `blacksmith-4vcpu-ubuntu-2204`      | 4    | Unit tests, typecheck, lint |
 | `blacksmith-8vcpu-ubuntu-2204`      | 8    | Heavy parallel workloads    |
-| `blacksmith-4vcpu-ubuntu-2204-arm`  | 4    | ARM64 Docker builds         |
+| `blacksmith-8vcpu-ubuntu-2204-arm`  | 8    | ARM64 Docker builds         |
 
 ### Selection Guidelines
 
@@ -577,7 +575,7 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 - **Runs on:** stable/nightly/rc Docker builds
 - **Scans:** n8n image, runners image
-- **Output:** Slack `#updates-security` when vulnerabilities are detected
+- **Output:** GitHub Actions step summary (`$GITHUB_STEP_SUMMARY`) and run logs
 
 ### SBOM
 
