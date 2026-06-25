@@ -153,7 +153,7 @@ export class DbConnectionMonitor {
 			this.logger.warn(
 				`Database ping failed (${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}): ${ensureError(error).message}`,
 			);
-			if (!(error instanceof OperationalError)) {
+			if (!(error instanceof OperationalError) && !this.isRecoverableConnectionError(error)) {
 				this.errorReporter.error(error);
 			}
 
