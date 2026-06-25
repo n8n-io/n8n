@@ -79,6 +79,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/proxy-from-env": "catalog:",
+    "@types/qs": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "nock": "catalog:",
     "vitest": "catalog:",
