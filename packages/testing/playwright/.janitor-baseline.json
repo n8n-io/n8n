@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-25T09:22:20.446Z",
-	"totalViolations": 135,
+	"generated": "2026-06-25T10:17:26.367Z",
+	"totalViolations": 131,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -505,32 +505,6 @@
 				"line": 215,
 				"message": "Chained locator call in test: n8n.canvas.getVisibleDropdown().locator('li')",
 				"hash": "0eb6824192ab"
-			}
-		],
-		"tests/e2e/workflows/executions/list.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 324,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-trigger-conte...",
-				"hash": "9f1081df0a8a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 326,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })....",
-				"hash": "3b12669e6a7f"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 326,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })",
-				"hash": "ff575079b421"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 332,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-content')",
-				"hash": "10cc160abd6b"
 			}
 		],
 		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
