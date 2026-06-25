@@ -1,7 +1,54 @@
 import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';
+import {
+	getAllowedDomains,
+	responseToExecutionItems,
+	updadeQueryParameterConfig,
+} from '../GenericFunctions';
+
+describe('responseToExecutionItems', () => {
+	it('splits an array of objects into one item per element (unchanged behaviour)', () => {
+		expect(responseToExecutionItems([{ a: 1 }, { a: 2 }], 0)).toEqual([
+			{ json: { a: 1 }, pairedItem: { item: 0 } },
+			{ json: { a: 2 }, pairedItem: { item: 0 } },
+		]);
+	});
+
+	it('wraps a bare array of primitives so each json is a valid object', () => {
+		expect(responseToExecutionItems([44001, 44002], 0)).toEqual([
+			{ json: { data: 44001 }, pairedItem: { item: 0 } },
+			{ json: { data: 44002 }, pairedItem: { item: 0 } },
+		]);
+	});
+
+	it('wraps an array of arrays (e.g. Binance klines rows)', () => {
+		expect(
+			responseToExecutionItems(
+				[
+					[1, 2],
+					[3, 4],
+				],
+				2,
+			),
+		).toEqual([
+			{ json: { data: [1, 2] }, pairedItem: { item: 2 } },
+			{ json: { data: [3, 4] }, pairedItem: { item: 2 } },
+		]);
+	});
+
+	it('keeps a single object response as one item', () => {
+		expect(responseToExecutionItems({ a: 1 }, 0)).toEqual([
+			{ json: { a: 1 }, pairedItem: { item: 0 } },
+		]);
+	});
+
+	it('wraps a single primitive response under data', () => {
+		expect(responseToExecutionItems('hello', 1)).toEqual([
+			{ json: { data: 'hello' }, pairedItem: { item: 1 } },
+		]);
+	});
+});
 
 describe('updadeQueryParameterConfig', () => {
 	describe('version < 4.3 (legacy behavior)', () => {
