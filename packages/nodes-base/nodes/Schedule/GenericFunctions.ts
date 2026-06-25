@@ -202,9 +202,37 @@ export function intervalToRecurrence(interval: ScheduleInterval, index: number) 
 }
 
 /**
+ * Whether a stored last-execution value can still be read meaningfully under
+ * the current interval type. `recurrenceCheck`'s `(now - last + base) % base`
+ * always converges for an in-range value, so only out-of-range values block the
+ * trigger forever. `months` switched to an absolute count this release, so any
+ * pre-signature value is the old 0-11 encoding and must be discarded.
+ */
+function isRecurrenceValueValidForType(
+	typeInterval: 'hours' | 'days' | 'weeks' | 'months',
+	value: number,
+): boolean {
+	switch (typeInterval) {
+		case 'hours':
+			return value >= 0 && value <= 23;
+		case 'days':
+			return value >= 1 && value <= 366;
+		case 'weeks':
+			return value >= 1 && value <= 53;
+		case 'months':
+			return false;
+	}
+}
+
+/**
  * Clears stored recurrence state when a schedule is edited, keyed by a per-index
- * `type:size` signature. A stale or wrong-unit value from a previous config (or a
- * missing signature pre-upgrade) would otherwise permanently block the trigger.
+ * `type:size` signature. A stale or wrong-unit value from a previous config would
+ * otherwise permanently block the trigger.
+ *
+ * A missing signature means pre-upgrade state: the schedule config itself hasn't
+ * changed, so a value still in range for its type is healthy and kept (only the
+ * signature is backfilled) to avoid an off-cadence fire on upgrade. Only an
+ * out-of-range value — the case that actually blocks the trigger — is cleared.
  */
 export function resetStaleRecurrence(
 	staticData: {
@@ -217,10 +245,21 @@ export function resetStaleRecurrence(
 		const signature = recurrence.activated
 			? `${recurrence.typeInterval}:${recurrence.intervalSize}`
 			: undefined;
-		if (staticData.recurrenceRuleSignatures[index] !== signature) {
-			staticData.recurrenceRules[index] = undefined;
-			staticData.recurrenceRuleSignatures[index] = signature;
-		}
+		const storedSignature = staticData.recurrenceRuleSignatures[index];
+
+		if (storedSignature === signature) return;
+
+		const storedValue = staticData.recurrenceRules[index];
+		// On upgrade (no signature yet) keep a value that's still valid for its
+		// type; an explicit config change (signature present but different) always clears.
+		const keepValue =
+			storedSignature === undefined &&
+			recurrence.activated &&
+			typeof storedValue === 'number' &&
+			isRecurrenceValueValidForType(recurrence.typeInterval, storedValue);
+
+		if (!keepValue) staticData.recurrenceRules[index] = undefined;
+		staticData.recurrenceRuleSignatures[index] = signature;
 	});
 
 	// Drop entries left by a previous config with more intervals.

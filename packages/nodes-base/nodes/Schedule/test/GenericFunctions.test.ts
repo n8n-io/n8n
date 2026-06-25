@@ -772,11 +772,34 @@ describe('resetStaleRecurrence', () => {
 		typeInterval: 'days',
 	} as const;
 
-	it('clears the stored value and records a signature when none exists (pre-upgrade self-heal)', () => {
+	it('keeps an in-range value and backfills the signature on upgrade', () => {
+		// No signature yet (pre-upgrade) + a value still valid for its type: the
+		// schedule is healthy, so keep its cadence and only record the signature.
 		const staticData = { recurrenceRules: [200], recurrenceRuleSignatures: [] as string[] };
 		resetStaleRecurrence(staticData, [{ recurrence: daysRule }]);
-		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRules[0]).toBe(200);
 		expect(staticData.recurrenceRuleSignatures[0]).toBe('days:3');
+	});
+
+	it('clears an out-of-range value and records the signature on upgrade', () => {
+		// No signature yet + a value impossible for the type (200 as an hour): this
+		// is the stale wrong-unit state that blocks the trigger, so clear it.
+		const staticData = { recurrenceRules: [200], recurrenceRuleSignatures: [] as string[] };
+		resetStaleRecurrence(staticData, [
+			{ recurrence: { activated: true, index: 0, intervalSize: 3, typeInterval: 'hours' } },
+		]);
+		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('hours:3');
+	});
+
+	it('clears a months value on upgrade (absolute-month encoding is new)', () => {
+		// Old 0-11 month index is meaningless under the new absolute count.
+		const staticData = { recurrenceRules: [5], recurrenceRuleSignatures: [] as string[] };
+		resetStaleRecurrence(staticData, [
+			{ recurrence: { activated: true, index: 0, intervalSize: 2, typeInterval: 'months' } },
+		]);
+		expect(staticData.recurrenceRules[0]).toBeUndefined();
+		expect(staticData.recurrenceRuleSignatures[0]).toBe('months:2');
 	});
 
 	it('leaves the stored value intact when the signature is unchanged', () => {
