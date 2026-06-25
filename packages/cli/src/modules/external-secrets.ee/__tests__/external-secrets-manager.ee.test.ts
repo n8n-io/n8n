@@ -752,6 +752,25 @@ describe('ExternalSecretsManager', () => {
 				settings: {},
 			});
 		});
+
+		it('should replace existing providers from settings without removing them first', async () => {
+			const existingProvider = new DummyProvider();
+			await existingProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
+			mockProviderRegistry.add('dummy', existingProvider);
+			mockProviderRegistry.add.mockClear();
+
+			const replacementProvider = new DummyProvider();
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: replacementProvider,
+			});
+
+			await manager.reloadAllProviders();
+
+			expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('dummy');
+			expect(mockProviderRegistry.add).toHaveBeenCalledWith('dummy', replacementProvider);
+			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
+		});
 	});
 
 	describe('updateSecrets', () => {

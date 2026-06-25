@@ -528,8 +528,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			return;
 		}
 
-		await this.tearDownProviderConnection(name);
-		await this.setupProvider(name, config);
+		if (this.providerRegistry.has(name)) {
+			await this.replaceProviderConnection(name, name, config);
+		} else {
+			await this.addProviderConnection(name, name, config);
+		}
 	}
 
 	private async tearDownProviderConnection(providerKey: string): Promise<void> {
