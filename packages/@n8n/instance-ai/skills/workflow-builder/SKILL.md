@@ -62,9 +62,11 @@ with the same `filePath`. Do not send inline workflow code or string patches to
 ## Escalation
 
 If you are stuck or need information only a human can provide, use `ask-user`.
-Do not retry the same failing approach more than twice. Never solicit API keys,
-tokens, passwords, or other secrets through `ask-user`; route credential
-collection through workflow setup or credential setup surfaces.
+Do not retry the same failing approach more than twice. Never re-ask a question
+the user has already answered, deferred, or skipped — treat a skip as permission
+to assume a sensible default or leave the detail for setup, and move on. Never
+solicit API keys, tokens, passwords, or other secrets through `ask-user`; route
+credential collection through workflow setup or credential setup surfaces.
 
 ## Placeholders
 
@@ -139,7 +141,12 @@ When mapping downstream fields from an OpenAI node, read
    task's final deliverable.
 9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
-   outputs use `.onTrue()` and `.onFalse()`, Switch outputs use zero-based
+   branches are wired on the workflow builder (`.to(ifNode).onTrue(...).onFalse(...)`
+   or `.to(ifNode.onTrue(...).onFalse(...))`), not as standalone calls on the IF
+   node variable after `export default`. Confirm branch action nodes appear in the
+   saved graph — not just trigger → middle nodes → IF. Confirm the IF node has
+   connections on both outputs (true and false). For escalation flows, confirm
+   every requested side effect is on a wired branch. Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
 10. Fix errors by editing the same workspace source file and calling
@@ -176,6 +183,12 @@ a hidden service-specific or topology checklist.
 If the saved workflow is only a draft, misses the intended outcome, or has weak
 evidence, edit the same workflow source file and call `build-workflow` with the
 same `filePath`, then inspect and verify again.
+
+Do not tell the user a workflow is fixed, verified, tested, or working from a
+successful build, save, or static `validate` alone — only from a
+`verify-built-workflow` or `executions` run that exercised the failing path, or
+state explicitly that you could not verify and why. Never dismiss a live
+execution error as a harness or stale-state artifact without re-running.
 
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
@@ -344,6 +357,9 @@ column names.
   Code node, even when the user asks to fetch inside a Code node.
 
 - Use `@n8n/workflow-sdk`.
+- `export default workflow(...)...` must be the last statement in the file, with
+  all wiring composed inside that chain. Statements after it (e.g.
+  `ifNode.onTrue(...)`) do not reach the builder and their nodes are dropped.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
   `{{ }}`. `$json` is only the current item from the immediate predecessor.
@@ -371,6 +387,19 @@ column names.
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
   `channel`). Missing optional fields make expression-path validation fail.
+- Match real cardinality in mock `output`. When a node's real response is a
+  collection (HTTP list endpoints, search results, a top-level array such as
+  Binance klines or a bare array of IDs), declare at least two items so
+  single-item assumptions like `$input.first()` break during verification
+  instead of on the user's first run. A single-item mock hides array-vs-single
+  bugs.
+- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
+  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
+  expressions intentionally read `$json.json.*`. Correct:
+  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
+  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
+  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
+  this rule applies to SDK `node({ output: [...] })` mocks.
 
 Use this import shape unless the task needs fewer symbols:
 
@@ -423,7 +452,8 @@ Follow these rules strictly when generating workflows:
      feeding the per-item work and looping back via `nextBatch`.
    - Drop items that do not match a predicate: `filter`.
    - Two mutually exclusive paths that both do real work: IF with `.onTrue()`
-     and `.onFalse()`.
+     and `.onFalse()` wired on the workflow builder — never as standalone
+     statements on the IF node variable.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
    - Mandatory outcome when upstream can be empty (digest/alert must still send):
@@ -540,7 +570,11 @@ export default workflow('id', 'name')
   .to(processResults);
 ```
 
-For IF:
+For IF, each branch is a complete processing path. Wire branches on the workflow
+builder, not as standalone calls on the IF node variable. Chain steps inside a
+branch with `.to()`, or pass an array for parallel fan-out.
+Never call `.onFalse()` more than once (same for `.onTrue()`); each repeat
+overwrites the previous target.
 
 ```ts
 const isImportant = ifElse({
@@ -559,12 +593,29 @@ const isImportant = ifElse({
   },
 });
 
-source.to(isImportant);
-isImportant.onTrue(handleImportant);
-isImportant.onFalse(ignore);
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(isImportant)
+  .onTrue(handleImportant)                               // single step
+  .onFalse(sendHolding.to(createTicket.to(alertSlack))); // chained multi-step
+// Equivalent inline form: .to(isImportant.onTrue(a).onFalse(b))
+// Parallel fan-out on a branch: .onFalse([a, b, c])
 ```
 
-For Switch, use zero-based `.onCase(index, target)` for each rule output.
+Do NOT wire branches as standalone statements.
+Then branch nodes are omitted from the saved graph, and repeated `.onFalse()`
+calls keep only the last target.
+
+```ts
+// WRONG
+export default workflow('id', 'name').add(startTrigger).to(isImportant);
+isImportant.onTrue(handleImportant); // never reaches the builder
+isImportant.onFalse(sendHolding);    // overwritten
+isImportant.onFalse(alertSlack);     // only this one would wire
+```
+
+For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
+or inline — using zero-based `.onCase(index, target)` for each rule output.
 
 For Split in Batches, use it for per-item side effects and loop back with
 `nextBatch`. Do not add a separate IF gate just to check whether items exist.

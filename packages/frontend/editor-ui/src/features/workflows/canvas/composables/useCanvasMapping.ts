@@ -21,6 +21,7 @@ import {
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
+	applyOffset,
 	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
@@ -184,7 +185,7 @@ export function useCanvasMapping({
 				id: node.id,
 				label: node.name,
 				type: 'canvas-node',
-				position: { x: node.position[0] + offset.x, y: node.position[1] + offset.y },
+				position: applyOffset(node.position, offset),
 				data,
 				...additionalProperties[node.id],
 				draggable: node.draggable,
@@ -208,6 +209,10 @@ export function useCanvasMapping({
 	function getConnectionStatus(connection: Connection): CanvasConnectionData['status'] {
 		const rd = renderData.value;
 		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
+		const sourceName = nodeNameById.value.get(connection.source);
+		const hasSimulatedSourceOutput = Boolean(
+			sourceName && rd.executionSimulationByNodeName[sourceName],
+		);
 
 		const runData = rd.executionRunDataOutputMapByNodeId.get(connection.source)?.[type]?.[index];
 		const runDataTotal = runData?.total ?? 0;
@@ -227,7 +232,10 @@ export function useCanvasMapping({
 		const matches: Record<(typeof CONNECTION_STATUS_PRIORITY)[number], boolean> = {
 			running:
 				(rd.executionRunningByNodeId.get(connection.source)?.value ?? false) && runDataTotal === 0,
-			pinned: Boolean(rd.pinnedDataByNodeId.get(connection.source)?.value && sourceTasks),
+			pinned: Boolean(
+				(rd.pinnedDataByNodeId.get(connection.source)?.value || hasSimulatedSourceOutput) &&
+					sourceTasks,
+			),
 			error: rd.hasIssuesByNodeId.get(connection.source)?.value ?? false,
 			success: runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled' && targetExecuted,
 		};

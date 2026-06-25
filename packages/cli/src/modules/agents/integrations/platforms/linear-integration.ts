@@ -9,12 +9,17 @@ import {
 	type PlatformContextQueryParams,
 } from '../agent-chat-integration';
 import { loadLinearAdapter } from '../esm-loader';
-import type {
-	IntegrationAction,
-	IntegrationActionResult,
-	IntegrationContextQuery,
-} from '../integration-tools';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from '../integration-tool-definitions';
+import { connectionUnavailable } from '../integration-helpers';
+import type { IntegrationActionResult } from '../integration-tools';
 import { executeLinearAction, executeLinearContextQuery } from './linear-operations';
+import {
+	LINEAR_ACTION_TOOL_DEFINITIONS,
+	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
+} from './linear-tool-definitions';
 
 /**
  * Linear platform integration.
@@ -57,27 +62,20 @@ export class LinearIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly contextQueries: IntegrationContextQuery[] = [
-		'get_current_message_context',
-		'get_current_subject',
-		'get_current_user',
-		'get_user',
-		'search_users',
-		'get_team',
-		'search_teams',
-		'get_project',
-		'search_projects',
-		'search_labels',
-		'search_issue_states',
-		'get_issue',
-		'search_issues',
+	readonly contextToolDefinitions = [
+		...resolveIntegrationContextQueryDefinitions([
+			'get_current_message_context',
+			'get_current_subject',
+			'get_current_user',
+			'get_user',
+			'search_users',
+		]),
+		...LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 	];
 
-	readonly actions: IntegrationAction[] = [
-		'respond',
-		'create_issue',
-		'update_issue',
-		'create_comment',
+	readonly actionToolDefinitions = [
+		...resolveIntegrationActionDefinitions(['respond']),
+		...LINEAR_ACTION_TOOL_DEFINITIONS,
 	];
 
 	constructor(
@@ -88,6 +86,7 @@ export class LinearIntegration extends AgentChatIntegration {
 	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeLinearContextQuery({
 			chat: params.chat,
 			query: params.query,
@@ -96,6 +95,7 @@ export class LinearIntegration extends AgentChatIntegration {
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		if (!params.chat) return connectionUnavailable();
 		return await executeLinearAction({
 			chat: params.chat,
 			descriptor: params.descriptor,

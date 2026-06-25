@@ -1,7 +1,16 @@
 import { OperationalError, UserError } from 'n8n-workflow';
-import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType, AWSRegion } from './types';
+import type { AWSRegion } from './regions';
+import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType } from './types';
 
-global.fetch = vi.fn();
+// `assumeRole` now sends via @n8n/backend-network/transport's asCustomFetch(),
+// not the global fetch, so we mock the transport and assert on its fetch.
+const { mockFetch } = vi.hoisted(() => ({ mockFetch: vi.fn() }));
+
+vi.mock('@n8n/backend-network/transport', () => ({
+	createDispatcherTransport: () => ({
+		asCustomFetch: () => mockFetch,
+	}),
+}));
 
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
@@ -18,14 +27,12 @@ import * as systemCredentialsUtils from './system-credentials-utils';
 import type { MockedFunction, MockInstance } from 'vitest';
 
 describe('assumeRole', () => {
-	let mockFetch: MockedFunction<typeof fetch>;
 	let mockSign: MockedFunction<typeof sign>;
 	let mockParseString: MockedFunction<typeof parseString>;
 	let consoleErrorSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockFetch = global.fetch as MockedFunction<typeof fetch>;
 		mockSign = sign as MockedFunction<typeof sign>;
 		mockParseString = parseString as MockedFunction<typeof parseString>;
 		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -517,6 +524,47 @@ describe('assumeRole', () => {
 			);
 		});
 
+		it('should use correct endpoint for GovCloud regions', async () => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-gov-west-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: false,
+				roleArn: 'arn:aws-us-gov:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
+			};
+
+			const mockResponse = {
+				ok: true,
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+			};
+
+			mockFetch.mockResolvedValue(mockResponse as any);
+
+			mockParseString.mockImplementation((_xml, _options, callback) => {
+				callback(null, {
+					AssumeRoleResponse: {
+						AssumeRoleResult: {
+							Credentials: {
+								AccessKeyId: 'assumed-access-key',
+								SecretAccessKey: 'assumed-secret-key',
+								SessionToken: 'assumed-session-token',
+							},
+						},
+					},
+				});
+			});
+
+			await assumeRole(credentials, 'us-gov-west-1');
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				'https://sts.us-gov-west-1.amazonaws.com',
+				expect.any(Object),
+			);
+		});
+
 		it('should use correct endpoint for standard regions', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'eu-west-1',
@@ -845,13 +893,11 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 });
 
 describe('assumeRole region validation', () => {
-	let mockFetch: MockedFunction<typeof fetch>;
 	let mockSign: MockedFunction<typeof sign>;
 	let consoleErrorSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockFetch = global.fetch as MockedFunction<typeof fetch>;
 		mockSign = sign as MockedFunction<typeof sign>;
 		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		mockSign.mockImplementation((request: any) => request as any);

@@ -141,6 +141,7 @@ export class WorkflowHistoryService {
 				versionId: workflow.versionId,
 				nodes: workflow.nodes,
 				connections: workflow.connections,
+				nodeGroups: workflow.nodeGroups,
 			},
 			workflowId,
 		);

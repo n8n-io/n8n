@@ -95,6 +95,7 @@ const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
+const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -109,6 +110,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	listAgentFiles: listAgentFilesMock,
 	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
+	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -176,7 +178,6 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	return {
 		id: 'a1',
 		name: 'Agent One',
-		description: null,
 		tools: {},
 		skills: {},
 		updatedAt: '2026-01-01T00:00:00Z',
@@ -329,7 +330,15 @@ const commonStubs = {
 	AgentChatQuickActions: {
 		name: 'AgentChatQuickActions',
 		template: '<div data-testid="stub-agent-chat-quick-actions" />',
-		props: ['tools', 'projectId', 'agentId', 'connectedTriggers'],
+		props: [
+			'tools',
+			'mcpServers',
+			'projectId',
+			'agentId',
+			'connectedTriggers',
+			'isPublished',
+			'disabled',
+		],
 		emits: ['update:tools', 'update:connected-triggers', 'trigger-added'],
 	},
 	AgentBuilderHeader: {
@@ -450,6 +459,7 @@ describe('AgentBuilderView — preview routing', () => {
 		listAgentFilesMock.mockResolvedValue([]);
 		uploadAgentFilesMock.mockReset();
 		uploadAgentFilesMock.mockResolvedValue([]);
+		warmAgentKnowledgeSandboxMock.mockClear();
 		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
 	});
@@ -531,6 +541,17 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
+	it('warms the knowledge sandbox when the agent page initializes', async () => {
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+	});
+
 	it('drops unbuilt agents straight into the build chat on load', async () => {
 		// Unbuilt agents go to the build chat unconditionally so the build
 		// panel mounts, triggers loadHistory, and any prior conversation with
@@ -591,6 +612,25 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
 		).toBe('faulty-thread');
+	});
+
+	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
+		routeName = 'AgentPreviewView';
+
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+
+		wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' }).vm.$emit('new-chat');
+		await nextTick();
+		await flushPromises();
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
@@ -794,6 +834,18 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('isBuildChatStreaming'),
 		).toBe(false);
+	});
+
+	it('passes build streaming state to the chat column', async () => {
+		const wrapper = await renderView();
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+
+		chatColumn.vm.$emit('update:streaming', true);
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isBuildChatStreaming'),
+		).toBe(true);
 	});
 
 	it('does not render the old Build/Test toggle inside the chat input footer', async () => {
