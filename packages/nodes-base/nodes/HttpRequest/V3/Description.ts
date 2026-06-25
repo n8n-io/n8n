@@ -705,6 +705,30 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 				},
 				options: [
 					{
+						displayName: 'Execute Sequentially',
+						name: 'sequentialExecution',
+						type: 'boolean',
+						default: false,
+						description:
+							"Wait for each item's request to complete before sending the next one. Useful when the endpoint cannot handle concurrent identical authentication.",
+					},
+					{
+						displayName: 'Delay Between Items (ms)',
+						name: 'sequentialDelay',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 0,
+						displayOptions: {
+							show: {
+								sequentialExecution: [true],
+							},
+						},
+						description:
+							'Additional wait time (in milliseconds) between each request when executing sequentially',
+					},
+					{
 						displayName: 'Batching',
 						name: 'batch',
 						values: [
