@@ -1087,6 +1087,7 @@
 	"credentialEdit.credentialEdit.showMessage.disconnected.title": "Account disconnected",
 	"credentialEdit.credentialEdit.testing": "Testing",
 	"credentialEdit.credentialEdit.info.sharee": "Only {credentialOwnerName} can edit this connection",
+	"credentialEdit.credentialEdit.info.sharee.team": "Only users with credential edit permission can edit this connection",
 	"credentialEdit.credentialInfo.allowUseBy": "Allow use by",
 	"credentialEdit.credentialInfo.created": "Created",
 	"credentialEdit.credentialInfo.id": "ID",

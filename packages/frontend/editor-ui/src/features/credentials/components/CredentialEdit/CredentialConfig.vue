@@ -51,6 +51,7 @@ import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect'
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -152,6 +153,14 @@ const appName = computed(
 const credentialTypeName = computed(() => props.credentialType?.name);
 const credentialOwnerName = computed(() =>
 	credentialsStore.getCredentialOwnerNameById(`${props.credentialId}`),
+);
+// Team-owned credentials don't have a single human "owner", so naming the
+// project ("Only My project can edit…") is misleading — point at the edit
+// permission instead. Personal/shared credentials keep naming the owner.
+const isHomeTeamProject = computed(
+	() =>
+		credentialsStore.getCredentialById(`${props.credentialId}`)?.homeProject?.type ===
+		ProjectTypes.Team,
 );
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
@@ -614,9 +623,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<div>
 						<N8nInfoTip :bold="false">
 							{{
-								i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
-									interpolate: { credentialOwnerName },
-								})
+								isHomeTeamProject
+									? i18n.baseText('credentialEdit.credentialEdit.info.sharee.team')
+									: i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
+											interpolate: { credentialOwnerName },
+										})
 							}}
 						</N8nInfoTip>
 					</div>
