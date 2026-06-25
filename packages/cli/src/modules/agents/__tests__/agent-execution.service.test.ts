@@ -652,7 +652,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('cleans SDK memory before deleting the execution thread', async () => {
+		it('deletes the execution thread before best-effort cleanup', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -684,6 +684,34 @@ describe('AgentExecutionService', () => {
 					storedAt: 'fs',
 				},
 			]);
+			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
+			expect(agentExecutionThreadRepository.delete.mock.invocationCallOrder[0]).toBeLessThan(
+				memoryBackend.deleteThread.mock.invocationCallOrder[0],
+			);
+			expect(agentExecutionThreadRepository.delete.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionLogPersistence.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('still deletes the execution thread when best-effort cleanup fails', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				projectId: 'project-1',
+			} as AgentExecutionThread);
+			agentExecutionRepository.findLogTargetsByThreadId.mockResolvedValue([
+				{
+					id: 'execution-1',
+					threadId: 'thread-1',
+					logStoredAt: 'fs',
+				},
+			]);
+			memoryBackend.deleteThread.mockRejectedValue(new Error('memory down'));
+			agentExecutionLogPersistence.delete.mockRejectedValue(new Error('storage down'));
+
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
+
+			expect(result).toBe(true);
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 

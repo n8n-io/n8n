@@ -122,19 +122,19 @@ describe('AgentsService', () => {
 			'user-1',
 		);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			agentExecutionLogPersistence.deleteByAgentId.mock.invocationCallOrder[0],
-		);
-		expect(agentExecutionLogPersistence.deleteByAgentId).toHaveBeenCalledWith(agentId);
-		expect(agentExecutionLogPersistence.deleteByAgentId.mock.invocationCallOrder[0]).toBeLessThan(
 			agentRepository.remove.mock.invocationCallOrder[0],
 		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentExecutionLogPersistence.deleteByAgentId).toHaveBeenCalledWith(agentId);
+		expect(agentRepository.remove.mock.invocationCallOrder[0]).toBeLessThan(
+			agentExecutionLogPersistence.deleteByAgentId.mock.invocationCallOrder[0],
+		);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
 	});
 
-	it('does not delete the agent row when execution log cleanup fails', async () => {
+	it('still deletes the agent when execution log cleanup fails', async () => {
 		const { service, agentRepository, agentExecutionLogPersistence } = makeService();
 		const agent = makeAgent();
 		const cleanupError = new Error('storage down');
@@ -142,8 +142,8 @@ describe('AgentsService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentExecutionLogPersistence.deleteByAgentId.mockRejectedValue(cleanupError);
 
-		await expect(service.delete(agentId, projectId, 'user-1')).rejects.toThrow(cleanupError);
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
+		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 	});
 
 	it('still deletes the agent when best-effort cleanup fails', async () => {

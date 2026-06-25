@@ -316,16 +316,35 @@ export class AgentExecutionService {
 		if (!thread) return false;
 
 		const logTargets = await this.agentExecutionRepository.findLogTargetsByThreadId(threadId);
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
-		await this.agentExecutionLogPersistence.delete(
-			logTargets.map((target) => ({
-				agentId,
-				threadId: target.threadId,
-				executionId: target.id,
-				storedAt: target.logStoredAt,
-			})),
-		);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
+
+		try {
+			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to delete SDK memory thread on execution thread delete', {
+				agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		try {
+			await this.agentExecutionLogPersistence.delete(
+				logTargets.map((target) => ({
+					agentId,
+					threadId: target.threadId,
+					executionId: target.id,
+					storedAt: target.logStoredAt,
+				})),
+			);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs on execution thread delete', {
+				agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
 		return true;
 	}
 

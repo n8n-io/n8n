@@ -116,8 +116,16 @@ export class AgentsService {
 				error: error instanceof Error ? error.message : error,
 			});
 		}
-		await this.agentExecutionLogPersistence.deleteByAgentId(agentId);
 		await this.agentRepository.remove(agent);
+
+		try {
+			await this.agentExecutionLogPersistence.deleteByAgentId(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
