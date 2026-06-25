@@ -343,6 +343,34 @@ describe('Microsoft Excel Transport', () => {
 				expect.anything(),
 			);
 		});
+
+		it('routes Service Principal list-search through requestWithAuthentication, scoped to the target drive', async () => {
+			// "Find workbooks" runs in the load-options context. Under the SP credential it must
+			// resolve the chosen drive root (here via the unpersisted-default resourceTarget → user)
+			// and route through requestWithAuthentication, not requestOAuth2.
+			const loadOptionsRequestWithAuth = vi.fn().mockResolvedValue({ value: [] });
+			mockLoadOptions.helpers.requestWithAuthentication = loadOptionsRequestWithAuth;
+			const params: Record<string, unknown> = {
+				authentication: 'microsoftEntraServicePrincipalApi',
+				userTarget: { value: 'jane@contoso.com' },
+			};
+			mockLoadOptions.getNodeParameter.mockImplementation(
+				(name, fallback) => (name in params ? params[name as string] : fallback) as never,
+			);
+
+			await searchWorkbooks.call(mockLoadOptions);
+
+			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+			);
+			expect(loadOptionsRequestWithAuth).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: expect.stringContaining("/v1.0/users/jane%40contoso.com/drive/root/search(q='"),
+				}),
+			);
+			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('Service Principal (app-only) routing', () => {
@@ -495,6 +523,46 @@ describe('Microsoft Excel Transport', () => {
 				microsoftApiRequest.call(mockExecuteFunctions, 'GET', SCOPED_RESOURCE),
 			).rejects.toThrow(NodeApiError);
 		});
+
+		it('preserves method and body for a PATCH write, rebased onto the target drive', async () => {
+			const body = { values: [['updated']] };
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'PATCH',
+				"/drive/items/WB/workbook/worksheets/WS/range(address='A1:A1')",
+				body,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					method: 'PATCH',
+					body,
+					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/range(address='A1:A1')`,
+				}),
+			);
+		});
+
+		it('preserves method and body for a POST write (e.g. add worksheet / append row)', async () => {
+			const body = { name: 'Sheet2' };
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'POST',
+				'/drive/items/WB/workbook/worksheets/add',
+				body,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					method: 'POST',
+					body,
+					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/add`,
+				}),
+			);
+		});
 	});
 
 	describe('getServicePrincipalResourceRoot / validateResourceTargetId', () => {
@@ -574,6 +642,23 @@ describe('Microsoft Excel Transport', () => {
 			};
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(name) => params[name as string] as never,
+			);
+
+			expect(resolveScopeRoot.call(mockExecuteFunctions)).toBe('/users/jane%40contoso.com');
+		});
+
+		it('falls back to the user target when resourceTarget is unpersisted', () => {
+			// 3-arg-aware mock (mirrors the real getNodeParameter): an absent param returns the
+			// passed fallback. This pins the fix's contract directly at the function level —
+			// resolveScopeRoot must default to 'user' rather than throw when resourceTarget is
+			// omitted (its default is not persisted).
+			const params: Record<string, unknown> = {
+				authentication: 'microsoftEntraServicePrincipalApi',
+				userTarget: { value: 'jane@contoso.com' },
+			};
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name, _itemIndex, fallback) =>
+					(name in params ? params[name as string] : fallback) as never,
 			);
 
 			expect(resolveScopeRoot.call(mockExecuteFunctions)).toBe('/users/jane%40contoso.com');

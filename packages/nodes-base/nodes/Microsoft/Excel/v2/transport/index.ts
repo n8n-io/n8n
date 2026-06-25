@@ -41,6 +41,11 @@ export function getExcelCredentialType(
 // shape is validated BEFORE encoding — `encodeURIComponent` leaves `..` intact, so
 // shape validation (not encoding) is what keeps a value safe to interpolate into a
 // Graph URL path. Validation messages are static, so the id is never echoed back.
+//
+// NOTE: this app-only kernel (the target regexes, `validateResourceTargetId`,
+// `getServicePrincipalResourceRoot`, `driveEndpoint`) is duplicated near-verbatim from the
+// Microsoft OneDrive node — keep the two copies in sync until ENT-92 lifts them into a
+// shared helper.
 const USER_TARGET_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 const USER_TARGET_UPN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
 const USER_TARGET_HOST = /^[A-Za-z0-9.-]+$/;
@@ -140,8 +145,12 @@ export function driveEndpoint(root: string): string {
  * persist an option left at its default, and in the execute context the absent param
  * would otherwise throw before any JS-side default applied. In the load-options context
  * the positional args differ (the 3rd arg is `options`, the 2nd is the fallback `0`), so
- * the trailing `|| 'user'` covers that path. The RLC value is extracted manually (rather
- * than via `{ extractValue: true }`) so the same call shape works in both contexts.
+ * the trailing `|| 'user'` covers that path. The RLC read is safe in both contexts for the
+ * same reason: when the target is unpersisted, load-options returns the numeric `0`, which
+ * is not a string and has no `.value`, so `id` coalesces to `''` and the request is
+ * rejected with the intended "target ID required" error rather than a malformed URL. The
+ * value is extracted manually (rather than via `{ extractValue: true }`) so the single call
+ * shape works in both contexts.
  */
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
