@@ -34,6 +34,7 @@ CHANGELOG-*.md
 build-storybook.log
 build.log
 .agent-setup/
+.agent-recordings/
 sbom-source.cdx.json
 *.junit.xml
 junit.xml

@@ -19,6 +19,7 @@ import { AgentPublishService } from './agent-publish.service';
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { SlackAppSetupService } from './integrations/slack-app-setup.service';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -288,6 +289,7 @@ export class AgentIntegrationsController {
 			headers: sanitizedHeaders,
 			body: requestBody,
 		});
+		await channelIntegrationRecorder.recordWebhook(platform, webRequest.clone());
 
 		// In Express, background tasks just need to not be garbage collected.
 		// We hold references to keep them alive for the lifetime of the process.

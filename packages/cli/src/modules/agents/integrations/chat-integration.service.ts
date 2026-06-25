@@ -27,6 +27,8 @@ import { AgentChatSubscriptionStateService } from './agent-chat-subscription-sta
 import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
+import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
+import { recordAdapterCalls } from './recording/recording-adapter';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -201,7 +203,8 @@ export class ChatIntegrationService {
 		}
 
 		// Delegate adapter construction to the platform implementation.
-		const adapter = await integrationImpl.createAdapter(ctx);
+		const adapter = recordAdapterCalls(integration.type, await integrationImpl.createAdapter(ctx));
+		channelIntegrationRecorder.startFetchRecording();
 
 		// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
 		const { Chat } = await loadChatSdk();
