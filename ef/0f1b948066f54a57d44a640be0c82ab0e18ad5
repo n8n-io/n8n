@@ -1,0 +1,32 @@
+packages/core/src/execution-engine/triggers/__tests__/scheduled-task-manager.test.ts
+  h_8fb27e0cdf6d1e 1-270
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/scheduling-helper-functions.test.ts
+  h_8fb27e0cdf6d1e 7
+packages/core/src/execution-engine/triggers/__tests__/triggers-and-pollers.test.ts
+  h_8fb27e0cdf6d1e 1-155
+packages/core/src/execution-engine/workflow-execute.ts
+  h_8fb27e0cdf6d1e 90
+packages/core/src/execution-engine/triggers/triggers-and-pollers.ts
+  h_8fb27e0cdf6d1e 1-111
+packages/core/src/execution-engine/index.ts
+  h_8fb27e0cdf6d1e 86,97,103
+packages/core/src/execution-engine/__tests__/workflow-execute-run-node.test.ts
+  h_8fb27e0cdf6d1e 93
+packages/core/src/execution-engine/triggers/__tests__/active-workflow-triggers.test.ts
+  h_8fb27e0cdf6d1e 1-1030
+packages/core/src/execution-engine/triggers/active-workflow-triggers.ts
+  h_8fb27e0cdf6d1e 1-568
+packages/core/src/execution-engine/node-execution-context/utils/scheduling-helper-functions.ts
+  h_8fb27e0cdf6d1e 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef0f1b948066f54a57d44a640be0c82ab0e18ad5",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
