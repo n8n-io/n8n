@@ -5,7 +5,12 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { ActiveWorkflowTriggers, ScheduledTaskManager } from 'n8n-core';
+import {
+	ActiveWorkflowTriggers,
+	PollTriggerExecutor,
+	ScheduledTaskManager,
+	Tracing,
+} from 'n8n-core';
 import type {
 	CronExpression,
 	ExecutionError,
@@ -678,22 +683,19 @@ describe('ActiveWorkflowManager', () => {
 
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const logger = mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });
+				const triggersAndPollers = {
+					runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
+						await wf.nodeTypes
+							.getByNameAndVersion(node.type, node.typeVersion)
+							.poll!.call(pollFunctions),
+				} as ConstructorParameters<typeof ActiveWorkflowTriggers>[2];
 				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-					mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
+					logger,
 					scheduledTaskManager,
-					{
-						runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
-							await wf.nodeTypes
-								.getByNameAndVersion(node.type, node.typeVersion)
-								.poll!.call(pollFunctions),
-					} as ConstructorParameters<typeof ActiveWorkflowTriggers>[2],
+					triggersAndPollers,
 					mock(),
-					{
-						startSpan: async (_options: unknown, fn: (span: unknown) => Promise<void>) =>
-							await fn({ setStatus: () => {} }),
-						pickWorkflowAttributes: () => ({}),
-						pickNodeAttributes: () => ({}),
-					} as unknown as ConstructorParameters<typeof ActiveWorkflowTriggers>[4],
+					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing()),
 				);
 
 				await realActiveWorkflowTriggers.addAllTriggers(
@@ -758,7 +760,7 @@ describe('ActiveWorkflowManager', () => {
 				realScheduledTaskManager,
 				mock(),
 				mock(),
-				mock(),
+				mock<PollTriggerExecutor>(),
 			);
 			activeWorkflowManager = new ActiveWorkflowManager(
 				mockLogger(),

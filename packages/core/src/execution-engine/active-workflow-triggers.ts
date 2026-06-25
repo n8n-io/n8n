@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
 	INode,
-	IPollFunctions,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	TriggerTime,
@@ -20,9 +19,9 @@ import {
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors/error-reporter';
-import { SpanStatus, Tracing } from '@/observability';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
+import { PollTriggerExecutor } from './poll-trigger-executor';
 import { ScheduledTaskManager, type ScheduledTaskGroup } from './scheduled-task-manager';
 import { TriggersAndPollers } from './triggers-and-pollers';
 import {
@@ -49,7 +48,7 @@ export class ActiveWorkflowTriggers {
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
-		private readonly tracing: Tracing,
+		private readonly pollTriggerExecutor: PollTriggerExecutor,
 	) {
 		this.logger = logger.scoped('workflow-publication');
 	}
@@ -142,17 +141,49 @@ export class ActiveWorkflowTriggers {
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
 		const nodeIdSet = new Set(nodeIds);
-		const existing = this.activeTriggersByWorkflowId.get(workflowId);
-		const triggers = existing ?? new WorkflowActiveTriggersState();
-		const attemptedNodeIds = new Set<string>();
-		const registeredNodeIds = new Set<string>();
-
 		const triggerFunctionNodes = workflow
 			.getTriggerNodes()
 			.filter((node) => nodeIdSet.has(node.id));
 		const pollTriggerNodes = workflow.getPollNodes().filter((node) => nodeIdSet.has(node.id));
 
 		if (triggerFunctionNodes.length === 0 && pollTriggerNodes.length === 0) return;
+
+		const triggers = this.getOrCreateWorkflowTriggersState(workflowId);
+
+		triggers.beginRegistration();
+		try {
+			await this.startTriggers(
+				workflowId,
+				workflow,
+				triggerFunctionNodes,
+				pollTriggerNodes,
+				triggers,
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+		} finally {
+			triggers.finishRegistration();
+			this.deleteWorkflowIfEmpty(workflowId, triggers);
+		}
+	}
+
+	private async startTriggers(
+		workflowId: string,
+		workflow: Workflow,
+		triggerFunctionNodes: INode[],
+		pollTriggerNodes: INode[],
+		triggers: WorkflowActiveTriggersState,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+	) {
+		const attemptedNodeIds = new Set<string>();
+		const registeredNodeIds = new Set<string>();
 
 		for (const triggerNode of triggerFunctionNodes) {
 			attemptedNodeIds.add(triggerNode.id);
@@ -190,7 +221,6 @@ export class ActiveWorkflowTriggers {
 					attemptedNodeIds,
 					registeredNodeIds,
 				);
-				this.deleteWorkflowIfEmpty(workflowId, triggers);
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -198,13 +228,6 @@ export class ActiveWorkflowTriggers {
 				);
 			}
 		}
-
-		if (pollTriggerNodes.length === 0) {
-			if (!triggers.isEmpty) this.activeTriggersByWorkflowId.set(workflowId, triggers);
-			return;
-		}
-
-		this.activeTriggersByWorkflowId.set(workflowId, triggers);
 
 		for (const pollNode of pollTriggerNodes) {
 			attemptedNodeIds.add(pollNode.id);
@@ -231,7 +254,6 @@ export class ActiveWorkflowTriggers {
 					attemptedNodeIds,
 					registeredNodeIds,
 				);
-				this.deleteWorkflowIfEmpty(workflowId, triggers);
 
 				const error = ensureError(e);
 
@@ -247,7 +269,7 @@ export class ActiveWorkflowTriggers {
 	 * Deactivates the given subset of a workflow's trigger and poll nodes,
 	 * leaving the rest active. Closes each node's trigger response and
 	 * deregisters its crons. Drops the workflow from the active set only when no
-	 * canonical trigger registrations remain for it.
+	 * trigger registrations or crons remain for it.
 	 */
 	async removeTriggers(workflowId: string, nodeIds: Set<INode['id']>) {
 		const group = workflowScheduleGroup(workflowId);
@@ -333,12 +355,16 @@ export class ActiveWorkflowTriggers {
 
 		// Get all the trigger times
 		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
-		const executePollTrigger = this.createPollTriggerExecuteFn(
-			workflowId,
+
+		// Capture this node activation's generation; removing or replacing the node
+		// invalidates only this poller, while leaving other workflow triggers intact.
+		const isCurrent = () =>
+			this.activeTriggersByWorkflowId.get(workflowId)?.isCurrent(node.id, token) ?? false;
+		const executePollTrigger = this.pollTriggerExecutor.create(
 			workflow,
 			node,
 			pollFunctions,
-			token,
+			isCurrent,
 		);
 
 		// Execute the poll trigger directly to be able to know if it works.
@@ -450,117 +476,25 @@ export class ActiveWorkflowTriggers {
 		}
 	}
 
-	/**
-	 * Creates a function that executes the poll() implementation for a poll
-	 * trigger node and triggers a workflow execution based on the output.
-	 */
-	private createPollTriggerExecuteFn(
-		workflowId: string,
-		workflow: Workflow,
-		node: INode,
-		pollFunctions: IPollFunctions,
-		token: TriggerRegistrationToken,
-	): (testingTrigger?: boolean) => Promise<void> {
-		// Capture this node activation's generation; removing or replacing the node
-		// invalidates only this poller, while leaving other workflow triggers intact.
-		const isCurrent = () =>
-			this.activeTriggersByWorkflowId.get(workflowId)?.isCurrent(node.id, token) ?? false;
+	private getOrCreateWorkflowTriggersState(workflowId: string) {
+		const existing = this.activeTriggersByWorkflowId.get(workflowId);
+		if (existing) return existing;
 
-		return async (testingTrigger = false) => {
-			return await this.tracing.startSpan(
-				{
-					name: 'Workflow Trigger Poll',
-					op: 'trigger.poll',
-					attributes: {
-						...this.tracing.pickWorkflowAttributes(workflow),
-						...this.tracing.pickNodeAttributes(node),
-					},
-				},
-				async (span) => {
-					this.logger.debug(`Poll trigger initiated for workflow "${workflow.name}"`, {
-						workflowName: workflow.name,
-						workflowId: workflow.id,
-					});
+		const triggers = new WorkflowActiveTriggersState();
+		this.activeTriggersByWorkflowId.set(workflowId, triggers);
 
-					// The initial activation poll runs inside ActiveWorkflowManager's
-					// outer acquireIsolate window, which also covers countTriggers
-					// afterwards. Acquiring here would release the outer bridge early
-					// (acquire is idempotent per caller; release deletes it). Scheduled
-					// polls fire from the cron scheduler's own async context outside
-					// that window and must acquire/release per tick — see CAT-3147.
-					const ownsIsolate = !testingTrigger;
-
-					// A scheduled poll can finish after the workflow was removed or
-					// reactivated, so drop it if superseded to prevent executing the old version.
-					if (!testingTrigger && !isCurrent()) {
-						this.logger.debug(`Skipping poll for superseded workflow "${workflow.name}"`, {
-							workflowId: workflow.id,
-						});
-						span.setStatus({ code: SpanStatus.ok });
-						return;
-					}
-
-					try {
-						if (ownsIsolate) await workflow.expression.acquireIsolate();
-
-						const pollResponse = await this.triggersAndPollers.runPollFunction(
-							workflow,
-							node,
-							pollFunctions,
-						);
-
-						// Same as the above `isCurrent` check; last chance to check before
-						// potentially starting the execution. Emitting now if superseded would run
-						// an execution against the old version of the workflow, so drop it.
-						// Bailing out here is safe even though `poll()` may have already advanced
-						// its state in the in-memory static data: persistence only happens inside
-						// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
-						// untouched and the newly registered poller re-fetches the same events.
-						if (!testingTrigger && !isCurrent()) {
-							this.logger.debug(
-								`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
-								{ workflowId: workflow.id },
-							);
-							span.setStatus({ code: SpanStatus.ok });
-							return;
-						}
-
-						if (pollResponse !== null) {
-							pollFunctions.__emit(pollResponse);
-						}
-
-						span.setStatus({ code: SpanStatus.ok });
-					} catch (error) {
-						// If the poll trigger fails in the first activation
-						// throw the error back so we let the user know there is
-						// an issue with the trigger.
-						if (testingTrigger) {
-							span.setStatus({ code: SpanStatus.error });
-							throw error;
-						}
-
-						// Ignore poll errors that are against a superseded workflow
-						if (!isCurrent()) {
-							this.logger.debug(
-								`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
-								{ workflowId: workflow.id },
-							);
-							span.setStatus({ code: SpanStatus.ok });
-							return;
-						}
-
-						span.setStatus({ code: SpanStatus.error });
-						pollFunctions.__emitError(error as Error);
-					} finally {
-						if (ownsIsolate) await workflow.expression.releaseIsolate();
-					}
-				},
-			);
-		};
+		return triggers;
 	}
 
 	private deleteWorkflowIfEmpty(workflowId: string, triggers: WorkflowActiveTriggersState) {
-		if (triggers.isEmpty) this.activeTriggersByWorkflowId.delete(workflowId);
+		// A newer activation may have replaced the state object; only the current one can be deleted.
+		if (this.activeTriggersByWorkflowId.get(workflowId) !== triggers) return;
+		// Empty state is kept while another concurrent activation is still registering nodes.
+		if (!triggers.isEmpty || triggers.hasPendingRegistrations) return;
+		// Cron registration can outlive canonical state briefly; keep the workflow visible until cleared.
+		if (this.scheduledTaskManager.hasGroup(workflowScheduleGroup(workflowId))) return;
+
+		this.activeTriggersByWorkflowId.delete(workflowId);
 	}
 
 	private logTriggerActivation(workflow: Workflow, triggerNode: INode) {

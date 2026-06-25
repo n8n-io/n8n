@@ -703,6 +703,18 @@ describe('AgentRuntime — eager input persistence', () => {
 		return block?.text;
 	}
 
+	function hasToolCall(message: AgentDbMessage, toolCallId: string): boolean {
+		const content = (message as { content?: unknown }).content;
+		if (!Array.isArray(content)) return false;
+		return content.some(
+			(c) =>
+				typeof c === 'object' &&
+				c !== null &&
+				Reflect.get(c, 'type') === 'tool-call' &&
+				Reflect.get(c, 'toolCallId') === toolCallId,
+		);
+	}
+
 	function makeMemoryRuntime() {
 		const memory = new InMemoryMemory();
 		const bus = new AgentEventBus();
@@ -778,6 +790,70 @@ describe('AgentRuntime — eager input persistence', () => {
 		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
 		expect(afterResume.filter((m) => textOf(m) === 'please build it')).toHaveLength(1);
 	});
+
+	it("persists the turn's assistant output when the turn suspends on HITL", async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		// The model calls the interruptible tool, so the run suspends on HITL before
+		// reaching finishComplete — the only path that previously saved the turn.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		await runtime.generate('please build it', PERSIST);
+
+		// The assistant's tool-call output from the suspended turn is now in memory, so a
+		// later cancel/abandon cannot drop it — the next turn sees the work was done.
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'assistant' && hasToolCall(m, 'tc-1'),
+		);
+		expect(assistantRows).toHaveLength(1);
+	});
+
+	it('stores exactly one assistant row across a suspend -> resume cycle (idempotent)', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// Saved on suspend (pending tool-call).
+		const afterSuspend = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterSuspend.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
+
+		// Resume to completion: the end-of-turn save rewrites the same assistant row (now
+		// with the resolved tool-call) under the same id — upsert, not a 2nd row.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -812,7 +888,10 @@ describe('AgentRuntime.stream() — fallback error observability', () => {
 				finishReason: 'error',
 			}),
 		);
-		expect(errorEvents).toHaveLength(1);
+		// The post-loop persistence failure surfaces as a sourceless error event. (The
+		// eager input persist also fails against this memory mock and emits its own
+		// source-tagged event, which has dedicated coverage elsewhere.)
+		expect(errorEvents.filter((e) => !(e as { source?: string }).source)).toHaveLength(1);
 		expect(runtime.getState().status).toBe('failed');
 	});
 });
@@ -4226,9 +4305,13 @@ describe('tool systemInstruction merging', () => {
 
 	function getSystemMessageText(): string {
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
-		expect(systemMsg.role).toBe('system');
-		return String(systemMsg.content);
+		const systemMsg = callArgs.system;
+		if (Array.isArray(systemMsg)) {
+			return systemMsg.map((entry) => String((entry as { content: string }).content)).join('');
+		}
+		const system = systemMsg as { role: string; content: string };
+		expect(system.role).toBe('system');
+		return String(system.content);
 	}
 
 	it("wraps a tool's systemInstruction in a built_in_rules block above user instructions", async () => {
@@ -4722,7 +4805,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const generateTextMock = generateText as MockedFunction<
 			(input: {
-				system: { content: string };
+				system: { content: string } | Array<{ content: string }>;
 				messages: Array<{
 					role: string;
 					content: unknown;
@@ -4730,8 +4813,11 @@ describe('AgentRuntime — observation log jobs', () => {
 			}) => unknown
 		>;
 		const [{ system, messages }] = generateTextMock.mock.calls[0];
-		expect(system.content).toContain('Resource one memory.');
-		expect(system.content).toContain('Resource two memory.');
+		const systemText = Array.isArray(system)
+			? system.map((entry) => entry.content).join('')
+			: system.content;
+		expect(systemText).toContain('Resource one memory.');
+		expect(systemText).toContain('Resource two memory.');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
 
 		await runtime.dispose();

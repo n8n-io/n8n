@@ -17,7 +17,7 @@ import { traceable } from 'langsmith/traceable';
 import { join } from 'path';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
-import { parseCliArgs } from './args';
+import { parseCliArgs, partialIsolationWarning } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
@@ -28,6 +28,7 @@ import {
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
+import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
 import {
@@ -74,7 +75,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { caseDisplayPrompt } from '../utils/conversation-text';
+import { caseDisplayPrompt, conversationUserTurnsAsText } from '../utils/conversation-text';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
@@ -257,15 +258,29 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	}
 
+	// A dedicated dataset and baseline prefix are the two halves of cohort
+	// isolation; overriding only one silently touches shared Instance AI data.
+	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
+	if (isolationWarning) logger.warn(isolationWarning);
+
 	const lsClient = new Client();
-	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
+	const datasetName = await syncDataset(
+		lsClient,
+		args.dataset,
+		logger,
+		args.filter,
+		args.exclude,
+		args.tier,
+	);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
 	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
-	// Build-expectation verdicts, judged once per build and merged the same way —
-	// fired during getOrBuild, awaited before reshapeLangSmithRuns.
-	const buildExpectationsByThreadId = new Map<string, Promise<BuildExpectationResult[]>>();
+	// Build-expectation verdicts, judged once per build and merged by the build-cache
+	// key (`iteration:fileSlug`) rather than threadId — so prebuilt/MCP builds, which
+	// have no threadId, still get their outcome expectations judged and counted.
+	// Fired during getOrBuild, awaited before reshapeLangSmithRuns.
+	const buildExpectationsByKey = new Map<string, Promise<BuildExpectationResult[]>>();
 	const runDebugByThreadId = new Map<string, Promise<InstanceAiRunDebugResponse[]>>();
 
 	// LangSmith dataset rows carry only per-scenario fields. The build-side
@@ -395,13 +410,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build, true);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
-					// No transcript in prebuilt mode — checks run with empty prompt context.
+					// No transcript in prebuilt mode, but the authored conversation still
+					// carries the user's request — feed it so prompt-aware checks (e.g.
+					// fulfills_user_request) grade against real intent instead of "".
+					const conversation = testCaseByFileSlug.get(fileSlug)?.conversation ?? [];
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: '',
+						prompt: conversationUserTurnsAsText(conversation),
 						agentText: undefined,
 						logger,
 					});
@@ -426,7 +444,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build, false);
 				stashRunDebug(lane.runner.client, build);
 				return { build, lane, buildDurationMs };
 			} finally {
@@ -448,19 +466,31 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		runDebugByThreadId.set(build.threadId, captureThreadRunDebug(client, build.threadId, logger));
 	}
 
-	// Judge build expectations once per build (off the scenario critical path);
-	// reshapeLangSmithRuns awaits and merges the verdicts by threadId.
-	function stashBuildExpectations(fileSlug: string, build: BuildResult): void {
-		const expectations = testCaseByFileSlug.get(fileSlug)?.buildExpectations;
-		// Judge whenever there's a transcript — even on build failure, matching the
-		// direct-loop runner; the judge prompt handles the "no workflow produced" case.
-		if (!build.threadId || !expectations?.length || !build.transcript?.length) {
-			return;
-		}
-		buildExpectationsByThreadId.set(
-			build.threadId,
+	// Judge author expectations once per build (off the scenario critical path);
+	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key.
+	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
+	// builds (no transcript) judge only outcome expectations against the workflow,
+	// with the authored conversation as request context — mirroring the direct loop.
+	function stashBuildExpectations(
+		key: string,
+		fileSlug: string,
+		build: BuildResult,
+		isPrebuilt: boolean,
+	): void {
+		const testCase = testCaseByFileSlug.get(fileSlug);
+		if (!testCase) return;
+		const { expectations, transcript } = selectAuthorExpectations({
+			testCase,
+			transcript: build.transcript,
+			buildSucceeded: build.success,
+			isPrebuilt,
+			logger,
+		});
+		if (expectations.length === 0) return;
+		buildExpectationsByKey.set(
+			key,
 			verifyBuildExpectations(expectations, {
-				transcript: build.transcript,
+				transcript,
 				workflowJson: build.workflowJsons[0],
 				metrics: build.conversationMetrics,
 			}).catch((error: unknown) =>
@@ -665,7 +695,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			metadata: {
 				filter: args.filter ?? 'all',
 				exclude: args.exclude ?? null,
+				tier: args.tier ?? null,
 				prebuilt: prebuiltManifest !== undefined,
+				baselinePrefix: args.baselinePrefix,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
@@ -679,8 +711,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		await lsClient.awaitPendingTraceBatches();
 
 		const buildExpectationsResolved = new Map<string, BuildExpectationResult[]>();
-		for (const [threadId, verdictsPromise] of buildExpectationsByThreadId) {
-			buildExpectationsResolved.set(threadId, await verdictsPromise);
+		for (const [key, verdictsPromise] of buildExpectationsByKey) {
+			buildExpectationsResolved.set(key, await verdictsPromise);
 		}
 		const runDebugResolved = new Map<string, InstanceAiRunDebugResponse[]>();
 		for (const [threadId, runDebugPromise] of runDebugByThreadId) {
@@ -718,6 +750,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			prExperimentName: experimentResults.experimentName,
 			evaluation,
 			testCasesWithFiles,
+			baselinePrefix: args.baselinePrefix,
 			logger,
 		});
 
@@ -1229,16 +1262,20 @@ async function tryRunComparison(config: {
 	prExperimentName: string;
 	evaluation: MultiRunEvaluation;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
+	baselinePrefix: string;
 	logger: EvalLogger;
 }): Promise<ComparisonOutcome> {
-	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
+	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, baselinePrefix, logger } =
+		config;
 
 	try {
-		const baselineName = await findLatestBaseline(lsClient);
+		const baselineName = await findLatestBaseline(lsClient, baselinePrefix);
 		if (!baselineName) {
+			// Strip the trailing hyphen so the hint names the experiment, not the lookup prefix.
+			const baselineExperimentName = baselinePrefix.replace(/-$/, '');
 			logger.verbose(
 				'No baseline experiment found — skipping comparison. ' +
-					'Run with --experiment-name instance-ai-baseline to create one.',
+					`Run with --experiment-name ${baselineExperimentName} to create one.`,
 			);
 			return { kind: 'no_baseline' };
 		}
