@@ -312,11 +312,10 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		const connections = await this.secretsProviderConnectionRepository.findAll();
 
 		for (const connection of connections) {
-			// Tear down all connections, including disabled ones that may
-			// still be in the registry from a previous load
-			await this.tearDownProviderConnection(connection.providerKey);
-
-			if (!connection.isEnabled) continue;
+			if (!connection.isEnabled) {
+				await this.removeProviderConnection(connection.providerKey);
+				continue;
+			}
 
 			const settings: SecretsProviderSettings['settings'] = await this.decryptSettings(
 				connection.encryptedSettings,
@@ -328,7 +327,19 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 				settings,
 			};
 
-			await this.setupProvider(connection.type, connectionSettings, connection.providerKey);
+			if (this.providerRegistry.has(connection.providerKey)) {
+				await this.replaceProviderConnection(
+					connection.providerKey,
+					connection.type,
+					connectionSettings,
+				);
+			} else {
+				await this.addProviderConnection(
+					connection.providerKey,
+					connection.type,
+					connectionSettings,
+				);
+			}
 		}
 
 		await this.secretsCache.refreshAll();
@@ -339,7 +350,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	// Private - Provider Management
 	// ========================================
 
-	// @ts-expect-error Staged helper, not wired into callers yet.
 	private async addProviderConnection(
 		providerKey: string,
 		providerType: string,
@@ -364,7 +374,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		}
 	}
 
-	// @ts-expect-error Staged helper, not wired into callers yet.
 	private async replaceProviderConnection(
 		providerKey: string,
 		providerType: string,

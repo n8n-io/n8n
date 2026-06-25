@@ -868,7 +868,7 @@ describe('ExternalSecretsManager', () => {
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault-1', dummyProvider);
 		});
 
-		it('should tear down disabled providers but not re-setup them', async () => {
+		it('should remove disabled providers but not re-setup them', async () => {
 			const enabledConnection = {
 				id: 1,
 				providerKey: 'vault-enabled',
@@ -907,8 +907,7 @@ describe('ExternalSecretsManager', () => {
 
 			await managerWithProjectMode.reloadAllProviders();
 
-			// Both should be torn down
-			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('vault-enabled');
+			// Disabled providers should be removed directly
 			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('vault-disabled');
 			// Only enabled should be set up
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('vault-enabled', dummyProvider);
@@ -1059,7 +1058,7 @@ describe('ExternalSecretsManager', () => {
 			);
 		});
 
-		it('should tear down existing providers before reloading', async () => {
+		it('should replace existing providers during reload', async () => {
 			const mockConnection = {
 				id: 1,
 				providerKey: 'my-vault',
@@ -1087,9 +1086,8 @@ describe('ExternalSecretsManager', () => {
 
 			await managerWithProjectMode.reloadAllProviders();
 
-			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('my-vault');
 			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
-			expect(mockProviderRegistry.remove).toHaveBeenCalledWith('my-vault');
+			expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault', newProvider);
 		});
 
