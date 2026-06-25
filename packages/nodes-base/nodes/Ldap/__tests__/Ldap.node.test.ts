@@ -236,6 +236,21 @@ describe('Ldap', () => {
 			);
 		});
 
+		it('should return a large result set without exceeding the maximum call stack size', async () => {
+			mockParameters({ searchText: 'johndoe' });
+
+			// A result set large enough to overflow the argument list when spread
+			// into Array.prototype.push via `push.apply` (NODE-5326).
+			const largeResultSet = Array.from({ length: 500_000 }, (_, i) => ({
+				dn: `cn=user${i},dc=example,dc=com`,
+			}));
+			mockSearch.mockResolvedValue({ searchEntries: largeResultSet });
+
+			const result = await new Ldap().execute.call(executeFunctions);
+
+			expect(result[0]).toHaveLength(largeResultSet.length);
+		});
+
 		it('should escape the attribute parameter regardless of whether searchText contains an expression', async () => {
 			mockParameters({ attribute: 'cn*name', searchText: '={{ $json.query }}' });
 
