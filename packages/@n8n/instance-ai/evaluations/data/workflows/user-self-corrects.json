@@ -18,7 +18,7 @@
 	"tags": ["build", "slack", "http", "schedule", "behaviour", "self-correction"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"outcomeExpectations": [
 		"The user changed their mind during the conversation, and the agent applied the correction rather than the original request — the final workflow targets #engineering (C04ENGINEER1), not #news (C04NEWS0001).",
 		"The corrected story count won: the workflow posts the top 3 stories, not just the single top story from the user's first message."
 	],

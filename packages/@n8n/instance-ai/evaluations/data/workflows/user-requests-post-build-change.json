@@ -18,8 +18,10 @@
 	"tags": ["build", "http", "slack", "schedule", "behaviour", "post-build-change", "follow-up"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
-		"After the workflow was first built, the user sent a follow-up asking to change the schedule to hourly, and the agent applied it as a modification to the existing workflow rather than ignoring it or starting over.",
+	"processExpectations": [
+		"After the workflow was first built, the user sent a follow-up asking to change the schedule to hourly, and the agent applied it as a modification to the existing workflow rather than ignoring it or starting over."
+	],
+	"outcomeExpectations": [
 		"The final workflow's schedule runs hourly, not daily at 9am — proving the post-build follow-up change was delivered and incorporated."
 	],
 	"executionScenarios": [

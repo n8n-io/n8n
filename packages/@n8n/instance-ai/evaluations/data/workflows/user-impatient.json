@@ -19,8 +19,10 @@
 	"tags": ["build", "webhook", "behaviour", "impatient"],
 	"triggerType": "webhook",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
-		"The agent did not pepper the user with a string of detailed configuration questions — when the user delegated, it proceeded with sensible defaults rather than blocking on specifics.",
+	"processExpectations": [
+		"The agent did not pepper the user with a string of detailed configuration questions — when the user delegated, it proceeded with sensible defaults rather than blocking on specifics."
+	],
+	"outcomeExpectations": [
 		"The agent built a working webhook-to-storage workflow with a reasonable storage choice of its own, since the user explicitly handed it the decision."
 	],
 	"executionScenarios": [

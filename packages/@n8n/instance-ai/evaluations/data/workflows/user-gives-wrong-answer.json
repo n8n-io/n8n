@@ -19,8 +19,10 @@
 	"tags": ["build", "slack", "schedule", "behaviour", "user-error"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
-		"The agent did not silently build with standups@company.com as the Slack destination — it surfaced the implausible value (in its plan, a question, or a setup card) or took the user's correction, so the wrong value was caught rather than carried through.",
+	"processExpectations": [
+		"The agent did not silently build with standups@company.com as the Slack destination — it surfaced the implausible value (in its plan, a question, or a setup card) or took the user's correction, so the wrong value was caught rather than carried through."
+	],
+	"outcomeExpectations": [
 		"After the user's correction, the workflow posts to #standups (C04STANDUP01) and contains no email-sending node — the wrong first value did not survive into the final build."
 	],
 	"executionScenarios": [
