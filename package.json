@@ -194,7 +194,8 @@
       "esbuild": "catalog:",
       "undici@5": "catalog:undici-v6",
       "undici@6": "catalog:undici-v6",
-      "undici@7": "catalog:undici-v7"
+      "undici@7": "catalog:undici-v7",
+      "@babel/traverse": "^7.23.2"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
