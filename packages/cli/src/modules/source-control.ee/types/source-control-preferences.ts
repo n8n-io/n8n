@@ -59,6 +59,26 @@ export class SourceControlPreferences {
 	@IsBoolean()
 	readonly hasApiToken?: boolean;
 
+	/** Which credential the code-review API calls use. Defaults to PAT. */
+	@IsOptional()
+	@IsIn(['pat', 'githubApp'])
+	apiAuthMethod?: 'pat' | 'githubApp' = 'pat';
+
+	/** Write-only GitHub App ID; never persisted in the preferences blob. */
+	@IsOptional()
+	@IsString()
+	githubAppId?: string;
+
+	/** Write-only GitHub App private key (PEM); never persisted in the preferences blob. */
+	@IsOptional()
+	@IsString()
+	githubAppPrivateKey?: string;
+
+	/** Read-only flag indicating whether GitHub App credentials are stored. */
+	@IsOptional()
+	@IsBoolean()
+	readonly hasGithubApp?: boolean;
+
 	static fromJSON(json: Partial<SourceControlPreferences>): SourceControlPreferences {
 		return new SourceControlPreferences(json);
 	}
@@ -77,6 +97,7 @@ export class SourceControlPreferences {
 			connectionType: preferences.connectionType ?? defaultPreferences.connectionType,
 			httpsUsername: preferences.httpsUsername ?? defaultPreferences.httpsUsername,
 			httpsPassword: preferences.httpsPassword ?? defaultPreferences.httpsPassword,
+			apiAuthMethod: preferences.apiAuthMethod ?? defaultPreferences.apiAuthMethod,
 		});
 	}
 }

@@ -52,7 +52,8 @@ export class SourceControlController {
 		if (hasGlobalScope(req.user, 'sourceControl:manage')) {
 			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
 			const hasApiToken = await this.sourceControlPreferencesService.hasApiToken();
-			return { ...preferences, publicKey, hasApiToken };
+			const hasGithubApp = await this.sourceControlPreferencesService.hasGithubApp();
+			return { ...preferences, publicKey, hasApiToken, hasGithubApp };
 		}
 
 		const publicSubset = {
@@ -168,6 +169,13 @@ export class SourceControlController {
 			if (sanitizedPreferences.apiToken) {
 				preferenceUpdates.apiToken = sanitizedPreferences.apiToken;
 			}
+			if (sanitizedPreferences.apiAuthMethod !== undefined) {
+				preferenceUpdates.apiAuthMethod = sanitizedPreferences.apiAuthMethod;
+			}
+			if (sanitizedPreferences.githubAppId && sanitizedPreferences.githubAppPrivateKey) {
+				preferenceUpdates.githubAppId = sanitizedPreferences.githubAppId;
+				preferenceUpdates.githubAppPrivateKey = sanitizedPreferences.githubAppPrivateKey;
+			}
 			if (Object.keys(preferenceUpdates).length > 0) {
 				await this.sourceControlPreferencesService.setPreferences(preferenceUpdates, true);
 			}
@@ -181,7 +189,8 @@ export class SourceControlController {
 				connectionType: resultingPreferences.connectionType!,
 			});
 			const hasApiToken = await this.sourceControlPreferencesService.hasApiToken();
-			return { ...resultingPreferences, hasApiToken };
+			const hasGithubApp = await this.sourceControlPreferencesService.hasGithubApp();
+			return { ...resultingPreferences, hasApiToken, hasGithubApp };
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

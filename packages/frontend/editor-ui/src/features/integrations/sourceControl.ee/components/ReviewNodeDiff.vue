@@ -379,7 +379,9 @@ const submitComment = async () => {
 				<N8nText size="small" color="text-light" :class="$style.threadAnchor">
 					<span v-if="thread.displayLine">
 						{{
-							i18n.baseText('sourceControl.reviews.comments.lineRef', { line: thread.displayLine })
+							i18n.baseText('sourceControl.reviews.comments.lineRef', {
+								interpolate: { line: thread.displayLine },
+							})
 						}}
 						·
 					</span>

@@ -40,6 +40,14 @@ const connectionType = ref<'ssh' | 'https'>('ssh');
 const httpsUsername = ref('');
 const httpsPassword = ref('');
 const apiToken = ref('');
+const apiAuthMethod = ref<'pat' | 'githubApp'>('pat');
+const githubAppId = ref('');
+const githubAppPrivateKey = ref('');
+
+const authMethodOptions = [
+	{ value: 'pat', label: locale.baseText('settings.sourceControl.authMethod.pat') },
+	{ value: 'githubApp', label: locale.baseText('settings.sourceControl.authMethod.githubApp') },
+];
 
 const branchNameOptions = computed(() =>
 	sourceControlStore.preferences.branches.map((branch) => ({
@@ -120,10 +128,16 @@ const onSave = async () => {
 			branchName: sourceControlStore.preferences.branchName,
 			branchReadOnly: sourceControlStore.preferences.branchReadOnly,
 			branchColor: sourceControlStore.preferences.branchColor,
-			// Only send the token when the user entered a new one.
+			apiAuthMethod: apiAuthMethod.value,
+			// Only send secrets when the user entered new ones (avoid overwriting with blanks).
 			...(apiToken.value ? { apiToken: apiToken.value } : {}),
+			...(githubAppId.value && githubAppPrivateKey.value
+				? { githubAppId: githubAppId.value, githubAppPrivateKey: githubAppPrivateKey.value }
+				: {}),
 		});
 		apiToken.value = '';
+		githubAppId.value = '';
+		githubAppPrivateKey.value = '';
 		await sourceControlStore.getPreferences();
 		toast.showMessage({
 			title: locale.baseText('settings.sourceControl.saved.title'),
@@ -151,6 +165,7 @@ const initialize = async () => {
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
 		connectionType.value = sourceControlStore.preferences.connectionType || 'ssh';
+		apiAuthMethod.value = sourceControlStore.preferences.apiAuthMethod ?? 'pat';
 		void sourceControlStore.getBranches();
 	}
 };
@@ -533,6 +548,22 @@ watch(connectionType, () => {
 					</div>
 				</div>
 				<div :class="$style.group">
+					<label for="apiAuthMethod">{{
+						locale.baseText('settings.sourceControl.authMethod.label')
+					}}</label>
+					<N8nFormInput
+						id="apiAuthMethod"
+						v-model="apiAuthMethod"
+						label=""
+						type="select"
+						name="apiAuthMethod"
+						data-test-id="source-control-auth-method"
+						:options="authMethodOptions"
+					/>
+					<small>{{ locale.baseText('settings.sourceControl.authMethod.help') }}</small>
+				</div>
+
+				<div v-if="apiAuthMethod === 'pat'" :class="$style.group">
 					<label for="apiToken">{{
 						locale.baseText('settings.sourceControl.apiToken.label')
 					}}</label>
@@ -552,6 +583,43 @@ watch(connectionType, () => {
 						class="mt-2xs"
 					>
 						{{ locale.baseText('settings.sourceControl.apiToken.configured') }}
+					</N8nNotice>
+				</div>
+
+				<div v-else :class="$style.group">
+					<label for="githubAppId">{{
+						locale.baseText('settings.sourceControl.githubApp.appId.label')
+					}}</label>
+					<N8nFormInput
+						id="githubAppId"
+						v-model="githubAppId"
+						label=""
+						type="text"
+						name="githubAppId"
+						data-test-id="source-control-github-app-id"
+						:placeholder="locale.baseText('settings.sourceControl.githubApp.appId.placeholder')"
+					/>
+					<label for="githubAppPrivateKey" class="mt-s">{{
+						locale.baseText('settings.sourceControl.githubApp.privateKey.label')
+					}}</label>
+					<N8nFormInput
+						id="githubAppPrivateKey"
+						v-model="githubAppPrivateKey"
+						label=""
+						type="textarea"
+						name="githubAppPrivateKey"
+						data-test-id="source-control-github-app-key"
+						:placeholder="
+							locale.baseText('settings.sourceControl.githubApp.privateKey.placeholder')
+						"
+					/>
+					<small>{{ locale.baseText('settings.sourceControl.githubApp.help') }}</small>
+					<N8nNotice
+						v-if="sourceControlStore.preferences.hasGithubApp"
+						theme="success"
+						class="mt-2xs"
+					>
+						{{ locale.baseText('settings.sourceControl.githubApp.configured') }}
 					</N8nNotice>
 				</div>
 				<div :class="[$style.group, 'pt-s']">
