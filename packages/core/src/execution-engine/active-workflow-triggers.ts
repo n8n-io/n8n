@@ -142,17 +142,49 @@ export class ActiveWorkflowTriggers {
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
 		const nodeIdSet = new Set(nodeIds);
-		const existing = this.activeTriggersByWorkflowId.get(workflowId);
-		const triggers = existing ?? new WorkflowActiveTriggersState();
-		const attemptedNodeIds = new Set<string>();
-		const registeredNodeIds = new Set<string>();
-
 		const triggerFunctionNodes = workflow
 			.getTriggerNodes()
 			.filter((node) => nodeIdSet.has(node.id));
 		const pollTriggerNodes = workflow.getPollNodes().filter((node) => nodeIdSet.has(node.id));
 
 		if (triggerFunctionNodes.length === 0 && pollTriggerNodes.length === 0) return;
+
+		const triggers = this.getOrCreateWorkflowTriggersState(workflowId);
+
+		triggers.beginRegistration();
+		try {
+			await this.startTriggers(
+				workflowId,
+				workflow,
+				triggerFunctionNodes,
+				pollTriggerNodes,
+				triggers,
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+		} finally {
+			triggers.finishRegistration();
+			this.deleteWorkflowIfEmpty(workflowId, triggers);
+		}
+	}
+
+	private async startTriggers(
+		workflowId: string,
+		workflow: Workflow,
+		triggerFunctionNodes: INode[],
+		pollTriggerNodes: INode[],
+		triggers: WorkflowActiveTriggersState,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+	) {
+		const attemptedNodeIds = new Set<string>();
+		const registeredNodeIds = new Set<string>();
 
 		for (const triggerNode of triggerFunctionNodes) {
 			attemptedNodeIds.add(triggerNode.id);
@@ -190,7 +222,6 @@ export class ActiveWorkflowTriggers {
 					attemptedNodeIds,
 					registeredNodeIds,
 				);
-				this.deleteWorkflowIfEmpty(workflowId, triggers);
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -198,13 +229,6 @@ export class ActiveWorkflowTriggers {
 				);
 			}
 		}
-
-		if (pollTriggerNodes.length === 0) {
-			if (!triggers.isEmpty) this.activeTriggersByWorkflowId.set(workflowId, triggers);
-			return;
-		}
-
-		this.activeTriggersByWorkflowId.set(workflowId, triggers);
 
 		for (const pollNode of pollTriggerNodes) {
 			attemptedNodeIds.add(pollNode.id);
@@ -231,7 +255,6 @@ export class ActiveWorkflowTriggers {
 					attemptedNodeIds,
 					registeredNodeIds,
 				);
-				this.deleteWorkflowIfEmpty(workflowId, triggers);
 
 				const error = ensureError(e);
 
@@ -247,7 +270,7 @@ export class ActiveWorkflowTriggers {
 	 * Deactivates the given subset of a workflow's trigger and poll nodes,
 	 * leaving the rest active. Closes each node's trigger response and
 	 * deregisters its crons. Drops the workflow from the active set only when no
-	 * canonical trigger registrations remain for it.
+	 * trigger registrations or crons remain for it.
 	 */
 	async removeTriggers(workflowId: string, nodeIds: Set<INode['id']>) {
 		const group = workflowScheduleGroup(workflowId);
@@ -559,8 +582,25 @@ export class ActiveWorkflowTriggers {
 		};
 	}
 
+	private getOrCreateWorkflowTriggersState(workflowId: string) {
+		const existing = this.activeTriggersByWorkflowId.get(workflowId);
+		if (existing) return existing;
+
+		const triggers = new WorkflowActiveTriggersState();
+		this.activeTriggersByWorkflowId.set(workflowId, triggers);
+
+		return triggers;
+	}
+
 	private deleteWorkflowIfEmpty(workflowId: string, triggers: WorkflowActiveTriggersState) {
-		if (triggers.isEmpty) this.activeTriggersByWorkflowId.delete(workflowId);
+		// A newer activation may have replaced the state object; only the current one can be deleted.
+		if (this.activeTriggersByWorkflowId.get(workflowId) !== triggers) return;
+		// Empty state is kept while another concurrent activation is still registering nodes.
+		if (!triggers.isEmpty || triggers.hasPendingRegistrations) return;
+		// Cron registration can outlive canonical state briefly; keep the workflow visible until cleared.
+		if (this.scheduledTaskManager.hasGroup(workflowScheduleGroup(workflowId))) return;
+
+		this.activeTriggersByWorkflowId.delete(workflowId);
 	}
 
 	private logTriggerActivation(workflow: Workflow, triggerNode: INode) {

@@ -117,29 +117,47 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.triggerType).toBe('webhook');
 	});
 
-	it('accepts the optional buildExpectations array', () => {
+	it('accepts the optional process/outcome expectation arrays', () => {
 		const parsed = WorkflowTestCaseSchema.parse({
 			...validFixture(),
-			buildExpectations: ['the agent asked which channel before building'],
+			processExpectations: ['the agent asked which channel before building'],
+			outcomeExpectations: ['the final workflow posts to Slack'],
 		});
-		expect(parsed.buildExpectations).toEqual(['the agent asked which channel before building']);
+		expect(parsed.processExpectations).toEqual(['the agent asked which channel before building']);
+		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
 	});
 
-	it('leaves buildExpectations undefined when omitted', () => {
+	it('leaves expectation arrays undefined when omitted', () => {
 		const parsed = WorkflowTestCaseSchema.parse(validFixture());
-		expect(parsed.buildExpectations).toBeUndefined();
+		expect(parsed.processExpectations).toBeUndefined();
+		expect(parsed.outcomeExpectations).toBeUndefined();
 	});
 
-	it('rejects a non-array buildExpectations', () => {
+	it('rejects a non-array expectation field', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: 'nope' }),
+			WorkflowTestCaseSchema.parse({ ...validFixture(), outcomeExpectations: 'nope' }),
 		).toThrow();
 	});
 
 	it('rejects an empty-string expectation', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: [''] }),
+			WorkflowTestCaseSchema.parse({ ...validFixture(), processExpectations: [''] }),
 		).toThrow();
+	});
+
+	it('rejects a legacy buildExpectations key with a migration hint', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				buildExpectations: ['legacy assertion that would otherwise be silently dropped'],
+			}),
+		).toThrow(/no longer supported/);
+	});
+
+	it('rejects an unknown top-level key instead of silently stripping it', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), outcomeExpectaiton: ['typo'] }),
+		).toThrow(/[Uu]nrecognized key/);
 	});
 
 	it('accepts a credentials entry with a supported type', () => {

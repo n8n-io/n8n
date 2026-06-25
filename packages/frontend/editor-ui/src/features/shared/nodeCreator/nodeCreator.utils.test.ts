@@ -14,6 +14,9 @@ import {
 	sortNodeCreateElements,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
+	getHumanInTheLoopCallout,
+	getRootSearchCallouts,
+	getSendAndWaitNodes,
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
 } from './nodeCreator.utils';
@@ -21,6 +24,7 @@ import {
 	mockActionCreateElement,
 	mockNodeCreateElement,
 	mockSectionCreateElement,
+	mockSimplifiedNodeType,
 } from './__tests__/utils';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -37,6 +41,8 @@ import {
 	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_ROOT_NODES,
 	AI_SUBCATEGORY,
+	HITL_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -827,6 +833,73 @@ describe('NodeCreator - utils', () => {
 			expect(mapToolSubcategoryIcon('unknown-section')).toBe('globe');
 			expect(mapToolSubcategoryIcon('')).toBe('globe');
 			expect(mapToolSubcategoryIcon('some-other-key')).toBe('globe');
+		});
+	});
+
+	describe('getSendAndWaitNodes', () => {
+		const hitlNode = mockSimplifiedNodeType({
+			name: 'n8n-nodes-base.slack',
+			codex: { categories: ['Communication', HUMAN_IN_THE_LOOP_CATEGORY] },
+		});
+		const otherNode = mockSimplifiedNodeType({
+			name: 'n8n-nodes-base.httpRequest',
+			codex: { categories: ['Core Nodes'] },
+		});
+
+		it('returns the names of nodes in the HITL category', () => {
+			expect(getSendAndWaitNodes([hitlNode, otherNode])).toEqual(['n8n-nodes-base.slack']);
+		});
+
+		it('returns an empty array when there are no nodes', () => {
+			expect(getSendAndWaitNodes(undefined as unknown as SimplifiedNodeType[])).toEqual([]);
+		});
+	});
+
+	describe('getHumanInTheLoopCallout', () => {
+		it('builds a subcategory tile targeting the HITL view with its send-and-wait nodes', () => {
+			const hitlNode = mockSimplifiedNodeType({
+				name: 'n8n-nodes-base.slack',
+				codex: { categories: [HUMAN_IN_THE_LOOP_CATEGORY] },
+			});
+
+			const callout = getHumanInTheLoopCallout([hitlNode]);
+
+			expect(callout).toMatchObject({
+				type: 'subcategory',
+				key: HITL_SUBCATEGORY,
+				properties: { title: HITL_SUBCATEGORY, icon: 'badge-check' },
+			});
+			expect(callout.properties.sections).toEqual([
+				expect.objectContaining({ key: 'sendAndWait', items: ['n8n-nodes-base.slack'] }),
+			]);
+		});
+	});
+
+	describe('getRootSearchCallouts', () => {
+		const hitlNode = mockSimplifiedNodeType({
+			name: 'n8n-nodes-base.slack',
+			codex: { categories: [HUMAN_IN_THE_LOOP_CATEGORY] },
+		});
+
+		const findHitlCallout = (search: string) =>
+			getRootSearchCallouts(search, {}, [hitlNode]).find((item) => item.key === HITL_SUBCATEGORY);
+
+		it.each(['human', 'human in the loop', 'hitl', 'approval', 'review', 'HUMAN', 'Human Review'])(
+			'surfaces the Human review subcategory when searching "%s"',
+			(search) => {
+				expect(findHitlCallout(search)?.type).toBe('subcategory');
+			},
+		);
+
+		it.each(['slack', 'set', 'webhook', ''])(
+			'does not surface the Human review subcategory for unrelated search "%s"',
+			(search) => {
+				expect(findHitlCallout(search)).toBeUndefined();
+			},
+		);
+
+		it('does not surface the rag starter callout unless it is enabled', () => {
+			expect(getRootSearchCallouts('rag', {}, [])).toEqual([]);
 		});
 	});
 });
