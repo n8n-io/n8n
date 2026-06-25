@@ -182,7 +182,9 @@ function gateFailuresCell(unit: GateUnit): string {
 function formatGateAlertMarkdown(gate: GateResult): string {
 	const n = gate.units.length;
 	const k = gate.totalRuns;
-	if (gate.green) {
+	// "All units green" is a per-unit claim — under minAggregatePassRate gate.green
+	// can be true via the pooled rate while individual units fail, so key off failing.
+	if (gate.failing.length === 0) {
 		return [
 			'> [!TIP]',
 			`> 🟢 All ${n} unit${n === 1 ? '' : 's'} green over ${k} run${k === 1 ? '' : 's'}.`,
@@ -224,7 +226,7 @@ function renderGateSummaryMarkdown(gate: GateResult): string[] {
 function formatTerminalGateLine(gate: GateResult): string {
 	const n = gate.units.length;
 	const k = gate.totalRuns;
-	return gate.green
+	return gate.failing.length === 0
 		? `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green over ${k} run${k === 1 ? '' : 's'}`
 		: `▶ GATE: ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} NOT green over ${k} run${k === 1 ? '' : 's'}`;
 }
