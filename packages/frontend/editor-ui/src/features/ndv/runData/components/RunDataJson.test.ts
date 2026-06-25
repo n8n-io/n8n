@@ -5,6 +5,8 @@ import RunDataJson from '@/features/ndv/runData/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useElementSize } from '@vueuse/core'; // Import the composable to mock
 import { Mock } from 'vitest';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@vueuse/core', async () => {
 	const originalModule = await vi.importActual('@vueuse/core');
@@ -60,10 +62,17 @@ describe('RunDataJson.vue', () => {
 		const { container } = renderComponent({
 			global: {
 				plugins: [createTestingPinia()],
+				// RunDataJsonActions (lazy child) injects the workflow id on mount.
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 			},
 		});
-		// Resolve the defineAsyncComponent import to prevent EnvironmentTeardownError
+		// Resolve the defineAsyncComponent import to prevent EnvironmentTeardownError.
+		// flushPromises() only drains microtasks; dynamicImportSettled() waits for the
+		// dynamic import() itself to finish so it can't resolve after env teardown.
 		await flushPromises();
+		await vi.dynamicImportSettled();
 
 		expect(container).toMatchSnapshot();
 
