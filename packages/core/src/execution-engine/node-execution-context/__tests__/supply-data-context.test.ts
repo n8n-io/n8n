@@ -16,7 +16,7 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	createRunExecutionData,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
@@ -128,7 +128,7 @@ describe('SupplyDataContext', () => {
 			const inputIndex = 2;
 
 			expect(() => supplyDataContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -136,7 +136,7 @@ describe('SupplyDataContext', () => {
 			inputData.main[inputIndex] = null;
 
 			expect(() => supplyDataContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 	});

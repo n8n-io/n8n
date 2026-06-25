@@ -413,6 +413,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const effectiveMode = additionalData.rootExecutionMode ?? mode;
 		const skipDynamicResolution = effectiveMode === 'manual' || effectiveMode === 'internal';
 		if (additionalData.executionContext?.credentials !== undefined || !skipDynamicResolution) {
+			// Mark that this execution attempted to run with a private credential before
+			// resolution is attempted, so the flag survives even when resolution throws
+			// (e.g. the running user has not connected the credential). Telemetry-only;
+			// the redaction layer relies on `currentNodeUsedDynamicCredentials` instead.
+			if (credentialsEntity.isResolvable) {
+				additionalData.currentNodeAttemptedDynamicCredentials = true;
+			}
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
@@ -522,7 +529,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.authentication = decryptedDataOriginal.authentication;
 		}
 
-		const additionalKeys = getAdditionalKeys(additionalData, mode, null);
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
+			isCredential: true,
+		});
 
 		if (expressionResolveValues) {
 			try {

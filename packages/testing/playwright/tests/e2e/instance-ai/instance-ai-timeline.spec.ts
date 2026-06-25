@@ -4,7 +4,7 @@ test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI agent timeline @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });
@@ -16,12 +16,13 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "artifact card test"',
 			);
 
-			await n8n.instanceAi.approveBuildPlan();
-
-			await n8n.instanceAi.waitForResponseComplete(120_000);
-
-			// Artifact cards (N8nCard) should appear in the timeline after build
-			await expect(n8n.instanceAi.getArtifactCards().first()).toBeVisible({ timeout: 30_000 });
+			await expect(n8n.instanceAi.getPreviewTabByName(/artifact card test/i)).toBeVisible({
+				timeout: 120_000,
+			});
+			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
+				timeout: 30_000,
+			});
+			await n8n.instanceAi.waitForResponseComplete();
 		});
 	},
 );

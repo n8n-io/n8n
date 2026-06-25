@@ -11,7 +11,9 @@ export class AddEvaluationConfigColumnsToTestRun1778100002000 implements Reversi
 		runQuery,
 		dbType,
 	}: MigrationContext) {
-		await addColumns(TEST_RUN_TABLE, [column('evaluationConfigId').varchar(36)]);
+		await addColumns(TEST_RUN_TABLE, [column('evaluationConfigId').varchar(36)], {
+			recreatesOnSqlite: true,
+		});
 
 		await addForeignKey(
 			TEST_RUN_TABLE,
@@ -31,7 +33,9 @@ export class AddEvaluationConfigColumnsToTestRun1778100002000 implements Reversi
 	}
 
 	async down({ schemaBuilder: { dropColumns, dropForeignKey, dropIndex } }: MigrationContext) {
-		await dropColumns(TEST_RUN_TABLE, ['evaluationConfigSnapshot']);
+		await dropColumns(TEST_RUN_TABLE, ['evaluationConfigSnapshot'], {
+			recreatesOnSqlite: true,
+		});
 		await dropIndex(TEST_RUN_TABLE, ['evaluationConfigId']);
 		await dropForeignKey(
 			TEST_RUN_TABLE,
@@ -39,6 +43,6 @@ export class AddEvaluationConfigColumnsToTestRun1778100002000 implements Reversi
 			[EVALUATION_CONFIG_TABLE, 'id'],
 			FK_NAME,
 		);
-		await dropColumns(TEST_RUN_TABLE, ['evaluationConfigId']);
+		await dropColumns(TEST_RUN_TABLE, ['evaluationConfigId'], { recreatesOnSqlite: true });
 	}
 }

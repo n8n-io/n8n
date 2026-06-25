@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
@@ -16,6 +17,7 @@ mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware)
 // We need to mock the service before importing the controller as it's used in the middleware
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
+import { McpConfig } from '../mcp.config';
 import { McpController, type FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
@@ -219,6 +221,7 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			true,
+			{ name: 'Claude', version: '1.0.0' },
 		);
 	});
 
@@ -250,6 +253,7 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			false,
+			undefined,
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
@@ -266,6 +270,26 @@ describe('McpController', () => {
 		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.end).toHaveBeenCalled();
+	});
+
+	// The route decorators read `McpConfig.rateLimitServer` at import time, so
+	// these assertions prove the configured limit is wired into the routes
+	// without booting the full server.
+	describe('IP rate limit configuration', () => {
+		const getRouteIpRateLimit = (handlerName: string) =>
+			Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				McpController as unknown as Controller,
+				handlerName,
+			).ipRateLimit;
+
+		test.each(['handleGet', 'build'])(
+			'applies the configured server limit to %s',
+			(handlerName) => {
+				const limit = Container.get(McpConfig).rateLimitServer;
+
+				expect(getRouteIpRateLimit(handlerName)).toEqual({ limit });
+			},
+		);
 	});
 
 	describe('GET /http', () => {
@@ -294,6 +318,7 @@ describe('McpController', () => {
 			expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'user-1' }),
 				true,
+				undefined,
 			);
 			expect(mockHandleRequest).toHaveBeenCalledWith(req, res, undefined);
 		});

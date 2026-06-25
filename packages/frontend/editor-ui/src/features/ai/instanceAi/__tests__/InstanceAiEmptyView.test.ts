@@ -8,15 +8,24 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { FrontendModuleSettings } from '@n8n/api-types';
+
+const PERSONAL_PROJECT_ID = 'personal-project-id';
 
 const {
 	experimentMocks,
 	promptSuggestionsV2,
 	promptSuggestionsV2Component,
+	personalizedPromptSuggestionsComponent,
 	workflowPreviewSuggestions,
 	workflowPreviewSuggestionsComponent,
+	cloudPlanStoreMock,
+	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
 } = vi.hoisted(() => ({
@@ -24,6 +33,44 @@ const {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
 		workflowPreviewEnabled: { value: false },
+		personalizedPromptVariant: { value: undefined as string | undefined },
+		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
+		personalizedPromptTreatmentEnabled: { value: false },
+		personalizedPromptProfileOverride: {
+			value: null as
+				| null
+				| { kind: 'fallback' }
+				| { kind: 'segment'; role: string; useCase: string; segmentKey: string },
+		},
+		resolvePersonalizedPromptSuggestions: vi.fn(
+			({ metadataLoadState, fallbackSuggestions, format, profileOverride }) => ({
+				suggestions:
+					metadataLoadState === 'loaded'
+						? Array.from({ length: 4 }, (_, index) => ({
+								id: `personalized-${index + 1}`,
+								shortTitle: `Personalized prompt ${index + 1}`,
+								description: `Personalized prompt description ${index + 1}`,
+								builderPrompt: `Personalized builder prompt ${index + 1}`,
+							}))
+						: fallbackSuggestions,
+				fallbackSuggestions,
+				showSeeMore: metadataLoadState === 'loaded',
+				telemetryPayload: {
+					suggestion_catalog_version: 'v4-personalized',
+					suggestion_format: format,
+					suggestion_source: metadataLoadState === 'loaded' ? 'matrix' : 'v2_top_used_fallback',
+					metadata_load_state: metadataLoadState,
+					profile_override: profileOverride ? true : undefined,
+				},
+			}),
+		),
+	},
+	cloudPlanStoreMock: {
+		state: { initialized: false },
+		currentUserCloudInfo: null as null | { information?: Record<string, string | string[]> },
+	},
+	appSettingsStoreMock: {
+		isCloudDeployment: false,
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -41,6 +88,7 @@ const {
 		promptKey: 'instanceAi.emptyState.suggestions.buildWorkflow.prompt',
 	})),
 	workflowPreviewSuggestionsComponent: { name: 'WorkflowPreviewSuggestionsStub' },
+	personalizedPromptSuggestionsComponent: { name: 'InstanceAiPersonalizedPromptSuggestionsStub' },
 	replaceMock: vi.fn(),
 	showErrorMock: vi.fn(),
 }));
@@ -64,6 +112,44 @@ vi.mock('@/experiments/instanceAiPromptSuggestionsV2', () => ({
 	InstanceAiPromptSuggestionsV2: promptSuggestionsV2Component,
 }));
 
+vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
+	useInstanceAiPersonalizedPromptSuggestionsExperiment: () => ({
+		currentVariant: experimentMocks.personalizedPromptVariant,
+		suggestionFormat: experimentMocks.personalizedPromptFormat,
+		isTreatmentVariant: experimentMocks.personalizedPromptTreatmentEnabled,
+	}),
+	usePersonalizedPromptProfileOverride: () => experimentMocks.personalizedPromptProfileOverride,
+	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION: 'v4-personalized',
+	InstanceAiPersonalizedPromptSuggestions: personalizedPromptSuggestionsComponent,
+	getTopUsedV2FallbackSuggestions: () => [
+		{
+			id: 'whatsapp-support-agent',
+			shortTitle: 'WhatsApp support agent',
+			description: 'WhatsApp support agent prompt',
+			builderPrompt: 'WhatsApp support agent prompt',
+		},
+		{
+			id: 'process-invoices',
+			shortTitle: 'Process invoices',
+			description: 'Process invoices prompt',
+			builderPrompt: 'Process invoices prompt',
+		},
+		{
+			id: 'schedule-social-posts',
+			shortTitle: 'Schedule social posts',
+			description: 'Schedule social posts prompt',
+			builderPrompt: 'Schedule social posts prompt',
+		},
+		{
+			id: 'qualify-inbound-leads',
+			shortTitle: 'Qualify inbound leads',
+			description: 'Qualify inbound leads prompt',
+			builderPrompt: 'Qualify inbound leads prompt',
+		},
+	],
+	resolvePersonalizedPromptSuggestions: experimentMocks.resolvePersonalizedPromptSuggestions,
+}));
+
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	useInstanceAiWorkflowPreviewSuggestionsExperiment: () => ({
 		isFeatureEnabled: experimentMocks.workflowPreviewEnabled,
@@ -81,6 +167,14 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
+}));
+
+vi.mock('@/app/stores/cloudPlan.store', () => ({
+	useCloudPlanStore: () => cloudPlanStoreMock,
+}));
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: () => appSettingsStoreMock,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -101,10 +195,13 @@ const InstanceAiInputStub = defineComponent({
 	props: {
 		suggestions: { type: Array, required: false },
 		suggestionsComponent: { type: [Object, Function], required: false },
+		suggestionsComponentProps: { type: Object, required: false },
 		suggestionCatalogVersion: { type: String, required: false },
+		suggestionTelemetryPayload: { type: Object, required: false },
 		placeholderKey: { type: String, required: false },
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
+		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose }) {
@@ -128,8 +225,27 @@ const InstanceAiInputStub = defineComponent({
 				),
 				h(
 					'span',
+					{ 'data-test-id': 'instance-ai-input-suggestions-component-props' },
+					props.suggestionsComponentProps === undefined
+						? 'unset'
+						: JSON.stringify(props.suggestionsComponentProps),
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-suggestion-telemetry-payload' },
+					props.suggestionTelemetryPayload === undefined
+						? 'unset'
+						: JSON.stringify(props.suggestionTelemetryPayload),
+				),
+				h(
+					'span',
 					{ 'data-test-id': 'instance-ai-input-placeholder-key' },
 					props.placeholderKey ?? 'unset',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-availability' },
+					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
 				h(
 					'button',
@@ -154,6 +270,19 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	},
 });
 
+type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
+
+const defaultModuleSettings: InstanceAiModuleSettings = {
+	enabled: true,
+	localGatewayDisabled: false,
+	proxyEnabled: false,
+	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
+};
+
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 	let thread: ThreadRuntime;
@@ -169,7 +298,12 @@ describe('InstanceAiEmptyView', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...defaultModuleSettings },
+		};
 		store = mockedStore(useInstanceAiStore);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = { id: PERSONAL_PROJECT_ID } as Project;
 		thread = {
 			id: 'thread-placeholder',
 			isStreaming: false,
@@ -183,9 +317,18 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.workflowPreviewEnabled.value = false;
+		experimentMocks.personalizedPromptVariant.value = undefined;
+		experimentMocks.personalizedPromptFormat.value = null;
+		experimentMocks.personalizedPromptTreatmentEnabled.value = false;
+		experimentMocks.personalizedPromptProfileOverride.value = null;
+		experimentMocks.resolvePersonalizedPromptSuggestions.mockClear();
+		cloudPlanStoreMock.state.initialized = false;
+		cloudPlanStoreMock.currentUserCloudInfo = null;
+		appSettingsStoreMock.isCloudDeployment = false;
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 		vi.unstubAllGlobals();
 	});
@@ -213,6 +356,117 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
 		);
+	});
+
+	it('passes personalized card suggestions when the v4 cards treatment resolves metadata', () => {
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: {
+				what_team_are_you_on: 'Sales',
+				what_do_you_automate_sales: 'Lead nurturing',
+			},
+		};
+
+		const { getByTestId, getByText } = renderView();
+
+		expect(getByText('What do you want to automate?')).toBeVisible();
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v4-personalized',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+		);
+		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+			'"format":"cards"',
+		);
+		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+			'"showSeeMore":true',
+		);
+		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
+			'"suggestion_catalog_version":"v4-personalized"',
+		);
+		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
+			'"$feature/090_instance_ai_personalized_prompt_suggestions":"variant-cards"',
+		);
+	});
+
+	it('uses a personalized profile override without waiting for cloud metadata', () => {
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		experimentMocks.personalizedPromptProfileOverride.value = {
+			kind: 'segment',
+			role: 'sales',
+			useCase: 'lead-nurturing',
+			segmentKey: 'sales:lead-nurturing',
+		};
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = false;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(experimentMocks.resolvePersonalizedPromptSuggestions).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: null,
+				metadataLoadState: 'loaded',
+				profileOverride: experimentMocks.personalizedPromptProfileOverride.value,
+			}),
+		);
+		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
+			'"profile_override":true',
+		);
+	});
+
+	it('does not pass a suggestion component while personalized metadata is pending', () => {
+		experimentMocks.personalizedPromptVariant.value = 'variant-list';
+		experimentMocks.personalizedPromptFormat.value = 'list';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = false;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('0');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+		);
+	});
+
+	it('passes fallback personalized suggestions after the metadata timeout', async () => {
+		vi.useFakeTimers();
+		experimentMocks.personalizedPromptVariant.value = 'variant-list';
+		experimentMocks.personalizedPromptFormat.value = 'list';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = false;
+
+		const { getByTestId } = renderView();
+
+		await vi.advanceTimersByTimeAsync(2000);
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+			'"format":"list"',
+		);
+		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+			'"showSeeMore":false',
+		);
+		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
+			'"metadata_load_state":"timed_out"',
+		);
+
+		vi.useRealTimers();
 	});
 
 	it('passes workflow preview suggestions, component, and catalog version when workflow preview experiment is enabled', () => {
@@ -257,8 +511,11 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder');
-		expect(store.getOrCreateRuntime).toHaveBeenCalledWith('thread-placeholder');
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
+			'thread-placeholder',
+			PERSONAL_PROJECT_ID,
+		);
 		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
@@ -275,6 +532,29 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(showErrorMock).toHaveBeenCalled();
+		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	it('shows an upfront unavailable state and does not start a thread when the builder is unavailable', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				...defaultModuleSettings,
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+			},
+		};
+		const { getByTestId, getByText } = renderView();
+
+		expect(getByTestId('instance-ai-workflow-builder-unavailable')).toBeVisible();
+		expect(getByText('Workflow builder unavailable')).toBeVisible();
+		expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();

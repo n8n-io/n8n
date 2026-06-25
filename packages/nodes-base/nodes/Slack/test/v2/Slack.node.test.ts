@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -9,12 +9,13 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { SlackV2 } from '../../V2/SlackV2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 describe('SlackV2', () => {
 	let node: SlackV2;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let slackApiRequestSpy: jest.SpyInstance;
-	let slackApiRequestAllItemsSpy: jest.SpyInstance;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let slackApiRequestSpy: MockInstance;
+	let slackApiRequestAllItemsSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -34,10 +35,10 @@ describe('SlackV2', () => {
 		});
 
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		slackApiRequestSpy = jest.spyOn(GenericFunctions, 'slackApiRequest');
-		slackApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'slackApiRequestAllItems');
+		slackApiRequestSpy = vi.spyOn(GenericFunctions, 'slackApiRequest');
+		slackApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'slackApiRequestAllItems');
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Default mocks
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
@@ -52,7 +53,7 @@ describe('SlackV2', () => {
 		});
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 		// Mock helper functions
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: any, options: any) => {
 				return data.map((item: any, index: number) => ({
 					...item,
@@ -60,14 +61,14 @@ describe('SlackV2', () => {
 				}));
 			},
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any) => {
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
 			// returnJsonArray should always return array with single item containing the data
 			return [{ json: data }];
 		});
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Channel Operations - Kick and Join', () => {
@@ -727,11 +728,11 @@ describe('SlackV2', () => {
 
 	describe('Message Operations - Ephemeral Messages', () => {
 		beforeEach(() => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
-			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
 				text: 'Test ephemeral message',
 			});
-			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
 		});
 
 		it('should send ephemeral message to channel', async () => {
@@ -822,7 +823,7 @@ describe('SlackV2', () => {
 		});
 
 		it('should send ephemeral message to user directly', async () => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
 					resource: 'message',
@@ -1193,7 +1194,7 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const mockResponse = {
 				file: {
@@ -1252,9 +1253,9 @@ describe('SlackV2', () => {
 			const mockStream = Buffer.from('file content');
 			const mockMetadata = { fileSize: 12 };
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(mockStream);
-			(mockExecuteFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue(mockMetadata);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(mockStream);
+			(mockExecuteFunctions.helpers.getBinaryMetadata as Mock).mockResolvedValue(mockMetadata);
 
 			// Mock the upload URL response
 			const mockUploadUrlResponse = {
@@ -1401,7 +1402,7 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const mockUploadUrlResponse = {
 				upload_url: 'https://files.slack.com/upload/v1',
@@ -1464,11 +1465,9 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(
-				Buffer.from('test'),
-			);
-			(mockExecuteFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue({
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(Buffer.from('test'));
+			(mockExecuteFunctions.helpers.getBinaryMetadata as Mock).mockResolvedValue({
 				fileSize: 4,
 			});
 
@@ -1677,11 +1676,11 @@ describe('SlackV2', () => {
 		});
 
 		it('should throw error for ephemeral message with username when select is user', async () => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
-			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
 				text: 'Test message',
 			});
-			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'resource') return 'message';
@@ -2133,6 +2132,251 @@ describe('SlackV2', () => {
 					],
 				]);
 			});
+		});
+	});
+
+	describe('User Operations - Look Up by Email', () => {
+		it('should look up a user by email and return the user object', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'user',
+					operation: 'lookupByEmail',
+					email: 'jane@example.com',
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				user: {
+					id: 'U111111111',
+					name: 'jane.smith',
+					profile: { email: 'jane@example.com' },
+				},
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/users.lookupByEmail',
+				{},
+				{ email: 'jane@example.com' },
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockResponse.user,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should propagate API errors when continueOnFail is false', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'user',
+					operation: 'lookupByEmail',
+					email: 'missing@example.com',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockRejectedValue(new Error('users_not_found'));
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('users_not_found');
+		});
+	});
+
+	describe('Message Operations - Schedule', () => {
+		beforeEach(() => {
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+				text: 'Scheduled hello',
+			});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+		});
+
+		it('should schedule a message to a channel with post_at as unix seconds', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'schedule',
+					authentication: 'accessToken',
+					select: 'channel',
+					postAt: '2030-01-01T00:00:00.000Z',
+					otherOptions: {},
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				channel: 'C123456789',
+				scheduled_message_id: 'Q1298393284',
+				post_at: 1893456000,
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/chat.scheduleMessage',
+				{
+					channel: 'C123456789',
+					post_at: 1893456000,
+					text: 'Scheduled hello',
+				},
+				{},
+			);
+			expect(result).toEqual([[{ json: mockResponse, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Message Operations - Delete Scheduled', () => {
+		it('should delete a scheduled message by id', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'deleteScheduled',
+					channelId: 'C123456789',
+					scheduledMessageId: 'Q1298393284',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ ok: true });
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/chat.deleteScheduledMessage',
+				{
+					channel: 'C123456789',
+					scheduled_message_id: 'Q1298393284',
+				},
+				{},
+			);
+			expect(result).toEqual([[{ json: { ok: true }, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Message Operations - Get Many Scheduled', () => {
+		it('should list scheduled messages with a limit', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'getManyScheduled',
+					returnAll: false,
+					limit: 10,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				scheduled_messages: [
+					{ id: 'Q1', channel_id: 'C1', post_at: 1893456000, text: 'one' },
+					{ id: 'Q2', channel_id: 'C2', post_at: 1893456100, text: 'two' },
+				],
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{ limit: 10 },
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockResponse.scheduled_messages,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should apply channel + latest + oldest filters as unix seconds', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _i: number, fallback?: unknown, _options?: unknown) => {
+					const params: Record<string, any> = {
+						resource: 'message',
+						operation: 'getManyScheduled',
+						returnAll: false,
+						limit: 50,
+						filters: {
+							channelId: 'C123456789',
+							latest: '2030-01-02T00:00:00.000Z',
+							oldest: '2030-01-01T00:00:00.000Z',
+						},
+						'filters.channelId': 'C123456789',
+					};
+					if (paramName in params) return params[paramName];
+					return fallback;
+				},
+			);
+
+			slackApiRequestSpy.mockResolvedValue({ scheduled_messages: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{
+					channel: 'C123456789',
+					latest: 1893542400,
+					oldest: 1893456000,
+					limit: 50,
+				},
+			);
+		});
+
+		it('should return all scheduled messages when returnAll is true', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'getManyScheduled',
+					returnAll: true,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			const mockMessages = [
+				{ id: 'Q1', channel_id: 'C1', post_at: 1893456000 },
+				{ id: 'Q2', channel_id: 'C2', post_at: 1893456100 },
+				{ id: 'Q3', channel_id: 'C3', post_at: 1893456200 },
+			];
+			slackApiRequestAllItemsSpy.mockResolvedValue(mockMessages);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
+				'scheduled_messages',
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{},
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockMessages,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
 		});
 	});
 });

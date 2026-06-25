@@ -1,4 +1,5 @@
-import { inDevelopment, inProduction } from '@n8n/backend-common';
+import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
@@ -8,7 +9,7 @@ import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
-import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
@@ -66,10 +67,12 @@ import '@/evaluation.ee/insights/eval-insights.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/modules/workflow-index/workflow-dependency.controller';
+import '@/webhooks/test-webhooks.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
@@ -158,8 +161,8 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
-			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-			await Container.get(PrometheusMetricsService).init(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+			Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;
@@ -502,5 +505,8 @@ export class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
+		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
+			Container.get(BrowserUseServer).setup(server, app);
+		}
 	}
 }

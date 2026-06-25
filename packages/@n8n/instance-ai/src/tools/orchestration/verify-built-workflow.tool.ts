@@ -7,14 +7,10 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isPlaceholderValue, isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
-import type { Logger } from '../../logger';
-import type {
-	InstanceAiDataTableService,
-	InstanceAiWorkflowService,
-	OrchestrationContext,
-} from '../../types';
+import type { OrchestrationContext } from '../../types';
 import { createRemediation, terminalRemediationFromState } from '../../workflow-loop/remediation';
 import type {
 	RemediationMetadata,
@@ -30,10 +26,6 @@ function stringifyForToolOutput(value: unknown): string {
 	} catch {
 		return String(value);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function unwrapUntrustedData(value: string): unknown {
@@ -52,86 +44,6 @@ function unwrapUntrustedData(value: string): unknown {
 
 function outputForInspection(nodeOutput: unknown): unknown {
 	return typeof nodeOutput === 'string' ? unwrapUntrustedData(nodeOutput) : nodeOutput;
-}
-
-interface DataTableWriteNode {
-	nodeName: string;
-	dataTableId: string;
-	/**
-	 * Only `insert` is cleaned up post-verify. `upsert` is tracked but never
-	 * cleaned up because its node output cannot distinguish a newly-created
-	 * row from a match on an existing row (see cleanupInsertedRowsByNodeOutput).
-	 * `update` never creates rows so cleanup is moot.
-	 */
-	operation: 'insert' | 'upsert' | 'update';
-}
-
-/**
- * Extract the data-table write nodes a workflow contains, keyed by node name so
- * we can look up each node's per-execution output and identify the exact row IDs
- * it created. Returning node-level records (instead of just dataTable IDs) is
- * what lets post-verify cleanup delete only rows *this* run inserted — rows from
- * concurrent writers never appear in these nodes' outputs, so they are safe.
- */
-async function extractDataTableWriteNodes(
-	workflowService: InstanceAiWorkflowService,
-	workflowId: string,
-): Promise<DataTableWriteNode[]> {
-	try {
-		const json = await workflowService.getAsWorkflowJSON(workflowId);
-		const out: DataTableWriteNode[] = [];
-		for (const node of json.nodes ?? []) {
-			if (node.type !== 'n8n-nodes-base.dataTable') continue;
-			const params = node.parameters as Record<string, unknown> | undefined;
-			const operation = params?.operation;
-			if (operation !== 'insert' && operation !== 'upsert' && operation !== 'update') continue;
-			const ref = params?.dataTableId;
-			let dataTableId: string | undefined;
-			if (typeof ref === 'string' && ref.length > 0) {
-				dataTableId = ref;
-			} else if (
-				ref &&
-				typeof ref === 'object' &&
-				'value' in ref &&
-				typeof (ref as { value: unknown }).value === 'string'
-			) {
-				const value = (ref as { value: string }).value;
-				if (value.length > 0) dataTableId = value;
-			}
-			if (!dataTableId || !node.name) continue;
-			out.push({ nodeName: node.name, dataTableId, operation });
-		}
-		return out;
-	} catch {
-		return [];
-	}
-}
-
-/**
- * Extract the numeric `id` values that a single node produced as output during
- * the verify execution. Handles the common n8n shapes: an array of row objects,
- * a `{ json: {...} }` wrapper, or a single row object.
- */
-function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
-	const ids: number[] = [];
-	const visit = (value: unknown): void => {
-		const inspected = outputForInspection(value);
-		if (!inspected) return;
-		if (Array.isArray(inspected)) {
-			for (const item of inspected) visit(item);
-			return;
-		}
-		if (!isRecord(inspected)) return;
-		const row = inspected;
-		if (row.json !== undefined) {
-			visit(row.json);
-			return;
-		}
-		const id = row.id;
-		if (typeof id === 'number' && Number.isFinite(id)) ids.push(id);
-	};
-	visit(nodeOutput);
-	return ids;
 }
 
 function getCountFromMetadata(value: unknown): number | undefined {
@@ -156,6 +68,17 @@ function countOutputItems(nodeOutput: unknown): number | undefined {
 	return 1;
 }
 
+// Largest item count any executed node emitted; >=2 means a collection flowed.
+function maxEmittedItemCount(data: Record<string, unknown> | undefined): number {
+	if (!data) return 0;
+	let max = 0;
+	for (const nodeOutput of Object.values(data)) {
+		const count = countOutputItems(nodeOutput) ?? 0;
+		if (count > max) max = count;
+	}
+	return max;
+}
+
 function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
 	const serialized = stringifyForToolOutput(value);
 	if (maxChars <= 0) {
@@ -170,12 +93,14 @@ function previewValue(value: unknown, maxChars: number): { preview: string; trun
 function buildNodePreviews(
 	resultData: Record<string, unknown> | undefined,
 	maxChars: number,
+	simulatedNodeNames?: ReadonlySet<string>,
 ): Array<{
 	nodeName: string;
 	itemCount?: number;
 	preview: string;
 	truncated: boolean;
 	chars: number;
+	simulated?: boolean;
 }> {
 	if (!resultData) return [];
 
@@ -188,8 +113,38 @@ function buildNodePreviews(
 			preview: preview.preview,
 			truncated: preview.truncated,
 			chars: serialized.length,
+			...(simulatedNodeNames?.has(nodeName) ? { simulated: true } : {}),
 		};
 	});
+}
+
+/**
+ * Per-execution pin data for the verification run, assembled from the build
+ * outcome sidecar. Fixture items take precedence over the legacy
+ * `{_mockedCredential}` markers (still read for build outcomes stored before
+ * the marker channel was retired). A `simulate`-verdict node without a
+ * fixture is still pinned (with an empty item) — losing output realism is
+ * acceptable, executing a destructive operation is not.
+ */
+function buildVerificationPinData(buildOutcome: WorkflowBuildOutcome): {
+	pinData: Record<string, unknown[]> | undefined;
+	simulatedNodes: Array<{ nodeName: string; reason: string }>;
+} {
+	const merged: Record<string, unknown[]> = { ...(buildOutcome.verificationPinData ?? {}) };
+	const fixtures = buildOutcome.simulationFixtures ?? {};
+	const simulatedNodes: Array<{ nodeName: string; reason: string }> = [];
+
+	for (const verdict of buildOutcome.nodeSimulationPlan ?? []) {
+		if (verdict.verdict !== 'simulate') continue;
+		simulatedNodes.push({ nodeName: verdict.nodeName, reason: verdict.reason });
+		const items = fixtures[verdict.nodeName];
+		merged[verdict.nodeName] = items?.length ? items : [{}];
+	}
+
+	return {
+		pinData: Object.keys(merged).length > 0 ? merged : undefined,
+		simulatedNodes,
+	};
 }
 
 function countProducedOutputRows(
@@ -202,154 +157,6 @@ function countProducedOutputRows(
 		if (itemCount !== undefined) count += itemCount;
 	}
 	return count;
-}
-
-/**
- * Per-table pre-verify snapshot. A `Set` is a complete list of row IDs that
- * existed before the run. `null` means the snapshot could not be built (empty
- * table, read error, or pagination cap hit) — cleanup skips any table with a
- * null snapshot. The snapshot guards insert-node cleanup against pathological
- * outputs (e.g. an insert node returning an existing row ID); upsert outputs
- * are not eligible for cleanup at all.
- */
-type PreIdsMap = Map<string, Set<number> | null>;
-
-/** Rows per page when snapshotting table contents. */
-const SNAPSHOT_PAGE_SIZE = 1000;
-/**
- * Hard cap on total rows we will snapshot per table. Snapshot is only a safety
- * check (`is this ID pre-existing?`) so on tables above this size we disable
- * cleanup rather than keep paging forever.
- */
-const SNAPSHOT_MAX_ROWS = 100_000;
-
-/**
- * Delete rows this verify execution inserted, identified by the node outputs of
- * the dataTable insert nodes the workflow contains. Rows inserted by concurrent
- * writers never appear in an insert node's output and are therefore safe.
- *
- * Upsert nodes are deliberately skipped: their node output cannot distinguish
- * a newly-created row from a match on an existing one. A concurrent writer
- * inserting a row between the snapshot and the upsert call could yield an ID
- * that looks "new" to the ID-diff check while actually belonging to the
- * concurrent writer — deleting it would destroy production data. Until the
- * upsert path exposes a `wasCreated` flag in the row return, we trade leaking
- * a few verify-created rows for guaranteed safety.
- *
- * When `preIdsByTable.get(dataTableId)` is `null` the snapshot could not be
- * built and cleanup is skipped for that table; without a reliable pre-existing
- * set we cannot distinguish a new insert from a row that pre-existed.
- */
-async function cleanupInsertedRowsByNodeOutput(
-	dataTableService: InstanceAiDataTableService,
-	writeNodes: DataTableWriteNode[],
-	resultData: Record<string, unknown> | undefined,
-	preIdsByTable: PreIdsMap,
-	logger: Logger,
-): Promise<number> {
-	if (!resultData) return 0;
-	/** per-table set of row IDs the workflow's own insert nodes produced */
-	const createdIdsByTable = new Map<string, Set<number>>();
-	for (const { nodeName, dataTableId, operation } of writeNodes) {
-		if (operation !== 'insert') continue;
-		const output = resultData[nodeName];
-		if (!output) continue;
-		const ids = extractRowIdsFromNodeOutput(output);
-		if (ids.length === 0) continue;
-		let bucket = createdIdsByTable.get(dataTableId);
-		if (!bucket) {
-			bucket = new Set();
-			createdIdsByTable.set(dataTableId, bucket);
-		}
-		for (const id of ids) bucket.add(id);
-	}
-	let total = 0;
-	for (const [dataTableId, ids] of createdIdsByTable) {
-		const preIds = preIdsByTable.get(dataTableId);
-		if (preIds === undefined || preIds === null) {
-			logger.warn(
-				'Skipping data-table cleanup: pre-verify snapshot unavailable. Rows left in place to avoid deleting existing data.',
-				{ dataTableId, candidateIds: ids.size },
-			);
-			continue;
-		}
-		// Only delete IDs that did not exist before the run — upsert-matched rows stay.
-		const toDelete = [...ids].filter((id) => !preIds.has(id));
-		if (toDelete.length === 0) continue;
-		try {
-			await dataTableService.deleteRows(dataTableId, {
-				type: 'or',
-				filters: toDelete.map((id) => ({
-					columnName: 'id',
-					condition: 'eq' as const,
-					value: id,
-				})),
-			});
-			total += toDelete.length;
-		} catch {
-			// best-effort: failure on one table does not block others
-		}
-	}
-	return total;
-}
-
-/**
- * Pre-verify snapshot of current row IDs per tracked table. Used as a defensive
- * filter for insert-node cleanup — any output ID present in the pre-snapshot
- * is left alone, never deleted. The delete set is still driven by node output,
- * not by a post-verify table-wide diff, so concurrent writers stay safe.
- *
- * The snapshot pages through the full table because the cap on `queryRows`
- * would otherwise leave existing rows past the first page unprotected. If
- * pagination fails mid-way or the table is bigger than `SNAPSHOT_MAX_ROWS`,
- * the entry is set to `null` so `cleanupInsertedRowsByNodeOutput` skips that
- * table rather than guess.
- */
-async function snapshotRowIdsPerTable(
-	dataTableService: InstanceAiDataTableService,
-	dataTableIds: Iterable<string>,
-	logger: Logger,
-): Promise<PreIdsMap> {
-	const out: PreIdsMap = new Map();
-	for (const id of dataTableIds) {
-		try {
-			const bucket = new Set<number>();
-			let offset = 0;
-			let truncated = false;
-			for (;;) {
-				const { data } = await dataTableService.queryRows(id, {
-					limit: SNAPSHOT_PAGE_SIZE,
-					offset,
-				});
-				for (const row of data) {
-					const rid = row.id;
-					if (typeof rid === 'number') bucket.add(rid);
-				}
-				if (data.length < SNAPSHOT_PAGE_SIZE) break;
-				offset += SNAPSHOT_PAGE_SIZE;
-				if (offset >= SNAPSHOT_MAX_ROWS) {
-					truncated = true;
-					break;
-				}
-			}
-			if (truncated) {
-				logger.warn(
-					'Data-table pre-verify snapshot exceeded row cap — cleanup disabled for this table',
-					{ dataTableId: id, cap: SNAPSHOT_MAX_ROWS },
-				);
-				out.set(id, null);
-			} else {
-				out.set(id, bucket);
-			}
-		} catch (error) {
-			logger.warn('Data-table pre-verify snapshot failed — cleanup disabled for this table', {
-				dataTableId: id,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			out.set(id, null);
-		}
-	}
-	return out;
 }
 
 export const verifyBuiltWorkflowInputSchema = z.object({
@@ -398,28 +205,38 @@ const remediationOutputSchema = z
 	})
 	.optional();
 
+const CREDENTIAL_FAILURE_KEYWORDS = [
+	'credential',
+	'unauthorized',
+	'forbidden',
+	'401',
+	'403',
+	'free tier',
+	'quota',
+];
+const TRANSIENT_FAILURE_KEYWORDS = ['429', 'rate limit', '502', 'bad gateway', 'timed out'];
+
+function messageMatchesAny(normalized: string, keywords: readonly string[]): boolean {
+	return keywords.some((keyword) => normalized.includes(keyword));
+}
+
 function classifyVerificationFailure(
 	error: string | undefined,
 	status: string | undefined,
 	buildOutcome: WorkflowBuildOutcome,
 ): RemediationMetadata {
-	if (buildOutcome.hasUnresolvedPlaceholders) {
-		return createRemediation({
-			category: 'needs_setup',
-			shouldEdit: false,
-			reason: 'mocked_credentials_or_placeholders',
-			guidance:
-				'Workflow submitted successfully, but verification is blocked by unresolved setup values. Stop code edits and route to workflows(action="setup").',
-		});
-	}
-
 	if (status === 'waiting') {
+		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
-			reason: 'execution_waiting',
-			guidance:
-				'Workflow verification is waiting for user action or setup. Stop code edits and ask the user to complete setup.',
+			reason: hasSimulationPlan ? 'unsimulated_user_action_node' : 'execution_waiting',
+			guidance: hasSimulationPlan
+				? 'Verification paused on a node that waits for user action and was not simulated — ' +
+					'nodes downstream of it were not verified. This is not a workflow bug: do not edit ' +
+					'the code. Report to the user which node paused and that the rest of the workflow ' +
+					'needs a manual test.'
+				: 'Workflow verification is waiting for user action or setup. Stop code edits and ask the user to complete setup.',
 		});
 	}
 
@@ -427,15 +244,17 @@ function classifyVerificationFailure(
 	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
 	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
 	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
-	if (
-		normalized.includes('credential') ||
-		normalized.includes('unauthorized') ||
-		normalized.includes('forbidden') ||
-		normalized.includes('401') ||
-		normalized.includes('403') ||
-		normalized.includes('free tier') ||
-		normalized.includes('quota')
-	) {
+	if (isPlaceholderValue(error)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance:
+				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflows(action="setup").',
+		});
+	}
+
+	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
@@ -448,13 +267,7 @@ function classifyVerificationFailure(
 		});
 	}
 
-	if (
-		normalized.includes('429') ||
-		normalized.includes('rate limit') ||
-		normalized.includes('502') ||
-		normalized.includes('bad gateway') ||
-		normalized.includes('timed out')
-	) {
+	if (messageMatchesAny(normalized, TRANSIENT_FAILURE_KEYWORDS)) {
 		return createRemediation({
 			category: 'blocked',
 			shouldEdit: false,
@@ -473,132 +286,407 @@ function classifyVerificationFailure(
 	});
 }
 
+const verifyBuiltWorkflowOutputSchema = z.object({
+	executionId: z.string().optional(),
+	success: z.boolean(),
+	status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
+	nodesExecuted: z.array(z.string()).optional(),
+	nodePreviews: z
+		.array(
+			z.object({
+				nodeName: z.string(),
+				itemCount: z.number().optional(),
+				preview: z.string(),
+				truncated: z.boolean(),
+				chars: z.number(),
+				simulated: z.boolean().optional(),
+			}),
+		)
+		.optional(),
+	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
+	simulationNote: z.string().optional(),
+	lastNodeExecuted: z.string().optional(),
+	nodesNotReached: z.array(z.string()).optional(),
+	coverageNote: z.string().optional(),
+	data: z.record(z.unknown()).optional(),
+	error: z.string().optional(),
+	remediation: remediationOutputSchema,
+	guidance: z.string().optional(),
+});
+
+type VerifyBuiltWorkflowOutput = z.infer<typeof verifyBuiltWorkflowOutputSchema>;
+type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
+type WorkflowTaskService = NonNullable<OrchestrationContext['workflowTaskService']>;
+type ExecutionRunResult = Awaited<
+	ReturnType<NonNullable<OrchestrationContext['domainContext']>['executionService']['run']>
+>;
+
+/** Names that actually ran, falling back to data keys for hosts that don't report executedNodeNames. */
+function namesOrDataKeys(
+	reachedNames: Set<string>,
+	data: Record<string, unknown> | undefined,
+): string[] | undefined {
+	if (reachedNames.size > 0) return [...reachedNames];
+	return data ? Object.keys(data) : undefined;
+}
+
+/**
+ * Validate the verify request and load the build outcome. Returns an early result
+ * to short-circuit the handler, or the resolved build outcome + prior loop state.
+ */
+async function resolveVerifyPreconditions(
+	input: VerifyInput,
+	context: OrchestrationContext,
+): Promise<
+	| { result: VerifyBuiltWorkflowOutput }
+	| {
+			buildOutcome: WorkflowBuildOutcome;
+			workflowId: string;
+			stateBefore: Awaited<ReturnType<WorkflowTaskService['getWorkflowLoopState']>> | undefined;
+			workflowTaskService: WorkflowTaskService;
+			domainContext: NonNullable<OrchestrationContext['domainContext']>;
+	  }
+> {
+	if (!context.workflowTaskService || !context.domainContext) {
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'verification_support_unavailable',
+			guidance: 'Verification support is not available. Stop code edits and explain the blocker.',
+		});
+		return {
+			result: { success: false, error: 'Verification support not available.', remediation },
+		};
+	}
+
+	const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
+	const terminalRemediation =
+		stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
+			? terminalRemediationFromState(stateBefore, context.runId)
+			: undefined;
+	if (terminalRemediation) {
+		return {
+			result: {
+				success: false,
+				error: terminalRemediation.guidance,
+				remediation: terminalRemediation,
+				guidance: terminalRemediation.guidance,
+			},
+		};
+	}
+
+	const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
+	if (!buildOutcome) {
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'missing_build_outcome',
+			guidance: `No build outcome found for work item ${input.workItemId}. Stop code edits and explain the blocker.`,
+		});
+		return {
+			result: {
+				success: false,
+				error: `No build outcome found for work item ${input.workItemId}.`,
+				remediation,
+				guidance: remediation.guidance,
+			},
+		};
+	}
+
+	if (!buildOutcome.workflowId) {
+		return {
+			result: {
+				success: false,
+				error: `Build outcome ${input.workItemId} does not include a workflow ID.`,
+			},
+		};
+	}
+
+	if (buildOutcome.workflowId !== input.workflowId) {
+		return {
+			result: {
+				success: false,
+				error:
+					`Build outcome ${input.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
+					`but verification was requested for workflow ${input.workflowId}.`,
+			},
+		};
+	}
+
+	return {
+		buildOutcome,
+		workflowId: buildOutcome.workflowId,
+		stateBefore,
+		workflowTaskService: context.workflowTaskService,
+		domainContext: context.domainContext,
+	};
+}
+
+/**
+ * Handle the no-simulation-plan case: refuse to run (no safeguards for destructive
+ * nodes), persist the terminal verdict best-effort, and return a blocked result.
+ */
+async function handleMissingSimulationPlan(
+	input: VerifyInput,
+	context: OrchestrationContext,
+	workflowTaskService: WorkflowTaskService,
+	workflowId: string,
+): Promise<VerifyBuiltWorkflowOutput> {
+	const guidance =
+		'Verification was not run because the build outcome has no simulation plan. ' +
+		'Rebuild or resubmit the workflow so destructive nodes can be classified before verification.';
+	const remediation = createRemediation({
+		category: 'blocked',
+		shouldEdit: false,
+		reason: 'missing_simulation_plan',
+		guidance,
+	});
+	context.logger.warn(
+		'verify-built-workflow: build outcome has no simulation plan — refusing to run without simulation safeguards',
+		{ workItemId: input.workItemId, workflowId },
+	);
+	try {
+		await workflowTaskService.updateBuildOutcome(input.workItemId, {
+			remediation,
+			verification: {
+				attempted: true,
+				success: false,
+				status: 'unknown',
+				failureSignature: 'missing_simulation_plan',
+				evidence: { errorMessage: guidance },
+				verifiedAt: new Date().toISOString(),
+			},
+		});
+	} catch {
+		// intentional: verification record persistence is advisory
+	}
+	try {
+		await workflowTaskService.reportVerificationVerdict({
+			workItemId: input.workItemId,
+			runId: context.runId,
+			workflowId,
+			verdict: 'failed_terminal',
+			failureSignature: 'missing_simulation_plan',
+			diagnosis: guidance,
+			remediation,
+			summary: guidance,
+		});
+	} catch (error) {
+		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
+			workItemId: input.workItemId,
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	return { success: false, status: 'unknown', error: guidance, remediation, guidance };
+}
+
+/** Persist a structured verification record onto the build outcome (best-effort). */
+async function persistVerificationRecord(
+	input: VerifyInput,
+	workflowTaskService: WorkflowTaskService,
+	args: {
+		success: boolean;
+		result: ExecutionRunResult;
+		reachedNames: Set<string>;
+		nodesNotReached: string[];
+	},
+): Promise<void> {
+	const { success, result, reachedNames, nodesNotReached } = args;
+	try {
+		const executedForEvidence = namesOrDataKeys(reachedNames, result.data);
+		await workflowTaskService.updateBuildOutcome(input.workItemId, {
+			verification: {
+				attempted: true,
+				success,
+				executionId: result.executionId || undefined,
+				status: result.status,
+				failureSignature: success ? undefined : result.error,
+				evidence: {
+					nodesExecuted:
+						executedForEvidence && executedForEvidence.length > 0 ? executedForEvidence : undefined,
+					nodesNotReached: nodesNotReached.length > 0 ? nodesNotReached : undefined,
+					producedOutputRows: countProducedOutputRows(result.data),
+					errorMessage: success ? undefined : result.error,
+				},
+				verifiedAt: new Date().toISOString(),
+			},
+		});
+	} catch {
+		// intentional: verification record persistence is advisory
+	}
+}
+
+/** Report a terminal (non-editable) remediation verdict and emit guard telemetry (best-effort). */
+async function reportTerminalRemediation(
+	input: VerifyInput,
+	context: OrchestrationContext,
+	workflowTaskService: WorkflowTaskService,
+	args: { remediation: RemediationMetadata; workflowId: string; executionId: string | undefined },
+): Promise<void> {
+	const { remediation, workflowId, executionId } = args;
+	try {
+		await workflowTaskService.reportVerificationVerdict({
+			workItemId: input.workItemId,
+			runId: context.runId,
+			workflowId,
+			executionId,
+			verdict: remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
+			failureSignature: remediation.reason,
+			diagnosis: remediation.guidance,
+			remediation,
+			summary: remediation.guidance,
+		});
+	} catch (error) {
+		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
+			workItemId: input.workItemId,
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	try {
+		context.trackTelemetry?.('Builder remediation guard fired', {
+			thread_id: context.threadId,
+			run_id: context.runId,
+			work_item_id: input.workItemId,
+			workflow_id: workflowId,
+			category: remediation.category,
+			attempt_count: remediation.attemptCount,
+			reason: remediation.reason,
+		});
+	} catch (error) {
+		context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
+			workItemId: input.workItemId,
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
+function buildSimulationNote(
+	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>,
+	planMissing: boolean,
+): string | undefined {
+	if (reachedSimulatedNodes.length > 0) {
+		return (
+			`Simulated ${reachedSimulatedNodes.length} node(s) during verification — no real external writes happened: ` +
+			reachedSimulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
+			'. Relay this to the user when presenting the result.'
+		);
+	}
+	if (planMissing) {
+		return (
+			'No simulation plan was available for this verification run — nodes were NOT ' +
+			'simulated and may have performed real external writes (sent messages, created or ' +
+			'modified records). Relay this to the user when presenting the result.'
+		);
+	}
+	return undefined;
+}
+
+function buildCoverageNote(
+	nodesNotReached: string[],
+	result: ExecutionRunResult,
+	success: boolean,
+): string | undefined {
+	if (nodesNotReached.length === 0) return undefined;
+	const ending = result.lastNodeExecuted
+		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
+		: '.';
+	// A collection flowed (>=2 items) yet the chain ran dry: items were dropped, not absent.
+	const collapsedFromCollection = success && maxEmittedItemCount(result.data) >= 2;
+	const guidance = success
+		? collapsedFromCollection
+			? ' An upstream node emitted multiple items but the chain collapsed to zero before reaching them. The usual cause is a Code node reading `$input.first().json` (a single split item) instead of `$input.all().map(i => i.json)` — an HTTP Request node splits a top-level array (including a bare array of IDs) into one item per element. Fix the node that dropped the items to read every item, then re-run verification. Do NOT report the workflow as fully verified.'
+			: ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
+		: '';
+	return (
+		`Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
+		nodesNotReached.join(', ') +
+		ending +
+		guidance
+	);
+}
+
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool('verify-built-workflow')
 		.description(
 			'Run a built workflow using sidecar verification context from the build outcome. ' +
-				'Use this when verification needs build-outcome pin data, mocked credential context, or trigger-shaped inputData. ' +
-				'Use `executions(action="run")` for ordinary manual/schedule runs with real credentials. ' +
+				'Call when the current turn is responsible for post-build verification. ' +
+				'Use this as the standard verifier for workflows produced by the workflow-builder. ' +
+				'It supports manual, schedule, form, webhook, chat, and other event triggers with build-outcome pin data, mocked credential context, or trigger-shaped inputData. ' +
+				'Use `executions(action="run")` only for ad hoc runs outside build verification. ' +
 				'CRITICAL: `inputData` shape depends on the trigger type — see the per-trigger guidance on the inputData field. ' +
 				'Passing the wrong shape (e.g. wrapping form fields under `formFields`) produces null downstream values that ' +
 				'look like an expression bug but are not — do not patch the workflow, re-run verify with the correct shape.',
 		)
 		.input(verifyBuiltWorkflowInputSchema)
-		.output(
-			z.object({
-				executionId: z.string().optional(),
-				success: z.boolean(),
-				status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
-				nodesExecuted: z.array(z.string()).optional(),
-				nodePreviews: z
-					.array(
-						z.object({
-							nodeName: z.string(),
-							itemCount: z.number().optional(),
-							preview: z.string(),
-							truncated: z.boolean(),
-							chars: z.number(),
-						}),
-					)
-					.optional(),
-				data: z.record(z.unknown()).optional(),
-				error: z.string().optional(),
-				remediation: remediationOutputSchema,
-				guidance: z.string().optional(),
-			}),
-		)
-		.handler(async (input: z.infer<typeof verifyBuiltWorkflowInputSchema>) => {
-			if (!context.workflowTaskService || !context.domainContext) {
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'verification_support_unavailable',
-					guidance:
-						'Verification support is not available. Stop code edits and explain the blocker.',
-				});
-				return { success: false, error: 'Verification support not available.', remediation };
-			}
+		.output(verifyBuiltWorkflowOutputSchema)
+		.handler(async (input: VerifyInput) => {
+			const preconditions = await resolveVerifyPreconditions(input, context);
+			if ('result' in preconditions) return preconditions.result;
+			const { buildOutcome, workflowId, stateBefore, workflowTaskService, domainContext } =
+				preconditions;
 
-			const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
-			const terminalRemediation =
-				stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
-					? terminalRemediationFromState(stateBefore, context.runId)
+			// Destructive nodes (including dataTable writes) are simulated via the
+			// build outcome's node simulation plan, so verification creates no
+			// external side effects and needs no post-run cleanup.
+			//
+			// An undefined plan (as opposed to an empty one) means the outcome
+			// predates classification or classification failed entirely — nothing
+			// shields destructive nodes in that run, so flag it instead of
+			// silently executing everything for real.
+			const planMissing = buildOutcome.nodeSimulationPlan === undefined;
+			if (planMissing) {
+				return await handleMissingSimulationPlan(input, context, workflowTaskService, workflowId);
+			}
+			const { pinData: verificationPinData, simulatedNodes } =
+				buildVerificationPinData(buildOutcome);
+			const simulationMap =
+				simulatedNodes.length > 0
+					? Object.fromEntries(simulatedNodes.map((n) => [n.nodeName, { reason: n.reason }]))
 					: undefined;
-			if (terminalRemediation) {
-				return {
-					success: false,
-					error: terminalRemediation.guidance,
-					remediation: terminalRemediation,
-					guidance: terminalRemediation.guidance,
-				};
-			}
 
-			const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
-			if (!buildOutcome) {
-				const remediation = createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'missing_build_outcome',
-					guidance: `No build outcome found for work item ${input.workItemId}. Stop code edits and explain the blocker.`,
-				});
-				return {
-					success: false,
-					error: `No build outcome found for work item ${input.workItemId}.`,
-					remediation,
-					guidance: remediation.guidance,
-				};
-			}
-
-			if (!buildOutcome.workflowId) {
-				return {
-					success: false,
-					error: `Build outcome ${input.workItemId} does not include a workflow ID.`,
-				};
-			}
-
-			if (buildOutcome.workflowId !== input.workflowId) {
-				return {
-					success: false,
-					error:
-						`Build outcome ${input.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
-						`but verification was requested for workflow ${input.workflowId}.`,
-				};
-			}
-
-			const workflowId = buildOutcome.workflowId;
-
-			// Pre-verify: enumerate the dataTable write nodes in the workflow and
-			// snapshot current row IDs for each insert-touched table. The delete
-			// set comes from each insert node's own output after verify (so
-			// concurrent writers stay invisible to cleanup); the snapshot is a
-			// defensive filter so any ID that pre-existed cannot be deleted.
-			// Upsert outputs are deliberately never cleaned — see
-			// `cleanupInsertedRowsByNodeOutput` for the rationale.
-			const writeNodes = await extractDataTableWriteNodes(
-				context.domainContext.workflowService,
-				workflowId,
-			);
-			const preSnapshots = await snapshotRowIdsPerTable(
-				context.domainContext.dataTableService,
-				new Set(writeNodes.map((n) => n.dataTableId)),
-				context.logger,
-			);
-
-			const result = await context.domainContext.executionService.run(workflowId, input.inputData, {
+			const result = await domainContext.executionService.run(workflowId, input.inputData, {
 				timeout: input.timeout,
-				pinData: buildOutcome.verificationPinData as Record<string, unknown[]> | undefined,
+				pinData: verificationPinData,
+				simulation: simulationMap,
 			});
 
-			// Treat `waiting` as success when the workflow produced output and recorded
-			// no error. `waiting` is a terminal-ish state for several legitimate flows:
-			// Form Trigger workflows that end on a form-respond / completion page, Wait
-			// nodes, and HITL prompts. Considering it a failure caused builders to
-			// falsely retry verified form workflows and prevented checkpoints from
-			// reusing builder evidence. Only treat `waiting` with no output rows AND
-			// no error as indeterminate (falls through to failure).
+			// Coverage: partition the simulation plan against the nodes that
+			// actually ran. A read node returning zero items legitimately ends the
+			// execution early (empty item list → downstream never runs), which
+			// would otherwise look like a clean success while most of the workflow
+			// — including its planned simulations — was never exercised.
+			// `executedNodeNames` includes zero-output nodes that `result.data`
+			// omits; fall back to data keys for hosts that don't report it (e.g.
+			// the eval-harness execution stub).
+			const reachedNames = new Set(
+				result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
+			);
+			const reachedSimulatedNodes = simulatedNodes.filter((n) => reachedNames.has(n.nodeName));
+			const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
+				.map((verdict) => verdict.nodeName)
+				.filter((name) => !reachedNames.has(name));
+
+			// `waiting` handling depends on whether this build has a simulation plan.
+			//
+			// With a plan, every legitimate user-action pause (Form pages, Wait,
+			// sendAndWait) was classified and pinned, so execution should never park
+			// in `waiting` — when it does, a user-action node slipped past
+			// classification (e.g. a community node that waits) and everything
+			// downstream of it went unverified. That is a failure, not a success.
+			//
+			// Without a plan (build outcomes from before classification, or a total
+			// classification failure), keep the legacy fallback: `waiting` with
+			// output and no error counts as success — Form Trigger workflows ending
+			// on a completion page legitimately finish in `waiting`, and failing
+			// them caused builders to falsely retry verified workflows.
+			const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 			const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
 			const success =
-				result.status === 'success' || (result.status === 'waiting' && !result.error && hasOutput);
+				result.status === 'success' ||
+				(!hasSimulationPlan && result.status === 'waiting' && !result.error && hasOutput);
 
 			const failureRemediation = success
 				? undefined
@@ -609,97 +697,39 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					: undefined;
 			const remediation = budgetRemediation ?? failureRemediation;
 
-			// Post-verify cleanup: delete only rows this run's own dataTable insert
-			// nodes emitted as output, and only those whose IDs were not present in
-			// the pre-verify snapshot (protects upsert-updated rows from deletion).
-			const cleanedRows = await cleanupInsertedRowsByNodeOutput(
-				context.domainContext.dataTableService,
-				writeNodes,
-				result.data,
-				preSnapshots,
-				context.logger,
-			);
-
-			// Persist a structured verification record onto the build outcome so the
-			// checkpoint follow-up turn can reuse it instead of re-running verify.
-			// Best-effort: swallow storage errors so they don't mask the verify result.
-			try {
-				const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
-				await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
-					verification: {
-						attempted: true,
-						success,
-						executionId: result.executionId || undefined,
-						status: result.status,
-						failureSignature: success ? undefined : result.error,
-						evidence: {
-							nodesExecuted: nodesExecuted && nodesExecuted.length > 0 ? nodesExecuted : undefined,
-							producedOutputRows: countProducedOutputRows(result.data),
-							errorMessage: success ? undefined : result.error,
-						},
-						verifiedAt: new Date().toISOString(),
-					},
-				});
-			} catch {
-				// intentional: verification record persistence is advisory
-			}
-
-			if (cleanedRows > 0) {
-				context.logger.debug?.('verify-built-workflow: cleaned up inserted rows', {
-					workItemId: input.workItemId,
-					workflowId,
-					cleanedRows,
-				});
-			}
+			// Persist a structured verification record (best-effort) so the checkpoint
+			// follow-up turn can reuse it instead of re-running verify.
+			await persistVerificationRecord(input, workflowTaskService, {
+				success,
+				result,
+				reachedNames,
+				nodesNotReached,
+			});
 
 			if (remediation && !remediation.shouldEdit) {
-				try {
-					await context.workflowTaskService.reportVerificationVerdict({
-						workItemId: input.workItemId,
-						runId: context.runId,
-						workflowId,
-						executionId: result.executionId || undefined,
-						verdict:
-							remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
-						failureSignature: remediation.reason,
-						diagnosis: remediation.guidance,
-						remediation,
-						summary: remediation.guidance,
-					});
-				} catch (error) {
-					context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
-						workItemId: input.workItemId,
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
-				try {
-					context.trackTelemetry?.('Builder remediation guard fired', {
-						thread_id: context.threadId,
-						run_id: context.runId,
-						work_item_id: input.workItemId,
-						workflow_id: workflowId,
-						category: remediation.category,
-						attempt_count: remediation.attemptCount,
-						reason: remediation.reason,
-					});
-				} catch (error) {
-					context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
-						workItemId: input.workItemId,
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
+				await reportTerminalRemediation(input, context, workflowTaskService, {
+					remediation,
+					workflowId,
+					executionId: result.executionId || undefined,
+				});
 			}
 
 			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
-			const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
+			const nodesExecuted = namesOrDataKeys(reachedNames, result.data);
+			const simulatedNames = new Set(reachedSimulatedNodes.map((n) => n.nodeName));
+			const simulationNote = buildSimulationNote(reachedSimulatedNodes, planMissing);
+			const coverageNote = buildCoverageNote(nodesNotReached, result, success);
 			return {
 				executionId: result.executionId || undefined,
 				success,
 				status: result.status,
 				nodesExecuted,
-				nodePreviews: buildNodePreviews(result.data, maxDataChars),
+				lastNodeExecuted: result.lastNodeExecuted,
+				nodePreviews: buildNodePreviews(result.data, maxDataChars, simulatedNames),
+				simulatedNodes: reachedSimulatedNodes.length > 0 ? reachedSimulatedNodes : undefined,
+				simulationNote,
+				nodesNotReached: nodesNotReached.length > 0 ? nodesNotReached : undefined,
+				coverageNote,
 				...(input.includeData ? { data: result.data } : {}),
 				error: result.error,
 				remediation,

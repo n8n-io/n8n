@@ -82,16 +82,20 @@ export class CreateAgentTaskDefinitionTable1784000000021 implements ReversibleMi
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-		await addColumns('agent_execution_threads', [
-			column('taskId')
-				.varchar(32)
-				.comment(
-					'Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows',
-				),
-			column('taskVersionId')
-				.varchar(36)
-				.comment('Published agent_history version that supplied the task snapshot'),
-		]);
+		await addColumns(
+			'agent_execution_threads',
+			[
+				column('taskId')
+					.varchar(32)
+					.comment(
+						'Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows',
+					),
+				column('taskVersionId')
+					.varchar(36)
+					.comment('Published agent_history version that supplied the task snapshot'),
+			],
+			{ recreatesOnSqlite: true },
+		);
 		await addForeignKey(
 			'agent_execution_threads',
 			'taskVersionId',
@@ -110,7 +114,9 @@ export class CreateAgentTaskDefinitionTable1784000000021 implements ReversibleMi
 			'agent_history',
 			'versionId',
 		]);
-		await dropColumns('agent_execution_threads', ['taskId', 'taskVersionId']);
+		await dropColumns('agent_execution_threads', ['taskId', 'taskVersionId'], {
+			recreatesOnSqlite: true,
+		});
 		await dropTable('agent_task_run_lock');
 		await dropTable('agent_task_snapshot');
 		await dropTable('agent_task_definition');

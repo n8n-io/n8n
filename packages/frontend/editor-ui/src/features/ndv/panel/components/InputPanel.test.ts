@@ -12,14 +12,14 @@ import {
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -29,7 +29,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 vi.mock('vue-router', () => {
 	return {
 		useRouter: () => ({}),
-		useRoute: () => ({ meta: {} }),
+		useRoute: () => ({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -66,7 +66,6 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes, connections });
-	const workflowState = useWorkflowState();
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
@@ -78,7 +77,10 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	}
 
 	if (runData) {
-		workflowState.setWorkflowExecutionData({
+		// The component reads run data via `injectWorkflowExecutionStateStore()`,
+		// which resolves through the execution-state store keyed by the injected
+		// workflow document's id.
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
 			id: '',
 			workflowData: {
 				id: '',
@@ -116,6 +118,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		global: {
 			provide: {
 				[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+				[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
 			},
 			stubs: {
 				InputPanelPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },

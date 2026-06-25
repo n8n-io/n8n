@@ -15,3 +15,4 @@ jobs:
     secrets: inherit
     with:
       track: ${{ matrix.track }}
+      force: ${{ github.event_name == 'workflow_dispatch' }}

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { AgentJsonSkillRef, AgentJsonToolRef, CustomToolEntry } from '../types';
 
 const routerPush = vi.fn();
@@ -11,6 +12,7 @@ const routeQuery: Record<string, string | undefined> = {};
 let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
+const showErrorMock = vi.fn();
 const showMessageMock = vi.fn();
 const {
 	fetchAllCredentialsForWorkflowMock,
@@ -24,7 +26,13 @@ const {
 	setCredentialsMock: vi.fn(),
 }));
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: routerPush, replace: routerReplace }),
+	useRouter: () => ({
+		push: routerPush,
+		replace: routerReplace,
+		resolve: (to: { name?: string; params?: Record<string, string> }) => ({
+			href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
+		}),
+	}),
 	useRoute: () => ({
 		name: routeName,
 		params: { projectId: 'p1', agentId: 'a1' },
@@ -49,6 +57,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
+		allCredentials: [],
+		getCredentialsByType: () => [],
 		fetchAllCredentials: fetchAllCredentialsMock,
 		fetchAllCredentialsForWorkflow: fetchAllCredentialsForWorkflowMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,
@@ -65,7 +75,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: showMessageMock }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -83,6 +93,9 @@ const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
+const listAgentFilesMock = vi.fn().mockResolvedValue([]);
+const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
+const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -93,6 +106,11 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgent: vi.fn(),
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
+	getModelCatalog: vi.fn().mockResolvedValue({}),
+	listAgentFiles: listAgentFilesMock,
+	uploadAgentFiles: uploadAgentFilesMock,
+	deleteAgentFile: vi.fn(),
+	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -100,11 +118,13 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 		resetForAgentSwitch: vi.fn(),
 		captureToolsBaseline: vi.fn(),
 		captureSkillsBaseline: vi.fn(),
+		captureTasksBaseline: vi.fn(),
 		fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
 		recordConfigEdit: vi.fn(),
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
 		trackSkillsAdded: vi.fn(),
+		trackTasksChanged: vi.fn(),
 		trackOpenedToolFromList: vi.fn(),
 		trackOpenedSkillFromList: vi.fn(),
 		trackOpenedAddSkillModal: vi.fn(),
@@ -158,7 +178,6 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	return {
 		id: 'a1',
 		name: 'Agent One',
-		description: null,
 		tools: {},
 		skills: {},
 		updatedAt: '2026-01-01T00:00:00Z',
@@ -234,17 +253,29 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 30_000 });
 
 /** Shared stubs used by both mount helpers. */
-async function renderView() {
+async function renderView({
+	knowledgeBaseEnabled = false,
+	waitForAsyncSetup = true,
+}: { knowledgeBaseEnabled?: boolean; waitForAsyncSetup?: boolean } = {}) {
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	const { useSettingsStore } = await import('@/app/stores/settings.store');
+	const settingsStore = useSettingsStore();
+	settingsStore.settings = { activeModules: knowledgeBaseEnabled ? ['agents'] : [] } as never;
+	settingsStore.moduleSettings = {
+		agents: {
+			modules: [],
+			knowledgeBaseEnabled,
+		},
+	};
 	const wrapper = mount(AgentBuilderView, {
 		global: {
 			plugins: [pinia],
 			stubs: commonStubs,
 		},
 	});
-	await flushPromises();
+	if (waitForAsyncSetup) await flushPromises();
 	return wrapper;
 }
 
@@ -299,7 +330,15 @@ const commonStubs = {
 	AgentChatQuickActions: {
 		name: 'AgentChatQuickActions',
 		template: '<div data-testid="stub-agent-chat-quick-actions" />',
-		props: ['tools', 'projectId', 'agentId', 'connectedTriggers'],
+		props: [
+			'tools',
+			'mcpServers',
+			'projectId',
+			'agentId',
+			'connectedTriggers',
+			'isPublished',
+			'disabled',
+		],
 		emits: ['update:tools', 'update:connected-triggers', 'trigger-added'],
 	},
 	AgentBuilderHeader: {
@@ -312,22 +351,22 @@ const commonStubs = {
 			'agentId',
 			'projectName',
 			'headerActions',
-			'mode',
-			'currentSessionTitle',
-			'sessionOptions',
 			'beforeRevertToPublished',
 		],
 		emits: [
 			'header-action',
 			'open-preview',
-			'new-chat',
-			'close-preview',
-			'session-select',
 			'published',
 			'unpublished',
 			'reverted',
 			'switch-agent',
 		],
+	},
+	AgentBuilderPreviewHeader: {
+		name: 'AgentBuilderPreviewHeader',
+		template: '<div data-testid="stub-agent-builder-preview-header"></div>',
+		props: ['breadcrumbItems', 'sessionTitle', 'sessionId', 'sessionOptions'],
+		emits: ['breadcrumb-select', 'session-select', 'new-chat', 'close-preview'],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, credentials, sessions list)
@@ -362,6 +401,12 @@ const commonStubs = {
 		template: '<div data-testid="stub-agent-skills-list-panel" />',
 		props: ['skills', 'disabled'],
 		emits: ['open-skill', 'add-skill', 'remove-skill'],
+	},
+	AgentSubAgentsPanel: {
+		name: 'AgentSubAgentsPanel',
+		template: '<div data-testid="stub-agent-sub-agents-panel" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
 	},
 	AgentSkillViewer: {
 		name: 'AgentSkillViewer',
@@ -410,6 +455,12 @@ describe('AgentBuilderView — preview routing', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
+		uploadAgentFilesMock.mockReset();
+		uploadAgentFilesMock.mockResolvedValue([]);
+		warmAgentKnowledgeSandboxMock.mockClear();
+		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
 	});
 
@@ -454,13 +505,51 @@ describe('AgentBuilderView — preview routing', () => {
 
 		const wrapper = await renderView();
 		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const header = wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' });
 
 		expect(preview.exists()).toBe(true);
 		expect(preview.props('effectiveSessionId')).toBe('thread-1');
-		expect(header.props('mode')).toBe('preview');
+		expect(header.exists()).toBe(true);
+		expect(header.props('sessionId')).toBe('thread-1');
+		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+	});
+
+	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
+		listAgentFilesMock.mockResolvedValue([
+			{
+				id: 'file-1',
+				agentId: 'a1',
+				fileName: 'existing.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+				createdAt: '2026-06-01T10:00:00.000Z',
+			},
+		]);
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('upload-files', [new File(['x'], 'notes.txt', { type: 'text/plain' })]);
+		await flushPromises();
+
+		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		expect(showErrorMock).toHaveBeenCalledWith(
+			expect.any(Error),
+			'agents.builder.files.uploadTotalTooLarge.title',
+		);
+	});
+
+	it('warms the knowledge sandbox when the agent page initializes', async () => {
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
 	});
 
 	it('drops unbuilt agents straight into the build chat on load', async () => {
@@ -525,6 +614,25 @@ describe('AgentBuilderView — preview routing', () => {
 		).toBe('faulty-thread');
 	});
 
+	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
+		routeName = 'AgentPreviewView';
+
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+
+		wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' }).vm.$emit('new-chat');
+		await nextTick();
+		await flushPromises();
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
@@ -585,21 +693,14 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(vm.isBuilt).toBe(true);
 	});
 
-	it('refreshes full config after trigger connection changes the agent', async () => {
+	it('refreshes full config after channel connection changes the agent', async () => {
 		const wrapper = await renderView();
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 
-		capabilities.vm.$emit('add-trigger');
-		await nextTick();
-
-		const modalData = openModalWithDataMock.mock.calls[0]?.[0]?.data as
-			| { onAgentChanged?: () => Promise<void> | void }
-			| undefined;
-		expect(modalData?.onAgentChanged).toBeTypeOf('function');
-
 		fetchConfigMock.mockClear();
 		getAgentMock.mockClear();
-		await modalData?.onAgentChanged?.();
+		capabilities.vm.$emit('agent-changed');
+		await nextTick();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
 		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
@@ -626,6 +727,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
+		uploadAgentFilesMock.mockReset();
+		uploadAgentFilesMock.mockResolvedValue([]);
+		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
 	});
 
@@ -658,6 +764,88 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 
 		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
+	});
+
+	it('renders seeded initial builds from the URL as full-width before async initialization settles', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+
+		const wrapper = await renderView({ waitForAsyncSetup: false });
+
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+		expect(chatColumn.props('isFullWidth')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+
+		await flushPromises();
+	});
+
+	it('auto-expands seeded initial builds from the URL and clears the query flag', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+
+		const wrapper = await renderView();
+
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+		expect(chatColumn.props('isFullWidth')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: { prompt: undefined, expandBuildChat: undefined },
+		});
+	});
+
+	it('keeps an auto-expanded initial build open on config updates before build completion', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('config-updated');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+	});
+
+	it('collapses an auto-expanded initial build when the build finishes with written config', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('build-done');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
+			false,
+		);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+	});
+
+	it('mounts the editor enabled when the initial build completion collapses the chat', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+
+		chatColumn.vm.$emit('update:streaming', true);
+		chatColumn.vm.$emit('build-done');
+		await flushPromises();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('isBuildChatStreaming'),
+		).toBe(false);
+	});
+
+	it('passes build streaming state to the chat column', async () => {
+		const wrapper = await renderView();
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+
+		chatColumn.vm.$emit('update:streaming', true);
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isBuildChatStreaming'),
+		).toBe(true);
 	});
 
 	it('does not render the old Build/Test toggle inside the chat input footer', async () => {
