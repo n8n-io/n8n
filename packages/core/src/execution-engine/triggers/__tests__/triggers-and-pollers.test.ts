@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
+import { ExecutionLifecycleHooks } from '../../execution-lifecycle-hooks';
 import { TriggersAndPollers } from '../triggers-and-pollers';
 
 describe('TriggersAndPollers', () => {

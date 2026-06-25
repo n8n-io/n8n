@@ -18,9 +18,9 @@ import type { ErrorReporter } from '@/errors/error-reporter';
 import type { InstanceSettings } from '@/instance-settings';
 import { Tracing } from '@/observability';
 
+import type { PollContext } from '../../node-execution-context';
 import { ActiveWorkflowTriggers } from '../active-workflow-triggers';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
-import type { PollContext } from '../node-execution-context';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
 

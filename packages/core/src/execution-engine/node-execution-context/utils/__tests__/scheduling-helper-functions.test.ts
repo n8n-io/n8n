@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { mockInstance } from '@test/utils';
 
-import { ScheduledTaskManager } from '../../../scheduled-task-manager';
+import { ScheduledTaskManager } from '../../../triggers/scheduled-task-manager';
 import { getSchedulingFunctions } from '../scheduling-helper-functions';
 
 describe('getSchedulingFunctions', () => {

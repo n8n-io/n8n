@@ -83,7 +83,7 @@ declare module 'n8n-workflow' {
 	}
 }
 
-export * from './active-workflow-triggers';
+export * from './triggers/active-workflow-triggers';
 export {
 	synthesizeBinaryFixture,
 	type FixtureSizeHint,
@@ -94,13 +94,13 @@ export * from './execution-context-hook-registry.service';
 export { ExecutionContextService } from './execution-context.service';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
-export type * from './interfaces';
+export type * from './triggers/interfaces';
 export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
 export * from './partial-execution-utils';
 export { isEngineRequest } from './requests-response';
 export * from './routing-node';
-export * from './scheduled-task-manager';
+export * from './triggers/scheduled-task-manager';
 export * from './workflow-execute';
 // Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
 // can reuse the same schema-driven cred synthesizer the wire-server URL

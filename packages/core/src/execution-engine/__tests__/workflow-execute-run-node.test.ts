@@ -90,7 +90,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ExecuteContext, PollContext } from '../node-execution-context';
 import { RoutingNode } from '../routing-node';
-import { TriggersAndPollers } from '../triggers-and-pollers';
+import { TriggersAndPollers } from '../triggers/triggers-and-pollers';
 import { WorkflowExecute } from '../workflow-execute';
 
 const mockContainer = Container as Mocked<typeof Container>;

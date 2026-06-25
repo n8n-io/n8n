@@ -87,7 +87,7 @@ import {
 } from './partial-execution-utils';
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
-import { TriggersAndPollers } from './triggers-and-pollers';
+import { TriggersAndPollers } from './triggers/triggers-and-pollers';
 import { convertBinaryData } from '../utils/convert-binary-data';
 
 interface RunWorkflowOptions {

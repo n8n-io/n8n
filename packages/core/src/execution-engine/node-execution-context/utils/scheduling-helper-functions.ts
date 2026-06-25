@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { SchedulingFunctions, Workflow, CronContext, Cron } from 'n8n-workflow';
 
-import { ScheduledTaskManager } from '../../scheduled-task-manager';
+import { ScheduledTaskManager } from '../../triggers/scheduled-task-manager';
 
 const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
 
