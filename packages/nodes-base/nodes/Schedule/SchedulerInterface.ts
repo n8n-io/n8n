@@ -6,7 +6,7 @@ export type IRecurrenceRule =
 			activated: true;
 			index: number;
 			intervalSize: number;
-			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+			typeInterval: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
 export type ScheduleInterval =

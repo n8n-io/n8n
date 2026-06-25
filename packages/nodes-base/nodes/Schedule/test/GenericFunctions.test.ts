@@ -14,12 +14,14 @@ vi.mock('moment-timezone');
 const mockedMoment = vi.mocked(moment);
 
 function mockMomentTz(values: {
+	minute?: number;
 	hour?: number;
 	dayOfYear?: number;
 	week?: number;
 	month?: number;
 }) {
 	const tzObj = {
+		minute: () => values.minute ?? 0,
 		hour: () => values.hour ?? 0,
 		dayOfYear: () => values.dayOfYear ?? 1,
 		week: () => values.week ?? 1,
@@ -72,6 +74,15 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result).toEqual('56 */30 * * * *');
+
+		const result1 = toCronExpression(
+			{
+				field: 'minutes',
+				minutesInterval: 50,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 * * * * *');
 	});
 
 	it('should return cron expression for hours interval', () => {
@@ -292,6 +303,43 @@ describe('recurrenceCheck', () => {
 			'UTC',
 		);
 		expect(result).toBe(false);
+	});
+
+	describe('minutes', () => {
+		it('should trigger when exactly on time', () => {
+			mockMomentTz({ minute: 40 });
+			const recurrenceRules = [50]; // lastExecution = minute 50, interval = 50
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(40);
+		});
+
+		it('should not trigger before interval has elapsed', () => {
+			mockMomentTz({ minute: 0 });
+			const recurrenceRules = [50]; // only 10 minutes elapsed, need 50
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should recover after a missed execution', () => {
+			mockMomentTz({ minute: 45 });
+			const recurrenceRules = [50]; // missed minute 40, now at minute 45
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(45);
+		});
 	});
 
 	describe('hours', () => {
@@ -581,6 +629,20 @@ describe('intervalToRecurrence', () => {
 			1,
 		);
 		expect(result.activated).toBe(false);
+
+		const result1 = intervalToRecurrence(
+			{
+				field: 'minutes',
+				minutesInterval: 50,
+			},
+			1,
+		);
+		expect(result1).toEqual({
+			activated: true,
+			index: 1,
+			intervalSize: 50,
+			typeInterval: 'minutes',
+		});
 	});
 
 	it('should return recurrence rule for hours interval', () => {
