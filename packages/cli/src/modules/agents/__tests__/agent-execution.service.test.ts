@@ -194,7 +194,14 @@ describe('AgentExecutionService', () => {
 			});
 
 			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
-				expect.objectContaining({ storedAt: 'fs', logSizeBytes: 0 }),
+				expect.objectContaining({
+					assistantResponse: '',
+					toolCalls: null,
+					timeline: null,
+					error: null,
+					storedAt: 'fs',
+					logSizeBytes: 0,
+				}),
 			);
 			expect(agentExecutionLogPersistence.write).toHaveBeenCalledWith(
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1' },

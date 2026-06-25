@@ -1,6 +1,7 @@
 import { assertDir } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -50,7 +51,15 @@ export class FsBlobStore implements BlobStore {
 	}
 
 	private resolvePath(key: BlobStoreKey) {
-		return path.join(this.storageConfig.storagePath, key);
+		const storagePath = path.resolve(this.storageConfig.storagePath);
+		const resolvedPath = path.resolve(storagePath, key);
+		const relativePath = path.relative(storagePath, resolvedPath);
+
+		if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+			throw new UnexpectedError('Blob store key resolves outside the storage path');
+		}
+
+		return resolvedPath;
 	}
 
 	private isFileNotFound(error: unknown): error is NodeJS.ErrnoException {

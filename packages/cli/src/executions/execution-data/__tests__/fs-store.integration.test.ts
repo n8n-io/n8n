@@ -101,6 +101,12 @@ describe('write', () => {
 		expect(bytes).toBe(Buffer.byteLength(onDisk, 'utf-8'));
 	});
 
+	it('should reject blob keys outside the storage path', async () => {
+		await expect(Container.get(FsBlobStore).write('../escape', Buffer.from('x'))).rejects.toThrow(
+			'outside the storage path',
+		);
+	});
+
 	it('should overwrite on duplicate `executionId`', async () => {
 		await fsStore.write(ref, payload);
 

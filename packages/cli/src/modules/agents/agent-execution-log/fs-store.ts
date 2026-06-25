@@ -6,10 +6,7 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import { FsBlobStore } from '@/executions/blob-storage/fs-blob-store';
 
 import { AgentExecutionLogWriteError } from './agent-execution-log-write.error';
-import {
-	AGENT_EXECUTION_LOG_BUNDLE_FILENAME,
-	AGENT_EXECUTION_LOG_BUNDLE_VERSION,
-} from './constants';
+import { agentExecutionLogKey, AGENT_EXECUTION_LOG_BUNDLE_VERSION } from './constants';
 import { CorruptedAgentExecutionLogError } from './corrupted-agent-execution-log.error';
 import type {
 	AgentExecutionLogBundle,
@@ -74,17 +71,8 @@ export class FsStore implements AgentExecutionLogStore {
 		await this.blobStore.delete(refs.map((r) => this.key(r)));
 	}
 
-	private key({ agentId, threadId, executionId }: AgentExecutionLogRef) {
-		return [
-			'agents',
-			agentId,
-			'threads',
-			threadId,
-			'executions',
-			executionId,
-			'execution_log',
-			AGENT_EXECUTION_LOG_BUNDLE_FILENAME,
-		].join('/');
+	private key(ref: AgentExecutionLogRef) {
+		return agentExecutionLogKey(ref);
 	}
 
 	private async tryRead(ref: AgentExecutionLogRef): Promise<AgentExecutionLogBundle | null> {

@@ -105,6 +105,10 @@ export class AgentExecutionService {
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const storedAt = this.agentExecutionLogPersistence.currentLocation;
 		const logPayload = this.toLogPayload(record);
+		const entityLogPayload =
+			storedAt === 'db'
+				? logPayload
+				: { assistantResponse: '', toolCalls: null, timeline: null, error: null };
 
 		const inserted = await this.agentExecutionRepository.save(
 			this.agentExecutionRepository.create({
@@ -114,15 +118,15 @@ export class AgentExecutionService {
 				stoppedAt,
 				duration: record.duration,
 				userMessage: cleanedMessage,
-				assistantResponse: record.assistantResponse,
+				assistantResponse: entityLogPayload.assistantResponse,
 				model: record.model,
 				promptTokens: record.usage?.promptTokens ?? null,
 				completionTokens: record.usage?.completionTokens ?? null,
 				totalTokens: record.usage?.totalTokens ?? null,
 				cost: record.totalCost,
-				toolCalls: record.toolCalls.length > 0 ? record.toolCalls : null,
-				timeline: record.timeline.length > 0 ? record.timeline : null,
-				error: record.error,
+				toolCalls: entityLogPayload.toolCalls,
+				timeline: entityLogPayload.timeline,
+				error: entityLogPayload.error,
 				hitlStatus: hitlStatus ?? null,
 				source: source ?? null,
 				storedAt,

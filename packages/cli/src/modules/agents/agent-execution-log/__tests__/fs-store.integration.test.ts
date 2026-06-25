@@ -72,6 +72,29 @@ describe('Agent execution log FsStore', () => {
 		await expect(fsStore.read(ref)).resolves.toMatchObject({ ...payload, version: 1 });
 	});
 
+	it('encodes dynamic key segments before writing to disk', async () => {
+		const unsafeRef = { ...ref, threadId: '../../outside' };
+
+		await fsStore.write(unsafeRef, payload);
+
+		await expect(
+			fs.readFile(
+				join(
+					storagePath,
+					'agents',
+					ref.agentId,
+					'threads',
+					encodeURIComponent(unsafeRef.threadId),
+					'executions',
+					ref.executionId,
+					'execution_log',
+					AGENT_EXECUTION_LOG_BUNDLE_FILENAME,
+				),
+				'utf-8',
+			),
+		).resolves.toContain('"version":1');
+	});
+
 	it('returns null for a missing bundle', async () => {
 		await expect(fsStore.read(ref)).resolves.toBeNull();
 	});
