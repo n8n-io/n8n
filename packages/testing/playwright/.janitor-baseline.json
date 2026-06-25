@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-25T10:17:26.367Z",
-	"totalViolations": 131,
+	"generated": "2026-06-25T12:22:26.752Z",
+	"totalViolations": 126,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -223,38 +223,6 @@
 				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByTestId('add-connection-button')",
 				"hash": "dd2f0028a100"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
-				"hash": "b9469409e327"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Chained locator call in test: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
-				"hash": "398194940a4c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat')",
-				"hash": "ffd406dce67d"
-			}
-		],
-		"tests/e2e/ai/langchain-vectorstores.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 88,
-				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().getByTestId('canvas-chat-...",
-				"hash": "ad9bd1b56ea5"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 94,
-				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().getByTestId('canvas-chat-...",
-				"hash": "ad9bd1b56ea5"
 			}
 		],
 		"tests/e2e/ai/workflow-builder.spec.ts": [
