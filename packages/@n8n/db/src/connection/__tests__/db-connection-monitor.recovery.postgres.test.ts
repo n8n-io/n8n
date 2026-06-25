@@ -269,7 +269,7 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 
 				injectedSlowPing = true;
 				const originalQuery = client.query.bind(client);
-				client.query = async (query) => {
+				client.query = async (query: string | { text: string }) => {
 					const text = typeof query === 'string' ? query : query.text;
 					if (text === 'SELECT 1') {
 						slowPingStarted = true;
