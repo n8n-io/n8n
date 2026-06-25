@@ -215,10 +215,19 @@ describe('SettingsUsersRoleCell', () => {
 			expect(emitted()['update:role'][0]).toEqual([{ role: CUSTOM_ROLE_SLUG, userId: '1' }]);
 		});
 
-		it('should render an unlicensed custom role as disabled', () => {
+		it('should not render an unlicensed custom role as disabled', () => {
 			renderComponent();
 
-			expect(screen.getByTestId(`role-${UNLICENSED_ROLE_SLUG}`)).toBeDisabled();
+			expect(screen.getByTestId(`role-${UNLICENSED_ROLE_SLUG}`)).not.toBeDisabled();
+		});
+
+		it('should not emit "update:role" when clicking an unlicensed custom role', async () => {
+			const { emitted } = renderComponent();
+			const user = userEvent.setup();
+
+			await user.click(screen.getByTestId(`role-${UNLICENSED_ROLE_SLUG}`));
+
+			expect(emitted()['update:role']).toBeUndefined();
 		});
 	});
 

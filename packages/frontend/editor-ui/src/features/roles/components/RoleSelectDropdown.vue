@@ -116,7 +116,6 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 			items.push({
 				value: role.slug,
 				label: role.displayName,
-				disabled: !role.licensed && props.disableUnlicensedSystemRoles,
 				role,
 				requiresUpgrade: !role.licensed,
 			});
@@ -135,7 +134,6 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 			items.push({
 				value: role.slug,
 				label: role.displayName,
-				disabled: !role.licensed,
 				role,
 				requiresUpgrade: !role.licensed,
 			});

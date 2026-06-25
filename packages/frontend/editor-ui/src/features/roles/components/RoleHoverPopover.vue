@@ -77,55 +77,50 @@ const onButtonClick = () => {
 };
 </script>
 
+<!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-	<div :class="$style.wrapper">
-		<N8nTooltip
-			placement="right"
-			:show-after="300"
-			:enterable="true"
-			:offset="1"
-			content-class="role-hover-popover"
-		>
-			<slot />
-			<template #content>
-				<div :class="$style.popoverContent">
-					<N8nText tag="div" :bold="true" size="large" :class="$style.roleName">
-						{{ role.displayName }}
-					</N8nText>
-					<N8nText tag="div" size="small" color="text-light" :class="$style.permissionCount">
-						{{
-							i18n.baseText('projects.settings.role.selector.permissionCount', {
-								interpolate: {
-									count: String(resolvedPermissionCount),
-									total: String(resolvedTotalPermissions),
-								},
-							})
-						}}
-					</N8nText>
-					<N8nText v-if="role.description" tag="div" size="small" :class="$style.description">
-						{{ role.description }}
-					</N8nText>
-					<N8nButton
-						variant="outline"
-						size="small"
-						:class="$style.actionButton"
-						@click="onButtonClick"
-					>
-						{{ buttonText }}
-						<N8nIcon icon="arrow-up-right" size="large" :class="$style.externalIcon" />
-					</N8nButton>
-				</div>
-			</template>
-		</N8nTooltip>
-		<CustomRolesUpgradeModal v-model="upgradeModalVisible" />
-	</div>
+	<N8nTooltip
+		placement="right"
+		:show-after="300"
+		:enterable="true"
+		:offset="1"
+		content-class="role-hover-popover"
+	>
+		<slot />
+		<template #content>
+			<div :class="$style.popoverContent">
+				<N8nText tag="div" :bold="true" size="large" :class="$style.roleName">
+					{{ role.displayName }}
+				</N8nText>
+				<N8nText tag="div" size="small" color="text-light" :class="$style.permissionCount">
+					{{
+						i18n.baseText('projects.settings.role.selector.permissionCount', {
+							interpolate: {
+								count: String(resolvedPermissionCount),
+								total: String(resolvedTotalPermissions),
+							},
+						})
+					}}
+				</N8nText>
+				<N8nText v-if="role.description" tag="div" size="small" :class="$style.description">
+					{{ role.description }}
+				</N8nText>
+				<N8nButton
+					variant="outline"
+					size="small"
+					:class="$style.actionButton"
+					@click="onButtonClick"
+				>
+					{{ buttonText }}
+					<N8nIcon icon="arrow-up-right" size="large" :class="$style.externalIcon" />
+				</N8nButton>
+			</div>
+		</template>
+	</N8nTooltip>
+	<CustomRolesUpgradeModal v-model="upgradeModalVisible" />
 </template>
 
 <style lang="scss" module>
-.wrapper {
-	display: contents;
-}
-
 .popoverContent {
 	min-width: 200px;
 	max-width: 280px;

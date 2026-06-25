@@ -3,7 +3,7 @@ import { ElRadio } from 'element-plus';
 import { N8nActionDropdown, N8nIcon, N8nText, type ActionDropdownItem } from '@n8n/design-system';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import type { Role } from '@n8n/permissions';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@/app/stores/roles.store';
@@ -15,6 +15,7 @@ import {
 	countGrantedInstancePermissions,
 } from '@/features/roles/instance/instanceRoleScopes';
 import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
+import CustomRolesUpgradeModal from '@/features/roles/components/CustomRolesUpgradeModal.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -57,6 +58,8 @@ const systemRoles = computed(() => assignableRoles.value.filter((role) => role.s
 const customRoles = computed(() => rolesStore.customInstanceRoles);
 
 const permissionCountFor = (role: Role) => countGrantedInstancePermissions(role.scopes ?? []);
+
+const upgradeModalVisible = ref(false);
 
 const onRoleUpdate = (role: string) => {
 	emit('update:role', { role, userId: props.data.id });
@@ -114,7 +117,6 @@ const onLegacyActionSelect = (role: string) => {
 			:is-admin-or-owner="isAdminOrOwner"
 			:add-custom-role-route-name="VIEWS.INSTANCE_NEW_ROLE"
 			:loading="loading"
-			:disable-unlicensed-system-roles="true"
 			:permission-count-fn="permissionCountFor"
 			:total-permissions="TOTAL_INSTANCE_PERMISSIONS"
 			:edit-route-name="VIEWS.INSTANCE_ROLE_SETTINGS"
@@ -122,8 +124,10 @@ const onLegacyActionSelect = (role: string) => {
 			:from-view="VIEWS.USERS_SETTINGS"
 			test-id="user-role-dropdown"
 			@update:role="onRoleUpdate"
+			@system-role-upgrade-needed="upgradeModalVisible = true"
 		/>
 		<span v-else>{{ selectedRole?.displayName }}</span>
+		<CustomRolesUpgradeModal v-model="upgradeModalVisible" />
 	</div>
 
 	<!-- Legacy design -->
