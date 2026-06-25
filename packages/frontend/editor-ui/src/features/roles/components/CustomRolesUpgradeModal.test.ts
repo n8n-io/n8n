@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import ProjectCustomRolesUpgradeModal from './ProjectCustomRolesUpgradeModal.vue';
+import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
 
 const mockGoToUpgrade = vi.fn();
 
@@ -31,7 +31,7 @@ const ElDialogStub = {
 	`,
 };
 
-const renderComponent = createComponentRenderer(ProjectCustomRolesUpgradeModal, {
+const renderComponent = createComponentRenderer(CustomRolesUpgradeModal, {
 	props: {
 		modelValue: true,
 	},
@@ -42,7 +42,7 @@ const renderComponent = createComponentRenderer(ProjectCustomRolesUpgradeModal, 
 	},
 });
 
-describe('ProjectCustomRolesUpgradeModal', () => {
+describe('CustomRolesUpgradeModal', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();

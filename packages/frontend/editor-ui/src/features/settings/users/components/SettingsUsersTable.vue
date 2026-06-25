@@ -11,13 +11,7 @@ import SettingsUsersLastActiveCell from './SettingsUsersLastActiveCell.vue';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
-import {
-	N8nDataTableServer,
-	N8nText,
-	N8nUserInfo,
-	type ActionDropdownItem,
-	type UserAction,
-} from '@n8n/design-system';
+import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@/app/stores/roles.store';
 type Item = UsersList['items'][number];
@@ -129,30 +123,6 @@ const roles = computed<Record<string, { label: string; desc: string }>>(() => ({
 	),
 }));
 
-const roleActions = computed<Array<ActionDropdownItem<string>>>(() => [
-	{
-		id: ROLE.Member,
-		label: i18n.baseText('auth.roles.member'),
-	},
-	...(settingsStore.isChatFeatureEnabled
-		? [
-				{
-					id: ROLE.ChatUser,
-					label: i18n.baseText('auth.roles.chatUser'),
-				},
-			]
-		: []),
-	{
-		id: ROLE.Admin,
-		label: i18n.baseText('auth.roles.admin'),
-	},
-	...rolesStore.customInstanceRoles.map((role) => ({
-		id: role.slug,
-		label: role.displayName,
-		disabled: !role.licensed,
-	})),
-]);
-
 const canUpdateRole = computed((): boolean => {
 	if (!hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } }))
 		return false;
@@ -195,8 +165,6 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 				<SettingsUsersRoleCell
 					v-if="canUpdateRole"
 					:data="item"
-					:roles="roles"
-					:actions="roleActions"
 					:loading="props.updatingRoleUserId === item.id"
 					@update:role="onRoleChange"
 				/>
