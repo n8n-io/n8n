@@ -2,9 +2,10 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
-jest.mock('@n8n/instance-ai', () =>
-	jest.requireActual('../../../../../@n8n/instance-ai/src/runtime/liveness-policy'),
-);
+jest.mock('@n8n/instance-ai', () => ({
+	...jest.requireActual('../../../../../@n8n/instance-ai/src/runtime/liveness-policy'),
+	orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+}));
 
 import {
 	createInstanceAiLivenessPolicyConfig,
