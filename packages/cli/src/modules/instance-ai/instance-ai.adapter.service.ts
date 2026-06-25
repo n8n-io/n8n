@@ -48,6 +48,7 @@ import type { User, ExecutionSummaries } from '@n8n/db';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { createTriggerExecutionData } from './trigger-run-data';
 import {
 	resolveNodeTypeDefinition,
 	resolveBuiltinNodeDefinitionDirs,
@@ -87,7 +88,6 @@ import {
 	type ExecutionError,
 	NodeHelpers,
 	Workflow,
-	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -594,6 +594,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -682,6 +683,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -781,6 +783,9 @@ export class InstanceAiAdapterService {
 				const updateData = workflowRepository.create({
 					nodes: version.nodes,
 					connections: version.connections,
+					// Restore the group state from the same snapshot so groups stay consistent
+					// with the restored graph (history rows always carry nodeGroups).
+					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
 				await workflowService.update(user, updateData, workflowId, {
@@ -970,47 +975,27 @@ export class InstanceAiAdapterService {
 				if (inputData && triggerNode) {
 					const triggerPinData = getPinDataForTrigger(triggerNode, inputData);
 					const mergedPinData = { ...basePinData, ...triggerPinData };
+					const triggerItems = triggerPinData[triggerNode.name];
 
 					runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 					runData.pinData = mergedPinData;
-					runData.executionData = createRunExecutionData({
-						startData: {},
-						resultData: { pinData: mergedPinData, runData: {} },
-						executionData: {
-							contextData: {},
-							metadata: {},
-							nodeExecutionStack: [
-								{
-									node: triggerNode,
-									data: { main: [triggerPinData[triggerNode.name]] },
-									source: null,
-								},
-							],
-							waitingExecution: {},
-							waitingExecutionSource: {},
-						},
+					runData.executionData = createTriggerExecutionData({
+						triggerNode,
+						pinData: mergedPinData,
+						triggerItems,
 					});
 				} else if (triggerNode) {
 					// No inputData but we have a trigger node (e.g. test-trigger from
 					// setup-workflow). Tell the execution engine which node to start from
 					// so it doesn't fail to auto-detect webhook-only triggers like ChatTrigger.
 					runData.triggerToStartFrom = { name: triggerNode.name };
-					if (Object.keys(basePinData).length > 0) {
-						runData.pinData = basePinData;
+					const pinData = Object.keys(basePinData).length > 0 ? basePinData : undefined;
+					if (pinData) {
+						runData.pinData = pinData;
 					}
-					// In queue mode this execution is offloaded to a worker, which reads
-					// `execution.data` back from storage. Persist a valid run-data object
-					// (the worker reconstructs the run and starts from the trigger) so an
-					// undefined payload doesn't deserialize to `undefined` and crash the worker.
-					runData.executionData = createRunExecutionData({
-						startData: {},
-						resultData: { pinData: runData.pinData, runData: null },
-						manualData: {
-							userId: user.id,
-							triggerToStartFrom: runData.triggerToStartFrom,
-						},
-						executionData: null,
-					});
+					// Also persist pin data in executionData so queued workers can hydrate
+					// verification fixtures while starting from the trigger node.
+					runData.executionData = createTriggerExecutionData({ triggerNode, pinData });
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
@@ -1787,7 +1772,11 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
-		const transport = this.outboundHttp.transport({ ssrf: this.ssrfProtectionService });
+
+		const { outboundHttp, ssrfProtectionService } = this;
+		const sharedTransport = outboundHttp.transport({
+			ssrf: this.ssrfProtectionService, // LLM/user-chosen URLs
+		});
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1840,12 +1829,18 @@ export class InstanceAiAdapterService {
 					return cached;
 				}
 
-				// Fetch and extract — pass authorizeUrl for redirect-hop gating
+				const authorizeUrl = options?.authorizeUrl;
+				const transport = authorizeUrl
+					? outboundHttp.transport({
+							ssrf: ssrfProtectionService,
+							authorize: async (target: URL) => await authorizeUrl(target.href),
+						})
+					: sharedTransport;
+
 				const page = await fetchAndExtract(url, {
 					maxContentLength: options?.maxContentLength,
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
-					authorizeUrl: options?.authorizeUrl,
 					transport,
 				});
 
@@ -3164,6 +3159,16 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 	return result;
 }
 
+/**
+ * Groups are authoritative on save: persist the emitted groups, or [] to clear when the
+ * agent removed every `.group(...)`. `undefined` would leave the NOT-NULL column stale.
+ */
+function sdkNodeGroupsToRuntime(
+	nodeGroups: WorkflowJSON['nodeGroups'],
+): NonNullable<WorkflowJSON['nodeGroups']> {
+	return nodeGroups ?? [];
+}
+
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
 	const id = Reflect.get(value, 'id');
@@ -3222,6 +3227,7 @@ function toWorkflowJSON(
 		})),
 		connections: workflow.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
+		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
 	};
 }
 

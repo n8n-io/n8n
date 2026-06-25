@@ -7,6 +7,7 @@ import type { AgentModelsByProvider } from '../model-providers';
 const credentialsByType = vi.hoisted(() => ({
 	anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
 }));
+const openNewCredential = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -55,7 +56,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openNewCredential: vi.fn() }),
+	useUIStore: () => ({ openNewCredential }),
 }));
 
 vi.mock('@/features/ai/modelSelector/AiModelSelectorDropdown.vue', () => ({
@@ -74,6 +75,7 @@ vi.mock('@/features/ai/modelSelector/AiModelSelectorDropdown.vue', () => ({
 			'credentialDataTestId',
 			'maxSelectedNameChars',
 		],
+		emits: ['select'],
 		template: '<div data-testid="ai-model-selector-dropdown" />',
 	},
 }));
@@ -134,5 +136,23 @@ describe('AgentModelSelector', () => {
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
 		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
+	});
+
+	it('hides the assistant when opening credential creation from the configure action', async () => {
+		const wrapper = await mountSelector({ anthropic: null });
+		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
+
+		dropdown.vm.$emit('select', 'anthropic::configure::anthropicApi');
+
+		expect(openNewCredential).toHaveBeenCalledWith(
+			'anthropicApi',
+			false,
+			false,
+			'project-1',
+			undefined,
+			undefined,
+			undefined,
+			{ hideAskAssistant: true },
+		);
 	});
 });
