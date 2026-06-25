@@ -100,7 +100,7 @@ describe('ECONNRESET error handling', () => {
 		mockConnection.emit('close', false);
 
 		expect(triggerFunctions.emitError).toHaveBeenCalledWith(
-			expect.objectContaining({ message: 'Imap connection closed unexpectedly' }),
+			expect.objectContaining({ message: 'IMAP connection closed unexpectedly' }),
 		);
 	});
 

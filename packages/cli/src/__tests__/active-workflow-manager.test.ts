@@ -555,7 +555,7 @@ describe('ActiveWorkflowManager', () => {
 				const activation: WorkflowActivateMode = 'activate';
 				const workflow = mock<Workflow>({ name: 'Test Workflow' });
 				const node = mock<INode>({ name: 'Trigger Node' });
-				const triggerError = new Error('Imap connection closed unexpectedly');
+				const triggerError = new Error('IMAP connection closed unexpectedly');
 
 				const executeErrorWorkflowSpy = jest
 					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
@@ -576,7 +576,7 @@ describe('ActiveWorkflowManager', () => {
 				expect(wrappedError).toBeInstanceOf(WorkflowActivationError);
 				// Generic wrapper message is preserved, but the real reason is now in `description`
 				expect(wrappedError.message).not.toBe(triggerError.message);
-				expect(wrappedError.description).toBe('Imap connection closed unexpectedly');
+				expect(wrappedError.description).toBe('IMAP connection closed unexpectedly');
 			});
 		});
 
