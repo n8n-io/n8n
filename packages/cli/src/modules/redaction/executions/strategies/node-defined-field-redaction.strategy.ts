@@ -102,6 +102,12 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 	 * node is added to `unknownNodes` so its entire output is wiped conservatively
 	 * (fail-closed), honouring the contract that `sensitiveOutputFields` are
 	 * always redacted and never revealable.
+	 *
+	 * If the node type declares `sensitiveOutputFieldsOptOutPath`, the strategy
+	 * checks that path on the per-instance `node.parameters`. When the resolved
+	 * value is `true`, the node is skipped — the workflow author has explicitly
+	 * opted that instance out of redaction (e.g. to expose auth headers for
+	 * downstream JWT/HMAC verification).
 	 */
 	private buildSensitiveFieldsMap(execution: RedactableExecution): {
 		sensitiveFields: Map<string, string[]>;
@@ -122,12 +128,37 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 				continue;
 			}
 
-			if (description.sensitiveOutputFields?.length) {
-				sensitiveFields.set(node.name, description.sensitiveOutputFields);
+			if (!description.sensitiveOutputFields?.length) continue;
+
+			if (
+				description.sensitiveOutputFieldsOptOutPath &&
+				this.isOptedOut(node.parameters, description.sensitiveOutputFieldsOptOutPath)
+			) {
+				continue;
 			}
+
+			sensitiveFields.set(node.name, description.sensitiveOutputFields);
 		}
 
 		return { sensitiveFields, unknownNodes };
+	}
+
+	/**
+	 * Resolves a dot-notation path on a node's parameters object and returns
+	 * `true` only when the resolved value is strictly the boolean `true`.
+	 * Anything else (missing key, non-record intermediate, falsey value, or a
+	 * truthy non-boolean) leaves redaction enabled — the opt-out is fail-safe.
+	 */
+	private isOptedOut(parameters: unknown, path: string): boolean {
+		if (!this.isRecord(parameters)) return false;
+
+		const segments = path.split('.');
+		let current: unknown = parameters;
+		for (const segment of segments) {
+			if (!this.isRecord(current)) return false;
+			current = current[segment];
+		}
+		return current === true;
 	}
 
 	/**
