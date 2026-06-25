@@ -5886,6 +5886,9 @@ importers:
       vm2:
         specifier: 'catalog:'
         version: 3.11.5
+      ws:
+        specifier: '>=8.20.1'
+        version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -5995,6 +5998,9 @@ importers:
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
