@@ -100,7 +100,7 @@ async function onModalOpened() {
 	publishForm.value?.focusInput();
 	const workflowId = workflowDocumentStore.value.workflowId;
 	const projectId = workflowDocumentStore.value.homeProject?.id;
-	await Promise.all([
+	await Promise.allSettled([
 		workflowId ? environmentsStore.fetchPublishedVersions(workflowId) : Promise.resolve(),
 		projectId ? environmentsStore.fetchEnvironments(projectId) : Promise.resolve(),
 	]);

@@ -100,14 +100,14 @@ async function removeEnvironment(id: string, name: string) {
 	<div>
 		<div
 			v-if="!hasEnvironments"
-			:style="{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }"
+			:style="{ display: 'flex', alignItems: 'center', gap: 'var(--spacing--xs)' }"
 		>
-			<N8nSwitch2 :model-value="false" size="small" @update:model-value="onEnableToggle" />
 			<N8nText>{{ i18n.baseText('projects.settings.environments.enable') }}</N8nText>
+			<N8nSwitch2 :model-value="false" size="small" @update:model-value="onEnableToggle" />
 		</div>
 
 		<template v-if="hasEnvironments">
-			<div :style="{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }">
+			<div :style="{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing--xs)' }">
 				<N8nCard
 					v-for="(env, index) in environmentsStore.environments"
 					:key="env.id"
@@ -162,7 +162,9 @@ async function removeEnvironment(id: string, name: string) {
 			</div>
 
 			<template v-if="showAddForm">
-				<div :style="{ display: 'flex', gap: 'var(--spacing-xs)', marginTop: 'var(--spacing-xs)' }">
+				<div
+					:style="{ display: 'flex', gap: 'var(--spacing--xs)', marginTop: 'var(--spacing--xs)' }"
+				>
 					<N8nInput
 						v-model="newEnvName"
 						size="small"
