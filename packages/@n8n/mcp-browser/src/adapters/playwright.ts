@@ -167,6 +167,7 @@ export class PlaywrightAdapter {
 		log.debug('connecting Playwright over CDP:', cdpEndpoint);
 		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
 			headers: this.cdpConnectHeaders,
+			noDefaults: true,
 		});
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
