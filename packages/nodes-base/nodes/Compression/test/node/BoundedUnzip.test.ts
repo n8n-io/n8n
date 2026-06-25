@@ -48,6 +48,39 @@ function createZipOfNestedArchivesWithDataDescriptors(memberNames: string[]): {
 	return { archive: Buffer.concat(chunks), innerArchive };
 }
 
+/**
+ * Builds a valid, small ZIP64 archive holding a single entry. The entry's true
+ * uncompressed size is stored in a ZIP64 extended-information extra field, while
+ * the central-directory uncompressed-size field carries the 0xFFFFFFFF ZIP64
+ * sentinel. Several real-world writers always emit ZIP64-format entries, so this
+ * mirrors the archive reported in NODE-5325.
+ */
+function createZip64Archive(realSize: number): Buffer {
+	const base = Buffer.from(
+		fflate.zipSync({ 'file.txt': [new Uint8Array(realSize), { level: 6 }] }),
+	);
+
+	const cdOffset = base.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+	const eocdOffset = base.indexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+	if (cdOffset === -1 || eocdOffset === -1) throw new Error('Could not locate zip records');
+
+	// ZIP64 extended-information extra field carrying the true uncompressed size.
+	const extra = Buffer.alloc(12);
+	extra.writeUInt16LE(0x0001, 0); // header id: ZIP64
+	extra.writeUInt16LE(8, 2); // data size
+	extra.writeBigUInt64LE(BigInt(realSize), 4);
+
+	const fnLen = base.readUInt16LE(cdOffset + 28);
+	const cdHeader = Buffer.from(base.subarray(cdOffset, cdOffset + 46 + fnLen));
+	cdHeader.writeUInt32LE(0xffffffff, 24); // uncompressed size -> ZIP64 sentinel
+	cdHeader.writeUInt16LE(base.readUInt16LE(cdOffset + 30) + extra.length, 30); // grow extra field len
+
+	const eocd = Buffer.from(base.subarray(eocdOffset));
+	eocd.writeUInt32LE(eocd.readUInt32LE(12) + extra.length, 12); // grow central directory size
+
+	return Buffer.concat([base.subarray(0, cdOffset), cdHeader, extra, eocd]);
+}
+
 function createZipWithUnsupportedCompression(): Buffer {
 	const compressed = createZipData({ 'file.txt': 1 });
 
@@ -142,6 +175,17 @@ describe('boundedUnzip', () => {
 		// the member must be returned intact, not truncated at a nested header
 		expect(result['a.xlsx'].equals(innerArchive)).toBe(true);
 		expect(result['b.xlsx'].equals(innerArchive)).toBe(true);
+	});
+
+	it('should decompress a small ZIP64 archive within the size limit', async () => {
+		// NODE-5325: a 25 KB ZIP64 entry must not be mistaken for a ~4 GB one.
+		const realSize = 25 * 1024;
+		const compressed = createZip64Archive(realSize);
+
+		const result = await boundedUnzip(compressed, 400 * 1024 * 1024, 100);
+
+		expect(result['file.txt']).toBeInstanceOf(Buffer);
+		expect(result['file.txt'].length).toBe(realSize);
 	});
 
 	it('should reject truncated zip archives', async () => {
