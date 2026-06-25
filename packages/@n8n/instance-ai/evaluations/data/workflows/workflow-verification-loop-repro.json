@@ -28,7 +28,7 @@
 		}
 	],
 	"description": "Regression case for repeated post-build workflow-verification follow-ups when verification succeeds with partial coverage or never settles.",
-	"buildExpectations": [
+	"processExpectations": [
 		"The agent does not repeatedly re-enter workflow verification for the same saved workflow; it verifies once or twice at most, then reports partial/manual verification if downstream nodes cannot be reached."
 	],
 	"triggerType": "manual",
