@@ -57,8 +57,7 @@ export function conversationUserTurnsAsText(conversation: ConversationTurn[] | u
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			// Every turn — including any that restore a prior conversation — counts as
-			// the agent's behaviour; the judge evaluates the whole conversation as one.
+			// No seeded label: the judge evaluates the whole conversation as one.
 			const lines: string[] = [`### Turn ${String(i + 1)}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {

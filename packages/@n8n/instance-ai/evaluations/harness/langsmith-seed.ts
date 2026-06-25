@@ -1,23 +1,22 @@
 // Reconstruct a conversation seed from a LangSmith trace at run time: pull the
 // thread's runs, rebuild the message log, split at the last user turn (before =
-// seed, last = live), and compile the seed workflow from the build tool's
-// captured SDK code at the boundary. Transient: traces retain ~14 days.
+// seed, last = live), and reconstruct each seed workflow from its source at the
+// build boundary. Transient: traces retain ~14 days.
 
 import { isRecord } from '@n8n/utils';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
-import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import type { ConversationSeed } from './conversation-seed';
 import { parseSeedWorkflowCode } from './parse-seed-workflow';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 
 /** Default project that instance-ai conversations are traced to (same name in
  *  every workspace). Override per case with `seedThread.project` if it differs. */
 const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
-// Reference the live IAI tool-id so a rename there follows here (or breaks the
-// import) instead of drifting silently. patch/submit-workflow were removed in
-// #32545 but stay as literals so older traces still reconstruct.
+// Reference the live tool-id so a rename there follows here (or breaks the import).
+// patch/submit-workflow were removed in #32545 but stay for older traces.
 const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	'patch-workflow',
@@ -354,16 +353,12 @@ function buildSeedMessages(
 	return messages;
 }
 
-/** Replay one content-mutating workspace tool onto the reconstructed file map,
- *  in timeline order. The builder authors a workflow as a file and builds it via
- *  `build-workflow {filePath}`, so the SDK source is the file's content at build
- *  time — assembled from these ops, never an inline build arg. Returns false when
- *  an edit can't be applied faithfully (a str-replace whose anchor is absent),
- *  signalling the file's reconstruction has diverged from the real sandbox. */
+/** Replay one content-mutating workspace tool onto the reconstructed file map.
+ *  Returns false when an edit can't be applied faithfully (a str-replace whose
+ *  anchor is absent) — the reconstruction has diverged from the real sandbox. */
 function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 	const input = isRecord(tool.inputs) ? tool.inputs : {};
-	// A failed edit (a non-unique or absent str-replace anchor, etc.) left the real
-	// file unchanged — skip it so the replay doesn't drift from the sandbox.
+	// A failed edit left the real file unchanged — treat as a no-op (no divergence).
 	if (isRecord(tool.outputs) && tool.outputs.success === false) return true;
 	if (tool.name === 'workspace_write_file') {
 		const path = asString(input.path);
@@ -425,13 +420,11 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 	return true; // read/list/grep/etc. — no content change
 }
 
-/** Reconstruct the seed's workflows — the latest successful build per workflow id
- *  before the boundary. Since #32545 the builder writes each workflow to a
- *  workspace file and builds via `build-workflow {filePath}` (no inline code), so
- *  we replay the file mutations and snapshot each file's content at its build.
- *  Older threads (inline `code`) and a `get-as-code` capture are used as
- *  fallbacks, so both trace generations reconstruct. A workflow is emitted only
- *  when a successful build references it — arbitrary written files are ignored. */
+/** Reconstruct the seed's workflows: the latest successful build per workflow id
+ *  before the boundary. Post-#32545 the builder builds from a workspace file
+ *  (`build-workflow {filePath}`, no inline code), so the source is that file
+ *  replayed from the workspace ops; inline `code` and `get-as-code` are fallbacks.
+ *  Only files an actual build references become workflows. */
 function buildSeedWorkflows(
 	toolRuns: Run[],
 	boundaryMs: number,
@@ -442,9 +435,8 @@ function buildSeedWorkflows(
 	const getAsCodeByWorkflowId = new Map<string, string>();
 	// workflowId -> reconstructed source + name at its latest successful build.
 	const builtByWorkflowId = new Map<string, { code: string; diverged: boolean; name?: string }>();
-	// Workflow ids that had a build-shaped run (source in, success + workflowId out),
-	// regardless of the tool's name — used below to detect silent reconstruction
-	// drift (builds happened but nothing reconstructed).
+	// Workflow ids with a build-shaped run (source in, success + workflowId out),
+	// name-independent — drives the drift tripwire below.
 	const buildSignalIds = new Set<string>();
 
 	for (const tool of toolRuns) {
@@ -490,9 +482,8 @@ function buildSeedWorkflows(
 	const skipped: string[] = [];
 	for (const [workflowId, built] of builtByWorkflowId) {
 		const getAsCode = getAsCodeByWorkflowId.get(workflowId) ?? '';
-		// Resolve in descending order of trust: a clean replay of the built file,
-		// then a `get-as-code` capture, then a diverged replay as a last resort.
-		// All are credential-redaction-restored before parsing.
+		// Resolve in descending order of trust: clean file replay, then a
+		// `get-as-code` capture, then a diverged replay as a last resort.
 		const candidates: Array<[string, string]> = [
 			['replay', built.diverged ? '' : built.code],
 			['get-as-code', getAsCode],
@@ -531,10 +522,8 @@ function buildSeedWorkflows(
 		);
 	}
 
-	// Loud tripwire for silent reconstruction drift: the trace shows builds but we
-	// recovered nothing. A reconstruction throw routes to framework_issue (seeding
-	// failure) — never a silent 0-workflow seed. Catches a renamed build tool or an
-	// input/output shape change (e.g. the #32545 inline-code → filePath switch).
+	// Builds happened but we recovered nothing → throw rather than silently seed 0
+	// workflows (reported as a framework_issue; the message names the likely cause).
 	if (buildSignalIds.size > 0 && workflows.length === 0) {
 		throw new Error(
 			`Thread ${threadId}: ${buildSignalIds.size} workflow(s) were built in the trace but reconstruction recovered 0 — the build tool was likely renamed or its input/output shape changed (e.g. inline-code → filePath). Update reconstruction (WORKFLOW_BUILD_TOOLS / source extraction in buildSeedWorkflows).`,

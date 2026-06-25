@@ -402,10 +402,9 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 	};
 }
 
-/** Per-turn counters for the SEEDED prefix, derived from the restored transcript —
- *  seeded turns emit no SSE events, so we count tool calls + confirmations from step
- *  kinds (mirrors buildConversationMetrics). Best-effort: replanAfterError /
- *  repeatQuestion / runFinishStatus aren't recoverable from the transcript. */
+/** Per-turn counters for the SEEDED prefix. Seeded turns emit no SSE events, so we
+ *  count tool calls + confirmations from step kinds (mirrors buildConversationMetrics).
+ *  Best-effort: replanAfterError / repeatQuestion / runFinishStatus aren't recoverable. */
 export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[] {
 	return seededTurns.map((turn, i) => {
 		const counter: TurnCounter = {
@@ -418,8 +417,8 @@ export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[]
 			repeatQuestionCount: 0,
 		};
 		for (const step of turn.steps) {
-			// Narration aside, every step is a tool invocation — in a live run each
-			// mirrors a tool-call event (+1); the HITL ones also a confirmation-request.
+			// Every non-narration step is a tool call (+1); in a live run the HITL
+			// ones also emit a confirmation-request, counted below.
 			if (step.kind === 'agent-text') continue;
 			counter.toolCallCount++;
 			switch (step.kind) {

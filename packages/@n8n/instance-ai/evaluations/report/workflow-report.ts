@@ -777,8 +777,7 @@ function renderConversationTranscript(transcript: TranscriptTurn[] | undefined):
 }
 
 function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
-	// Seeded turns (restored prior context) are judged as part of the whole
-	// conversation; mark them subtly so a human reviewer can still tell them apart.
+	// Judged as part of the whole conversation; marked subtly only for human readers.
 	const seededTag = turn.seeded
 		? ' <span class="transcript-seeded" title="restored prior context — not part of the evaluated run">seeded</span>'
 		: '';

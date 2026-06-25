@@ -220,8 +220,8 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
-// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, etc.);
-// the resume block re-states the request in its input and carries the decision in its output.
+// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, …):
+// the request is in the resume block's input, the decision in its output.
 const interpretConfirmation: SeedStepInterpreter = (call) => {
 	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
 	const resumeReason = typeof reasonRaw === 'string' ? reasonRaw : undefined;
