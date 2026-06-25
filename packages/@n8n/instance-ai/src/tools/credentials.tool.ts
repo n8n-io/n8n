@@ -8,10 +8,11 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { CREDENTIALS_TOOL_ID } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-export const CREDENTIALS_TOOL_ID = 'credentials';
+export { CREDENTIALS_TOOL_ID };
 
 const DEFAULT_LIMIT = 50;
 
@@ -104,10 +105,6 @@ const setupAction = z.object({
 			}),
 		)
 		.describe('List of credentials to set up'),
-	projectId: z
-		.string()
-		.optional()
-		.describe('Project ID to scope credential creation to. Defaults to personal project.'),
 	credentialFlow: z
 		.object({
 			stage: z.enum(['generic', 'finalize']),
@@ -216,8 +213,12 @@ function formatActionList(actions: readonly CredentialAction[]): string {
 function getToolDescription(options: CredentialsToolOptions): string {
 	const actionList = formatActionList(getCredentialActions(options));
 	const description = `${options.descriptionPrefix ?? 'Manage credentials'} — ${actionList}.`;
+	const builderSuffix =
+		'Use list, get, search-types, and test for credential metadata and connection checks during workflow building.';
 
-	return options.descriptionSuffix ? `${description} ${options.descriptionSuffix}` : description;
+	return options.descriptionSuffix
+		? `${description} ${options.descriptionSuffix}`
+		: `${description} ${builderSuffix}`;
 }
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────
@@ -303,7 +304,7 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete credential "${input.credentialName ?? input.credentialId}"? This cannot be undone.`,
+			message: `Delete ${input.credentialName ?? input.credentialId}`,
 			severity: 'destructive' as const,
 		});
 	}
@@ -357,7 +358,7 @@ async function handleSetup(
 				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
 					const existing = await context.credentialService.list({
 						type: req.credentialType,
-						...(input.projectId ? { projectId: input.projectId } : {}),
+						...(context.projectId ? { projectId: context.projectId } : {}),
 					});
 					return {
 						credentialType: req.credentialType,
@@ -381,7 +382,7 @@ async function handleSetup(
 					: `Select or create credentials: ${typeNames}`,
 			severity: 'info' as const,
 			credentialRequests,
-			...(input.projectId ? { projectId: input.projectId } : {}),
+			...(context.projectId ? { projectId: context.projectId } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
 	}

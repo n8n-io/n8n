@@ -1,5 +1,16 @@
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
+const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
+	'amazon-bedrock': 'aws-bedrock',
+	azure: 'azure-openai',
+	'azure-cognitive-services': 'azure-openai',
+};
+
+const AGENT_PROVIDER_NAMES: Record<string, string> = {
+	'aws-bedrock': 'AWS Bedrock',
+	'azure-openai': 'Azure OpenAI',
+};
+
 /** Cost per million tokens. */
 export interface ModelCost {
 	/** Cost per million input tokens (USD). */
@@ -67,6 +78,37 @@ interface ModelsDevProvider {
 	models?: Record<string, ModelsDevModel>;
 }
 
+function toAgentProviderId(modelsDevProviderId: string): string {
+	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
+}
+
+const LATEST_NAME_SUFFIX = /\s*\(latest\)$/i;
+
+/**
+ * models.dev names versionless alias models with a " (latest)" suffix
+ * (e.g. `claude-opus-4-5` → "Claude Opus 4.5 (latest)"), which quickly goes
+ * stale as newer models ship. Strip the suffix from every model name, and when
+ * a pinned snapshot shares the resulting name with an alias (e.g.
+ * `claude-opus-4-5-20251101` "Claude Opus 4.5"), drop the snapshot so the
+ * alias is the single entry for that model.
+ */
+function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
+	const aliasNames = new Set<string>();
+	for (const model of Object.values(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			aliasNames.add(model.name.replace(LATEST_NAME_SUFFIX, ''));
+		}
+	}
+
+	for (const [modelId, model] of Object.entries(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			model.name = model.name.replace(LATEST_NAME_SUFFIX, '');
+		} else if (aliasNames.has(model.name)) {
+			delete models[modelId];
+		}
+	}
+}
+
 /**
  * Fetch the provider/model catalog from models.dev.
  *
@@ -120,11 +162,19 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			models[modelId] = info;
 		}
 
-		catalog[key] = {
-			id: provider.id,
-			name: provider.name,
-			models,
+		const providerId = toAgentProviderId(key);
+		catalog[providerId] = {
+			id: providerId,
+			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
+			models: {
+				...(catalog[providerId]?.models ?? {}),
+				...models,
+			},
 		};
+	}
+
+	for (const provider of Object.values(catalog)) {
+		normalizeLatestModelNames(provider.models);
 	}
 
 	return catalog;

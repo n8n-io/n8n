@@ -222,6 +222,58 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('activeWorkflowExecutionResult', () => {
+		test('returns the latest verification execution for the active workflow', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'verify-built-workflow',
+								args: { workflowId: 'wf-1' },
+								result: { executionId: 'exec-1', status: 'success' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeWorkflowExecutionResult.value).toEqual({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+		});
+
+		test('ignores execution results for inactive workflow tabs', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.openWorkflowPreview('wf-2');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'verify-built-workflow',
+								args: { workflowId: 'wf-1' },
+								result: { executionId: 'exec-1', status: 'success' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeWorkflowExecutionResult.value).toBeUndefined();
+		});
+	});
+
 	describe('openDataTablePreview', () => {
 		test('sets data table state and clears workflow state', () => {
 			const ctx = setup();
@@ -398,6 +450,205 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('auto-refresh on workflow update (workflows action=update / restore-version)', () => {
+		test('does not refresh when the updated workflow is not the active tab', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-2');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey);
+		});
+
+		test('refreshes after a build is followed by a partial update on the same workflow', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			// Initial build: opens + refreshes the tab.
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			const keyAfterBuild = ctx.workflowRefreshKey.value;
+			expect(ctx.activeTabId.value).toBe('wf-1');
+
+			// Agent then applies a partial update to the same workflow via `workflows`.
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true, workflowId: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.workflowRefreshKey.value).toBe(keyAfterBuild + 1);
+		});
+	});
+
+	describe('auto-open on builder spawn (edit flow)', () => {
+		test('opens canvas as soon as an edit-mode builder spawns with targetResource.id', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-existing', 'Existing WF');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-existing' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-existing');
+			expect(ctx.activeWorkflowId.value).toBe('wf-existing');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not open canvas when the builder has no targetResource id (create flow)', async () => {
+			const ctx = setup();
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not open canvas while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'wf-historical', 'Past WF');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-historical',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'completed',
+								targetResource: { type: 'workflow', id: 'wf-historical' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('switches to the latest edit target when a new builder spawns', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-a', 'WF A');
+			registerWorkflow(ctx.thread, 'wf-b', 'WF B');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-a',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'completed',
+								targetResource: { type: 'workflow', id: 'wf-a' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBe('wf-a');
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				makeMessage({
+					id: 'msg-2',
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-b',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-b' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-b');
+		});
+	});
+
 	describe('auto-open data table preview', () => {
 		test('auto-opens data table preview when streaming', async () => {
 			const ctx = setup();
@@ -423,6 +674,40 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeDataTableId.value).toBe('dt-1');
 			expect(ctx.activeWorkflowId.value).toBeNull();
 		});
+
+		test.each(['schema', 'query'] as const)(
+			'auto-opens data table preview after %s inspection',
+			async (action) => {
+				const ctx = setup();
+				ctx.thread.isStreaming = true;
+				registerDataTable(ctx.thread, 'dt-inspect', 'Inspect Table', 'proj-9');
+
+				ctx.thread.messages = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolCallId: `tc-${action}-dt`,
+									toolName: 'data-tables',
+									args: { action, dataTableId: 'Inspect Table' },
+									result: {
+										dataTableId: 'dt-inspect',
+										dataTableName: 'Inspect Table',
+										projectId: 'proj-9',
+										...(action === 'schema' ? { columns: [] } : { count: 0, data: [] }),
+									},
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(ctx.activeDataTableId.value).toBe('dt-inspect');
+				expect(ctx.activeDataTableProjectId.value).toBe('proj-9');
+				expect(ctx.activeWorkflowId.value).toBeNull();
+			},
+		);
 
 		test('does not auto-open data table preview while hydrating', async () => {
 			const ctx = setup();

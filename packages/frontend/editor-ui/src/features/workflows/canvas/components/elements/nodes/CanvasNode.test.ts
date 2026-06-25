@@ -11,6 +11,16 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType, type CanvasConnectionPort } from '../../../canvas.types';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType: vi.fn(() => ({
@@ -28,16 +38,18 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: renderNodeInputsMap,
-			nodeOutputsByNodeId: renderNodeOutputsMap,
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({
+			value: actual.createEmptyCanvasRenderData({
+				nodeInputsByNodeId: renderNodeInputsMap,
+				nodeOutputsByNodeId: renderNodeOutputsMap,
+			}),
+		})),
+	};
+});
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {

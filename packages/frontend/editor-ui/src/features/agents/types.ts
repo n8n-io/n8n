@@ -26,7 +26,6 @@ export interface AgentSchema {
 	model: { provider: string | null; name: string | null; raw?: string };
 	credential: string | null;
 	instructions: string | null;
-	description: string | null;
 	tools: ToolSchema[];
 	providerTools: ProviderToolSchema[];
 	memory: MemorySchema | null;
@@ -39,7 +38,6 @@ export interface AgentSchema {
 		structuredOutput: { enabled: boolean; schemaSource: string | null };
 		thinking: ThinkingSchema | null;
 		toolCallConcurrency: number | null;
-		requireToolApproval: boolean;
 	};
 }
 
@@ -72,12 +70,6 @@ export interface ProviderToolSchema {
 export interface MemorySchema {
 	source: string | null;
 	storage: 'memory' | 'custom';
-	lastMessages: number | null;
-	semanticRecall: {
-		topK: number;
-		messageRange: { before: number; after: number } | null;
-		embedder: string | null;
-	} | null;
 	workingMemory: {
 		type: 'structured' | 'freeform';
 		schema?: Record<string, unknown>;
@@ -127,5 +119,6 @@ export type {
 	AgentJsonToolConfig as AgentJsonToolRef,
 	AgentJsonSkillConfig as AgentJsonSkillRef,
 	AgentJsonConfig as AgentJsonConfigRef,
+	AgentJsonMcpServerConfig,
 	AgentJsonConfig,
 } from '@n8n/api-types';

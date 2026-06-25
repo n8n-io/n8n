@@ -3,18 +3,22 @@ import { useToast } from '@/app/composables/useToast';
 import { useActivationError } from '@/app/composables/useActivationError';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { PushHandlerOptions } from './types';
 
-export async function workflowFailedToActivate({ data }: WorkflowFailedToActivate) {
+export async function workflowFailedToActivate(
+	{ data }: WorkflowFailedToActivate,
+	{ documentId }: PushHandlerOptions,
+) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
-	if (workflowsStore.workflowId !== data.workflowId) {
+	if (workflowDocumentStore.workflowId !== data.workflowId) {
 		return;
 	}
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
-	workflowDocumentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });
+	workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 
 	const toast = useToast();
 	const i18n = useI18n();

@@ -2,7 +2,9 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-export const ASK_USER_TOOL_ID = 'ask-user';
+import { ASK_USER_TOOL_ID } from '../tool-ids';
+
+export { ASK_USER_TOOL_ID };
 
 const questionSchema = z.object({
 	id: z.string().describe('Unique question identifier'),
@@ -39,7 +41,7 @@ export const askUserResumeSchema = z.object({
 export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.description(
-			'Ask the user one or more structured questions. Each question can be ' +
+			'Ask the user only when a human choice is needed. Each question can be ' +
 				'single-select (pick one), multi-select (pick many), or free-text. ' +
 				'The agent is suspended until the user responds. ' +
 				'IMPORTANT: The UI already provides a built-in "Something else" free-text ' +
@@ -49,6 +51,11 @@ export function createAskUserTool() {
 				'Also NEVER add a separate follow-up question asking the user to elaborate ' +
 				'on a previous "other" choice. Keep questions concise and ' +
 				'avoid questions that reference answers to previous questions. ' +
+				'A question is asked at most once: if the user skips or dismisses it (you ' +
+				'receive answered: false, or an individual answer with skipped: true), treat that ' +
+				'as a deliberate "proceed without this" — ' +
+				'make a sensible default assumption where one exists, otherwise leave the detail ' +
+				'for setup, and NEVER re-present a question the user has already answered, deferred, or skipped. ' +
 				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		)
 		.input(askUserInputSchema)

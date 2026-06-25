@@ -182,7 +182,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 @keyframes scrollfade {
-	0% {
+	0.1% {
 		--left--fade: 0;
 	}
 	10%,
@@ -193,7 +193,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	90% {
 		--right--fade: 3rem;
 	}
-	100% {
+	99.9% {
 		--right--fade: 0;
 	}
 }

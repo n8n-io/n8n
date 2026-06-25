@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { computed } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -27,7 +27,7 @@ const NODES_WITH_OPEN_AI_API_CREDENTIAL = [
 	`${N8N_NODES_PREFIX}openAi`,
 ];
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const i18n = useI18n();
 
 const {
@@ -44,8 +44,8 @@ const isEditingOpenAiCredential = computed(
 
 const activeNodeHasOpenAiApiCredential = computed(
 	() =>
-		ndvStore.activeNode?.type &&
-		NODES_WITH_OPEN_AI_API_CREDENTIAL.includes(ndvStore.activeNode.type),
+		ndvStore.value.activeNode?.type &&
+		NODES_WITH_OPEN_AI_API_CREDENTIAL.includes(ndvStore.value.activeNode.type),
 );
 
 const isRelevantContext = computed(

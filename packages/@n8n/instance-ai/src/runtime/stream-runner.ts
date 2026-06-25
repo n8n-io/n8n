@@ -1,3 +1,4 @@
+import type { RedactionOptions } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
@@ -8,6 +9,7 @@ import {
 	type ResumableStreamSource,
 	type TraceStatus,
 } from './resumable-stream-executor';
+import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import { resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -24,13 +26,17 @@ export interface StreamRunOptions {
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	onActivity?: () => void;
+	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 }
 
 export interface StreamRunResult {
 	status: TraceStatus;
 	agentRunId: string;
 	text?: Promise<string>;
+	error?: unknown;
 	workSummary: WorkSummary;
+	usage?: RunTokenUsage;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -75,6 +81,7 @@ async function consumeStream(
 			signal: options.signal,
 			logger: options.logger,
 			onActivity: options.onActivity,
+			outputRedaction: options.outputRedaction,
 		},
 		control: { mode: 'manual' },
 		initialAgentRunId: options.agentRunId,
@@ -86,6 +93,7 @@ async function consumeStream(
 			agentRunId: result.agentRunId,
 			text: result.text,
 			workSummary: result.workSummary,
+			usage: result.usage,
 			suspension: result.suspension,
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 		};
@@ -100,6 +108,8 @@ async function consumeStream(
 					: 'completed',
 		agentRunId: result.agentRunId,
 		text: result.text,
+		...(result.error !== undefined ? { error: result.error } : {}),
 		workSummary: result.workSummary,
+		usage: result.usage,
 	};
 }

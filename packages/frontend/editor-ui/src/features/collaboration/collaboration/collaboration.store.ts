@@ -87,9 +87,10 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		return isAnyoneWriting.value && !isCurrentTabWriter.value;
 	});
 
-	async function fetchWriteLockState(): Promise<{ clientId: string; userId: string } | null> {
+	async function fetchWriteLockState(
+		workflowId: string,
+	): Promise<{ clientId: string; userId: string } | null> {
 		try {
-			const { workflowId } = workflowsStore;
 			if (!workflowsStore.isWorkflowSaved[workflowId]) {
 				return null;
 			}
@@ -168,13 +169,13 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	 * Poll lock state from backend to detect if lock has expired.
 	 * Only runs when in read-only mode (someone else has the lock).
 	 */
-	const pollLockState = async () => {
+	const pollLockState = async (workflowId: string) => {
 		if (!shouldBeReadOnly.value) {
 			stopLockStatePolling();
 			return;
 		}
 
-		const writeLock = await fetchWriteLockState();
+		const writeLock = await fetchWriteLockState(workflowId);
 
 		// If lock is gone on backend but still exists in frontend, clear it
 		if (!writeLock && currentWriterLock.value) {
@@ -183,9 +184,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 	};
 
-	const startLockStatePolling = () => {
+	const startLockStatePolling = (workflowId: string) => {
 		stopLockStatePolling();
-		lockStatePollTimer.value = window.setInterval(pollLockState, LOCK_STATE_POLL_INTERVAL);
+		lockStatePollTimer.value = window.setInterval(
+			async () => await pollLockState(workflowId),
+			LOCK_STATE_POLL_INTERVAL,
+		);
 	};
 
 	addBeforeUnloadHandler(() => {
@@ -360,16 +364,16 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 	}
 
-	async function initialize() {
+	async function initialize(workflowId: string) {
 		if (pushStoreEventListenerRemovalFn.value) {
 			return;
 		}
 
 		// Store the workflowId we're collaborating on
-		collaboratingWorkflowId.value = workflowsStore.workflowId;
+		collaboratingWorkflowId.value = workflowId;
 
 		// Fetch current write-lock state from backend to restore state after page refresh
-		const writeLock = await fetchWriteLockState();
+		const writeLock = await fetchWriteLockState(workflowId);
 		if (writeLock) {
 			currentWriterLock.value = writeLock;
 
@@ -378,7 +382,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				startWriteLockHeartbeat();
 			} else {
 				// If someone else has the lock, start polling
-				startLockStatePolling();
+				startLockStatePolling(workflowId);
 			}
 		}
 
@@ -408,7 +412,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 					stopLockStatePolling();
 				} else {
 					// Start polling if someone else has the lock
-					startLockStatePolling();
+					startLockStatePolling(workflowId);
 				}
 				return;
 			}

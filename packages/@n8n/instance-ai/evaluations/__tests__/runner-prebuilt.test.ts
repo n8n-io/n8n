@@ -1,3 +1,6 @@
+import { vi } from 'vitest';
+import type { Mock } from 'vitest';
+
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import { runWorkflowTestCase } from '../harness/runner';
@@ -28,16 +31,16 @@ const silentLogger: EvalLogger = {
 	isVerbose: false,
 };
 
-function makeClient(overrides: Partial<Record<keyof N8nClient, jest.Mock>> = {}): {
+function makeClient(overrides: Partial<Record<keyof N8nClient, Mock>> = {}): {
 	client: N8nClient;
-	mocks: Record<string, jest.Mock>;
+	mocks: Record<string, Mock>;
 } {
-	const mocks: Record<string, jest.Mock> = {
-		getWorkflow: jest.fn(),
-		sendMessage: jest.fn(),
-		deleteWorkflow: jest.fn().mockResolvedValue(undefined),
-		deleteDataTable: jest.fn().mockResolvedValue(undefined),
-		listDataTables: jest.fn().mockResolvedValue([]),
+	const mocks: Record<string, Mock> = {
+		getWorkflow: vi.fn(),
+		sendMessage: vi.fn(),
+		deleteWorkflow: vi.fn().mockResolvedValue(undefined),
+		deleteDataTable: vi.fn().mockResolvedValue(undefined),
+		listDataTables: vi.fn().mockResolvedValue([]),
 		...overrides,
 	};
 	return { client: mocks as unknown as N8nClient, mocks };
@@ -47,10 +50,10 @@ function makeTestCase(): WorkflowTestCase {
 	// Empty scenarios => runWorkflowTestCase short-circuits past the
 	// scenario-execution loop, so we don't need to mock executeScenario.
 	return {
-		prompt: 'build me something',
+		conversation: [{ role: 'user', text: 'build me something' }],
 		complexity: 'simple',
 		tags: ['test'],
-		scenarios: [],
+		executionScenarios: [],
 	};
 }
 
@@ -64,14 +67,15 @@ describe('runWorkflowTestCase with prebuiltWorkflowId', () => {
 		} as unknown as WorkflowResponse;
 
 		const { client, mocks } = makeClient({
-			getWorkflow: jest.fn().mockResolvedValue(fakeWorkflow),
+			getWorkflow: vi.fn().mockResolvedValue(fakeWorkflow),
 		});
 
 		const result = await runWorkflowTestCase({
 			client,
+			baseUrl: 'http://localhost:5678',
 			testCase: makeTestCase(),
 			timeoutMs: 60_000,
-			seededCredentialTypes: [],
+			createdCredentialIds: new Set<string>(),
 			preRunWorkflowIds: new Set(),
 			claimedWorkflowIds: new Set(),
 			logger: silentLogger,
@@ -95,14 +99,15 @@ describe('runWorkflowTestCase with prebuiltWorkflowId', () => {
 
 	it('reports build failure with the workflow ID when fetch fails', async () => {
 		const { client, mocks } = makeClient({
-			getWorkflow: jest.fn().mockRejectedValue(new Error('HTTP 404')),
+			getWorkflow: vi.fn().mockRejectedValue(new Error('HTTP 404')),
 		});
 
 		const result = await runWorkflowTestCase({
 			client,
+			baseUrl: 'http://localhost:5678',
 			testCase: makeTestCase(),
 			timeoutMs: 60_000,
-			seededCredentialTypes: [],
+			createdCredentialIds: new Set<string>(),
 			preRunWorkflowIds: new Set(),
 			claimedWorkflowIds: new Set(),
 			logger: silentLogger,

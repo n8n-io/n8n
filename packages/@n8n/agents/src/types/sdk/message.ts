@@ -105,7 +105,7 @@ export type ContentToolCall = ContentMetadata & {
 	providerExecuted?: boolean;
 } & (
 		| { state: 'pending' }
-		| { state: 'resolved'; output: JSONValue }
+		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
 		| { state: 'rejected'; error: string }
 	);
 

@@ -167,7 +167,7 @@ async function handleTagWorkflow(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Tag workflow "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId}) with [${input.tags.join(', ')}]?`,
+			message: `Tag ${input.workflowName ?? input.workflowId} (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
 			severity: 'info' as const,
 		});
 	}
@@ -200,7 +200,7 @@ async function handleCleanupTestExecutions(
 		const hours = input.olderThanHours ?? 1;
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete test executions for workflow "${input.workflowName ?? input.workflowId}" older than ${hours} hour(s)?`,
+			message: `Delete executions for ${input.workflowName ?? input.workflowId} older than ${hours} hour(s)`,
 			severity: 'warning' as const,
 		});
 	}
@@ -248,7 +248,7 @@ async function handleCreateFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Create folder "${input.name}" in project "${input.projectId}"?`,
+			message: `Create ${input.name} in project ${input.projectId}`,
 			severity: 'info' as const,
 		});
 	}
@@ -288,12 +288,9 @@ async function handleDeleteFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const transferNote = input.transferToFolderId
-			? ` Contents will be moved to folder "${input.transferToFolderName ?? input.transferToFolderId}".`
-			: ' Contents will be flattened to project root and archived.';
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete folder "${input.folderName ?? input.folderId}"?${transferNote}`,
+			message: `Delete ${input.folderName ?? input.folderId}`,
 			severity: 'destructive' as const,
 		});
 	}
@@ -329,7 +326,7 @@ async function handleMoveWorkflowToFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Move workflow "${input.workflowName ?? input.workflowId}" to folder "${input.folderName ?? input.folderId}"?`,
+			message: `Move ${input.workflowName ?? input.workflowId} to folder ${input.folderName ?? input.folderId}`,
 			severity: 'info' as const,
 		});
 	}

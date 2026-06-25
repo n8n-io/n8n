@@ -1,4 +1,11 @@
+import { createTeamProject, createWorkflow, getPersonalProject } from '@n8n/backend-test-utils';
+import type { ExecutionRepository } from '@n8n/db';
 import { SpanStatusCode } from '@opentelemetry/api';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+
+import type { WorkflowRunner } from '@/workflow-runner';
+import { createUser } from '@test-integration/db/users';
 
 import {
 	initOtelTestEnvironment,
@@ -8,16 +15,11 @@ import {
 	saveAndSetEnv,
 	restoreEnv,
 } from './support/otel-integration-utils';
+import type { OtelTestProvider } from './support/otel-test-provider';
 import {
 	createMultiNodeWorkflowFixture,
 	createFailingWorkflowFixture,
 } from './support/otel-workflow-fixtures';
-import type { OtelTestProvider } from './support/otel-test-provider';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { ExecutionRepository } from '@n8n/db';
-import { createTeamProject, createWorkflow } from '@n8n/backend-test-utils';
-import { NodeConnectionTypes } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
@@ -28,6 +30,7 @@ beforeAll(async () => {
 	savedEnv = saveAndSetEnv({
 		N8N_OTEL_ENABLED: 'true',
 		N8N_OTEL_TRACES_INCLUDE_NODE_SPANS: 'true',
+		N8N_OTEL_TRACES_PRODUCTION_ONLY: 'false',
 	});
 	const env = await initOtelTestEnvironment();
 	otel = env.otel;
@@ -60,9 +63,33 @@ describe('OTEL Workflow Tracing Integration', () => {
 		expect(nodeSpans).toHaveLength(workflow.nodes.length);
 	});
 
+	it('should emit n8n.project.id on workflow.execute for a team project', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+		expect(workflowSpan).toBeDefined();
+		expect(workflowSpan.attributes['n8n.project.id']).toBe(project.id);
+	});
+
+	it('should emit n8n.project.id on workflow.execute for a personal project', async () => {
+		const owner = await createUser();
+		const personalProject = await getPersonalProject(owner);
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), personalProject);
+		const executionId = await executeWorkflow(workflowRunner, workflow, personalProject.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+		expect(workflowSpan).toBeDefined();
+		expect(workflowSpan.attributes['n8n.project.id']).toBe(personalProject.id);
+	});
+
 	it('should persist tracingContext to the execution entity after root span creation', async () => {
-		const workflow = await createWorkflow(createMultiNodeWorkflowFixture());
-		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project');
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
 		await waitForExecution(executionRepository, executionId);
 
 		const execution = await executionRepository.findOneBy({ id: executionId });
@@ -71,8 +98,9 @@ describe('OTEL Workflow Tracing Integration', () => {
 	});
 
 	it('should set error status on failed executions', async () => {
-		const workflow = await createWorkflow(createFailingWorkflowFixture());
-		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project');
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createFailingWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
 		await waitForExecution(executionRepository, executionId);
 
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
@@ -82,8 +110,9 @@ describe('OTEL Workflow Tracing Integration', () => {
 
 	it('should inherit traceId from inbound HTTP traceparent', async () => {
 		const inboundTraceId = '9bf2bd87b5053953e3fa08d8d889494b';
-		const workflow = await createWorkflow(createMultiNodeWorkflowFixture());
-		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project', {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
 			mode: 'webhook',
 			tracingContext: {
 				traceparent: `00-${inboundTraceId}-b7ad6b7169203331-01`,
@@ -119,7 +148,6 @@ describe('Custom Telemetry Tags', () => {
 					tag: [
 						{ key: 'environment', value: 'production' },
 						{ key: 'team', value: 'backend' },
-						{ key: 'env', value: '={{ $json.env }}' },
 					],
 				},
 			},
@@ -157,9 +185,7 @@ describe('Custom Telemetry Tags', () => {
 				position: [200, 0] as [number, number],
 				id: uuid(),
 				name: 'HelperA',
-				customTelemetryTags: {
-					tag: [{ key: 'service', value: 'auth' }],
-				},
+				customTelemetryTags: { tag: [{ key: 'service', value: 'auth' }] },
 			},
 			{
 				parameters: { category: 'doNothing' },
@@ -168,9 +194,7 @@ describe('Custom Telemetry Tags', () => {
 				position: [400, 0] as [number, number],
 				id: uuid(),
 				name: 'HelperB',
-				customTelemetryTags: {
-					tag: [{ key: 'tier', value: 'premium' }],
-				},
+				customTelemetryTags: { tag: [{ key: 'tier', value: 'premium' }] },
 			},
 		],
 		connections: {
@@ -209,23 +233,6 @@ describe('Custom Telemetry Tags', () => {
 		expect(nodeSpan.attributes['n8n.node.custom.team']).toBe('backend');
 	});
 
-	it('should evaluate expression-based custom telemetry tags', async () => {
-		const project = await createTeamProject();
-		const workflow = await createWorkflow(createWorkflowWithCustomTagsFixture(), project);
-		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
-			triggerData: { env: 'staging' },
-		});
-		await waitForExecution(executionRepository, executionId);
-
-		const nodeSpan = otel
-			.getFinishedSpans()
-			.find((s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper')!;
-
-		expect(nodeSpan).toBeDefined();
-		expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('staging');
-		expect(nodeSpan.attributes['n8n.node.custom.environment']).toBe('production');
-	});
-
 	it('should attach custom tags to the correct node spans in a multi-node workflow', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow(createMultiNodeCustomTagsFixture(), project);
@@ -242,5 +249,38 @@ describe('Custom Telemetry Tags', () => {
 		expect(helperA.attributes['n8n.node.custom.tier']).toBeUndefined();
 		expect(helperB.attributes['n8n.node.custom.tier']).toBe('premium');
 		expect(helperB.attributes['n8n.node.custom.service']).toBeUndefined();
+	});
+
+	it('should attach workflow custom telemetry tags only to the workflow span', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(
+			{
+				...createMultiNodeWorkflowFixture(),
+				settings: {
+					customTelemetryTags: [
+						{ key: 'environment', value: 'production' },
+						{ key: 'workflowName', value: 'Custom Tags Workflow' },
+						{ key: 'retryCount', value: '3' },
+						{ key: 'isCritical', value: 'true' },
+					],
+				},
+			},
+			project,
+		);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans();
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+
+		expect(workflowSpan.attributes['n8n.workflow.custom.environment']).toBe('production');
+		expect(workflowSpan.attributes['n8n.workflow.custom.workflowName']).toBe(
+			'Custom Tags Workflow',
+		);
+		expect(workflowSpan.attributes['n8n.workflow.custom.retryCount']).toBe('3');
+		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe('true');
+		expect(nodeSpan.attributes['n8n.workflow.custom.environment']).toBeUndefined();
+		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBeUndefined();
 	});
 });

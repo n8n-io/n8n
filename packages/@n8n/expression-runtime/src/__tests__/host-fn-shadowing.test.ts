@@ -4,19 +4,19 @@
  * properties of the same name. Tournament's `VariablePolyfill` rewrites a
  * bare identifier `extend(...)` to `("extend" in this ? this : global).extend`
  * where `this` is the in-isolate context proxy. The proxy's `has` trap finds
- * `target.extend` (set in `runtime/context.ts:92-93`) and returns the
- * in-isolate copy before any host lookup happens.
+ * `target.<name>` (set in `runtime/context.ts`) and returns the in-isolate
+ * copy before any host lookup happens.
  *
- * Why this matters under the threat model: every host function reachable
- * from `data` becomes a callable target via the bridge's `callFunctionAtPath`.
- * Confirming that helpers resolve in-isolate lets us safely strip them from
- * the VM-path `data` object (see `expression.ts` shouldUseVm guard) without
- * losing functionality. Keeping the helpers shadowed is a load-bearing
- * structural invariant of the security model.
+ * Why this matters under the threat model: function-typed bindings on
+ * `data` are now structurally unreachable — `getValueAtPath` returns
+ * `undefined` for any function-typed value and there is no `__isFunction`
+ * wrapper path. Confirming that helpers resolve in-isolate also lets us
+ * safely strip them from the VM-path `data` object (see `expression.ts`
+ * `shouldUseVm` guard) without losing functionality.
  *
  * If this test ever fails, one of the following changed:
  *   - Tournament's polyfill no longer rewrites bare identifiers to context-first
- *   - `target.extend` / `target.extendOptional` were removed from `context.ts`
+ *   - The corresponding `target.<name>` was removed from `context.ts`
  *   - A new resolution path was added that prefers host `data` over context
  * Any of these is a meaningful security regression — investigate before
  * "fixing" the test.
@@ -110,5 +110,49 @@ describe('Host-fn shadowing: data.extend / data.extendOptional must not be invok
 
 		expect(result).toEqual([1, 2, 3]);
 		expect(hostExtendCalls).toBe(0);
+	});
+
+	it('does NOT invoke host-side data.$jmespath when expression calls $jmespath(...)', () => {
+		let hostJmespathCalls = 0;
+		const data: Record<string, unknown> = {
+			$json: { users: [{ name: 'a' }, { name: 'b' }] },
+			$jmespath: (...args: unknown[]) => {
+				hostJmespathCalls++;
+				throw new Error(`host-side data.$jmespath was invoked with: ${JSON.stringify(args)}`);
+			},
+			$jmesPath: (...args: unknown[]) => {
+				hostJmespathCalls++;
+				throw new Error(`host-side data.$jmesPath was invoked with: ${JSON.stringify(args)}`);
+			},
+		};
+
+		const result = evaluator.evaluate(
+			'{{ $jmespath({users: [{name: "a"}, {name: "b"}]}, "users[*].name") }}',
+			data,
+			caller,
+		);
+
+		expect(result).toEqual(['a', 'b']);
+		expect(hostJmespathCalls).toBe(0);
+	});
+
+	it('does NOT invoke host-side data.$jmesPath when expression calls $jmesPath (capital P)', () => {
+		let hostJmespathCalls = 0;
+		const data: Record<string, unknown> = {
+			$json: {},
+			$jmespath: (...args: unknown[]) => {
+				hostJmespathCalls++;
+				throw new Error(`host-side data.$jmespath was invoked with: ${JSON.stringify(args)}`);
+			},
+			$jmesPath: (...args: unknown[]) => {
+				hostJmespathCalls++;
+				throw new Error(`host-side data.$jmesPath was invoked with: ${JSON.stringify(args)}`);
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $jmesPath({a: 1, b: 2}, "a") }}', data, caller);
+
+		expect(result).toBe(1);
+		expect(hostJmespathCalls).toBe(0);
 	});
 });

@@ -3,24 +3,9 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
+import type { AddDatasetRowDto, EvaluationConfigDto } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { getMetricCategory, type MetricSource } from './evaluation.utils';
-
-const BUILTIN_METRIC_DEFAULT_NAMES: Record<string, string> = {
-	correctness: 'Correctness',
-	helpfulness: 'Helpfulness',
-	stringSimilarity: 'String similarity',
-	categorization: 'Categorization',
-	toolsUsed: 'Tools Used',
-};
 
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
@@ -30,14 +15,10 @@ export const useEvaluationStore = defineStore(
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
+		const evaluationConfigsByWorkflowId = ref<Record<string, EvaluationConfigDto[]>>({});
 
 		// Store instances
 		const rootStore = useRootStore();
-		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = computed(() =>
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-		);
-		const nodeTypesStore = useNodeTypesStore();
 		const settingsStore = useSettingsStore();
 
 		// Computed
@@ -57,96 +38,6 @@ export const useEvaluationStore = defineStore(
 				},
 				{},
 			);
-		});
-
-		const evaluationTriggerExists = computed(() => {
-			return workflowDocumentStore.value.allNodes.some(
-				(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
-			);
-		});
-
-		function evaluationNodeExist(operation: string) {
-			return workflowDocumentStore.value.allNodes.some((node) => {
-				if (node.type !== EVALUATION_NODE_TYPE) {
-					return false;
-				}
-
-				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-				if (!nodeType) return false;
-
-				const nodeParameters = NodeHelpers.getNodeParameters(
-					nodeType.properties,
-					node.parameters,
-					true,
-					false,
-					node,
-					nodeType,
-				);
-
-				return nodeParameters?.operation === operation;
-			});
-		}
-
-		const evaluationSetMetricsNodeExist = computed(() => {
-			return evaluationNodeExist('setMetrics');
-		});
-
-		const evaluationSetOutputsNodeExist = computed(() => {
-			return evaluationNodeExist('setOutputs');
-		});
-
-		// Per-metric category + source-node name, keyed by metric name as it
-		// appears in the run output. Built-in nodes emit one key (overridable
-		// via `options.metricName`); customMetrics emits one key per assignment.
-		const metricSourceByKey = computed<Record<string, MetricSource>>(() => {
-			const map: Record<string, MetricSource> = {};
-
-			for (const node of workflowDocumentStore.value.allNodes) {
-				if (node.type !== EVALUATION_NODE_TYPE) continue;
-
-				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-				if (!nodeType) continue;
-
-				const resolved = NodeHelpers.getNodeParameters(
-					nodeType.properties,
-					node.parameters,
-					true,
-					false,
-					node,
-					nodeType,
-				);
-				if (resolved?.operation !== 'setMetrics') continue;
-
-				const metricType =
-					typeof resolved.metric === 'string' && resolved.metric.length > 0
-						? resolved.metric
-						: 'customMetrics';
-
-				if (metricType === 'customMetrics') {
-					const assignments = (
-						resolved.metrics as { assignments?: Array<{ name?: string }> } | undefined
-					)?.assignments;
-					if (!Array.isArray(assignments)) continue;
-
-					for (const assignment of assignments) {
-						const key = assignment?.name;
-						if (typeof key !== 'string' || key.length === 0) continue;
-						if (map[key]) continue;
-						map[key] = { category: 'custom', nodeName: node.name };
-					}
-				} else {
-					const overriddenName = (resolved.options as { metricName?: string } | undefined)
-						?.metricName;
-					const key =
-						typeof overriddenName === 'string' && overriddenName.length > 0
-							? overriddenName
-							: BUILTIN_METRIC_DEFAULT_NAMES[metricType];
-					if (!key || map[key]) continue;
-					map[key] = { category: getMetricCategory(metricType), nodeName: node.name };
-				}
-			}
-
-			return map;
 		});
 
 		// Methods
@@ -242,6 +133,43 @@ export const useEvaluationStore = defineStore(
 			return result;
 		};
 
+		// Evaluation config + dataset methods
+
+		const fetchEvaluationConfigs = async (workflowId: string) => {
+			const configs = await evaluationsApi.listEvaluationConfigs(
+				rootStore.restApiContext,
+				workflowId,
+			);
+			evaluationConfigsByWorkflowId.value[workflowId] = configs;
+			return configs;
+		};
+
+		const getDatasetCandidate = async (params: {
+			workflowId: string;
+			configId: string;
+			executionId: string;
+		}) => {
+			return await evaluationsApi.getDatasetCandidate(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.configId,
+				params.executionId,
+			);
+		};
+
+		const addExecutionToDataset = async (params: {
+			workflowId: string;
+			configId: string;
+			payload: AddDatasetRowDto;
+		}) => {
+			return await evaluationsApi.addDatasetRow(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.configId,
+				params.payload,
+			);
+		};
+
 		// TODO: This is a temporary solution to poll for test run status.
 		// We should use a more efficient polling mechanism in the future.
 		const startPollingTestRun = (workflowId: string, runId: string) => {
@@ -278,15 +206,12 @@ export const useEvaluationStore = defineStore(
 			// State
 			testRunsById,
 			testCaseExecutionsById,
+			evaluationConfigsByWorkflowId,
 
 			// Computed
 			isLoading,
 			isEvaluationEnabled,
 			testRunsByWorkflowId,
-			evaluationTriggerExists,
-			evaluationSetMetricsNodeExist,
-			evaluationSetOutputsNodeExist,
-			metricSourceByKey,
 
 			// Methods
 			fetchTestCaseExecutions,
@@ -296,7 +221,10 @@ export const useEvaluationStore = defineStore(
 			cancelTestRun,
 			cancelTestCase,
 			deleteTestRun,
+			fetchEvaluationConfigs,
 			cleanupPolling,
+			getDatasetCandidate,
+			addExecutionToDataset,
 		};
 	},
 	{},

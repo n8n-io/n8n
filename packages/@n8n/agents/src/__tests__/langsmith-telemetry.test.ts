@@ -1,56 +1,74 @@
 const mockExporterConfigs: unknown[] = [];
+type MockExportResult = { code: number; error?: Error };
+type MockExportCallback = (result: MockExportResult) => void;
+type MockExporter = {
+	type: 'exporter';
+	export: Mock<(...args: [unknown[], MockExportCallback]) => void>;
+	shutdown: Mock<(...args: []) => Promise<void>>;
+};
+const mockExporterInstances: MockExporter[] = [];
 const mockBatchProcessorInputs: unknown[] = [];
 const mockBatchProcessorInstances: Array<{
-	forceFlush: jest.Mock<Promise<void>, []>;
-	onStart: jest.Mock<void, [unknown, unknown]>;
-	onEnd: jest.Mock<void, [unknown]>;
-	shutdown: jest.Mock<Promise<void>, []>;
+	forceFlush: Mock<(...args: []) => Promise<void>>;
+	onStart: Mock<(...args: [unknown, unknown]) => void>;
+	onEnd: Mock<(...args: [unknown]) => void>;
+	shutdown: Mock<(...args: []) => Promise<void>>;
 }> = [];
 const mockProviderConfigs: unknown[] = [];
-const mockAwaitPendingTraceBatches = jest.fn(async () => await Promise.resolve());
-const mockTracer = { startSpan: jest.fn() };
+const mockAwaitPendingTraceBatches = vi.fn(async () => await Promise.resolve());
+const mockTracer = { startSpan: vi.fn() };
 const mockProvider = {
-	getTracer: jest.fn(() => mockTracer),
-	register: jest.fn(),
-	forceFlush: jest.fn(),
-	shutdown: jest.fn(),
+	getTracer: vi.fn(() => mockTracer),
+	register: vi.fn(),
+	forceFlush: vi.fn(),
+	shutdown: vi.fn(),
 };
 
-jest.mock('langsmith/experimental/otel/exporter', () => ({
-	LangSmithOTLPTraceExporter: jest.fn((config: unknown) => {
+vi.mock('langsmith/experimental/otel/exporter', () => ({
+	LangSmithOTLPTraceExporter: vi.fn(function (config: unknown) {
 		mockExporterConfigs.push(config);
-		return { type: 'exporter' };
+		const exporter: MockExporter = {
+			type: 'exporter',
+			export: vi.fn((_: unknown[], resultHandler: MockExportCallback) => {
+				resultHandler({ code: 0 });
+			}),
+			shutdown: vi.fn(async () => await Promise.resolve()),
+		};
+		mockExporterInstances.push(exporter);
+		return exporter;
 	}),
 }));
 
-jest.mock('@opentelemetry/sdk-trace-base', () => ({
-	BatchSpanProcessor: jest.fn((exporter: unknown) => {
+vi.mock('@opentelemetry/sdk-trace-base', () => ({
+	BatchSpanProcessor: vi.fn(function (exporter: unknown) {
 		mockBatchProcessorInputs.push(exporter);
 		const processor = {
-			forceFlush: jest.fn(async () => await Promise.resolve()),
-			onStart: jest.fn(),
-			onEnd: jest.fn(),
-			shutdown: jest.fn(async () => await Promise.resolve()),
+			forceFlush: vi.fn(async () => await Promise.resolve()),
+			onStart: vi.fn(),
+			onEnd: vi.fn(),
+			shutdown: vi.fn(async () => await Promise.resolve()),
 		};
 		mockBatchProcessorInstances.push(processor);
 		return processor;
 	}),
 }));
 
-jest.mock('langsmith', () => ({
+vi.mock('langsmith', () => ({
 	RunTree: {
-		getSharedClient: jest.fn(() => ({
+		getSharedClient: vi.fn(() => ({
 			awaitPendingTraceBatches: mockAwaitPendingTraceBatches,
 		})),
 	},
 }));
 
-jest.mock('@opentelemetry/sdk-trace-node', () => ({
-	NodeTracerProvider: jest.fn((config: unknown) => {
+vi.mock('@opentelemetry/sdk-trace-node', () => ({
+	NodeTracerProvider: vi.fn(function (config: unknown) {
 		mockProviderConfigs.push(config);
 		return mockProvider;
 	}),
 }));
+
+import type { Mock } from 'vitest';
 
 import { LangSmithTelemetry } from '../integrations/langsmith';
 
@@ -59,6 +77,7 @@ describe('LangSmithTelemetry', () => {
 
 	beforeEach(() => {
 		mockExporterConfigs.length = 0;
+		mockExporterInstances.length = 0;
 		mockBatchProcessorInputs.length = 0;
 		mockBatchProcessorInstances.length = 0;
 		mockProviderConfigs.length = 0;
@@ -78,21 +97,16 @@ describe('LangSmithTelemetry', () => {
 		}
 	});
 
-	it('passes proxy headers and derived OTLP URL to the LangSmith exporter', async () => {
+	it('passes static proxy headers and derived OTLP URL to the LangSmith exporter', async () => {
 		const transformExportedSpan = (span: unknown) => span;
-		const getHeaders = jest.fn(async () => {
-			await Promise.resolve();
-			return { Authorization: 'Bearer proxy-token' } satisfies Record<string, string>;
-		});
 		const built = await new LangSmithTelemetry({
 			apiKey: '-',
 			project: 'instance-ai',
 			endpoint: 'https://ai-proxy.test/langsmith',
-			headers: getHeaders,
+			headers: { Authorization: 'Bearer proxy-token' },
 			transformExportedSpan,
 		}).build();
 
-		expect(getHeaders).toHaveBeenCalledTimes(1);
 		expect(mockExporterConfigs).toEqual([
 			{
 				apiKey: '-',
@@ -102,7 +116,7 @@ describe('LangSmithTelemetry', () => {
 				url: 'https://ai-proxy.test/langsmith/otel/v1/traces',
 			},
 		]);
-		expect(mockBatchProcessorInputs).toEqual([{ type: 'exporter' }]);
+		expect(mockBatchProcessorInputs).toEqual([mockExporterInstances[0]]);
 		expect(mockProviderConfigs).toHaveLength(1);
 		const providerConfig = mockProviderConfigs[0] as { spanProcessors: unknown[] };
 		expect(providerConfig.spanProcessors).toHaveLength(1);
@@ -116,6 +130,84 @@ describe('LangSmithTelemetry', () => {
 		expect(built.tracer).toBe(mockTracer);
 		expect(built.provider).toBe(mockProvider);
 		expect(process.env.LANGCHAIN_TRACING_V2).toBe('true');
+	});
+
+	it('resolves function headers for every export request', async () => {
+		const getHeaders = vi
+			.fn<(...args: []) => Promise<Record<string, string>>>()
+			.mockResolvedValueOnce({ Authorization: 'Bearer proxy-token-1' })
+			.mockResolvedValueOnce({ Authorization: 'Bearer proxy-token-2' });
+
+		await new LangSmithTelemetry({
+			apiKey: '-',
+			project: 'instance-ai',
+			endpoint: 'https://ai-proxy.test/langsmith',
+			headers: getHeaders,
+		}).build();
+
+		expect(getHeaders).not.toHaveBeenCalled();
+		expect(mockExporterConfigs).toEqual([]);
+		expect(mockBatchProcessorInputs).toHaveLength(1);
+
+		const exporter = mockBatchProcessorInputs[0] as {
+			export(spans: unknown[], resultCallback: MockExportCallback): void;
+		};
+		const firstSpan = { name: 'first' };
+		const secondSpan = { name: 'second' };
+
+		const firstResult = await new Promise<MockExportResult>((resolve) => {
+			exporter.export([firstSpan], resolve);
+		});
+		const secondResult = await new Promise<MockExportResult>((resolve) => {
+			exporter.export([secondSpan], resolve);
+		});
+
+		expect(firstResult).toEqual({ code: 0 });
+		expect(secondResult).toEqual({ code: 0 });
+		expect(getHeaders).toHaveBeenCalledTimes(2);
+		expect(mockExporterConfigs).toEqual([
+			{
+				apiKey: '-',
+				projectName: 'instance-ai',
+				headers: { Authorization: 'Bearer proxy-token-1' },
+				url: 'https://ai-proxy.test/langsmith/otel/v1/traces',
+			},
+			{
+				apiKey: '-',
+				projectName: 'instance-ai',
+				headers: { Authorization: 'Bearer proxy-token-2' },
+				url: 'https://ai-proxy.test/langsmith/otel/v1/traces',
+			},
+		]);
+		expect(mockExporterInstances[0].export).toHaveBeenCalledWith([firstSpan], expect.any(Function));
+		expect(mockExporterInstances[1].export).toHaveBeenCalledWith(
+			[secondSpan],
+			expect.any(Function),
+		);
+	});
+
+	it('reports export failure when function headers reject', async () => {
+		const refreshError = new Error('could not refresh headers');
+		const getHeaders = vi
+			.fn<(...args: []) => Promise<Record<string, string>>>()
+			.mockRejectedValueOnce(refreshError);
+
+		await new LangSmithTelemetry({
+			apiKey: '-',
+			project: 'instance-ai',
+			headers: getHeaders,
+		}).build();
+
+		const exporter = mockBatchProcessorInputs[0] as {
+			export(spans: unknown[], resultCallback: MockExportCallback): void;
+		};
+		const result = await new Promise<MockExportResult>((resolve) => {
+			exporter.export([{ name: 'span' }], resolve);
+		});
+
+		expect(result).toEqual({ code: 1, error: refreshError });
+		expect(getHeaders).toHaveBeenCalledTimes(1);
+		expect(mockExporterConfigs).toEqual([]);
 	});
 
 	it('does not allow endpoint overrides when using an engine-resolved key', async () => {

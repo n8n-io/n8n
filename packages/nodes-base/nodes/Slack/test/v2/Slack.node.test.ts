@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -9,12 +9,13 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { SlackV2 } from '../../V2/SlackV2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 describe('SlackV2', () => {
 	let node: SlackV2;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let slackApiRequestSpy: jest.SpyInstance;
-	let slackApiRequestAllItemsSpy: jest.SpyInstance;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let slackApiRequestSpy: MockInstance;
+	let slackApiRequestAllItemsSpy: MockInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -34,10 +35,10 @@ describe('SlackV2', () => {
 		});
 
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		slackApiRequestSpy = jest.spyOn(GenericFunctions, 'slackApiRequest');
-		slackApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'slackApiRequestAllItems');
+		slackApiRequestSpy = vi.spyOn(GenericFunctions, 'slackApiRequest');
+		slackApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'slackApiRequestAllItems');
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Default mocks
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
@@ -52,7 +53,7 @@ describe('SlackV2', () => {
 		});
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 		// Mock helper functions
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: any, options: any) => {
 				return data.map((item: any, index: number) => ({
 					...item,
@@ -60,14 +61,14 @@ describe('SlackV2', () => {
 				}));
 			},
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any) => {
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
 			// returnJsonArray should always return array with single item containing the data
 			return [{ json: data }];
 		});
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Channel Operations - Kick and Join', () => {
@@ -148,6 +149,56 @@ describe('SlackV2', () => {
 			const result = await node.execute.call(mockExecuteFunctions);
 
 			expect(result).toEqual([[{ json: { error: 'Channel not found' } }]]);
+		});
+	});
+
+	describe('Channel List Operations - multiOptions types filter', () => {
+		it('should send types as CSV when filters.types is an array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: ['public_channel', 'private_channel'] },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
+		});
+
+		it('should normalize types when filters.types is a comma-joined string', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: 'public_channel,private_channel ' },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
 		});
 	});
 
@@ -316,6 +367,32 @@ describe('SlackV2', () => {
 					},
 				],
 			]);
+		});
+
+		it('should invite users when userIds is a comma-joined string (whitespace-coerced expression)', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'invite',
+					channelId: 'C123456789',
+					userIds: 'U111111111,U222222222 ',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channel: { id: 'C123456789' } });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/conversations.invite',
+				{
+					channel: 'C123456789',
+					users: 'U111111111,U222222222',
+				},
+				{},
+			);
 		});
 
 		it('should leave channel', async () => {
@@ -651,11 +728,11 @@ describe('SlackV2', () => {
 
 	describe('Message Operations - Ephemeral Messages', () => {
 		beforeEach(() => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
-			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
 				text: 'Test ephemeral message',
 			});
-			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
 		});
 
 		it('should send ephemeral message to channel', async () => {
@@ -746,7 +823,7 @@ describe('SlackV2', () => {
 		});
 
 		it('should send ephemeral message to user directly', async () => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
 					resource: 'message',
@@ -1117,7 +1194,7 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const mockResponse = {
 				file: {
@@ -1176,9 +1253,9 @@ describe('SlackV2', () => {
 			const mockStream = Buffer.from('file content');
 			const mockMetadata = { fileSize: 12 };
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(mockStream);
-			(mockExecuteFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue(mockMetadata);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(mockStream);
+			(mockExecuteFunctions.helpers.getBinaryMetadata as Mock).mockResolvedValue(mockMetadata);
 
 			// Mock the upload URL response
 			const mockUploadUrlResponse = {
@@ -1325,7 +1402,7 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const mockUploadUrlResponse = {
 				upload_url: 'https://files.slack.com/upload/v1',
@@ -1388,11 +1465,9 @@ describe('SlackV2', () => {
 				mimeType: 'text/plain',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(
-				Buffer.from('test'),
-			);
-			(mockExecuteFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue({
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(Buffer.from('test'));
+			(mockExecuteFunctions.helpers.getBinaryMetadata as Mock).mockResolvedValue({
 				fileSize: 4,
 			});
 
@@ -1412,6 +1487,56 @@ describe('SlackV2', () => {
 					filename: 'custom-name.txt',
 					length: 4,
 				},
+			);
+		});
+	});
+
+	describe('File List Operations - multiOptions types filter', () => {
+		it('should send types as CSV when filters.types is an array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'file',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: ['images', 'pdfs'] },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ files: [{ id: 'F1' }] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/files.list',
+				{},
+				expect.objectContaining({ types: 'images,pdfs' }),
+			);
+		});
+
+		it('should normalize types when filters.types is a comma-joined string with trailing whitespace', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'file',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: 'images,pdfs ' },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ files: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/files.list',
+				{},
+				expect.objectContaining({ types: 'images,pdfs' }),
 			);
 		});
 	});
@@ -1551,11 +1676,11 @@ describe('SlackV2', () => {
 		});
 
 		it('should throw error for ephemeral message with username when select is user', async () => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
-			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('U123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
 				text: 'Test message',
 			});
-			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'resource') return 'message';

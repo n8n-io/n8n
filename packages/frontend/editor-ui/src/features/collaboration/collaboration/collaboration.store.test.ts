@@ -123,7 +123,7 @@ describe('useCollaborationStore', () => {
 			const store = useCollaborationStore();
 
 			// Initialize collaboration on workflow-1
-			await store.initialize();
+			await store.initialize('workflow-1');
 
 			// Clear any calls from initialization
 			mockPushStore.send.mockClear();
@@ -147,7 +147,7 @@ describe('useCollaborationStore', () => {
 			mockShowMessage.mockReturnValue({ close });
 			const store = useCollaborationStore();
 
-			await store.initialize();
+			await store.initialize('workflow-1');
 			const handler = mockPushStore.addEventListener.mock.calls[0][0] as (event: {
 				type: string;
 				data: { workflowId: string };

@@ -157,6 +157,25 @@ describe('detectAgentNamedRefs', () => {
 		expect(result.every((r) => r.targetNodeName === 'Agent')).toBe(true);
 	});
 
+	it('deduplicates column names after slugging source node names', () => {
+		const workflow = wf([
+			{
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: {
+					text: "={{ $('A-B').item.json.value }}",
+					options: { systemMessage: "={{ $('A_B').item.json.value }}" },
+				},
+				position: [0, 0],
+				id: 'a',
+			},
+		]);
+		const result = detectAgentNamedRefs(workflow, 'Agent');
+		expect(result).toHaveLength(2);
+		expect(result.map((r) => r.column).sort()).toEqual(['a_b_value', 'a_b_value_1']);
+	});
+
 	it('throws if the agent node is not in the workflow', () => {
 		expect(() => detectAgentNamedRefs(wf([]), 'Missing')).toThrow(/not found/i);
 	});

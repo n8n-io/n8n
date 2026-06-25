@@ -1,18 +1,24 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-
-import { isRecord } from './column-ref-utils';
 
 export const METRIC_IDS = ['correctness', 'relevance', 'tool_use', 'helpfulness'] as const;
 export type MetricId = (typeof METRIC_IDS)[number];
 
-export interface MetricCatalogEntry {
-	id: MetricId;
+export interface MetricProposal {
+	id: string;
 	name: string;
+	kind: string;
+	cannedMetricKey?: string;
+	description: string;
+	prompt?: string;
+	defaultEnabled: boolean;
+}
+
+export interface MetricCatalogEntry extends MetricProposal {
+	id: MetricId;
 	kind: 'llm-judge';
 	cannedMetricKey: MetricId;
-	description: string;
 	prompt: string;
-	defaultEnabled: boolean;
 	requiresExpected: boolean;
 }
 

@@ -1,5 +1,6 @@
 patch:
   x-eov-operation-id: updatePackage
+  x-required-scope: communityPackage:update
   x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
   tags:
     - CommunityPackage
@@ -46,6 +47,7 @@ patch:
     - ApiKeyAuth: []
 delete:
   x-eov-operation-id: uninstallPackage
+  x-required-scope: communityPackage:uninstall
   x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
   tags:
     - CommunityPackage

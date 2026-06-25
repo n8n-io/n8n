@@ -27,7 +27,7 @@ describe('EvaluationCollectionsController', () => {
 		// Default: flag ON for the user. Each test that needs flag-off semantics
 		// overrides this with `mockResolvedValueOnce({})` (no flag entry).
 		postHogClient.getFeatureFlags.mockResolvedValue({
-			eval_collections: true,
+			[EVAL_COLLECTIONS_FLAG]: true,
 		} as Record<string, boolean>);
 		controller = new EvaluationCollectionsController(service, postHogClient, logger);
 	});
@@ -100,10 +100,10 @@ describe('EvaluationCollectionsController', () => {
 			await expect(controller.list(makeReq({ workflowId: 'wf-1' }))).rejects.toThrow(NotFoundError);
 		});
 
-		it('uses the spec-declared flag id', () => {
+		it('uses the convention-prefixed flag id', () => {
 			// Future-proofs the rollout: if anyone renames the flag without
 			// also updating the spec/PostHog, this test fails immediately.
-			expect(EVAL_COLLECTIONS_FLAG).toBe('eval_collections');
+			expect(EVAL_COLLECTIONS_FLAG).toBe('084_eval_collections');
 		});
 	});
 

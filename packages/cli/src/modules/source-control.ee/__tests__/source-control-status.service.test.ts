@@ -4,6 +4,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	type FolderRepository,
 	type FolderWithWorkflowAndSubFolderCount,
+	type Project,
 	type TagEntity,
 	type TagRepository,
 	type User,
@@ -355,6 +356,41 @@ describe('getStatus', () => {
 		).rejects.toThrowError(ForbiddenError);
 	});
 
+	it('should throw `ForbiddenError` if direction is push and user has no source control push access', async () => {
+		// ARRANGE
+		const user = globalMemberUser;
+
+		// ACT
+		await expect(
+			sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+			}),
+		).rejects.toThrowError(ForbiddenError);
+
+		expect(gitService.resetBranch).not.toHaveBeenCalled();
+	});
+
+	it('should allow push status for a user with project source control push access', async () => {
+		// ARRANGE
+		const user = globalMemberUser;
+		sourceControlContextFactory.createContext.mockResolvedValueOnce(
+			new SourceControlContext(user, [mock<Project>({ id: 'project-1', type: 'team' })], []),
+		);
+
+		// ACT
+		const result = await sourceControlStatusService.getStatus(user, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+		});
+
+		// ASSERT
+		expect(result).toEqual([]);
+		expect(sourceControlContextFactory.createContext).toHaveBeenCalledWith(user);
+	});
+
 	describe('project', () => {
 		// Mock data for reusable test scenarios
 		const mockProjects: Record<string, ExportableProjectWithFileName> = {
@@ -626,6 +662,15 @@ describe('getStatus', () => {
 				local: visibleProjects,
 				hiddenLocal: hiddenProjects,
 			});
+			sourceControlContextFactory.createContext.mockResolvedValueOnce(
+				new SourceControlContext(
+					user,
+					visibleProjects.map((project) =>
+						mock<Project>({ id: project.id, name: project.name, type: 'team' }),
+					),
+					[],
+				),
+			);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {

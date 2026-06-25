@@ -1,0 +1,68 @@
+{
+  "name": "@n8n/mcp-apps",
+  "version": "0.5.0",
+  "description": "MCP Apps UI resources and server helpers for n8n",
+  "main": "dist/server/index.js",
+  "types": "dist/server/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "server": [
+        "dist/server/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "pnpm build:ui && pnpm build:server",
+    "build:unchecked": "pnpm build:ui && tsc -p tsconfig.build.json --noCheck",
+    "build:ui": "vite build --mode workflow-preview",
+    "build:server": "tsc -p tsconfig.build.json",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.build.json",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest",
+    "format": "biome format --write src",
+    "format:check": "biome ci src"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "catalog:",
+    "@n8n/design-system": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "vue": "catalog:frontend",
+    "vue-i18n": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "catalog:",
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/semver": "^7.7.0",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/test-utils": "catalog:frontend",
+    "rimraf": "catalog:",
+    "semver": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-icons": "catalog:frontend",
+    "vite": "catalog:",
+    "vite-plugin-singlefile": "catalog:",
+    "vite-svg-loader": "catalog:frontend",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:frontend"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

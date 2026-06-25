@@ -1,37 +1,39 @@
 import { Monitor } from 'node-screenshots';
+import type { Mock, MockedClass } from 'vitest';
 
 import { ScreenshotModule } from './index';
 import { screenshotTool, screenshotRegionTool } from './screenshot';
 
-jest.mock('node-screenshots');
+vi.mock('node-screenshots');
 
-const mockFromRgbaPixels = jest.fn<unknown, unknown[]>();
-jest.mock('@napi-rs/image', () => ({
+const { mockFromRgbaPixels } = vi.hoisted(() => ({
+	mockFromRgbaPixels: vi.fn<(...args: unknown[]) => unknown>(),
+}));
+vi.mock('@napi-rs/image', () => ({
 	__esModule: true,
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	Transformer: {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		fromRgbaPixels: (...args: unknown[]) => mockFromRgbaPixels(...args),
 	},
 }));
 
-const MockMonitor = Monitor as jest.MockedClass<typeof Monitor>;
+const MockMonitor = Monitor as MockedClass<typeof Monitor>;
 
 const DUMMY_CONTEXT = { dir: '/test/base' };
 
 interface MockImage {
 	width: number;
 	height: number;
-	toRaw: jest.Mock;
-	crop: jest.Mock;
+	toRaw: Mock;
+	crop: Mock;
 }
 
 function makeMockImage(width = 1920, height = 1080, rawData = 'fake-raw-bytes'): MockImage {
 	const image: MockImage = {
 		width,
 		height,
-		toRaw: jest.fn().mockResolvedValue(Buffer.from(rawData)),
-		crop: jest.fn(),
+		toRaw: vi.fn().mockResolvedValue(Buffer.from(rawData)),
+		crop: vi.fn(),
 	};
 	// Default crop returns a new cropped image
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -39,21 +41,21 @@ function makeMockImage(width = 1920, height = 1080, rawData = 'fake-raw-bytes'):
 		Promise.resolve({
 			width: w,
 			height: h,
-			toRaw: jest.fn().mockResolvedValue(Buffer.from(`cropped-${w}x${h}`)),
-			crop: jest.fn(),
+			toRaw: vi.fn().mockResolvedValue(Buffer.from(`cropped-${w}x${h}`)),
+			crop: vi.fn(),
 		}),
 	);
 	return image;
 }
 
 interface MockMonitorInstance {
-	isPrimary: jest.Mock;
-	x: jest.Mock;
-	y: jest.Mock;
-	width: jest.Mock;
-	height: jest.Mock;
-	scaleFactor: jest.Mock;
-	captureImage: jest.Mock;
+	isPrimary: Mock;
+	x: Mock;
+	y: Mock;
+	width: Mock;
+	height: Mock;
+	scaleFactor: Mock;
+	captureImage: Mock;
 }
 
 function makeMockMonitor(opts: {
@@ -67,19 +69,19 @@ function makeMockMonitor(opts: {
 }): MockMonitorInstance {
 	const image = opts.image ?? makeMockImage();
 	return {
-		isPrimary: jest.fn().mockReturnValue(opts.isPrimary ?? false),
-		x: jest.fn().mockReturnValue(opts.x ?? 0),
-		y: jest.fn().mockReturnValue(opts.y ?? 0),
-		width: jest.fn().mockReturnValue(opts.width ?? 1920),
-		height: jest.fn().mockReturnValue(opts.height ?? 1080),
-		scaleFactor: jest.fn().mockReturnValue(opts.scaleFactor ?? 1.0),
-		captureImage: jest.fn().mockResolvedValue(image),
+		isPrimary: vi.fn().mockReturnValue(opts.isPrimary ?? false),
+		x: vi.fn().mockReturnValue(opts.x ?? 0),
+		y: vi.fn().mockReturnValue(opts.y ?? 0),
+		width: vi.fn().mockReturnValue(opts.width ?? 1920),
+		height: vi.fn().mockReturnValue(opts.height ?? 1080),
+		scaleFactor: vi.fn().mockReturnValue(opts.scaleFactor ?? 1.0),
+		captureImage: vi.fn().mockResolvedValue(image),
 	};
 }
 
 beforeEach(() => {
-	const mockJpeg = jest.fn().mockResolvedValue(Buffer.from('fake-jpeg'));
-	const mockResize = jest.fn();
+	const mockJpeg = vi.fn().mockResolvedValue(Buffer.from('fake-jpeg'));
+	const mockResize = vi.fn();
 	const pipeline = { resize: mockResize, jpeg: mockJpeg };
 	mockResize.mockReturnValue(pipeline);
 	mockFromRgbaPixels.mockReturnValue(pipeline);
@@ -87,12 +89,12 @@ beforeEach(() => {
 
 describe('screen_screenshot tool', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returns base64 JPEG as media content for primary monitor', async () => {
 		const monitor = makeMockMonitor({ isPrimary: true, width: 1920, height: 1080 });
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		const result = await screenshotTool.execute({}, DUMMY_CONTEXT);
 
@@ -107,7 +109,7 @@ describe('screen_screenshot tool', () => {
 	it('uses the primary monitor when multiple monitors are available', async () => {
 		const secondary = makeMockMonitor({ isPrimary: false, x: 1920 });
 		const primary = makeMockMonitor({ isPrimary: true, x: 0 });
-		(MockMonitor.all as jest.Mock).mockReturnValue([secondary, primary]);
+		(MockMonitor.all as Mock).mockReturnValue([secondary, primary]);
 
 		await screenshotTool.execute({}, DUMMY_CONTEXT);
 
@@ -116,7 +118,7 @@ describe('screen_screenshot tool', () => {
 	});
 
 	it('throws when no monitors are available', async () => {
-		(MockMonitor.all as jest.Mock).mockReturnValue([]);
+		(MockMonitor.all as Mock).mockReturnValue([]);
 
 		await expect(screenshotTool.execute({}, DUMMY_CONTEXT)).rejects.toThrow(
 			'No monitors available',
@@ -133,11 +135,11 @@ describe('screen_screenshot tool', () => {
 			scaleFactor: 2.0,
 			image,
 		});
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		await screenshotTool.execute({}, DUMMY_CONTEXT);
 
-		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: jest.Mock };
+		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: Mock };
 		expect(pipeline.resize).toHaveBeenCalledWith(1920, 1080);
 	});
 
@@ -148,11 +150,11 @@ describe('screen_screenshot tool', () => {
 			height: 1080,
 			scaleFactor: 1.0,
 		});
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		await screenshotTool.execute({}, DUMMY_CONTEXT);
 
-		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: jest.Mock };
+		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: Mock };
 		// No HiDPI resize, but LLM downscale kicks in (1920x1080 → 1024x576)
 		expect(pipeline.resize).toHaveBeenCalledWith(1024, 576);
 	});
@@ -160,12 +162,12 @@ describe('screen_screenshot tool', () => {
 
 describe('screen_screenshot_region tool', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returns cropped image data as media content', async () => {
 		const monitor = makeMockMonitor({ isPrimary: true, x: 0, y: 0, width: 1920, height: 1080 });
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		const result = await screenshotRegionTool.execute(
 			{ x: 100, y: 200, width: 400, height: 300 },
@@ -190,7 +192,7 @@ describe('screen_screenshot_region tool', () => {
 			height: 1440,
 			image,
 		});
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		await screenshotRegionTool.execute({ x: 2000, y: 200, width: 300, height: 200 }, DUMMY_CONTEXT);
 
@@ -208,7 +210,7 @@ describe('screen_screenshot_region tool', () => {
 			height: 1080,
 			image,
 		});
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		await screenshotRegionTool.execute({ x: 100, y: 100, width: 200, height: 150 }, DUMMY_CONTEXT);
 
@@ -228,7 +230,7 @@ describe('screen_screenshot_region tool', () => {
 			scaleFactor: 2.0,
 			image,
 		});
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		// Input in logical pixels: x=100, y=200, w=400, h=300
 		await screenshotRegionTool.execute({ x: 100, y: 200, width: 400, height: 300 }, DUMMY_CONTEXT);
@@ -248,31 +250,31 @@ describe('screen_screenshot_region tool', () => {
 			scaleFactor: 2.0,
 			image,
 		});
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
 
 		await screenshotRegionTool.execute({ x: 100, y: 200, width: 400, height: 300 }, DUMMY_CONTEXT);
 
 		// Cropped image (800×600 physical) must be resized to logical 400×300
-		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: jest.Mock };
+		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: Mock };
 		expect(pipeline.resize).toHaveBeenCalledWith(400, 300);
 	});
 });
 
 describe('ScreenshotModule.isSupported', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it.each([
 		['has monitors', [{}], true],
 		['returns empty array', [], false],
 	])('returns %s -> %s', async (_label, monitorList, expected) => {
-		(MockMonitor.all as jest.Mock).mockReturnValue(monitorList);
+		(MockMonitor.all as Mock).mockReturnValue(monitorList);
 		await expect(ScreenshotModule.isSupported()).resolves.toBe(expected);
 	});
 
 	it('returns false when Monitor.all() throws', async () => {
-		(MockMonitor.all as jest.Mock).mockImplementation(() => {
+		(MockMonitor.all as Mock).mockImplementation(() => {
 			throw new Error('Display server unavailable');
 		});
 		await expect(ScreenshotModule.isSupported()).resolves.toBe(false);

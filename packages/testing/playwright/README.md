@@ -10,7 +10,7 @@ pnpm build:docker # from root first to test against local changes
 ```bash
 pnpm test:all                 									# Run all tests (fresh containers, pnpm build:docker from root first to ensure local containers)
 pnpm test:local           											# Starts a local server and runs the E2E tests
-N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the instance running
+N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the running instance
 ```
 
 ## Develop against running containers (avoid docker rebuilds)

@@ -1,6 +1,8 @@
 import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/app/constants';
 import { computed, ref } from 'vue';
 import type {
+	CanvasGroupNode,
+	CanvasGroupNodeData,
 	CanvasInjectionData,
 	CanvasNode,
 	CanvasNodeData,
@@ -8,12 +10,19 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 	ConnectStartEvent,
-	ExecutionOutputMapData,
 } from '@/features/workflows/canvas/canvas.types';
+import type { ExecutionOutputMapData } from '@/app/types/executionData';
 import {
+	CANVAS_NODE_GROUP_ID_PREFIX,
+	CANVAS_NODE_GROUP_TYPE,
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
+import type { NodeExecutionSnapshot } from '@/features/workflows/canvas/canvas.types';
+import {
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
+} from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
@@ -30,7 +39,6 @@ export function createCanvasNodeData({
 	connections = { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 	execution = { running: false },
 	issues = { validation: [], visible: false },
-	pinnedData = { count: 0, visible: false },
 	runData = { outputMap: {}, iterations: 0, visible: false },
 	render = {
 		type: CanvasNodeRenderType.Default,
@@ -45,7 +53,6 @@ export function createCanvasNodeData({
 		typeVersion,
 		execution,
 		issues,
-		pinnedData,
 		runData,
 		disabled,
 		connections,
@@ -66,6 +73,75 @@ export function createCanvasNodeElement({
 		label,
 		position,
 		data: createCanvasNodeData({ id, type, ...data }),
+	};
+}
+
+export function createCanvasGroupElement({
+	id = 'g1',
+	name = 'Test Group',
+	nodeIds = [],
+	position = { x: 0, y: 0 },
+	isCollapsed = true,
+	nodesRect = { x: 0, y: 0, width: 200, height: 100 },
+}: Partial<{
+	id: string;
+	name: string;
+	nodeIds: string[];
+	position: { x: number; y: number };
+	isCollapsed: boolean;
+	nodesRect: CanvasGroupNodeData['nodesRect'];
+}> = {}): CanvasGroupNode {
+	return {
+		id: `${CANVAS_NODE_GROUP_ID_PREFIX}${id}`,
+		type: CANVAS_NODE_GROUP_TYPE,
+		position,
+		data: {
+			group: { id, name, nodeIds },
+			nodesRect,
+			isCollapsed,
+		},
+	};
+}
+
+/**
+ * Graph-node form of a group chip (the runtime VueFlow node), as opposed to the
+ * plain input element from {@link createCanvasGroupElement}.
+ */
+export function createCanvasGraphGroupNode(
+	options: Parameters<typeof createCanvasGroupElement>[0] = {},
+): GraphNode<CanvasGroupNodeData> {
+	const element = createCanvasGroupElement(options);
+	const data = element.data!; // createCanvasGroupElement always populates data
+	return {
+		id: element.id,
+		type: CANVAS_NODE_GROUP_TYPE,
+		label: data.group.name,
+		position: element.position,
+		computedPosition: { ...element.position, z: 0 },
+		dimensions: { width: GROUP_HEADER_WIDTH_COLLAPSED, height: GROUP_HEADER_HEIGHT },
+		dragging: false,
+		isParent: false,
+		selected: false,
+		resizing: false,
+		handleBounds: { source: null, target: null },
+		events: {},
+		data,
+	};
+}
+
+export function createNodeExecutionSnapshot(
+	overrides: Partial<NodeExecutionSnapshot> = {},
+): NodeExecutionSnapshot {
+	return {
+		running: false,
+		waitingForNext: false,
+		waiting: undefined,
+		hasExecutionError: false,
+		hasValidationError: false,
+		status: undefined,
+		dirty: false,
+		iterations: 0,
+		...overrides,
 	};
 }
 

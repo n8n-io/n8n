@@ -1,0 +1,124 @@
+oneOf:
+  - type: object
+    description: >
+      A workflow whose source id already matches one in the target project, under
+      the `fail` conflict policy.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      name:
+        type: string
+  - type: object
+    description: >
+      A `source`-policy workflow whose id is already taken on the instance.
+      Workflow ids are globally unique, so the id cannot be created in the
+      target project. The existing workflow may live in any project — including
+      the target project itself — and may be archived (archived workflows keep
+      their id but are never matched for updates).
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - existingProjectId
+      - isArchived
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-id-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      existingProjectId:
+        type: string
+        nullable: true
+        description: >
+          Project that owns the existing workflow, or null when no owning
+          project could be determined.
+      isArchived:
+        type: boolean
+        description: Whether the existing workflow is archived.
+      name:
+        type: string
+  - type: object
+    description: >
+      A workflow whose source id already matches one in the target project but
+      lives outside the requested import folder. Folder-targeted imports cannot
+      update workflows in place at a different location.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - existingParentFolderId
+      - targetFolderId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-folder-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: >
+          Folder that currently contains the matched workflow, or null when it
+          lives at the project root.
+      targetFolderId:
+        type: string
+        description: Folder the import was requested to land in.
+      name:
+        type: string
+  - type: object
+    description: A credential reference that could not be resolved in the target project.
+    required:
+      - type
+      - kind
+      - sourceId
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-unresolved
+      kind:
+        type: string
+        enum:
+          - not_found
+          - unknown_type
+          - source_not_found
+          - type_mismatch
+      sourceId:
+        type: string
+      targetId:
+        type: string
+        description: Target credential id for an explicit credential binding.
+      expectedType:
+        type: string
+        description: >
+          For `type_mismatch`: the credential type the package's workflow node
+          requires.
+      actualType:
+        type: string
+        description: >
+          For `type_mismatch`: the actual type of the resolved target credential.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string

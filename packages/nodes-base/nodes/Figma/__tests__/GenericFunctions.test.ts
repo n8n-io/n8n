@@ -5,16 +5,16 @@ import { figmaApiRequest } from '../GenericFunctions';
 describe('Figma > GenericFunctions', () => {
 	const mockFunctions: any = {
 		helpers: {
-			request: jest.fn(),
-			requestWithAuthentication: jest.fn(),
+			request: vi.fn(),
+			requestWithAuthentication: vi.fn(),
 		},
-		getCredentials: jest.fn(),
-		getNode: jest.fn(),
-		getNodeParameter: jest.fn(),
+		getCredentials: vi.fn(),
+		getNode: vi.fn(),
+		getNodeParameter: vi.fn(),
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockFunctions.getNodeParameter.mockReturnValue('accessToken');
 		mockFunctions.getCredentials.mockResolvedValue({ accessToken: 'test-token' });
 	});

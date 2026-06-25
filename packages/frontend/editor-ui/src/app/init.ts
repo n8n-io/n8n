@@ -3,7 +3,7 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
+import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { UserManagementAuthenticationMethod } from '@/Interface';
@@ -218,7 +218,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleSettingsPages();
 
 	// Initialize run data worker and load node types
-	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
+	if (isDataWorkerEnabled()) {
 		const coordinator = await import('@/app/workers');
 		await coordinator.initialize({ version: settingsStore.settings.versionCli });
 		await coordinator.loadNodeTypes(rootStore.baseUrl);
@@ -265,7 +265,12 @@ function registerAuthenticationHooks() {
 			userId: user.id,
 			userRole: user.role,
 		});
-		postHogStore.init(user.featureFlags);
+		try {
+			postHogStore.init(user.featureFlags);
+		} catch (e) {
+			// don't let posthog failing prevent further function calls
+			console.error(e);
+		}
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		await settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();

@@ -224,10 +224,11 @@ export class ProjectController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 	): Promise<ProjectRequest.ProjectWithRelations> {
-		const [{ id, name, icon, type, description }, relations] = await Promise.all([
-			this.projectsService.getProject(projectId),
-			this.projectsService.getProjectRelations(projectId),
-		]);
+		const [{ id, name, icon, type, description, customTelemetryTags }, relations] =
+			await Promise.all([
+				this.projectsService.getProject(projectId),
+				this.projectsService.getProjectRelations(projectId),
+			]);
 		const myRelation = relations.find((r) => r.userId === req.user.id);
 
 		return {
@@ -236,6 +237,7 @@ export class ProjectController {
 			icon,
 			type,
 			description,
+			customTelemetryTags,
 			relations: relations.map((r) => ({
 				id: r.user.id,
 				email: r.user.email,
@@ -255,12 +257,20 @@ export class ProjectController {
 	@Patch('/:projectId')
 	@ProjectScope('project:update')
 	async updateProject(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: UpdateProjectDto,
 		@Param('projectId') projectId: string,
 	) {
 		await this.projectsService.updateProject(projectId, payload);
+		this.eventService.emit('team-project-updated', {
+			userId: req.user.id,
+			role: req.user.role.slug,
+			projectId,
+			...(payload.customTelemetryTags !== undefined
+				? { otelProjectCustomTagsCount: payload.customTelemetryTags.length }
+				: {}),
+		});
 	}
 
 	@Post('/:projectId/users')

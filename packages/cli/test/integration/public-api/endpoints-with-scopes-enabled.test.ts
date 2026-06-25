@@ -1176,6 +1176,7 @@ describe('Public API endpoints with API key scopes', () => {
 						type: 'team',
 						creatorId: owner.id,
 						description: null,
+						customTelemetryTags: [],
 						id: expect.any(String),
 						createdAt: expect.any(String),
 						updatedAt: expect.any(String),

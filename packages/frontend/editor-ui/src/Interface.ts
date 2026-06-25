@@ -35,6 +35,7 @@ import type {
 	PublicInstalledPackage,
 	IDestinationNode,
 	AgentRequestQuery,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -78,7 +79,7 @@ declare global {
 					disable_session_recording?: boolean;
 					debug?: boolean;
 					bootstrap?: {
-						distinctId?: string;
+						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
 					};
@@ -86,6 +87,7 @@ declare global {
 						maskAllInputs?: boolean;
 						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
 					};
+					loaded?: () => void;
 				},
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
@@ -264,6 +266,7 @@ export interface IWorkflowDb {
 	};
 	activeVersion?: WorkflowHistory | null;
 	checksum?: string;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // For workflow list we don't need the full workflow data
@@ -313,6 +316,7 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 };
 
 // Base resource types that are always available
@@ -647,11 +651,21 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	closeOnSave?: boolean;
 	projectId?: string;
 	suggestedName?: string;
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
+	/** Behavior for the Instance AI credential setup-help button, supplied by the
+	 * surface that opened the modal (an editor capability, or the credentials list).
+	 * Resolves to whether the credential modal should close (false keeps it open for
+	 * a new-tab hand-off; true closes it for an in-thread append). */
+	instanceAiCredentialHelp?: (credential: {
+		name: string;
+		displayName: string;
+		nodeName?: string;
+	}) => Promise<boolean>;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -694,7 +708,6 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_drop'
 	| 'notice_error_message'
 	| 'add_node_button'
-	| 'add_evaluation_trigger_button'
 	| 'add_evaluation_node_button'
 	| 'templates_callout';
 
@@ -886,6 +899,7 @@ export type CloudUpdateLinkSourceType =
 	| 'chat-hub'
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
+	| 'data-redaction'
 	| 'workflow-settings';
 
 export type UTMCampaign =

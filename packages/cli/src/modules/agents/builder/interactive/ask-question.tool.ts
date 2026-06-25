@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import {
 	ASK_QUESTION_TOOL_NAME,
@@ -11,11 +11,12 @@ import {
 export function buildAskQuestionTool(): BuiltTool {
 	return new Tool(ASK_QUESTION_TOOL_NAME)
 		.description(
-			'Show a multiple-choice card in the chat UI and suspend until the user picks an ' +
-				'answer. Use when the request is ambiguous and the answer is one (or more) of a ' +
-				'known list of options. The UI also includes an Other field, so returned values ' +
-				'may include user-entered freeform text when the listed options are incomplete. ' +
-				'Returns { values: string[] } with selected option values and/or Other text.',
+			'Show a question card in the chat UI and suspend until the user answers. Use when ' +
+				'the request is ambiguous. Pass `options` as the known choices; for an open-ended ' +
+				'question pass an empty `options` array and the card shows only a freeform input. ' +
+				'Do NOT add your own "Other" option — the card always includes a freeform field, so ' +
+				'returned values may include user-entered text. Returns { values: string[] } with ' +
+				'selected option values and/or freeform text.',
 		)
 		.input(askQuestionInputSchema)
 		.suspend(askQuestionInputSchema)
@@ -26,9 +27,12 @@ export function buildAskQuestionTool(): BuiltTool {
 				ctx: InterruptibleToolContext<AskQuestionInput, AskQuestionResume>,
 			) => {
 				if (ctx.resumeData !== undefined) return ctx.resumeData;
-				// Single-option questions have no actual choice — auto-pick so the
-				// LLM doesn't render a card the user can only confirm.
-				if (input.options.length === 1) {
+				// A single single-select option has no real choice — auto-pick it so
+				// the LLM doesn't render a card the user can only confirm. Multi-select
+				// questions still render so the user can decide whether to select the
+				// one option, and open-ended questions (empty options array) still
+				// suspend to show the freeform-only card.
+				if (input.options.length === 1 && input.allowMultiple !== true) {
 					return { values: [input.options[0].value] };
 				}
 				return await ctx.suspend(input);

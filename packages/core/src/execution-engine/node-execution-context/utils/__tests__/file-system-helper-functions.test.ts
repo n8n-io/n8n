@@ -9,6 +9,7 @@ import {
 	open as fsOpen,
 } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { Mock } from 'vitest';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -22,8 +23,8 @@ import { InstanceSettings } from '@/instance-settings';
 
 import { getFileSystemHelperFunctions } from '../file-system-helper-functions';
 
-jest.mock('node:fs');
-jest.mock('node:fs/promises');
+vi.mock('node:fs');
+vi.mock('node:fs/promises');
 
 const originalProcessEnv = { ...process.env };
 
@@ -37,8 +38,8 @@ beforeEach(() => {
 	const error = new Error('ENOENT');
 	// @ts-expect-error undefined property
 	error.code = 'ENOENT';
-	(fsAccess as jest.Mock).mockRejectedValue(error);
-	(fsRealpath as jest.Mock).mockImplementation((path: string) => path);
+	(fsAccess as Mock).mockRejectedValue(error);
+	(fsRealpath as Mock).mockImplementation((path: string) => path);
 
 	instanceSettings = Container.get(InstanceSettings);
 	securityConfig = Container.get(SecurityConfig);
@@ -172,7 +173,7 @@ describe('isFilePathBlocked', () => {
 		securityConfig.restrictFileAccessTo = '/path1';
 		const allowedPath = '/path1/symlink';
 		const actualPath = '/path2/realfile';
-		(fsRealpath as jest.Mock).mockImplementation((path: string) =>
+		(fsRealpath as Mock).mockImplementation((path: string) =>
 			path === allowedPath ? actualPath : path,
 		);
 		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(true);
@@ -183,7 +184,7 @@ describe('isFilePathBlocked', () => {
 		const error = new Error('ENOENT');
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
-		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+		(fsRealpath as Mock).mockRejectedValueOnce(error);
 		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(false);
 	});
 
@@ -194,7 +195,7 @@ describe('isFilePathBlocked', () => {
 		const error = new Error('ENOENT');
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
-		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+		(fsRealpath as Mock).mockRejectedValueOnce(error);
 		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
 	});
 
@@ -298,8 +299,8 @@ describe('getFileSystemHelperFunctions', () => {
 			const error = new Error('ENOENT');
 			// @ts-expect-error undefined property
 			error.code = 'ENOENT';
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsAccess as jest.Mock).mockRejectedValueOnce(error);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as Mock).mockRejectedValueOnce(error);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
@@ -308,7 +309,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 		it('should throw when file access is blocked', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
 			).rejects.toThrow('Access to the file is not allowed');
@@ -316,7 +317,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 		it('should not reveal if file exists if it is within restricted path', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
@@ -325,15 +326,15 @@ describe('getFileSystemHelperFunctions', () => {
 
 		it('should create a read stream if file access is permitted', async () => {
 			const filePath = '/allowed/path';
-			const mockStream = { pipe: jest.fn() };
+			const mockStream = { pipe: vi.fn() };
 			const mockFileHandle = {
-				stat: jest.fn().mockResolvedValue(mockFileStats),
-				createReadStream: jest.fn().mockReturnValue(mockStream),
+				stat: vi.fn().mockResolvedValue(mockFileStats),
+				createReadStream: vi.fn().mockReturnValue(mockStream),
 			};
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
-			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as Mock).mockResolvedValueOnce(mockFileHandle);
 
 			const result = await helperFunctions.createReadStream(
 				await helperFunctions.resolvePath(filePath),
@@ -349,9 +350,9 @@ describe('getFileSystemHelperFunctions', () => {
 			// @ts-expect-error undefined property
 			eloopError.code = 'ELOOP';
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
-			(fsOpen as jest.Mock).mockRejectedValueOnce(eloopError);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as Mock).mockRejectedValueOnce(eloopError);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
@@ -362,14 +363,14 @@ describe('getFileSystemHelperFunctions', () => {
 			const filePath = '/allowed/path/file';
 			const differentStats = { dev: 999, ino: 888 };
 			const mockFileHandle = {
-				stat: jest.fn().mockResolvedValue(differentStats),
-				createReadStream: jest.fn(),
-				close: jest.fn(),
+				stat: vi.fn().mockResolvedValue(differentStats),
+				createReadStream: vi.fn(),
+				close: vi.fn(),
 			};
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
-			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as Mock).mockResolvedValueOnce(mockFileHandle);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
@@ -399,8 +400,8 @@ describe('getFileSystemHelperFunctions', () => {
 			// @ts-expect-error undefined property
 			eloopError.code = 'ELOOP';
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsOpen as jest.Mock).mockRejectedValueOnce(eloopError);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as Mock).mockRejectedValueOnce(eloopError);
 
 			await expect(
 				helperFunctions.writeContentToFile(
@@ -414,14 +415,14 @@ describe('getFileSystemHelperFunctions', () => {
 			const filePath = '/allowed/path/file';
 			const differentStats = { dev: 999, ino: 888, isFile: () => true };
 			const mockFileHandle = {
-				stat: jest.fn().mockResolvedValue(differentStats),
-				truncate: jest.fn(),
-				write: jest.fn(),
-				close: jest.fn(),
+				stat: vi.fn().mockResolvedValue(differentStats),
+				truncate: vi.fn(),
+				write: vi.fn(),
+				close: vi.fn(),
 			};
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as Mock).mockResolvedValueOnce(mockFileHandle);
 
 			await expect(
 				helperFunctions.writeContentToFile(
@@ -436,14 +437,14 @@ describe('getFileSystemHelperFunctions', () => {
 		it('should successfully write to file when identity matches', async () => {
 			const filePath = '/allowed/path/file';
 			const mockFileHandle = {
-				stat: jest.fn().mockResolvedValue(mockFileStats),
-				truncate: jest.fn().mockResolvedValue(undefined),
-				writeFile: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn().mockResolvedValue(undefined),
+				stat: vi.fn().mockResolvedValue(mockFileStats),
+				truncate: vi.fn().mockResolvedValue(undefined),
+				writeFile: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
 			};
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as Mock).mockResolvedValueOnce(mockFileHandle);
 
 			await helperFunctions.writeContentToFile(
 				await helperFunctions.resolvePath(filePath),
@@ -467,15 +468,15 @@ describe('getFileSystemHelperFunctions', () => {
 
 			const newFileStats = { dev: 123, ino: 789, isFile: () => true };
 			const mockFileHandle = {
-				stat: jest.fn().mockResolvedValue(newFileStats),
-				truncate: jest.fn().mockResolvedValue(undefined),
-				writeFile: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn().mockResolvedValue(undefined),
+				stat: vi.fn().mockResolvedValue(newFileStats),
+				truncate: vi.fn().mockResolvedValue(undefined),
+				writeFile: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
 			};
 
-			(fsStat as jest.Mock).mockRejectedValueOnce(enoentError);
-			(fsStat as jest.Mock).mockResolvedValueOnce(newFileStats);
-			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+			(fsStat as Mock).mockRejectedValueOnce(enoentError);
+			(fsStat as Mock).mockResolvedValueOnce(newFileStats);
+			(fsOpen as Mock).mockResolvedValueOnce(mockFileHandle);
 
 			await helperFunctions.writeContentToFile(
 				await helperFunctions.resolvePath(filePath),
@@ -490,14 +491,14 @@ describe('getFileSystemHelperFunctions', () => {
 		it('should strip O_TRUNC flag from user flags', async () => {
 			const filePath = '/allowed/path/file';
 			const mockFileHandle = {
-				stat: jest.fn().mockResolvedValue(mockFileStats),
-				truncate: jest.fn().mockResolvedValue(undefined),
-				writeFile: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn().mockResolvedValue(undefined),
+				stat: vi.fn().mockResolvedValue(mockFileStats),
+				truncate: vi.fn().mockResolvedValue(undefined),
+				writeFile: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
 			};
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
-			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as Mock).mockResolvedValueOnce(mockFileHandle);
 
 			await helperFunctions.writeContentToFile(
 				await helperFunctions.resolvePath(filePath),
@@ -516,12 +517,12 @@ describe('getFileSystemHelperFunctions', () => {
 			const filePath = '/allowed/path/directory';
 			const dirStats = { dev: 123, ino: 456, isFile: () => false };
 			const mockFileHandle = {
-				stat: jest.fn().mockResolvedValue(dirStats),
-				close: jest.fn().mockResolvedValue(undefined),
+				stat: vi.fn().mockResolvedValue(dirStats),
+				close: vi.fn().mockResolvedValue(undefined),
 			};
 
-			(fsStat as jest.Mock).mockResolvedValueOnce(dirStats);
-			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+			(fsStat as Mock).mockResolvedValueOnce(dirStats);
+			(fsOpen as Mock).mockResolvedValueOnce(mockFileHandle);
 
 			await expect(
 				helperFunctions.writeContentToFile(

@@ -8,6 +8,7 @@ import * as utils from '@/features/shared/editors/plugins/codemirror/completions
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { completionStatus } from '@codemirror/autocomplete';
 import { WORKFLOW_DOCUMENT_FACET } from '@/features/shared/editors/plugins/codemirror/completions/constants';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 
 vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -18,13 +19,28 @@ vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	};
 });
 
+const editors: EditorView[] = [];
+
 describe('Infobox tooltips', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
 	});
 
+	afterEach(() => {
+		editors.splice(0).forEach((editor) => editor.destroy());
+	});
+
 	describe('Cursor tooltips', () => {
+		test('should dismiss the cursor info-box when the command bar opens', async () => {
+			const view = await setupEditorWithCursor('{{ $max(|) }}');
+			expect(getCursorTooltips(view).length).toBe(1);
+
+			commandBarEventBus.emit('open');
+
+			expect(getCursorTooltips(view).length).toBe(0);
+		});
+
 		test('should NOT show a tooltip for: {{ $max(1,2) }} foo|', async () => {
 			const tooltips = await cursorTooltips('{{ $max(1,2) }} foo|');
 			expect(tooltips.length).toBe(0);
@@ -42,11 +58,9 @@ describe('Infobox tooltips', () => {
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
-		test('should show a tooltip for: {{ $max(1,2,3,|) }}', async () => {
+		test('should NOT show a tooltip for: {{ $max(1, 2|) }} (caret inside a non-empty arg)', async () => {
 			const tooltips = await cursorTooltips('{{ $max(1, 2|) }}');
-			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
-			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
+			expect(tooltips.length).toBe(0);
 		});
 
 		test('should NOT show a tooltip for: {{ $json.str|.includes("test") }}', async () => {
@@ -62,12 +76,10 @@ describe('Infobox tooltips', () => {
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
-		test('should show a tooltip for: {{ $json.str.includes("tes|t") }}', async () => {
+		test('should NOT show a tooltip for: {{ $json.str.includes("tes|t") }} (caret inside a non-empty arg)', async () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue('a string');
 			const tooltips = await cursorTooltips('{{ $json.str.includes("tes|t") }}');
-			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('includes(searchString, start?)');
-			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
+			expect(tooltips.length).toBe(0);
 		});
 
 		test('should show a tooltip for: {{ $json.str.includes("test",|) }}', async () => {
@@ -76,6 +88,33 @@ describe('Infobox tooltips', () => {
 			expect(tooltips.length).toBe(1);
 			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('includes(searchString, start?)');
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(1);
+		});
+
+		test('should show a tooltip for an empty slot after a comma: {{ $max(1,|) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max(1,|) }}');
+			expect(tooltips.length).toBe(1);
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
+		});
+
+		test('should NOT show a tooltip while typing a value: {{ $max(1|) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max(1|) }}');
+			expect(tooltips.length).toBe(0);
+		});
+
+		test('should NOT show a tooltip before an existing value: {{ $max(|1) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max(|1) }}');
+			expect(tooltips.length).toBe(0);
+		});
+
+		test('should show a tooltip for a whitespace-only slot: {{ $max( | ) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max( | ) }}');
+			expect(tooltips.length).toBe(1);
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
+		});
+
+		test('should NOT show the outer tooltip inside a nested arrow body: {{ $input.all().map(e => { return e.j|son }) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $input.all().map(e => { return e.j|son }) }}');
+			expect(tooltips.length).toBe(0);
 		});
 	});
 
@@ -130,7 +169,7 @@ function infoBoxHeader(infoBox: HTMLElement | undefined) {
 	return infoBox?.querySelector('.autocomplete-info-header');
 }
 
-async function cursorTooltips(docWithCursor: string) {
+async function setupEditorWithCursor(docWithCursor: string) {
 	const cursorPosition = docWithCursor.indexOf('|');
 
 	const doc = docWithCursor.slice(0, cursorPosition) + docWithCursor.slice(cursorPosition + 1);
@@ -138,9 +177,10 @@ async function cursorTooltips(docWithCursor: string) {
 	const state = EditorState.create({
 		doc,
 		selection: { anchor: cursorPosition },
-		extensions: [n8nLang(), infoBoxTooltips()],
+		extensions: [n8nLang(), infoBoxTooltips(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 	const view = new EditorView({ parent: document.createElement('div'), state });
+	editors.push(view);
 
 	// Wait for async tooltip loading to complete
 	// The async loader runs on initial create, so we need to wait for it
@@ -150,10 +190,18 @@ async function cursorTooltips(docWithCursor: string) {
 	view.requestMeasure();
 	await new Promise((resolve) => setTimeout(resolve, 10));
 
+	return view;
+}
+
+function getCursorTooltips(view: EditorView) {
 	return view.state
 		.facet(showTooltip)
 		.filter((t): t is Tooltip => !!t)
 		.map((tooltip) => ({ tooltip, view: getTooltip(view, tooltip)?.dom }));
+}
+
+async function cursorTooltips(docWithCursor: string) {
+	return getCursorTooltips(await setupEditorWithCursor(docWithCursor));
 }
 
 async function hoverTooltip(docWithCursor: string) {
@@ -167,6 +215,7 @@ async function hoverTooltip(docWithCursor: string) {
 	});
 
 	const view = new EditorView({ state, parent: document.createElement('div') });
+	editors.push(view);
 
 	const tooltip = await hoverTooltipSource(view, hoverPosition);
 

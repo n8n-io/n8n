@@ -3,9 +3,8 @@
  * + model the builder may select when auto-resolving." Used by the ask_llm tool
  * when there's exactly one LLM-provider credential available.
  *
- * Provider strings match the catalog IDs used by `@n8n/agents`'s
- * `.model(provider, model)` call (see editor-ui's provider-mapping.ts for the
- * other side of this contract).
+ * Provider strings match the provider IDs used by `@n8n/agents`'s
+ * `.model(provider, model)` call.
  *
  * Keep this list narrow — when the canonical default is unclear (e.g. Bedrock,
  * Azure variants), omit the entry so the tool falls through to suspending and
@@ -88,6 +87,16 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		modelLookup: {
 			kind: 'loadOptionsRouting',
 			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+			version: 1,
+			propertyName: 'model',
+		},
+	},
+	nvidiaApi: {
+		provider: 'nvidia',
+		defaultModel: 'nvidia/llama-3.3-nemotron-super-49b-v1',
+		modelLookup: {
+			kind: 'loadOptionsRouting',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatNvidia',
 			version: 1,
 			propertyName: 'model',
 		},

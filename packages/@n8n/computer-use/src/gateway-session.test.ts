@@ -1,3 +1,5 @@
+import type { Mocked } from 'vitest';
+
 import * as config from './config';
 import type { ToolGroup } from './config';
 import { GatewaySession, buildDefaultPermissions } from './gateway-session';
@@ -12,17 +14,15 @@ function makeStore(
 		allow: Record<string, string[]>;
 		deny: Record<string, string[]>;
 	}> = {},
-): jest.Mocked<
-	Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>
-> {
+): Mocked<Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>> {
 	return {
-		getResourcePermissions: jest.fn((toolGroup: ToolGroup) => ({
+		getResourcePermissions: vi.fn((toolGroup: ToolGroup) => ({
 			allow: overrides.allow?.[toolGroup] ?? [],
 			deny: overrides.deny?.[toolGroup] ?? [],
 		})),
-		alwaysAllow: jest.fn(),
-		alwaysDeny: jest.fn(),
-		flush: jest.fn().mockResolvedValue(undefined),
+		alwaysAllow: vi.fn(),
+		alwaysDeny: vi.fn(),
+		flush: vi.fn().mockResolvedValue(undefined),
 	};
 }
 
