@@ -9,10 +9,6 @@ export const CLIENT_ASSERTION_TYPE = 'urn:ietf:params:oauth:client-assertion-typ
 
 const ASSERTION_TTL_SECONDS = 300;
 
-// Backdate `iat`/`nbf` to tolerate the n8n host clock running ahead of the IdP;
-// strict servers otherwise reject a just-issued assertion with `invalid_client`.
-const CLOCK_SKEW_SECONDS = 60;
-
 function base64url(input: Buffer | string): string {
 	return Buffer.from(input).toString('base64url');
 }
@@ -41,8 +37,8 @@ export function buildClientAssertion(options: BuildClientAssertionOptions): stri
 		iss: options.clientId,
 		sub: options.clientId,
 		jti: randomUUID(),
-		iat: now - CLOCK_SKEW_SECONDS,
-		nbf: now - CLOCK_SKEW_SECONDS,
+		iat: now,
+		nbf: now,
 		exp: now + ASSERTION_TTL_SECONDS,
 	};
 	const signingInput = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
