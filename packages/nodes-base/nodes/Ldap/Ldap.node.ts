@@ -428,13 +428,14 @@ export class Ldap implements INodeType {
 					}
 					resolveBinaryAttributes(results.searchEntries);
 
-					returnItems.push.apply(
-						returnItems,
-						results.searchEntries.map((result) => ({
+					// Append in a loop instead of `push.apply`/spread to avoid
+					// "Maximum call stack size exceeded" on large result sets (NODE-5326).
+					for (const result of results.searchEntries) {
+						returnItems.push({
 							json: result,
 							pairedItem: { item: itemIndex },
-						})),
-					);
+						});
+					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

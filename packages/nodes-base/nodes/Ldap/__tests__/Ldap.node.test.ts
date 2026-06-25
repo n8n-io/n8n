@@ -249,6 +249,16 @@ describe('Ldap', () => {
 			const result = await new Ldap().execute.call(executeFunctions);
 
 			expect(result[0]).toHaveLength(largeResultSet.length);
+			// Every entry must be wrapped intact (json + pairedItem), not dropped
+			// or emptied while appending the large result set.
+			expect(result[0][0]).toEqual({
+				json: largeResultSet[0],
+				pairedItem: { item: 0 },
+			});
+			expect(result[0][largeResultSet.length - 1]).toEqual({
+				json: largeResultSet[largeResultSet.length - 1],
+				pairedItem: { item: 0 },
+			});
 		});
 
 		it('should escape the attribute parameter regardless of whether searchText contains an expression', async () => {
