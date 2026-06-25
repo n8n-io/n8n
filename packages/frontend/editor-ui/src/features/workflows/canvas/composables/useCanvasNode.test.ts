@@ -92,4 +92,72 @@ describe('useCanvasNode', () => {
 		expect(result.executionRunning.value).toBe(true);
 		expect(result.render.value).toBe(node.data.value.render);
 	});
+
+	it('should expose executionTime as undefined when not set in execution data', () => {
+		const node = {
+			data: ref({
+				id: 'node1',
+				name: 'Node 1',
+				subtitle: '',
+				type: 'nodeType1',
+				typeVersion: 1,
+				disabled: false,
+				connections: {
+					[CanvasConnectionMode.Input]: {},
+					[CanvasConnectionMode.Output]: {},
+				},
+				issues: { validation: [], visible: false },
+				execution: { running: false },
+				runData: { outputMap: {}, iterations: 0, visible: false },
+				render: { type: CanvasNodeRenderType.Default, options: {} },
+			} satisfies CanvasNodeData),
+			id: ref('1'),
+			label: ref('Node 1'),
+			selected: ref(false),
+		} satisfies Partial<CanvasNodeInjectionData>;
+
+		vi.mocked(inject).mockReturnValue(node);
+
+		const result = useCanvasNode();
+
+		expect(result.executionTime.value).toBeUndefined();
+	});
+
+	it('should expose executionTime from execution data when set', () => {
+		const node = {
+			data: ref({
+				id: 'node1',
+				name: 'Node 1',
+				subtitle: '',
+				type: 'nodeType1',
+				typeVersion: 1,
+				disabled: false,
+				connections: {
+					[CanvasConnectionMode.Input]: {},
+					[CanvasConnectionMode.Output]: {},
+				},
+				issues: { validation: [], visible: false },
+				execution: { running: false, executionTime: 1234 },
+				runData: { outputMap: {}, iterations: 1, visible: true },
+				render: { type: CanvasNodeRenderType.Default, options: {} },
+			} satisfies CanvasNodeData),
+			id: ref('1'),
+			label: ref('Node 1'),
+			selected: ref(false),
+		} satisfies Partial<CanvasNodeInjectionData>;
+
+		vi.mocked(inject).mockReturnValue(node);
+
+		const result = useCanvasNode();
+
+		expect(result.executionTime.value).toBe(1234);
+	});
+
+	it('should return undefined executionTime when node is not provided', () => {
+		vi.mocked(inject).mockReturnValue(undefined);
+
+		const result = useCanvasNode();
+
+		expect(result.executionTime.value).toBeUndefined();
+	});
 });
