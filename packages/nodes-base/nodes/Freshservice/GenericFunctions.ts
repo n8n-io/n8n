@@ -50,12 +50,13 @@ export async function freshserviceApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.error.description === 'Validation failed') {
-			const numberOfErrors = error.error.errors.length;
+		if (error.error?.description === 'Validation failed') {
+			const errors = error.error?.errors;
+			const numberOfErrors = Array.isArray(errors) ? errors.length : 0;
 			const message = 'Please check your parameters';
 
 			if (numberOfErrors === 1) {
-				const [validationError] = error.error.errors;
+				const [validationError] = errors;
 				throw new NodeApiError(this.getNode(), error as JsonObject, {
 					message,
 					description: `For ${validationError.field}: ${validationError.message}`,
