@@ -139,18 +139,18 @@ export class MessageAnAgent implements INodeType {
 				name: 'invokeMode',
 				type: 'options',
 				noDataExpression: true,
-				default: 'perItem',
+				default: 'allItems',
 				description: 'Whether to call the agent once per input item or a single time for all items',
 				options: [
-					{
-						name: 'Once Per Item',
-						value: 'perItem',
-						description: 'Call the agent separately for each input item',
-					},
 					{
 						name: 'Once for All Items',
 						value: 'allItems',
 						description: 'Call the agent a single time; it can read all input items',
+					},
+					{
+						name: 'Once Per Item',
+						value: 'perItem',
+						description: 'Call the agent separately for each input item',
 					},
 				],
 			},
