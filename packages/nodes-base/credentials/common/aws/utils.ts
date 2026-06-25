@@ -1,16 +1,15 @@
-import { createDispatcherTransport } from '@n8n/backend-network/transport';
+import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/proxy';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@smithy/types';
 import {
 	type IHttpRequestMethods,
 	isObjectEmpty,
-	sanitizeXmlName,
 	type ICredentialTestRequest,
 	type IDataObject,
 	type IHttpRequestOptions,
 	type IRequestOptions,
-	OperationalError,
 	UserError,
 } from 'n8n-workflow';
-import { parseString } from 'xml2js';
 
 import { getAwsDomain, regions, type AWSRegion } from './regions';
 import { getSystemCredentials } from './system-credentials-utils';
@@ -268,7 +267,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
  * @param credentials - The assume role credentials configuration
  * @param region - AWS region for the STS endpoint
  * @returns Promise resolving to temporary credentials for the assumed role
- * @throws {UserError | OperationalError} When credentials are invalid or STS call fails
+ * @throws {UserError} When credentials fail validation or the STS AssumeRole call is rejected
  *
  * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html STS AssumeRole API}
  */
@@ -292,19 +291,24 @@ export async function assumeRole(
 		throw new UserError('Role Session Name is required when assuming a role.');
 	}
 
-	let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
+	let masterCredentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
 
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
 
 	if (useSystemCredentialsForRole) {
-		const systemCredentials = await getSystemCredentials(region);
-		if (!systemCredentials) {
-			throw new UserError(
-				'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
-			);
-		}
-
-		stsCallCredentials = systemCredentials;
+		masterCredentials = async () => {
+			const sys = await getSystemCredentials(region);
+			if (!sys) {
+				throw new UserError(
+					'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
+				);
+			}
+			return {
+				accessKeyId: sys.accessKeyId,
+				secretAccessKey: sys.secretAccessKey,
+				...(sys.sessionToken ? { sessionToken: sys.sessionToken } : {}),
+			};
+		};
 	} else {
 		if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {
 			throw new UserError('STS Access Key ID is required when not using system credentials.');
@@ -312,103 +316,52 @@ export async function assumeRole(
 		if (!credentials.stsSecretAccessKey || credentials.stsSecretAccessKey.trim() === '') {
 			throw new UserError('STS Secret Access Key is required when not using system credentials.');
 		}
-
-		const sessionToken = credentials.stsSessionToken?.trim() || undefined;
-
-		stsCallCredentials = {
+		masterCredentials = {
 			accessKeyId: credentials.stsAccessKeyId.trim(),
 			secretAccessKey: credentials.stsSecretAccessKey.trim(),
-			sessionToken,
+			...(credentials.stsSessionToken?.trim()
+				? { sessionToken: credentials.stsSessionToken.trim() }
+				: {}),
 		};
 	}
 
-	const domain = getAwsDomain(region);
-	const stsEndpoint = `https://sts.${region}.${domain}`;
-
-	const assumeRoleBody = {
-		RoleArn: credentials.roleArn,
-		RoleSessionName: credentials.roleSessionName || 'n8n-session',
-		...(credentials.externalId && { ExternalId: credentials.externalId }),
-	};
-
-	const params = new URLSearchParams({
-		Action: 'AssumeRole',
-		Version: '2011-06-15',
-		RoleArn: assumeRoleBody.RoleArn,
-		RoleSessionName: assumeRoleBody.RoleSessionName,
-	});
-	if (assumeRoleBody.ExternalId) {
-		params.append('ExternalId', assumeRoleBody.ExternalId);
+	const stsTarget = `https://sts.${region}.${getAwsDomain(region)}`;
+	const proxyUrl = resolveProxyUrl(stsTarget);
+	let requestHandler: NodeHttpHandler | undefined;
+	if (proxyUrl) {
+		// STS is always HTTPS; one agent backs both http/https slots.
+		const proxyAgent = createHttpsProxyAgent(stsTarget, proxyUrl);
+		requestHandler = new NodeHttpHandler({ httpAgent: proxyAgent, httpsAgent: proxyAgent });
 	}
 
-	const bodyContent = params.toString();
-
-	const stsUrl = new URL(stsEndpoint);
-	const signOpts = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
+	// Lazy-load the AWS SDK so the ~1.5 MB umbrella (Cognito/SSO clients) isn't
+	// pulled in at startup for workflows that never assume an AWS role.
+	const { fromTemporaryCredentials } = await import('@aws-sdk/credential-providers');
+	const provider = fromTemporaryCredentials({
+		params: {
+			RoleArn: credentials.roleArn.trim(),
+			RoleSessionName: credentials.roleSessionName.trim(),
+			ExternalId: credentials.externalId.trim(),
 		},
-		host: stsUrl.host,
-		method: 'POST',
-		path: '/',
-		body: bodyContent,
-		region,
-	} as Request;
+		masterCredentials,
+		clientConfig: {
+			region,
+			...(requestHandler ? { requestHandler } : {}),
+		},
+	});
 
+	let resolved;
 	try {
-		sign(signOpts, stsCallCredentials);
+		resolved = await provider();
 	} catch (err) {
-		console.error('Failed to sign STS request:', err);
-		throw new OperationalError('Failed to sign STS request');
+		const message = err instanceof Error ? err.message : String(err);
+		throw new UserError(`STS AssumeRole failed: ${message}`);
 	}
-
-	const response = await createDispatcherTransport({ proxy: 'env' }).asCustomFetch()(stsEndpoint, {
-		method: 'POST',
-		headers: signOpts.headers as Record<string, string>,
-		body: bodyContent,
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new UserError(
-			`STS AssumeRole failed: ${response.status} ${response.statusText} - ${errorText}`,
-		);
-	}
-
-	const responseText = await response.text();
-	const responseData = await new Promise<IDataObject>((resolve, reject) => {
-		parseString(
-			responseText,
-			{
-				explicitArray: false,
-				tagNameProcessors: [sanitizeXmlName],
-				attrNameProcessors: [sanitizeXmlName],
-			},
-			(err: any, data: IDataObject) => {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(data);
-				}
-			},
-		);
-	});
-
-	const assumeRoleResult = (responseData.AssumeRoleResponse as IDataObject)
-		?.AssumeRoleResult as IDataObject;
-	if (!assumeRoleResult?.Credentials) {
-		throw new OperationalError('Invalid response from STS AssumeRole');
-	}
-
-	const assumedCredentials = assumeRoleResult.Credentials as IDataObject;
-
-	const securityHeaders = {
-		accessKeyId: assumedCredentials.AccessKeyId as string,
-		secretAccessKey: assumedCredentials.SecretAccessKey as string,
-		sessionToken: assumedCredentials.SessionToken as string,
+	return {
+		accessKeyId: resolved.accessKeyId,
+		secretAccessKey: resolved.secretAccessKey,
+		sessionToken: resolved.sessionToken ?? '',
 	};
-
-	return securityHeaders;
 }
 
 export function signOptions(
