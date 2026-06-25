@@ -226,6 +226,7 @@ onMounted(async () => {
 
 					<InsightsAnalystPanel
 						:suggested-prompts="overview.suggestedPrompts"
+						:workflow-rows="workflowRows"
 						:class="$style.chat"
 					/>
 				</section>

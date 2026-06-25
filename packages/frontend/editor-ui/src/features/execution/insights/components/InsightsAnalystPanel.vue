@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef } from 'vue';
-import { RouterLink } from 'vue-router';
-import type { InsightsAnalystChatResponse, InsightsAnalystCitation } from '@n8n/api-types';
+import type {
+	InsightsAnalystChatResponse,
+	InsightsAnalystCitation,
+	InsightsByWorkflow,
+} from '@n8n/api-types';
 import { N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { VIEWS } from '@/app/constants';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
+import InsightsAnalystMessageContent from '@/features/execution/insights/components/InsightsAnalystMessageContent.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { formatInsightsTimeSavedLabel } from '@/features/execution/insights/insights.utils';
 
 type ChatMessage = {
 	id: string;
@@ -21,6 +22,7 @@ type ChatMessage = {
 
 const props = defineProps<{
 	suggestedPrompts: string[];
+	workflowRows: InsightsByWorkflow['data'];
 }>();
 
 const i18n = useI18n();
@@ -28,6 +30,7 @@ const insightsStore = useInsightsStore();
 const input = ref('');
 const isWaiting = ref(false);
 const isStreaming = ref(false);
+const streamingMessageId = ref('');
 const messages = ref<ChatMessage[]>([
 	{
 		id: 'welcome',
@@ -88,6 +91,7 @@ const submitPrompt = async (prompt = input.value) => {
 		});
 		isWaiting.value = false;
 		isStreaming.value = true;
+		streamingMessageId.value = responseMessageId;
 		await scrollToMessage(responseMessageId);
 
 		await insightsStore.streamAnalyst(question, (chunk) => {
@@ -123,18 +127,9 @@ const submitPrompt = async (prompt = input.value) => {
 	} finally {
 		isWaiting.value = false;
 		isStreaming.value = false;
+		streamingMessageId.value = '';
 		await scrollToMessage(responseMessageId);
 	}
-};
-
-const getCitationValue = (citation: InsightsAnalystCitation) => {
-	if (citation.unit === 'minute') return formatInsightsTimeSavedLabel(citation.value);
-	if (citation.unit === 'ratio') {
-		return i18n.baseText('insights.analyst.citation.percent', {
-			interpolate: { count: smartDecimal(citation.value * 100) },
-		});
-	}
-	return smartDecimal(citation.value).toLocaleString('en-US');
 };
 </script>
 
@@ -161,18 +156,14 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 						<N8nIcon icon="sparkles" size="small" />
 						{{ i18n.baseText('insights.analyst.chat.poweredByClaude') }}
 					</div>
-					<p>{{ message.content }}</p>
-					<div v-if="message.citations?.length" :class="$style.citations">
-						<RouterLink
-							v-for="citation in message.citations"
-							:key="`${message.id}-${citation.workflowId}-${citation.metric}`"
-							:to="{ name: VIEWS.WORKFLOW, params: { workflowId: citation.workflowId } }"
-							:class="$style.citation"
-						>
-							<strong>{{ citation.workflowName }}</strong>
-							<span>{{ citation.metric }}: {{ getCitationValue(citation) }}</span>
-						</RouterLink>
-					</div>
+					<InsightsAnalystMessageContent
+						v-if="message.role === 'assistant' && message.id !== 'welcome'"
+						:content="message.content"
+						:citations="message.citations"
+						:workflow-rows="props.workflowRows"
+						:is-streaming="isStreaming && message.id === streamingMessageId"
+					/>
+					<p v-else>{{ message.content }}</p>
 				</div>
 			</div>
 			<div v-if="isWaiting" :class="[$style.message, $style.assistant]">
@@ -321,31 +312,6 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	margin-bottom: var(--spacing--xs);
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
-}
-
-.citations {
-	display: grid;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
-}
-
-.citation {
-	display: grid;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	color: var(--text-color);
-	text-decoration: none;
-	background: var(--background--surface);
-
-	span {
-		color: var(--text-color--subtle);
-	}
-
-	&:hover {
-		border-color: var(--border-color--strong);
-	}
 }
 
 .promptArea {

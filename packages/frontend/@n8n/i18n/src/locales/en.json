@@ -5307,6 +5307,8 @@
 	"insights.analyst.chat.placeholder": "Ask about workflow performance",
 	"insights.analyst.chat.poweredByClaude": "Powered by Claude",
 	"insights.analyst.chat.thinking": "Analyzing workspace data…",
+	"insights.analyst.chat.takeaways": "Key takeaways",
+	"insights.analyst.chat.ranking.share": "{count}% of total time saved",
 	"insights.analyst.citation.percent": "{count}%",
 	"insights.dashboard.paywall.title": "Upgrade to access more detailed insights",
 	"insights.dashboard.paywall.description": "Gain access to more granular, per-workflow insights and visual breakdown of production executions over different time periods.",

@@ -89,8 +89,8 @@ export class InsightsConfig {
 
 	/**
 	 * Anthropic model used by the Insights Analyst demo chat.
-	 * Default: claude-sonnet-4-6
+	 * Default: claude-sonnet-4-5-20250929
 	 */
 	@Env('N8N_INSIGHTS_ANALYST_MODEL')
-	analystModel: string = 'claude-sonnet-4-6';
+	analystModel: string = 'claude-sonnet-4-5-20250929';
 }

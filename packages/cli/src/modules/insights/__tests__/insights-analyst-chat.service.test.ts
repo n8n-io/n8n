@@ -60,7 +60,7 @@ describe('InsightsAnalystChatService', () => {
 	test('uses deterministic fallback when Anthropic key is empty', async () => {
 		const config = mock<InsightsConfig>({
 			analystAnthropicApiKey: '',
-			analystModel: 'claude-sonnet-4-6',
+			analystModel: 'claude-sonnet-4-5-20250929',
 		});
 		const demoService = mock<InsightsDemoService>({
 			getOverview: jest.fn().mockResolvedValue(overview),
@@ -89,7 +89,7 @@ describe('InsightsAnalystChatService', () => {
 	test('uses deterministic fallback when Anthropic key is whitespace', async () => {
 		const config = mock<InsightsConfig>({
 			analystAnthropicApiKey: '   ',
-			analystModel: 'claude-sonnet-4-6',
+			analystModel: 'claude-sonnet-4-5-20250929',
 		});
 		const demoService = mock<InsightsDemoService>({
 			getOverview: jest.fn().mockResolvedValue(overview),
@@ -107,7 +107,7 @@ describe('InsightsAnalystChatService', () => {
 	test('streams deterministic fallback when Anthropic key is empty', async () => {
 		const config = mock<InsightsConfig>({
 			analystAnthropicApiKey: '',
-			analystModel: 'claude-sonnet-4-6',
+			analystModel: 'claude-sonnet-4-5-20250929',
 		});
 		const demoService = mock<InsightsDemoService>({
 			getOverview: jest.fn().mockResolvedValue(overview),
