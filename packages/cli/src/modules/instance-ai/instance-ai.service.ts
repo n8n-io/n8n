@@ -3,6 +3,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
 	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
@@ -110,6 +111,8 @@ import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	EDITOR_CONTEXT_OPEN_TAG,
 	EDITOR_CONTEXT_CLOSE_TAG,
+	CREDENTIAL_CONTEXT_OPEN_TAG,
+	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	withCurrentDateTime,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -186,6 +189,29 @@ function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttac
 	// reload from the leading JSON line — keeping the resource durable without
 	// persisting it as visible text.
 	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(workflowAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+}
+
+function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
+	if (!context) return '';
+
+	const { credential } = context;
+	const lines = [
+		`- Credential type: \`${credential.credentialType}\` (${credential.displayName}).`,
+		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
+		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
+		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',
+		credential.documentationUrl ? `- n8n documentation URL: ${credential.documentationUrl}` : '',
+		credential.oauthRedirectUrl
+			? `- OAuth redirect/callback URL shown in the modal: ${credential.oauthRedirectUrl}`
+			: '',
+	].filter(Boolean);
+	const prose = [
+		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
+		...lines,
+		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
+	].join('\n');
+
+	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
 }
 
 function isTelemetryConfigurableAgent(
@@ -455,27 +481,6 @@ export class InstanceAiService {
 	 */
 	private readonly preserveHitlOnShutdown = new Set<string>();
 
-	/**
-	 * Restart-recovery metadata for runs that haven't yet been persisted by the
-	 * SDK's end-of-turn save. Registered by the run entry point with the chosen
-	 * `messageId` + raw text; consumed by:
-	 *   1. `executeRun`'s streamInput builder, to tag the SDK's message with
-	 *      our id so its eventual end-of-turn save upserts the same row.
-	 *   2. `persistUserMessageOnFirstSuspend`, called from `waitForConfirmation`
-	 *      so an inline HITL that pauses the turn before the SDK can save
-	 *      still leaves the user's prompt in `instance_ai_messages` for
-	 *      restart recovery.
-	 *
-	 * Entries are removed on confirmed DB save and cleared unconditionally in
-	 * `executeRun`'s finally — the SDK's end-of-turn save handles the success
-	 * path, and a mid-turn error means we deliberately don't want a
-	 * half-saved row.
-	 */
-	private readonly userMessagePersistenceByRun = new Map<
-		string,
-		{ userId: string; message: { id: string; text: string } }
-	>();
-
 	constructor(
 		logger: Logger,
 		globalConfig: GlobalConfig,
@@ -521,7 +526,6 @@ export class InstanceAiService {
 			logger: this.logger,
 			config: this.instanceAiConfig,
 			pendingConfirmationRepo: this.pendingConfirmationRepo,
-			agentMemory: this.agentMemory,
 		});
 		this.suspendedRunRestorer = new SuspendedRunRestorer({
 			logger: this.logger,
@@ -867,6 +871,7 @@ export class InstanceAiService {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		context?: InstanceAiHandoffContext,
 		timeZone?: string,
 		pushRef?: string,
 	): string {
@@ -887,17 +892,6 @@ export class InstanceAiService {
 			this.threadPushRef.set(threadId, pushRef);
 		}
 
-		// Stable id for the user-typed message. Coordinated with the SDK's
-		// end-of-turn save (see executeRun's streamInput construction) so we
-		// end up with exactly one user-message row per turn — and so a save
-		// triggered by `waitForConfirmation` on a suspended HITL turn uses the
-		// same id the SDK would have used for completion.
-		const userMessageId = nanoid();
-		this.userMessagePersistenceByRun.set(runId, {
-			userId: user.id,
-			message: { id: userMessageId, text: message },
-		});
-
 		this.startExecuteRun(
 			user,
 			threadId,
@@ -905,6 +899,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			attachments,
+			context,
 			messageGroupId,
 			timeZone,
 		);
@@ -1416,24 +1411,6 @@ export class InstanceAiService {
 		return this.preserveHitlOnShutdown.has(runId);
 	}
 
-	/**
-	 * Idempotent first-suspend persistence. The first `waitForConfirmation`
-	 * for a run consumes the pending entry; later HITLs are no-ops because
-	 * the entry has been removed. If the DB write fails the entry stays in
-	 * the map so the next HITL retries — see `persistUserMessageOnSuspend`'s
-	 * success-boolean return for the retry contract.
-	 */
-	private async persistUserMessageOnFirstSuspend(threadId: string, runId: string): Promise<void> {
-		const entry = this.userMessagePersistenceByRun.get(runId);
-		if (!entry) return;
-		const ok = await this.suspendedThreads.persistUserMessageOnSuspend(
-			threadId,
-			entry.userId,
-			entry.message,
-		);
-		if (ok) this.userMessagePersistenceByRun.delete(runId);
-	}
-
 	private async drainInFlightExecutions(timeoutMs: number): Promise<void> {
 		if (this.inFlightExecutions.size === 0) return;
 
@@ -1937,14 +1914,6 @@ export class InstanceAiService {
 			formBaseUrl: this.formBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
 				this.runState.touchActiveRun(threadId);
-				// First HITL on this run: persist the original user message to
-				// memory so it survives a restart-while-suspended. The SDK only
-				// commits the turn delta on a clean loop completion, and inline
-				// HITL never reaches that point. Doing this *now* (rather than
-				// at executeRun start) avoids polluting the agent's prompt —
-				// the SDK has already loaded its memory snapshot for this run.
-				void this.persistUserMessageOnFirstSuspend(threadId, runId);
-
 				return await new Promise<ConfirmationData>((resolve) => {
 					this.runState.registerPendingConfirmation(requestId, {
 						resolve,
@@ -1981,9 +1950,6 @@ export class InstanceAiService {
 			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
-			persistInFlightUserMessage: async () => {
-				await this.persistUserMessageOnFirstSuspend(threadId, runId);
-			},
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
 			workspaceRoot,
@@ -2435,6 +2401,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			undefined,
+			undefined,
 			messageGroupId,
 			timeZone,
 			isReplanFollowUp,
@@ -2684,6 +2651,7 @@ export class InstanceAiService {
 		message: string,
 		abortController: AbortController,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 		messageGroupId?: string,
 		timeZone?: string,
 		isReplanFollowUp: boolean = false,
@@ -2691,10 +2659,6 @@ export class InstanceAiService {
 		resumeReason?: OrchestratorResumeReason,
 		plannedBuild?: PlannedBuildFollowUp,
 	): Promise<void> {
-		// Read once at the top so the streamInput builder + (if any later
-		// retry) see the same view of restart-recovery metadata.
-		const userMessagePersistence = this.userMessagePersistenceByRun.get(runId)?.message;
-
 		// Split the message's attachments by kind once, here at the agent
 		// boundary: files feed the parse-file / content-block path, workflow
 		// references feed a context block the agent resolves with its tools.
@@ -2940,6 +2904,7 @@ export class InstanceAiService {
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 			const contextResourcesBlock = buildContextResourcesBlock(workflowAttachments);
+			const handoffContextBlock = buildHandoffContextBlock(handoffContext);
 
 			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 			let attachmentManifest = '';
@@ -2966,7 +2931,9 @@ export class InstanceAiService {
 			// The context block (an editor hand-off) leads the message so the agent
 			// knows what the user is looking at. On an empty-text hand-off it is the
 			// entire prompt, and the agent greets rather than investigating.
-			const messageWithContext = [contextResourcesBlock, messageBody].filter(Boolean).join('\n\n');
+			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
+				.filter(Boolean)
+				.join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
@@ -2988,12 +2955,10 @@ export class InstanceAiService {
 				: undefined;
 			let streamInput: string | Message[];
 			try {
-				// When this is a user-initiated turn, build the input as an
-				// explicit message object carrying our chosen id. The SDK
-				// preserves the id on its end-of-turn save so the row matches
-				// any user-message row we may have written from inside
-				// `waitForConfirmation`.
-				if (nonStructuredAttachments.length > 0 || userMessagePersistence) {
+				// Attachments need the explicit message-object shape (text + file blocks);
+				// a plain prompt goes through as a string. The SDK assigns the message id
+				// and persists the input on receipt.
+				if (nonStructuredAttachments.length > 0) {
 					const baseContent = [
 						{ type: 'text' as const, text: fullMessage },
 						...nonStructuredAttachments.map((attachment) => ({
@@ -3004,7 +2969,6 @@ export class InstanceAiService {
 					];
 					streamInput = [
 						{
-							...(userMessagePersistence ? { id: userMessagePersistence.id } : {}),
 							role: 'user' as const,
 							content: baseContent,
 						},
@@ -3326,6 +3290,7 @@ export class InstanceAiService {
 					'cancelled',
 					cancellationReason,
 					archivedWorkflowIds,
+					user.id,
 				);
 				if (activeSnapshotStorage) {
 					await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
@@ -3386,10 +3351,6 @@ export class InstanceAiService {
 			}
 		} finally {
 			this.runState.clearActiveRun(threadId);
-			// Drop any unconsumed first-suspend persistence intent. SDK
-			// end-of-turn save handles the success path; a mid-turn error
-			// means we deliberately don't want a half-saved row.
-			this.userMessagePersistenceByRun.delete(runId);
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
 			// checkpoint verifications) dispatch later in this same finally and
 			// later still in the post-run scheduler — they need the pushRef to
@@ -4157,6 +4118,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
+				userId: opts.user.id,
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
@@ -4221,6 +4183,7 @@ export class InstanceAiService {
 					'cancelled',
 					cancellationReason,
 					archivedWorkflowIds,
+					opts.user.id,
 				);
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
@@ -4639,6 +4602,7 @@ export class InstanceAiService {
 			'cancelled',
 			reason,
 			archivedWorkflowIds,
+			suspended.user.id,
 		);
 
 		// Persist the snapshot so the run-finish event (which clears
@@ -4668,6 +4632,7 @@ export class InstanceAiService {
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
 		archivedWorkflowIds?: string[],
+		userId?: string,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
 		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
@@ -4681,11 +4646,12 @@ export class InstanceAiService {
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
 		});
-		// ponytail: success-drop heartbeat; every real run finish funnels here
+		// success-drop heartbeat; user_id required or PostHog drops instance-only events
 		this.telemetry.track('instance_ai_run_finished', {
 			thread_id: threadId,
 			run_id: runId,
 			status: effectiveStatus,
+			...(userId ? { user_id: userId } : {}),
 		});
 	}
 
@@ -4702,7 +4668,14 @@ export class InstanceAiService {
 			usage?: RunTokenUsage;
 		},
 	): Promise<void> {
-		this.publishRunFinish(threadId, runId, status, undefined, options?.archivedWorkflowIds);
+		this.publishRunFinish(
+			threadId,
+			runId,
+			status,
+			undefined,
+			options?.archivedWorkflowIds,
+			options?.userId,
+		);
 		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		if (status === 'completed' && options?.userId && options?.modelId) {

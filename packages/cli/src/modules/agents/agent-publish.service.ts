@@ -166,7 +166,6 @@ export class AgentPublishService {
 
 			if (agent.schema) {
 				agent.name = agent.schema.name;
-				agent.description = agent.schema.description ?? null;
 			}
 
 			await trx.save(agent);
@@ -202,7 +201,6 @@ export class AgentPublishService {
 
 			if (agent.schema) {
 				agent.name = agent.schema.name;
-				agent.description = agent.schema.description ?? null;
 			}
 
 			await trx.save(agent);

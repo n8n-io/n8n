@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: \"inline\" to run a one-off inline child that inherits your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools. The child cannot see this conversation or your memory, so everything it needs must be in the call.\nUse a configured subagent ID only when one is listed and its name/description fits the subtask better than a generic inline child.\nDELEGATION PARALLELISM:\n- Up to 1 child sub-agent run can execute at the same time.\n- This limits parallelism, not the total number of delegated tasks.\n- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.\nWHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.\nWHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.\nHOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.\n</built_in_rules>\n\nYou are a parent streaming test agent. You must call delegate_subagent exactly once before answering. Set subAgentId to \"inline\" in that tool call. The child result will contain a sentinel token. After the tool returns, answer with PARENT_STREAM_SAW and include the sentinel token from the child result. Do not add unrelated text."
+					"text": "<built_in_rules>\n- delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: \"inline\" to run a one-off inline child that inherits your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools. The child cannot see this conversation or your memory, so everything it needs must be in the call.\nUse a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.\nDELEGATION PARALLELISM:\n- Up to 1 child sub-agent run can execute at the same time.\n- This limits parallelism, not the total number of delegated tasks.\n- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.\nWHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.\nWHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.\nHOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.\n</built_in_rules>\n\nYou are a parent streaming test agent. You must call delegate_subagent exactly once before answering. Set subAgentId to \"inline\" in that tool call. The child result will contain a sentinel token. After the tool returns, answer with PARENT_STREAM_SAW and include the sentinel token from the child result. Do not add unrelated text."
 				}
 			],
 			"messages": [
@@ -73,34 +73,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd56514fdb30107ee75758f7b297746a0a65236f65420c4d036d30a1699d2c37be25a6ae9dc5175a56e5bf4f4e9ad29496215434f212e5eedcfbbeef7cd7c35b3414b1093a2712e48e444e7b529088d81ce82e4388a0e584a0f986680e132b514304b11685c48eb3c620750e3afd4eafdbeb778f7a47108092fe475cc2bbe1010ece6f7a9fd3ef93cbdee9ddcc7d3d747f4e7a10aca5820072abbd4138a71c09e3f3c6d6101a82e8c7cf001cd98ce7289c35109942eb85c9e1ef024d8c2da344124abbc65634f095c90ae264c7681c4461ffdd6100b18853e4718e829435bc1dd26dfc390ab9cdd79cf519304b7182b9d0bc3f79187fef0dd3756f19802d68d5f43e0087f9ad8a9193c21c22f0ca48914b2fb2f985b927ce13b41081b1c4c5ad505a8c344259b2e553eeed615df585a07ca46d3cde5cfb0d21553289b39af1aadf135e9c239cf9c0ea1501946b99336592b5540cbc11b6a193a8493c8eae0a69a1ab2d6d54cbb005b6b3375a33891a1341c8284556e9ddc9722b8bd8d7914d6d3e862728f862181de528268c2c132c4e95964c246888193b7dbb04b6bdae36fb57596db68269b797247ce49258ab79e1b09911febbe0ddf0fa743c1b5ca6fb1fe2a3e3abf84b32f8789d9285008c98f8734db5b82b46951055b6ac2088e6a5ef42ad7d7b2cf34895634c5096bb2b5cf8b07075ffde386b96c199c849095d19efdb60a737e85940e64370c568e0a53b934388d81094d1cae0cbdcf267611c42c08640c28dcfc5046b905567ae60fccf10f9fd8c7875c22556e85ab4817153ccd95451ca702662d2778c52e5ea39c78491cc584a9549186a8711bbfc763c383d39bfe2179ff8bbfdb0a6f62a48e12cc398505e547f8c35bdab146b5a359f2df05f0383d243d9d5940edb949a1d6d2399961356c0b796a8d571fcc455aa7cc15d6a6df909fb87e526c29b745bf54153fbbf44d869acea0a0000"
+			"1f8b0800000000000013cd564d73da3010bde75768f6d28be9e03494e05b32cd6492a6f4d0249db67434c2da62052139d61a4819fe7b47361f3681a487b4840be3dd95f7bdb7daf5e2180d456c84ce8901724722a3032948446c06f4902244507342b07c866806232b514304b116b9c486b3c620358e1aadc661f3b0d5ec1c76200025fd4bdc8037c3f3aebcc5cef8f20e9dba6ddfe0f1b93c3dfb0ec1462a0820b3da1b8473ca91303e6f6c0da121887efc0cc0914d7986c2590391c9b55e981cdee76862ac19259250da2d6df912be32694e9cec108d83286cb53b01c4224e90c7190a52d6f07a4873e9cf50c85dbee5599f01d304479809cd5ba3c7f16b6f986c7ae701d89caaa6e3001c6663152327851944e0959122935e64f30b334f9c0fd04204c6121763a1b4e86b84f99cad7ff383032ccbbe5094f7b58d87db8bbf25a4c826715a52aefa3de3c539c2a90f2cfe2280edf95365061b09197823ecc2285193781a631152c3585aead856610b84176fb46612350e0421a30459217b23cdaccc635f4e36b1d9700791ff04d2518662c4c832c1e24469c9c4000d3163276f6bc89eacb24d9f2bb24d2bd05efeda844f5c1b6b35cf1d2ec7867fce79333cfd7425be1e87df7e5f5eb7effb5d4a3f5c1db57c9411237f6e5939eef27ea149912dcd09a2d9dc37a6d6be635679a4ca30a67a5fbc6441c3c7052dfbfbce59b30a4e45464ae8c258e9923dc398f5c0e5fd13afe285ec41c47aa08c5606d7576ccf087b10b01e9070c3ae186109b168d715c23d03e4ebb1b1d997fb86566a37b04297ba9d1837c18c4d14250ca72226fdc02851ae9c7f4c18c98ca544990143ed30625f6e4e4fcecfbad7fcf347de7e17d6f9bd0a72384d3126949f8bef6749f33ac1925ec9eb191aaf80c8bc8ae8a58679587dd572afdb4aa9e6840a85dae2559dd77fb97ecdffe1feb5b13085adf73b2ee77aa57dac5fd507e5a93f20a2d03f260b0000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:23:07Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:23:07Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-24T15:23:21Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-24T15:23:21Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:23:07Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:23:07Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-24T15:23:21Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-24T15:23:21Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103764c7c755ae8-VIE",
+			"cf-ray": "a10cbbb44b4b9322-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:23:07 GMT",
-			"request-id": "req_011CcLBfG76zF66ECHuCY2g5",
+			"date": "Wed, 24 Jun 2026 15:23:23 GMT",
+			"request-id": "req_011CcNKDNexof1JjuwnUpcax",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=MtVZNObyTkEbb2wzRSoyfft2dtbSQha3KfKVtZsSOxA-1782217386.9553757-1.0.1.1-VREUYigDtvzuJ1ClETwzde5zxTFb2.A1Raw9lLBgjSk; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=Qr.PoYRbsI3mPXvRsWz5EAr8goiEcRCl6ur4MPdCbHU-1782314601.6415367-1.0.1.1-QY0RriMJMRYmXRCp11XPHJ5tmveg2R.07pnr5YLNH0g; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-70d75251771437b4f3b24c142de492d7-a75cbd79a29f1d3e-01",
+			"traceresponse": "00-5aa343f4916a37ed6040ba3e0c162f6c-70e0f7e5bc0a5f4d-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -133,31 +133,31 @@
 			]
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_011p8h9KpBzkDX4XqdCj8JHH\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I have completed the delegated task.\\n\\n**What I did:**\\nI was instructed to respond with exactly one specific token and nothing else.\\n\\n**What I found or accomplished:**\\nThe task required outputting the exact token: SUBAGENT_OK_731\\n\\n**Important outputs:**\\nSUBAGENT_OK_731\\n\\n**Issues, assumptions, or limitations:**\\nNone. The task was straightforward and clearly specified. The instruction was unambiguous and I have provided the exact token as requested.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":199,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":110,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_01Xgado5BFBstkdYLq17RxMF\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I have completed the delegated task.\\n\\n**What I did:**\\nI was instructed to respond with exactly one specific token and nothing else.\\n\\n**What I accomplished:**\\nI am providing the required output below.\\n\\n**Output:**\\nSUBAGENT_OK_731\\n\\n**Issues/Limitations:**\\nNone. The task was straightforward and clearly specified.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":199,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":80,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22500000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:23:12Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:23:14Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "15000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-24T15:23:27Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-24T15:23:28Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:23:10Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "27000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:23:12Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-24T15:23:24Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "18000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-24T15:23:27Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103765c4a3b5ae8-VIE",
+			"cf-ray": "a10cbbc67f589322-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:23:15 GMT",
-			"request-id": "req_011CcLBfU5RoDp4Rsp8ZquEP",
+			"date": "Wed, 24 Jun 2026 15:23:28 GMT",
+			"request-id": "req_011CcNKDbGF82U8woG8hHPoe",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=NX22IWXF_aORrF9rQG1U1SrSOyqNMkwWG5ZkTN_j6KE-1782217389.489297-1.0.1.1-79BtMSn230ciFI02BaFHxGe.ctKqjwTDWvOP3q__Nq0; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=o990L1Q3rAXMmjHv0_A0tHE83jHo3gh7rLZDtOvEQug-1782314604.550718-1.0.1.1-aY88bwfzOUsBhfyYeOQ8Wxt.IlG0c1wpNa87pxLgfU8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-7543c2e251b5841e697cef7cb9b3ca46-bae1050a7e11d68f-01",
+			"traceresponse": "00-64f8bdc5a17f1072f6e47d9be48e6490-66756ef550475d8a-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -173,7 +173,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: \"inline\" to run a one-off inline child that inherits your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools. The child cannot see this conversation or your memory, so everything it needs must be in the call.\nUse a configured subagent ID only when one is listed and its name/description fits the subtask better than a generic inline child.\nDELEGATION PARALLELISM:\n- Up to 1 child sub-agent run can execute at the same time.\n- This limits parallelism, not the total number of delegated tasks.\n- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.\nWHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.\nWHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.\nHOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.\n</built_in_rules>\n\nYou are a parent streaming test agent. You must call delegate_subagent exactly once before answering. Set subAgentId to \"inline\" in that tool call. The child result will contain a sentinel token. After the tool returns, answer with PARENT_STREAM_SAW and include the sentinel token from the child result. Do not add unrelated text."
+					"text": "<built_in_rules>\n- delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: \"inline\" to run a one-off inline child that inherits your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools. The child cannot see this conversation or your memory, so everything it needs must be in the call.\nUse a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.\nDELEGATION PARALLELISM:\n- Up to 1 child sub-agent run can execute at the same time.\n- This limits parallelism, not the total number of delegated tasks.\n- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.\nWHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.\nWHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.\nHOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.\n</built_in_rules>\n\nYou are a parent streaming test agent. You must call delegate_subagent exactly once before answering. Set subAgentId to \"inline\" in that tool call. The child result will contain a sentinel token. After the tool returns, answer with PARENT_STREAM_SAW and include the sentinel token from the child result. Do not add unrelated text."
 				}
 			],
 			"messages": [
@@ -195,7 +195,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01WGkxASh3Cc9BTcQgAHWhto",
+							"id": "toolu_01BMLaW81YzJT7qbNtpDL45e",
 							"name": "delegate_subagent",
 							"input": {
 								"subAgentId": "inline",
@@ -214,8 +214,8 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01WGkxASh3Cc9BTcQgAHWhto",
-							"content": "{\"status\":\"completed\",\"taskPath\":\"/root/token_production_0\",\"model\":\"anthropic/claude-sonnet-4-5\",\"answer\":\"I have completed the delegated task.\\n\\n**What I did:**\\nI was instructed to respond with exactly one specific token and nothing else.\\n\\n**What I found or accomplished:**\\nThe task required outputting the exact token: SUBAGENT_OK_731\\n\\n**Important outputs:**\\nSUBAGENT_OK_731\\n\\n**Issues, assumptions, or limitations:**\\nNone. The task was straightforward and clearly specified. The instruction was unambiguous and I have provided the exact token as requested.\",\"usage\":{\"promptTokens\":199,\"completionTokens\":110,\"totalTokens\":309,\"cost\":0.002247},\"finishReason\":\"stop\"}"
+							"tool_use_id": "toolu_01BMLaW81YzJT7qbNtpDL45e",
+							"content": "{\"status\":\"completed\",\"taskPath\":\"/root/token_production_0\",\"model\":\"anthropic/claude-sonnet-4-5\",\"answer\":\"I have completed the delegated task.\\n\\n**What I did:**\\nI was instructed to respond with exactly one specific token and nothing else.\\n\\n**What I accomplished:**\\nI am providing the required output below.\\n\\n**Output:**\\nSUBAGENT_OK_731\\n\\n**Issues/Limitations:**\\nNone. The task was straightforward and clearly specified.\",\"usage\":{\"promptTokens\":199,\"completionTokens\":80,\"totalTokens\":279,\"cost\":0.0017970000000000002},\"finishReason\":\"stop\"}"
 						}
 					]
 				}
@@ -270,34 +270,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013bd53c18ed33010bdf72ba239a752d3dd0ac5b7aea8382c94d5b6500984acd97868adba76d69e540babfc3b72dbb04949810bf812f9bde7bc37331ada936591ec28045c930c8c9e070a1945f20cfcad2410d021216dee209e61e71419105018ac140d83b39678783d9c0cc7a3f164948f734841abf893b096a3ece3a7d7ab79582db7193eaeee6eae6f11f9fb5b48cfac2005ef4c0430041d186df42d9c65b20ce2f3971402bb527ac2e02c085b197382023d56640bea808a18b5090d5635f1b52d2b96ecb66403882cbfca5328b0d8902c3c216b676557326a784fa82e71cddbe840e58676e4d1c8c9ee57fd0b9b6dced93a0557711b1aa710c8ef754192357910103ba3d0abd864fb957c2c5caec98100eb58e21eb5c1074350d749ebd483011de77e6aa97c30aed8f64fbf4772b053f474acb9cdc7924fef989ea2f0f01100759f7da9edfacc2f8108c2a5888a0ce3ef231e249d8847a41beda7ec14f06e7a3f9b2f8f31ffbbb95c2cef67d37772315d258b0f37d337b3f952bebf95afaeb297c65d9e9a2bff343457b632f54da2d9f1de123b24b44aea2c219055922b6fe1af57b1fe87bb78b63c595e5f28b9af7f6d0e3afdfa01fc24417f31050000"
+			"1f8b0800000000000013b553c18ed33010bdf72ba239a75293a5407d2b520552c502dbae160921cb6b0fa9a96b67ed49d5d52aff8edc36908414f6b2b944796fecf7e64d06f76889253b0c4114c803094f232548b0e409e8b14460d021216dbe813dc1ce2934c0401a51291c07672dd2f8d5783ace27f97432cb67908256f19250f04976f7f60b3dca2bbb5d161f6eed32c89f8787af39a43d2948c13b130111820e246cd495ce125a02f6ed7b0a815cc93d8ae02c305b197386023e54682576408524b4090d5635f6b52d2be2e4b66803b06c96bd4e410ab9412e3d0ad2cef26ec9a4e13d0a75896bce46052c37b8432f0c9feefeaeffc3669b3e5ba7e02a6a43790a01fd5e4be4a4d10383988c125ec590ed0ff4b1715ea00306d611177ba18db83708759d749e7a34c2d3e4cfa1f27be3e47678fe03254741858753d76d3e367d3e47788885c71703a887e44b6d8b9e5e0211844b16151a12ffb6782ce9583c215d6bbfcbce063fcf6f16d76ba89f93d38b99e0abf5cd62fe91afe677c9eaf6ddfcfde27acd3f2df99bab6c38c0fe705cf9bff1b9b2e5ead26fd1ecfc60a31d125a8d759612d02a4e95b7f0ecd5ac5f70377bcb94cdeae18e87226c73d0cdeb17bc9ee7f841050000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:23:15Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:23:15Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-24T15:23:29Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-24T15:23:29Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:23:15Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:23:15Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-24T15:23:29Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-24T15:23:29Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103767f09d65ae8-VIE",
+			"cf-ray": "a10cbbe199929322-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:23:15 GMT",
-			"request-id": "req_011CcLBfrhiMsUWCmMQ3bwj4",
+			"date": "Wed, 24 Jun 2026 15:23:30 GMT",
+			"request-id": "req_011CcNKDw6rCzLqqZztABmB3",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=PosXDRxmYXU0hIySSq0tVPuZBeQ8yX_6muE5gzcX83A-1782217395.0444734-1.0.1.1-3pG4RyUfKc9AXwzVavWx85YhXPfMSI3DOxoZqZ8PJbk; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=JlCLwTYCzW3qeQkENLr33Dso0fO1Rc0pWZae06tB.2I-1782314608.8987586-1.0.1.1-GBwz.c_fHEZPodxvy5pTPQREAWAv2UTftRzLKwJFaNs; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-d666b8574e11145503acba879bff02c6-ecab3d6d17b65f5f-01",
+			"traceresponse": "00-8d715e9a4c968366da5f5cd1970352c4-d0165148611ef5de-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
