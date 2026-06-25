@@ -1,22 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
+import type { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentSandboxController } from '../agent-sandbox.controller';
-import type { AgentsService } from '../agents.service';
 
 describe('AgentSandboxController', () => {
 	it('accepts knowledge sandbox warmup before files exist', async () => {
-		const agentsService = mock<AgentsService>();
-		agentsService.isKnowledgeBaseEnabled.mockReturnValue(true);
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		const controller = new AgentSandboxController(
-			agentsService,
-			agentKnowledgeService,
-			mock<Logger>(),
-		);
+		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
+			sandboxEnabled: true,
+			sandboxProvider: 'daytona',
+			daytonaVolumeId: 'volume-1',
+		} as AgentsConfig);
 		const req = { user: { id: 'user-1' } } as AuthenticatedRequest<{ projectId: string }>;
 		const res = mock<Response>();
 

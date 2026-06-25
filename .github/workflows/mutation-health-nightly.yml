@@ -139,6 +139,19 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
 
+      - name: Download picker artefacts (signals.json)
+        # The setup job computed churn/fix-density over full history and uploaded
+        # signals.json. This shallow checkout can't recompute them from git, so
+        # emit-payload reads them from here instead — keeping the ledger's churn
+        # and fix_density columns populated and consistent with what the picker
+        # ranked on. Best-effort: the on-demand source_file path skips the gather
+        # step, so signals.json may be absent; emit-payload falls back gracefully.
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        continue-on-error: true
+        with:
+          name: mutation-health-picker-${{ github.run_id }}
+          path: .mutation-health
+
       - name: Mutate the picked source file
         # Exit code semantics from mutate.mjs:
         #   0 — gate passed: score >= threshold AND no unjustified survivors (green)
@@ -162,7 +175,20 @@ jobs:
           echo "Mutate exit $rc ($([ "$rc" = "0" ] && echo green || echo red))."
 
       - name: Emit BQ payload
-        run: node scripts/mutation-health/emit-payload.mjs --summary "$REPORTS_DIR/summary.json" --package "$PACKAGE_NAME"
+        # Pass --signals only when the setup job produced it (skipped on the
+        # source_file re-score path). Without it emit-payload falls back to git,
+        # which yields null churn/fix_density on this shallow clone.
+        run: |
+          signals_arg=""
+          if [ -f .mutation-health/signals.json ]; then
+            signals_arg="--signals .mutation-health/signals.json"
+          else
+            echo "::notice::signals.json not present — churn/fix_density will fall back to git (null on shallow clone)."
+          fi
+          node scripts/mutation-health/emit-payload.mjs \
+            --summary "$REPORTS_DIR/summary.json" \
+            --package "$PACKAGE_NAME" \
+            $signals_arg
 
       - name: POST result payload
         env:

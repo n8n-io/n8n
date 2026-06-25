@@ -178,7 +178,6 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	return {
 		id: 'a1',
 		name: 'Agent One',
-		description: null,
 		tools: {},
 		skills: {},
 		updatedAt: '2026-01-01T00:00:00Z',
@@ -331,7 +330,15 @@ const commonStubs = {
 	AgentChatQuickActions: {
 		name: 'AgentChatQuickActions',
 		template: '<div data-testid="stub-agent-chat-quick-actions" />',
-		props: ['tools', 'projectId', 'agentId', 'connectedTriggers'],
+		props: [
+			'tools',
+			'mcpServers',
+			'projectId',
+			'agentId',
+			'connectedTriggers',
+			'isPublished',
+			'disabled',
+		],
 		emits: ['update:tools', 'update:connected-triggers', 'trigger-added'],
 	},
 	AgentBuilderHeader: {
@@ -827,6 +834,18 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('isBuildChatStreaming'),
 		).toBe(false);
+	});
+
+	it('passes build streaming state to the chat column', async () => {
+		const wrapper = await renderView();
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+
+		chatColumn.vm.$emit('update:streaming', true);
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isBuildChatStreaming'),
+		).toBe(true);
 	});
 
 	it('does not render the old Build/Test toggle inside the chat input footer', async () => {
