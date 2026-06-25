@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { SsrfProtectionConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '@n8n/config';
 import type { LookupAddress } from 'node:dns';
 import { mock } from 'vitest-mock-extended';
 
@@ -10,6 +10,9 @@ import { SsrfProtectionService } from '../ssrf-protection.service';
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
+	// The baseline default is `log`; most tests assert enforcement (blocking),
+	// so default the helper to `enforce` unless a test overrides the mode.
+	config.mode = 'enforce';
 	Object.assign(config, overrides);
 	return config;
 }
@@ -841,7 +844,7 @@ describe('SsrfProtectionService', () => {
 			});
 
 			expect(mockScopedLogger.warn).toHaveBeenCalledWith(
-				"Invalid value 'not-a-valid-range' in N8N_SSRF_BLOCKED_IP_RANGES: Invalid CIDR notation",
+				"Invalid value 'not-a-valid-range' in egress blocked IP ranges: Invalid CIDR notation",
 			);
 		});
 	});
@@ -911,6 +914,296 @@ describe('SsrfProtectionService', () => {
 			expect(blocked).toHaveBeenCalledWith(
 				expect.objectContaining({ phase: 'redirect', reason: 'blocked_ip' }),
 			);
+		});
+
+		it('should include hostname and resolved ip on a blocked URL event', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '10.0.0.1', family: 4 }]);
+			const { service } = createService({}, dnsResolver);
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			await service.validateUrl('http://malicious.example.com/');
+
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({
+					phase: 'pre_flight',
+					reason: 'blocked_ip',
+					hostname: 'malicious.example.com',
+					ip: '10.0.0.1',
+					wouldBlock: false,
+				}),
+			);
+		});
+	});
+
+	describe('blocked hostnames', () => {
+		const asHostnames = (values: string[]) =>
+			values as unknown as SsrfProtectionConfig['blockedHostnames'];
+
+		it('blocks a request whose hostname is on the deny-list (enforce)', async () => {
+			const dnsResolver = createMockDnsResolver();
+			const { service } = createService(
+				{ mode: 'enforce', blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+
+			const result = await service.validateUrl('http://exfil.example.com/data');
+
+			expect(result).toEqual({ ok: false, error: expect.any(SsrfBlockedHostnameError) as Error });
+		});
+
+		it('denies by name before DNS resolution runs', async () => {
+			const dnsResolver = createMockDnsResolver();
+			const { service } = createService(
+				{ mode: 'enforce', blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+
+			await service.validateUrl('http://exfil.example.com/data');
+
+			expect(dnsResolver.lookup).not.toHaveBeenCalled();
+		});
+
+		it('denies even when the hostname resolves to a public IP', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+			const { service } = createService(
+				{ mode: 'enforce', blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+
+			const result = await service.validateUrl('http://exfil.example.com/data');
+
+			expect(result).toEqual({ ok: false, error: expect.any(SsrfBlockedHostnameError) as Error });
+		});
+
+		it('blocks subdomains of a wildcard pattern but not the bare domain', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+			const { service } = createService(
+				{ mode: 'enforce', blockedHostnames: asHostnames(['*.tracker.example']) },
+				dnsResolver,
+			);
+
+			expect(await service.validateUrl('http://a.tracker.example/')).toEqual({
+				ok: false,
+				error: expect.any(SsrfBlockedHostnameError) as Error,
+			});
+			expectAllowed(await service.validateUrl('http://tracker.example/'));
+		});
+
+		it('lets an explicit allowed hostname win over a broad deny', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+			const { service } = createService(
+				{
+					mode: 'enforce',
+					allowedHostnames: asHostnames(['api.example.com']),
+					blockedHostnames: asHostnames(['*.example.com']),
+				},
+				dnsResolver,
+			);
+
+			expectAllowed(await service.validateUrl('http://api.example.com/'));
+			expect(await service.validateUrl('http://other.example.com/')).toEqual({
+				ok: false,
+				error: expect.any(SsrfBlockedHostnameError) as Error,
+			});
+		});
+
+		it('emits a would-block event but allows the request in log mode', async () => {
+			const dnsResolver = createMockDnsResolver();
+			const { service } = createService(
+				{ mode: 'log', blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			expectAllowed(await service.validateUrl('http://exfil.example.com/data'));
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({
+					phase: 'pre_flight',
+					reason: 'blocked_hostname',
+					hostname: 'exfil.example.com',
+					wouldBlock: true,
+				}),
+			);
+		});
+
+		it('rejects a deny-listed redirect target (enforce)', () => {
+			const { service } = createService({
+				mode: 'enforce',
+				blockedHostnames: asHostnames(['exfil.example.com']),
+			});
+
+			expect(() => service.validateRedirectSync('http://exfil.example.com/data')).toThrow(
+				SsrfBlockedHostnameError,
+			);
+		});
+
+		it('rejects a deny-listed hostname at connect-time secure lookup (enforce)', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+			const { service } = createService(
+				{ mode: 'enforce', blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+			const lookup = service.createSecureLookup();
+
+			const [error] = await new Promise<[Error | null, unknown]>((resolve) =>
+				lookup('exfil.example.com', { all: true }, (lookupError, addresses) =>
+					resolve([lookupError, addresses]),
+				),
+			);
+
+			expect(error).toBeInstanceOf(SsrfBlockedHostnameError);
+		});
+	});
+
+	describe('mode: off', () => {
+		it('is not active and never validates', async () => {
+			const { service } = createService({ mode: 'off' });
+			expect(service.isActive()).toBe(false);
+			expect(service.mode).toBe('off');
+			expectAllowed(service.validateIp('10.0.0.1'));
+			expectAllowed(await service.validateUrl('http://127.0.0.1/'));
+			expectAllowed(service.validateConnectionHost('10.0.0.1'));
+			expect(() => service.validateRedirectSync('http://10.0.0.1/')).not.toThrow();
+		});
+
+		it('emits no events', async () => {
+			const { service } = createService({ mode: 'off' });
+			const blocked = vi.fn();
+			const allowed = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+			service.events.on('ssrf.allowed', allowed);
+
+			await service.validateUrl('http://127.0.0.1/');
+			service.validateIp('10.0.0.1');
+
+			expect(blocked).not.toHaveBeenCalled();
+			expect(allowed).not.toHaveBeenCalled();
+		});
+
+		it('resolves DNS without validation through the secure lookup', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '10.0.0.1', family: 4 }]);
+			const { service } = createService({ mode: 'off' }, dnsResolver);
+			const lookup = service.createSecureLookup();
+
+			const [error, address] = await new Promise<[Error | null, string]>((resolve) =>
+				lookup('internal.example.com', { all: false }, (lookupError, addr) =>
+					resolve([lookupError, addr as string]),
+				),
+			);
+
+			expect(error).toBeNull();
+			expect(address).toBe('10.0.0.1');
+		});
+	});
+
+	describe('mode: log (observe-before-enforce)', () => {
+		it('is active but never blocks a blocked IP', () => {
+			const { service } = createService({ mode: 'log' });
+			expect(service.isActive()).toBe(true);
+			expectAllowed(service.validateIp('10.0.0.1'));
+		});
+
+		it('emits a would-block event but allows the request', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '10.0.0.1', family: 4 }]);
+			const { service } = createService({ mode: 'log' }, dnsResolver);
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			expectAllowed(await service.validateUrl('http://malicious.example.com/'));
+
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({
+					phase: 'pre_flight',
+					reason: 'blocked_ip',
+					hostname: 'malicious.example.com',
+					ip: '10.0.0.1',
+					wouldBlock: true,
+				}),
+			);
+		});
+
+		it('does not throw on a blocked redirect, but emits a would-block event', () => {
+			const { service } = createService({ mode: 'log' });
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			expect(() => service.validateRedirectSync('http://127.0.0.1/admin')).not.toThrow();
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'redirect', wouldBlock: true }),
+			);
+		});
+
+		it('returns resolved addresses from the secure lookup even when one is blocked', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '10.0.0.1', family: 4 }]);
+			const { service } = createService({ mode: 'log' }, dnsResolver);
+			const lookup = service.createSecureLookup();
+
+			const [error, address] = await new Promise<[Error | null, string]>((resolve) =>
+				lookup('evil.example.com', { all: false }, (lookupError, addr) =>
+					resolve([lookupError, addr as string]),
+				),
+			);
+
+			expect(error).toBeNull();
+			expect(address).toBe('10.0.0.1');
+		});
+	});
+
+	describe('updatePolicy', () => {
+		it('atomically swaps the effective policy at runtime', () => {
+			const { service } = createService({ mode: 'enforce' });
+			expectBlocked(service.validateIp('10.0.0.1'));
+
+			service.updatePolicy({
+				mode: 'enforce',
+				blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
+				allowedIpRanges: ['10.0.0.0/8'],
+				allowedHostnames: [],
+				blockedHostnames: [],
+			});
+
+			expectAllowed(service.validateIp('10.0.0.1'));
+		});
+
+		it('can flip the mode from enforce to log without a restart', () => {
+			const { service } = createService({ mode: 'enforce' });
+			expectBlocked(service.validateIp('10.0.0.1'));
+
+			service.updatePolicy({
+				mode: 'log',
+				blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
+				allowedIpRanges: [],
+				allowedHostnames: [],
+				blockedHostnames: [],
+			});
+
+			expect(service.mode).toBe('log');
+			expectAllowed(service.validateIp('10.0.0.1'));
+		});
+
+		it('can disable protection at runtime', () => {
+			const { service } = createService({ mode: 'enforce' });
+			expect(service.isActive()).toBe(true);
+
+			service.updatePolicy({
+				mode: 'off',
+				blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
+				allowedIpRanges: [],
+				allowedHostnames: [],
+				blockedHostnames: [],
+			});
+
+			expect(service.isActive()).toBe(false);
 		});
 	});
 });

@@ -86,13 +86,27 @@ pasted into a credential. So each call site makes a single, local, reviewable
 decision — and a reviewer reading a `ssrf: 'disabled'` knows to ask "is this
 destination really not user-controlled?".
 
-`SsrfProtectionConfig` (env-driven) configures *how* the guard behaves once it
-runs — the blocked/allowed IP ranges (`N8N_SSRF_BLOCKED_IP_RANGES`,
-`N8N_SSRF_ALLOWED_IP_RANGES`), the allowed and blocked hostnames
-(`N8N_SSRF_ALLOWED_HOSTNAMES`, `N8N_SSRF_BLOCKED_HOSTNAMES`), and the DNS-cache
-size. Its `enabled` flag (`N8N_SSRF_PROTECTION_ENABLED`) is the **instance-wide gate that high-risk call sites consult** to decide whether to turn the guard on (see below).
+`SsrfProtectionConfig` (env-driven) is the **environment baseline** of the
+egress-protection policy — the blocked/allowed IP ranges
+(`N8N_EGRESS_BLOCKED_IP_RANGES`, `N8N_EGRESS_ALLOWED_IP_RANGES`), the allowed and
+blocked hostnames (`N8N_EGRESS_ALLOWED_HOSTNAMES`, `N8N_EGRESS_BLOCKED_HOSTNAMES`),
+the DNS-cache size, and the `mode`
+(`N8N_EGRESS_PROTECTION_MODE`: `off` / `log` / `enforce`, default `log`). At
+runtime an admin can layer database overrides on top of this baseline (see the
+CLI `EgressPolicyService`), and the effective policy is pushed into the engine
+via `SsrfProtectionService.updatePolicy()` — no restart required.
 
-The config sets the policy; the call site decides whether that policy applies to *this* destination.
+The three modes are:
+
+- **`off`** — the bridge is a passthrough; nothing is validated and no events fire.
+- **`log`** (default) — requests are validated and `ssrf.blocked` events fire
+  tagged `wouldBlock: true`, but nothing is blocked (observe-before-enforce).
+- **`enforce`** — requests are validated, events fire, and blocked destinations
+  are rejected.
+
+High-risk call sites consult `SsrfProtectionService.isActive()` (true for `log`
+and `enforce`) to decide whether to attach the bridge. The previous
+`N8N_SSRF_*` env vars are kept as deprecated aliases for one migration window.
 
 ### Choosing an SSRF level: low-risk vs high-risk calls
 
@@ -101,16 +115,17 @@ Classify the **destination**, then pick:
 | Destination | Risk | What to pass |
 | --- | --- | --- |
 | Fixed n8n-owned host, or a fixed public vendor API (Slack, Linear, npm registry default, AWS service endpoint) | **Low** — not user-controllable | `ssrf: 'disabled'` + a one-line "fixed host" comment |
-| Admin-configured infrastructure that may legitimately be internal (SAML/OIDC IdP, OTLP collector, log-streaming destination, external-secrets manager) | **Low–medium** — operator-trusted | `ssrf: 'disabled'` + a "may point at internal X" comment. The `N8N_SSRF_ALLOWED_*` allowlists are the escape hatch when the instance runs with protection globally on. |
-| User- or remote-controlled URL (workflow import URL, credential/OAuth URLs, a discovery document's second hop, a user-supplied registry, an LLM/web-research target) | **High** — attacker-influenceable | gate on the instance setting: `ssrf: ssrfConfig.enabled ? ssrfProtectionService : 'disabled'` |
+| Admin-configured infrastructure that may legitimately be internal (SAML/OIDC IdP, OTLP collector, log-streaming destination, external-secrets manager) | **Low–medium** — operator-trusted | `ssrf: 'disabled'` + a "may point at internal X" comment. The `N8N_EGRESS_ALLOWED_*` allowlists are the escape hatch when the instance runs with protection globally on. |
+| User- or remote-controlled URL (workflow import URL, credential/OAuth URLs, a discovery document's second hop, a user-supplied registry, an LLM/web-research target) | **High** — attacker-influenceable | gate on the effective mode: `ssrf: ssrfProtectionService.isActive() ? ssrfProtectionService : 'disabled'` |
 
 ```ts
 // LOW risk — fixed, n8n-owned host.
 const client = this.outboundHttp.requests({ ssrf: 'disabled' });
 
-// HIGH risk — `url` comes from user input. Guard when the instance enables it.
+// HIGH risk — `url` comes from user input. Guard when protection is active
+// (mode is `log` or `enforce`).
 const client = this.outboundHttp.requests({
-	ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
+	ssrf: this.ssrfProtectionService.isActive() ? this.ssrfProtectionService : 'disabled',
 });
 ```
 
