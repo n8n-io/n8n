@@ -515,6 +515,28 @@ describe('AgentExecutionService', () => {
 			expect(result?.executions[0].assistantResponse).toBe('Stored response');
 		});
 
+		it('throws when an externally stored execution log is missing', async () => {
+			const thread = makeThread();
+			const executions = [
+				{
+					id: 'execution-1',
+					threadId: 'thread-1',
+					storedAt: 'fs',
+					assistantResponse: '',
+					toolCalls: null,
+					timeline: null,
+					error: null,
+				},
+			] as AgentExecution[];
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
+			agentExecutionLogPersistence.readMany.mockResolvedValue(new Map());
+
+			await expect(service.getThreadDetail('thread-1', 'project-1', 'agent-1')).rejects.toThrow(
+				'Agent execution log bundle is missing',
+			);
+		});
+
 		it.each([
 			{ name: 'project', thread: makeThread({ projectId: 'other-project' }) },
 			{ name: 'agent', thread: makeThread({ agentId: 'other-agent' }) },

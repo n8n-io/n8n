@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -346,7 +347,16 @@ export class AgentExecutionService {
 
 		return executions.map((execution) => {
 			const bundle = bundles.get(execution.id);
-			if (!bundle) return execution;
+			if (!bundle) {
+				throw new UnexpectedError('Agent execution log bundle is missing', {
+					extra: {
+						agentId,
+						threadId: execution.threadId,
+						executionId: execution.id,
+						storedAt: execution.storedAt,
+					},
+				});
+			}
 
 			Object.assign(execution, {
 				assistantResponse: bundle.assistantResponse,

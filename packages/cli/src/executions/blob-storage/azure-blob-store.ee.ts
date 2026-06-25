@@ -1,8 +1,11 @@
 import { Service } from '@n8n/di';
+import chunk from 'lodash/chunk';
 import { AzureBlobService } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee';
 import { ensureError } from 'n8n-workflow';
 
 import type { BlobStore, BlobStoreKey, BlobStoreWriteOptions } from './types';
+
+const MAX_DELETE_CONCURRENCY = 50;
 
 @Service()
 export class AzureBlobStore implements BlobStore {
@@ -28,7 +31,9 @@ export class AzureBlobStore implements BlobStore {
 
 	async delete(key: BlobStoreKey | BlobStoreKey[]) {
 		const keys = Array.isArray(key) ? key : [key];
-		await Promise.all(keys.map(async (k) => await this.azureBlob.delete(k)));
+		for (const batch of chunk(keys, MAX_DELETE_CONCURRENCY)) {
+			await Promise.all(batch.map(async (k) => await this.azureBlob.delete(k)));
+		}
 	}
 
 	private isNotFound(error: unknown) {
