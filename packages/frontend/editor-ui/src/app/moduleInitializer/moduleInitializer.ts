@@ -10,6 +10,7 @@ import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
 import { OtelModule } from '@/features/settings/otel/module.descriptor';
+import { EgressProtectionModule } from '@/features/settings/egress-protection/module.descriptor';
 import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
@@ -25,6 +26,7 @@ const modules: FrontendModuleDescription[] = [
 	InstanceAiModule,
 	AgentsModule,
 	OtelModule,
+	EgressProtectionModule,
 ];
 
 /**
