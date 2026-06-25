@@ -1,6 +1,6 @@
 import type {
 	IHttpRequestMethods,
-	IRequestOptions,
+	IHttpRequestOptions,
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -10,6 +10,26 @@ import type {
 } from 'n8n-workflow';
 
 import { prepareApiError } from '../helpers/utils';
+
+function getUseImmutableId(
+	context: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+) {
+	// For list-search/load-options calls, this value is available via getCurrentNodeParameter.
+	if (
+		'getCurrentNodeParameter' in context &&
+		typeof context.getCurrentNodeParameter === 'function'
+	) {
+		try {
+			return context.getCurrentNodeParameter('useImmutableId') as boolean;
+		} catch {}
+	}
+
+	try {
+		return context.getNodeParameter('useImmutableId', 0, false) as boolean;
+	} catch {
+		return false;
+	}
+}
 
 export type OutlookCredentialType = 'microsoftOutlookOAuth2Api' | 'microsoftOAuth2Api';
 
@@ -52,14 +72,17 @@ export async function microsoftApiRequest(
 		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
-	const options: IRequestOptions = {
+	const useImmutableId = getUseImmutableId(this);
+
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
+			...(useImmutableId ? { Prefer: 'IdType="ImmutableId"' } : {}),
 		},
 		method,
 		body,
 		qs,
-		uri: uri || apiUrl,
+		url: uri || apiUrl,
 	};
 	try {
 		Object.assign(options, option);
