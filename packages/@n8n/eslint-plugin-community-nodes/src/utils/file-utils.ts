@@ -179,6 +179,44 @@ export function readPackageJsonNodes(packageJsonPath: string): string[] {
 	return resolveN8nFilePaths(packageJsonPath, nodePaths);
 }
 
+function findFilesRecursively(dir: string, matches: (fileName: string) => boolean): string[] {
+	const results: string[] = [];
+
+	let entries;
+	try {
+		entries = readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return results;
+	}
+
+	for (const entry of entries) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		} else if (entry.isFile() && matches(entry.name)) {
+			results.push(fullPath);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Finds all `*.node.ts` source files in the package's `nodes/` directory,
+ * returning their absolute paths. Returns an empty array if there is no
+ * `nodes/` directory.
+ */
+export function findNodeSourceFilesOnDisk(packageJsonPath: string): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const nodesDir = safeJoinPath(packageDir, 'nodes');
+
+	if (!existsSync(nodesDir)) {
+		return [];
+	}
+
+	return findFilesRecursively(nodesDir, (fileName) => fileName.endsWith('.node.ts'));
+}
+
 export function areAllCredentialUsagesTestedByNodes(
 	credentialName: string,
 	packageDir: string,

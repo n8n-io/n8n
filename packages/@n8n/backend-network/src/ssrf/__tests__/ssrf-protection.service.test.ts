@@ -35,7 +35,7 @@ function createService(
 }
 
 const expectBlocked = (result: unknown) => {
-	expect(result).toEqual({ ok: false, error: expect.any(SsrfBlockedIpError) });
+	expect(result).toEqual({ ok: false, error: expect.any(SsrfBlockedIpError) as Error });
 };
 
 const expectAllowed = (result: unknown) => {
@@ -142,7 +142,7 @@ describe('SsrfProtectionService', () => {
 			const result = await service.validateUrl('not-a-url');
 			expect(result).toEqual({
 				ok: false,
-				error: expect.objectContaining({ message: 'Invalid URL: not-a-url' }),
+				error: expect.objectContaining({ message: 'Invalid URL: not-a-url' }) as Error,
 			});
 		});
 
@@ -271,6 +271,52 @@ describe('SsrfProtectionService', () => {
 
 			expectAllowed(result);
 			expect(dnsResolver.lookup).toHaveBeenCalledWith('cached.example.com', { all: true });
+		});
+	});
+
+	describe('validateConnectionHost', () => {
+		it('should block a direct IP-literal target', () => {
+			const { service } = createService();
+
+			expectBlocked(service.validateConnectionHost('169.254.169.254'));
+			expectBlocked(service.validateConnectionHost('10.0.0.1'));
+		});
+
+		it('should allow a public direct IP target', () => {
+			const { service } = createService();
+
+			expectAllowed(service.validateConnectionHost('93.184.216.34'));
+		});
+
+		it('should normalize IPv6 bracket notation before validating', () => {
+			const { service } = createService();
+
+			expectBlocked(service.validateConnectionHost('[::1]'));
+		});
+
+		it('should allow hostnames (deferred to the secure lookup)', () => {
+			const dnsResolver = createMockDnsResolver();
+			const { service } = createService({}, dnsResolver);
+
+			expectAllowed(service.validateConnectionHost('example.com'));
+			// No DNS resolution happens here — hostnames are validated by the lookup.
+			expect(dnsResolver.lookup).not.toHaveBeenCalled();
+		});
+
+		it('should emit a connect_time event for IP-literal targets', () => {
+			const { service } = createService();
+			const blocked = vi.fn();
+			const allowed = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+			service.events.on('ssrf.allowed', allowed);
+
+			service.validateConnectionHost('10.0.0.1');
+			service.validateConnectionHost('93.184.216.34');
+
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'connect_time', reason: 'blocked_ip' }),
+			);
+			expect(allowed).toHaveBeenCalledWith(expect.objectContaining({ phase: 'connect_time' }));
 		});
 	});
 
@@ -641,7 +687,7 @@ describe('SsrfProtectionService', () => {
 			await service.validateUrl('http://example.com/');
 
 			expect(allowed).toHaveBeenCalledWith(
-				expect.objectContaining({ phase: 'pre_flight', durationMs: expect.any(Number) }),
+				expect.objectContaining({ phase: 'pre_flight', durationMs: expect.any(Number) as number }),
 			);
 		});
 

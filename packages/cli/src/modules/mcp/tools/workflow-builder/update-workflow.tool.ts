@@ -49,6 +49,7 @@ const operationTypeSchema = z.enum([
 	'setWorkflowMetadata',
 	'addTags',
 	'removeTags',
+	'setNodeGroups',
 ]);
 
 const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
@@ -117,6 +118,16 @@ const operationInputSchema = z
 		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
 		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
 		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
+		nodeGroups: z
+			.array(
+				z.object({
+					id: z.string().optional(),
+					name: z.string(),
+					nodeIds: z.array(z.string()),
+				}),
+			)
+			.optional()
+			.describe('For setNodeGroups. Replaces all node groups; pass [] to clear.'),
 	})
 	.describe('Workflow update operation. Provide fields matching type.');
 
@@ -184,12 +195,18 @@ const inputSchema: z.ZodRawShape = {
 		),
 };
 
+// The MCP SDK publishes this schema with `additionalProperties: false` and
+// validates `structuredContent` against it on every response. Success returns
+// the full payload below; the error path returns only `{ error }`. To keep
+// both shapes valid under strict clients, the success fields are optional and
+// `error` is a declared, optional property — otherwise a thrown handler error
+// surfaces as an opaque `-32602` schema mismatch instead of the real message.
 const outputSchema = {
-	workflowId: z.string(),
-	name: z.string(),
-	nodeCount: z.number(),
-	url: z.string(),
-	appliedOperations: z.number().describe('Number of operations applied.'),
+	workflowId: z.string().optional(),
+	name: z.string().optional(),
+	nodeCount: z.number().optional(),
+	url: z.string().optional(),
+	appliedOperations: z.number().optional().describe('Number of operations applied.'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -198,6 +215,7 @@ const outputSchema = {
 				credentialType: z.string(),
 			}),
 		)
+		.optional()
 		.describe('Credentials auto-assigned to nodes that were added in this update.'),
 	validationWarnings: z
 		.array(
@@ -207,10 +225,15 @@ const outputSchema = {
 				nodeName: z.string().optional(),
 			}),
 		)
+		.optional()
 		.describe(
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
 	note: z.string().optional(),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the update failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -310,6 +333,7 @@ export const createUpdateWorkflowTool = (
 				user,
 				credentialsService,
 				nodeTypes,
+				{ workflowId: existingWorkflow.id },
 			);
 			if (!credentialCheck.ok) {
 				throw new Error(credentialCheck.error);
@@ -343,6 +367,10 @@ export const createUpdateWorkflowTool = (
 				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
 			);
 
+			// Only persist nodeGroups when a setNodeGroups op ran; otherwise omit the key so
+			// WorkflowService preserves the existing groups (preserve-on-omit).
+			const hasNodeGroupOperation = strictOperations.some((op) => op.type === 'setNodeGroups');
+
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
@@ -351,6 +379,7 @@ export const createUpdateWorkflowTool = (
 					: {}),
 				nodes: result.workflow.nodes,
 				connections: result.workflow.connections,
+				...(hasNodeGroupOperation ? { nodeGroups: result.workflow.nodeGroups } : {}),
 				meta: hasNonTagOperations
 					? {
 							...(existingWorkflow.meta ?? {}),
@@ -385,7 +414,10 @@ export const createUpdateWorkflowTool = (
 			}
 
 			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
-			const validator = new ParseValidateHandler({ generatePinData: false });
+			const validator = new ParseValidateHandler({
+				generatePinData: false,
+				nodeTypesProvider: nodeTypes,
+			});
 			const validationWarnings = validator.validateJSON({
 				name: workflowUpdateData.name,
 				nodes: workflowUpdateData.nodes,

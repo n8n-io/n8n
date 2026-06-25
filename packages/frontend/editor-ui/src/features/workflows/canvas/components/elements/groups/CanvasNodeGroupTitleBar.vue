@@ -5,6 +5,7 @@ import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/desi
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
+import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
 import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
 	GROUP_PADDING_Y_BOTTOM as PADDING_Y_BOTTOM,
@@ -111,6 +112,15 @@ function onToggleClick() {
 	emit('toggle', group.value.id);
 }
 
+// Toggle collapse on double clicking
+function onWrapperDblClick(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	// if happened inside an element with its own click behavior, do nothing
+	if (target?.closest('.nodrag')) return;
+
+	emit('toggle', group.value.id);
+}
+
 async function focusTitleEdit() {
 	if (props.autofocusGroupId !== group.value.id || props.readOnly || !isAutofocusReady.value)
 		return;
@@ -136,7 +146,11 @@ const toggleLabel = computed(() =>
 		: i18n.baseText('canvas.nodeGroup.collapse'),
 );
 
-const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
+const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
+
+// Match the zoom-adjusted border opacity normal nodes use
+const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
+const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
 // Clear unrelated pre-existing selection before VueFlow snapshots which
 // nodes to drag — otherwise those nodes ride along with the group drag.
@@ -165,10 +179,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,
+			...nodeBorderOpacityStyle,
 		}"
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
 		@pointerdown="onWrapperPointerDown"
+		@dblclick.stop="onWrapperDblClick"
 	>
 		<div :class="$style.titleBar">
 			<Handle
@@ -231,7 +247,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
 								ref="titleEdit"
-								class="nodrag"
+								:class="['nodrag', $style.inlineEdit]"
 								:model-value="group.name"
 								:read-only="readOnly"
 								:min-width="0"
@@ -343,13 +359,18 @@ function onWrapperPointerDown(event: PointerEvent) {
 	flex-shrink: 0;
 }
 
+/*  Don't render the aria-expanded toggle as "pressed" while inactive */
+.toggle[aria-expanded='true']:not(:hover):not(:active) {
+	background-color: transparent;
+}
+
 .title {
 	display: flex;
 	align-items: center;
 	flex: 1;
 	min-width: 0;
 	height: 100%;
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
 }
 
@@ -360,6 +381,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	max-width: 100%;
 	overflow: clip;
 	overflow-clip-margin: var(--spacing--2xs);
+}
+
+.inlineEdit {
+	width: fit-content;
+	max-width: 100%;
 }
 
 .statusIcons {
@@ -401,7 +427,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	position: absolute;
 	left: 0;
 	width: 100%;
-	background: transparent;
+	background: var(--background--hover);
 	@include styles.canvas-node-border(dashed);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);

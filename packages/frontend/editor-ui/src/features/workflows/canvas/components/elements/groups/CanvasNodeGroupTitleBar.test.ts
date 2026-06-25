@@ -25,6 +25,7 @@ vi.mock('@vue-flow/core', () => ({
 	useVueFlow: () => ({
 		getSelectedNodes: selectedNodesRef,
 		removeSelectedNodes: removeSelectedNodesMock,
+		viewport: { value: { x: 0, y: 0, zoom: 1 } },
 	}),
 }));
 
@@ -89,6 +90,28 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
 			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+	});
+
+	describe('double-click to toggle collapse', () => {
+		it('emits toggle when the group body is double-clicked', async () => {
+			const wrapper = render();
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
+			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+
+		it('does not emit toggle when the title is double-clicked', async () => {
+			const wrapper = render();
+			const titleArea = wrapper.getByTestId('canvas-node-group-title');
+			const titleEdit = titleArea.querySelector('.nodrag') as HTMLElement;
+			await fireEvent.dblClick(titleEdit);
+			expect(wrapper.emitted().toggle).toBeUndefined();
+		});
+
+		it('does not emit toggle when the ungroup button is double-clicked', async () => {
+			const wrapper = render();
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-ungroup'));
+			expect(wrapper.emitted().toggle).toBeUndefined();
 		});
 	});
 

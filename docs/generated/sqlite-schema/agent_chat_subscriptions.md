@@ -16,23 +16,23 @@ CREATE TABLE "agent_chat_subscriptions" ("agentId" varchar(36) NOT NULL, "integr
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
-| integrationType | varchar(64) |  | false |  |  |  |
-| credentialId | varchar(255) |  | false |  |  |  |
-| threadId | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| credentialId | varchar(255) |  | false |  |  |  |
+| integrationType | varchar(64) |  | false |  |  |  |
+| threadId | varchar(255) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
-| integrationType | PRIMARY KEY | PRIMARY KEY (integrationType) |
-| credentialId | PRIMARY KEY | PRIMARY KEY (credentialId) |
-| threadId | PRIMARY KEY | PRIMARY KEY (threadId) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_agent_chat_subscriptions_1 | PRIMARY KEY | PRIMARY KEY (agentId, integrationType, credentialId, threadId) |
 | - | CHECK | CHECK ("integrationType" IN ('telegram', 'slack', 'linear')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
+| credentialId | PRIMARY KEY | PRIMARY KEY (credentialId) |
+| integrationType | PRIMARY KEY | PRIMARY KEY (integrationType) |
+| sqlite_autoindex_agent_chat_subscriptions_1 | PRIMARY KEY | PRIMARY KEY (agentId, integrationType, credentialId, threadId) |
+| threadId | PRIMARY KEY | PRIMARY KEY (threadId) |
 
 ## Indexes
 
@@ -49,25 +49,24 @@ erDiagram
 
 "agent_chat_subscriptions" {
   varchar_36_ agentId PK
-  varchar_64_ integrationType PK
-  varchar_255_ credentialId PK
-  varchar_255_ threadId PK
   datetime_3_ createdAt
+  varchar_255_ credentialId PK
+  varchar_64_ integrationType PK
+  varchar_255_ threadId PK
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 ```
 

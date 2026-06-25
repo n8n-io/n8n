@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { AskCredentialResume } from '@n8n/api-types';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import { ChatHubToolContextKey } from '@/app/constants';
 
 const props = defineProps<{
 	purpose: string;
@@ -24,6 +25,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+
+provide(ChatHubToolContextKey, true);
 
 // ---------------------------------------------------------------------------
 // Selection state — driven entirely by NodeCredentials' credentialSelected event

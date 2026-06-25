@@ -1,11 +1,16 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, provide, useTemplateRef, watch } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import {
 	EditorEnabledFeaturesKey,
 	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
+import {
+	InstanceAiEditorCapabilityKey,
+	type InstanceAiEditorCapability,
+} from '@/app/composables/useInstanceAiEditorCapability';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	createWorkflowDocumentId,
@@ -13,7 +18,9 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { isAgentEditingWorkflow } from '../canvasPreview.utils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
+import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
@@ -28,8 +35,10 @@ const props = withDefaults(
 		workflowId: string;
 		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
+		/** Latest completed execution produced by the agent for this workflow. */
+		executionResult?: ExecutionResult;
 	}>(),
-	{ refreshKey: 0 },
+	{ refreshKey: 0, executionResult: undefined },
 );
 
 const emit = defineEmits<{
@@ -37,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
+const workflowsStore = useWorkflowsStore();
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
@@ -119,6 +129,34 @@ function reportWorkflowFailures(executionId: string, workflowId: string) {
 	emit('workflow-failures', { workflowId, executionId, errors });
 }
 
+let latestExecutionLoadRequest = 0;
+
+async function showExecutionResult(executionResult: ExecutionResult | undefined) {
+	if (!executionResult) return;
+
+	const request = ++latestExecutionLoadRequest;
+	let execution: Awaited<ReturnType<typeof workflowsStore.fetchExecutionDataById>>;
+	try {
+		execution = await workflowsStore.fetchExecutionDataById(executionResult.executionId);
+	} catch {
+		return;
+	}
+	if (request !== latestExecutionLoadRequest) return;
+	if (!execution || execution.workflowId !== props.workflowId) return;
+
+	useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+
+	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
+	const activeExecutionId = executionState.activeExecutionId;
+	executionState.setDisplayedExecutionId(execution.id);
+	if (
+		activeExecutionId === undefined ||
+		(typeof activeExecutionId === 'string' && activeExecutionId !== execution.id)
+	) {
+		executionState.setActiveExecutionId(undefined);
+	}
+}
+
 const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
 	if (event.data.workflowId !== props.workflowId) return;
@@ -133,6 +171,14 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	reportWorkflowFailures(event.data.executionId, event.data.workflowId);
 });
 
+watch(
+	() => [props.workflowId, props.executionResult?.executionId] as const,
+	() => {
+		void showExecutionResult(props.executionResult);
+	},
+	{ immediate: true },
+);
+
 onBeforeUnmount(() => {
 	removeExecutionStartedListener();
 	removeExecutionFinishedListener();
@@ -143,6 +189,14 @@ onBeforeUnmount(() => {
 // workflow, so the user can't drag nodes into a mid-stream conflict.
 // `isAgentEditingWorkflow` defines the signals that trigger the lock.
 const thread = useThread();
+
+// The workflow + execution the editor handed off, applied once when this
+// preview first opens. Consumed (cleared) here, so it never re-applies on a
+// later reload or re-open — it only reflects the redirect. Both snapshots are
+// passed to the canvas host, which opens/seeds them directly (no refetch).
+const handoff = thread.consumePendingHandoff(props.workflowId);
+const initialWorkflow = handoff?.workflow;
+const initialExecution = handoff?.execution;
 
 const isAgentEditingThisWorkflow = computed(() => {
 	for (const message of thread.messages) {
@@ -168,11 +222,36 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	executionErrorToasts: false,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
+
+const rootStore = useRootStore();
+
+// The artifact already lives inside an Instance AI thread, so its entry points
+// append guidance to that conversation rather than opening a new one. It offers
+// only `openCredential` — `openWorkflow` is omitted because the workflow is
+// already the thread's subject, which hides the editor hand-off button here.
+const instanceAiCapability: InstanceAiEditorCapability = {
+	openCredential: async (credential) => {
+		void thread.sendMessage(
+			buildInstanceAiArtifactCredentialQuestion(credential),
+			undefined,
+			rootStore.pushRef,
+		);
+		// Appends to the current thread → close the modal so the conversation shows.
+		return true;
+	},
+};
+provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 </script>
 
 <template>
 	<div :class="$style.content">
-		<WorkflowCanvasHost ref="host" :workflow-id="workflowId" :refresh-key="refreshKey" />
+		<WorkflowCanvasHost
+			ref="host"
+			:workflow-id="workflowId"
+			:refresh-key="refreshKey"
+			:initial-workflow="initialWorkflow"
+			:initial-execution="initialExecution"
+		/>
 	</div>
 </template>
 

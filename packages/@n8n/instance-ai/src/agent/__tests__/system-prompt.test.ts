@@ -1,6 +1,37 @@
-import { getSystemPrompt } from '../system-prompt';
+import { getDateTimeSection, getSystemPrompt } from '../system-prompt';
+
+describe('getDateTimeSection', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('renders the current time at minute precision (no seconds/milliseconds)', () => {
+		vi.useFakeTimers().setSystemTime(new Date('2026-06-16T14:59:11.396Z'));
+
+		const section = getDateTimeSection('UTC');
+
+		expect(section).toContain('2026-06-16T14:59');
+		// The sub-minute portion must be dropped so the cached prefix stays stable.
+		expect(section).not.toContain('14:59:11');
+		expect(section).not.toContain('.396');
+	});
+
+	it('is byte-stable across sub-minute calls', () => {
+		vi.useFakeTimers().setSystemTime(new Date('2026-06-16T14:59:01.000Z'));
+		const first = getDateTimeSection('UTC');
+
+		vi.setSystemTime(new Date('2026-06-16T14:59:58.999Z'));
+		const second = getDateTimeSection('UTC');
+
+		expect(second).toBe(first);
+	});
+});
 
 describe('getSystemPrompt', () => {
+	it('keeps the cached prefix free of the current date/time so it stays cacheable', () => {
+		const prompt = getSystemPrompt({});
+
+		expect(prompt).not.toContain('## Current Date and Time');
+	});
+
 	describe('first visible turn guidance', () => {
 		it('instructs the agent to send a concise sentence before the first tool call', () => {
 			const prompt = getSystemPrompt({});
@@ -10,6 +41,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Keep it tied to the user's goal, not the tool name");
 			expect(prompt).toContain('Never let an empty assistant message');
 			expect(prompt).toContain('[Calling tools: ...]');
+		});
+	});
+
+	describe('clarifying questions', () => {
+		it('routes clarifying questions through ask-user instead of plain text', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('need clarification');
+			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
 		});
 	});
 
@@ -97,6 +137,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
+			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
@@ -183,7 +224,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).toContain('knowledge-base/templates/');
+			expect(prompt).toContain('never load `templates/index.json` wholesale');
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');

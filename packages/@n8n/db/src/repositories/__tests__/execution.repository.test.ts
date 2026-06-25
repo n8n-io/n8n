@@ -191,7 +191,7 @@ describe('ExecutionRepository', () => {
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ExecutionEntity,
-				{ id: In(executionIds) },
+				{ id: In(executionIds), status: In(['new', 'running', 'unknown']) },
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
 			);
 		});

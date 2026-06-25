@@ -15,22 +15,22 @@ CREATE TABLE "oauth_refresh_tokens" ("token" varchar(255) PRIMARY KEY NOT NULL, 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| token | varchar(255) |  | false |  |  |  |
 | clientId | varchar |  | false |  | [oauth_clients](oauth_clients.md) |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
-| expiresAt | bigint |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| expiresAt | bigint |  | false |  |  |  |
 | scope | TEXT | '["tool:listWorkflows","tool:getWorkflowDetails"]' | false |  |  |  |
+| token | varchar(255) |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| token | PRIMARY KEY | PRIMARY KEY (token) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_oauth_refresh_tokens_1 | PRIMARY KEY | PRIMARY KEY (token) |
+| token | PRIMARY KEY | PRIMARY KEY (token) |
 
 ## Indexes
 
@@ -47,41 +47,41 @@ erDiagram
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "oauth_refresh_tokens" {
-  varchar_255_ token PK
   varchar clientId FK
-  varchar userId FK
-  bigint expiresAt
   datetime_3_ createdAt
-  datetime_3_ updatedAt
+  bigint expiresAt
   TEXT scope
+  varchar_255_ token PK
+  datetime_3_ updatedAt
+  varchar userId FK
 }
 "oauth_clients" {
+  varchar_255_ clientSecret
+  bigint clientSecretExpiresAt
+  datetime_3_ createdAt
+  TEXT grantTypes
   varchar id PK
   varchar_255_ name
   TEXT redirectUris
-  TEXT grantTypes
-  varchar_255_ clientSecret
-  bigint clientSecretExpiresAt
   varchar_255_ tokenEndpointAuthMethod
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

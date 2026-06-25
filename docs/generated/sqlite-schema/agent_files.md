@@ -15,21 +15,21 @@ CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" var
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(16) |  | false |  |  |  |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | binaryDataId | TEXT |  | false |  |  |  |
-| fileName | varchar(255) |  | false |  |  |  |
-| mimeType | varchar(255) |  | false |  |  |  |
-| fileSizeBytes | INTEGER |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| fileName | varchar(255) |  | false |  |  |  |
+| fileSizeBytes | INTEGER |  | false |  |  |  |
+| id | varchar(16) |  | false |  |  |  |
+| mimeType | varchar(255) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_files_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -37,6 +37,8 @@ CREATE TABLE "agent_files" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" var
 | Name | Definition |
 | ---- | ---------- |
 | IDX_45dafc48fe2ce95eac30fc8ffd | CREATE INDEX "IDX_45dafc48fe2ce95eac30fc8ffd" ON "agent_files" ("agentId", "createdAt")  |
+| IDX_agent_files_agentId_binaryDataId | CREATE UNIQUE INDEX "IDX_agent_files_agentId_binaryDataId" ON "agent_files" ("agentId", "binaryDataId")  |
+| IDX_agent_files_agentId_fileName | CREATE UNIQUE INDEX "IDX_agent_files_agentId_fileName" ON "agent_files" ("agentId", "fileName")  |
 | sqlite_autoindex_agent_files_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -47,28 +49,27 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_files" {
-  varchar_16_ id PK
   varchar_36_ agentId FK
   TEXT binaryDataId
-  varchar_255_ fileName
-  varchar_255_ mimeType
-  INTEGER fileSizeBytes
   datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_255_ mimeType
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 ```
 

@@ -26,15 +26,14 @@ type SsrfAllowedPayload = { phase: SsrfPhase; durationMs: number };
 type SsrfPhase = 'pre_flight' | 'connect_time' | 'redirect';
 
 export type SsrfEventMap = {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'ssrf.blocked': SsrfBlockedPayload;
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'ssrf.allowed': SsrfAllowedPayload;
 };
 
 export interface SsrfBridge {
 	validateIp(ip: string): SsrfCheckResult;
 	validateUrl(url: string | URL): Promise<SsrfCheckResult>;
+	validateConnectionHost(host: string): SsrfCheckResult;
 	validateRedirectSync(url: string): void;
 	createSecureLookup(): LookupFunction;
 }
@@ -127,6 +126,21 @@ export class SsrfProtectionService implements SsrfBridge {
 		}
 
 		return createResultOk(undefined);
+	}
+
+	/**
+	 * Connect-time validation for a host a socket is about to connect to directly.
+	 *
+	 * IP-literal hosts (including IPv6 bracket notation) are validated.
+	 * Reason: Node skips the secure `lookup` when the target is already an IP.
+	 * Hostnames are resolved and validated by {@link createSecureLookup} at resolution time.
+	 */
+	validateConnectionHost(host: string): SsrfCheckResult {
+		const ip = this.normalizeIpInHostname(host);
+		if (!isIP(ip)) {
+			return createResultOk(undefined);
+		}
+		return this.withEvents('connect_time', () => this.validateIp(ip));
 	}
 
 	/**

@@ -1,7 +1,7 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import { getOtelSettings, updateOtelSettings } from './otel.api';
-import type { OtelSettingsResponse } from './otel.api';
+import { getOtelSettings, updateOtelSettings, sendOtelTestTrace } from './otel.api';
+import type { OtelSettingsResponse, OtelTestConnection } from './otel.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -53,6 +53,33 @@ describe('otel.api', () => {
 
 			expect(requestMock).toHaveBeenCalledWith(context, 'PUT', '/otel/settings', payload);
 			expect(result).toEqual(response);
+		});
+	});
+
+	describe('sendOtelTestTrace', () => {
+		const connection: OtelTestConnection = {
+			exporterEndpoint: 'https://collector.io',
+			exporterTracingPath: '/v1/traces',
+			exporterServiceName: 'n8n',
+			exporterHeaders: 'auth=token',
+			startupConnectivityTimeoutMs: 2000,
+		};
+
+		it('makes a POST request to /otel/test-trace with the connection payload', async () => {
+			requestMock.mockResolvedValueOnce({ success: true });
+
+			const result = await sendOtelTestTrace(context, connection);
+
+			expect(requestMock).toHaveBeenCalledWith(context, 'POST', '/otel/test-trace', connection);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('returns the failure result from the response', async () => {
+			requestMock.mockResolvedValueOnce({ success: false, error: '401 Unauthorized' });
+
+			const result = await sendOtelTestTrace(context, connection);
+
+			expect(result).toEqual({ success: false, error: '401 Unauthorized' });
 		});
 	});
 });

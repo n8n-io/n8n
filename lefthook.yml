@@ -32,6 +32,18 @@ pre-commit:
       skip:
         - merge
         - rebase
+    skill_links_check:
+      glob: '.agents/skills/**'
+      run: node scripts/sync-agent-skill-links.mjs --check
+      skip:
+        - merge
+        - rebase
+    skill_links_check_plugin:
+      glob: '.claude/plugins/n8n/skills/**'
+      run: node scripts/sync-agent-skill-links.mjs --check
+      skip:
+        - merge
+        - rebase
     migration_timestamp_check:
       glob: 'packages/@n8n/db/src/migrations/{common,postgresdb,sqlite}/*.ts'
       run: |

@@ -793,7 +793,7 @@ export async function formWebhook(
 		return { noWebhookResponse: true };
 	}
 
-	const authentication = (context.getNodeParameter(authProperty) as string) ?? 'none';
+	const authentication = context.getNodeParameter(authProperty, 'none') as string;
 	let authedUser: IUser | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
@@ -930,6 +930,8 @@ export async function formWebhook(
 }
 
 export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+	if (!rawData) return rawData;
+
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 
