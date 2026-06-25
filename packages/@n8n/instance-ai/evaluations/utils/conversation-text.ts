@@ -75,6 +75,16 @@ export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
 }
 
+/** The most recent turn's agent narration — a finalText fallback for seeded
+ *  conversations whose live turn produced no text-delta events. */
+export function lastAgentText(transcript: TranscriptTurn[]): string {
+	for (let i = transcript.length - 1; i >= 0; i--) {
+		const text = agentTextOf(transcript[i]);
+		if (text.length > 0) return text;
+	}
+	return '';
+}
+
 /** Tool id the builder calls to create or modify the workflow graph. */
 export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
 

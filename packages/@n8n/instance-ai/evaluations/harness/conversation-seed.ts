@@ -219,11 +219,36 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
+// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, etc.);
+// the resume block re-states the request in its input and carries the decision in its output.
+const interpretConfirmation: SeedStepInterpreter = (call) => {
+	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
+	const resumeReason = typeof reasonRaw === 'string' ? reasonRaw : undefined;
+	if (!resumeReason || resumeReason === 'questions' || Array.isArray(call.input?.setupRequests)) {
+		return null;
+	}
+	const toolNameRaw = call.input?.toolName;
+	const messageRaw = call.input?.message;
+	const approvedRaw = call.output?.approved;
+	const feedbackRaw = call.output?.feedback;
+	return {
+		kind: 'confirmation',
+		toolName: typeof toolNameRaw === 'string' ? toolNameRaw : call.toolName,
+		resumeReason,
+		approved: typeof approvedRaw === 'boolean' ? approvedRaw : undefined,
+		// Plan-review prompts are boilerplate; the plan renders separately.
+		message:
+			resumeReason === 'plan-review' || typeof messageRaw !== 'string' ? undefined : messageRaw,
+		feedback: typeof feedbackRaw === 'string' ? feedbackRaw : undefined,
+	};
+};
+
 const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretAskUser,
 	interpretPlan,
 	interpretSetupWizard,
 	interpretSetupCard,
+	interpretConfirmation,
 ];
 
 /** Map a seeded tool-call block to a transcript step (special interpreters above,
