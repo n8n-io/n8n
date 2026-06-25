@@ -2192,11 +2192,11 @@ describe('SlackV2', () => {
 
 	describe('Message Operations - Schedule', () => {
 		beforeEach(() => {
-			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
-			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
 				text: 'Scheduled hello',
 			});
-			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
 		});
 
 		it('should schedule a message to a channel with post_at as unix seconds', async () => {
