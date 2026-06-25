@@ -2,14 +2,15 @@ import type { INodeProperties } from 'n8n-workflow';
 
 /**
  * App-only target selector. Service Principal (app-only) Microsoft Graph has no
- * `/me`, so the user must say which user / drive / site the node should act on.
- * These are STATIC `INodeProperties` only — the runtime resolution lives in
+ * `/me`, so the user must say which user or drive the node should act on. These are
+ * STATIC `INodeProperties` only — the runtime resolution lives in
  * `resolveDriveScopeRoot` in `GenericFunctions.ts`. Defined once here and spread
  * into both the node and the trigger so the two stay in lockstep.
  *
  * Each property is shown (and required) only when the Service Principal credential
  * is selected. The RLCs use ID mode only (no `searchListMethod`) so rendering needs
- * no Directory.Read.All / Sites.Read.All — the user pastes the id.
+ * no Directory.Read.All — the user pastes the id. (SharePoint site/library app-only
+ * access lives in the Microsoft SharePoint node.)
  */
 export const resourceTargetParam: INodeProperties = {
 	displayName: 'Access As',
@@ -26,11 +27,6 @@ export const resourceTargetParam: INodeProperties = {
 			name: 'Drive',
 			value: 'drive',
 			description: 'Act on a specific drive (by drive ID)',
-		},
-		{
-			name: 'Site',
-			value: 'site',
-			description: "Act on a SharePoint site's document library (by site ID)",
 		},
 	],
 	default: 'user',
@@ -90,34 +86,9 @@ export const driveTargetRLC: INodeProperties = {
 	},
 };
 
-export const siteTargetRLC: INodeProperties = {
-	displayName: 'Site',
-	name: 'siteTarget',
-	type: 'resourceLocator',
-	default: { mode: 'id', value: '' },
-	required: true,
-	modes: [
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: 'e.g. contoso.sharepoint.com,<siteCollectionGuid>,<webGuid>',
-			hint: 'The composite site ID in the form host,siteCollectionGuid,webGuid',
-		},
-	],
-	description: 'The SharePoint site whose document library the Service Principal should act on',
-	displayOptions: {
-		show: {
-			authentication: ['microsoftEntraServicePrincipalApi'],
-			resourceTarget: ['site'],
-		},
-	},
-};
-
 /** The full set of app-only target params, spread into both node + trigger. */
 export const targetDescription: INodeProperties[] = [
 	resourceTargetParam,
 	userTargetRLC,
 	driveTargetRLC,
-	siteTargetRLC,
 ];

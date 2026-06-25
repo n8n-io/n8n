@@ -77,21 +77,14 @@ export function getOneDriveCredentialType(
 }
 
 // App-only Microsoft Graph has no `/me`, so the drive is addressed under an
-// explicit user / drive / site root. The accepted shapes are deliberately narrow
-// and the id shape is validated BEFORE encoding — `encodeURIComponent` leaves `..`
-// intact, so shape validation (not encoding) is what keeps a value safe to
-// interpolate into a Graph URL path. Validation messages are static, so the id is
-// never echoed back.
+// explicit user or drive root. The accepted shapes are deliberately narrow and the
+// id shape is validated BEFORE encoding — `encodeURIComponent` leaves `..` intact,
+// so shape validation (not encoding) is what keeps a value safe to interpolate into
+// a Graph URL path. Validation messages are static, so the id is never echoed back.
 const USER_TARGET_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 const USER_TARGET_UPN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
 const USER_TARGET_HOST = /^[A-Za-z0-9.-]+$/;
 const DRIVE_TARGET_ID = /^[A-Za-z0-9!._-]+$/;
-// Site id = comma-composite form only (`host,siteGuid,webGuid`): exactly three
-// comma-separated parts, no `/`, `\`, `:`, or whitespace. The host part requires at
-// least one alphanumeric character (a real SharePoint host), so a bare-dots host
-// like `..` or `.` is rejected; with no slash accepted, no dot-segment can form.
-const SITE_TARGET_COMPOSITE =
-	/^(?=[A-Za-z0-9.-]*[A-Za-z0-9])[A-Za-z0-9.-]+,[0-9a-fA-F-]+,[0-9a-fA-F-]+$/;
 
 /**
  * Validates an app-only `resourceTargetId` for a given target before it is encoded
@@ -105,7 +98,7 @@ export function validateResourceTargetId(target: string, id: string, node: INode
 	if (id === '') {
 		throw new NodeOperationError(node, 'A target ID is required for the Service Principal', {
 			description:
-				'Set the User, Drive, or Site ID under "Access As" — app-only Microsoft Graph has no personal drive to default to.',
+				'Set the User or Drive ID under "Access As" — app-only Microsoft Graph has no personal drive to default to.',
 		});
 	}
 	if (/^\.+$/.test(id)) {
@@ -117,29 +110,23 @@ export function validateResourceTargetId(target: string, id: string, node: INode
 	let valid = false;
 	if (target === 'drive') {
 		valid = DRIVE_TARGET_ID.test(id);
-	} else if (target === 'site') {
-		valid = SITE_TARGET_COMPOSITE.test(id);
 	} else {
 		// user (and any unknown target falls back to the user shape)
 		valid = USER_TARGET_GUID.test(id) || USER_TARGET_UPN.test(id) || USER_TARGET_HOST.test(id);
 	}
 
 	if (!valid) {
-		const description =
-			target === 'site'
-				? 'Use the composite site ID form "host,siteCollectionGuid,webGuid".'
-				: 'Remove any slashes, backslashes, colons, commas, or spaces and try again.';
-		throw new NodeOperationError(node, 'The target ID is not valid', { description });
+		throw new NodeOperationError(node, 'The target ID is not valid', {
+			description: 'Remove any slashes, backslashes, colons, commas, or spaces and try again.',
+		});
 	}
 }
 
 /**
  * Builds the `/drive`-free Graph resource root for an app-only request from the
  * chosen target and its id. Reusable kernel (ENT-92+ lifts this) — it deliberately
- * contains NO `/drive` and does its own per-target encoding: user/drive ids are
- * `encodeURIComponent`d; a site id is reassembled from its validated parts with
- * literal commas (Graph's site addressing requires unencoded commas). The id shape
- * is validated BEFORE encoding so a malformed id throws (and is not echoed back).
+ * contains NO `/drive` and `encodeURIComponent`s the id. The id shape is validated
+ * BEFORE encoding so a malformed id throws (and is not echoed back).
  */
 export function getServicePrincipalResourceRoot(
 	target: string,
@@ -151,11 +138,6 @@ export function getServicePrincipalResourceRoot(
 	switch (target) {
 		case 'drive':
 			return `/drives/${encodeURIComponent(id)}`;
-		case 'site': {
-			// Already validated to exactly three parts; reassemble with literal commas.
-			const [host, siteGuid, webGuid] = id.split(',');
-			return `/sites/${host},${siteGuid},${webGuid}`;
-		}
 		case 'user':
 		default:
 			return `/users/${encodeURIComponent(id)}`;
@@ -164,8 +146,8 @@ export function getServicePrincipalResourceRoot(
 
 /**
  * Composes the drive endpoint from a `/drive`-free entity root. `/drives/{id}` is
- * already a drive, so it is used as-is; a user or site addresses its default drive
- * via the `/drive` navigation property. Keeping this out of
+ * already a drive, so it is used as-is; a `/users/{id}` root addresses its default
+ * drive via the `/drive` navigation property. Keeping this out of
  * `getServicePrincipalResourceRoot` lets that kernel stay `/drive`-free and liftable.
  */
 export function driveEndpoint(root: string): string {
@@ -248,7 +230,7 @@ export async function microsoftApiRequest(
 			throw new OperationalError('microsoftApiRequest: a scoped resource must start with "/drive"');
 		}
 		// `driveEndpoint` already lands on the drive (`/drives/{id}` as-is, or
-		// `/users|sites/{id}/drive`), so drop the leading `/drive` from `resource`.
+		// `/users/{id}/drive`), so drop the leading `/drive` from `resource`.
 		uriToUse = `${baseUrl}/v1.0${driveEndpoint(driveScopeRoot)}${resource.slice('/drive'.length)}`;
 	}
 

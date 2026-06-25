@@ -86,7 +86,7 @@ export class MicrosoftOneDrive implements INodeType {
 						name: 'Microsoft Entra Service Principal (App-Only)',
 						value: 'microsoftEntraServicePrincipalApi',
 						description:
-							'App-only access via a Microsoft Entra app registration. Choose which user, drive, or site to act on under "Access As".',
+							'App-only access via a Microsoft Entra app registration. Choose which user or drive to act on under "Access As".',
 					},
 				],
 				default: 'microsoftOneDriveOAuth2Api',
@@ -125,8 +125,8 @@ export class MicrosoftOneDrive implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		// The target (user/drive/site) is per-node, not per-item, so resolve the
-		// app-only scope root once before the loop. `undefined` for OAuth2 (uses /me).
+		// The target (user/drive) is per-node, not per-item, so resolve the app-only
+		// scope root once before the loop. `undefined` for OAuth2 (uses /me).
 		const credentialType = getOneDriveCredentialType.call(this);
 		const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
 		const driveScopeRoot = resolveDriveScopeRoot.call(this, false);
@@ -150,7 +150,7 @@ export class MicrosoftOneDrive implements INodeType {
 					extractValue: true,
 				}) as string;
 			}
-			// SP + user/site: resolve the default drive once and cache it.
+			// SP + user: resolve the default drive once and cache it.
 			if (resolvedDestinationDriveId === undefined) {
 				const drive = (await microsoftApiRequest.call(
 					this,

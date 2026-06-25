@@ -477,20 +477,6 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			);
 		});
 
-		it('builds a /sites/{host},{g},{g} root with literal (unencoded) commas', () => {
-			const id =
-				'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222';
-			const root = getServicePrincipalResourceRoot('site', id, mockNode);
-			expect(root).toBe(
-				'/sites/contoso.sharepoint.com,11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222',
-			);
-			// commas must stay literal, never percent-encoded
-			expect(root).not.toContain('%2C');
-			// the assembled URL path must not collapse via dot-segments (no traversal)
-			const pathname = new URL(`https://graph.microsoft.com/v1.0${root}/drive`).pathname;
-			expect(pathname).toBe(`/v1.0${root}/drive`);
-		});
-
 		it('encodes a user UPN exactly once (@ becomes %40, encoded a single time)', () => {
 			// A space-bearing UPN is rejected by validation (see validateResourceTargetId),
 			// so the encoding-once property is proven with the `@` separator instead.
@@ -534,14 +520,10 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		it('appends /drive to a user root (default-drive navigation property)', () => {
 			expect(driveEndpoint('/users/jane%40contoso.com')).toBe('/users/jane%40contoso.com/drive');
 		});
-
-		it('appends /drive to a site root', () => {
-			expect(driveEndpoint('/sites/host,1111,2222')).toBe('/sites/host,1111,2222/drive');
-		});
 	});
 
 	describe('validateResourceTargetId', () => {
-		it.each(['user', 'drive', 'site'])(
+		it.each(['user', 'drive'])(
 			'rejects empty / whitespace / dots-only for %s (common reject runs first)',
 			(target) => {
 				expect(() => validateResourceTargetId(target, '', mockNode)).toThrow();
@@ -552,7 +534,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			},
 		);
 
-		it.each(['user', 'drive', 'site'])('rejects path separators / traversal for %s', (target) => {
+		it.each(['user', 'drive'])('rejects path separators / traversal for %s', (target) => {
 			expect(() => validateResourceTargetId(target, 'a/b', mockNode)).toThrow();
 			expect(() => validateResourceTargetId(target, 'a\\b', mockNode)).toThrow();
 			expect(() => validateResourceTargetId(target, '../..', mockNode)).toThrow();
@@ -578,33 +560,6 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		it('accepts a drive id containing "!"', () => {
 			expect(() => validateResourceTargetId('drive', 'b!abc-123_XYZ', mockNode)).not.toThrow();
 		});
-
-		it('accepts the composite site id form host,guid,guid', () => {
-			expect(() =>
-				validateResourceTargetId(
-					'site',
-					'contoso.sharepoint.com,11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222',
-					mockNode,
-				),
-			).not.toThrow();
-		});
-
-		it.each([
-			['host,..,22222222-2222-2222-2222-222222222222', 'comma part is a dot-segment'],
-			['host:/sites/../x', 'colon + slash path form'],
-			['host,g,g,extra', 'too many comma parts'],
-			[':/sites/x', 'colon-rooted path'],
-			['contoso.sharepoint.com,11111111-1111-1111-1111-111111111111', 'too few comma parts'],
-		])('rejects malformed site id %s (%s)', (id) => {
-			expect(() => validateResourceTargetId('site', id, mockNode)).toThrow();
-		});
-
-		it.each(['..,2222,3333', '.,2222,3333'])(
-			'rejects a bare-dots host part %s — the no-slash invariant keeps it inert',
-			(id) => {
-				expect(() => validateResourceTargetId('site', id, mockNode)).toThrow();
-			},
-		);
 
 		it('throws a static message that never echoes the rejected id', () => {
 			let caught: Error | undefined;
@@ -678,27 +633,6 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			);
 			const calledUri = mockRequestWithAuthentication.mock.calls[0][1].uri as string;
 			expect(calledUri).not.toContain('/drives/b!abc/drive');
-		});
-
-		it('roots a site request as /sites/{host},{g},{g}/drive/items/x', async () => {
-			await microsoftApiRequest.call(
-				mockExecuteFunctions,
-				'GET',
-				'/drive/items/x',
-				{},
-				{},
-				undefined,
-				{},
-				{ json: true },
-				'/sites/host,1111,2222',
-			);
-
-			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
-				'microsoftEntraServicePrincipalApi',
-				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/sites/host,1111,2222/drive/items/x',
-				}),
-			);
 		});
 
 		it('preserves the :/path:/ upload shape under a user root (no double /drive)', async () => {

@@ -162,7 +162,7 @@ export const folderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Identifier of the destination drive. Required for app-only (Service Principal) moves to a user or site; leave empty to move within the same drive.',
+					'Identifier of the destination drive. Required for app-only (Service Principal) moves to another user drive; leave empty to move within the same drive.',
 			},
 		],
 	},

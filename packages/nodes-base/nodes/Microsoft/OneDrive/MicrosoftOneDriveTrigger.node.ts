@@ -84,7 +84,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 						name: 'Microsoft Entra Service Principal (App-Only)',
 						value: 'microsoftEntraServicePrincipalApi',
 						description:
-							'App-only access via a Microsoft Entra app registration. Choose which user, drive, or site to watch under "Access As".',
+							'App-only access via a Microsoft Entra app registration. Choose which user or drive to watch under "Access As".',
 					},
 				],
 				default: 'microsoftOneDriveOAuth2Api',
@@ -110,7 +110,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		).replace(/\/+$/, '');
 
 		// App-only Graph has no `/me`, so the delta feed is rooted at the chosen
-		// user/drive/site drive. `undefined` for OAuth2 → fall back to `/me/drive`.
+		// user/drive. `undefined` for OAuth2 → fall back to `/me/drive`.
 		const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
 		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ? driveEndpoint(driveScopeRoot) : '/me/drive'}/root/delta`;
 
