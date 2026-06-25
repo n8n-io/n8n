@@ -5844,6 +5844,10 @@ importers:
       undici:
         specifier: catalog:undici-v7
         version: 7.28.0
+    devDependencies:
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
 
   packages/testing/janitor:
     dependencies:
