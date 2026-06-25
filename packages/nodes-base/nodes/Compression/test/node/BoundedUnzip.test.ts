@@ -188,6 +188,17 @@ describe('boundedUnzip', () => {
 		expect(result['file.txt'].length).toBe(realSize);
 	});
 
+	it('should reject a ZIP64 entry whose resolved size exceeds the limit', async () => {
+		// The size resolved from the ZIP64 extra field (not the 0xFFFFFFFF
+		// sentinel) is what the bound is enforced against.
+		const realSize = 2 * 1024;
+		const compressed = createZip64Archive(realSize);
+
+		await expect(boundedUnzip(compressed, 1024, 100)).rejects.toThrow(
+			'The decompressed output exceeds the maximum allowed size of 0 MB',
+		);
+	});
+
 	it('should reject truncated zip archives', async () => {
 		const compressed = createZipData({ 'file.txt': 256 });
 		const truncated = compressed.subarray(0, compressed.length - 10);
