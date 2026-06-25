@@ -190,6 +190,44 @@ describe('getConnection', () => {
 		expect(abortController.signal.aborted).toBe(true);
 	});
 
+	test('postpones stale cleanup while pool is not idle', async () => {
+		// ARRANGE
+		const connectionType = {};
+		let isPoolBusy = true;
+		let abortController: AbortController | undefined;
+		const fallBackHandler = jest.fn(async (ac: AbortController) => {
+			abortController = ac;
+			return connectionType;
+		});
+		const isIdle = jest.fn(() => !isPoolBusy);
+
+		await cpm.getConnection({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			fallBackHandler,
+			isIdle,
+			wasUsed: jest.fn(),
+		});
+
+		// ACT 1
+		jest.advanceTimersByTime(ttl + cleanUpInterval * 2);
+
+		// ASSERT 1
+		if (abortController === undefined) {
+			fail("abortController haven't been initialized");
+		}
+		expect(isIdle).toHaveBeenCalledWith(connectionType);
+		expect(abortController.signal.aborted).toBe(false);
+
+		// ACT 2
+		isPoolBusy = false;
+		jest.advanceTimersByTime(ttl + cleanUpInterval * 2);
+
+		// ASSERT 2
+		expect(abortController.signal.aborted).toBe(true);
+	});
+
 	test('throws OperationsError if the fallBackHandler aborts during connection initialization', async () => {
 		// ARRANGE
 		const connectionType = {};
