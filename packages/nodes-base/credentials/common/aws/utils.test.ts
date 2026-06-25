@@ -1,5 +1,6 @@
 import { OperationalError, UserError } from 'n8n-workflow';
-import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType, AWSRegion } from './types';
+import type { AWSRegion } from './regions';
+import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType } from './types';
 
 // `assumeRole` now sends via @n8n/backend-network/transport's asCustomFetch(),
 // not the global fetch, so we mock the transport and assert on its fetch.
@@ -519,6 +520,47 @@ describe('assumeRole', () => {
 
 			expect(mockFetch).toHaveBeenCalledWith(
 				'https://sts.cn-north-1.amazonaws.com.cn',
+				expect.any(Object),
+			);
+		});
+
+		it('should use correct endpoint for GovCloud regions', async () => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-gov-west-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: false,
+				roleArn: 'arn:aws-us-gov:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
+			};
+
+			const mockResponse = {
+				ok: true,
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+			};
+
+			mockFetch.mockResolvedValue(mockResponse as any);
+
+			mockParseString.mockImplementation((_xml, _options, callback) => {
+				callback(null, {
+					AssumeRoleResponse: {
+						AssumeRoleResult: {
+							Credentials: {
+								AccessKeyId: 'assumed-access-key',
+								SecretAccessKey: 'assumed-secret-key',
+								SessionToken: 'assumed-session-token',
+							},
+						},
+					},
+				});
+			});
+
+			await assumeRole(credentials, 'us-gov-west-1');
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				'https://sts.us-gov-west-1.amazonaws.com',
 				expect.any(Object),
 			);
 		});

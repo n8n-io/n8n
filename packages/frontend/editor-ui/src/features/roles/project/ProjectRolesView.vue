@@ -12,13 +12,14 @@ import type { Role } from '@n8n/permissions';
 import { onMounted, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 import RolesTable from '../components/RolesTable.vue';
+import { useRolesListActions } from '../composables/useRolesListActions';
 
 const props = defineProps<{
 	/** When rendered inside the tabbed Roles shell, the shell owns the page heading. */
 	embedded?: boolean;
 }>();
 
-const { showError, showMessage } = useToast();
+const { showError } = useToast();
 
 const rolesStore = useRolesStore();
 const router = useRouter();
@@ -47,153 +48,48 @@ function projectAssignmentsRoute(item: Role) {
 	};
 }
 
-async function deleteRole(item: Role) {
-	// When role is in use, show "Go to assignments" dialog instead of delete confirmation
-	if (item.usedByProjects && item.usedByProjects > 0) {
-		const inUseText =
-			[
-				i18n.baseText('projectRoles.action.delete.useWarning.before'),
-				i18n.baseText('projectRoles.action.delete.useWarning.linkText', {
-					adjustToNumber: item.usedByProjects,
-					interpolate: { count: item.usedByProjects },
-				}),
-			].join(' ') +
-			'. ' +
-			i18n.baseText('projectRoles.action.delete.useWarning.after');
+async function onBeforeDelete(item: Role): Promise<boolean> {
+	// When role is in use, show "Go to assignments" dialog instead of delete confirmation.
+	if (!item.usedByProjects || item.usedByProjects === 0) return true;
 
-		const goToAssignments = await message.confirm(
-			inUseText,
-			i18n.baseText('projectRoles.action.delete.inUse.title', {
-				interpolate: {
-					roleName: item.displayName,
-				},
+	const inUseText =
+		[
+			i18n.baseText('projectRoles.action.delete.useWarning.before'),
+			i18n.baseText('projectRoles.action.delete.useWarning.linkText', {
+				adjustToNumber: item.usedByProjects,
+				interpolate: { count: item.usedByProjects },
 			}),
-			{
-				type: 'warning',
-				confirmButtonText: i18n.baseText('projectRoles.action.delete.inUse.goToAssignments'),
-				cancelButtonText: i18n.baseText('roles.action.cancel'),
-			},
-		);
+		].join(' ') +
+		'. ' +
+		i18n.baseText('projectRoles.action.delete.useWarning.after');
 
-		if (goToAssignments === MODAL_CONFIRM) {
-			void router.push({
-				name: item.systemRole ? VIEWS.PROJECT_ROLE_VIEW : VIEWS.PROJECT_ROLE_SETTINGS,
-				params: { roleSlug: item.slug },
-				query: { tab: 'assignments' },
-			});
-		}
-		return;
-	}
-
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('roles.action.delete.text', {
-			interpolate: {
-				roleName: item.displayName,
-			},
-		}),
-		i18n.baseText('roles.action.delete.title', {
-			interpolate: {
-				roleName: item.displayName,
-			},
+	const goToAssignments = await message.confirm(
+		inUseText,
+		i18n.baseText('projectRoles.action.delete.inUse.title', {
+			interpolate: { roleName: item.displayName },
 		}),
 		{
 			type: 'warning',
-			confirmButtonText: i18n.baseText('roles.action.delete'),
+			confirmButtonText: i18n.baseText('projectRoles.action.delete.inUse.goToAssignments'),
 			cancelButtonText: i18n.baseText('roles.action.cancel'),
 		},
 	);
 
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
+	if (goToAssignments === MODAL_CONFIRM) {
+		void router.push({
+			name: item.systemRole ? VIEWS.PROJECT_ROLE_VIEW : VIEWS.PROJECT_ROLE_SETTINGS,
+			params: { roleSlug: item.slug },
+			query: { tab: 'assignments' },
+		});
 	}
-
-	try {
-		await rolesStore.deleteRole(item.slug);
-
-		const index = rolesStore.roles.project.findIndex((role) => role.slug === item.slug);
-		if (index !== -1) {
-			rolesStore.roles.project.splice(index, 1);
-		}
-
-		showMessage({ title: i18n.baseText('roles.action.delete.success'), type: 'success' });
-	} catch (error) {
-		showError(error, i18n.baseText('roles.action.delete.error'));
-		return;
-	}
+	return false;
 }
 
-async function duplicateRole(item: Role) {
-	try {
-		const displayName = i18n.baseText('roles.action.duplicate.name', {
-			interpolate: {
-				roleName: item.displayName,
-			},
-		});
-		const role = await rolesStore.createRole({
-			displayName,
-			description: item.description ?? undefined,
-			roleType: 'project',
-			scopes: item.scopes,
-		});
-
-		// optimistic update
-		rolesStore.roles.project.push(role);
-		void rolesStore.fetchRoles();
-
-		telemetry.track('User duplicated role', {
-			role_id: item.slug,
-			role_name: item.displayName,
-			permissions: item.scopes,
-		});
-
-		showMessage({
-			type: 'success',
-			message: i18n.baseText('roles.action.duplicate.success', {
-				interpolate: {
-					roleName: item.displayName,
-					roleDuplicateName: displayName,
-				},
-			}),
-		});
-
-		return role;
-	} catch (error) {
-		showError(error, i18n.baseText('roles.action.duplicate.error'));
-		return;
-	}
-}
-
-const actions = {
-	duplicate: duplicateRole,
-	delete: deleteRole,
-} as const;
-
-function rowActions(
-	_item: Role,
-): Array<{ label: string; value: keyof typeof actions; disabled?: boolean }> {
-	return [
-		{
-			label: i18n.baseText('roles.action.duplicate'),
-			value: 'duplicate',
-		},
-		{
-			label: i18n.baseText('roles.action.delete'),
-			value: 'delete',
-		},
-	];
-}
-
-function handleAction(action: string, item: Role) {
-	void actions[action as keyof typeof actions](item);
-}
-
-function handleRowClick(item: Role) {
-	// System roles → view route, custom roles → edit route
-	void router.push({
-		name: item.systemRole ? VIEWS.PROJECT_ROLE_VIEW : VIEWS.PROJECT_ROLE_SETTINGS,
-		params: { roleSlug: item.slug },
-	});
-}
+const { rowActions, handleAction, handleRowClick } = useRolesListActions({
+	roleType: 'project',
+	views: { viewRoute: VIEWS.PROJECT_ROLE_VIEW, editRoute: VIEWS.PROJECT_ROLE_SETTINGS },
+	onBeforeDelete,
+});
 
 function addRole() {
 	telemetry.track('User clicked add role');
