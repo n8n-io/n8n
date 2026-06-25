@@ -14,10 +14,7 @@ describe('OAuth2MetadataHttpClient', () => {
 	const request = jest.fn();
 	const outboundHttp = mock<OutboundHttp>();
 
-	const buildClient = (
-		isActive: boolean,
-		ssrfService = mock<SsrfProtectionService>(),
-	) => {
+	const buildClient = (isActive: boolean, ssrfService = mock<SsrfProtectionService>()) => {
 		ssrfService.isActive.mockReturnValue(isActive);
 		return new OAuth2MetadataHttpClient(logger, cache, outboundHttp, ssrfService);
 	};
