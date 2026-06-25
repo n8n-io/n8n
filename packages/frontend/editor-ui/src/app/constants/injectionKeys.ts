@@ -52,10 +52,13 @@ export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'instanceAi'
  * (mirrors the old iframe `suppressNotifications` / `allowErrorNotifications`
  * knobs, but scoped per editor instead of via the shared UI store). Hosts that
  * surface results in their own UI — e.g. the Instance AI preview — set them.
+ * `expandGroups` is a direct state flag — `true` shows every canvas group
+ * expanded and leaves the editor's persisted view state untouched
  * Provided by editor hosts that supersede capabilities.
  */
 export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	readOnly?: boolean;
+	expandGroups?: boolean;
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
 };

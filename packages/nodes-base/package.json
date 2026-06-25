@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.27.0",
+  "version": "2.28.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -138,6 +138,7 @@
       "dist/credentials/GhostAdminApi.credentials.js",
       "dist/credentials/GhostContentApi.credentials.js",
       "dist/credentials/GithubApi.credentials.js",
+      "dist/credentials/GithubAppApi.credentials.js",
       "dist/credentials/GithubOAuth2Api.credentials.js",
       "dist/credentials/GitlabApi.credentials.js",
       "dist/credentials/GitlabOAuth2Api.credentials.js",
@@ -246,6 +247,7 @@
       "dist/credentials/MicrosoftAzureMonitorOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftDynamicsOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftEntraOAuth2Api.credentials.js",
+      "dist/credentials/MicrosoftEntraServicePrincipalApi.credentials.js",
       "dist/credentials/MicrosoftExcelOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftGraphSecurityOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftOAuth2Api.credentials.js",
@@ -907,7 +909,6 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-sso-oidc": "3.808.0",
     "@n8n/backend-network": "workspace:*",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "catalog:",
@@ -977,6 +978,7 @@
     "simple-git": "catalog:",
     "snowflake-sdk": "2.1.0",
     "ssh2-sftp-client": "12.1.0",
+    "tar": "catalog:",
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
     "undici": "catalog:undici-v6",

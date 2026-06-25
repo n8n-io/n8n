@@ -1,5 +1,7 @@
 import { OAuthHelpers } from '../oauth.helpers';
 
+const issuer = 'https://n8n.example.com';
+
 describe('OAuthHelpers', () => {
 	describe('buildSuccessRedirectUrl', () => {
 		it('should build redirect URL with authorization code', () => {
@@ -7,9 +9,11 @@ describe('OAuthHelpers', () => {
 			const code = 'auth-code-123';
 			const state = null;
 
-			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state, issuer);
 
-			expect(result).toBe('https://example.com/callback?code=auth-code-123');
+			expect(result).toBe(
+				'https://example.com/callback?code=auth-code-123&iss=https%3A%2F%2Fn8n.example.com',
+			);
 		});
 
 		it('should include state parameter when provided', () => {
@@ -17,9 +21,11 @@ describe('OAuthHelpers', () => {
 			const code = 'auth-code-123';
 			const state = 'state-xyz';
 
-			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state, issuer);
 
-			expect(result).toBe('https://example.com/callback?code=auth-code-123&state=state-xyz');
+			expect(result).toBe(
+				'https://example.com/callback?code=auth-code-123&state=state-xyz&iss=https%3A%2F%2Fn8n.example.com',
+			);
 		});
 
 		it('should preserve existing query parameters', () => {
@@ -27,7 +33,7 @@ describe('OAuthHelpers', () => {
 			const code = 'auth-code-123';
 			const state = 'state-xyz';
 
-			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state, issuer);
 
 			expect(result).toContain('foo=bar');
 			expect(result).toContain('code=auth-code-123');
@@ -39,9 +45,11 @@ describe('OAuthHelpers', () => {
 			const code = 'auth-code-123';
 			const state = null;
 
-			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state, issuer);
 
-			expect(result).toBe('http://localhost:3000/callback?code=auth-code-123');
+			expect(result).toBe(
+				'http://localhost:3000/callback?code=auth-code-123&iss=https%3A%2F%2Fn8n.example.com',
+			);
 		});
 
 		it('should URL-encode special characters in code', () => {
@@ -49,9 +57,20 @@ describe('OAuthHelpers', () => {
 			const code = 'code+with/special=chars';
 			const state = null;
 
-			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state, issuer);
 
 			expect(result).toContain('code=code%2Bwith%2Fspecial%3Dchars');
+		});
+
+		it('should include the RFC 9207 iss parameter set to the issuer', () => {
+			const result = OAuthHelpers.buildSuccessRedirectUrl(
+				'https://example.com/callback',
+				'auth-code-123',
+				null,
+				issuer,
+			);
+
+			expect(new URL(result).searchParams.get('iss')).toBe(issuer);
 		});
 	});
 
@@ -67,6 +86,7 @@ describe('OAuthHelpers', () => {
 				error,
 				errorDescription,
 				state,
+				issuer,
 			);
 
 			expect(result).toContain('error=access_denied');
@@ -84,6 +104,7 @@ describe('OAuthHelpers', () => {
 				error,
 				errorDescription,
 				state,
+				issuer,
 			);
 
 			expect(result).toContain('error=invalid_request');
@@ -101,6 +122,7 @@ describe('OAuthHelpers', () => {
 				error,
 				errorDescription,
 				state,
+				issuer,
 			);
 
 			expect(result).toContain('foo=bar');
@@ -124,6 +146,7 @@ describe('OAuthHelpers', () => {
 					error,
 					description,
 					null,
+					issuer,
 				);
 
 				expect(result).toContain(`error=${error}`);
@@ -142,10 +165,23 @@ describe('OAuthHelpers', () => {
 				error,
 				errorDescription,
 				state,
+				issuer,
 			);
 
 			expect(result).toContain('error_description=');
 			expect(result).not.toContain('"'); // Should be encoded
+		});
+
+		it('should include the RFC 9207 iss parameter set to the issuer', () => {
+			const result = OAuthHelpers.buildErrorRedirectUrl(
+				'https://example.com/callback',
+				'access_denied',
+				'User denied the authorization request',
+				null,
+				issuer,
+			);
+
+			expect(new URL(result).searchParams.get('iss')).toBe(issuer);
 		});
 	});
 });

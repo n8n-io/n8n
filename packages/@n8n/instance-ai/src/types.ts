@@ -7,6 +7,7 @@ import type {
 	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
@@ -762,6 +763,13 @@ export interface InstanceAiContext {
 	allowedRunWorkflowNames?: ReadonlySet<string>;
 	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
 	requireRunWorkflowApproval?: boolean;
+	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
+	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
+	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
+	sessionApprovedToolKeys?: ReadonlySet<string>;
+	/** Persist a thread-level "always allow" grant for the given key. Invoked by a tool when it
+	 *  resumes from a `scope: 'session'` approval. No-op in contexts without persistence. */
+	grantSessionToolApproval?: (key: string) => Promise<void>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -1321,15 +1329,6 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
-	/**
-	 * Persist the current user message to thread memory immediately, so it
-	 * survives a restart that happens while the orchestrator is suspended on
-	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
-	 * loop completion, which a suspended run never reaches — without this the
-	 * user's bubble is invisible on reload until the turn eventually completes.
-	 * Idempotent: safe to call multiple times within a run.
-	 */
-	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */
@@ -1365,4 +1364,7 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
+	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
+	thinkingEnabled?: boolean;
+	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
