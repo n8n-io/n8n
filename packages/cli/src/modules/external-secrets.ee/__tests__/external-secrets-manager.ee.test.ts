@@ -856,6 +856,11 @@ describe('ExternalSecretsManager', () => {
 
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: null, settings: {} });
+			const disabledProvider = new DummyProvider();
+			await disabledProvider.init({ connected: true, connectedAt: null, settings: {} });
+			mockProviderRegistry.add('vault-disabled', disabledProvider);
+			mockProviderRegistry.add.mockClear();
+
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
 				provider: dummyProvider,
@@ -900,6 +905,11 @@ describe('ExternalSecretsManager', () => {
 
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: null, settings: {} });
+			const disabledProvider = new DummyProvider();
+			await disabledProvider.init({ connected: true, connectedAt: null, settings: {} });
+			mockProviderRegistry.add('vault-disabled', disabledProvider);
+			mockProviderRegistry.add.mockClear();
+
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
 				provider: dummyProvider,
@@ -909,6 +919,8 @@ describe('ExternalSecretsManager', () => {
 
 			// Disabled providers should be removed directly
 			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('vault-disabled');
+			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(disabledProvider);
+			expect(mockProviderRegistry.remove).toHaveBeenCalledWith('vault-disabled');
 			// Only enabled should be set up
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('vault-enabled', dummyProvider);
 			expect(mockProviderRegistry.add).not.toHaveBeenCalledWith(
@@ -1089,6 +1101,81 @@ describe('ExternalSecretsManager', () => {
 			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
 			expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault', newProvider);
+		});
+
+		it('should cancel retry and remove existing provider when replacement initialization fails', async () => {
+			const mockConnection = {
+				id: 1,
+				providerKey: 'my-vault',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: jest.fn(),
+			};
+
+			const existingProvider = new DummyProvider();
+			await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
+			mockProviderRegistry.add('my-vault', existingProvider);
+			mockRetryManager.cancelRetry.mockClear();
+			mockProviderLifecycle.disconnect.mockClear();
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: false,
+				error: new Error('Init failed'),
+			});
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('my-vault');
+			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
+			expect(mockProviderRegistry.remove).toHaveBeenCalledWith('my-vault');
+			expect(mockRetryManager.runWithRetry).not.toHaveBeenCalled();
+		});
+
+		it('should register failed replacement without cancelling scheduled retry when connection fails', async () => {
+			const mockConnection = {
+				id: 1,
+				providerKey: 'my-vault',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: jest.fn(),
+			};
+
+			const existingProvider = new DummyProvider();
+			await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
+			mockProviderRegistry.add('my-vault', existingProvider);
+			mockProviderRegistry.add.mockClear();
+			mockRetryManager.cancelRetry.mockClear();
+			mockProviderLifecycle.disconnect.mockClear();
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+			const replacementProvider = new DummyProvider();
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: replacementProvider,
+			});
+			mockRetryManager.runWithRetry.mockResolvedValue({
+				success: false,
+				error: new Error('Connection failed'),
+			});
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			expect(mockRetryManager.runWithRetry).toHaveBeenCalledWith('my-vault', expect.any(Function));
+			expect(mockRetryManager.cancelRetry).not.toHaveBeenCalledWith('my-vault');
+			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault', replacementProvider);
+			expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
+			expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
 		});
 
 		it('should handle decryption errors gracefully', async () => {
