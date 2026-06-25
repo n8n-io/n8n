@@ -157,21 +157,45 @@ export class Raindrop implements INodeType {
 						const endpoint = `/raindrop/${bookmarkId}`;
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.item;
-					} else if (operation === 'getAll') {
+					} 
+					
+					
+					else if (operation === 'getAll') {
 						// ----------------------------------
 						//         bookmark: getAll
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', i);
-
 						const collectionId = this.getNodeParameter('collectionId', i);
-						const endpoint = `/raindrops/${collectionId}`;
-						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-						responseData = responseData.items;
+const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0);
-							responseData = responseData.slice(0, limit);
-						}
+const limit = this.getNodeParameter('limit', 0);
+let responseDataItems: IDataObject[] = [];
+let page = 1;
+let keepFetching = true;
+
+while (keepFetching) {
+    const endpoint = `/raindrops/${collectionId}`;
+    const qs = {
+        page,
+        perpage: 25, // max per API docs
+    };
+    const response = await raindropApiRequest.call(this, 'GET', endpoint, qs, {});
+    const items = response.items as IDataObject[];
+
+    responseDataItems.push(...items);
+
+    if (!returnAll && responseDataItems.length >= limit) {
+        responseDataItems = responseDataItems.slice(0, limit);
+        keepFetching = false;
+    }
+    else if (items.length < 25) {
+        // Last page, fewer than perpage items
+        keepFetching = false;
+    } else {
+        page++;
+    }
+}
+
+responseData = responseDataItems;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         bookmark: update
