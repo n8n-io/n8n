@@ -65,7 +65,7 @@ function isPaginationRequestType(value: string): value is 'body' | 'headers' | '
 	return value === 'body' || value === 'headers' || value === 'qs';
 }
 
-function createRequestPromise(
+async function createRequestPromise(
 	context: IExecuteFunctions,
 	requestOptions: IRequestOptions,
 	authentication: string,
@@ -170,7 +170,7 @@ function createRequestPromise(
 
 		const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
 
-		return context.helpers.requestWithAuthenticationPaginated
+		return await context.helpers.requestWithAuthenticationPaginated
 			.call(
 				context,
 				requestOptions,
@@ -195,18 +195,18 @@ function createRequestPromise(
 		if (oAuth1Api) {
 			const promise = context.helpers.requestOAuth1.call(context, 'oAuth1Api', requestOptions);
 			promise.catch(() => {});
-			return promise;
+			return await promise;
 		} else if (oAuth2Api) {
 			const promise = context.helpers.requestOAuth2.call(context, 'oAuth2Api', requestOptions, {
 				tokenType: 'Bearer',
 			});
 			promise.catch(() => {});
-			return promise;
+			return await promise;
 		} else {
 			// bearerAuth, queryAuth, headerAuth, digestAuth, none
 			const promise = context.helpers.request(requestOptions);
 			promise.catch(() => {});
-			return promise;
+			return await promise;
 		}
 	} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
 		const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
@@ -221,10 +221,10 @@ function createRequestPromise(
 			itemIndex,
 		);
 		promise.catch(() => {});
-		return promise;
+		return await promise;
 	}
 
-	return Promise.resolve();
+	return undefined;
 }
 
 export class HttpRequestV3 implements INodeType {
@@ -828,7 +828,7 @@ export class HttpRequestV3 implements INodeType {
 							}
 							const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
 							sanitizedRequests.push(sanitizedRequestOptions);
-							await this.sendMessageToUI(sanitizedRequestOptions);
+							this.sendMessageToUI(sanitizedRequestOptions);
 						} catch (e) {}
 					}
 

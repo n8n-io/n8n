@@ -710,10 +710,10 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 						type: 'boolean',
 						default: false,
 						description:
-							"Wait for each item's request to complete before sending the next one. Useful when the endpoint cannot handle concurrent identical authentication.",
+							"Whether to wait for each item's request to complete before sending the next one. Useful when the endpoint cannot handle concurrent identical authentication.",
 					},
 					{
-						displayName: 'Delay Between Items (ms)',
+						displayName: 'Delay Between Items (Ms)',
 						name: 'sequentialDelay',
 						type: 'number',
 						typeOptions: {
