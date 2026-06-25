@@ -458,7 +458,7 @@ function getNodeFilePath(
 /**
  * Get the type definition for a single node ID, optionally for a specific version and discriminators
  */
-function getNodeTypeDefinition(
+export function getNodeTypeDefinition(
 	nodeId: string,
 	version?: string,
 	nodeDefinitionDirs?: string[],

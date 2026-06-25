@@ -23,11 +23,27 @@ export type NodeFilter = (nodeId: string) => boolean;
 const isBuiltinNodeId = (nodeId: string): boolean =>
 	BUILTIN_NODES_PACKAGES.some((pkg) => nodeId.startsWith(`${pkg}.`));
 
-const nodeVersionNumbers = (description: INodeTypeDescription): number[] =>
-	Array.isArray(description.version) ? description.version : [description.version];
+const nodeVersionNumbers = (description: INodeTypeDescription): number[] => {
+	if (Array.isArray(description.version)) return description.version;
+	if (typeof description.version === 'number') return [description.version];
+	return [];
+};
 
 const maxNodeVersion = (description: INodeTypeDescription): number =>
-	Math.max(...nodeVersionNumbers(description));
+	Math.max(0, ...nodeVersionNumbers(description));
+
+const parseRequestedVersion = (version: string): number => {
+	const normalized = version.replace(/^v/i, '');
+	if (/^\d+$/.test(normalized) && normalized.length === 2) {
+		return Number(`${normalized[0]}.${normalized[1]}`);
+	}
+	return Number.parseFloat(normalized);
+};
+
+const versionLabel = (description: INodeTypeDescription): string | undefined => {
+	const version = maxNodeVersion(description);
+	return version > 0 ? String(version) : undefined;
+};
 
 export interface SearchNodesOptions {
 	/**
@@ -36,6 +52,21 @@ export interface SearchNodesOptions {
 	 * callers should use module-level function references to avoid unbounded growth.
 	 */
 	nodeFilter?: NodeFilter;
+}
+
+export interface NodeTypeDefinitionRequest {
+	nodeId: string;
+	version?: string;
+	resource?: string;
+	operation?: string;
+	mode?: string;
+}
+
+export interface NodeTypeDefinitionResult {
+	content: string;
+	version?: string;
+	error?: string;
+	builderHint?: string;
 }
 
 interface SearchState {
@@ -79,6 +110,8 @@ export class NodeCatalogService {
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
 
 	private readonly getCache = new Map<string, string>();
+
+	private readonly getDefinitionCache = new Map<string, NodeTypeDefinitionResult>();
 
 	private readonly suggestCache = new Map<string, string>();
 
@@ -173,24 +206,11 @@ export class NodeCatalogService {
 		const errors: string[] = [];
 
 		for (const id of synthesizeIds) {
-			const nodeId = typeof id === 'string' ? id : id.nodeId;
-			const requestedVersion = typeof id === 'string' ? undefined : id.version;
-			const description = this.selectDescription(nodeId, requestedVersion);
-			if (!description) {
-				errors.push(
-					`Node type '${nodeId}' not found. Use search_nodes to find the correct node ID.`,
-				);
-				continue;
-			}
-			try {
-				parts.push(synthesizeNodeTypeDef(description));
-			} catch (error) {
-				// Some nodes (e.g. expression-computed inputs/outputs) can't be
-				// expressed as an SDK type. Skip rather than failing the batch.
-				this.logger.debug('Could not synthesize node type definition', { nodeId, error });
-				errors.push(
-					`Type definition for '${nodeId}' is unavailable because the node uses a dynamic structure.`,
-				);
+			const result = await this.getNodeTypeDefinition(this.toDefinitionRequest(id));
+			if (result.error) {
+				errors.push(result.error);
+			} else {
+				parts.push(result.content);
 			}
 		}
 
@@ -205,6 +225,22 @@ export class NodeCatalogService {
 
 		const result = parts.join('\n\n');
 		this.getCache.set(cacheKey, result);
+		return result;
+	}
+
+	/** Get a structured TypeScript type definition for one node. */
+	async getNodeTypeDefinition(
+		request: NodeTypeDefinitionRequest,
+	): Promise<NodeTypeDefinitionResult> {
+		const cacheKey = JSON.stringify(request);
+		const cached = this.getDefinitionCache.get(cacheKey);
+		if (cached) return cached;
+
+		const result = isBuiltinNodeId(request.nodeId)
+			? await this.getBuiltinNodeTypeDefinition(request)
+			: this.getSynthesizedNodeTypeDefinition(request);
+
+		this.getDefinitionCache.set(cacheKey, result);
 		return result;
 	}
 
@@ -250,6 +286,7 @@ export class NodeCatalogService {
 		this.searchStates.clear();
 
 		this.getCache.clear();
+		this.getDefinitionCache.clear();
 		this.suggestCache.clear();
 
 		this.logger.debug('NodeCatalogService refreshed node types', {
@@ -269,6 +306,78 @@ export class NodeCatalogService {
 		}
 	}
 
+	private toDefinitionRequest(nodeRequest: NodeRequest): NodeTypeDefinitionRequest {
+		if (typeof nodeRequest === 'string') return { nodeId: nodeRequest };
+
+		return {
+			nodeId: nodeRequest.nodeId,
+			...(nodeRequest.version ? { version: nodeRequest.version } : {}),
+			...(nodeRequest.resource ? { resource: nodeRequest.resource } : {}),
+			...(nodeRequest.operation ? { operation: nodeRequest.operation } : {}),
+			...(nodeRequest.mode ? { mode: nodeRequest.mode } : {}),
+		};
+	}
+
+	private async getBuiltinNodeTypeDefinition(
+		request: NodeTypeDefinitionRequest,
+	): Promise<NodeTypeDefinitionResult> {
+		const { getNodeTypeDefinition } = await import('@n8n/ai-utilities/node-catalog');
+		const result = getNodeTypeDefinition(request.nodeId, request.version, this.nodeDefinitionDirs, {
+			resource: request.resource,
+			operation: request.operation,
+			mode: request.mode,
+		});
+
+		const description = this.selectDescription(request.nodeId, result.version ?? request.version);
+		const builderHint = description?.builderHint?.searchHint;
+
+		if (result.error) {
+			return {
+				content: '',
+				error: result.error,
+				...(builderHint ? { builderHint } : {}),
+			};
+		}
+
+		return {
+			content: result.content,
+			...(result.version ? { version: result.version } : {}),
+			...(builderHint ? { builderHint } : {}),
+		};
+	}
+
+	private getSynthesizedNodeTypeDefinition(
+		request: NodeTypeDefinitionRequest,
+	): NodeTypeDefinitionResult {
+		const description = this.selectDescription(request.nodeId, request.version);
+		if (!description) {
+			return {
+				content: '',
+				error: `Node type '${request.nodeId}' not found. Use search_nodes to find the correct node ID.`,
+			};
+		}
+
+		try {
+			const version = versionLabel(description);
+			return {
+				content: synthesizeNodeTypeDef(description),
+				...(version ? { version } : {}),
+				...(description.builderHint?.searchHint
+					? { builderHint: description.builderHint.searchHint }
+					: {}),
+			};
+		} catch (error) {
+			this.logger.debug('Could not synthesize node type definition', {
+				nodeId: request.nodeId,
+				error,
+			});
+			return {
+				content: '',
+				error: `Type definition for '${request.nodeId}' is unavailable because the node uses a dynamic structure.`,
+			};
+		}
+	}
+
 	/**
 	 * Pick the description to synthesize for a node. Versioned nodes have one
 	 * description per version; honour an explicitly requested version, otherwise
@@ -283,7 +392,7 @@ export class NodeCatalogService {
 		if (candidates.length === 1) return candidates[0];
 
 		if (requestedVersion !== undefined) {
-			const wanted = Number.parseFloat(requestedVersion.replace(/^v/, ''));
+			const wanted = parseRequestedVersion(requestedVersion);
 			const match = candidates.find((d) => nodeVersionNumbers(d).includes(wanted));
 			if (match) return match;
 		}
