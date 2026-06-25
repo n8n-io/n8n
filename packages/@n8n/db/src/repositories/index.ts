@@ -8,6 +8,10 @@ export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
+	EgressBlockedDestinationRepository,
+	type BlockedDestinationRecord,
+} from './egress-blocked-destination.repository';
+export {
 	DeploymentKeyRepository,
 	type DeploymentKeySortField,
 	type DeploymentKeySortDirection,

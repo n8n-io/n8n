@@ -11,6 +11,7 @@ import {
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { DeploymentKey } from './deployment-key';
+import { EgressBlockedDestination } from './egress-blocked-destination';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -68,6 +69,7 @@ export {
 	CredentialDependency,
 	type CredentialDependencyType,
 	DeploymentKey,
+	EgressBlockedDestination,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
@@ -117,6 +119,7 @@ export const entities = {
 	CredentialsEntity,
 	CredentialDependency,
 	DeploymentKey,
+	EgressBlockedDestination,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
