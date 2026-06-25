@@ -419,32 +419,58 @@ describe('TriggerExecutionContextFactory', () => {
 	});
 
 	describe('loadPublishedWorkflowData', () => {
-		test('returns IWorkflowBase with nodes and connections from the published version', async () => {
+		test('sources nodes/connections/versionId from the published version and other fields from the workflow entity', async () => {
 			const publishedNodes: INode[] = [{ id: 'n1' } as INode];
 			const publishedConnections: IConnections = {};
-			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
+			const workflow = {
+				id: 'wf-1',
+				name: 'My workflow',
+				active: true,
+				isArchived: false,
+				settings: { timezone: 'Europe/Berlin' },
+				staticData: { foo: 'bar' },
+				activeVersionId: 'published-version',
+				versionCounter: 3,
+				pinData: { Trigger: [] },
+				meta: { templateId: 'tmpl' },
+				nodeGroups: [{ id: 'g1' }],
+			} as unknown as WorkflowEntity;
 
 			workflowPublishedDataService.getCachedPublishedWorkflowData.mockResolvedValue({
-				workflow: mock<WorkflowEntity>(),
+				workflow,
 				publishedVersion: {
+					versionId: 'published-version',
 					nodes: publishedNodes,
 					connections: publishedConnections,
 				} as WorkflowHistory,
 			});
 
-			const result = await factory.loadPublishedWorkflowData(initialWorkflowData);
+			const result = await factory.loadPublishedWorkflowData('wf-1');
 
+			// Topology + version that actually ran come from the published snapshot.
 			expect(result.nodes).toBe(publishedNodes);
 			expect(result.connections).toBe(publishedConnections);
+			expect(result.versionId).toBe('published-version');
+
+			// Other execution-relevant fields come from the live workflow entity.
+			expect(result.id).toBe('wf-1');
+			expect(result.name).toBe('My workflow');
+			expect(result.active).toBe(true);
+			expect(result.settings).toEqual({ timezone: 'Europe/Berlin' });
+			expect(result.staticData).toEqual({ foo: 'bar' });
+			expect(result.activeVersionId).toBe('published-version');
+			expect(result.versionCounter).toBe(3);
+
+			// Deliberately excluded from a production trigger execution.
+			expect(result.pinData).toBeUndefined();
+			expect(result.meta).toBeUndefined();
+			expect(result.nodeGroups).toBeUndefined();
 		});
 
 		test('throws UnexpectedError when the service returns null', async () => {
-			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
 			workflowPublishedDataService.getCachedPublishedWorkflowData.mockResolvedValue(null);
 
-			await expect(factory.loadPublishedWorkflowData(initialWorkflowData)).rejects.toThrow(
-				UnexpectedError,
-			);
+			await expect(factory.loadPublishedWorkflowData('wf-1')).rejects.toThrow(UnexpectedError);
 		});
 	});
 });
