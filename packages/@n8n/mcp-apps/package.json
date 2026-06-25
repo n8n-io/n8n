@@ -41,14 +41,16 @@
     "@n8n/design-system": "workspace:*",
     "@n8n/utils": "workspace:*",
     "vue": "catalog:frontend",
-    "vue-i18n": "catalog:frontend"
+    "vue-i18n": "catalog:frontend",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/semver": "^7.7.0",
+    "@types/semver": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/test-utils": "catalog:frontend",
     "rimraf": "catalog:",

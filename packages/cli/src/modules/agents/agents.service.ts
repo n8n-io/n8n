@@ -4,14 +4,11 @@ import { In, ProjectRelationRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
 
 @Service()
 export class AgentsService {
@@ -60,51 +57,6 @@ export class AgentsService {
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-	}
-
-	async updateName(agentId: string, projectId: string, name: string): Promise<Agent | null> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-
-		if (!agent) {
-			return null;
-		}
-
-		agent.name = name;
-		// Keep the JSON config name in sync so a subsequent config save doesn't
-		// revert the entity name back to the stale config value.
-		if (agent.schema) {
-			agent.schema = { ...agent.schema, name };
-		}
-		markAgentDraftDirty(agent);
-		const saved = await this.agentRepository.save(agent);
-		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
-		return saved;
-	}
-
-	async updateDescription(
-		agentId: string,
-		projectId: string,
-		description: string,
-		updatedAt?: string,
-	): Promise<Agent | null> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-
-		if (!agent) {
-			return null;
-		}
-
-		if (updatedAt && agent.updatedAt.toISOString() !== updatedAt) {
-			throw new ConflictError('Agent has been modified');
-		}
-
-		agent.description = description;
-		if (agent.schema) {
-			agent.schema = { ...agent.schema, description };
-		}
-		markAgentDraftDirty(agent);
-		const saved = await this.agentRepository.save(agent);
-		this.logger.debug('Updated SDK agent description', { agentId, projectId });
-		return saved;
 	}
 
 	async findByUser(userId: string): Promise<Agent[]> {

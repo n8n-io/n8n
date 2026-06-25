@@ -163,6 +163,70 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
 	});
 
+	it('does not treat unresolved placeholders as setup when the execution error is code-fixable', async () => {
+		const context = createContext();
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
+			needsUserInput: false,
+			hasUnresolvedPlaceholders: true,
+			summary: 'Built',
+		});
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Code node failed: Cannot read properties of undefined',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'runtime_failure',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('routes execution errors from reached placeholder values to setup', async () => {
+		const context = createContext();
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			nodeSimulationPlan: [],
+			needsUserInput: false,
+			hasUnresolvedPlaceholders: true,
+			summary: 'Built',
+		});
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Invalid value <__PLACEHOLDER_VALUE__Your email address__>',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'needs_user_input',
+			}),
+		);
+	});
+
 	it('returns terminal remediation even when verdict persistence and telemetry fail', async () => {
 		const trackTelemetry = vi.fn(() => {
 			throw new Error('telemetry unavailable');
@@ -870,6 +934,26 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		});
 	});
 
+	it('passes source-declared read-node fixtures through the simulation channel', async () => {
+		const reason = 'Source declares verification output for this node';
+		const weatherOutput = [{ daily: { precipitation_sum: [6.4] } }];
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Get Berlin Weather', reason)],
+				simulationFixtures: { 'Get Berlin Weather': weatherOutput },
+			}),
+			{ executionId: 'exec-sim', status: 'success', data: {} },
+		);
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			pinData: { 'Get Berlin Weather': weatherOutput },
+			simulation: { 'Get Berlin Weather': { reason } },
+		});
+	});
+
 	it('does not pin execute-verdict nodes', async () => {
 		const { ctx } = makeContext(
 			makeBuildOutcome({
@@ -1017,6 +1101,39 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.coverageNote).toContain('UNVERIFIED');
 		expect(result.coverageNote).toContain('Look Up Order');
 		expect(result.coverageNote).toContain('Seed matching test data');
+	});
+
+	it('flags an items-dropped collapse with $input.all() guidance when a collection ran dry', async () => {
+		// INS-662: HTTP split a top-level array into N items, a Code node read $input.first() and emitted zero, downstream was skipped.
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					executeVerdict('Get Top Stories'),
+					simulateVerdict('Post to Slack', 'Sends a message'),
+				],
+				simulationFixtures: { 'Post to Slack': [{ ok: true }] },
+			}),
+			{
+				executionId: 'exec-collapse',
+				status: 'success',
+				data: {
+					// HTTP Request split a bare array of IDs into three items.
+					'Get Top Stories': [{ json: 12345 }, { json: 12346 }, { json: 12347 }],
+				},
+				// The Code node ran but read $input.first(), so it emitted zero items.
+				executedNodeNames: ['Get Top Stories', 'Get Top N IDs'],
+				lastNodeExecuted: 'Get Top N IDs',
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.nodesNotReached).toEqual(['Post to Slack']);
+		expect(result.coverageNote).toContain('$input.all()');
+		expect(result.coverageNote).toContain('$input.first()');
+		// Must NOT misattribute the dead-end to an empty lookup.
+		expect(result.coverageNote).not.toContain('Seed matching test data');
 	});
 
 	it('persists unreached nodes in the verification evidence', async () => {
