@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
