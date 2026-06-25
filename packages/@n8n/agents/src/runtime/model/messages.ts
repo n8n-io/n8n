@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils';
 import type {
 	FilePart,
@@ -111,6 +112,30 @@ function isContentToolResultOutput(value: JSONValue): value is ContentToolResult
 	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
 }
 
+/**
+ * Anthropic replays reasoning from `providerOptions`, but the AI SDK exposes the
+ * replay `signature`/`redactedData` in `providerMetadata`. Copy them across so
+ * the next request can replay the reasoning block. Existing `providerOptions`
+ * values win.
+ */
+function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
+	const metadata = getRecord(block.providerMetadata?.anthropic);
+	const signature = metadata?.signature;
+	const redactedData = metadata?.redactedData;
+	if (typeof signature !== 'string' && typeof redactedData !== 'string') {
+		return block.providerOptions;
+	}
+
+	return {
+		...block.providerOptions,
+		anthropic: {
+			...(typeof signature === 'string' && { signature }),
+			...(typeof redactedData === 'string' && { redactedData }),
+			...getRecord(block.providerOptions?.anthropic),
+		},
+	};
+}
+
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
 function toAiContent(block: MessageContent): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
@@ -138,10 +163,14 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		// Provider metadata can be required for replay. Gemini attaches
 		// `google.thoughtSignature` to function-call parts, and the next request
 		// is rejected if that signature is dropped from conversation history.
+		const providerOptions = isReasoning(block)
+			? toReasoningProviderOptions(block)
+			: block.providerOptions;
+
 		return {
 			...base,
 			...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
-			...(block.providerOptions && { providerOptions: block.providerOptions }),
+			...(providerOptions && { providerOptions }),
 		} as AiContentPart;
 	}
 	return base;

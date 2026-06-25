@@ -44,6 +44,15 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('clarifying questions', () => {
+		it('routes clarifying questions through ask-user instead of plain text', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('need clarification');
+			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
@@ -181,6 +190,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`debugging-executions`');
 		});
 
+		it('routes n8n docs and credential setup help through the docs skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**n8n docs/product guidance**');
+			expect(prompt).toContain('credential setup');
+			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('`n8n-docs`');
+		});
+
 		it('keeps replan stall prevention in the core follow-up triggers', () => {
 			const prompt = getSystemPrompt({});
 
@@ -215,7 +233,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).toContain('knowledge-base/templates/');
+			expect(prompt).toContain('never load `templates/index.json` wholesale');
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');

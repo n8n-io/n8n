@@ -51,9 +51,18 @@ vi.mock('@/features/ai/evaluation.ee/composables/useEvaluationsLicense', () => (
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
-	useRoute: () => reactive({}),
+	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
 }));
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),

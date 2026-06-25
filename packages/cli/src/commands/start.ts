@@ -412,6 +412,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer'
 			);
+			const { WorkflowPublicationOutboxCleanupService } = await import(
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+			);
 
 			// Import for its side effect: registering the trigger deactivator's
 			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
@@ -430,6 +433,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				.catch((error) => {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				});
+
+			Container.get(WorkflowPublicationOutboxCleanupService).init();
 		} else {
 			await this.activeWorkflowManager.init();
 		}

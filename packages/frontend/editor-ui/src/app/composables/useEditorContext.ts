@@ -57,6 +57,7 @@ export function useEditorContext() {
 		askAi: featureEnabled('askAi'),
 		instanceAi: featureEnabled('instanceAi'),
 		readOnly: computed(() => enabledFeatures?.value?.readOnly === true),
+		expandGroups: computed(() => enabledFeatures?.value?.expandGroups),
 		executionSuccessToasts: computed(
 			() => enabledFeatures?.value?.executionSuccessToasts !== false,
 		),

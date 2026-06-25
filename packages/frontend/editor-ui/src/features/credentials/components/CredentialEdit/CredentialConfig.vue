@@ -208,7 +208,6 @@ const showOAuthSuccessBanner = computed(() => {
 const showOAuthNotConnectedBanner = computed(() => {
 	return (
 		props.isOAuthType &&
-		props.isResolvable &&
 		props.requiredPropertiesFilled &&
 		!props.isOAuthConnected &&
 		!props.authError
@@ -299,10 +298,13 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 // (artifact) closes them so the conversation comes into view.
 async function onInstanceAiCredentialHelpClick() {
 	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
-		name: props.credentialType.name,
+		credentialType: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
+		nodeType: activeNode.value?.type,
 		id: props.credentialId || undefined,
+		documentationUrl: documentationUrl.value || undefined,
+		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
 	});
 	if (shouldCloseModal) {
 		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -425,30 +427,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				/>
 
 				<Banner
-					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
-					theme="warning"
-					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
-					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
-					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
-					data-test-id="oauth-not-connected-banner"
-					@click="$emit('oauth')"
-				>
-					<template v-if="isGoogleOAuthType" #button>
-						<GoogleAuthButton @click="$emit('oauth')" />
-					</template>
-					<template v-else #button>
-						<QuickConnectButton
-							size="small"
-							:service-name="serviceName"
-							:credential-type-name="credentialType.name"
-							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
-							data-test-id="quick-connect-not-connected-button"
-							@click="$emit('oauth')"
-						/>
-					</template>
-				</Banner>
-
-				<Banner
 					v-show="showOAuthSuccessBanner && !showValidationWarning"
 					theme="success"
 					:message="i18n.baseText('credentialEdit.credentialConfig.accountConnected')"
@@ -535,6 +513,32 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</div>
 				</div>
 
+				<Banner
+					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
+					theme="warning"
+					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
+					data-test-id="oauth-not-connected-banner"
+					@click="$emit('oauth')"
+				>
+					<template v-if="isGoogleOAuthType" #button>
+						<div data-test-id="quick-connect-button">
+							<GoogleAuthButton @click="$emit('oauth')" />
+						</div>
+					</template>
+					<template v-else #button>
+						<QuickConnectButton
+							size="small"
+							:service-name="serviceName"
+							:credential-type-name="credentialType.name"
+							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+							data-test-id="quick-connect-button"
+							@click="$emit('oauth')"
+						/>
+					</template>
+				</Banner>
+
 				<template v-if="canWrite">
 					<!-- Instance AI credential setup help (mimics the assistant button) -->
 					<div
@@ -614,16 +618,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="showValidationWarning"
 					@update="onDataChange"
-				/>
-
-				<QuickConnectButton
-					v-if="isOAuthType && !isOAuthConnected && canWrite"
-					:service-name="serviceName"
-					:credential-type-name="credentialType.name"
-					:disabled="!requiredPropertiesFilled"
-					:disabled-tooltip="i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip')"
-					data-test-id="quick-connect-button"
-					@click="$emit('oauth')"
 				/>
 
 				<N8nText v-if="isMissingCredentials" color="text-base" size="medium">

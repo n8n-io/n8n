@@ -98,22 +98,20 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 
 			// Select different input node and check that the hover state is updated
-			await n8n.ndv.inputPanel.getNodeInputOptions().click();
-			await n8n.page.getByRole('option', { name: 'Set1' }).click();
+			await n8n.ndv.selectInputNode('Set1');
 			await expect(hoveringItem).toContainText('1000');
 
 			// Hover on input item and verify output hover state
-			await n8n.ndv.inputPanel.getTable().locator('text=1000').hover();
+			await n8n.ndv.inputPanel.getTableCellByText('1000').hover();
 			await expect(n8n.ndv.outputPanel.getHoveringItems()).toContainText('1000');
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1000');
 
 			// Switch back to Sort input
-			await n8n.ndv.inputPanel.getNodeInputOptions().click();
-			await n8n.page.getByRole('option', { name: 'Sort' }).click();
+			await n8n.ndv.selectInputNode('Sort');
 			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 
 			await expect(hoveringItem).toContainText('1111');
-			await n8n.ndv.inputPanel.getTable().locator('text=1111').hover();
+			await n8n.ndv.inputPanel.getTableCellByText('1111').hover();
 			await expect(n8n.ndv.outputPanel.getHoveringItems()).toContainText('1111');
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 		});
