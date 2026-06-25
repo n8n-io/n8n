@@ -197,10 +197,13 @@ export interface WorkflowTestCase {
 	executionScenarios: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Optional NL assertions about the build conversation; LLM-judged and counted toward the
-	 *  per-case + headline pass rate alongside execution scenarios (baseline-regression folding
-	 *  tracked separately in TRUST-158). */
-	buildExpectations?: string[];
+	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
+	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
+	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
+	processExpectations?: string[];
+	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
+	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
+	outcomeExpectations?: string[];
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this

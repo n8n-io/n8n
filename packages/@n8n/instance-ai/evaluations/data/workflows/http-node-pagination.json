@@ -18,8 +18,8 @@
 	"complexity": "medium",
 	"tags": ["behaviour", "http-request", "pagination"],
 	"triggerType": "manual",
-	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"datasets": ["mcp", "behaviour", "full"],
+	"outcomeExpectations": [
 		"The HTTP Request node fetches across all pages (e.g. via its built-in pagination), not just the first page.",
 		"The agent did NOT work around paging with a Code node loop, a single request, or a hard-coded number of requests."
 	],

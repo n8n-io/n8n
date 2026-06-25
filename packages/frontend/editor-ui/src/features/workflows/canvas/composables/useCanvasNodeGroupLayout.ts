@@ -5,7 +5,7 @@ import {
 	createCanvasGroupNodeId,
 	type BoundingBox,
 } from '@/features/workflows/canvas/canvas.types';
-import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
+import { applyOffset, checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
@@ -149,7 +149,7 @@ export function getOffsetForComponent(
 }
 
 function translateRect(rect: BoundingBox, offset: NodeGroupLayoutOffset): BoundingBox {
-	return { ...rect, x: rect.x + offset.x, y: rect.y + offset.y };
+	return { ...rect, ...applyOffset(rect, offset) };
 }
 
 function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
