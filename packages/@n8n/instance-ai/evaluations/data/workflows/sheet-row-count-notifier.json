@@ -1,0 +1,53 @@
+{
+	"description": "Sheet row count notifier: a form trigger kicks off a Google Sheets read, counts the returned rows, and using an IF node, routes to Slack when the count is greater than 2 or to Gmail otherwise.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a form trigger that takes in rows from a google sheet and if the count is greater than 2, then send message to slack, if not send email to gmail."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: Form Trigger on submission → read rows from Google Sheets → count the rows → if count > 2, post a Slack message; otherwise send a Gmail email. Which spreadsheet and sheet should I read, which Slack channel should get the alert, and what Gmail address should receive the email?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "I'll wire Form Trigger → Google Sheets read → count rows → if count > 2 send Slack, else send Gmail. Ready for me to build it?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, go ahead."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["build", "form-trigger", "google-sheets", "code", "conditional", "slack", "gmail"],
+	"triggerType": "form",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The workflow is triggered by a Form Trigger node (n8n-nodes-base.formTrigger) that starts when the form is submitted.",
+		"A Google Sheets node reads rows from a spreadsheet before the branching logic runs.",
+		"An if node branches on whether the row count is greater than 2.",
+		"When the count is greater than 2, the workflow sends a message via Slack.",
+		"When the count is 2 or less, the workflow sends an email via Gmail instead of Slack."
+	],
+	"executionScenarios": [
+		{
+			"name": "row-count-above-threshold",
+			"description": "More than two sheet rows routes to Slack",
+			"dataSetup": "The Form Trigger receives a submission that kicks off the check. The Google Sheets read returns 3 rows (e.g. Name='Alice', Name='Bob', Name='Carol'). The row-count step outputs a count of 3. The decision node routes to the greater-than-2 branch. The Slack post-message node returns success.",
+			"successCriteria": "The workflow executes without errors on the Slack path only: Form Trigger → Google Sheets read → decision branch (count > 2) → Slack message. A Slack message is sent about the row count being above the threshold. The Gmail node on the else branch is not executed."
+		},
+		{
+			"name": "row-count-at-or-below-threshold",
+			"description": "Two or fewer sheet rows routes to Gmail",
+			"dataSetup": "The Form Trigger receives a submission that kicks off the check. The Google Sheets read returns 2 rows (e.g. Name='Alice', Name='Bob'). The row-count step outputs a count of 2. The decision node routes to the not-greater-than-2 branch. The Gmail send node returns success.",
+			"successCriteria": "The workflow executes without errors on the Gmail path only: Form Trigger → Google Sheets read → decision branch (count ≤ 2) → Gmail send. An email is sent via Gmail about the row count being at or below the threshold. The Slack node on the greater-than-2 branch is not executed."
+		}
+	]
+}

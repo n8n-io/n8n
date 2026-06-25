@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
+import type { OutboundHttp } from '@n8n/backend-network';
 import {
 	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
@@ -7,10 +8,6 @@ import {
 	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 } from '@n8n/constants';
 import { Container } from '@n8n/di';
-import axios from 'axios';
-import type { AxiosInstance, AxiosRequestConfig, CreateAxiosDefaults, Method } from 'axios';
-import { Agent as HTTPAgent, type AgentOptions as HTTPAgentOptions } from 'http';
-import { Agent as HTTPSAgent, type AgentOptions as HTTPSAgentOptions } from 'https';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
@@ -19,6 +16,8 @@ import type {
 	MessageEventBusDestinationWebhookParameterOptions,
 	IWorkflowExecuteAdditionalData,
 	MessageEventBusDestinationWebhookOptions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
@@ -77,13 +76,12 @@ export class MessageEventBusDestinationWebhook
 
 	credentialsHelper?: CredentialsHelper;
 
-	axiosRequestOptions?: AxiosRequestConfig;
-
-	axiosInstance: AxiosInstance;
+	requestOptions?: IHttpRequestOptions;
 
 	constructor(
 		eventBusInstance: MessageEventBus,
 		options: MessageEventBusDestinationWebhookOptions,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		super(eventBusInstance, options);
 		this.url = options.url;
@@ -107,10 +105,6 @@ export class MessageEventBusDestinationWebhook
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
 
-		const axiosSetting = this.buildAxiosSetting(options);
-
-		this.axiosInstance = axios.create(axiosSetting);
-
 		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
 	}
 
@@ -125,7 +119,7 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	/**
-	 * Axios expects proxy as { protocol, host, port }, so unwrap the nested
+	 * The request proxy is a flat { protocol, host, port }, so unwrap the nested
 	 * fixedCollection shape options.proxy = { proxy: { ... } } when present.
 	 */
 	private resolveProxy(options: MessageEventBusDestinationWebhookParameterOptions | undefined) {
@@ -135,54 +129,42 @@ export class MessageEventBusDestinationWebhook
 
 	private buildAgentOptions(
 		options: MessageEventBusDestinationWebhookParameterOptions | undefined,
-	): HTTPAgentOptions {
+	): IHttpRequestOptions['agentOptions'] {
 		return {
 			// keepAlive to keep TCP connections alive for reuse
 			keepAlive: options?.socket?.keepAlive ?? true,
 			maxSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
 			maxFreeSockets: options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 			maxTotalSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
-			// Socket timeout in milliseconds defaults to 5 seconds
-			timeout: options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 		};
 	}
 
-	private buildAxiosSetting(
-		axiosParameters: MessageEventBusDestinationWebhookOptions,
-	): CreateAxiosDefaults {
-		const axiosSetting: CreateAxiosDefaults = {
+	private buildConnectionOptions(): IHttpRequestOptions {
+		const requestOptions: IHttpRequestOptions = {
+			url: this.url,
+			method: this.method as IHttpRequestMethods,
 			headers: {},
-			method: axiosParameters.method as Method,
-			url: axiosParameters.url,
-			maxRedirects: 0,
-		} as AxiosRequestConfig;
+			disableFollowRedirect: true,
+			agentOptions: this.buildAgentOptions(this.options),
+			timeout: this.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
+		};
 
-		const redirectInner = this.resolveRedirect(axiosParameters.options);
+		const redirectInner = this.resolveRedirect(this.options);
 		if (redirectInner?.followRedirects) {
-			axiosSetting.maxRedirects = redirectInner.maxRedirects;
+			requestOptions.disableFollowRedirect = false;
+			requestOptions.maxRedirects = redirectInner.maxRedirects;
 		}
 
-		const proxy = this.resolveProxy(axiosParameters.options);
+		const proxy = this.resolveProxy(this.options);
 		if (proxy) {
-			axiosSetting.proxy = proxy;
+			requestOptions.proxy = proxy;
 		}
 
-		axiosSetting.timeout =
-			axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS;
-
-		const agentOptions = this.buildAgentOptions(axiosParameters.options);
-
-		if (new URL(axiosParameters.url).protocol === 'https:') {
-			const httpsAgentOptions: HTTPSAgentOptions = { ...agentOptions };
-			if (axiosParameters.options?.allowUnauthorizedCerts) {
-				httpsAgentOptions.rejectUnauthorized = false;
-			}
-			axiosSetting.httpsAgent = new HTTPSAgent(httpsAgentOptions);
-		} else {
-			axiosSetting.httpAgent = new HTTPAgent(agentOptions);
+		if (this.options?.allowUnauthorizedCerts) {
+			requestOptions.skipSslCertificateValidation = true;
 		}
 
-		return axiosSetting;
+		return requestOptions;
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -203,17 +185,12 @@ export class MessageEventBusDestinationWebhook
 		return null;
 	}
 
-	async generateAxiosOptions() {
-		if (this.axiosRequestOptions) {
+	async generateRequestOptions() {
+		if (this.requestOptions) {
 			return;
 		}
 
-		this.axiosRequestOptions = {
-			headers: {},
-			method: this.method as Method,
-			url: this.url,
-			maxRedirects: 0,
-		};
+		const requestOptions = this.buildConnectionOptions();
 
 		this.credentialsHelper ??= Container.get(CredentialsHelper);
 
@@ -223,9 +200,7 @@ export class MessageEventBusDestinationWebhook
 		const specifyHeaders = this.specifyHeaders;
 
 		if (this.sendQuery && this.options?.queryParameterArrays) {
-			Object.assign(this.axiosRequestOptions, {
-				qsStringifyOptions: { arrayFormat: this.options.queryParameterArrays },
-			});
+			requestOptions.arrayFormat = this.options.queryParameterArrays;
 		}
 
 		const parametersToKeyValue = async (
@@ -245,7 +220,7 @@ export class MessageEventBusDestinationWebhook
 		// Get parameters defined in the UI
 		if (sendQuery && this.queryParameters.parameters) {
 			if (specifyQuery === 'keypair') {
-				this.axiosRequestOptions.params = this.queryParameters.parameters.reduce(
+				requestOptions.qs = await this.queryParameters.parameters.reduce(
 					parametersToKeyValue,
 					Promise.resolve({}),
 				);
@@ -256,14 +231,14 @@ export class MessageEventBusDestinationWebhook
 				} catch {
 					this.logger.error('JSON parameter needs to be valid JSON');
 				}
-				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
+				requestOptions.qs = jsonParse(this.jsonQuery);
 			}
 		}
 
 		// Get parameters defined in the UI
 		if (sendHeaders && this.headerParameters.parameters) {
 			if (specifyHeaders === 'keypair') {
-				this.axiosRequestOptions.headers = await this.headerParameters.parameters.reduce(
+				requestOptions.headers = await this.headerParameters.parameters.reduce(
 					parametersToKeyValue,
 					Promise.resolve({}),
 				);
@@ -274,15 +249,17 @@ export class MessageEventBusDestinationWebhook
 				} catch {
 					this.logger.error('JSON parameter needs to be valid JSON');
 				}
-				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
+				requestOptions.headers = jsonParse(this.jsonHeaders);
 			}
 		}
 
 		// default for bodyContentType.raw
-		if (this.axiosRequestOptions.headers === undefined) {
-			this.axiosRequestOptions.headers = {};
+		if (requestOptions.headers === undefined) {
+			requestOptions.headers = {};
 		}
-		this.axiosRequestOptions.headers['Content-Type'] = 'application/json';
+		requestOptions.headers['Content-Type'] = 'application/json';
+
+		this.requestOptions = requestOptions;
 	}
 
 	serialize(): MessageEventBusDestinationWebhookOptions {
@@ -322,13 +299,14 @@ export class MessageEventBusDestinationWebhook
 	static deserialize(
 		eventBusInstance: MessageEventBus,
 		data: MessageEventBusDestinationOptions,
+		outboundHttp: OutboundHttp,
 	): MessageEventBusDestinationWebhook | null {
 		if (
 			'__type' in data &&
 			data.__type === MessageEventBusDestinationTypeNames.webhook &&
 			isMessageEventBusDestinationWebhookOptions(data)
 		) {
-			return new MessageEventBusDestinationWebhook(eventBusInstance, data);
+			return new MessageEventBusDestinationWebhook(eventBusInstance, data, outboundHttp);
 		}
 		return null;
 	}
@@ -339,27 +317,29 @@ export class MessageEventBusDestinationWebhook
 		let sendResult = false;
 
 		// at first run, build this.requestOptions with the destination settings
-		await this.generateAxiosOptions();
+		await this.generateRequestOptions();
 
 		// we need to make a copy of the request here, because to access the credentials
 		// later on we are awaiting and therefore yielding to the event loop
 		// therefore a race condition can occur for multiple events being processed simultaneously
-		const request: AxiosRequestConfig = {
-			...(this.axiosRequestOptions ?? {}),
+		const request: IHttpRequestOptions & { returnFullResponse: true } = {
+			...(this.requestOptions ?? { url: this.url }),
+			returnFullResponse: true,
 		};
 
 		const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 
 		if (['PATCH', 'POST', 'PUT', 'GET'].includes(this.method.toUpperCase())) {
+			request.json = true;
 			if (this.sendPayload) {
-				request.data = {
+				request.body = {
 					...msg,
 					__type: undefined,
 					payload,
 					ts: msg.ts.toISO(),
 				};
 			} else {
-				request.data = {
+				request.body = {
 					...msg,
 					__type: undefined,
 					payload: undefined,
@@ -406,8 +386,8 @@ export class MessageEventBusDestinationWebhook
 				[httpHeaderAuth.name as string]: httpHeaderAuth.value as string,
 			};
 		} else if (httpQueryAuth) {
-			request.params = {
-				...request.params,
+			request.qs = {
+				...request.qs,
 				[httpQueryAuth.name as string]: httpQueryAuth.value as string,
 			};
 		} else if (httpDigestAuth) {
@@ -418,10 +398,12 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		try {
-			const requestResponse = await this.axiosInstance.request(request);
+			const requestResponse = await this.outboundHttp
+				.requests({ ssrf: 'disabled' }) // The destination URL is admin-configured, so SSRF protection is disabled.
+				.request(request);
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
-					if (requestResponse.status === this.expectedStatusCode) {
+					if (requestResponse.statusCode === this.expectedStatusCode) {
 						confirmCallback(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					} else {

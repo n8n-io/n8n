@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import z from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
@@ -98,7 +99,7 @@ export class ExecutionsConfig {
 
 	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
 	@Env('EXECUTIONS_TIMEOUT_MAX')
-	maxTimeout: number = 3600; // 1h
+	maxTimeout: number = 1 * Time.hours.toSeconds;
 
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
@@ -154,7 +155,12 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
 
-	/** Whether scheduled executions receive a deduplication key enforced by a unique DB index. */
-	@Env('N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED')
-	scheduledExecutionDeduplicationEnabled: boolean = false;
+	/**
+	 * Max byte size of execution run data to load for display.
+	 * Executions whose data exceeds this are returned without their run data.
+	 * Does not affect operational reads (retry, resume, crash recovery).
+	 * `0` disables.
+	 */
+	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
+	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
 }

@@ -39,6 +39,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -51,7 +52,6 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -73,7 +73,9 @@ const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const workflowState = injectWorkflowState();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const nodeTypesStore = useNodeTypesStore();
 const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
@@ -225,7 +227,7 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 });
 
 const isNodeExecuting = computed(() =>
-	workflowState.executingNode.isNodeExecuting(node.value?.name ?? ''),
+	workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.value?.name ?? ''),
 );
 
 const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));

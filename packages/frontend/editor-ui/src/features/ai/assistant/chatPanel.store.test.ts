@@ -23,7 +23,7 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import merge from 'lodash-es/merge';
 
 // Mock vue-router
-const mockRoute = reactive({ name: VIEWS.WORKFLOW });
+const mockRoute = reactive({ name: VIEWS.WORKFLOW, params: {} });
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => mockRoute,

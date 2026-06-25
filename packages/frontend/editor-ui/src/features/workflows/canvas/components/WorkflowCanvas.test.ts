@@ -4,7 +4,7 @@ import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import { CanvasNodeRenderType } from '../canvas.types';
+import { CANVAS_NODE_GROUP_ID_PREFIX, CanvasNodeRenderType } from '../canvas.types';
 import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -14,6 +14,18 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');
@@ -83,6 +95,71 @@ describe('WorkflowCanvas', () => {
 		expect(
 			container.querySelector('[data-id="[1/outputs/main/0][2/inputs/main/0]"]'),
 		).toBeInTheDocument();
+	});
+
+	it('should render workflow node groups from the workflow document store collapsed by default', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+		expect(
+			container.querySelector(`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g1"]`),
+		).toBeInTheDocument();
+		expect(container.querySelector('[data-id="1"]')).not.toBeInTheDocument();
+	});
+
+	it('expands every group when groupExpansionMode is "all"', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent({ props: { groupExpansionMode: 'all' } });
+
+		// An expanded group renders its member node; a collapsed one hides it.
+		await waitFor(() => expect(container.querySelector('[data-id="1"]')).toBeInTheDocument());
+	});
+
+	it('keeps groups without an errored node collapsed when groupExpansionMode is "errored"', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent({ props: { groupExpansionMode: 'errored' } });
+
+		await waitFor(() =>
+			expect(
+				container.querySelector(`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g1"]`),
+			).toBeInTheDocument(),
+		);
+		expect(container.querySelector('[data-id="1"]')).not.toBeInTheDocument();
 	});
 
 	it('should handle empty nodes and connections gracefully', async () => {

@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { ref } from 'vue';
 
 const mockTrack = vi.fn();
+const featureFlagProperty = `$feature/${SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name}`;
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
@@ -106,6 +107,7 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 			client: 'chatgpt',
 			parameter: 'server-url',
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1,
+			[featureFlagProperty]: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1,
 		});
 	});
 
@@ -119,6 +121,7 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 			entry_point: 'empty_state_tile',
 			mcp_access_enabled: false,
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2,
+			[featureFlagProperty]: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2,
 		});
 	});
 
@@ -135,6 +138,7 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 			suppressed_by: null,
 			mcp_access_enabled: false,
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.control,
+			[featureFlagProperty]: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.control,
 		});
 	});
 
@@ -148,6 +152,7 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 			client: 'chatgpt',
 			setup_type: 'chatgpt_custom_app',
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2,
+			[featureFlagProperty]: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2,
 		});
 	});
 });

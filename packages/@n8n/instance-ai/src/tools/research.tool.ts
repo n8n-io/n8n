@@ -214,7 +214,7 @@ async function handleFetchUrl(
 	}
 
 	// ── Execute fetch ──────────────────────────────────────────────
-	// eslint-disable-next-line @typescript-eslint/require-await -- must be async to match authorizeUrl signature
+
 	const authorizeUrl = async (targetUrl: string) => {
 		const redirectCheck = checkDomainAccess({
 			url: targetUrl,
@@ -245,7 +245,9 @@ async function handleFetchUrl(
 
 export function createResearchTool(context: InstanceAiContext) {
 	return new Tool('research')
-		.description('Search the web or fetch page content.')
+		.description(
+			'Search the web or fetch page content. Use when node type definitions are insufficient for external documentation.',
+		)
 		.input(inputSchema)
 		.suspend(domainGatingSuspendSchema)
 		.resume(domainGatingResumeSchema)

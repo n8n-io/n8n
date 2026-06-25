@@ -1,23 +1,25 @@
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import type { MockedFunction } from 'vitest';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import { writeFileViaSandbox } from '../../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../../workspace/sandbox-setup';
 import { createWriteSandboxFileTool } from '../write-sandbox-file.tool';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-jest.mock('../../../workspace/sandbox-fs', () => ({
-	writeFileViaSandbox: jest.fn(),
+vi.mock('../../../workspace/sandbox-fs', () => ({
+	writeFileViaSandbox: vi.fn(),
 }));
 
-jest.mock('../../../workspace/sandbox-setup', () => ({
-	getWorkspaceRoot: jest.fn(),
+vi.mock('@n8n/agents/sandbox', () => ({
+	getWorkspaceRoot: vi.fn(),
 }));
 
-const mockWriteFile = writeFileViaSandbox as jest.MockedFunction<typeof writeFileViaSandbox>;
-const mockGetRoot = getWorkspaceRoot as jest.MockedFunction<typeof getWorkspaceRoot>;
+const mockWriteFile = writeFileViaSandbox as MockedFunction<typeof writeFileViaSandbox>;
+const mockGetRoot = getWorkspaceRoot as MockedFunction<typeof getWorkspaceRoot>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,7 +28,7 @@ const mockGetRoot = getWorkspaceRoot as jest.MockedFunction<typeof getWorkspaceR
 function createMockWorkspace(): SandboxWorkspace {
 	return {
 		sandbox: {
-			executeCommand: jest.fn(),
+			executeCommand: vi.fn(),
 		},
 	};
 }
@@ -39,7 +41,7 @@ describe('createWriteSandboxFileTool', () => {
 	let workspace: SandboxWorkspace;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		workspace = createMockWorkspace();
 		mockGetRoot.mockResolvedValue('/home/user/workspace');
 	});

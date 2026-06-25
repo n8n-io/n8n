@@ -165,6 +165,14 @@ const setModuleSettings = (settings: {
 	mockModuleSettings['external-secrets'] = settings;
 };
 
+// Simulates an EE instance where the external-secrets module is loaded but no
+// beta feature flags are active. This is the "legacy" mode that uses the global endpoints.
+const setLegacyMode = () => {
+	mockModuleSettings['external-secrets'] = {};
+};
+
+// Simulates Community Edition, where the external-secrets module is not registered
+// at all, so `moduleSettings['external-secrets']` is absent.
 const clearModuleSettings = () => {
 	delete mockModuleSettings['external-secrets'];
 };
@@ -179,8 +187,8 @@ describe('externalSecretsStore', () => {
 		vi.clearAllMocks();
 		mockProjectsStore.myProjects = [];
 		mockProjectsStore.currentProject = null;
-		// Reset to defaults
-		clearModuleSettings();
+		// Reset to defaults: EE module loaded, legacy mode (no beta feature flags)
+		setLegacyMode();
 		setHasPermission(true);
 	});
 
@@ -225,7 +233,7 @@ describe('externalSecretsStore', () => {
 
 	describe('secretsAsObject', () => {
 		it('should only contain the global secrets if forProjects is disabled', () => {
-			clearModuleSettings();
+			setLegacyMode();
 			const store = useExternalSecretsStore();
 			store.state.secrets = mockGlobalSecrets;
 			store.state.projectSecrets = mockProjectSecrets;
@@ -266,8 +274,8 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('fetchGlobalSecrets()', () => {
-		it('should use legacy endpoint when no module settings', async () => {
-			clearModuleSettings();
+		it('should use legacy endpoint in legacy mode (module loaded, no feature flags)', async () => {
+			setLegacyMode();
 			setHasPermission(true);
 			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
 			const store = useExternalSecretsStore();
@@ -280,8 +288,21 @@ describe('externalSecretsStore', () => {
 			expect(store.state.secrets).toEqual(mockGlobalSecrets);
 		});
 
-		it('should not fetch when user lacks permission and no module settings', async () => {
+		it('should not fetch on Community Edition (external-secrets module absent)', async () => {
 			clearModuleSettings();
+			setHasPermission(true);
+			const store = useExternalSecretsStore();
+
+			await store.fetchGlobalSecrets();
+
+			expect(getExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecretsForProject).not.toHaveBeenCalled();
+			expect(store.state.secrets).toEqual({});
+		});
+
+		it('should not fetch when user lacks permission in legacy mode', async () => {
+			setLegacyMode();
 			setHasPermission(false);
 			const store = useExternalSecretsStore();
 
@@ -346,7 +367,7 @@ describe('externalSecretsStore', () => {
 		});
 
 		it('should set secrets to empty object on API error (legacy path)', async () => {
-			clearModuleSettings();
+			setLegacyMode();
 			setHasPermission(true);
 			getExternalSecrets.mockRejectedValue(new Error('API Error'));
 			const store = useExternalSecretsStore();
@@ -380,7 +401,7 @@ describe('externalSecretsStore', () => {
 
 	describe('fetchProjectSecrets()', () => {
 		it('should leave state.projectSecrets as empty object if forProjects is disabled', async () => {
-			clearModuleSettings();
+			setLegacyMode();
 			setHasPermission(true);
 			getProjectExternalSecrets.mockResolvedValue(mockProjectSecrets);
 			const store = useExternalSecretsStore();
@@ -486,6 +507,19 @@ describe('externalSecretsStore', () => {
 			);
 			expect(getProjectExternalSecrets).not.toHaveBeenCalled();
 		});
+
+		it('should not call any secrets endpoint on Community Edition (module absent)', async () => {
+			clearModuleSettings();
+			mockProjectsStore.personalProject = { id: 'personal-123' };
+			const store = useExternalSecretsStore();
+
+			await store.fetchSecretsForProject('team-456');
+
+			expect(getExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecretsForProject).not.toHaveBeenCalled();
+			expect(getProjectExternalSecrets).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('reloadProvider()', () => {
@@ -529,7 +563,7 @@ describe('externalSecretsStore', () => {
 
 	describe('updateProviderConnected()', () => {
 		it('should connect provider and refetch secrets in legacy mode', async () => {
-			clearModuleSettings();
+			setLegacyMode();
 			connectProvider.mockResolvedValue(undefined);
 			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
 			setHasPermission(true);
@@ -558,7 +592,7 @@ describe('externalSecretsStore', () => {
 
 	describe('updateProvider()', () => {
 		it('should update provider and refetch secrets in legacy mode', async () => {
-			clearModuleSettings();
+			setLegacyMode();
 			updateProvider.mockResolvedValue(undefined);
 			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
 			setHasPermission(true);

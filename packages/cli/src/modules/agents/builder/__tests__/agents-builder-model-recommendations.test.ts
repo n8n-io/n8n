@@ -120,11 +120,33 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('## Tool Guidance');
 		expect(prompt).toContain('Additional specialized builder guidance is available');
 		expect(prompt).toContain('chat integration/trigger or a node/workflow tool');
+		expect(prompt).toContain('agent-builder-sub-agents');
 		expect(prompt).toContain('use Linear node tools for ordinary issue search/create/update');
+		expect(prompt).toContain('agent-builder-resource-locators');
+		expect(prompt).toContain('dynamic selector error');
 		expect(prompt).not.toContain('agent-builder-config-mutation');
 		expect(prompt).not.toContain('agent-builder-llm-selection');
 		expect(prompt).not.toContain('agent-builder-memory');
 		expect(prompt).not.toContain('agent-builder-tools');
+	});
+
+	it('does not tell the builder to write target agent descriptions', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).not.toContain('Fresh agents must include a brief `description`');
+		expect(prompt).toContain('Requires `name`, `model`, `credential`, and `instructions`');
+		expect(prompt).not.toContain(
+			'"description": "Answers support questions and helps triage customer issues."',
+		);
+	});
+
+	it('routes subagent delegation to the sub-agent builder skill', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain('`agent-builder-sub-agents`');
+		expect(prompt).not.toContain('`delegate_subagent`');
+		expect(prompt).not.toContain('Use `list_sub_agents` to discover published same-project agents');
+		expect(prompt).not.toContain('call `ask_question` with `allowMultiple: true`');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {
@@ -184,11 +206,17 @@ describe('builder model recommendations', () => {
 		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
 			'agent-builder-mcp',
+			'agent-builder-resource-locators',
+			'agent-builder-sub-agents',
 			'agent-builder-target-skills',
+			'agent-builder-target-tasks',
 		]);
 		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
 		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');
 		expect(skills[0].instructions).toContain('Linear node tools');
+		expect(skills[2].description).toContain('stable dynamic selector fields');
+		expect(skills[2].instructions).toContain('Linear `teamId`');
+		expect(skills[2].instructions).toContain('Do not use `$fromAI`');
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {

@@ -1,8 +1,8 @@
-const mockStart = jest.fn();
-const mockDisconnect = jest.fn();
-const mockStop = jest.fn();
-const mockGetDefaults = jest.fn();
-const mockSessionFlush = jest.fn();
+const mockStart = vi.fn();
+const mockDisconnect = vi.fn();
+const mockStop = vi.fn();
+const mockGetDefaults = vi.fn();
+const mockSessionFlush = vi.fn();
 
 type GatewayClientOptions = {
 	url: string;
@@ -11,11 +11,15 @@ type GatewayClientOptions = {
 	onDisconnected?: () => void;
 };
 
-let lastGatewayOptions: GatewayClientOptions | undefined;
+// Hoisted so the `GatewayClient` mock factory (hoisted above imports) can write the
+// constructor options the test later inspects.
+const { gateway } = vi.hoisted(() => ({
+	gateway: { lastOptions: undefined as GatewayClientOptions | undefined },
+}));
 
-jest.mock('@n8n/computer-use/settings-store', () => ({
+vi.mock('@n8n/computer-use/settings-store', () => ({
 	['SettingsStore']: {
-		create: jest.fn(
+		create: vi.fn(
 			async () =>
 				await Promise.resolve({
 					getDefaults: mockGetDefaults,
@@ -24,15 +28,19 @@ jest.mock('@n8n/computer-use/settings-store', () => ({
 	},
 }));
 
-jest.mock('@n8n/computer-use/gateway-session', () => ({
-	['GatewaySession']: jest.fn().mockImplementation(() => ({
-		flush: mockSessionFlush,
-	})),
+vi.mock('@n8n/computer-use/gateway-session', () => ({
+	// `new GatewaySession()` in source: the implementation must be constructable, so use a
+	// regular function rather than an arrow (Vitest does `new impl()`).
+	['GatewaySession']: vi.fn(function () {
+		return {
+			flush: mockSessionFlush,
+		};
+	}),
 }));
 
-jest.mock('@n8n/computer-use/gateway-client', () => ({
-	['GatewayClient']: jest.fn().mockImplementation((options: GatewayClientOptions) => {
-		lastGatewayOptions = options;
+vi.mock('@n8n/computer-use/gateway-client', () => ({
+	['GatewayClient']: vi.fn(function (options: GatewayClientOptions) {
+		gateway.lastOptions = options;
 		return {
 			start: mockStart,
 			disconnect: mockDisconnect,
@@ -41,12 +49,12 @@ jest.mock('@n8n/computer-use/gateway-client', () => ({
 	}),
 }));
 
-jest.mock('@n8n/computer-use/logger', () => ({
+vi.mock('@n8n/computer-use/logger', () => ({
 	logger: {
-		debug: jest.fn(),
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
 	},
 }));
 
@@ -80,8 +88,8 @@ describe('DaemonController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		lastGatewayOptions = undefined;
+		vi.clearAllMocks();
+		gateway.lastOptions = undefined;
 		mockGetDefaults.mockReturnValue({
 			dir: '/',
 			permissions: {
@@ -161,7 +169,7 @@ describe('DaemonController', () => {
 	it('sets error state when gateway signals persistent auth failure', async () => {
 		const controller = new DaemonController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
-		lastGatewayOptions?.onPersistentFailure?.();
+		gateway.lastOptions?.onPersistentFailure?.();
 
 		await settleNextTurn();
 
@@ -175,7 +183,7 @@ describe('DaemonController', () => {
 	it('sets disconnected state when gateway signals disconnect', async () => {
 		const controller = new DaemonController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
-		lastGatewayOptions?.onDisconnected?.();
+		gateway.lastOptions?.onDisconnected?.();
 
 		await settleNextTurn();
 

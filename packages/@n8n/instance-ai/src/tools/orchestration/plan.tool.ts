@@ -22,64 +22,37 @@ const plannedTaskSchema = z.object({
 		.string()
 		.optional()
 		.describe('Existing workflow ID to modify (build-workflow tasks only)'),
+	isSupportingWorkflow: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only when this build-workflow task is complete after saving a supporting sub-workflow. Do not set for helper sub-workflows created inside a larger main-workflow task.',
+		),
 });
 
 const planInputSchema = z.object({
 	tasks: z.array(plannedTaskSchema).min(1).describe('Dependency-aware execution plan'),
-	skipPlannerDiscovery: z
-		.boolean()
-		.optional()
-		.describe(
-			'Set to true to intentionally bypass the planner and call create-tasks for initial (non-replan) work. ' +
-				'Requires `reason`. Use sparingly — the planner sub-agent discovers credentials, data tables, and ' +
-				'best practices you would otherwise miss.',
-		),
-	reason: z
-		.string()
-		.optional()
-		.describe(
-			'One sentence explaining why the planner is being bypassed. Required when skipPlannerDiscovery is true.',
-		),
+	planningContext: z
+		.object({
+			source: z
+				.enum(['planning-skill', 'replan'])
+				.describe(
+					'Use "planning-skill" for initial plan-worthy work after loading the planning skill; use "replan" only in planned-task replan follow-up turns.',
+				),
+			summary: z.string().min(1).describe('Brief summary of the plan and why it is needed'),
+			assumptions: z.array(z.string()).optional().describe('Important assumptions behind the plan'),
+			postBuildRunRequested: z
+				.boolean()
+				.optional()
+				.describe(
+					'Set true when the user explicitly asked to run, execute, or test a workflow after it is built. Omit or false otherwise.',
+				),
+		})
+		.describe('How this task graph was produced'),
 });
 
 function isReplanContext(context: OrchestrationContext): boolean {
 	return context.isReplanFollowUp === true;
-}
-
-/**
- * Returns true when the thread has a non-terminal planned-task graph — meaning
- * `create-tasks` is being called as a revision (after user rejection of a
- * previous plan) or a mid-flight follow-up, not as initial planning. The guard
- * should not fire in these cases because a planner cycle has already run for
- * this thread and is still in progress. Terminal graphs (`completed`,
- * `cancelled`) must not bypass the guard — a fresh user request on a long-
- * lived thread needs to go through `plan` for discovery, same as any first
- * request.
- *
- * `awaiting_approval` is treated as "existing" only within the run that
- * created it. The rejection path leaves the graph in `awaiting_approval` so a
- * same-turn revision can call `create-tasks` again, but an orphaned
- * `awaiting_approval` graph from a previous turn (the LLM never revised after
- * a rejection) must not bypass planner discovery for a fresh user request.
- */
-async function threadHasExistingPlan(context: OrchestrationContext): Promise<boolean> {
-	if (!context.plannedTaskService) return false;
-	try {
-		const graph = await context.plannedTaskService.getGraph(context.threadId);
-		if (!graph) return false;
-		if (graph.status === 'awaiting_approval') {
-			return graph.planRunId === context.runId;
-		}
-		return graph.status === 'active' || graph.status === 'awaiting_replan';
-	} catch {
-		return false;
-	}
-}
-
-function isReplanGuardEnabled(): boolean {
-	const raw = process.env.N8N_INSTANCE_AI_ENFORCE_CREATE_TASKS_REPLAN;
-	if (raw === undefined) return true;
-	return raw.toLowerCase() !== 'false' && raw !== '0';
 }
 
 const planOutputSchema = z.object({
@@ -93,17 +66,93 @@ export const planResumeSchema = z.object({
 	denied: z.boolean().optional(),
 });
 
+function hasDataTableRequirements(tasks: PlannedTask[]): boolean {
+	return tasks.some((task) =>
+		/\bdata[- ]?tables?\b|\btable schema\b|\btable rows?\b/i.test(`${task.title}\n${task.spec}`),
+	);
+}
+
+function hasCheckpointTasks(tasks: PlannedTask[]): boolean {
+	return tasks.some((task) => task.kind === 'checkpoint');
+}
+
+function trackPlanningRoute(
+	context: OrchestrationContext,
+	tasks: PlannedTask[],
+	properties: {
+		route: string;
+		approvalOutcome?: string;
+		source?: string;
+	},
+): void {
+	context.trackTelemetry?.('instance_ai_planning_route', {
+		thread_id: context.threadId,
+		run_id: context.runId,
+		route: properties.route,
+		task_count: tasks.length,
+		has_data_table_requirements: hasDataTableRequirements(tasks),
+		has_checkpoint_tasks: hasCheckpointTasks(tasks),
+		...(properties.approvalOutcome ? { approval_outcome: properties.approvalOutcome } : {}),
+		...(properties.source ? { source: properties.source } : {}),
+	});
+}
+
+function validatePlanningContext(
+	input: z.infer<typeof planInputSchema>,
+	context: OrchestrationContext,
+): string | undefined {
+	const { planningContext } = input;
+	if (!planningContext) {
+		trackPlanningRoute(context, input.tasks as PlannedTask[], {
+			route: 'contract_violation',
+			source: 'missing',
+		});
+		return (
+			'Error: `create-tasks` requires `planningContext`. For initial plan-worthy work, load the ' +
+			'`planning` skill first, perform discovery with normal tools, then call `create-tasks` with ' +
+			'`planningContext.source: "planning-skill"`. For planned-task replan follow-ups, use ' +
+			'`planningContext.source: "replan"`.'
+		);
+	}
+
+	if (isReplanContext(context)) {
+		if (planningContext.source !== 'replan') {
+			trackPlanningRoute(context, input.tasks as PlannedTask[], {
+				route: 'contract_violation',
+				source: planningContext.source,
+			});
+			return (
+				'Error: `<planned-task-follow-up type="replan">` turns must call `create-tasks` with ' +
+				'`planningContext.source: "replan"` when scheduling multiple dependent tasks.'
+			);
+		}
+		return undefined;
+	}
+
+	if (planningContext.source !== 'planning-skill') {
+		trackPlanningRoute(context, input.tasks as PlannedTask[], {
+			route: 'contract_violation',
+			source: planningContext.source,
+		});
+		return (
+			'Error: `planningContext.source: "replan"` is only valid in planned-task replan follow-up turns. ' +
+			'For initial plan-worthy work, load the `planning` skill, perform discovery with normal tools, ' +
+			'then call `create-tasks` with `planningContext.source: "planning-skill"`.'
+		);
+	}
+
+	return undefined;
+}
+
 export function createPlanTool(context: OrchestrationContext) {
 	return new Tool('create-tasks')
 		.description(
-			'Submit a pre-built task list for detached multi-step execution. ' +
-				'Use ONLY for replanning after a failure — when you already have the task context ' +
-				'and do not need resource discovery. For initial planning, call `plan` instead. ' +
-				'A runtime guard rejects this tool when no replan context (`<planned-task-follow-up type="replan">`) ' +
-				'is present; if you intentionally need to bypass the planner, set `skipPlannerDiscovery: true` ' +
-				'and pass a one-sentence `reason`. ' +
+			'Submit a dependency-aware task graph for detached multi-step execution. ' +
+				'Use after loading the `planning` skill for initial plan-worthy work, or during ' +
+				'`<planned-task-follow-up type="replan">` when multiple dependent tasks still need scheduling. ' +
+				'Requires `planningContext.source` to be `planning-skill` or `replan` as appropriate. ' +
 				'The task list is shown to the user for approval before execution starts. ' +
-				'After calling create-tasks, reply briefly and end your turn.',
+				'After calling create-tasks, do not write visible text; the approval card is the user-visible surface.',
 		)
 		.input(planInputSchema)
 		.output(planOutputSchema)
@@ -150,52 +199,35 @@ export function createPlanTool(context: OrchestrationContext) {
 				}
 			}
 
-			// Replan-only guard: reject initial-planning misuse on the first call.
-			// Legitimate callers pass the guard when any of these hold:
-			//   - `<planned-task-follow-up type="replan">` is present in the user message
-			//   - the thread already has a planned-task graph (revision loop after a
-			//     user rejection, or replan after a failed background task)
-			//   - the orchestrator opts in with `skipPlannerDiscovery: true` + a `reason`
-			const hasExistingPlan = await threadHasExistingPlan(context);
-			if (isFirstCall && isReplanGuardEnabled() && !isReplanContext(context) && !hasExistingPlan) {
-				if (!input.skipPlannerDiscovery) {
-					context.logger.warn('create-tasks called without replan context — rejecting', {
+			if (isFirstCall) {
+				const contextError = validatePlanningContext(input, context);
+				if (contextError) {
+					context.logger.warn('create-tasks called with invalid planning context — rejecting', {
 						threadId: context.threadId,
 						taskCount: input.tasks.length,
+						planningSource: input.planningContext?.source,
 					});
 					return {
-						result:
-							'Error: `create-tasks` is for replanning only. For initial planning, call `plan` instead — ' +
-							'the planner sub-agent will discover credentials, data tables, and best practices for you. ' +
-							'If you intentionally want to skip the planner (rare), call `create-tasks` again with ' +
-							'`skipPlannerDiscovery: true` and a one-sentence `reason`.',
+						result: contextError,
 						taskCount: 0,
 					};
 				}
-				if (!input.reason || input.reason.trim().length === 0) {
-					return {
-						result:
-							'Error: `skipPlannerDiscovery: true` requires a one-sentence `reason` explaining ' +
-							'why the planner is being bypassed.',
-						taskCount: 0,
-					};
-				}
-				context.logger.warn('create-tasks bypassing planner with skipPlannerDiscovery=true', {
-					threadId: context.threadId,
-					taskCount: input.tasks.length,
-					reason: input.reason,
-				});
 			}
 
 			// First call — persist plan, show to user, suspend for approval
 			if (isFirstCall) {
 				try {
+					trackPlanningRoute(context, input.tasks as PlannedTask[], {
+						route: input.planningContext.source === 'planning-skill' ? 'skill' : 'replan',
+						source: input.planningContext.source,
+					});
 					await context.plannedTaskService.createPlan(
 						context.threadId,
 						input.tasks as PlannedTask[],
 						{
 							planRunId: context.runId,
 							messageGroupId: context.messageGroupId,
+							postBuildRunApprovalRequired: input.planningContext.postBuildRunRequested === true,
 						},
 					);
 				} catch (error) {
@@ -205,7 +237,7 @@ export function createPlanTool(context: OrchestrationContext) {
 					if (!(error instanceof PlanValidationError)) {
 						throw error;
 					}
-					context.logger.warn('plan tool: createPlan rejected by validator', {
+					context.logger.warn('create-tasks rejected by planned task validator', {
 						threadId: context.threadId,
 						taskCount: input.tasks.length,
 						error: error.message,
@@ -244,6 +276,11 @@ export function createPlanTool(context: OrchestrationContext) {
 			if (resumeData.approved) {
 				await context.plannedTaskService.approvePlan(context.threadId);
 				await context.schedulePlannedTasks();
+				trackPlanningRoute(context, input.tasks as PlannedTask[], {
+					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
+					source: input.planningContext?.source,
+					approvalOutcome: 'approved',
+				});
 				return {
 					result: `Plan approved. Started ${input.tasks.length} task${input.tasks.length === 1 ? '' : 's'}.`,
 					taskCount: input.tasks.length,
@@ -270,6 +307,11 @@ export function createPlanTool(context: OrchestrationContext) {
 			// being treated as a revision, and tell the LLM to stop.
 			if (resumeData.denied) {
 				await context.plannedTaskService.denyPlan(context.threadId);
+				trackPlanningRoute(context, input.tasks as PlannedTask[], {
+					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
+					source: input.planningContext?.source,
+					approvalOutcome: 'denied',
+				});
 				return {
 					result:
 						'User denied the plan. Do not revise or call create-tasks again — acknowledge and wait for new instructions.',
@@ -278,12 +320,9 @@ export function createPlanTool(context: OrchestrationContext) {
 			}
 
 			// User requested changes. Keep the persisted graph in
-			// `awaiting_approval` so the LLM's next `create-tasks` revision
-			// passes the replan guard via `threadHasExistingPlan` (scoped to
-			// the current runId). The scheduler ignores `awaiting_approval`
-			// graphs, so leaving the graph in place can't dispatch the
-			// rejected plan; the next createPlan call overwrites it with the
-			// revised tasks.
+			// `awaiting_approval`: the scheduler ignores it, so the rejected
+			// graph cannot dispatch, and the next `create-tasks` call overwrites
+			// it with the revised graph.
 			return {
 				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,

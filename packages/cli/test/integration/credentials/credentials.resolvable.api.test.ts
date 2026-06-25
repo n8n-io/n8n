@@ -19,7 +19,11 @@ import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentia
 import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { Telemetry } from '@/telemetry';
-import { saveCredential } from '../shared/db/credentials';
+import {
+	getCredentialSharings,
+	saveCredential,
+	shareCredentialWithProjects,
+} from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
 
@@ -384,5 +388,69 @@ describe('PATCH /credentials/:id — isResolvable toggle cleanup', () => {
 		const entryRepository = Container.get(DynamicCredentialUserEntryRepository);
 		const count = await entryRepository.countBy({ credentialId: resolvable.id });
 		expect(count).toBe(0);
+	});
+});
+
+describe('Sharing and dynamic credentials are mutually exclusive', () => {
+	test('PUT /credentials/:id/share — rejects sharing a dynamic credential', async () => {
+		const resolvable = await saveResolvableCredential();
+		const otherProject = await createTeamProject(undefined, memberA);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/share`)
+			.send({ shareWithIds: [otherProject.id] })
+			.expect(400);
+
+		const sharings = await getCredentialSharings(resolvable);
+		expect(sharings.some((s) => s.role === 'credential:user')).toBe(false);
+	});
+
+	test('PATCH /credentials/:id — rejects setting a shared credential as dynamic', async () => {
+		const staticCred = await saveStaticCredential();
+		const otherProject = await createTeamProject(undefined, memberA);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${staticCred.id}/share`)
+			.send({ shareWithIds: [otherProject.id] })
+			.expect(200);
+
+		const existing = await testServer
+			.authAgentFor(memberA)
+			.get(`/credentials/${staticCred.id}`)
+			.query({ includeData: true })
+			.expect(200);
+		const { name, type, data } = existing.body.data;
+
+		await testServer
+			.authAgentFor(memberA)
+			.patch(`/credentials/${staticCred.id}`)
+			.send({ name, type, data: data ?? {}, isResolvable: true })
+			.expect(400);
+
+		const after = await testServer
+			.authAgentFor(memberA)
+			.get(`/credentials/${staticCred.id}`)
+			.query({ includeData: true })
+			.expect(200);
+		expect(after.body.data.isResolvable).toBe(false);
+	});
+
+	test('PUT /credentials/:id/share — still allows unsharing an already-shared dynamic credential', async () => {
+		const resolvable = await saveResolvableCredential();
+		const otherProject = await createTeamProject(undefined, memberA);
+		// Seed a pre-existing share directly: the API would no longer let this state be created,
+		// but legacy data may exist and must still be removable.
+		await shareCredentialWithProjects(resolvable, [otherProject]);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/share`)
+			.send({ shareWithIds: [] })
+			.expect(200);
+
+		const sharings = await getCredentialSharings(resolvable);
+		expect(sharings.some((s) => s.role === 'credential:user')).toBe(false);
 	});
 });

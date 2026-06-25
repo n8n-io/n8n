@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { encodingForModel } from 'src/utils/tokenizer/tiktoken';
 import {
 	estimateTokensByCharCount,
 	estimateTextSplitsByTokens,
@@ -7,6 +8,15 @@ import {
 } from 'src/utils/tokenizer/token-estimator';
 
 describe('token-estimator', () => {
+	// Warm both BPE encodings before the timed test bodies. `cl100k_base` (gpt-4) is ~1 MB and
+	// `o200k_base` (gpt-4o) is ~2.2 MB; the first test that touches a fresh encoding pays a
+	// readFile + jsonParse + 200k-entry Tiktoken construct that under CI CPU contention can
+	// exceed the default 5s per-test timeout. Scope the headroom to this hook so the default
+	// per-test timeout still guards every other test in the file.
+	beforeAll(async () => {
+		await Promise.all([encodingForModel('gpt-4'), encodingForModel('gpt-4o')]);
+	}, 30_000);
+
 	describe('estimateTokensByCharCount', () => {
 		it('should estimate tokens for text using default model', () => {
 			const text = 'This is a test text with some content.';

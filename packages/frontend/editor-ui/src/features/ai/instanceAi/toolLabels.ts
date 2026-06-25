@@ -3,7 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'plan', 'task-control']);
+const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
 type SkillFileGroup = 'references' | 'scripts' | 'templates' | 'examples' | 'assets';
@@ -98,7 +98,8 @@ function extractSkillScriptPath(command: string): string | undefined {
 export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'book-open';
+	if (toolName === 'list_skills' || toolName === 'load_skill' || toolName === 'n8n-docs')
+		return 'book-open';
 	if (toolName === 'data-tables') return 'table';
 	if (
 		toolName === 'workflows' ||
@@ -109,8 +110,7 @@ export function getToolIcon(toolName: string): IconName {
 		return 'workflow';
 	if (toolName === 'research') return 'search';
 	if (toolName === 'credentials') return 'key-round';
-	if (toolName === 'task-control' || toolName === 'updateWorkingMemory' || toolName === 'plan')
-		return 'brain';
+	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
 	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
 	if (toolName.includes('data-table')) return 'table';

@@ -77,10 +77,9 @@ of the current task.
 
 ### Tier 4: Plan Storage
 
-The `plan` tool stores execution plans in thread-scoped storage. Plans are
-structured data (goal, current phase, iteration count, step statuses) that
-persist across reconnects within a conversation. See the [tools](./tools.md)
-documentation for the plan tool schema.
+The `create-tasks` tool stores execution plans in thread-scoped storage. Plans
+are structured task graphs that persist across reconnects within a conversation.
+See the [tools](./tools.md) documentation for the task graph schema.
 
 ## Scoping Model
 
@@ -93,8 +92,7 @@ All memory is thread-scoped (isolated per conversation):
 ### Sub-agent memory
 
 Sub-agents are fully stateless — context is passed via the briefing and
-`conversationContext` fields in the `delegate` and `build-workflow-with-agent`
-tools.
+`conversationContext` fields in the `delegate` tool.
 
 Past failed attempts are tracked via the `IterationLog` (stored in thread
 metadata) and appended to sub-agent briefings on retry, providing cross-attempt

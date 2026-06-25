@@ -7,6 +7,7 @@ import type {
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
+import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
 	runId: string;
@@ -31,6 +32,14 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	 *  Preserved across suspend/resume so the resumed run's finalizer can
 	 *  run the deadlock fallback and reschedule. */
 	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
+	/** Set when the suspended run was a planned build-workflow follow-up. */
+	plannedBuild?: {
+		isPlannedBuildFollowUp: true;
+		buildTaskId: string;
+		workItemId: string;
+		isSupportingWorkflowTask?: boolean;
+		savedOutcome?: WorkflowBuildOutcome;
+	};
 }
 
 /**
@@ -58,6 +67,9 @@ export interface ConfirmationData {
 	resourceDecision?: string;
 	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
 	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
 }
 
 export interface PendingConfirmation {
@@ -207,6 +219,11 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getActiveRunId(threadId: string): string | undefined {
 		return this.activeRuns.get(threadId)?.runId;
+	}
+
+	/** Number of runs currently executing (excludes suspended/pending runs). */
+	activeRunCount(): number {
+		return this.activeRuns.size;
 	}
 
 	getActiveRun(threadId: string): ActiveRunState | undefined {

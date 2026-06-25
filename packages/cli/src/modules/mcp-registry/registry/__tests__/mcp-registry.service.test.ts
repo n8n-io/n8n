@@ -131,6 +131,24 @@ describe('McpRegistryService', () => {
 			expect(notion).toEqual(notionMockServer);
 			expect(missing).toBeUndefined();
 		});
+
+		it('returns empty array for getBySlugs when input is empty', async () => {
+			const { service, repository } = createService();
+
+			const servers = await service.getBySlugs([]);
+
+			expect(servers).toEqual([]);
+			expect(repository.findBy).not.toHaveBeenCalled();
+		});
+
+		it('returns mapped servers for getBySlugs', async () => {
+			const { service, repository } = createService();
+
+			const servers = await service.getBySlugs(['notion', 'linear']);
+
+			expect(repository.findBy).toHaveBeenCalledWith([{ slug: 'notion' }, { slug: 'linear' }]);
+			expect(servers).toEqual([notionMockServer, linearMockServer]);
+		});
 	});
 
 	describe('refresh flow', () => {

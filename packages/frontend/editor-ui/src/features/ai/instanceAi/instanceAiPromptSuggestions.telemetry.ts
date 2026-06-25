@@ -1,6 +1,7 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from './emptyStateSuggestions';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 export type TelemetryTracker = Pick<ReturnType<typeof useTelemetry>, 'track'>;
 
@@ -8,6 +9,7 @@ export type TelemetryTracker = Pick<ReturnType<typeof useTelemetry>, 'track'>;
 export type InstanceAiPromptSuggestionsShownContext = {
 	threadId?: string;
 	suggestionCatalogVersion?: string;
+	telemetryPayload?: ITelemetryTrackProperties;
 };
 
 export type InstanceAiQuickExampleOpenedContext = InstanceAiPromptSuggestionsShownContext & {
@@ -19,6 +21,7 @@ export type InstanceAiPromptSuggestionsCycledContext = {
 	suggestionCatalogVersion?: string;
 	visibleSuggestionIds: string[];
 	cycleCount: number;
+	telemetryPayload?: ITelemetryTrackProperties;
 };
 
 export type InstanceAiPromptSuggestionSelectedContext = InstanceAiPromptSuggestionsShownContext & {
@@ -35,7 +38,7 @@ export type InstanceAiPromptSuggestionSubmittedContext =
 type InstanceAiPromptSuggestionsBasePayload = {
 	thread_id?: string;
 	suggestion_catalog_version: string;
-};
+} & ITelemetryTrackProperties;
 
 const shownImpressionKeys = new Set<string>();
 
@@ -46,6 +49,7 @@ const createBasePayload = (
 	context: InstanceAiPromptSuggestionsShownContext,
 ): InstanceAiPromptSuggestionsBasePayload => {
 	const payload: InstanceAiPromptSuggestionsBasePayload = {
+		...context.telemetryPayload,
 		suggestion_catalog_version: resolveSuggestionCatalogVersion(context),
 	};
 
@@ -82,6 +86,7 @@ export function createInstanceAiPromptSuggestionsTelemetry(
 
 		trackSuggestionsCycled(context: InstanceAiPromptSuggestionsCycledContext) {
 			telemetry.track('Instance AI prompt suggestions cycled', {
+				...context.telemetryPayload,
 				suggestion_catalog_version: resolveSuggestionCatalogVersion(context),
 				visible_suggestion_ids: context.visibleSuggestionIds,
 				cycle_count: context.cycleCount,

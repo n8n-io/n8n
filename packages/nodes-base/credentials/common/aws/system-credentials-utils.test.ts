@@ -1,52 +1,66 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
-class MockSecurityConfig {
-	awsSystemCredentialsAccess = true;
-}
+const { mockContainer, mockReadFile, MockSecurityConfig } = vi.hoisted(() => {
+	class MockSecurityConfig {
+		awsSystemCredentialsAccess = true;
+	}
+	return {
+		mockContainer: { get: vi.fn() },
+		mockReadFile: vi.fn(),
+		MockSecurityConfig,
+	};
+});
 
-const mockContainer = {
-	get: jest.fn(),
-};
-
-const mockReadFile = jest.fn();
-
-jest.mock('@n8n/di', () => ({
+vi.mock('@n8n/di', () => ({
 	Container: mockContainer,
 }));
 
-jest.mock('@n8n/config', () => ({
+vi.mock('@n8n/config', () => ({
 	SecurityConfig: MockSecurityConfig,
 }));
 
-jest.mock('fs/promises', () => ({
+vi.mock('fs/promises', () => ({
 	readFile: mockReadFile,
 }));
 
 import * as systemCredentialsUtils from './system-credentials-utils';
+import type { Mock } from 'vitest';
 
-const mockEnvGetter = jest.fn();
+const mockEnvGetter = vi.fn();
 
-const { getSystemCredentials, credentialsResolver } = systemCredentialsUtils;
+const { getSystemCredentials, getRoleForServiceAccountCredentials, credentialsResolver } =
+	systemCredentialsUtils;
 const envGetter = (...args: Parameters<typeof systemCredentialsUtils.envGetter>) =>
 	systemCredentialsUtils.envGetter(...args);
 
 describe('system-credentials-utils', () => {
-	let mockSecurityConfigInstance: MockSecurityConfig;
+	let mockSecurityConfigInstance: InstanceType<typeof MockSecurityConfig>;
+
+	const realProcessEnv = process.env;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
-		jest.spyOn(systemCredentialsUtils, 'envGetter').mockImplementation(mockEnvGetter);
+		// `envGetter` reads `process.env` and is called as a module-internal binding, which
+		// Vitest's spies cannot intercept. Route env reads through `mockEnvGetter` instead so
+		// the existing per-test setups and `toHaveBeenCalledWith` assertions keep working.
+		process.env = new Proxy({} as NodeJS.ProcessEnv, {
+			get: (_target, key) => (typeof key === 'string' ? mockEnvGetter(key) : undefined),
+		});
 
 		mockSecurityConfigInstance = new MockSecurityConfig();
 		mockContainer.get.mockReturnValue(mockSecurityConfigInstance);
 
 		mockEnvGetter.mockReturnValue(undefined);
 
-		(global.fetch as jest.Mock).mockReset();
+		(global.fetch as Mock).mockReset();
 		mockReadFile.mockReset();
+	});
+
+	afterEach(() => {
+		process.env = realProcessEnv;
 	});
 
 	describe('envGetter', () => {
@@ -60,11 +74,11 @@ describe('system-credentials-utils', () => {
 	});
 
 	describe('getSystemCredentials', () => {
-		it('should throw ApplicationError when AWS system credentials access is disabled', async () => {
+		it('should throw UserError when AWS system credentials access is disabled', async () => {
 			mockSecurityConfigInstance.awsSystemCredentialsAccess = false;
 
-			await expect(getSystemCredentials()).rejects.toThrow(ApplicationError);
-			await expect(getSystemCredentials()).rejects.toThrow(
+			await expect(getSystemCredentials('us-east-1')).rejects.toThrow(UserError);
+			await expect(getSystemCredentials('us-east-1')).rejects.toThrow(
 				'Access to AWS system credentials disabled, contact your administrator.',
 			);
 		});
@@ -83,7 +97,7 @@ describe('system-credentials-utils', () => {
 				}
 			});
 
-			const result = await getSystemCredentials();
+			const result = await getSystemCredentials('us-east-1');
 			expect(result).toEqual({
 				accessKeyId: 'test-access-key',
 				secretAccessKey: 'test-secret-key',
@@ -94,9 +108,9 @@ describe('system-credentials-utils', () => {
 
 		it('should return null when no credentials are found', async () => {
 			mockEnvGetter.mockReturnValue(undefined);
-			(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+			(global.fetch as Mock).mockRejectedValue(new Error('Network error'));
 
-			const result = await getSystemCredentials();
+			const result = await getSystemCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 	});
@@ -235,9 +249,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			const result = await credentialsResolver.containerMetadata();
@@ -278,9 +292,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			await credentialsResolver.containerMetadata();
@@ -304,7 +318,7 @@ describe('system-credentials-utils', () => {
 				return undefined;
 			});
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: false,
 			});
 
@@ -320,7 +334,7 @@ describe('system-credentials-utils', () => {
 				return undefined;
 			});
 
-			(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+			(global.fetch as Mock).mockRejectedValue(new Error('Network error'));
 
 			const result = await credentialsResolver.containerMetadata();
 			expect(result).toBeNull();
@@ -359,9 +373,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			const result = await credentialsResolver.podIdentity();
@@ -402,9 +416,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			await credentialsResolver.podIdentity();
@@ -428,7 +442,7 @@ describe('system-credentials-utils', () => {
 				return undefined;
 			});
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: false,
 			});
 
@@ -444,7 +458,7 @@ describe('system-credentials-utils', () => {
 				return undefined;
 			});
 
-			(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+			(global.fetch as Mock).mockRejectedValue(new Error('Network error'));
 
 			const result = await credentialsResolver.podIdentity();
 			expect(result).toBeNull();
@@ -472,9 +486,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			const result = await credentialsResolver.podIdentity();
@@ -521,9 +535,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			await credentialsResolver.podIdentity();
@@ -561,9 +575,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			const result = await credentialsResolver.podIdentity();
@@ -607,9 +621,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			await credentialsResolver.podIdentity();
@@ -646,9 +660,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			await credentialsResolver.podIdentity();
@@ -685,9 +699,9 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
 			const result = await credentialsResolver.podIdentity();
@@ -707,7 +721,7 @@ describe('system-credentials-utils', () => {
 				}),
 			);
 			// Ensure Authorization header is not included
-			expect((global.fetch as jest.Mock).mock.calls[0][1].headers.Authorization).toBeUndefined();
+			expect((global.fetch as Mock).mock.calls[0][1].headers.Authorization).toBeUndefined();
 		});
 	});
 
@@ -719,18 +733,18 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock)
+			(global.fetch as Mock)
 				.mockResolvedValueOnce({
 					ok: true,
-					text: jest.fn().mockResolvedValue('test-token'),
+					text: vi.fn().mockResolvedValue('test-token'),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					text: jest.fn().mockResolvedValue('test-role'),
+					text: vi.fn().mockResolvedValue('test-role'),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue(mockCredentials),
+					json: vi.fn().mockResolvedValue(mockCredentials),
 				});
 
 			const result = await credentialsResolver.instanceMetadata();
@@ -750,15 +764,15 @@ describe('system-credentials-utils', () => {
 				Token: 'test-token',
 			};
 
-			(global.fetch as jest.Mock)
+			(global.fetch as Mock)
 				.mockRejectedValueOnce(new Error('Token request failed'))
 				.mockResolvedValueOnce({
 					ok: true,
-					text: jest.fn().mockResolvedValue('test-role'),
+					text: vi.fn().mockResolvedValue('test-role'),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue(mockCredentials),
+					json: vi.fn().mockResolvedValue(mockCredentials),
 				});
 
 			const result = await credentialsResolver.instanceMetadata();
@@ -770,10 +784,10 @@ describe('system-credentials-utils', () => {
 		});
 
 		it('should return null when role name request fails', async () => {
-			(global.fetch as jest.Mock)
+			(global.fetch as Mock)
 				.mockResolvedValueOnce({
 					ok: true,
-					text: jest.fn().mockResolvedValue('test-token'),
+					text: vi.fn().mockResolvedValue('test-token'),
 				})
 				.mockResolvedValueOnce({
 					ok: false,
@@ -788,18 +802,18 @@ describe('system-credentials-utils', () => {
 				AccessKeyId: 'test-access-key',
 			};
 
-			(global.fetch as jest.Mock)
+			(global.fetch as Mock)
 				.mockResolvedValueOnce({
 					ok: true,
-					text: jest.fn().mockResolvedValue('test-token'),
+					text: vi.fn().mockResolvedValue('test-token'),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					text: jest.fn().mockResolvedValue('test-role'),
+					text: vi.fn().mockResolvedValue('test-role'),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue(incompleteCredentials),
+					json: vi.fn().mockResolvedValue(incompleteCredentials),
 				});
 
 			const result = await credentialsResolver.instanceMetadata();
@@ -807,7 +821,7 @@ describe('system-credentials-utils', () => {
 		});
 
 		it('should return null when fetch throws an error', async () => {
-			(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+			(global.fetch as Mock).mockRejectedValue(new Error('Network error'));
 
 			const result = await credentialsResolver.instanceMetadata();
 			expect(result).toBeNull();
@@ -818,7 +832,7 @@ describe('system-credentials-utils', () => {
 		it('should return null when AWS_ROLE_ARN or AWS_WEB_IDENTITY_TOKEN_FILE is not available via envGetter', async () => {
 			mockEnvGetter.mockImplementation(() => undefined);
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 			expect(mockEnvGetter).toHaveBeenCalledWith('AWS_ROLE_ARN');
 			expect(mockEnvGetter).toHaveBeenCalledWith('AWS_WEB_IDENTITY_TOKEN_FILE');
@@ -850,12 +864,12 @@ describe('system-credentials-utils', () => {
 				},
 			};
 
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(mockCredentials),
+				json: vi.fn().mockResolvedValue(mockCredentials),
 			});
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toEqual({
 				accessKeyId: 'test-access-key',
 				secretAccessKey: 'test-secret-key',
@@ -864,7 +878,7 @@ describe('system-credentials-utils', () => {
 
 			expect(mockReadFile).toHaveBeenCalledWith('/tmp/token', 'utf8');
 			expect(global.fetch).toHaveBeenCalledWith(
-				'https://sts.amazonaws.com',
+				'https://sts.us-east-1.amazonaws.com',
 				expect.objectContaining({
 					method: 'POST',
 					headers: {
@@ -875,7 +889,7 @@ describe('system-credentials-utils', () => {
 					body: expect.stringContaining('Action=AssumeRoleWithWebIdentity'),
 				}),
 			);
-			expect((global.fetch as jest.Mock).mock.calls[0][1].body).toContain(
+			expect((global.fetch as Mock).mock.calls[0][1].body).toContain(
 				'RoleArn=arn%3Aaws%3Aiam%3A%3A123456789012%3Arole%2Ftest-role',
 			);
 		});
@@ -892,9 +906,9 @@ describe('system-credentials-utils', () => {
 				}
 			});
 			mockReadFile.mockResolvedValue('test-web-identity-token');
-			(global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+			(global.fetch as Mock).mockResolvedValue({ ok: false });
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 
@@ -919,12 +933,12 @@ describe('system-credentials-utils', () => {
 					},
 				},
 			};
-			(global.fetch as jest.Mock).mockResolvedValue({
+			(global.fetch as Mock).mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(incomplete),
+				json: vi.fn().mockResolvedValue(incomplete),
 			});
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 
@@ -940,9 +954,9 @@ describe('system-credentials-utils', () => {
 				}
 			});
 			mockReadFile.mockResolvedValue('test-web-identity-token');
-			(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+			(global.fetch as Mock).mockRejectedValue(new Error('Network error'));
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
 		});
 
@@ -959,8 +973,58 @@ describe('system-credentials-utils', () => {
 			});
 			mockReadFile.mockResolvedValue('');
 
-			const result = await credentialsResolver.roleForServiceAccount();
+			const result = await getRoleForServiceAccountCredentials('us-east-1');
 			expect(result).toBeNull();
+		});
+
+		const mockSuccessfulStsResponse = () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_ROLE_ARN':
+						return 'arn:aws:iam::123456789012:role/test-role';
+					case 'AWS_WEB_IDENTITY_TOKEN_FILE':
+						return '/tmp/token';
+					default:
+						return undefined;
+				}
+			});
+			mockReadFile.mockResolvedValue('test-web-identity-token');
+			(global.fetch as Mock).mockResolvedValue({
+				ok: true,
+				json: vi.fn().mockResolvedValue({
+					AssumeRoleWithWebIdentityResponse: {
+						AssumeRoleWithWebIdentityResult: {
+							Credentials: {
+								AccessKeyId: 'test-access-key',
+								SecretAccessKey: 'test-secret-key',
+								SessionToken: 'test-token',
+							},
+						},
+					},
+				}),
+			});
+		};
+
+		it('should use the China STS endpoint for cn- regions', async () => {
+			mockSuccessfulStsResponse();
+
+			await getRoleForServiceAccountCredentials('cn-north-1');
+
+			expect(global.fetch).toHaveBeenCalledWith(
+				'https://sts.cn-north-1.amazonaws.com.cn',
+				expect.objectContaining({ method: 'POST' }),
+			);
+		});
+
+		it('should use the GovCloud STS endpoint for us-gov- regions', async () => {
+			mockSuccessfulStsResponse();
+
+			await getRoleForServiceAccountCredentials('us-gov-west-1');
+
+			expect(global.fetch).toHaveBeenCalledWith(
+				'https://sts.us-gov-west-1.amazonaws.com',
+				expect.objectContaining({ method: 'POST' }),
+			);
 		});
 	});
 });

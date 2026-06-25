@@ -93,7 +93,11 @@ const listAction = z.object({
 });
 
 const schemaAction = z.object({
-	action: z.literal('schema').describe('Get column definitions for a data table'),
+	action: z
+		.literal('schema')
+		.describe(
+			'Get column definitions for a data table. Call before using a table in workflow code — column names are normalized to snake_case.',
+		),
 	dataTableId: z
 		.string()
 		.describe(
@@ -631,7 +635,10 @@ export function createDataTablesTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(DATA_TABLES_TOOL_ID)
-		.description('Manage data tables — list, query, create, modify columns, and manage rows.')
+		.description(
+			'Manage data tables — list, query, create, modify columns, and manage rows. ' +
+				'For workflow building, use list, create, and schema before referencing tables in SDK code.',
+		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
