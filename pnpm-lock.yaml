@@ -5027,6 +5027,9 @@ importers:
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
+      '@smithy/node-http-handler':
+        specifier: 4.5.0
+        version: 4.5.0
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
