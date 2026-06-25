@@ -247,6 +247,16 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
+// Connecting an existing private credential only needs the `connect` capability
+// (no edit rights); shared/static credentials store the token on the shared
+// credential itself, so connecting them follows the write permission.
+const canConnect = computed(() => {
+	if (!isNewCredential.value && props.isResolvable) {
+		return !!props.credentialPermissions.connect;
+	}
+	return canWrite.value;
+});
+
 // When Instance AI is available it supersedes the legacy assistant for setup
 // help. It guides any credential type, so it doesn't require an n8n-docs URL —
 // otherwise the same UX gates apply (configurable properties, write access, not
@@ -437,9 +447,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				>
 					<template #button>
 						<div :class="$style.bannerActions">
-							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
+							<GoogleAuthButton v-if="isGoogleOAuthType && canConnect" @click="$emit('oauth')" />
 							<QuickConnectButton
-								v-else
+								v-else-if="canConnect"
 								size="small"
 								:service-name="serviceName"
 								:credential-type-name="credentialType.name"
@@ -448,7 +458,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								v-if="showDisconnectButton"
+								v-if="showDisconnectButton && canConnect"
 								variant="outline"
 								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -523,12 +533,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					@click="$emit('oauth')"
 				>
 					<template v-if="isGoogleOAuthType" #button>
-						<div data-test-id="quick-connect-button">
+						<div v-if="canConnect" data-test-id="quick-connect-button">
 							<GoogleAuthButton @click="$emit('oauth')" />
 						</div>
 					</template>
 					<template v-else #button>
 						<QuickConnectButton
+							v-if="canConnect"
 							size="small"
 							:service-name="serviceName"
 							:credential-type-name="credentialType.name"
@@ -612,11 +623,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</EnterpriseEdition>
 
 				<CredentialInputs
-					v-if="credentialType && canWrite"
+					v-if="credentialType"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="showValidationWarning"
+					:is-read-only="!canWrite"
 					@update="onDataChange"
 				/>
 
