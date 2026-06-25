@@ -40,7 +40,9 @@ N8N_EVAL_PASSWORD=...
 
 CONTEXT7_API_KEY=ctx7sk-...
 
-# Not recommended for MCP evals until MCP has a separate LangSmith project.
+# Optional — record this run to LangSmith. Pair with --dataset and
+# --baseline-prefix (see "Record runs in LangSmith") so MCP runs never touch
+# the Instance AI dataset or baseline.
 # LANGSMITH_API_KEY=ls__...
 # LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 ```
@@ -48,10 +50,11 @@ CONTEXT7_API_KEY=ctx7sk-...
 Leave `N8N_AI_ANTHROPIC_KEY` unset unless you are intentionally testing that
 path.
 
-Do not enable LangSmith reporting for MCP evals yet. It currently writes into
-the existing Instance AI evaluation project and will overwrite Instance AI
-baselines. Wait until MCP has a separate LangSmith project before setting
-`LANGSMITH_API_KEY` for these runs.
+To record MCP eval runs in LangSmith, always pass a dedicated `--dataset` and
+`--baseline-prefix` so the run lands in its own dataset and only compares
+against MCP baselines — never the Instance AI dataset or the
+`instance-ai-baseline-` experiments. See
+[Record runs in LangSmith](#record-runs-in-langsmith).
 
 Start n8n with the same env file in watch mode:
 
@@ -73,6 +76,78 @@ When using an existing local instance, set `N8N_EVAL_EMAIL` and
 On a fresh local DB, create or seed the owner account with the email and
 password from `.env.mcp-evals`. The full setup is documented in the linked
 Instance AI evaluation README.
+
+## Record runs in LangSmith
+
+LangSmith recording is opt-in via `LANGSMITH_API_KEY` and reuses the Instance AI
+eval pipeline (the `--prebuilt-workflows` path records exactly like a normal
+run). To keep MCP runs isolated from the Instance AI dataset and baselines,
+always pass a dedicated `--dataset` and `--baseline-prefix`:
+
+```bash
+LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
+  pnpm --filter @n8n/instance-ai run eval:instance-ai \
+  --base-url http://localhost:5678 \
+  --tier mcp \
+  --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline- \
+  --iterations 3 \
+  --concurrency 3 \
+  --output-dir /tmp/n8n-mcp-cohort-eval
+```
+
+- `--dataset` syncs only the `--tier mcp` examples into a dataset of its own;
+  the Instance AI `instance-ai-workflow-evals` dataset is never written to.
+- `--baseline-prefix` scopes regression comparison to MCP baselines. Until an
+  MCP baseline exists the comparison is simply skipped — an MCP run is never
+  compared against `instance-ai-baseline-`.
+- `--dataset` and `--baseline-prefix` are the two halves of isolation — pass
+  both together. Overriding only one logs a **partial isolation** warning, since
+  the run would still write to / compare against shared Instance AI data.
+- The dataset and experiments are created in the workspace your
+  `LANGSMITH_API_KEY` belongs to. Use a personal key/workspace to avoid
+  cluttering the shared team workspace.
+
+### Create or refresh a baseline
+
+Refresh the MCP baseline the same way as the Instance AI one, but with the MCP
+dataset and prefix (high `--iterations` for a low-noise reference point):
+
+```bash
+LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
+  pnpm --filter @n8n/instance-ai run eval:instance-ai \
+  --base-url http://localhost:5678 \
+  --tier mcp \
+  --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline- \
+  --experiment-name mcp-baseline \
+  --iterations 10
+```
+
+LangSmith appends a random suffix (e.g. `mcp-baseline-7abc1234`); the most
+recently started `mcp-baseline-` experiment becomes the comparison target on the
+next MCP run. The comparison is skipped on the baseline-creation run itself.
+
+### Check baselines in LangSmith
+
+A baseline is not a special LangSmith object — it's just an experiment whose name
+starts with `--baseline-prefix` (`mcp-baseline-`). To find them, open your
+workspace → **Datasets & Experiments** → `mcp-workflow-evals` → the
+**Experiments** list: baselines are the rows named `mcp-baseline-<suffix>`,
+while normal runs (e.g. `local-<branch>-<sha>`) are not. With no `mcp-baseline-*`
+experiment yet, every run's comparison is skipped.
+
+Two comparison views, kept separate:
+
+- **Native LangSmith compare** — select two or more experiments in the dataset's
+  **Experiments** list and click **Compare** for a side-by-side metrics view
+  (the `?selectedSessions=…` link printed at the start of a run opens this view).
+- **This tool's regression report** — computed locally by the eval CLI (reading
+  the latest baseline's runs), written to `eval-pr-comment.md` and
+  `eval-results.json`, and printed to the console. It is not rendered back inside
+  LangSmith.
 
 ## Prerequisites
 
