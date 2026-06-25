@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T20:38:55.035Z",
-	"totalViolations": 141,
+	"generated": "2026-06-24T10:26:20.816Z",
+	"totalViolations": 139,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -76,13 +76,7 @@
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 350,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 430,
+				"line": 352,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -865,12 +859,6 @@
 				"line": 38,
 				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
 				"hash": "206b89bd1594"
-			},
-			{
-				"rule": "deduplication",
-				"line": 52,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
-				"hash": "2f37cf533810"
 			}
 		],
 		"pages/WorkerViewPage.ts": [
