@@ -8,12 +8,11 @@ import {
 import { applyOffset, checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import {
 	GROUP_HEADER_HEIGHT,
-	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
-	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 import {
+	computeGroupFrameRects,
 	computeNodesRectFromStore,
 	type GetNodeDisplaySize,
 } from '@/features/workflows/canvas/composables/useCanvasMapping.groups';
@@ -66,28 +65,6 @@ export interface NodeGroupLayoutPushEntry {
 
 const GROUP_REPOSITION_SPACING = GRID_SIZE;
 
-// Uses raw node positions. The rendered title bar is aligned to the grid
-// separately (`titleBarFromNodesRect`).
-function getGroupRects(memberRect: BoundingBox) {
-	const x = memberRect.x - GROUP_PADDING_X;
-	const y = memberRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
-	const collapsedRect: BoundingBox = {
-		x,
-		y,
-		width: GROUP_HEADER_WIDTH_COLLAPSED,
-		height: GROUP_HEADER_HEIGHT,
-	};
-	const expandedRect: BoundingBox = {
-		x,
-		y,
-		// The rendered frame never goes below the collapsed header width, so a
-		// narrow group must claim the same footprint or neighbors overlap it.
-		width: Math.max(memberRect.width + 2 * GROUP_PADDING_X, GROUP_HEADER_WIDTH_COLLAPSED),
-		height: GROUP_HEADER_HEIGHT + memberRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
-	};
-	return { collapsedRect, expandedRect };
-}
-
 export function buildNodeGroupLayoutComponents({
 	allGroups,
 	nodes,
@@ -104,7 +81,7 @@ export function buildNodeGroupLayoutComponents({
 		if (!hasMember) continue;
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
-		const { collapsedRect, expandedRect } = getGroupRects(nodesRect);
+		const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect);
 		components.push({
 			id: createCanvasGroupNodeId(group.id),
 			kind: 'group',

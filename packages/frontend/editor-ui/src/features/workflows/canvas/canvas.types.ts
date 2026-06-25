@@ -141,6 +141,9 @@ export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
 export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
 export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 
+// Host override for group expansion; leaves persisted view state untouched.
+export type GroupExpansionMode = 'all' | 'errored';
+
 export function createCanvasGroupNodeId(groupId: string): string {
 	return `${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`;
 }
