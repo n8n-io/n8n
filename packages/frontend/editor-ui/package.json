@@ -129,7 +129,7 @@
   "devDependencies": {
     "@codecov/vite-plugin": "^1.9.1",
     "@faker-js/faker": "^8.0.2",
-    "@iconify/json": "^2.2.349",
+    "@iconify/json": "^2.2.488",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
