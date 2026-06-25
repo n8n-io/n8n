@@ -2136,6 +2136,7 @@
 	"nodeCreator.nodeItem.aiIconTitle": "LangChain AI Node",
 	"nodeCreator.nodeItem.deprecated": "Deprecated",
 	"nodeCreator.nodeItem.beta": "Beta",
+	"nodeCredentials.environmentSelect.label": "Environment",
 	"nodeCredentials.environmentSelect.placeholder": "Select environment",
 	"nodeCredentials.environmentBinding.saveError": "Failed to save environment credential binding",
 	"nodeCredentials.createNew": "Create new credential",

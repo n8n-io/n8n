@@ -854,20 +854,26 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			v-if="environmentsStore.environments.length > 0 && !standalone"
 			:class="$style.envSelectRow"
 		>
-			<N8nSelect
-				v-model="nodeCredEnvId"
+			<N8nInputLabel
+				:label="i18n.baseText('nodeCredentials.environmentSelect.label')"
+				:bold="false"
 				size="small"
-				clearable
-				:placeholder="i18n.baseText('nodeCredentials.environmentSelect.placeholder')"
-				data-test-id="node-credentials-env-select"
+				color="text-dark"
 			>
-				<N8nOption
-					v-for="env in environmentsStore.environments"
-					:key="env.id"
-					:value="env.id"
-					:label="env.name"
-				/>
-			</N8nSelect>
+				<N8nSelect
+					v-model="nodeCredEnvId"
+					size="small"
+					:placeholder="i18n.baseText('nodeCredentials.environmentSelect.placeholder')"
+					data-test-id="node-credentials-env-select"
+				>
+					<N8nOption
+						v-for="env in environmentsStore.environments"
+						:key="env.id"
+						:value="env.id"
+						:label="env.name"
+					/>
+				</N8nSelect>
+			</N8nInputLabel>
 		</div>
 		<div v-for="{ type, options } in credentialTypesNodeDescriptionDisplayed" :key="type.name">
 			<N8nInputLabel
