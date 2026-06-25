@@ -68,6 +68,17 @@ function countOutputItems(nodeOutput: unknown): number | undefined {
 	return 1;
 }
 
+// Largest item count any executed node emitted; >=2 means a collection flowed.
+function maxEmittedItemCount(data: Record<string, unknown> | undefined): number {
+	if (!data) return 0;
+	let max = 0;
+	for (const nodeOutput of Object.values(data)) {
+		const count = countOutputItems(nodeOutput) ?? 0;
+		if (count > max) max = count;
+	}
+	return max;
+}
+
 function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
 	const serialized = stringifyForToolOutput(value);
 	if (maxChars <= 0) {
@@ -582,8 +593,12 @@ function buildCoverageNote(
 	const ending = result.lastNodeExecuted
 		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
 		: '.';
+	// A collection flowed (>=2 items) yet the chain ran dry: items were dropped, not absent.
+	const collapsedFromCollection = success && maxEmittedItemCount(result.data) >= 2;
 	const guidance = success
-		? ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
+		? collapsedFromCollection
+			? ' An upstream node emitted multiple items but the chain collapsed to zero before reaching them. The usual cause is a Code node reading `$input.first().json` (a single split item) instead of `$input.all().map(i => i.json)` — an HTTP Request node splits a top-level array (including a bare array of IDs) into one item per element. Fix the node that dropped the items to read every item, then re-run verification. Do NOT report the workflow as fully verified.'
+			: ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
 		: '';
 	return (
 		`Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +

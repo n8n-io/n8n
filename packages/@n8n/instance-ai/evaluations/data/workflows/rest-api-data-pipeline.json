@@ -33,7 +33,7 @@
 	"complexity": "medium",
 	"tags": ["build", "http-request", "slack", "data-transformation", "schedule"],
 	"triggerType": "schedule",
-	"datasets": ["pr", "full"],
+	"datasets": ["mcp", "pr", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",

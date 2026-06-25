@@ -1005,7 +1005,10 @@ export class InstanceAiAdapterService {
 					mockDataSources,
 				};
 
-				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+				const trackBuilderExecutedWorkflow = (
+					status: ExecutionResult['status'],
+					error?: string,
+				) => {
 					if (!threadId) return;
 
 					telemetry.track('Builder executed workflow', {
@@ -1015,90 +1018,102 @@ export class InstanceAiAdapterService {
 						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
 						exec_type: runData.executionMode,
 						status,
+						...(error ? { error } : {}),
 					});
 				};
 
-				const executionId = await workflowRunner.run(runData);
+				try {
+					const executionId = await workflowRunner.run(runData);
 
-				// Wait for completion with timeout protection
-				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+					// Wait for completion with timeout protection
+					const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-				if (activeExecutions.has(executionId)) {
-					let timeoutId: NodeJS.Timeout | undefined;
-					const timeoutPromise = new Promise<never>((_, reject) => {
-						timeoutId = setTimeout(() => {
-							reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-						}, timeoutMs);
-					});
+					if (activeExecutions.has(executionId)) {
+						let timeoutId: NodeJS.Timeout | undefined;
+						const timeoutPromise = new Promise<never>((_, reject) => {
+							timeoutId = setTimeout(() => {
+								reject(new Error(`Execution timed out after ${timeoutMs}ms`));
+							}, timeoutMs);
+						});
 
-					try {
-						await Promise.race([
-							activeExecutions.getPostExecutePromise(executionId),
-							timeoutPromise,
-						]);
-						clearTimeout(timeoutId);
-					} catch (error) {
-						clearTimeout(timeoutId);
-						// On timeout, cancel the execution
-						if (error instanceof Error && error.message.includes('timed out')) {
-							try {
-								activeExecutions.stopExecution(
+						try {
+							await Promise.race([
+								activeExecutions.getPostExecutePromise(executionId),
+								timeoutPromise,
+							]);
+							clearTimeout(timeoutId);
+						} catch (error) {
+							clearTimeout(timeoutId);
+							// On timeout, cancel the execution
+							if (error instanceof Error && error.message.includes('timed out')) {
+								try {
+									activeExecutions.stopExecution(
+										executionId,
+										new TimeoutExecutionCancelledError(executionId),
+									);
+								} catch {
+									// Execution may have completed between timeout and cancel
+								}
+								const result = {
 									executionId,
-									new TimeoutExecutionCancelledError(executionId),
+									status: 'error',
+									error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+								} satisfies ExecutionResult;
+								trackBuilderExecutedWorkflow(result.status, result.error);
+								return result;
+							}
+							throw error;
+						}
+					}
+
+					// Persist the simulation map onto the saved execution so the editor
+					// can label simulated node outputs. Only nodes that actually ran are
+					// recorded — an execution that dead-ends early must not claim
+					// simulations that never happened. Post-completion update: works in
+					// queue mode too (plain DB write), and the final save has already
+					// happened once the post-execute promise resolves. Best-effort — a
+					// failure must not mask the execution result.
+					if (options?.simulation && Object.keys(options.simulation).length > 0) {
+						try {
+							const execution = await executionRepository.findSingleExecution(executionId, {
+								includeData: true,
+								unflattenData: true,
+							});
+							if (execution?.data) {
+								const runData = execution.data.resultData.runData ?? {};
+								const simulation = Object.fromEntries(
+									Object.entries(options.simulation).filter(([nodeName]) =>
+										Object.hasOwn(runData, nodeName),
+									),
 								);
-							} catch {
-								// Execution may have completed between timeout and cancel
+								if (Object.keys(simulation).length > 0) {
+									execution.data.resultData.simulation = simulation;
+									await executionRepository.updateExistingExecution(executionId, {
+										data: execution.data,
+									});
+								}
 							}
-							const result = {
+						} catch (error) {
+							logger.warn('Failed to persist simulation metadata on execution', {
 								executionId,
-								status: 'error',
-								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-							} satisfies ExecutionResult;
-							trackBuilderExecutedWorkflow(result.status);
-							return result;
+								error: error instanceof Error ? error.message : String(error),
+							});
 						}
-						throw error;
 					}
-				}
 
-				// Persist the simulation map onto the saved execution so the editor
-				// can label simulated node outputs. Only nodes that actually ran are
-				// recorded — an execution that dead-ends early must not claim
-				// simulations that never happened. Post-completion update: works in
-				// queue mode too (plain DB write), and the final save has already
-				// happened once the post-execute promise resolves. Best-effort — a
-				// failure must not mask the execution result.
-				if (options?.simulation && Object.keys(options.simulation).length > 0) {
-					try {
-						const execution = await executionRepository.findSingleExecution(executionId, {
-							includeData: true,
-							unflattenData: true,
-						});
-						if (execution?.data) {
-							const runData = execution.data.resultData.runData ?? {};
-							const simulation = Object.fromEntries(
-								Object.entries(options.simulation).filter(([nodeName]) =>
-									Object.hasOwn(runData, nodeName),
-								),
-							);
-							if (Object.keys(simulation).length > 0) {
-								execution.data.resultData.simulation = simulation;
-								await executionRepository.updateExistingExecution(executionId, {
-									data: execution.data,
-								});
-							}
-						}
-					} catch (error) {
-						logger.warn('Failed to persist simulation metadata on execution', {
-							executionId,
-							error: error instanceof Error ? error.message : String(error),
-						});
-					}
+					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
+					trackBuilderExecutedWorkflow(result.status, result.error);
+					return result;
+				} catch (error) {
+					// A failure to launch (or any other unsettled error) is still an
+					// errored builder run — track it before rethrowing so it isn't
+					// silently dropped from telemetry.
+					trackBuilderExecutedWorkflow(
+						'error',
+						error instanceof Error ? error.message : String(error),
+					);
+					throw error;
 				}
-
-				const result = await extractExecutionResult(executionId, allowSendingParameterValues);
-				trackBuilderExecutedWorkflow(result.status);
-				return result;
 			},
 
 			async getStatus(executionId: string) {

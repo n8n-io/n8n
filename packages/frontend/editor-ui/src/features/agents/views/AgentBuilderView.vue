@@ -74,7 +74,7 @@ import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionH
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
-const AGENT_EDITOR_MIN_WIDTH = 360;
+const AGENT_EDITOR_MIN_WIDTH = 560;
 
 const route = useRoute();
 const router = useRouter();
@@ -1307,6 +1307,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 <style lang="scss" module>
 .root {
+	--agent-builder-chat-min-width: 20rem;
+	--agent-builder-editor-min-width: 35rem;
+
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -1317,7 +1320,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	height: 100%;
 	min-height: 0;
-	overflow: hidden;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .previewBuilder {
@@ -1326,6 +1332,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .chatResizer {
 	flex-shrink: 0;
+	min-width: var(--agent-builder-chat-min-width);
 
 	:global([data-test-id='resize-handle']) {
 		width: var(--spacing--xs) !important;
@@ -1365,6 +1372,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .editorColumn {
 	flex: 1 1 auto;
-	min-width: 0;
+	min-width: var(--agent-builder-editor-min-width);
 }
 </style>

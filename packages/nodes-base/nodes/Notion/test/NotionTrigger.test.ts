@@ -118,6 +118,27 @@ describe('NotionTrigger', () => {
 			expect(result).toBeNull();
 		});
 
+		it('should return null when the probe returns a record but the follow-up fetch returns an empty page', async () => {
+			const page = {
+				id: 'page-1',
+				created_time: '2026-04-30T12:00:00.000Z',
+				last_edited_time: '2026-04-30T12:00:00.000Z',
+				properties: {},
+			};
+
+			mockNotionApiRequest
+				.mockResolvedValueOnce({ results: [page] })
+				.mockResolvedValueOnce({ results: [], has_more: false, next_cursor: null });
+
+			const ctx = createPollContext();
+
+			const { NotionTrigger } = await import('../NotionTrigger.node');
+			const trigger = new NotionTrigger();
+			const result = await trigger.poll.call(ctx as never);
+
+			expect(result).toBeNull();
+		});
+
 		it('should return pages in manual mode', async () => {
 			const page = {
 				id: 'page-1',
