@@ -119,6 +119,10 @@ export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
 	'089_instance_ai_mcp_connections',
 );
 
+export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
+	'089_instance_ai_split_empty_state',
+);
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -150,4 +154,9 @@ export const EXPERIMENTS_TO_TRACK = [
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
+<<<<<<< HEAD
+=======
+	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
+	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
+>>>>>>> 0760089f (feat(editor): Add Instance AI split empty-state experiment (no-changelog) (#32669))
 ];

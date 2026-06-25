@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch, type Component } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nTag } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -45,6 +45,13 @@ const props = withDefaults(
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
 		placeholderKey?: BaseTextKey;
+		// Experiment cleanup: remove with instanceAiSplitEmptyState.
+		previewPromptKey?: BaseTextKey | null;
+		// Experiment cleanup: remove with instanceAiSplitEmptyState.
+		fixedRows?: number | null;
+		// Experiment cleanup: remove with instanceAiSplitEmptyState.
+		submitLabel?: string;
+		submitActiveRequiresFocus?: boolean;
 	}>(),
 	{
 		isStreaming: false,
@@ -55,6 +62,10 @@ const props = withDefaults(
 		amendContext: null,
 		contextualSuggestion: null,
 		isWorkflowBuilderAvailable: true,
+		previewPromptKey: null,
+		fixedRows: null,
+		submitLabel: undefined,
+		submitActiveRequiresFocus: false,
 	},
 );
 
@@ -63,6 +74,11 @@ const emit = defineEmits<{
 	stop: [];
 	'cancel-plan-edit': [];
 	'workflow-preview': [workflowFile: string | null];
+	// Experiment cleanup: remove with instanceAiSplitEmptyState.
+	// Fires when the composer goes between empty and non-empty so the split
+	// empty state can pause its cycling placeholders only once the user types
+	// (auto-focus on mount must NOT pause the cycle).
+	'content-change': [hasContent: boolean];
 }>();
 
 const i18n = useI18n();
@@ -70,8 +86,49 @@ const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
+<<<<<<< HEAD
 const previewPromptKey = ref<BaseTextKey | null>(null);
+=======
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+const previewPrompt = ref<string | null>(null);
+>>>>>>> 0760089f (feat(editor): Add Instance AI split empty-state experiment (no-changelog) (#32669))
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
+
+// Experiment cleanup: remove with instanceAiSplitEmptyState.
+const typedPreview = ref('');
+const TYPEWRITER_SPEED_MS = 9;
+let typewriterTimer: ReturnType<typeof setInterval> | null = null;
+
+function stopTypewriter() {
+	if (typewriterTimer) {
+		clearInterval(typewriterTimer);
+		typewriterTimer = null;
+	}
+}
+
+// Only the split-empty-state preview prompt (the `previewPromptKey` prop) types
+// out; the suggestion hover ghost (previewPrompt) stays instant.
+watch(
+	() => props.previewPromptKey,
+	(key) => {
+		stopTypewriter();
+		if (!key) {
+			typedPreview.value = '';
+			return;
+		}
+		const full = i18n.baseText(key);
+		typedPreview.value = '';
+		let i = 0;
+		typewriterTimer = setInterval(() => {
+			i += 1;
+			typedPreview.value = full.slice(0, i);
+			if (i >= full.length) stopTypewriter();
+		}, TYPEWRITER_SPEED_MS);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(stopTypewriter);
 
 function focus() {
 	chatInputRef.value?.focus();
@@ -84,6 +141,9 @@ function appendText(text: string) {
 defineExpose({
 	focus,
 	appendText,
+	// Experiment cleanup: remove with instanceAiSplitEmptyState.
+	insertSuggestion: handleSuggestionInsert,
+	submitSuggestion,
 });
 
 const isBusy = computed(() =>
@@ -93,6 +153,8 @@ const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length >
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
+// Experiment cleanup: remove with instanceAiSplitEmptyState.
+watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
@@ -124,8 +186,17 @@ const placeholder = computed(() => {
 	if (props.isPlanEditMode) {
 		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
 	}
+<<<<<<< HEAD
 	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
 		return i18n.baseText(previewPromptKey.value);
+=======
+	// Experiment cleanup: remove with instanceAiSplitEmptyState. Split types the prompt out.
+	if (props.previewPromptKey && isInputVisuallyEmpty.value) {
+		return typedPreview.value;
+	}
+	if (previewPrompt.value && isInputVisuallyEmpty.value) {
+		return previewPrompt.value;
+>>>>>>> 0760089f (feat(editor): Add Instance AI split empty-state experiment (no-changelog) (#32669))
 	}
 	if (props.amendContext) {
 		return i18n.baseText('instanceAi.input.amendPlaceholder', {
@@ -193,6 +264,15 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	trackSelectedSuggestionSubmitted(message);
 	emitSubmittedMessage(message, attachments);
 	resetDraftComposer();
+}
+
+// Experiment cleanup: remove with instanceAiSplitEmptyState. A split example row
+// click sends the prompt directly — attribute the submit (unedited) without a
+// separate 'selected' event, since there is no insert step.
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	const prompt = getSuggestionPrompt(payload);
+	selectedSuggestionDraft.value = { ...payload, originalPrompt: prompt };
+	submitComposerMessage(prompt);
 }
 
 async function handleSubmit() {
@@ -303,7 +383,15 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 }
 
 const resizable = computed(() => {
+<<<<<<< HEAD
 	if (previewPromptKey.value) {
+=======
+	// Experiment cleanup: remove with instanceAiSplitEmptyState.
+	if (props.fixedRows) {
+		return { minRows: props.fixedRows, maxRows: props.fixedRows };
+	}
+	if (previewPrompt.value) {
+>>>>>>> 0760089f (feat(editor): Add Instance AI split empty-state experiment (no-changelog) (#32669))
 		return { minRows: 2, maxRows: 2 };
 	}
 	return undefined;
@@ -321,6 +409,8 @@ const resizable = computed(() => {
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"
+			:button-label="props.submitLabel"
+			:active-requires-focus="props.submitActiveRequiresFocus"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
 			@submit="handleSubmit"
