@@ -530,9 +530,10 @@ describe('WorkflowDetails', () => {
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Archive' for personal project workflow", async () => {
+		it("should navigate to personal project workflows page on 'Archive' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-123';
 			workflowDocumentStoreRef.value?.setHomeProject({
-				id: 'personal-project-123',
+				id: personalProjectId,
 				name: 'Personal Project',
 				type: 'personal',
 			} as ProjectSharingData);
@@ -551,7 +552,8 @@ describe('WorkflowDetails', () => {
 
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 
@@ -678,9 +680,10 @@ describe('WorkflowDetails', () => {
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Delete' for personal project workflow", async () => {
+		it("should navigate to personal project workflows page on 'Delete' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-456';
 			workflowDocumentStoreRef.value?.setHomeProject({
-				id: 'personal-project-456',
+				id: personalProjectId,
 				name: 'Personal Project',
 				type: 'personal',
 			} as ProjectSharingData);
@@ -699,7 +702,8 @@ describe('WorkflowDetails', () => {
 
 			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 

@@ -19,7 +19,6 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
@@ -273,9 +272,9 @@ async function handleArchiveWorkflow() {
 		type: 'success',
 	});
 
-	// Navigate to the appropriate project's workflow list
+	// Navigate to the home of the workflow's context (personal or team project)
 	const homeProject = workflowDocumentStore?.value?.homeProject;
-	if (homeProject?.type === ProjectTypes.Team) {
+	if (homeProject) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
 			params: { projectId: homeProject.id },
@@ -354,7 +353,6 @@ async function handleDeleteWorkflow() {
 
 	// Get workflow's home project before deletion to know which project to navigate to
 	const homeProject = workflowDocumentStore?.value?.homeProject;
-	const isTeamProject = homeProject?.type === ProjectTypes.Team;
 
 	try {
 		await workflowsListStore.deleteWorkflow(props.id);
@@ -372,8 +370,8 @@ async function handleDeleteWorkflow() {
 		type: 'success',
 	});
 
-	// Navigate to the appropriate project's workflow list
-	if (isTeamProject && homeProject) {
+	// Navigate to the home of the workflow's context (personal or team project)
+	if (homeProject) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
 			params: { projectId: homeProject.id },
