@@ -171,7 +171,7 @@ export class PlaywrightAdapter {
 		});
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
-		this.context = contexts[0] ?? (await this.browser.newContext());
+		this.context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
 
 		// Two-tier model: pages are created lazily via ensurePage().
 		// When ensurePage() triggers activateTab(), it sets pendingActivation
