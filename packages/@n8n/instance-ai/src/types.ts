@@ -348,7 +348,7 @@ export interface InstanceAiExecutionService {
 		inputData?: Record<string, unknown>,
 		options?: {
 			timeout?: number;
-			pinData?: Record<string, unknown[]>;
+			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 		},

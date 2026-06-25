@@ -447,7 +447,7 @@ interface VerifyToolContext {
 					...args: [
 						string,
 						Record<string, unknown> | undefined,
-						{ timeout?: number; pinData?: unknown },
+						{ timeout?: number; verificationPinData?: unknown },
 					]
 				) => Promise<ExecutionRunResult>
 			>;
@@ -493,7 +493,7 @@ function makeContext(
 		async (
 			_workflowId: string,
 			_inputData: Record<string, unknown> | undefined,
-			_options: { timeout?: number; pinData?: unknown },
+			_options: { timeout?: number; verificationPinData?: unknown },
 		): Promise<ExecutionRunResult> => {
 			await Promise.resolve();
 			return runResult;
@@ -957,7 +957,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(run).toHaveBeenCalledTimes(1);
 		// Fixture items are passed unwrapped — the adapter wraps each in {json}.
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: {
+			verificationPinData: {
 				Gmail: [{ _mockedCredential: 'gmailOAuth2' }],
 				'Send Slack': [{ ok: true, ts: '1718000000.1' }],
 			},
@@ -976,11 +976,11 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: { 'Send Slack': [{}] },
+			verificationPinData: { 'Send Slack': [{}] },
 		});
 	});
 
-	it('passes source-declared read-node fixtures through the simulation channel', async () => {
+	it('passes source-declared read-node fixtures through verification pin data', async () => {
 		const reason = 'Source declares verification output for this node';
 		const weatherOutput = [{ daily: { precipitation_sum: [6.4] } }];
 		const { ctx } = makeContext(
@@ -995,7 +995,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: { 'Get Berlin Weather': weatherOutput },
+			verificationPinData: { 'Get Berlin Weather': weatherOutput },
 		});
 	});
 
@@ -1020,7 +1020,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.success).toBe(true);
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: { 'Get Berlin Forecast': clearOutput },
+			verificationPinData: { 'Get Berlin Forecast': clearOutput },
 		});
 	});
 
@@ -1059,7 +1059,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
-		expect(run.mock.calls[0][2]).toMatchObject({ pinData: undefined });
+		expect(run.mock.calls[0][2]).toMatchObject({ verificationPinData: undefined });
 	});
 
 	it('marks simulated nodes in previews and reports them with reasons', async () => {

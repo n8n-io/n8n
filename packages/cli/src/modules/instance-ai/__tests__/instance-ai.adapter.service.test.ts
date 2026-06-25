@@ -2640,7 +2640,7 @@ describe('createExecutionAdapter run()', () => {
 			'wf-1',
 			{ id: 'input' },
 			{
-				pinData: {
+				verificationPinData: {
 					Mocked: [{ id: 'mocked' }],
 				},
 			},
@@ -2683,7 +2683,7 @@ describe('createExecutionAdapter run()', () => {
 		);
 
 		await adapter.run('wf-1', undefined, {
-			pinData: {
+			verificationPinData: {
 				'Get Berlin Forecast': [{ daily: { precipitation_sum: [0] } }],
 				'Send Rain Alert': [{}],
 				'Shared Pin Node': [{ source: 'verification' }],

@@ -952,13 +952,13 @@ export class InstanceAiAdapterService {
 
 				// Merge pin data from three sources:
 				// 1. Workflow-level pinData (from the saved workflow)
-				// 2. Override pinData (passed by verify-built-workflow for mocked credential verification)
+				// 2. Verification pinData (passed by verify-built-workflow for mocked credential verification)
 				// 3. Trigger input pinData (from the inputData parameter)
 				const workflowPinData = workflow.pinData ?? {};
-				const overridePinData = options?.pinData
-					? (sdkPinDataToRuntime(options.pinData) ?? {})
+				const verificationPinData = options?.verificationPinData
+					? (sdkPinDataToRuntime(options.verificationPinData) ?? {})
 					: {};
-				const basePinData = { ...workflowPinData, ...overridePinData };
+				const basePinData = { ...workflowPinData, ...verificationPinData };
 				let nonVerificationPinData = { ...workflowPinData };
 				const mockDataSources: WorkflowExecutionMockDataSource[] = [];
 
@@ -966,7 +966,7 @@ export class InstanceAiAdapterService {
 					mockDataSources.push('trigger_input');
 				}
 
-				if (Object.keys(overridePinData).length > 0) {
+				if (Object.keys(verificationPinData).length > 0) {
 					mockDataSources.push('verification_pin_data');
 				}
 
@@ -1026,7 +1026,7 @@ export class InstanceAiAdapterService {
 					try {
 						await pruneUnreachedVerificationPinData(
 							executionId,
-							overridePinData,
+							verificationPinData,
 							nonVerificationPinData,
 							executedNodeNames,
 						);

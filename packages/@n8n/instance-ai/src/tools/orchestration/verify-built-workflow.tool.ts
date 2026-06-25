@@ -119,7 +119,7 @@ function buildVerificationPinData(
 	buildOutcome: WorkflowBuildOutcome,
 	fixtureOverrides: VerifyInput['fixtureOverrides'],
 ): {
-	pinData: Record<string, unknown[]> | undefined;
+	verificationPinData: Record<string, unknown[]> | undefined;
 	simulatedNodes: Array<{ nodeName: string; reason: string }>;
 } {
 	const merged: Record<string, unknown[]> = { ...(buildOutcome.verificationPinData ?? {}) };
@@ -140,7 +140,7 @@ function buildVerificationPinData(
 	}
 
 	return {
-		pinData: Object.keys(merged).length > 0 ? merged : undefined,
+		verificationPinData: Object.keys(merged).length > 0 ? merged : undefined,
 		simulatedNodes,
 	};
 }
@@ -718,14 +718,14 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					guidance,
 				};
 			}
-			const { pinData: verificationPinData, simulatedNodes } = buildVerificationPinData(
+			const { verificationPinData, simulatedNodes } = buildVerificationPinData(
 				buildOutcome,
 				resolvedInput.fixtureOverrides,
 			);
 
 			const result = await domainContext.executionService.run(workflowId, resolvedInput.inputData, {
 				timeout: resolvedInput.timeout,
-				pinData: verificationPinData,
+				verificationPinData,
 			});
 
 			// Coverage: partition the simulation plan against the nodes that
