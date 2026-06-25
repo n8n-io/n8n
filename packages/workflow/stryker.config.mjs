@@ -8,26 +8,20 @@ export default {
 	vitest: {
 		configFile: 'vitest.stryker.config.ts',
 	},
-	// No `progress` reporter: these runs are non-interactive (CI / agent loop),
-	// nobody watches the stream, and its streaming output only tempts a re-poll.
+	// No `progress` reporter: these runs are non-interactive, nobody watches the stream.
 	reporters: ['clear-text', 'json'],
 	coverageAnalysis: 'perTest',
-	// Reuse mutant results across runs: the property-testing loop edits tests and
-	// re-runs `mutate` repeatedly — incremental only re-tests mutants whose
-	// covering tests changed, so every verify-after-edit is cheap. Keep the cache
-	// file under reports/mutation/ so it's covered by the existing gitignore.
+	// Cache mutant results so the property-testing edit/re-run loop only re-tests
+	// mutants whose covering tests changed. Keep the cache under the gitignored reports/mutation/.
 	incremental: true,
 	incrementalFile: 'reports/mutation/stryker-incremental.json',
-	// Skip mutants in module-level (static) code. Each forces a full re-instrument,
-	// and on a utils file they are usually the single biggest cold-run cost.
+	// Skip module-level (static) mutants — each forces a full re-instrument.
 	ignoreStatic: true,
 	// Default empty — the `mutate` npm script always passes --mutate <file>.
 	// Direct invocation with no --mutate will fail fast (allowEmpty: false).
 	mutate: [],
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },
-	// A string/utils mutant has no legit multi-second op; a 15s+ run is a
-	// loop-condition mutant spinning. Cap low so those fail fast instead of
-	// stalling the whole run at the old 60s-per-timeout.
+	// Cap low: a string/utils mutant running 15s+ is a spinning loop-condition mutant; fail it fast.
 	timeoutMS: 15_000,
 	// Each Stryker worker spawns vitest with one project (vm-engine, via
 	// vitest.stryker.config.ts). Default 4 is fine on CI runners; lower
