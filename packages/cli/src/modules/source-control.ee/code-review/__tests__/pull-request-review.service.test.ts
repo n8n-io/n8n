@@ -5,6 +5,7 @@ import type { CodeReviewProvider, PullRequestSummary } from '../code-review-prov
 import type { CodeReviewProviderFactory } from '../code-review-provider.factory';
 import { PullRequestReviewService } from '../pull-request-review.service.ee';
 import type { SourceControlPreferencesService } from '../../source-control-preferences.service.ee';
+import type { SourceControlService } from '../../source-control.service.ee';
 
 describe('PullRequestReviewService', () => {
 	const prSummary: PullRequestSummary = {
@@ -30,7 +31,11 @@ describe('PullRequestReviewService', () => {
 		factory.getProvider.mockResolvedValue(provider);
 		const preferences = mock<SourceControlPreferencesService>();
 		preferences.getBranchName.mockReturnValue('main');
-		return new PullRequestReviewService(factory, preferences);
+		const sourceControlService = mock<SourceControlService>();
+		if (provider) {
+			provider.listPullRequestReviews.mockResolvedValue([]);
+		}
+		return new PullRequestReviewService(factory, preferences, sourceControlService);
 	};
 
 	it('throws a UserError when no provider is available', async () => {

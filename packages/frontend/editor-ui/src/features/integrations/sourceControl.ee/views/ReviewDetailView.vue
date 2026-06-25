@@ -4,10 +4,19 @@ import { useRouter } from 'vue-router';
 import type {
 	ReviewWorkflowFile,
 	SourceControlReviewComment,
+	SourceControlReviewSubmissionEvent,
 	SourceControlReviewSummary,
 } from '@n8n/api-types';
 import type { IWorkflowDb } from '@/Interface';
-import { N8nButton, N8nHeading, N8nText, N8nIcon, N8nLink, N8nLoading } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nText,
+	N8nIcon,
+	N8nLink,
+	N8nLoading,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
@@ -107,6 +116,19 @@ const onCommentsDeleted = (deletedCommentIds: number[]) => {
 	reviewComments.value = reviewComments.value.filter((comment) => !deletedIds.has(comment.id));
 };
 
+const onReviewSubmitted = (event: SourceControlReviewSubmissionEvent) => {
+	if (!pullRequest.value) return;
+
+	if (event === 'APPROVE') {
+		pullRequest.value = { ...pullRequest.value, isApproved: true };
+		return;
+	}
+
+	if (event === 'REQUEST_CHANGES') {
+		pullRequest.value = { ...pullRequest.value, isApproved: false };
+	}
+};
+
 watch(selectedPath, (path) => {
 	void loadComments(path);
 });
@@ -129,7 +151,24 @@ onMounted(loadReview);
 				@click="goBack"
 			/>
 			<div v-if="pullRequest" :class="$style.headerInfo">
-				<N8nHeading size="large" tag="h1" :class="$style.title">{{ pullRequest.title }}</N8nHeading>
+				<div :class="$style.titleRow">
+					<N8nHeading size="large" tag="h1" :class="$style.title">{{
+						pullRequest.title
+					}}</N8nHeading>
+					<N8nTooltip v-if="pullRequest.isApproved" placement="top">
+						<template #content>
+							{{ i18n.baseText('sourceControl.reviews.approved.tooltip') }}
+						</template>
+						<span :class="$style.approvedBadge">
+							<N8nIcon
+								icon="circle-check"
+								color="success"
+								size="medium"
+								data-test-id="review-approved-badge"
+							/>
+						</span>
+					</N8nTooltip>
+				</div>
 				<N8nLink :href="pullRequest.url" target="_blank" :class="$style.externalLink">
 					<N8nText size="small" color="text-light"
 						>#{{ pullRequest.prNumber }} <N8nIcon icon="external-link" size="xsmall"
@@ -137,7 +176,10 @@ onMounted(loadReview);
 				</N8nLink>
 			</div>
 			<div v-if="canComment && pullRequest" :class="$style.headerActions">
-				<ReviewSubmitReviewPopover :pr-number="pullRequest.prNumber" />
+				<ReviewSubmitReviewPopover
+					:pr-number="pullRequest.prNumber"
+					@submitted="onReviewSubmitted"
+				/>
 			</div>
 		</div>
 
@@ -228,10 +270,27 @@ onMounted(loadReview);
 	min-width: 0;
 }
 
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .title {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	margin: 0;
+	line-height: 1.25;
+}
+
+.approvedBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	line-height: 0;
 }
 
 .externalLink {

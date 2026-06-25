@@ -48,6 +48,8 @@ export interface SourceControlReviewSummary {
 	/** Commit SHAs for diff sides; included on review detail responses. */
 	baseSha?: string;
 	headSha?: string;
+	/** Whether the pull request has an active approval without pending change requests. */
+	isApproved?: boolean;
 }
 
 /** A pull/merge request plus the visual diffs of its changed workflows. */

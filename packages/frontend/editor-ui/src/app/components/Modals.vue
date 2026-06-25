@@ -67,6 +67,7 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_CREATE_REVIEW_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import {
@@ -110,6 +111,7 @@ import SetupWorkflowCredentialsModal from '@/features/workflows/templates/compon
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
 import SourceControlPullResultModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue';
 import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
+import CreateReviewRequestModal from '@/features/integrations/sourceControl.ee/components/CreateReviewRequestModal.vue';
 import AnnotationTagsManager from '@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue';
 import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue';
 import WhatsNewModal from '@/app/components/WhatsNewModal.vue';
@@ -314,6 +316,12 @@ import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/comp
 		<ModalRoot :name="SOURCE_CONTROL_PULL_RESULT_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SourceControlPullResultModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_CREATE_REVIEW_MODAL_KEY">
+			<template #default="{ data }">
+				<CreateReviewRequestModal :data="data" />
 			</template>
 		</ModalRoot>
 

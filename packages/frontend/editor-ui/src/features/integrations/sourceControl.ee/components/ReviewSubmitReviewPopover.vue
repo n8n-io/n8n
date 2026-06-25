@@ -10,6 +10,10 @@ const props = defineProps<{
 	prNumber: number;
 }>();
 
+const emit = defineEmits<{
+	submitted: [SourceControlReviewSubmissionEvent];
+}>();
+
 const i18n = useI18n();
 const toast = useToast();
 const sourceControlStore = useSourceControlStore();
@@ -45,6 +49,7 @@ const submit = async (event: SourceControlReviewSubmissionEvent) => {
 			event,
 		});
 		close();
+		emit('submitted', event);
 		const successKey =
 			event === 'APPROVE'
 				? 'sourceControl.reviews.submit.approved.title'

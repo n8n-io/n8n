@@ -5,6 +5,9 @@ import { Z } from '../../zod-class';
 /** Which side of the PR diff a review comment targets. */
 export type ReviewCommentSide = 'LEFT' | 'RIGHT';
 
+/** Whether the comment targets a specific line or the entire file. */
+export type ReviewCommentSubjectType = 'line' | 'file';
+
 /** Anchor for mapping a canvas / parameter selection to a workflow JSON line. */
 export interface ReviewCommentAnchor {
 	nodeId: string;
@@ -34,8 +37,9 @@ export interface SourceControlReviewComment {
 	id: number;
 	body: string;
 	path: string;
-	line: number;
+	line?: number;
 	side: ReviewCommentSide;
+	subjectType?: ReviewCommentSubjectType;
 	url: string;
 	author?: string;
 	createdAt: string;

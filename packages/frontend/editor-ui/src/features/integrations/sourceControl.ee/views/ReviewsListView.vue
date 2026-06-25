@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { SourceControlReviewSummary } from '@n8n/api-types';
 import {
@@ -9,19 +9,25 @@ import {
 	N8nLink,
 	N8nLoading,
 	N8nActionBox,
+	N8nButton,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { SOURCE_CONTROL_CREATE_REVIEW_MODAL_KEY } from '../sourceControl.constants';
 import { useSourceControlStore } from '../sourceControl.store';
 
 const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
+const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 
 const isLoading = ref(true);
 const reviews = ref<SourceControlReviewSummary[]>([]);
+
+const canCreateReview = computed(() => sourceControlStore.preferences.hasApiToken === true);
 
 const loadReviews = async () => {
 	isLoading.value = true;
@@ -38,18 +44,41 @@ const openReview = (review: SourceControlReviewSummary) => {
 	void router.push({ name: VIEWS.REVIEW_DETAIL, params: { prNumber: String(review.prNumber) } });
 };
 
+const openCreateModal = () => {
+	uiStore.openModalWithData({
+		name: SOURCE_CONTROL_CREATE_REVIEW_MODAL_KEY,
+		data: {
+			onCreated: (prNumber: number) => {
+				void loadReviews();
+				void router.push({ name: VIEWS.REVIEW_DETAIL, params: { prNumber: String(prNumber) } });
+			},
+		},
+	});
+};
+
 onMounted(loadReviews);
 </script>
 
 <template>
 	<div :class="$style.container">
 		<div :class="$style.header">
-			<N8nHeading size="2xlarge" tag="h1">
-				{{ i18n.baseText('sourceControl.reviews.title') }}
-			</N8nHeading>
-			<N8nText color="text-base">
-				{{ i18n.baseText('sourceControl.reviews.subtitle') }}
-			</N8nText>
+			<div :class="$style.headerText">
+				<N8nHeading size="2xlarge" tag="h1">
+					{{ i18n.baseText('sourceControl.reviews.title') }}
+				</N8nHeading>
+				<N8nText color="text-base">
+					{{ i18n.baseText('sourceControl.reviews.subtitle') }}
+				</N8nText>
+			</div>
+			<N8nButton
+				v-if="canCreateReview"
+				variant="solid"
+				size="medium"
+				data-test-id="reviews-create-button"
+				@click="openCreateModal"
+			>
+				{{ i18n.baseText('sourceControl.reviews.create.action') }}
+			</N8nButton>
 		</div>
 
 		<N8nLoading v-if="isLoading" :rows="3" :class="$style.loading" />
@@ -74,6 +103,14 @@ onMounted(loadReviews);
 					<div :class="$style.cardText">
 						<div :class="$style.cardTitleRow">
 							<N8nText bold :class="$style.cardTitle">{{ review.title }}</N8nText>
+							<span v-if="review.isApproved" :class="$style.approvedBadge">
+								<N8nIcon
+									icon="circle-check"
+									color="success"
+									size="medium"
+									data-test-id="review-list-approved-badge"
+								/>
+							</span>
 							<span v-if="review.isDraft" :class="$style.draftBadge">
 								{{ i18n.baseText('sourceControl.reviews.draft') }}
 							</span>
@@ -120,6 +157,13 @@ onMounted(loadReviews);
 }
 
 .header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--md);
+}
+
+.headerText {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -183,6 +227,15 @@ onMounted(loadReviews);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: 1.25;
+}
+
+.approvedBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	line-height: 0;
 }
 
 .draftBadge {

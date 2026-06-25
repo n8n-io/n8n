@@ -1,5 +1,6 @@
 import type {
 	CreateSourceControlReviewCommentRequest,
+	CreateSourceControlReviewRequest,
 	CreateSourceControlSubmitReviewRequest,
 	GitCommitInfo,
 	PullWorkFolderRequestDto,
@@ -72,6 +73,19 @@ export const getReviews = async (
 	context: IRestApiContext,
 ): Promise<SourceControlReviewSummary[]> => {
 	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/reviews`);
+};
+
+export const getReviewCandidates = async (
+	context: IRestApiContext,
+): Promise<SourceControlledFile[]> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/reviews/candidates`);
+};
+
+export const createReviewRequest = async (
+	context: IRestApiContext,
+	payload: CreateSourceControlReviewRequest,
+): Promise<SourceControlReviewSummary> => {
+	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/reviews`, payload);
 };
 
 export const getReview = async (

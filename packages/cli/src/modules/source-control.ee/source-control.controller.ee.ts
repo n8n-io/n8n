@@ -3,6 +3,7 @@ import {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	CreateSourceControlReviewCommentRequestDto,
+	CreateSourceControlReviewRequestDto,
 	CreateSourceControlSubmitReviewRequestDto,
 	type GitCommitInfo,
 	type SourceControlledFile,
@@ -339,6 +340,33 @@ export class SourceControlController {
 			if (error instanceof ForbiddenError) {
 				throw error;
 			}
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Get('/reviews/candidates', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:pull')
+	async listReviewCandidates(req: AuthenticatedRequest): Promise<SourceControlledFile[]> {
+		try {
+			return await this.pullRequestReviewService.listReviewCandidates(req.user);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Post('/reviews', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:push')
+	async createReview(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+		@Body payload: CreateSourceControlReviewRequestDto,
+	): Promise<SourceControlReviewSummary> {
+		if (!payload.workflowIds?.length) {
+			throw new BadRequestError('At least one workflow must be selected');
+		}
+		try {
+			return await this.pullRequestReviewService.createReviewRequest(req.user, payload);
+		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

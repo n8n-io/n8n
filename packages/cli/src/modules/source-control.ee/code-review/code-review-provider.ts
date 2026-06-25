@@ -27,13 +27,16 @@ export interface PullRequestFile {
 
 export type PullRequestCommentSide = 'LEFT' | 'RIGHT';
 
-/** A line-level review comment on a pull/merge request diff. */
+export type PullRequestCommentSubjectType = 'line' | 'file';
+
+/** A review comment on a pull/merge request diff. */
 export interface PullRequestReviewComment {
 	id: number;
 	body: string;
 	path: string;
-	line: number;
+	line?: number;
 	side: PullRequestCommentSide;
+	subjectType: PullRequestCommentSubjectType;
 	url: string;
 	author?: string;
 	createdAt: string;
@@ -48,6 +51,7 @@ export interface CreatePullRequestReviewComment {
 	side?: PullRequestCommentSide;
 	commitId?: string;
 	inReplyToId?: number;
+	subjectType?: PullRequestCommentSubjectType;
 }
 
 export type PullRequestReviewEvent = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
@@ -65,6 +69,26 @@ export interface PullRequestReviewSubmission {
 	body: string;
 	author?: string;
 	submittedAt: string;
+}
+
+export type PullRequestReviewState =
+	| 'PENDING'
+	| 'COMMENTED'
+	| 'APPROVED'
+	| 'CHANGES_REQUESTED'
+	| 'DISMISSED';
+
+export interface PullRequestReviewStateEntry {
+	author?: string;
+	state: PullRequestReviewState;
+	submittedAt: string;
+}
+
+export interface CreatePullRequest {
+	title: string;
+	body?: string;
+	headBranch: string;
+	baseBranch: string;
 }
 
 /**
@@ -101,4 +125,8 @@ export interface CodeReviewProvider {
 		prNumber: number,
 		review: SubmitPullRequestReview,
 	): Promise<PullRequestReviewSubmission>;
+
+	listPullRequestReviews(prNumber: number): Promise<PullRequestReviewStateEntry[]>;
+
+	createPullRequest(request: CreatePullRequest): Promise<PullRequestSummary>;
 }

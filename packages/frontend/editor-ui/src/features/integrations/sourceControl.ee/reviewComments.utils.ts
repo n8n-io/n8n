@@ -60,7 +60,7 @@ function getThreadDisplayLine(
 	newString: string,
 	oldString: string,
 ): number | null {
-	if (!comment.anchor?.jsonPath) return null;
+	if (comment.subjectType === 'file' || !comment.anchor?.jsonPath) return null;
 	const content = comment.side === 'LEFT' ? oldString : newString;
 	return findLineInNodeJson(content, comment.anchor.jsonPath);
 }

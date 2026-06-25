@@ -129,6 +129,14 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.getReviews(rootStore.restApiContext);
 	};
 
+	const getReviewCandidates = async () => {
+		return await vcApi.getReviewCandidates(rootStore.restApiContext);
+	};
+
+	const createReviewRequest = async (payload: Parameters<typeof vcApi.createReviewRequest>[1]) => {
+		return await vcApi.createReviewRequest(rootStore.restApiContext, payload);
+	};
+
 	const getReview = async (prNumber: number) => {
 		return await vcApi.getReview(rootStore.restApiContext, prNumber);
 	};
@@ -172,6 +180,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		getAggregatedStatus,
 		getRemoteWorkflow,
 		getReviews,
+		getReviewCandidates,
+		createReviewRequest,
 		getReview,
 		getReviewComments,
 		createReviewComment,

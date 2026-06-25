@@ -50,11 +50,15 @@ const threads = computed(() =>
 );
 
 const nodeLevelThreads = computed(() =>
-	threads.value.filter((thread) => !thread.root.anchor?.jsonPath),
+	threads.value.filter(
+		(thread) => thread.root.subjectType === 'file' || !thread.root.anchor?.jsonPath,
+	),
 );
 
 const inlineThreads = computed(() =>
-	threads.value.filter((thread) => !!thread.root.anchor?.jsonPath),
+	threads.value.filter(
+		(thread) => thread.root.subjectType !== 'file' && !!thread.root.anchor?.jsonPath,
+	),
 );
 
 const mountedThreadCleanups: Array<() => void> = [];
@@ -182,6 +186,13 @@ async function submitLineComment(
 	side: 'LEFT' | 'RIGHT',
 ) {
 	if (isLineSubmitting.value) return;
+	if (!jsonPath?.trim()) {
+		toast.showError(
+			new Error(i18n.baseText('sourceControl.reviews.comments.linePathError')),
+			i18n.baseText('sourceControl.reviews.comments.posted.error'),
+		);
+		return;
+	}
 
 	isLineSubmitting.value = true;
 	try {
@@ -191,7 +202,7 @@ async function submitLineComment(
 			side,
 			anchor: {
 				nodeId: props.node.id,
-				jsonPath: jsonPath || undefined,
+				jsonPath,
 			},
 		});
 		clearComposeRow();

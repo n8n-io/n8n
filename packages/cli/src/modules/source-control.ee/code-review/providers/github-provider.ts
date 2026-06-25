@@ -3,9 +3,11 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import type {
 	CodeReviewProvider,
+	CreatePullRequest,
 	CreatePullRequestReviewComment,
 	PullRequestFile,
 	PullRequestReviewComment,
+	PullRequestReviewStateEntry,
 	PullRequestReviewSubmission,
 	PullRequestSummary,
 	SubmitPullRequestReview,
@@ -47,6 +49,7 @@ interface GitHubReviewComment {
 	path: string;
 	line: number | null;
 	side: 'LEFT' | 'RIGHT';
+	subject_type?: 'line' | 'file';
 	html_url: string;
 	user?: { login: string };
 	created_at: string;
@@ -132,12 +135,14 @@ export class GitHubProvider implements CodeReviewProvider {
 	}
 
 	private toReviewComment(comment: GitHubReviewComment): PullRequestReviewComment {
+		const subjectType = comment.subject_type ?? (comment.line ? 'line' : 'file');
 		return {
 			id: comment.id,
 			body: comment.body,
 			path: comment.path,
-			line: comment.line ?? 0,
+			line: comment.line ?? undefined,
 			side: comment.side,
+			subjectType,
 			url: comment.html_url,
 			author: comment.user?.login,
 			createdAt: comment.created_at,
@@ -231,13 +236,20 @@ export class GitHubProvider implements CodeReviewProvider {
 	): Promise<PullRequestReviewComment> {
 		const payload = comment.inReplyToId
 			? { body: comment.body, in_reply_to: comment.inReplyToId }
-			: {
-					body: comment.body,
-					commit_id: comment.commitId,
-					path: comment.path,
-					line: comment.line,
-					side: comment.side,
-				};
+			: comment.subjectType === 'file'
+				? {
+						body: comment.body,
+						commit_id: comment.commitId,
+						path: comment.path,
+						subject_type: 'file',
+					}
+				: {
+						body: comment.body,
+						commit_id: comment.commitId,
+						path: comment.path,
+						line: comment.line,
+						side: comment.side,
+					};
 
 		const { status, body } = await this.request<GitHubReviewComment>(
 			`${this.repoPath}/pulls/${prNumber}/comments`,
@@ -248,7 +260,9 @@ export class GitHubProvider implements CodeReviewProvider {
 		);
 		if (status === 422) {
 			throw new UserError(
-				'GitHub could not place the comment on that line. Try commenting on a changed line in the pull request diff.',
+				comment.subjectType === 'file'
+					? 'GitHub could not add a file comment to this pull request.'
+					: 'GitHub could not place the comment on that line. Try commenting on a changed line in the pull request diff.',
 			);
 		}
 		if (status >= 400) {
@@ -292,5 +306,38 @@ export class GitHubProvider implements CodeReviewProvider {
 			throw new UserError('Failed to submit pull request review on GitHub.');
 		}
 		return this.toReviewSubmission(body);
+	}
+
+	async listPullRequestReviews(prNumber: number): Promise<PullRequestReviewStateEntry[]> {
+		const { body } = await this.request<GitHubPullRequestReview[]>(
+			`${this.repoPath}/pulls/${prNumber}/reviews?per_page=100`,
+		);
+		if (!Array.isArray(body)) return [];
+		return body.map((review) => ({
+			author: review.user?.login,
+			state: review.state,
+			submittedAt: review.submitted_at,
+		}));
+	}
+
+	async createPullRequest(request: CreatePullRequest): Promise<PullRequestSummary> {
+		const { status, body } = await this.request<GitHubPullRequest>(`${this.repoPath}/pulls`, {
+			method: 'POST',
+			body: JSON.stringify({
+				title: request.title,
+				body: request.body ?? '',
+				head: request.headBranch,
+				base: request.baseBranch,
+			}),
+		});
+		if (status === 422) {
+			throw new UserError(
+				'GitHub could not create the pull request. The branch may already have an open pull request.',
+			);
+		}
+		if (status >= 400) {
+			throw new UserError('Failed to create pull request on GitHub.');
+		}
+		return this.toSummary(body);
 	}
 }

@@ -11,7 +11,7 @@ export function findLineInWorkflowJson(
 	if (nodeIdLineIndex === -1) return null;
 
 	if (!anchor.jsonPath) {
-		return nodeIdLineIndex + 1;
+		return findNodeObjectStartLineIndex(lines, nodeIdLineIndex, anchor.nodeId) + 1;
 	}
 
 	const lastKey = anchor.jsonPath.split('.').filter(Boolean).at(-1);
@@ -34,6 +34,24 @@ export function findLineInWorkflowJson(
 function findNodeIdLineIndex(lines: string[], nodeId: string): number {
 	const idPattern = new RegExp(`"id"\\s*:\\s*"${escapeRegExp(nodeId)}"`);
 	return lines.findIndex((line) => idPattern.test(line));
+}
+
+/** Opening `{` line of the node object containing `nodeId`. */
+function findNodeObjectStartLineIndex(
+	lines: string[],
+	nodeIdLineIndex: number,
+	nodeId: string,
+): number {
+	const idPattern = new RegExp(`"id"\\s*:\\s*"${escapeRegExp(nodeId)}"`);
+
+	for (let lineIndex = nodeIdLineIndex; lineIndex >= 0; lineIndex--) {
+		if (!/^\s*\{\s*,?\s*$/.test(lines[lineIndex])) continue;
+
+		const segment = lines.slice(lineIndex, nodeIdLineIndex + 1).join('\n');
+		if (idPattern.test(segment)) return lineIndex;
+	}
+
+	return nodeIdLineIndex;
 }
 
 function escapeRegExp(value: string): string {

@@ -1,5 +1,6 @@
 import type {
 	CreateSourceControlReviewCommentRequest,
+	CreateSourceControlReviewRequest,
 	CreateSourceControlSubmitReviewRequest,
 	ReviewWorkflowFile,
 	ReviewWorkflowSnapshot,
@@ -7,16 +8,20 @@ import type {
 	SourceControlReviewDetail,
 	SourceControlReviewSubmission,
 	SourceControlReviewSummary,
+	SourceControlledFile,
 } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import type { CodeReviewProvider, PullRequestSummary } from './code-review-provider';
 import { CodeReviewProviderFactory } from './code-review-provider.factory';
+import { computePullRequestIsApproved } from './pull-request-approval.utils';
 import { encodeReviewCommentBody, parseReviewCommentBody } from './review-comment-metadata';
 import { findLineInWorkflowJson } from './workflow-json-line-finder';
 import { SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER } from '../constants';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import { SourceControlService } from '../source-control.service.ee';
 import type { ExportableWorkflow } from '../types/exportable-workflow';
 
 /**
@@ -29,6 +34,7 @@ export class PullRequestReviewService {
 	constructor(
 		private readonly providerFactory: CodeReviewProviderFactory,
 		private readonly preferencesService: SourceControlPreferencesService,
+		private readonly sourceControlService: SourceControlService,
 	) {}
 
 	private async getProviderOrThrow(): Promise<CodeReviewProvider> {
@@ -44,6 +50,7 @@ export class PullRequestReviewService {
 	private toSummary(
 		pr: PullRequestSummary,
 		workflowChangeCount?: number,
+		isApproved?: boolean,
 	): SourceControlReviewSummary {
 		return {
 			provider: pr.provider,
@@ -59,7 +66,16 @@ export class PullRequestReviewService {
 			workflowChangeCount,
 			baseSha: pr.baseSha,
 			headSha: pr.headSha,
+			isApproved,
 		};
+	}
+
+	private async resolveIsApproved(
+		provider: CodeReviewProvider,
+		prNumber: number,
+	): Promise<boolean> {
+		const reviews = await provider.listPullRequestReviews(prNumber);
+		return computePullRequestIsApproved(reviews);
 	}
 
 	private isWorkflowFile(filePath: string): boolean {
@@ -90,9 +106,12 @@ export class PullRequestReviewService {
 
 		return await Promise.all(
 			pullRequests.map(async (pr) => {
-				const files = await provider.listFiles(pr.prNumber);
+				const [files, isApproved] = await Promise.all([
+					provider.listFiles(pr.prNumber),
+					this.resolveIsApproved(provider, pr.prNumber),
+				]);
 				const workflowChangeCount = files.filter((f) => this.isWorkflowFile(f.path)).length;
-				return this.toSummary(pr, workflowChangeCount);
+				return this.toSummary(pr, workflowChangeCount, isApproved);
 			}),
 		);
 	}
@@ -100,8 +119,11 @@ export class PullRequestReviewService {
 	/** A single pull request plus base/head snapshots of each changed workflow. */
 	async getReview(prNumber: number): Promise<SourceControlReviewDetail> {
 		const provider = await this.getProviderOrThrow();
-		const pr = await provider.getPullRequest(prNumber);
-		const files = await provider.listFiles(prNumber);
+		const [pr, files, isApproved] = await Promise.all([
+			provider.getPullRequest(prNumber),
+			provider.listFiles(prNumber),
+			this.resolveIsApproved(provider, prNumber),
+		]);
 		const workflowFiles = files.filter((f) => this.isWorkflowFile(f.path));
 
 		const workflows: ReviewWorkflowFile[] = await Promise.all(
@@ -122,7 +144,49 @@ export class PullRequestReviewService {
 			}),
 		);
 
-		return { pullRequest: this.toSummary(pr, workflows.length), workflows };
+		return { pullRequest: this.toSummary(pr, workflows.length, isApproved), workflows };
+	}
+
+	/** All workflows the user can access, for review request selection. */
+	async listReviewCandidates(user: User): Promise<SourceControlledFile[]> {
+		return await this.sourceControlService.listReviewWorkflowCandidates(user);
+	}
+
+	async createReviewRequest(
+		user: User,
+		request: CreateSourceControlReviewRequest,
+	): Promise<SourceControlReviewSummary> {
+		const provider = await this.getProviderOrThrow();
+		const baseBranch = this.preferencesService.getBranchName();
+		const candidates = await this.listReviewCandidates(user);
+		const selected = candidates.filter((candidate) => request.workflowIds.includes(candidate.id));
+
+		if (selected.length !== request.workflowIds.length) {
+			throw new UserError('One or more selected workflows are not eligible for a review request.');
+		}
+
+		const title =
+			request.title?.trim() ??
+			`Review: ${selected.map((workflow) => workflow.name).join(', ')}`.slice(0, 200);
+		const branchName = `n8n-review/${Date.now()}`;
+		const commitMessage =
+			request.title?.trim() ?? `Review request for ${selected.length} workflow(s)`;
+
+		await this.sourceControlService.pushWorkflowsForReviewBranch(user, {
+			workflowIds: request.workflowIds,
+			branchName,
+			commitMessage,
+			baseBranch,
+		});
+
+		const pullRequest = await provider.createPullRequest({
+			title,
+			body: request.body,
+			headBranch: branchName,
+			baseBranch,
+		});
+
+		return this.toSummary(pullRequest, selected.length, false);
 	}
 
 	async listReviewComments(
@@ -141,6 +205,7 @@ export class PullRequestReviewService {
 				path: comment.path,
 				line: comment.line,
 				side: comment.side,
+				subjectType: comment.subjectType,
 				url: comment.url,
 				author: comment.author,
 				createdAt: comment.createdAt,
@@ -178,6 +243,7 @@ export class PullRequestReviewService {
 				path: created.path,
 				line: created.line,
 				side: created.side,
+				subjectType: created.subjectType,
 				url: created.url,
 				author: created.author,
 				createdAt: created.createdAt,
@@ -194,6 +260,32 @@ export class PullRequestReviewService {
 		const pr = await provider.getPullRequest(prNumber);
 		const side = request.side ?? 'RIGHT';
 		const commitId = side === 'RIGHT' ? pr.headSha : pr.baseSha;
+		const encodedBody = encodeReviewCommentBody(request.body, request.anchor);
+
+		if (!request.anchor.jsonPath?.trim()) {
+			const created = await provider.createReviewComment(prNumber, {
+				body: encodedBody,
+				path: request.path,
+				commitId,
+				subjectType: 'file',
+			});
+			const parsed = parseReviewCommentBody(created.body);
+			return {
+				id: created.id,
+				body: parsed.body,
+				path: created.path,
+				line: created.line,
+				side: created.side,
+				subjectType: created.subjectType,
+				url: created.url,
+				author: created.author,
+				createdAt: created.createdAt,
+				updatedAt: created.updatedAt,
+				anchor: parsed.anchor,
+				inReplyToId: created.inReplyToId,
+			};
+		}
+
 		const fileContent = await provider.getFileAtRef(request.path, commitId);
 		if (!fileContent) {
 			throw new UserError(
@@ -207,7 +299,7 @@ export class PullRequestReviewService {
 		}
 
 		const created = await provider.createReviewComment(prNumber, {
-			body: encodeReviewCommentBody(request.body, request.anchor),
+			body: encodedBody,
 			path: request.path,
 			line,
 			side,
@@ -220,6 +312,7 @@ export class PullRequestReviewService {
 			path: created.path,
 			line: created.line,
 			side: created.side,
+			subjectType: created.subjectType,
 			url: created.url,
 			author: created.author,
 			createdAt: created.createdAt,

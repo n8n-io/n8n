@@ -157,4 +157,148 @@ describe('GitHubProvider', () => {
 			event: 'APPROVE',
 		});
 	});
+
+	it('lists pull request reviews for approval status', async () => {
+		mockFetch(200, [
+			{
+				id: 1,
+				body: 'LGTM',
+				html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-1',
+				state: 'APPROVED',
+				submitted_at: '2026-06-03T00:00:00Z',
+				user: { login: 'alice' },
+			},
+		]);
+
+		const provider = new GitHubProvider(baseOptions);
+		const reviews = await provider.listPullRequestReviews(7);
+
+		expect(reviews).toEqual([
+			{
+				author: 'alice',
+				state: 'APPROVED',
+				submittedAt: '2026-06-03T00:00:00Z',
+			},
+		]);
+	});
+
+	it('creates a line-level pull request review comment', async () => {
+		const fetchMock = mockFetch(201, {
+			id: 56,
+			body: 'Fix this value',
+			path: 'workflows/a.json',
+			line: 12,
+			side: 'RIGHT',
+			html_url: 'https://github.com/acme/flows/pull/7#discussion_r56',
+			user: { login: 'alice' },
+			created_at: '2026-06-05T00:00:00Z',
+			updated_at: '2026-06-05T00:00:00Z',
+		});
+
+		const provider = new GitHubProvider(baseOptions);
+		const comment = await provider.createReviewComment(7, {
+			body: 'Fix this value',
+			path: 'workflows/a.json',
+			line: 12,
+			side: 'RIGHT',
+			commitId: 'headsha',
+		});
+
+		expect(comment).toEqual(
+			expect.objectContaining({
+				id: 56,
+				line: 12,
+				subjectType: 'line',
+			}),
+		);
+
+		expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+			body: 'Fix this value',
+			commit_id: 'headsha',
+			path: 'workflows/a.json',
+			line: 12,
+			side: 'RIGHT',
+		});
+	});
+
+	it('creates a file-level pull request review comment', async () => {
+		const fetchMock = mockFetch(201, {
+			id: 55,
+			body: 'Looks good overall',
+			path: 'workflows/a.json',
+			line: null,
+			side: 'RIGHT',
+			subject_type: 'file',
+			html_url: 'https://github.com/acme/flows/pull/7#discussion_r55',
+			user: { login: 'alice' },
+			created_at: '2026-06-05T00:00:00Z',
+			updated_at: '2026-06-05T00:00:00Z',
+		});
+
+		const provider = new GitHubProvider(baseOptions);
+		const comment = await provider.createReviewComment(7, {
+			body: 'Looks good overall',
+			path: 'workflows/a.json',
+			commitId: 'headsha',
+			subjectType: 'file',
+		});
+
+		expect(comment).toEqual(
+			expect.objectContaining({
+				id: 55,
+				path: 'workflows/a.json',
+				subjectType: 'file',
+			}),
+		);
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('https://api.github.com/repos/acme/flows/pulls/7/comments');
+		expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+			body: 'Looks good overall',
+			commit_id: 'headsha',
+			path: 'workflows/a.json',
+			subject_type: 'file',
+		});
+	});
+
+	it('creates a pull request', async () => {
+		const fetchMock = mockFetch(201, {
+			number: 12,
+			title: 'Review: Lead flow',
+			html_url: 'https://github.com/acme/flows/pull/12',
+			draft: false,
+			created_at: '2026-06-04T00:00:00Z',
+			updated_at: '2026-06-04T00:00:00Z',
+			user: { login: 'bob' },
+			head: { ref: 'n8n-review/123', sha: 'headsha' },
+			base: { ref: 'main', sha: 'basesha' },
+		});
+
+		const provider = new GitHubProvider(baseOptions);
+		const pr = await provider.createPullRequest({
+			title: 'Review: Lead flow',
+			body: 'Please review',
+			headBranch: 'n8n-review/123',
+			baseBranch: 'main',
+		});
+
+		expect(pr).toEqual(
+			expect.objectContaining({
+				prNumber: 12,
+				title: 'Review: Lead flow',
+				sourceBranch: 'n8n-review/123',
+				targetBranch: 'main',
+			}),
+		);
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('https://api.github.com/repos/acme/flows/pulls');
+		expect((init as RequestInit).method).toBe('POST');
+		expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+			title: 'Review: Lead flow',
+			body: 'Please review',
+			head: 'n8n-review/123',
+			base: 'main',
+		});
+	});
 });

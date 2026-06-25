@@ -22,8 +22,8 @@ const sampleWorkflow = `{
 }`;
 
 describe('findLineInWorkflowJson', () => {
-	it('finds the node id line', () => {
-		expect(findLineInWorkflowJson(sampleWorkflow, { nodeId: 'node-stop' })).toBe(15);
+	it('finds the opening line of the node object for whole-node comments', () => {
+		expect(findLineInWorkflowJson(sampleWorkflow, { nodeId: 'node-stop' })).toBe(5);
 	});
 
 	it('finds a parameter key line within the node', () => {
