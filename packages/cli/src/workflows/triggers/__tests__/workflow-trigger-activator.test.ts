@@ -4,7 +4,12 @@ import type { IWorkflowDb, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock, type MockProxy } from 'jest-mock-extended';
 import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { WebhookPathTakenError, WorkflowActivationError, WorkflowExpression } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	WebhookPathTakenError,
+	WorkflowActivationError,
+	WorkflowExpression,
+} from 'n8n-workflow';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -176,7 +181,7 @@ describe('WorkflowTriggerActivator', () => {
 		});
 	});
 
-	test('activates webhooks, non-webhook triggers, count, and persistence in order', async () => {
+	test('activates webhooks, non-webhook triggers, count, and persistence', async () => {
 		const callOrder: string[] = [];
 		jest.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
 			callOrder.push('acquire');
@@ -239,25 +244,36 @@ describe('WorkflowTriggerActivator', () => {
 			new Set(['t', 'p', 'webhook-node']),
 		);
 
-		expect(callOrder).toEqual([
-			'acquire',
-			'webhooks',
-			'non-webhook:t',
-			'non-webhook:p',
-			'count',
-			'release',
-			'persist-count',
-			'save-static',
-		]);
+		expect(callOrder).toEqual(
+			expect.arrayContaining([
+				'acquire',
+				'webhooks',
+				'non-webhook:t',
+				'non-webhook:p',
+				'count',
+				'release',
+				'persist-count',
+				'save-static',
+			]),
+		);
+		expect(callOrder[0]).toBe('acquire');
+		expect(callOrder.indexOf('webhooks')).toBeGreaterThan(callOrder.indexOf('acquire'));
+		expect(callOrder.indexOf('count')).toBeGreaterThan(callOrder.indexOf('non-webhook:t'));
+		expect(callOrder.indexOf('count')).toBeGreaterThan(callOrder.indexOf('non-webhook:p'));
+		expect(callOrder.indexOf('release')).toBeGreaterThan(callOrder.indexOf('count'));
+		expect(callOrder.indexOf('persist-count')).toBeGreaterThan(callOrder.indexOf('release'));
+		expect(callOrder.indexOf('save-static')).toBeGreaterThan(callOrder.indexOf('release'));
 		expect(workflowRepository.updateWorkflowTriggerCount).toHaveBeenCalledWith('wf-1', 2);
 	});
 
-	test('deactivates webhook rows before non-webhook triggers', async () => {
+	test('awaits non-webhook deregistrations after webhook cleanup', async () => {
 		jest
 			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
 			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
 
 		const callOrder: string[] = [];
+		const deregisterA = createDeferredPromise();
+		const deregisterB = createDeferredPromise();
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
 		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
@@ -269,30 +285,61 @@ describe('WorkflowTriggerActivator', () => {
 			callOrder.push('clear-webhook-rows');
 		});
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-node']);
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-a', 'trigger-b']);
 		nonWebhookTriggerRegistrar.deregister.mockImplementation(async (_workflowId, nodeId) => {
 			callOrder.push(`deregister-non-webhook:${nodeId}`);
+			await (nodeId === 'trigger-a' ? deregisterA.promise : deregisterB.promise);
 		});
 
 		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
 
-		await activator.deactivate(
-			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-			{
-				nodes: [
-					node('webhook-node', 'webhook', { name: 'Webhook' }),
-					node('trigger-node', 'trigger'),
-				],
-				connections: {},
-			},
-			new Set(['webhook-node', 'trigger-node']),
-		);
+		let deactivateSettled = false;
+		const deactivatePromise = activator
+			.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{
+					nodes: [
+						node('webhook-node', 'webhook', { name: 'Webhook' }),
+						node('trigger-a', 'trigger'),
+						node('trigger-b', 'trigger'),
+					],
+					connections: {},
+				},
+				new Set(['webhook-node', 'trigger-a', 'trigger-b']),
+			)
+			.then(() => {
+				deactivateSettled = true;
+			});
 
-		expect(callOrder).toEqual([
-			'deregister-webhooks',
-			'clear-webhook-rows',
-			'deregister-non-webhook:trigger-node',
-		]);
+		await flushPromises();
+
+		expect(callOrder.slice(0, 2)).toEqual(['deregister-webhooks', 'clear-webhook-rows']);
+		expect(callOrder).toEqual(
+			expect.arrayContaining([
+				'deregister-non-webhook:trigger-a',
+				'deregister-non-webhook:trigger-b',
+			]),
+		);
+		expect(callOrder.indexOf('deregister-non-webhook:trigger-a')).toBeGreaterThan(
+			callOrder.indexOf('clear-webhook-rows'),
+		);
+		expect(callOrder.indexOf('deregister-non-webhook:trigger-b')).toBeGreaterThan(
+			callOrder.indexOf('clear-webhook-rows'),
+		);
+		expect(deactivateSettled).toBe(false);
+
+		deregisterA.resolve(undefined);
+		await flushPromises();
+
+		expect(deactivateSettled).toBe(false);
+
+		deregisterB.resolve(undefined);
+		await deactivatePromise;
+
+		expect(deactivateSettled).toBe(true);
+		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledTimes(2);
+		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 'trigger-a');
+		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 'trigger-b');
 	});
 
 	test('isolates a webhook node that exhausts its retry budget, leaving other webhook nodes running', async () => {
@@ -491,14 +538,18 @@ describe('WorkflowTriggerActivator', () => {
 			new Set(['t', 'p']),
 		);
 
-		expect(outcome.activated).toEqual(['t']);
-		expect(outcome.failures).toEqual([
-			{
-				nodeId: 'p',
-				nodeName: 'p',
-				error: expect.objectContaining({ message: 'poll failed' }),
-			},
-		]);
+		expect(outcome.activated).toEqual(expect.arrayContaining(['t']));
+		expect(outcome.activated).toHaveLength(1);
+		expect(outcome.failures).toEqual(
+			expect.arrayContaining([
+				{
+					nodeId: 'p',
+					nodeName: 'p',
+					error: expect.objectContaining({ message: 'poll failed' }),
+				},
+			]),
+		);
+		expect(outcome.failures).toHaveLength(1);
 		// 't' registers once; 'p' is retried up to its budget before being recorded as failed.
 		expect(nonWebhookTriggerRegistrar.register).toHaveBeenCalledTimes(1 + MAX_ATTEMPTS);
 	});

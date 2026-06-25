@@ -199,16 +199,20 @@ Operational details:
 
 ### Build expectations (per test case)
 
-A test case can declare optional natural-language assertions about *how the build went* — `buildExpectations: string[]` in its JSON. Each is graded by a separate Sonnet judge (`build-expectations/verifier.ts`) against the **conversation transcript + final workflow + conversation metrics**, and **counts as a unit in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. It doesn't flip an individual scenario's pass/fail (it's its own unit), and a judge `incomplete` verdict is excluded from the count.
+A test case can declare optional natural-language assertions, split by what they judge:
 
-Use it for things the binary checks and `successCriteria` don't cover:
+- **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
+- **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
 
-- **Process / conversational** — `"Before building, the agent asked which Slack channel to use."` (judged from the transcript)
-- **Outcome tied to the conversation** — `"The final workflow reflects the user's follow-up to split the records envelope before posting."` (judged from the workflow)
+Both are graded by the same Sonnet judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow.
+
+Use them for things the binary checks and `successCriteria` don't cover:
 
 ```json
-"buildExpectations": [
-  "Before building, the agent asked which Airtable table and which Slack channel to use.",
+"processExpectations": [
+  "Before building, the agent asked which Airtable table and which Slack channel to use."
+],
+"outcomeExpectations": [
   "The agent honored the user's instruction to fetch via an HTTP Request node, not the Airtable node."
 ]
 ```
@@ -216,14 +220,14 @@ Use it for things the binary checks and `successCriteria` don't cover:
 The signal surfaces in:
 
 - **HTML report** — a "Build expectations" disclosure on the test case: per-expectation &#10003;/&#10007; with a one-line judge reason.
-- **`eval-results.json`** — `buildExpectations` (aggregated per-expectation pass rate) plus `buildExpectationResultsPerRun` (per-iteration verdicts).
+- **`eval-results.json`** — `buildExpectations` (aggregated per-expectation pass rate across both fields) plus `buildExpectationResultsPerRun` (per-iteration verdicts).
 
 Operational details:
 
 - Judged **once per build** (not per scenario), fired concurrently with the scenario batch — ~0 added wall-clock in the common case.
-- Runs on both eval paths (direct loop + LangSmith). Requires a build transcript, so it's judged even when the build fails, and skipped only when no transcript was captured.
+- Runs on both eval paths (direct loop + LangSmith). `processExpectations` need a transcript (judged even when the build fails, skipped only when no transcript was captured); `outcomeExpectations` are judged from the workflow, including in prebuilt/MCP runs.
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
-- Absent the field, it's a complete no-op.
+- Absent both fields, it's a complete no-op.
 
 ## Environment variables
 
@@ -539,7 +543,7 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the C
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One JSON file = one LangSmith split**, named from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
 
