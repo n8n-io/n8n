@@ -22,7 +22,7 @@ RUN apk add --no-cache busybox-binsh && \
     # libs Node uses (the openssl CLI binary isn't needed at runtime).
     apk add --no-cache \
         openssh \
-        graphicsmagick `# unpinned to float with the Alpine base; OS-layer copyleft (ghostscript-fonts GPL-2.0, libheif LGPL-3.0) is non-in-force per security/sca/README.md. NODE-4184 migrates gm->sharp` \
+        graphicsmagick `# unpinned to track the base image; the GPL fonts it pulls are an OS-layer dependency and do not affect n8n's own license` \
         tini \
         tzdata \
         ca-certificates \
@@ -32,7 +32,7 @@ RUN apk add --no-cache busybox-binsh && \
     apk del apk-tools
 
 WORKDIR /home/node
-# DHI images use a non-standard global npm path, so we need to set NODE_PATH
-# to allow externally installed npm packages to be found by require()
-ENV NODE_PATH=/opt/nodejs/node-v${NODE_VERSION}/lib/node_modules
+# This base image installs global npm modules under /usr/local; set NODE_PATH
+# so packages added via `npm install -g` are require()-able at runtime.
+ENV NODE_PATH=/usr/local/lib/node_modules
 EXPOSE 5678/tcp
