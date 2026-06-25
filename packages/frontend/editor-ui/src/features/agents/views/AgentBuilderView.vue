@@ -3,8 +3,13 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { useI18n } from '@n8n/i18n';
-import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import {
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILE_SIZE_MB,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+} from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -25,6 +30,7 @@ import {
 	listAgentFiles,
 	uploadAgentFiles,
 	deleteAgentFile,
+	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 	createAgentSkill,
 } from '../composables/useAgentApi';
@@ -121,6 +127,7 @@ const agentFiles = ref<AgentFileDto[]>([]);
 const agentFilesLoading = ref(false);
 const agentFilesUploading = ref(false);
 const deletingAgentFileId = ref<string | null>(null);
+const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
 
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
@@ -215,7 +222,6 @@ function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
 	agent.value = {
 		...agent.value,
 		name: c.name,
-		description: c.description ?? null,
 	};
 }
 
@@ -304,6 +310,23 @@ async function onUploadAgentFiles(files: File[]) {
 	}
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
 	if (filesWithinLimit.length === 0) return;
+
+	const existingTotalSizeBytes = agentFiles.value.reduce(
+		(total, file) => total + file.fileSizeBytes,
+		0,
+	);
+	const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
+	if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		showError(
+			new Error(
+				locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
+					interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
+				}),
+			),
+			locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
+		);
+		return;
+	}
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -506,6 +529,24 @@ function bindPreviewSession() {
 	setSessionInUrl(crypto.randomUUID());
 }
 
+function warmAgentKnowledgeSandboxForPage() {
+	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
+
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	const warmupKey = `${targetProjectId}:${targetAgentId}`;
+	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
+	lastKnowledgeSandboxWarmupKey.value = warmupKey;
+
+	void warmAgentKnowledgeSandbox(rootStore.restApiContext, targetProjectId, targetAgentId).catch(
+		() => {
+			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+				lastKnowledgeSandboxWarmupKey.value = null;
+			}
+		},
+	);
+}
+
 function onOpenBuildFromChat() {
 	closePreview();
 }
@@ -631,9 +672,6 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (updates.name !== undefined) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
-	}
-	if (updates.description !== undefined && agent.value) {
-		agent.value = { ...agent.value, description: updates.description ?? null };
 	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
@@ -804,6 +842,7 @@ async function initialize() {
 	}
 
 	initialized.value = true;
+	warmAgentKnowledgeSandboxForPage();
 }
 
 watch(agentId, initialize, { immediate: true });
@@ -1197,6 +1236,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:is-builder-configured="isBuilderConfigured"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
+					:is-build-chat-streaming="isBuildChatStreaming"
 					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
 					@build-done="onBuildDone"

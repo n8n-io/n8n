@@ -1,13 +1,11 @@
 import type { SamlPreferences } from '@n8n/api-types';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import type { UserRepository, Settings, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import axios from 'axios';
 import type express from 'express';
-import type { HttpProxyAgent } from 'http-proxy-agent';
-import type { HttpsProxyAgent } from 'https-proxy-agent';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
@@ -26,9 +24,6 @@ import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error'
 import * as samlHelpers from '../saml-helpers';
 import { SamlValidator } from '../saml-validator';
 import { SamlService } from '../saml.service.ee';
-
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 const InvalidSamlSetting: Settings = {
 	loadOnStartup: true,
@@ -168,6 +163,8 @@ describe('SamlService', () => {
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
 	let cacheService: jest.Mocked<CacheService>;
+	let outboundHttp: jest.Mocked<OutboundHttp>;
+	let httpRequest: jest.Mock;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -221,6 +218,9 @@ describe('SamlService', () => {
 			data.replace('encrypted:', ''),
 		) as Cipher['decryptV2'];
 		cacheService = mock<CacheService>();
+		httpRequest = jest.fn();
+		outboundHttp = mock<OutboundHttp>();
+		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: httpRequest }));
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
@@ -237,6 +237,7 @@ describe('SamlService', () => {
 			provisioningService,
 			cipher,
 			cacheService,
+			outboundHttp,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -750,7 +751,7 @@ describe('SamlService', () => {
 		});
 
 		test('does throw `BadRequestError` when a metadata url is not returning correct metadata', async () => {
-			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			httpRequest.mockResolvedValue({ statusCode: 200, body: 'NOT VALID SAML METADATA' });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -764,7 +765,7 @@ describe('SamlService', () => {
 				metadataUrl: metadataUrlTestData,
 			});
 
-			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			httpRequest.mockResolvedValue({ statusCode: 200, body: 'NOT VALID SAML METADATA' });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -791,7 +792,7 @@ describe('SamlService', () => {
 		});
 
 		test('does throw `InvalidSamlMetadataUrlError` when the metadata url does not return success on http call', async () => {
-			mockedAxios.get.mockResolvedValue({ status: 400, data: '' });
+			httpRequest.mockResolvedValue({ statusCode: 400, body: '' });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -805,7 +806,7 @@ describe('SamlService', () => {
 				metadataUrl: metadataUrlTestData,
 			});
 
-			mockedAxios.get.mockResolvedValue({ status: 400 });
+			httpRequest.mockResolvedValue({ statusCode: 400 });
 			await expect(
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
@@ -1520,201 +1521,66 @@ describe('SamlService', () => {
 		});
 	});
 
-	describe('proxy configuration', () => {
-		const originalEnv = process.env;
+	describe('fetchMetadataFromUrl', () => {
 		const validMetadataXml =
 			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>';
 
+		type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+
 		beforeEach(() => {
-			// Reset environment before each test
-			process.env = { ...originalEnv };
-			jest.restoreAllMocks();
 			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
 		});
 
-		afterEach(() => {
-			// Restore original environment after each test
-			process.env = originalEnv;
-		});
-
-		test('should use proxy when HTTP_PROXY environment variable is set for HTTP URLs', async () => {
-			// Set HTTP proxy environment variable
-			const proxyUrl = 'http://proxy.example.com:8080';
-			process.env.HTTP_PROXY = proxyUrl;
-
-			// Use an HTTP metadata URL
-			const metadataUrl = 'http://saml.example.com/metadata';
-
-			// Mock the preferences to include a metadataUrl
-			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+		test('fetches metadata with SSRF protection disabled', async () => {
+			const metadataUrl = 'https://saml.example.com/metadata';
 			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
 				metadata: mockSamlConfig.metadata,
 				metadataUrl,
+				ignoreSSL: false,
 			} as SamlPreferences;
 
-			// Mock axios response
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadataXml,
-			});
-
-			// Mock validator
-			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+			httpRequest.mockResolvedValue({ statusCode: 200, body: validMetadataXml });
 
 			const result = await samlService.fetchMetadataFromUrl();
 
 			expect(result).toBe(validMetadataXml);
-
-			// Verify that axios.get was called with the correct URL and agents
-			expect(mockedAxios.get).toHaveBeenCalledWith(
-				metadataUrl,
-				expect.objectContaining({
-					httpAgent: expect.any(Object),
-					httpsAgent: expect.any(Object),
-				}),
-			);
-
-			// Get the actual call arguments to verify the agents
-			const callArgs = mockedAxios.get.mock.calls[0];
-			if (!callArgs?.[1]) {
-				throw new Error('Expected axios.get to be called with arguments');
-			}
-
-			const { httpAgent, httpsAgent } = callArgs[1];
-
-			// Verify that both agents are created
-			expect(httpAgent).toBeDefined();
-			expect(httpsAgent).toBeDefined();
-
-			// Verify the httpAgent has proxy configuration
-			expect(httpAgent).toHaveProperty('proxy');
-			const httpProxyAgent = httpAgent as unknown as HttpProxyAgent<string>;
-			expect(httpProxyAgent.proxy).toBeDefined();
-			expect(httpProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
-
-			// The httpsAgent should also have the proxy (both are created with same proxy)
-			expect(httpsAgent).toHaveProperty('proxy');
-			const httpsProxyAgent = httpsAgent as unknown as HttpsProxyAgent<string>;
-			expect(httpsProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
+			// The metadata URL is admin-configured, so SSRF protection is disabled.
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(httpRequest).toHaveBeenCalledWith({
+				url: metadataUrl,
+				method: 'GET',
+				skipSslCertificateValidation: false,
+				returnFullResponse: true,
+			});
 		});
 
-		test('should use proxy when HTTPS_PROXY environment variable is set for HTTPS URLs', async () => {
-			// Set HTTPS proxy environment variable
-			const proxyUrl = 'https://proxy.example.com:8080';
-			process.env.HTTPS_PROXY = proxyUrl;
-
-			// Use an HTTPS metadata URL
+		test('skips SSL certificate validation when ignoreSSL is enabled', async () => {
 			const metadataUrl = 'https://saml.example.com/metadata';
-
-			// Mock the preferences to include a metadataUrl
-			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
 			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
 				metadata: mockSamlConfig.metadata,
 				metadataUrl,
 				ignoreSSL: true,
 			} as SamlPreferences;
 
-			// Mock axios response
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadataXml,
-			});
-
-			// Mock validator
-			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+			httpRequest.mockResolvedValue({ statusCode: 200, body: validMetadataXml });
 
 			const result = await samlService.fetchMetadataFromUrl();
 
 			expect(result).toBe(validMetadataXml);
-
-			// Verify that axios.get was called with the correct URL and agents
-			expect(mockedAxios.get).toHaveBeenCalledWith(
-				metadataUrl,
-				expect.objectContaining({
-					httpAgent: expect.any(Object),
-					httpsAgent: expect.any(Object),
-				}),
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ skipSslCertificateValidation: true }),
 			);
-
-			// Get the actual call arguments to verify the agents
-			const callArgs = mockedAxios.get.mock.calls[0];
-			if (!callArgs?.[1]) {
-				throw new Error('Expected axios.get to be called with arguments');
-			}
-
-			const { httpAgent, httpsAgent } = callArgs[1];
-
-			// Verify that both agents are created
-			expect(httpAgent).toBeDefined();
-			expect(httpsAgent).toBeDefined();
-
-			// Verify the httpsAgent has proxy configuration
-			expect(httpsAgent).toHaveProperty('proxy');
-			const httpsProxyAgent = httpsAgent as unknown as HttpsProxyAgent<string>;
-			expect(httpsProxyAgent.proxy).toBeDefined();
-			expect(httpsProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
-
-			// Verify that the httpsAgent has the correct rejectUnauthorized setting when ignoreSSL is true
-			// HttpsProxyAgent stores connection options in connectOpts, not options
-			const httpsAgentWithConnectOpts = httpsProxyAgent as unknown as {
-				connectOpts?: { rejectUnauthorized?: boolean };
-			};
-			expect(httpsAgentWithConnectOpts.connectOpts?.rejectUnauthorized).toBe(false);
-
-			// The httpAgent should also have the proxy (both are created with same proxy)
-			expect(httpAgent).toHaveProperty('proxy');
-			const httpProxyAgent = httpAgent as unknown as HttpProxyAgent<string>;
-			expect(httpProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
 		});
 
-		test('should work without proxy when no proxy environment variables are set', async () => {
-			// Ensure no proxy env vars are set
-			delete process.env.HTTP_PROXY;
-			delete process.env.HTTPS_PROXY;
-			delete process.env.ALL_PROXY;
-
-			// Mock the preferences to include a metadataUrl
-			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+		test('throws BadRequestError when no metadata URL is set', async () => {
 			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
 				metadata: mockSamlConfig.metadata,
-				metadataUrl: 'https://saml.example.com/metadata',
-				ignoreSSL: false,
+				metadataUrl: '',
 			} as SamlPreferences;
 
-			// Mock axios response
-			mockedAxios.get.mockResolvedValue({
-				status: 200,
-				data: validMetadataXml,
-			});
-
-			// Mock validator
-			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
-
-			const result = await samlService.fetchMetadataFromUrl();
-
-			expect(result).toBe(validMetadataXml);
-
-			// Verify that axios.get was called with agents
-			expect(mockedAxios.get).toHaveBeenCalledWith(
-				'https://saml.example.com/metadata',
-				expect.objectContaining({
-					httpAgent: expect.any(Object),
-					httpsAgent: expect.any(Object),
-				}),
-			);
-
-			// Get the actual call arguments to verify the agents are NOT proxy agents
-			const callArgs = mockedAxios.get.mock.calls[0];
-			if (!callArgs?.[1]) {
-				throw new Error('Expected axios.get to be called with arguments');
-			}
-
-			const { httpAgent, httpsAgent } = callArgs[1];
-
-			// When no proxy is configured, regular http/https Agents are created
-			// These should NOT have a proxy property
-			expect(httpAgent).not.toHaveProperty('proxy');
-			expect(httpsAgent).not.toHaveProperty('proxy');
+			await expect(samlService.fetchMetadataFromUrl()).rejects.toThrowError(BadRequestError);
+			expect(httpRequest).not.toHaveBeenCalled();
 		});
 	});
 

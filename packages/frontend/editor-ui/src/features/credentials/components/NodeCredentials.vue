@@ -7,7 +7,7 @@ import type {
 	INodeCredentialsDetails,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -18,11 +18,16 @@ import {
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import {
+	useInstanceAiEditorCapability,
+	type InstanceAiCredentialHelpHandler,
+} from '@/app/composables/useInstanceAiEditorCapability';
 
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -37,7 +42,7 @@ import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
@@ -93,6 +98,19 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
+const instanceAiCapability = useInstanceAiEditorCapability();
+const { instanceAi } = useEditorContext();
+const isToolContext = inject(ChatHubToolContextKey, false);
+
+// The host's credential-help behavior, handed to the (teleported) credential
+// modal that can't inject it. Undefined when Instance AI is off in this editor or
+// the host provides no credential action → the modal shows no Instance AI button.
+function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
+	const openCredential = instanceAiCapability.openCredential;
+	if (!instanceAi.value || !openCredential) return undefined;
+	return async (credential) => await openCredential(credential, 'credential_edit');
+}
+
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
@@ -100,7 +118,7 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 // Quick connect
 const {
@@ -112,6 +130,7 @@ const {
 const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields } = useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
 	() =>
@@ -163,7 +182,7 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 );
 
 function isCredentialResolvable(credentialType: string): boolean {
-	if (!isDynamicCredentialsEnabled.value) return false;
+	if (!isPrivateCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
 	if (!credentialId) return false;
 	const credential = credentialsStore.getCredentialById(credentialId);
@@ -171,7 +190,7 @@ function isCredentialResolvable(credentialType: string): boolean {
 }
 
 function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
-	if (!isDynamicCredentialsEnabled.value) return null;
+	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
 	if (!id) return null;
 	const credential = credentialsStore.getCredentialById(id);
@@ -226,6 +245,18 @@ watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
+
+		if (
+			aiGateway.isEnabled.value &&
+			!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+		) {
+			for (const { type } of types) {
+				if (selected.value[type.name]?.__aiGatewayManaged) {
+					onAiGatewaySelector(type.name, false, false);
+				}
+			}
+		}
+
 		if (types.length === 0 || !isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
@@ -234,7 +265,10 @@ watch(
 			// No credentials configured — auto-enable AI Gateway for supported types
 			if (aiGateway.isEnabled.value) {
 				for (const { type } of types) {
-					if (aiGateway.isCredentialTypeSupported(type.name)) {
+					if (
+						aiGateway.isCredentialTypeSupported(type.name) &&
+						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+					) {
 						onAiGatewaySelector(type.name, true, false);
 					}
 				}
@@ -426,7 +460,11 @@ function createNewCredential(
 		props.suggestedCredentialName,
 		props.node.name,
 		props.node,
-		{ hideAskAssistant: props.hideAskAssistant, closeOnSave: true },
+		{
+			hideAskAssistant: hideAskAssistant.value,
+			closeOnSave: true,
+			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+		},
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
@@ -565,6 +603,7 @@ function isAiGatewayManagedCredentials(credentialType: string): boolean {
 
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
+	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
 	if (!aiGateway.isCredentialTypeSupported(credentialType)) return false;
 	return true;
@@ -625,7 +664,10 @@ function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
 
-	uiStore.openExistingCredential(credential.id, { hideAskAssistant: props.hideAskAssistant });
+	uiStore.openExistingCredential(credential.id, {
+		hideAskAssistant: hideAskAssistant.value,
+		instanceAiCredentialHelp: instanceAiCredentialHelp(),
+	});
 
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
@@ -841,7 +883,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<div :class="$style.credentialOptionName">
 										<N8nText bold>{{ item.name }}</N8nText>
 										<N8nTooltip
-											v-if="isDynamicCredentialsEnabled && item.isResolvable"
+											v-if="isPrivateCredentialsEnabled && item.isResolvable"
 											placement="top"
 										>
 											<template #content>{{

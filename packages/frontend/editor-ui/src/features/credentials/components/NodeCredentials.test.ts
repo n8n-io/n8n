@@ -23,7 +23,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { ChatHubToolContextKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -312,6 +312,37 @@ describe('NodeCredentials', () => {
 			httpNode.name,
 			httpNode,
 			{ hideAskAssistant: false, closeOnSave: true },
+		);
+	});
+
+	it('should hide the assistant when opening credentials from a tool context', async () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent({
+			global: {
+				provide: {
+					[ChatHubToolContextKey as symbol]: true,
+				},
+			},
+		});
+
+		const credentialsSelect = screen.getByTestId('node-credentials-select');
+
+		await userEvent.click(credentialsSelect);
+		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
+
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'openAiApi',
+			false,
+			false,
+			undefined,
+			undefined,
+			httpNode.name,
+			httpNode,
+			{ hideAskAssistant: true, closeOnSave: true },
 		);
 	});
 
@@ -1110,6 +1141,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
@@ -1183,6 +1215,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn(() => false),
+					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1211,6 +1244,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
+					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
@@ -1261,6 +1295,170 @@ describe('NodeCredentials', () => {
 				// Toggle is shown (disabled) so users can see the gateway is supported for this type
 				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+			});
+		});
+
+		describe('minNodeTypeVersion gate', () => {
+			const versionedNodeType: INodeTypeDescription = {
+				displayName: 'Some Node',
+				name: 'some-package.SomeNode',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Some Node' },
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				credentials: [{ name: 'someApi', required: true }],
+				properties: [],
+			};
+
+			const someApiCredType: ICredentialType = {
+				name: 'someApi',
+				displayName: 'Some API',
+				properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+			};
+
+			beforeEach(() => {
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				nodeTypesStore.setNodeTypes([versionedNodeType]);
+				credentialsStore.state.credentialTypes = { someApi: someApiCredType };
+			});
+
+			it('should hide AiGatewaySelector when typeVersion is below the minimum', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.0,
+					position: [0, 0],
+					parameters: {},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+			});
+
+			it('should show AiGatewaySelector when typeVersion meets the minimum', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+			});
+
+			it('should emit credentialSelected clearing __aiGatewayManaged when version gate fails on mount', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.0,
+					position: [0, 0],
+					parameters: {},
+					credentials: { someApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = node;
+
+				const { emitted } = renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(emitted('credentialSelected')).toBeTruthy();
+				const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				// No available credentials in store → entry is deleted, not restored
+				expect(payload.properties.credentials['someApi']).toBeUndefined();
+			});
+
+			it('should not emit credentialSelected on mount when version gate fails but no managed credential exists', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.0,
+					position: [0, 0],
+					parameters: {},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				const { emitted } = renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(emitted('credentialSelected')).toBeFalsy();
 			});
 		});
 

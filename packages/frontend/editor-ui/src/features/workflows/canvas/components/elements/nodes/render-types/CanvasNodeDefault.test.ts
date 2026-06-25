@@ -8,7 +8,7 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type IPinData } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import type * as actualVueRouter from 'vue-router';
@@ -30,18 +30,23 @@ vi.mock('vue-router', async (importOriginal) => {
 
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const pinnedDataByNodeName: IPinData = {};
+const executionSimulationByNodeName: Record<string, { reason: string }> = {};
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: renderNodeInputsMap,
-			nodeOutputsByNodeId: renderNodeOutputsMap,
-			pinnedDataByNodeName: {},
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({
+			value: actual.createEmptyCanvasRenderData({
+				nodeInputsByNodeId: renderNodeInputsMap,
+				nodeOutputsByNodeId: renderNodeOutputsMap,
+				pinnedDataByNodeName,
+				executionSimulationByNodeName,
+			}),
+		})),
+	};
+});
 
 const stubs = {
 	NodeIcon: {
@@ -67,6 +72,12 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	renderNodeInputsMap.clear();
 	renderNodeOutputsMap.clear();
+	for (const key of Object.keys(pinnedDataByNodeName)) {
+		delete pinnedDataByNodeName[key];
+	}
+	for (const key of Object.keys(executionSimulationByNodeName)) {
+		delete executionSimulationByNodeName[key];
+	}
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -280,6 +291,32 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+		});
+	});
+
+	describe('simulated output', () => {
+		it('should apply pinned styling instead of success styling when node output was simulated', () => {
+			executionSimulationByNodeName['Test Node'] = {
+				reason: 'Source declares verification output',
+			};
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).toHaveClass('pinned');
+			expect(nodeElement).not.toHaveClass('success');
 		});
 	});
 

@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, type ShallowRef } from 'vue';
+import { computed, inject, provide, shallowRef, watchEffect, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -116,6 +116,43 @@ export function createWorkflowDocumentId(
 	version: string = 'latest',
 ): WorkflowDocumentId {
 	return `${workflowId}@${version}`;
+}
+
+/**
+ * Synthetic version-token namespace for an execution preview's workflow
+ * document. The preview hydrates the workflow snapshot embedded in an
+ * execution — the workflow *as it ran* — which can differ node-for-node
+ * between executions as the workflow evolves. Keying by this namespace both
+ * guarantees the preview can never collide with the editor's
+ * `{workflowId}@latest` document, and, combined with the snapshot's own
+ * version below, gives each executed version its own document store.
+ */
+export const EXECUTION_PREVIEW_VERSION = 'execution-preview';
+
+/**
+ * Builds the version token for an execution-preview document. Includes the
+ * executed workflow's version so distinct versions get distinct stores —
+ * switching between executions of different versions then never re-hydrates
+ * (and re-shapes) a shared store. Falls back to the bare namespace for legacy
+ * executions whose snapshot carries no versionId.
+ */
+export function createExecutionPreviewDocumentVersion(workflowVersionId?: string): string {
+	return workflowVersionId
+		? `${EXECUTION_PREVIEW_VERSION}/${workflowVersionId}`
+		: EXECUTION_PREVIEW_VERSION;
+}
+
+/**
+ * The only sanctioned constructor for execution-preview document ids.
+ */
+export function createExecutionPreviewDocumentId(
+	workflowId: string,
+	workflowVersionId?: string,
+): WorkflowDocumentId {
+	return createWorkflowDocumentId(
+		workflowId,
+		createExecutionPreviewDocumentVersion(workflowVersionId),
+	);
 }
 
 /**
@@ -473,4 +510,31 @@ export function injectWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore>
 	const injected = inject(WorkflowDocumentStoreKey, null);
 
 	return computed(() => injected?.value ?? fallback.value);
+}
+
+/**
+ * Re-provides the resolved workflow document store to the current component's
+ * subtree.
+ *
+ * Use this in hosts that render workflow-editor components (e.g. NDV parameter
+ * inputs, which call `injectNDVStore()`/`injectWorkflowDocumentStore()`)
+ * outside the normal workflow editor tree — such as the credential edit modal
+ * or the log-streaming settings modal. Those components are descendants of
+ * `App.vue` but may mount while no workflow document is loaded; re-providing
+ * here guarantees they resolve a valid scoped store instead of throwing.
+ *
+ * Returns the resolved (non-null) document store so the host can derive its own
+ * scoped stores from `documentId` (the host cannot inject what it provides).
+ */
+export function provideWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore> {
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const provided = shallowRef<WorkflowDocumentStore | null>(workflowDocumentStore.value);
+
+	watchEffect(() => {
+		provided.value = workflowDocumentStore.value;
+	});
+
+	provide(WorkflowDocumentStoreKey, provided);
+
+	return workflowDocumentStore;
 }

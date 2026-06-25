@@ -27,11 +27,11 @@ const fakeConnection = {
 	format(query: string, values: any[]) {
 		return mysql2.format(query, values);
 	},
-	query: jest.fn(async (_query = '') => [{}]),
-	release: jest.fn(),
-	beginTransaction: jest.fn(),
-	commit: jest.fn(),
-	rollback: jest.fn(),
+	query: vi.fn(async (_query = '') => [{}]),
+	release: vi.fn(),
+	beginTransaction: vi.fn(),
+	commit: vi.fn(),
+	rollback: vi.fn(),
 };
 
 const createFakePool = (connection: IDataObject) => {
@@ -39,7 +39,7 @@ const createFakePool = (connection: IDataObject) => {
 		getConnection() {
 			return connection;
 		},
-		query: jest.fn(async () => [{}]),
+		query: vi.fn(async () => [{}]),
 	} as unknown as Mysql2Pool;
 };
 
@@ -47,7 +47,7 @@ const emptyInputItems = [{ json: {}, pairedItem: { item: 0, input: undefined } }
 
 describe('Test MySql V2, operations', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should have all operations', () => {
@@ -82,7 +82,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const poolQuerySpy = jest.spyOn(pool, 'query');
+		const poolQuerySpy = vi.spyOn(pool, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -118,7 +118,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const poolQuerySpy = jest.spyOn(pool, 'query');
+		const poolQuerySpy = vi.spyOn(pool, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -168,7 +168,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const poolQuerySpy = jest.spyOn(pool, 'query');
+		const poolQuerySpy = vi.spyOn(pool, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -243,7 +243,7 @@ describe('Test MySql V2, operations', () => {
 
 		const fakeConnectionCopy = { ...fakeConnection };
 
-		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+		fakeConnectionCopy.query = vi.fn(async (query?: string) => {
 			const result = [];
 			if (query?.toLowerCase().includes('select')) {
 				result.push([{ id: 1, name: 'test 1' }]);
@@ -254,7 +254,7 @@ describe('Test MySql V2, operations', () => {
 		});
 		const pool = createFakePool(fakeConnectionCopy);
 
-		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+		const connectionQuerySpy = vi.spyOn(fakeConnectionCopy, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -307,12 +307,12 @@ describe('Test MySql V2, operations', () => {
 
 		const fakeConnectionCopy = { ...fakeConnection };
 
-		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+		fakeConnectionCopy.query = vi.fn(async (query?: string) => {
 			return [{ query }];
 		});
 		const pool = createFakePool(fakeConnectionCopy);
 
-		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+		const connectionQuerySpy = vi.spyOn(fakeConnectionCopy, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -377,7 +377,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+		const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -392,8 +392,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
-		const connectionBeginTransactionSpy = jest.spyOn(fakeConnection, 'beginTransaction');
-		const connectionCommitSpy = jest.spyOn(fakeConnection, 'commit');
+		const connectionBeginTransactionSpy = vi.spyOn(fakeConnection, 'beginTransaction');
+		const connectionCommitSpy = vi.spyOn(fakeConnection, 'commit');
 
 		expect(connectionBeginTransactionSpy).toBeCalledTimes(1);
 
@@ -499,7 +499,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+		const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -514,8 +514,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
-		const connectionBeginTransactionSpy = jest.spyOn(fakeConnection, 'beginTransaction');
-		const connectionCommitSpy = jest.spyOn(fakeConnection, 'commit');
+		const connectionBeginTransactionSpy = vi.spyOn(fakeConnection, 'beginTransaction');
+		const connectionCommitSpy = vi.spyOn(fakeConnection, 'commit');
 
 		expect(connectionBeginTransactionSpy).toBeCalledTimes(1);
 
@@ -560,7 +560,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+		const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -606,7 +606,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+		const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
@@ -671,7 +671,7 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
-		const poolQuerySpy = jest.spyOn(pool, 'query');
+		const poolQuerySpy = vi.spyOn(pool, 'query');
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 

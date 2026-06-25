@@ -64,6 +64,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
+	/**
+	 * Overrides the full Daytona snapshot name used to create sandboxes (e.g.
+	 * `n8n/instance-ai:2.27.3`). Defaults to the versioned snapshot derived from the running
+	 * n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back
+	 * to building from the base image.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
@@ -148,11 +157,19 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
 	outputRedactionSecrets: boolean = true;
 
-	/** Comma-separated PII categories to redact from agent output. Available: email, credit-card, ssn-us. Empty = no PII scanning. */
+	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us, iban, crypto-wallet, ip, mac, url. Empty = no PII scanning. */
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
 	outputRedactionPii: string = 'credit-card';
 
 	/** Replacement text substituted for each redacted match in agent output. */
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
 	outputRedactionPlaceholder: string = '[REDACTED]';
+
+	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
+	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
+	runDebugEnabled: boolean = false;
+
+	/** Enable extended thinking / reasoning for the orchestrator agent. */
+	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
+	thinkingEnabled: boolean = true;
 }

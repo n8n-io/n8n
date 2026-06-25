@@ -1,9 +1,9 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel, smoothStream } from 'ai';
+import type { LanguageModel, OnStepFinishEvent, OnStepStartEvent, smoothStream } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
-import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
+import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
 	AgentEventHandler,
@@ -32,6 +32,8 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	/** Estimated cost in USD, computed from models.dev pricing. */
 	cost?: number;
 	inputTokenDetails?: {
+		/** Uncached input tokens (billed at the full input rate). */
+		noCache?: number;
 		cacheRead?: number;
 		cacheWrite?: number;
 	};
@@ -161,10 +163,19 @@ export interface ExecutionOptions {
 	providerOptions?: ProviderOptions;
 	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
 	smoothStream?: SmoothStreamOptions | false;
+	/**
+	 * Request the provider's raw stream events so a run aborted mid-turn can still
+	 * be billed for the tokens it consumed before the stop. Off by default — only
+	 * hosts that bill stopped runs (e.g. Instance AI) need it; leaving it off avoids
+	 * streaming raw provider events that nothing consumes.
+	 */
+	recoverUsageOnAbort?: boolean;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	onStepStart?: (event: OnStepStartEvent) => void | Promise<void>;
+	onStepFinish?: (event: OnStepFinishEvent) => void | Promise<void>;
 }
 
 export interface PersistedExecutionOptions {

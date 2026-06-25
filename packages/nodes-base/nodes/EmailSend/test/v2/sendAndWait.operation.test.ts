@@ -1,17 +1,18 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import { EmailSendV2, versionDescription } from '../../v2/EmailSendV2.node';
 import * as utils from '../../v2/utils';
+import type * as _importType0 from '../../v2/utils';
 
-const transporter = { sendMail: jest.fn() };
+const transporter = { sendMail: vi.fn() };
 
-jest.mock('../../v2/utils', () => {
-	const originalModule = jest.requireActual('../../v2/utils');
+vi.mock('../../v2/utils', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../v2/utils');
 	return {
 		...originalModule,
-		configureTransport: jest.fn(() => transporter),
+		configureTransport: vi.fn(() => transporter),
 	};
 });
 
@@ -25,7 +26,7 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should send message and put execution to wait', async () => {
@@ -38,7 +39,7 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('to@mail.com');
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
 		mockExecuteFunctions.getCredentials.mockResolvedValue({});
-		mockExecuteFunctions.putExecutionToWait.mockImplementation();
+		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
 
 		//getSendAndWaitConfig

@@ -3,6 +3,8 @@ import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	ActiveWorkflowTriggers,
+	SpanStatus,
+	Tracing,
 	type IGetExecutePollFunctions,
 	type IGetExecuteTriggerFunctions,
 } from 'n8n-core';
@@ -18,7 +20,6 @@ import type {
 
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
-import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 export interface NonWebhookTriggerRegistrationContext {
 	activationMode: WorkflowActivateMode;
@@ -29,7 +30,6 @@ export interface NonWebhookTriggerRegistrationContext {
 }
 
 export interface PreparedNonWebhookTriggerRegistration {
-	dbWorkflow: WorkflowEntity;
 	activationMode: WorkflowActivateMode;
 	executionMode: WorkflowExecuteMode;
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -46,8 +46,9 @@ export class NonWebhookTriggerRegistrar {
 		private readonly logger: Logger,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
+		private readonly tracing: Tracing,
 	) {
-		this.logger = this.logger.scoped(['workflow-activation']);
+		this.logger = this.logger.scoped('workflow-publication');
 	}
 
 	/**
@@ -96,7 +97,6 @@ export class NonWebhookTriggerRegistrar {
 		);
 
 		return {
-			dbWorkflow,
 			activationMode,
 			executionMode,
 			additionalData,
@@ -111,7 +111,6 @@ export class NonWebhookTriggerRegistrar {
 	async register(
 		workflow: Workflow,
 		{
-			dbWorkflow,
 			activationMode,
 			executionMode,
 			additionalData,
@@ -120,19 +119,31 @@ export class NonWebhookTriggerRegistrar {
 		}: PreparedNonWebhookTriggerRegistration,
 		nodeId: INode['id'],
 	) {
-		await this.activeWorkflowTriggers.addTriggers(
-			workflow.id,
-			workflow,
-			[nodeId],
-			additionalData,
-			executionMode,
-			activationMode,
-			getTriggerFunctions,
-			getPollFunctions,
-		);
+		await this.tracing.startSpan(
+			{
+				name: 'Non-webhook trigger register',
+				op: 'publication.non_webhook.register',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes({ id: workflow.id, name: workflow.name }),
+					...this.tracing.pickNodeAttributes({ id: nodeId }),
+					'n8n.publication.activation_mode': activationMode,
+					'n8n.publication.execution_mode': executionMode,
+				},
+			},
+			async (span) => {
+				await this.activeWorkflowTriggers.addTriggers(
+					workflow.id,
+					workflow,
+					[nodeId],
+					additionalData,
+					executionMode,
+					activationMode,
+					getTriggerFunctions,
+					getPollFunctions,
+				);
 
-		this.logger.debug(
-			`Added non-webhook trigger "${nodeId}" for workflow ${formatWorkflow(dbWorkflow)}`,
+				span.setStatus({ code: SpanStatus.ok });
+			},
 		);
 	}
 
@@ -140,6 +151,20 @@ export class NonWebhookTriggerRegistrar {
 	 * Deregister one active, poll, or schedule trigger node from memory.
 	 */
 	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
-		await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+		await this.tracing.startSpan(
+			{
+				name: 'Non-webhook trigger deregister',
+				op: 'publication.non_webhook.deregister',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes({ id: workflowId }),
+					...this.tracing.pickNodeAttributes({ id: nodeId }),
+				},
+			},
+			async (span) => {
+				await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
 	}
 }

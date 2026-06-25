@@ -16,24 +16,24 @@ CREATE TABLE "agents_observation_locks" ("agentId" varchar(36) NOT NULL, "observ
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| heldUntil | datetime(3) |  | false |  |  |  |
+| holderId | varchar(64) |  | false |  |  |  |
 | observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
 | taskKind | varchar(20) |  | false |  |  |  |
-| holderId | varchar(64) |  | false |  |  |  |
-| heldUntil | datetime(3) |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
-| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
-| taskKind | PRIMARY KEY | PRIMARY KEY (taskKind) |
+| - | CHECK | CHECK ("taskKind" IN ('observer', 'reflector')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
+| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 | sqlite_autoindex_agents_observation_locks_1 | PRIMARY KEY | PRIMARY KEY (agentId, observationScopeId, taskKind) |
-| - | CHECK | CHECK ("taskKind" IN ('observer', 'reflector')) |
+| taskKind | PRIMARY KEY | PRIMARY KEY (taskKind) |
 
 ## Indexes
 
@@ -52,33 +52,32 @@ erDiagram
 
 "agents_observation_locks" {
   varchar_36_ agentId PK
+  datetime_3_ createdAt
+  datetime_3_ heldUntil
+  varchar_64_ holderId
   varchar_255_ observationScopeId PK
   varchar_20_ taskKind PK
-  varchar_64_ holderId
-  datetime_3_ heldUntil
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 "agents_threads" {
+  datetime_3_ createdAt
   varchar_128_ id PK
+  TEXT metadata
   varchar_255_ resourceId
   varchar_255_ title
-  TEXT metadata
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

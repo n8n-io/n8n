@@ -30,11 +30,42 @@ export const description: INodeTypeDescription = {
 		{
 			name: 'microsoftOutlookOAuth2Api',
 			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftOutlookOAuth2Api'],
+				},
+			},
+		},
+		{
+			name: 'microsoftOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftOAuth2Api'],
+				},
+			},
 		},
 	],
 	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Outlook OAuth2',
+					value: 'microsoftOutlookOAuth2Api',
+				},
+				{
+					name: 'Microsoft OAuth2 (Graph)',
+					value: 'microsoftOAuth2Api',
+				},
+			],
+			default: 'microsoftOutlookOAuth2Api',
+		},
 		{
 			displayName: 'Resource',
 			name: 'resource',
