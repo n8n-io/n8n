@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, provide, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, provide, shallowRef, useTemplateRef, watch } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
@@ -47,9 +47,16 @@ const emit = defineEmits<{
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
 const workflowsStore = useWorkflowsStore();
+const latestAgentExecution =
+	shallowRef<Awaited<ReturnType<typeof workflowsStore.fetchExecutionDataById>>>();
+const supersededAgentExecutionId = shallowRef<string | null>(null);
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
+}
+
+function restoreExecutionResult() {
+	void showExecutionResult(props.executionResult);
 }
 
 defineExpose({ requestFitView });
@@ -63,20 +70,27 @@ defineExpose({ requestFitView });
 // below to take effect before the global executionStarted handler reads it.
 const pushStore = usePushConnectionStore();
 
-// Reset activeExecutionId to null on every executionStarted for the displayed
-// workflow. The global executionStarted handler only enters its needsInit
-// branch (which calls promotePendingExecution and re-points activeExecutionId
-// at the new run) when activeExecutionId is null/undefined or we're in an
-// iframe. Without this reset, agent-triggered runs after the first one keep
-// activeExecutionId stuck on the previous run's id, so nodeExecuteAfter
-// writes land in the wrong store: previous-run errors persist on the canvas
-// and post-Wait events never paint.
+// Reset activeExecutionId to null on Instance AI executionStarted events for
+// the displayed workflow. The global executionStarted handler only enters its
+// needsInit branch (which calls promotePendingExecution and re-points
+// activeExecutionId at the new run) when activeExecutionId is null/undefined or
+// we're in an iframe. Human runs already set the pending state in runWorkflowApi
+// and must not be overwritten by stale agent verification results.
 const removeExecutionStartedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionStarted') return;
 	if (event.data.workflowId !== props.workflowId) return;
-	useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId)).setActiveExecutionId(
-		null,
-	);
+	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
+	if (event.data.source !== 'instance_ai') {
+		supersededAgentExecutionId.value = props.executionResult?.executionId ?? null;
+		return;
+	}
+	if (
+		typeof executionState.activeExecutionId === 'string' &&
+		executionState.activeExecutionId !== event.data.executionId
+	) {
+		return;
+	}
+	executionState.setActiveExecutionId(null);
 });
 
 // On executionFinished with errors, surface a structured failures report so
@@ -131,8 +145,30 @@ function reportWorkflowFailures(executionId: string, workflowId: string) {
 
 let latestExecutionLoadRequest = 0;
 
+function applyAgentExecution(execution: NonNullable<typeof latestAgentExecution.value>): boolean {
+	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
+	const activeExecutionId = executionState.activeExecutionId;
+
+	if (activeExecutionId === null) return false;
+	if (typeof activeExecutionId === 'string' && activeExecutionId !== execution.id) return false;
+
+	useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+	executionState.setDisplayedExecutionId(execution.id);
+	if (activeExecutionId === undefined) {
+		executionState.setActiveExecutionId(undefined);
+	}
+
+	return true;
+}
+
 async function showExecutionResult(executionResult: ExecutionResult | undefined) {
 	if (!executionResult) return;
+	if (supersededAgentExecutionId.value === executionResult.executionId) return;
+
+	if (latestAgentExecution.value?.id === executionResult.executionId) {
+		applyAgentExecution(latestAgentExecution.value);
+		return;
+	}
 
 	const request = ++latestExecutionLoadRequest;
 	let execution: Awaited<ReturnType<typeof workflowsStore.fetchExecutionDataById>>;
@@ -144,16 +180,9 @@ async function showExecutionResult(executionResult: ExecutionResult | undefined)
 	if (request !== latestExecutionLoadRequest) return;
 	if (!execution || execution.workflowId !== props.workflowId) return;
 
-	useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
-
-	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
-	const activeExecutionId = executionState.activeExecutionId;
-	executionState.setDisplayedExecutionId(execution.id);
-	if (
-		activeExecutionId === undefined ||
-		(typeof activeExecutionId === 'string' && activeExecutionId !== execution.id)
-	) {
-		executionState.setActiveExecutionId(undefined);
+	latestAgentExecution.value = execution;
+	if (supersededAgentExecutionId.value !== execution.id) {
+		applyAgentExecution(execution);
 	}
 }
 
@@ -251,6 +280,7 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 			:refresh-key="refreshKey"
 			:initial-workflow="initialWorkflow"
 			:initial-execution="initialExecution"
+			@workflow-loaded="restoreExecutionResult"
 		/>
 	</div>
 </template>
