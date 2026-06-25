@@ -137,16 +137,16 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
         run: |
           # instance-ai module serves the eval verifier (Phase 1/2 + checks).
-          # mcp + mcp-registry are default modules; MCP_MANAGED_BY_ENV +
-          # ACCESS_ENABLED turn MCP access on without the UI toggle. No sandbox.
+          # mcp + mcp-registry are default modules. No sandbox. MCP access is NOT
+          # enabled via env here: /rest/e2e/reset truncates the settings table and
+          # clears the cache, which would wipe a startup env-enable. We enable MCP
+          # via the API *after* the reset instead (see the next step).
           docker run -d --name n8n-eval-mcp \
             -e E2E_TESTS=true \
             -e N8N_ENABLED_MODULES=instance-ai \
             -e N8N_AI_ENABLED=true \
             -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
             -e N8N_AI_ASSISTANT_BASE_URL="" \
-            -e N8N_MCP_MANAGED_BY_ENV=true \
-            -e N8N_MCP_ACCESS_ENABLED=true \
             -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
             -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
             -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
@@ -179,16 +179,28 @@ jobs:
               "chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}
             }'
 
-      # Mint an MCP API key for the seeded owner and write the Claude config the
-      # build phase needs. The FIRST /rest/mcp/api-key call on a fresh user
-      # returns the UNREDACTED JWT (getOrCreateApiKey creates + returns it raw);
-      # subsequent calls redact it, so this must run once on a fresh instance.
-      - name: Generate MCP API key and Claude config
+      # Enable MCP (post-reset), mint an MCP API key for the seeded owner, and
+      # write the Claude config the build phase needs. The FIRST /rest/mcp/api-key
+      # call on a fresh user returns the UNREDACTED JWT (getOrCreateApiKey creates
+      # + returns it raw); subsequent calls redact it, so this runs once.
+      - name: Enable MCP, mint API key, write Claude config
         run: |
           curl -sf -X POST "http://localhost:${MCP_PORT}/rest/login" \
             -H "Content-Type: application/json" \
             -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' \
             -c /tmp/mcp-cookies.txt -o /dev/null
+
+          # /rest/e2e/reset truncated the settings table + cleared the cache, so
+          # MCP access is off. Enable it via the API (owner has mcp:manage; the
+          # PATCH is only refused when N8N_MCP_MANAGED_BY_ENV is set, which it isn't).
+          MCP_SETTINGS=$(curl -sf -X PATCH "http://localhost:${MCP_PORT}/rest/mcp/settings" \
+            -b /tmp/mcp-cookies.txt -H "Content-Type: application/json" \
+            -d '{"mcpAccessEnabled": true}')
+          echo "MCP settings after enable: $MCP_SETTINGS"
+          if [ "$(echo "$MCP_SETTINGS" | jq -r '.data.mcpAccessEnabled')" != "true" ]; then
+            echo "::error::Failed to enable MCP access (got: $MCP_SETTINGS)"
+            exit 1
+          fi
 
           API_KEY=$(curl -sf -b /tmp/mcp-cookies.txt \
             "http://localhost:${MCP_PORT}/rest/mcp/api-key" | jq -r '.data.apiKey')

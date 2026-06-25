@@ -132,7 +132,7 @@ Secrets used (reuse for MCP): `EVALS_ANTHROPIC_KEY`, `EVALS_LANGSMITH_API_KEY`,
 
 | Need | Local | CI must do |
 |------|-------|-----------|
-| Enable MCP access | UI toggle | Env: `N8N_MCP_MANAGED_BY_ENV=true` + `N8N_MCP_ACCESS_ENABLED=true`. Read on startup by `packages/cli/src/instance-settings-loader/loaders/mcp-settings.loader.ts:18` → `setEnabled(true)`. Config: `packages/@n8n/config/src/configs/instance-settings-loader.config.ts:117`. |
+| Enable MCP access | UI toggle | **Enable via API _after_ the reset**, not via env. `PATCH /rest/mcp/settings {mcpAccessEnabled:true}` (owner has `mcp:manage`). ⚠️ The env path (`N8N_MCP_MANAGED_BY_ENV=true` + `N8N_MCP_ACCESS_ENABLED=true`, `mcp-settings.loader.ts:18`) only runs at **startup**, and `/rest/e2e/reset` truncates the `settings` table + clears the cache (`e2e.controller.ts:52,221`) **after** boot — wiping it. Also, the PATCH is refused while `mcpManagedByEnv=true`, so leave that env unset. |
 | MCP modules loaded | default | `mcp` + `mcp-registry` are **default modules** (`packages/@n8n/backend-common/src/modules/module-registry.ts:41`). `N8N_ENABLED_MODULES=instance-ai` adds instance-ai for the verifier; defaults (incl. mcp) still load. |
 | Builder tools | default true | `N8N_MCP_BUILDER_ENABLED` default `true` (`packages/@n8n/config/src/configs/endpoints.config.ts:162`). |
 | MCP API key (JWT) | UI "copy key" | After `/rest/e2e/reset`: login → `GET /rest/mcp/api-key`. **First call on a fresh user returns the UNREDACTED key** (`mcp-api-key.service.ts:123` `getOrCreateApiKey`; controller `mcp.settings.controller.ts:52`). Mask it with `::add-mask::`. |
@@ -207,15 +207,15 @@ New files:
    N8N_AI_ENABLED=true
    N8N_INSTANCE_AI_MODEL_API_KEY=$EVALS_ANTHROPIC_KEY
    N8N_AI_ASSISTANT_BASE_URL=""
-   N8N_MCP_MANAGED_BY_ENV=true
-   N8N_MCP_ACCESS_ENABLED=true
    N8N_LICENSE_ACTIVATION_KEY / N8N_LICENSE_CERT / N8N_ENCRYPTION_KEY
    ```
-   Wait on `/healthz/readiness`. No sandbox.
+   Wait on `/healthz/readiness`. No sandbox. **Do NOT enable MCP via env** —
+   the reset wipes it (see §5); enable via API in step 5.
 4. Seed owner: `POST /rest/e2e/reset` (reuse the Instance AI payload:
    owner `nathan@n8n.io` / `PlaywrightTest123`).
-5. Fetch + mask MCP API key: login `POST /rest/login` → `GET /rest/mcp/api-key`
-   → `::add-mask::` the JWT.
+5. Login → **enable MCP** (`PATCH /rest/mcp/settings {mcpAccessEnabled:true}`,
+   post-reset) → fetch + mask MCP API key (`GET /rest/mcp/api-key`,
+   `::add-mask::` the JWT).
 6. Generate `~/.claude.json` + `~/.claude/settings.json` (see §6).
 7. Build phase:
    ```
@@ -283,9 +283,14 @@ support single-instance/single-URL exactly as called here.
   `.github/workflows/ci-mcp-evals.yml` (trigger).
 - One container `n8n-eval-mcp` on port 5678, env: `E2E_TESTS=true`,
   `N8N_ENABLED_MODULES=instance-ai`, `N8N_AI_ENABLED=true`,
-  `N8N_INSTANCE_AI_MODEL_API_KEY`, `N8N_AI_ASSISTANT_BASE_URL=""`,
-  `N8N_MCP_MANAGED_BY_ENV=true`, `N8N_MCP_ACCESS_ENABLED=true`, license +
+  `N8N_INSTANCE_AI_MODEL_API_KEY`, `N8N_AI_ASSISTANT_BASE_URL=""`, license +
   encryption secrets. **No sandbox.**
+- **MCP enabled via API after reset, not env** (gotcha found in the first smoke
+  run): `/rest/e2e/reset` truncates `settings` + clears cache, wiping any
+  startup env-enable, so the step `Enable MCP, mint API key, write Claude config`
+  does `PATCH /rest/mcp/settings {mcpAccessEnabled:true}` before building.
+  Symptom when wrong: `claude` sessions return `subtype:success` with **no
+  `WORKFLOW_ID`** (MCP server 403s → Claude has no tools).
 - Login uses the default seeded owner (`nathan@n8n.io` / `PlaywrightTest123`) —
   the eval CLI defaults to these (`clients/n8n-client.ts:136`), so `--email` /
   `--password` are not passed.
