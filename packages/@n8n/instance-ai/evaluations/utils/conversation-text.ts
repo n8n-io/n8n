@@ -32,6 +32,27 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
 }
 
+/**
+ * User-side turns from an authored conversation (test-case JSON), flattened the
+ * same way as userTurnsAsText. The prebuilt/MCP path has no captured transcript,
+ * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
+ * text from the authored conversation instead of receiving an empty prompt.
+ *
+ * Accepts `undefined` because `testCase.conversation` is optional (seedThread-only
+ * cases carry none) and callers pass it straight through — no conversation → ''.
+ */
+export function conversationUserTurnsAsText(conversation: ConversationTurn[] | undefined): string {
+	if (!conversation) return '';
+	const turns = conversation
+		.filter((t) => t.role === 'user')
+		.map((t) => t.text)
+		.filter((text) => text.length > 0);
+
+	if (turns.length === 0) return '';
+	if (turns.length === 1) return turns[0];
+	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
+}
+
 /** Full transcript (agent narration + tool interactions, in order) as plain text for LLM-judged checks. */
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript

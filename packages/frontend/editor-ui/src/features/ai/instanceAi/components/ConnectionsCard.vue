@@ -37,8 +37,8 @@ const singletonConnections = computed(() => store.connections);
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
 const isVisible = computed(
 	() =>
-		(!store.isLocalGatewayDisabledByAdmin &&
-			(store.gatewayStatusLoaded || store.isLocalGatewayDisabled)) ||
+		!store.isLocalGatewayDisabledByAdmin &&
+		(store.gatewayStatusLoaded || store.browserStatusLoaded || store.isLocalGatewayDisabled) ||
 		isMcpEnabled.value,
 );
 
@@ -68,7 +68,9 @@ function getSingletonRowActions(
 	type: SingletonConnectionType,
 	status: ConnectionStatus,
 ): RowAction[] {
-	if (type === 'browser-use') return ['settings'];
+	if (type === 'browser-use') {
+		return status === 'connected' ? ['disconnect'] : ['connect'];
+	}
 	if (status === 'connected') return ['settings', 'disconnect', 'remove'];
 	return ['connect', 'remove'];
 }
@@ -105,6 +107,8 @@ function openToolsConnectionModal() {
 async function handleSingletonDisconnect(type: SingletonConnectionType) {
 	if (type === 'computer-use') {
 		await store.disconnectComputerUse();
+	} else if (type === 'browser-use') {
+		await store.disconnectBrowserUse();
 	}
 }
 

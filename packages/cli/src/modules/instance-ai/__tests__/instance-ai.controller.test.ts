@@ -61,6 +61,7 @@ import type { Push } from '@/push';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
+import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
@@ -111,6 +112,7 @@ describe('InstanceAiController', () => {
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
+		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
@@ -158,6 +160,7 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				payload.message,
 				payload.attachments,
+				payload.context,
 				payload.timeZone,
 				payload.pushRef,
 			);
@@ -191,8 +194,41 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				payloadWithPushRef.message,
 				payloadWithPushRef.attachments,
+				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+			);
+		});
+
+		it('should forward handoff context to startRun', async () => {
+			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				message: 'How do I set up Gmail OAuth?',
+				context: {
+					source: 'credential-modal',
+					credential: {
+						credentialType: 'gmailOAuth2Api',
+						displayName: 'Gmail OAuth2 API',
+						documentationUrl:
+							'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+					},
+				},
+				timeZone: 'UTC',
+				attachments: undefined,
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-3');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithContext);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithContext.message,
+				payloadWithContext.attachments,
+				payloadWithContext.context,
+				payloadWithContext.timeZone,
+				payloadWithContext.pushRef,
 			);
 		});
 

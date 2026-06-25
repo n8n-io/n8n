@@ -37,6 +37,7 @@ const esmDependencies = [
 	'p-retry',
 	'is-network-error',
 	'uuid',
+	'change-case',
 	// Add other ESM dependencies that need to be transformed here
 ];
 

@@ -3,6 +3,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
 	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
@@ -95,6 +96,8 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
+import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
+import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
@@ -110,6 +113,8 @@ import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	EDITOR_CONTEXT_OPEN_TAG,
 	EDITOR_CONTEXT_CLOSE_TAG,
+	CREDENTIAL_CONTEXT_OPEN_TAG,
+	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	withCurrentDateTime,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -186,6 +191,29 @@ function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttac
 	// reload from the leading JSON line — keeping the resource durable without
 	// persisting it as visible text.
 	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(workflowAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+}
+
+function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
+	if (!context) return '';
+
+	const { credential } = context;
+	const lines = [
+		`- Credential type: \`${credential.credentialType}\` (${credential.displayName}).`,
+		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
+		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
+		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',
+		credential.documentationUrl ? `- n8n documentation URL: ${credential.documentationUrl}` : '',
+		credential.oauthRedirectUrl
+			? `- OAuth redirect/callback URL shown in the modal: ${credential.oauthRedirectUrl}`
+			: '',
+	].filter(Boolean);
+	const prose = [
+		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
+		...lines,
+		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
+	].join('\n');
+
+	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
 }
 
 function isTelemetryConfigurableAgent(
@@ -463,6 +491,7 @@ export class InstanceAiService {
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
+		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -845,6 +874,7 @@ export class InstanceAiService {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		context?: InstanceAiHandoffContext,
 		timeZone?: string,
 		pushRef?: string,
 	): string {
@@ -872,6 +902,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			attachments,
+			context,
 			messageGroupId,
 			timeZone,
 		);
@@ -1302,7 +1333,7 @@ export class InstanceAiService {
 		}
 
 		this.gatewayService.disconnectAll();
-
+		await this.browserSessionService.shutdown();
 		this.sandboxService.stopSandboxExpiryTimers();
 
 		// Thread-scoped sandboxes survive service shutdown so a restarted process
@@ -1719,9 +1750,22 @@ export class InstanceAiService {
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 		});
-		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
-			context.localMcpServer = userGateway;
+
+		// Merge both local gateway and direct browser-use into a single
+		// composite server, since context has a single `localMcpServer`.
+		// Perhaps a better solution would be to have multiple local MCP
+		// servers? But that requires more changes where `localMcpServer`
+		// is currently used
+		const gatewayMcpServer =
+			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
+		const browserMcpServer = localGatewayDisabledGlobally
+			? undefined
+			: this.browserSessionService.findMcpServer(user.id);
+		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
+		if (localMcpServer) {
+			context.localMcpServer = localMcpServer;
 		}
+
 		context.permissions = this.settingsService.getPermissions();
 		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
@@ -1754,16 +1798,33 @@ export class InstanceAiService {
 			};
 		}
 
-		// Compute gateway status for the system prompt
+		browserMcpServer?.setDomainGate({
+			tracker: domainTracker,
+			runId,
+			permissionMode: context.permissions?.fetchUrl,
+		});
+
+		// Compute gateway status for the system prompt. The direct browser
+		// session contributes a `browser` capability even without the daemon.
 		if (localGatewayDisabledGlobally) {
 			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else if (!localGatewayDisabledForUser && userGateway?.isConnected) {
+		} else if (gatewayMcpServer || browserMcpServer) {
+			const capabilities = new Set<string>();
+			if (gatewayMcpServer) {
+				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
+					if (enabled) {
+						capabilities.add(name);
+					}
+				}
+			}
+
+			if (browserMcpServer) {
+				capabilities.add('browser');
+			}
+
 			context.localGatewayStatus = {
 				status: 'connected',
-				capabilities: userGateway
-					.getStatus()
-					.toolCategories.filter(({ enabled }) => enabled)
-					.map(({ name }) => name),
+				capabilities: [...capabilities],
 			};
 		} else {
 			context.localGatewayStatus = {
@@ -2373,6 +2434,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			undefined,
+			undefined,
 			messageGroupId,
 			timeZone,
 			isReplanFollowUp,
@@ -2622,6 +2684,7 @@ export class InstanceAiService {
 		message: string,
 		abortController: AbortController,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 		messageGroupId?: string,
 		timeZone?: string,
 		isReplanFollowUp: boolean = false,
@@ -2874,6 +2937,7 @@ export class InstanceAiService {
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 			const contextResourcesBlock = buildContextResourcesBlock(workflowAttachments);
+			const handoffContextBlock = buildHandoffContextBlock(handoffContext);
 
 			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 			let attachmentManifest = '';
@@ -2900,7 +2964,9 @@ export class InstanceAiService {
 			// The context block (an editor hand-off) leads the message so the agent
 			// knows what the user is looking at. On an empty-text hand-off it is the
 			// entire prompt, and the agent greets rather than investigating.
-			const messageWithContext = [contextResourcesBlock, messageBody].filter(Boolean).join('\n\n');
+			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
+				.filter(Boolean)
+				.join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
