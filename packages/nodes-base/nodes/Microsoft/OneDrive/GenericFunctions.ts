@@ -163,6 +163,16 @@ export function getServicePrincipalResourceRoot(
 }
 
 /**
+ * Composes the drive endpoint from a `/drive`-free entity root. `/drives/{id}` is
+ * already a drive, so it is used as-is; a user or site addresses its default drive
+ * via the `/drive` navigation property. Keeping this out of
+ * `getServicePrincipalResourceRoot` lets that kernel stay `/drive`-free and liftable.
+ */
+export function driveEndpoint(root: string): string {
+	return root.startsWith('/drives/') ? root : `${root}/drive`;
+}
+
+/**
  * Resolves the app-only Graph scope root for the current node/poll context, or
  * `undefined` for the OAuth2 credentials (which use the `/me` path). The `isPoll`
  * flag selects the context-correct `getNodeParameter` signature — poll is
@@ -195,9 +205,10 @@ export function resolveDriveScopeRoot(
  * The `resource` argument is a drive-relative path that MUST start with `/drive`
  * (e.g. `/drive/items/{id}`). For the default OAuth2 credentials it is appended to
  * `/v1.0/me`. When `driveScopeRoot` is supplied (app-only Service Principal), the
- * request is instead composed as `/v1.0{root}/drive{suffix}` and routed through the
- * credential-aware `requestWithAuthentication` helper so the token refresh / 401
- * retry runs once in core.
+ * request is instead composed as `/v1.0{driveEndpoint(root)}{suffix}` (the `/drive`
+ * prefix of `resource` is dropped, since `driveEndpoint` already lands on the drive)
+ * and routed through the credential-aware `requestWithAuthentication` helper so the
+ * token refresh / 401 retry runs once in core.
  *
  * To bypass scoping entirely (delta `@odata.nextLink`/`deltaLink`, a
  * `@microsoft.graph.downloadUrl`), pass the absolute URL as `uri` — it is used
@@ -233,7 +244,9 @@ export async function microsoftApiRequest(
 				`microsoftApiRequest: scoped resource must start with "/drive" (got "${resource}")`,
 			);
 		}
-		uriToUse = `${baseUrl}/v1.0${driveScopeRoot}/drive${resource.slice('/drive'.length)}`;
+		// `driveEndpoint` already lands on the drive (`/drives/{id}` as-is, or
+		// `/users|sites/{id}/drive`), so drop the leading `/drive` from `resource`.
+		uriToUse = `${baseUrl}/v1.0${driveEndpoint(driveScopeRoot)}${resource.slice('/drive'.length)}`;
 	}
 
 	const options: IRequestOptions = {

@@ -17,6 +17,7 @@ import {
 	validateResourceTargetId,
 	getServicePrincipalResourceRoot,
 	resolveDriveScopeRoot,
+	driveEndpoint,
 } from '../GenericFunctions';
 
 describe('Microsoft OneDrive GenericFunctions', () => {
@@ -525,6 +526,20 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		});
 	});
 
+	describe('driveEndpoint', () => {
+		it('returns a /drives/{id} root unchanged (already a drive)', () => {
+			expect(driveEndpoint('/drives/b!abc')).toBe('/drives/b!abc');
+		});
+
+		it('appends /drive to a user root (default-drive navigation property)', () => {
+			expect(driveEndpoint('/users/jane%40contoso.com')).toBe('/users/jane%40contoso.com/drive');
+		});
+
+		it('appends /drive to a site root', () => {
+			expect(driveEndpoint('/sites/host,1111,2222')).toBe('/sites/host,1111,2222/drive');
+		});
+	});
+
 	describe('validateResourceTargetId', () => {
 		it.each(['user', 'drive', 'site'])(
 			'rejects empty / whitespace / dots-only for %s (common reject runs first)',
@@ -644,12 +659,15 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				'/drives/b!abc',
 			);
 
+			// A /drives/{id} root IS already a drive — no extra `/drive` segment.
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/drives/b!abc/drive/items/x',
+					uri: 'https://graph.microsoft.com/v1.0/drives/b!abc/items/x',
 				}),
 			);
+			const calledUri = mockRequestWithAuthentication.mock.calls[0][1].uri as string;
+			expect(calledUri).not.toContain('/drives/b!abc/drive');
 		});
 
 		it('roots a site request as /sites/{host},{g},{g}/drive/items/x', async () => {
@@ -710,7 +728,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/drives/b!abc/drive/items/parent:/file.txt:/content',
+					uri: 'https://graph.microsoft.com/v1.0/drives/b!abc/items/parent:/file.txt:/content',
 				}),
 			);
 		});
@@ -780,7 +798,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.us/v1.0/drives/b!abc/drive/items/x',
+					uri: 'https://graph.microsoft.us/v1.0/drives/b!abc/items/x',
 				}),
 			);
 		});

@@ -10,6 +10,7 @@ import {
 
 import { targetDescription } from './descriptions/TargetDescription';
 import {
+	driveEndpoint,
 	getOneDriveCredentialType,
 	getPath,
 	microsoftApiRequest,
@@ -109,9 +110,9 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		).replace(/\/+$/, '');
 
 		// App-only Graph has no `/me`, so the delta feed is rooted at the chosen
-		// user/drive/site. `undefined` for OAuth2 → fall back to `/me`.
+		// user/drive/site drive. `undefined` for OAuth2 → fall back to `/me/drive`.
 		const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
-		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ?? '/me'}/drive/root/delta`;
+		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ? driveEndpoint(driveScopeRoot) : '/me/drive'}/root/delta`;
 
 		// Reset a persisted delta link that belongs to a different scope (auth switched,
 		// or the target id changed) so polling stays on the currently-configured drive.

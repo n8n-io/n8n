@@ -161,9 +161,10 @@ describe('MicrosoftOneDriveTrigger', () => {
 		rlcValues.driveTarget = 'b!NEW';
 		pollFunctions.getCredentials.mockResolvedValue({ accessToken: 'test-access-token' });
 		pollFunctions.getMode.mockReturnValue('trigger');
-		// persisted link is scoped to a DIFFERENT drive id
+		// persisted link is scoped to a DIFFERENT drive id (a /drives/{id} root is
+		// already a drive, so the delta path has no extra `/drive` segment)
 		const staticData: IDataObject = {
-			LastLink: 'https://graph.microsoft.com/v1.0/drives/b!OLD/drive/root/delta?token=PREV',
+			LastLink: 'https://graph.microsoft.com/v1.0/drives/b!OLD/root/delta?token=PREV',
 			lastTimeChecked: '2020-01-01T00:00:00.000Z',
 		};
 		pollFunctions.getWorkflowStaticData.mockReturnValue(staticData);
@@ -175,7 +176,7 @@ describe('MicrosoftOneDriveTrigger', () => {
 		await trigger.poll.call(pollFunctions);
 
 		expect(microsoftApiRequestAllItemsDelta).toHaveBeenCalledWith(
-			'https://graph.microsoft.com/v1.0/drives/b!NEW/drive/root/delta?token=latest',
+			'https://graph.microsoft.com/v1.0/drives/b!NEW/root/delta?token=latest',
 			expect.anything(),
 			expect.anything(),
 		);
@@ -187,7 +188,7 @@ describe('MicrosoftOneDriveTrigger', () => {
 		rlcValues.driveTarget = 'b!abc';
 		pollFunctions.getCredentials.mockResolvedValue({ accessToken: 'test-access-token' });
 		pollFunctions.getMode.mockReturnValue('trigger');
-		const stillValid = 'https://graph.microsoft.com/v1.0/drives/b!abc/drive/root/delta?token=KEEP';
+		const stillValid = 'https://graph.microsoft.com/v1.0/drives/b!abc/root/delta?token=KEEP';
 		const staticData: IDataObject = {
 			LastLink: stillValid,
 			lastTimeChecked: '2020-01-01T00:00:00.000Z',
