@@ -488,8 +488,9 @@ export class FacebookGraphApi implements INodeType {
 					response = await this.helpers.request(requestOptions);
 				}
 			} catch (error) {
+				const apiError = new NodeApiError(this.getNode(), error as JsonObject);
 				if (!this.continueOnFail()) {
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+					throw apiError;
 				}
 
 				let errorItem;
@@ -511,7 +512,7 @@ export class FacebookGraphApi implements INodeType {
 				// the error output when "Continue (using error output)" is selected.
 				returnItems.push({
 					json: { ...errorItem },
-					error: new NodeApiError(this.getNode(), error as JsonObject),
+					error: apiError,
 					pairedItem: { item: itemIndex },
 				});
 
