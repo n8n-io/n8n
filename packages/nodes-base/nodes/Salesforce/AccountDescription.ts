@@ -296,7 +296,7 @@ export const accountFields: INodeProperties[] = [
 							{
 								type: 'regex',
 								properties: {
-									regex: '^[a-zA-Z0-9]{15,18}$',
+									regex: '^(?:[a-zA-Z0-9]{15}|[a-zA-Z0-9]{18})$',
 									errorMessage: 'User ID must be 15 or 18 alphanumeric characters',
 								},
 							},
@@ -600,7 +600,7 @@ export const accountFields: INodeProperties[] = [
 							{
 								type: 'regex',
 								properties: {
-									regex: '^[a-zA-Z0-9]{15,18}$',
+									regex: '^(?:[a-zA-Z0-9]{15}|[a-zA-Z0-9]{18})$',
 									errorMessage: 'User ID must be 15 or 18 alphanumeric characters',
 								},
 							},
@@ -945,7 +945,7 @@ export const accountFields: INodeProperties[] = [
 							{
 								type: 'regex',
 								properties: {
-									regex: '^[a-zA-Z0-9]{15,18}$',
+									regex: '^(?:[a-zA-Z0-9]{15}|[a-zA-Z0-9]{18})$',
 									errorMessage: 'User ID must be 15 or 18 alphanumeric characters',
 								},
 							},

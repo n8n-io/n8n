@@ -3395,6 +3395,39 @@ describe('Salesforce', () => {
 	});
 
 	describe('Execute Method - Account Resource Extended Fields', () => {
+		describe('Account Add Note Operation', () => {
+			it('should set the note owner from the ownerId option', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'account',
+						operation: 'addNote',
+						accountId: 'acc123',
+						title: 'Important Note',
+						options: {
+							body: 'Note body',
+							ownerId: { __rl: true, mode: 'id', value: 'user789' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'note123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/note',
+					expect.objectContaining({
+						Title: 'Important Note',
+						ParentId: 'acc123',
+						Body: 'Note body',
+						OwnerId: 'user789',
+					}),
+				);
+			});
+		});
+
 		describe('Account Create Operation - Additional Fields', () => {
 			it('should handle account create with all additional fields', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {

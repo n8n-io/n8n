@@ -2406,9 +2406,9 @@ export class Salesforce implements INodeType {
 							body.Body = options.body as string;
 						}
 						{
-							const owner = getResourceLocatorValue(options.owner);
-							if (owner !== undefined) {
-								body.OwnerId = owner;
+							const ownerId = getResourceLocatorValue(options.ownerId);
+							if (ownerId !== undefined) {
+								body.OwnerId = ownerId;
 							}
 						}
 						if (options.isPrivate !== undefined) {
