@@ -4,6 +4,7 @@ import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agen
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
@@ -17,7 +18,7 @@ import type {
 } from 'n8n-workflow';
 import * as path from 'path';
 
-import { BUILTIN_NODES_PACKAGES, N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';

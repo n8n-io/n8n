@@ -4,12 +4,12 @@ import type {
 	NodeTypeParser,
 } from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
+import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 
-import { BUILTIN_NODES_PACKAGES } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 
