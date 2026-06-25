@@ -29,7 +29,7 @@
 	"tags": ["build", "form-trigger", "google-sheets", "code", "conditional", "slack", "gmail"],
 	"triggerType": "form",
 	"datasets": ["full"],
-	"buildExpectations": [
+	"outcomeExpectations": [
 		"The workflow is triggered by a Form Trigger node (n8n-nodes-base.formTrigger) that starts when the form is submitted.",
 		"A Google Sheets node reads rows from a spreadsheet before the branching logic runs.",
 		"An if node branches on whether the row count is greater than 2.",

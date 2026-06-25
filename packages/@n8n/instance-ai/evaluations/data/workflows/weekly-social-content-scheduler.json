@@ -40,7 +40,7 @@
 	],
 	"triggerType": "schedule",
 	"datasets": ["full"],
-	"buildExpectations": [
+	"outcomeExpectations": [
 		"The workflow is triggered by a Schedule Trigger node (n8n-nodes-base.scheduleTrigger) configured to run weekly on Mondays.",
 		"A web-scraping step (e.g. an HTTP Request node hitting Hacker News) gathers trending content ideas from the web.",
 		"A Google Sheets node reads this week's planned content ideas.",

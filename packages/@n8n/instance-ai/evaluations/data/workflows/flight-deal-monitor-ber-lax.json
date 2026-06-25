@@ -39,7 +39,7 @@
 	],
 	"triggerType": "schedule",
 	"datasets": ["full"],
-	"buildExpectations": [
+	"outcomeExpectations": [
 		"The workflow includes a daily Schedule Trigger node (n8n-nodes-base.scheduleTrigger) that kicks off the flight search run.",
 		"Computes outbound/return search dates roughly three months ahead, covering travel from the first week of the month through the last week of the month.",
 		"An HTTP Request node (or equivalent flight-search integration) queries business-class flights from Berlin (BER) to Los Angeles (LAX).",
