@@ -28,8 +28,8 @@
 	"complexity": "medium",
 	"tags": ["build", "whatsapp", "gemini", "google-sheets", "notion", "slack", "conditional"],
 	"triggerType": "webhook",
-	"datasets": ["full"],
-	"buildExpectations": [
+	"datasets": ["mcp", "full"],
+	"outcomeExpectations": [
 		"The workflow is triggered by a WhatsApp Trigger node (n8n-nodes-base.whatsAppTrigger) that listens for incoming customer messages.",
 		"An AI agent or llm chain wired to Gemini is involved in figuring out if the question is resolved from the FAQ",
 		"A Google Sheet faq is present either before the AI agent or as a tool of the AI agent.",

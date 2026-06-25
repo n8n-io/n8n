@@ -1,3 +1,5 @@
+import type { SystemModelMessage } from 'ai';
+
 import { isLlmMessage } from '../../sdk/message';
 import type {
 	AgentDbMessage,
@@ -5,7 +7,14 @@ import type {
 	ContentToolCall,
 	Message,
 } from '../../types/sdk/message';
-import { AgentMessageList } from '../model/message-list';
+import { AgentMessageList, buildSystemMessages } from '../model/message-list';
+
+function flattenSystemContent(system: SystemModelMessage | SystemModelMessage[]): string {
+	if (Array.isArray(system)) {
+		return system.map((entry) => entry.content).join('');
+	}
+	return system.content;
+}
 
 function makeUserMsg(text: string): AgentMessage {
 	return { role: 'user', content: [{ type: 'text', text }] };
@@ -140,12 +149,6 @@ describe('AgentMessageList — preserving DB timestamps', () => {
 // LLM context assembly
 // ---------------------------------------------------------------------------
 
-function systemContent(list: AgentMessageList): string {
-	const { system } = list.forLlm('Base instructions');
-	expect(system.role).toBe('system');
-	return system.content;
-}
-
 describe('AgentMessageList — forLlm observation memory', () => {
 	it('does not inject a memory section when no observation log has been rendered', () => {
 		const list = new AgentMessageList();
@@ -153,8 +156,9 @@ describe('AgentMessageList — forLlm observation memory', () => {
 
 		const { system, messages } = list.forLlm('Base instructions');
 
-		expect(system.content).toContain('Base instructions');
-		expect(system.content).not.toContain('## Memory');
+		expect(flattenSystemContent(system)).toContain('Base instructions');
+		expect(flattenSystemContent(system)).not.toContain('## Memory');
+		expect(Array.isArray(system)).toBe(false);
 		expect(messages).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -175,11 +179,41 @@ describe('AgentMessageList — forLlm observation memory', () => {
 			'</observations>',
 		].join('\n');
 
-		const prompt = systemContent(list);
+		const { system } = list.forLlm('Base instructions');
+		const prompt = flattenSystemContent(system);
 
+		expect(Array.isArray(system)).toBe(true);
 		expect(prompt).toContain('Base instructions');
 		expect(prompt).toContain('<observations>');
 		expect(prompt).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
+	});
+
+	it('places observation memory in a separate system message with its own cache breakpoint', () => {
+		const observationLog = [
+			'<observations>',
+			'* CRITICAL (14:30) User wants the SDK to stay unopinionated.',
+			'</observations>',
+		].join('\n');
+		const cacheOptions = {
+			anthropic: { cacheControl: { type: 'ephemeral' as const } },
+		};
+
+		const system = buildSystemMessages('Base instructions', observationLog, cacheOptions);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[0]).toEqual({
+			role: 'system',
+			content: 'Base instructions',
+			providerOptions: cacheOptions,
+		});
+		expect(system[1]).toMatchObject({
+			role: 'system',
+			providerOptions: cacheOptions,
+		});
+		expect(system[1]?.content).toContain('<observations>');
+		expect(system[1]?.content).not.toContain('Base instructions');
 	});
 
 	it('keeps recent history messages in LLM context when observation memory is empty', () => {

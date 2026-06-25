@@ -86,6 +86,29 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).not.toMatch(/MCP|devtools/i);
 	});
 
+	it('loads the bundled n8n docs assistant skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'n8n-docs-assistant');
+
+		expect(skill).toMatchObject({
+			name: 'n8n-docs-assistant',
+			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
+		});
+		expect(skill?.description).toContain(
+			'credential setup questions opened from the credential modal',
+		);
+		expect(skill?.linkedFiles.references).toEqual([]);
+
+		const loaded = await source.loadSkill('n8n-docs-assistant');
+		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
+		expect(loaded?.instructions).toContain('intent: "credential-setup"');
+		expect(loaded?.instructions).toContain('oauthRedirectUrl');
+		expect(loaded?.instructions).toContain('never ask them to paste secrets into chat');
+		expect(loaded?.instructions).toContain('Source: [Page title](page URL)');
+		expect(loaded?.instructions).toContain('Sources:');
+		expect(loaded?.instructions).toContain('pages returned by `n8n-docs`');
+	});
+
 	it('loads the bundled workflow-builder skill', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'workflow-builder');
