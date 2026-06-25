@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { isWindowsFilePath } from './path';
+import { isWindowsFilePath } from './is-windows-file-path';
 
 describe('isWindowsFilePath', () => {
 	describe('valid Windows paths', () => {
