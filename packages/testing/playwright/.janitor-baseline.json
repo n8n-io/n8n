@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-24T10:26:20.816Z",
-	"totalViolations": 139,
+	"generated": "2026-06-25T09:22:20.446Z",
+	"totalViolations": 135,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -569,32 +569,6 @@
 				"line": 96,
 				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
 				"hash": "e8fc423eeeb7"
-			}
-		],
-		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 44,
-				"message": "Direct page locator call: n8n.page.getByTestId('node-creator-plus-button')",
-				"hash": "2b61afc80039"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 55,
-				"message": "Direct page locator call: n8n.page.getByTestId('execute-node-button')",
-				"hash": "af9330ed3874"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 56,
-				"message": "Direct page locator call: n8n.page.getByTestId('delete-node-button')",
-				"hash": "01554562f936"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 57,
-				"message": "Direct page locator call: n8n.page.getByTestId('disable-node-button')",
-				"hash": "4f683821335f"
 			}
 		],
 		"composables/BuilderWizardComposer.ts": [
