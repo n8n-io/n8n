@@ -25,6 +25,12 @@ const normalizeBackslashes = (text: string): string => {
 };
 
 export const splitExpression = (expression: string): ExpressionChunk[] => {
+	// Maintain the "always have an initial text chunk" invariant
+	// that ExpressionBuilder.getExpressionCode relies on.
+	if (expression === '') {
+		return [{ type: 'text', text: '' }];
+	}
+
 	const chunks: ExpressionChunk[] = [];
 	let searchingFor: 'open' | 'close' = 'open';
 	let activeRegex = OPEN_BRACKET;

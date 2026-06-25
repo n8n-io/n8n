@@ -204,7 +204,18 @@ const hasExistingCredentials = computed(() => {
 function openNewCredentialModal() {
 	const req = currentRequest.value;
 	if (!req) return;
-	uiStore.openNewCredential(req.credentialType, false, false, props.projectId, req.suggestedName);
+	uiStore.openNewCredential(
+		req.credentialType,
+		false,
+		false,
+		props.projectId,
+		req.suggestedName,
+		undefined,
+		undefined,
+		{
+			closeOnSave: true,
+		},
+	);
 }
 
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
@@ -259,7 +270,7 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: thread.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',

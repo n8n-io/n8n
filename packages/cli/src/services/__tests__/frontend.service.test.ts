@@ -1,5 +1,6 @@
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -33,6 +34,7 @@ describe('FrontendService', () => {
 		templates: { enabled: false, host: '' },
 		nodes: {},
 		tags: { disabled: false },
+		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
@@ -42,13 +44,22 @@ describe('FrontendService', () => {
 			whatsNewEndpoint: '',
 			infoUrl: '',
 		},
+		dynamicBanners: {
+			endpoint: 'https://api.n8n.io/api/banners',
+			enabled: true,
+		},
 		personalization: { enabled: false },
 		defaultLocale: 'en',
 		auth: { cookie: { secure: false } },
 		generic: { releaseChannel: 'stable', timezone: 'UTC' },
 		publicApi: { path: 'api', swaggerUiDisabled: false },
 		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
-		executions: { pruneData: false, pruneDataMaxAge: 336, pruneDataMaxCount: 10000 },
+		executions: {
+			pruneData: false,
+			pruneDataMaxAge: 336,
+			pruneDataMaxCount: 10000,
+			concurrency: { productionLimit: -1, evaluationLimit: -1 },
+		},
 		hideUsagePage: false,
 		license: { tenantId: 1 },
 		mfa: { enabled: false },
@@ -137,6 +148,9 @@ describe('FrontendService', () => {
 	const urlService = mock<UrlService>({
 		getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
 		getWebhookBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
+		getInstanceJwksUri: jest
+			.fn()
+			.mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
 	});
 
 	const securityConfig = mock<SecurityConfig>({
@@ -150,6 +164,7 @@ describe('FrontendService', () => {
 	const licenseState = mock<LicenseState>({
 		isOidcLicensed: jest.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: jest.fn().mockReturnValue(false),
+		isOtelCustomSpanAttributesLicensed: jest.fn().mockReturnValue(false),
 		getMaxWorkflowsWithEvaluations: jest.fn().mockReturnValue(0),
 	});
 
@@ -167,6 +182,10 @@ describe('FrontendService', () => {
 
 	const aiUsageService = mock<AiUsageService>({
 		getAiUsageSettings: jest.fn().mockResolvedValue(true),
+	});
+
+	const workflowRepository = mock<WorkflowRepository>({
+		getPublishedCount: jest.fn().mockResolvedValue(7),
 	});
 
 	const createMockService = () => {
@@ -196,6 +215,7 @@ describe('FrontendService', () => {
 				mfaService,
 				ownershipService,
 				aiUsageService,
+				workflowRepository,
 			),
 			license,
 		};
@@ -204,9 +224,11 @@ describe('FrontendService', () => {
 	beforeEach(() => {
 		originalEnv = process.env;
 		jest.clearAllMocks();
+		globalConfig.diagnostics.enabled = false;
 	});
 
 	afterEach(() => {
+		jest.useRealTimers();
 		process.env = originalEnv;
 	});
 
@@ -219,6 +241,78 @@ describe('FrontendService', () => {
 				expect.objectContaining({
 					settingsMode: 'authenticated',
 				}),
+			);
+		});
+
+		it('should cache dynamic banner filters for 30 seconds', async () => {
+			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockResolvedValueOnce(7).mockResolvedValueOnce(8);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(29_999);
+			const cachedSettings = await service.getSettings();
+
+			expect(cachedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(1);
+			const refreshedSettings = await service.getSettings();
+
+			expect(refreshedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 8,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
+		});
+
+		it('should fall back when dynamic banner filters cannot be loaded', async () => {
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 0,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('should fall back to the last published workflow count when refresh fails', async () => {
+			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount
+				.mockResolvedValueOnce(7)
+				.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			await service.getSettings();
+			jest.advanceTimersByTime(30_000);
+
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
 		});
 
@@ -264,6 +358,70 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.communityNodesManagedByEnv).toBe(false);
+		});
+
+		it('refreshes evaluationConcurrencyLimit when license tier changes between getSettings calls', async () => {
+			// Env override unset for this test so the resolver follows the
+			// license-tier branch. The override is restored by the suite's
+			// afterEach via `process.env = originalEnv`.
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			license.getPlanName.mockReturnValue('Community');
+
+			const { service } = createMockService();
+			const initial = await service.getSettings();
+			expect(initial.evaluationConcurrencyLimit).toBe(1);
+
+			// Simulate a license upgrade landing after settings have been
+			// initialised. The next getSettings() call must surface the new
+			// tier default without requiring an instance restart.
+			license.getPlanName.mockReturnValue('Enterprise');
+			const refreshed = await service.getSettings();
+			expect(refreshed.evaluationConcurrencyLimit).toBe(5);
+		});
+
+		it('keeps env override winning over license tier on refresh', async () => {
+			// Operator-set env always wins, even after a license change.
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '7';
+			globalConfig.executions = {
+				...globalConfig.executions,
+				concurrency: { productionLimit: -1, evaluationLimit: 7 },
+			} as GlobalConfig['executions'];
+			license.getPlanName.mockReturnValue('Community');
+
+			const { service } = createMockService();
+			const initial = await service.getSettings();
+			expect(initial.evaluationConcurrencyLimit).toBe(7);
+
+			license.getPlanName.mockReturnValue('Enterprise');
+			const refreshed = await service.getSettings();
+			expect(refreshed.evaluationConcurrencyLimit).toBe(7);
+		});
+
+		it('surfaces the license-issued evaluation concurrency quota when env is unset', async () => {
+			// `quota:evaluations:concurrencyLimit` lets the license-management
+			// service raise (or lower) a customer's cap without a code change.
+			// With env unset, the FE settings must reflect the license value
+			// rather than the tier default.
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			license.getPlanName.mockReturnValue('Community');
+			(license.getValue as jest.Mock).mockImplementation((feature: string) =>
+				feature === 'quota:evaluations:concurrencyLimit' ? 4 : undefined,
+			);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			// Community tier would otherwise be 1; the license override lifts
+			// it to 4.
+			expect(settings.evaluationConcurrencyLimit).toBe(4);
+		});
+
+		it('should surface whether custom OpenTelemetry span attributes are licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
 		});
 	});
 
@@ -490,6 +648,25 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('collaboration setting', () => {
+		afterEach(() => {
+			globalConfig.collaboration.crdt = 'off';
+		});
+
+		it('should default collaboration.crdt to off', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('off');
+		});
+
+		it('should reflect the collaboration.crdt mode from config', async () => {
+			globalConfig.collaboration.crdt = 'local';
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('local');
 		});
 	});
 

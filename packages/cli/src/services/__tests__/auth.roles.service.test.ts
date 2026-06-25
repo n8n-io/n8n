@@ -211,7 +211,8 @@ describe('AuthRolesService', () => {
 			});
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope, validScope]);
-			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]);
+			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]); // find affected role slugs
+			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]); // reload roles with full scopes
 			roleRepository.save.mockImplementation(async (entities) => entities as never);
 			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
@@ -241,7 +242,8 @@ describe('AuthRolesService', () => {
 			});
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope1, obsoleteScope2, validScope]);
-			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]);
+			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]); // find affected role slugs
+			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]); // reload roles with full scopes
 			roleRepository.save.mockImplementation(async (entities) => entities as never);
 			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);

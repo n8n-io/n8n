@@ -42,7 +42,7 @@ function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAi
 
 describe('SubagentStepTimeline', () => {
 	beforeEach(() => {
-		createTestingPinia();
+		createTestingPinia({ stubActions: false });
 	});
 
 	it('should render text timeline entry as inline ButtonLike', () => {

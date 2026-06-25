@@ -34,8 +34,32 @@ export interface McpServerConfig {
 	 * - `true` — every tool from this server requires approval before execution.
 	 * - `string[]` — only the listed tools (by their original, un-prefixed names)
 	 *   require approval; all other tools from the server run without interruption.
-	 * - `false` / omitted — no per-server approval requirement (the global
-	 *   `.requireToolApproval()` flag on the Agent still applies).
+	 * - `false` / omitted — no approval requirement.
 	 */
 	requireApproval?: string[] | boolean;
+
+	/**
+	 * Custom fetch implementation used by URL-based transports (SSE,
+	 * StreamableHTTP).
+	 * Ignored for stdio transport. When omitted, the SDK transports fall back
+	 * to the global `fetch`.
+	 */
+	fetch?: typeof fetch;
+
+	/**
+	 * Restrict which tools from this server are surfaced to the agent.
+	 *
+	 * Tools are matched by their original (un-prefixed) name.
+	 *
+	 * - `{ mode: 'allow', tools: [...] }` — only the listed tools are surfaced.
+	 * - `{ mode: 'exclude', tools: [...] }` — every tool except the listed ones
+	 *   is surfaced.
+	 * - omitted — every tool the server advertises is surfaced.
+	 *
+	 * An empty `tools` array is a no-op for both modes — i.e. an empty allow
+	 * list does not hide everything, and an empty exclude list does not hide
+	 * anything. This matches the JSON-config semantics ("no filter applied"
+	 * is expressed by omitting the field).
+	 */
+	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
 }

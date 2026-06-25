@@ -11,6 +11,7 @@ import {
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { DeploymentKey } from './deployment-key';
+import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
@@ -41,6 +42,10 @@ import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
+import {
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxStatus,
+} from './workflow-publication-outbox';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -63,6 +68,7 @@ export {
 	CredentialDependency,
 	type CredentialDependencyType,
 	DeploymentKey,
+	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
 	Project,
@@ -81,6 +87,8 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -109,6 +117,7 @@ export const entities = {
 	CredentialsEntity,
 	CredentialDependency,
 	DeploymentKey,
+	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
 	Project,
@@ -126,6 +135,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,

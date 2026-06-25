@@ -23,6 +23,38 @@ export class GoogleSheets extends VersionedNodeType {
 						relationHint: 'Prefer for workflow data storage with upsert',
 					},
 				],
+				extraTypeDefContent: [
+					{
+						displayOptions: {
+							show: {
+								resource: ['sheet'],
+								operation: ['append', 'appendOrUpdate', 'update'],
+							},
+						},
+						content: `<patterns>
+<pattern title="autoMapInputData — maps $json fields to sheet columns automatically">
+columns: {
+  mappingMode: 'autoMapInputData',
+  value: {},
+  schema: [
+    { id: 'Name', displayName: 'Name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
+    { id: 'Email', displayName: 'Email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: false }
+  ]
+}
+</pattern>
+<pattern title="defineBelow — explicit expression mapping">
+columns: {
+  mappingMode: 'defineBelow',
+  value: { name: expr('{{ $json.name }}'), email: expr('{{ $json.email }}') },
+  schema: [
+    { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
+    { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
+  ]
+}
+</pattern>
+</patterns>`,
+					},
+				],
 			},
 		};
 

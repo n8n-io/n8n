@@ -5,6 +5,7 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
+	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 
 /**
@@ -15,8 +16,8 @@ export async function postMessage(
 	context: IRestApiContext,
 	threadId: string,
 	message: string,
-	researchMode?: boolean,
 	attachments?: InstanceAiAttachment[],
+	handoffContext?: InstanceAiHandoffContext,
 	timeZone?: string,
 	pushRef?: string,
 ): Promise<InstanceAiSendMessageResponse> {
@@ -26,8 +27,8 @@ export async function postMessage(
 		`/instance-ai/chat/${threadId}`,
 		{
 			message,
-			...(researchMode ? { researchMode } : {}),
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
+			...(handoffContext ? { context: handoffContext } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
 		},
@@ -36,15 +37,14 @@ export async function postMessage(
 
 export async function ensureThread(
 	context: IRestApiContext,
-	threadId?: string,
+	threadId: string,
+	projectId: string,
 ): Promise<InstanceAiEnsureThreadResponse> {
 	return await makeRestApiRequest<InstanceAiEnsureThreadResponse>(
 		context,
 		'POST',
 		'/instance-ai/threads',
-		{
-			...(threadId ? { threadId } : {}),
-		},
+		{ threadId, projectId },
 	);
 }
 

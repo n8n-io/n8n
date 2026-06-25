@@ -17,12 +17,16 @@ vi.mock('@n8n/stores/useRootStore');
 vi.mock('@/features/ai/assistant/assistant.api');
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	const { shallowRef } = await import('vue');
+	const mockStore = {
+		getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		getNodeByName: vi.fn().mockReturnValue(null),
+	};
 	return {
 		...actual,
-		useWorkflowDocumentStore: vi.fn(() => ({
-			getParentNodesByDepth: vi.fn().mockReturnValue([]),
-		})),
+		useWorkflowDocumentStore: vi.fn(() => mockStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+		injectWorkflowDocumentStore: vi.fn(() => shallowRef(mockStore)),
 	};
 });
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -36,6 +40,21 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 vi.mock('@/app/composables/useToast');
+vi.mock('@/app/composables/useEditorContext', () => ({
+	useEditorContext: () => ({
+		aiAssistant: { value: true },
+		aiBuilder: { value: true },
+		askAi: { value: true },
+		readOnly: { value: false },
+	}),
+}));
+vi.mock('../../utils/buttonParameter.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../../utils/buttonParameter.utils')>()),
+	generateCodeForAiTransform: vi.fn().mockResolvedValue({
+		name: 'testPath.targetParam',
+		value: 'generated code',
+	}),
+}));
 
 describe('ButtonParameter', () => {
 	const defaultProps: Props = {
@@ -68,11 +87,13 @@ describe('ButtonParameter', () => {
 		} as any);
 
 		vi.mocked(injectNDVStore).mockReturnValue({
-			ndvInputData: [{}],
-			ndvInputDataWithPinnedData: [{}],
-			activeNode: { name: 'TestNode', parameters: {} },
-			isDraggableDragging: false,
-			pushRef: 'testPushRef',
+			value: {
+				ndvInputData: [{}],
+				ndvInputDataWithPinnedData: [{}],
+				activeNode: { name: 'TestNode', parameters: {} },
+				isDraggableDragging: false,
+				pushRef: 'testPushRef',
+			},
 		} as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({

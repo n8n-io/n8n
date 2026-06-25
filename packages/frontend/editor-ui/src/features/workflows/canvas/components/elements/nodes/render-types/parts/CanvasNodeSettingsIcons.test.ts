@@ -17,13 +17,25 @@ import { computed } from 'vue';
 
 const WORKFLOW_ID = 'test-workflow-id';
 
-vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
-	useDynamicCredentials: vi.fn(),
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: vi.fn(),
 }));
 
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
 
-const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+
+const mockedUseDynamicCredentials = vi.mocked(usePrivateCredentials);
 
 const renderComponent = createComponentRenderer(CanvasNodeSettingsIcons, {
 	pinia: createTestingPinia(),
@@ -32,7 +44,7 @@ const renderComponent = createComponentRenderer(CanvasNodeSettingsIcons, {
 const mockFeatureFlag = (enabled: boolean) => {
 	mockedUseDynamicCredentials.mockReturnValue({
 		isEnabled: computed(() => enabled),
-	} as ReturnType<typeof useDynamicCredentials>);
+	} as ReturnType<typeof usePrivateCredentials>);
 };
 
 describe('CanvasNodeSettingsIcons', () => {
@@ -55,10 +67,11 @@ describe('CanvasNodeSettingsIcons', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 
 		workflowsStore.workflowId = WORKFLOW_ID;
-		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 
 		// Default: feature flag disabled
 		mockFeatureFlag(false);
+
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 	});
 
 	describe('dynamic credentials icon', () => {

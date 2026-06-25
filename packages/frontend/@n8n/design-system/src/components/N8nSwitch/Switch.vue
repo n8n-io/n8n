@@ -59,7 +59,7 @@ const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 	flex-direction: row;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	cursor: default;
+	cursor: pointer;
 
 	&[data-disabled] {
 		cursor: not-allowed;

@@ -3,8 +3,8 @@ import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow'
 import { handleDatesPresend } from '../GenericFunctions';
 
 describe('GenericFunctions - handleDatesPresend', () => {
-	const mockGetNode = jest.fn();
-	const mockGetNodeParameter = jest.fn();
+	const mockGetNode = vi.fn();
+	const mockGetNodeParameter = vi.fn();
 
 	const mockContext = {
 		getNode: mockGetNode,

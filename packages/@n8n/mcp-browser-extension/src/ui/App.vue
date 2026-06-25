@@ -12,6 +12,9 @@ const {
 	errorMessage,
 	settings,
 	hasRelayUrl,
+	relayHost,
+	isRelayAllowed,
+	isAutoConnect,
 	controlledTabs,
 	controlledTabIds,
 	allSelected,
@@ -30,33 +33,45 @@ const {
 			<N8nLogo class="logo" size="small" :collapsed="false" />
 			<span class="title-text">Browser Use</span>
 		</h1>
-		<p class="subtitle">Let n8n AI control your browser</p>
+		<p class="subtitle">
+			{{ isAutoConnect ? 'Auto-connecting (eval mode)…' : 'Let n8n AI control your browser' }}
+		</p>
 
 		<StatusBadge :status="status" :tab-count="controlledTabIds.length" />
 
 		<template v-if="status !== 'connected'">
 			<template v-if="hasRelayUrl">
-				<TabList
-					v-if="tabs.length"
-					:tabs="tabs"
-					selectable
-					:selected-tab-ids="selectedTabIds"
-					:all-selected="allSelected"
-					@toggle-tab="toggleTab"
-					@toggle-all="toggleAll"
-				/>
-				<N8nButton
-					class="full-width"
-					size="large"
-					:disabled="status === 'connecting'"
-					@click="connect"
-				>
-					Connect{{
-						someSelected
-							? ` (${selectedTabIds.size} tab${selectedTabIds.size !== 1 ? 's' : ''})`
-							: ''
-					}}
-				</N8nButton>
+				<template v-if="isRelayAllowed">
+					<p class="connect-notice">
+						You're about to connect to <strong>{{ relayHost }}</strong
+						>. Only continue if you started this connection yourself.
+					</p>
+					<TabList
+						v-if="tabs.length"
+						:tabs="tabs"
+						selectable
+						:selected-tab-ids="selectedTabIds"
+						:all-selected="allSelected"
+						@toggle-tab="toggleTab"
+						@toggle-all="toggleAll"
+					/>
+					<N8nButton
+						class="full-width"
+						size="large"
+						:disabled="status === 'connecting'"
+						@click="connect"
+					>
+						Connect{{
+							someSelected
+								? ` (${selectedTabIds.size} tab${selectedTabIds.size !== 1 ? 's' : ''})`
+								: ''
+						}}
+					</N8nButton>
+				</template>
+				<p v-else class="error">
+					Can't connect to <strong>{{ relayHost || 'this address' }}</strong> — it isn't a valid n8n
+					instance.
+				</p>
 			</template>
 			<p v-else class="info-text">
 				Waiting for n8n AI to connect. Ask n8n AI to open your browser to get started.
@@ -119,6 +134,13 @@ const {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	color: var(--text-color--subtler);
+	margin: 0 0 var(--spacing--sm);
+}
+
+.connect-notice {
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	color: var(--color--text);
 	margin: 0 0 var(--spacing--sm);
 }
 

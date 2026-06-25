@@ -8,6 +8,7 @@ test.use({ capability: benchConfig('queue-mode-sustained-rate', { kafka: true, w
 test.describe(
 	'Can queue mode sustain 250 msg/s steady?',
 	{
+		tag: '@bench:kafka',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'queue-mode-sustained-rate' },

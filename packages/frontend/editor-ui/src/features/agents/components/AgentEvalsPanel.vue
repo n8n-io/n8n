@@ -60,7 +60,6 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 		<div v-else :class="$style.dashedCard">
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('agents.builder.evaluations.emptyPrefix') }}
-				<code :class="$style.code">.eval(new Eval()...)</code>
 			</N8nText>
 		</div>
 	</div>

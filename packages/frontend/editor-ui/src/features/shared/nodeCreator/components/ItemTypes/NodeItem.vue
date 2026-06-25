@@ -150,6 +150,10 @@ const tag = computed(() => {
 	return undefined;
 });
 
+// Only surface the "new" badge in search results — under the category itself
+// the parent subcategory tile already carries the badge.
+const showNewBadge = computed(() => Boolean(props.nodeType.isNew && activeViewStack.search));
+
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
@@ -190,6 +194,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		:is-official="isOfficial"
 		:data-test-id="dataTestId"
 		:tag="tag"
+		:is-new="showNewBadge"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>

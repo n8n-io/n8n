@@ -1,12 +1,16 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { AgentExecution } from './entities/agent-execution.entity';
+import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import { Telemetry } from '@/telemetry';
+
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
-import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
+import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -17,8 +21,19 @@ export interface RecordMessageParams {
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
 	hitlStatus?: 'suspended' | 'resumed';
-	/** Where the message originated from, e.g. 'chat', 'slack'. */
+	/** Where the message originated from, e.g. 'chat', 'slack', 'task'. */
 	source?: string;
+	/** Optional metadata persisted on the thread when it is first created. */
+	threadMetadata?: AgentExecutionThreadMetadata;
+	/** When the run was triggered by a scheduled task, the task's id (stamped on the session). */
+	taskId?: string;
+	/** Published agent_history version that supplied the scheduled task snapshot. */
+	taskVersionId?: string;
+	/** Backend heartbeat telemetry context for this recorded run. */
+	telemetry?: {
+		runType: AgentRunTelemetryType;
+		configuration: IAgentConfigurationTelemetryProperties;
+	};
 }
 
 export interface ThreadDetail {
@@ -37,6 +52,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	/**
@@ -44,7 +60,18 @@ export class AgentExecutionService {
 	 * Creates or updates the thread, then inserts one row into agent_execution.
 	 */
 	async recordMessage(params: RecordMessageParams): Promise<string> {
-		const { threadId, agentId, agentName, projectId, record, source, hitlStatus } = params;
+		const {
+			threadId,
+			agentId,
+			agentName,
+			projectId,
+			record,
+			source,
+			hitlStatus,
+			threadMetadata,
+			taskId,
+			taskVersionId,
+		} = params;
 
 		// Ensure the thread exists and bump its updatedAt
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
@@ -52,12 +79,15 @@ export class AgentExecutionService {
 			agentId,
 			agentName,
 			projectId,
+			threadMetadata,
+			taskId,
+			taskVersionId,
 		);
 		if (!created) {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
 			// Sync title from the SDK memory thread if we don't have one yet
 			if (!thread.title) {
-				await this.syncTitleFromMemory(threadId);
+				await this.syncTitleFromMemory(threadId, agentId);
 			}
 		}
 
@@ -89,7 +119,6 @@ export class AgentExecutionService {
 				timeline: record.timeline.length > 0 ? record.timeline : null,
 				error: record.error,
 				hitlStatus: hitlStatus ?? null,
-				workingMemory: record.workingMemory,
 				source: source ?? null,
 			}),
 		);
@@ -111,6 +140,28 @@ export class AgentExecutionService {
 			);
 		}
 
+		if (params.telemetry) {
+			try {
+				this.telemetry.trackAgentTurnFinished({
+					agent_id: agentId,
+					thread_id: threadId,
+					run_type: params.telemetry.runType,
+					turn_status:
+						record.error !== null || record.finishReason === 'error' ? 'failed' : 'succeeded',
+					configuration: params.telemetry.configuration,
+					latency_ms: record.duration,
+					cost: record.totalCost ?? 0,
+					tool_call_count: record.toolCalls.length,
+				});
+			} catch (error) {
+				this.logger.warn('Failed to track agent execution telemetry', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
 		this.logger.debug('Recorded agent execution', {
 			executionId: inserted.id,
 			threadId,
@@ -123,7 +174,7 @@ export class AgentExecutionService {
 		// ends, so by this point the memory thread should have the title.
 		// Sync it to our execution thread on the first message.
 		if (created) {
-			await this.syncTitleFromMemory(threadId);
+			await this.syncTitleFromMemory(threadId, agentId);
 		}
 
 		return inserted.id;
@@ -148,9 +199,9 @@ export class AgentExecutionService {
 	 * The SDK's titleGeneration runs fire-and-forget after the first message,
 	 * so the title is typically available by the second message.
 	 */
-	private async syncTitleFromMemory(threadId: string): Promise<void> {
+	private async syncTitleFromMemory(threadId: string, agentId: string): Promise<void> {
 		try {
-			const memoryThread = await this.n8nMemory.getThread(threadId);
+			const memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 			if (memoryThread?.title) {
 				const emoji =
 					memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
@@ -170,35 +221,35 @@ export class AgentExecutionService {
 	 * Delete a thread and all its associated runs. The FK on agent_execution
 	 * cascades, so deleting the thread removes the runs in one statement.
 	 */
-	async deleteThread(projectId: string, threadId: string): Promise<boolean> {
+	async deleteThread(projectId: string, agentId: string, threadId: string): Promise<boolean> {
 		// Verify ownership before deleting anything
 		const thread = await this.agentExecutionThreadRepository.findOneBy({
 			id: threadId,
 			projectId,
+			agentId,
 		});
 		if (!thread) return false;
 
-		await this.n8nMemory.deleteThread(threadId);
+		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
 	}
 
 	/**
-	 * Get paginated execution threads for a project.
-	 * Optionally filtered by agentId. Each thread is annotated with the
-	 * first non-empty user message for preview.
+	 * Get paginated execution threads for an agent.
+	 * Each thread is annotated with the first non-empty user message for preview.
 	 */
 	async getThreads(
 		projectId: string,
+		agentId: string,
 		limit: number,
 		cursor?: string,
-		agentId?: string,
 	): Promise<{ threads: ThreadListItem[]; nextCursor: string | null }> {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,
+			agentId,
 			limit,
 			cursor,
-			agentId,
 		);
 
 		if (page.threads.length === 0) {
@@ -220,12 +271,12 @@ export class AgentExecutionService {
 
 	/**
 	 * Get a thread with all its executions.
-	 * Validates projectId ownership. Optionally validates agentId.
+	 * Validates projectId and agentId ownership.
 	 */
 	async getThreadDetail(
 		threadId: string,
 		projectId: string,
-		agentId?: string,
+		agentId: string,
 	): Promise<ThreadDetail | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
@@ -245,16 +296,16 @@ export class AgentExecutionService {
 }
 
 /**
- * True if `thread` belongs to the given project (and optionally agent).
+ * True if `thread` belongs to the given project and agent.
  * Returns false for threads from a different project/agent so the caller can
  * reject the request instead of leaking/modifying unrelated thread data.
  */
 export function threadBelongsTo(
 	thread: AgentExecutionThread,
 	projectId: string,
-	agentId?: string,
+	agentId: string,
 ): boolean {
 	if (thread.projectId !== projectId) return false;
-	if (agentId && thread.agentId !== agentId) return false;
+	if (thread.agentId !== agentId) return false;
 	return true;
 }

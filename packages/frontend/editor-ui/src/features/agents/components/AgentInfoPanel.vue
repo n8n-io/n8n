@@ -1,40 +1,42 @@
 <script setup lang="ts">
 /**
- * Combined editor for the core agent fields: name, model (delegated to the
- * canonical ChatHub ModelSelector), and instructions. Credential selection is
- * handled inside the model picker — no separate credential field.
+ * Combined editor for the core agent fields: name, model, and instructions.
+ * Credential selection is handled inside the model picker — no separate
+ * credential field.
  */
-import { ref, computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nText } from '@n8n/design-system';
+import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type {
-	ChatHubConversationModel,
-	ChatHubProvider,
-	ChatModelDto,
-	ChatModelsResponse,
-} from '@n8n/api-types';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { useToast } from '@/app/composables/useToast';
+import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import shared from '../styles/agent-panel.module.scss';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
-import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
+import { useModelCatalog } from '../composables/useModelCatalog';
+import {
+	type AgentModelOption,
+	type AgentModelProvider,
+	type AgentModelSelection,
+	isAgentModelProvider,
+	type AgentModelsByProvider,
+} from '../model-providers';
+import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
+import type { AgentJsonConfig } from '../types';
+import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
+import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
-import type { AgentJsonConfig } from '../types';
-import {
-	CHATHUB_TO_CATALOG,
-	CATALOG_TO_CHATHUB,
-	AGENT_UNSUPPORTED_PROVIDERS,
-} from '../provider-mapping';
-import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
-import AgentMiniEditor from './AgentMiniEditor.vue';
-
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		disabled?: boolean;
+		embedded?: boolean;
+		projectId?: string;
+	}>(),
 	{
 		disabled: false,
 		embedded: false,
@@ -44,71 +46,72 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
-const chatStore = useChatStore();
+const { showError } = useToast();
+const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
-const { credentialsByProvider, selectCredential } = useChatCredentials(
+const projectId = useAgentProjectId(() => props.projectId);
+
+const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
+	projectId,
 );
 
 watch(
-	credentialsByProvider,
-	(credentials) => {
-		if (credentials) void chatStore.fetchAgents(credentials);
+	projectId,
+	(id) => {
+		if (id) void ensureLoaded(id);
 	},
 	{ immediate: true },
 );
 
-const filteredAgents = computed<ChatModelsResponse>(
-	() =>
-		Object.fromEntries(
-			Object.entries(chatStore.agents).filter(
-				([provider]) => !AGENT_UNSUPPORTED_PROVIDERS.has(provider),
-			),
-		) as ChatModelsResponse,
+const filteredAgents = computed<AgentModelsByProvider>(() =>
+	getModelsForPicker(credentialsByProvider.value),
 );
 
-const selectedAgent = computed<ChatModelDto | null>(() => {
+const selectedAgent = computed<AgentModelOption | null>(() => {
 	const modelStr = modelToString(props.config?.model);
 	if (!modelStr) return null;
 	const parsed = parseModelString(modelStr);
-	if (!parsed) return null;
-	const chatHubProvider = CATALOG_TO_CHATHUB[parsed.provider];
-	if (!chatHubProvider) return null;
+	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
 
-	const registryEntry = filteredAgents.value[chatHubProvider]?.models.find(
-		(m) => isLlmProviderModel(m.model) && m.model.model === parsed.name,
+	const registryEntry = filteredAgents.value[parsed.provider]?.models.find(
+		(m) => m.model === parsed.name,
 	);
 	if (registryEntry) return registryEntry;
 
 	return {
-		model: { provider: chatHubProvider, model: parsed.name } as ChatHubConversationModel,
+		provider: parsed.provider,
+		model: parsed.name,
 		name: parsed.name,
 		description: null,
-		icon: null,
-		updatedAt: null,
 		createdAt: null,
-		metadata: {} as ChatModelDto['metadata'],
-		groupName: null,
-		groupIcon: null,
+		metadata: {
+			functionCalling: false,
+			available: true,
+		},
 	};
 });
 
-function onModelChange(selection: ChatHubConversationModel) {
-	if (!isLlmProviderModel(selection)) return;
-	const catalogProvider = CHATHUB_TO_CATALOG[selection.provider] ?? selection.provider;
-	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
+function onModelChange(selection: AgentModelSelection) {
+	const credentialId = credentialsByProvider.value?.[selection.provider];
+	if (!credentialId) {
+		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
+		return;
+	}
+	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	const nextProviderTool = PROVIDER_CAPABILITIES[selection.provider]?.webSearch ?? false;
 	emit('update:config', {
-		model: `${catalogProvider}/${sanitizeModelId(catalogProvider, selection.model)}`,
+		model,
 		credential: credentialId,
+		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
 	});
 }
 
-function onSelectCredential(provider: ChatHubProvider, credentialId: string | null) {
+function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
-	const currentChatHubProvider = parsed ? CATALOG_TO_CHATHUB[parsed.provider] : undefined;
-	if (currentChatHubProvider === provider) {
-		emit('update:config', { credential: credentialId ?? '' });
+	if (parsed?.provider === provider && credentialId) {
+		emit('update:config', { credential: credentialId });
 	}
 }
 
@@ -146,12 +149,12 @@ function onInstructionsInput(value: string) {
 					i18n.baseText('agents.builder.agent.model.label')
 				}}</N8nText></label
 			>
-			<ModelSelector
-				:selected-agent="selectedAgent"
-				:include-custom-agents="false"
+			<AgentModelSelector
+				:selected-model="selectedAgent"
 				:credentials="credentialsByProvider"
-				:agents="filteredAgents"
-				:is-loading="false"
+				:models-by-provider="filteredAgents"
+				:is-loading="isLoading"
+				:project-id="projectId"
 				:warn-missing-credentials="true"
 				horizontal
 				data-testid="agent-model-selector"
@@ -166,13 +169,11 @@ function onInstructionsInput(value: string) {
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
 			</label>
-			<AgentMiniEditor
+			<N8nMarkdownEditor
 				:class="$style.instructionsEditor"
 				:model-value="instructions"
-				language="markdown"
 				:readonly="props.disabled"
 				max-height="640px"
-				min-height="160px"
 				@update:model-value="onInstructionsInput"
 			/>
 			<N8nText size="xsmall" color="text-light">{{
@@ -186,7 +187,6 @@ function onInstructionsInput(value: string) {
 
 <style module>
 .panel {
-	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
@@ -205,11 +205,12 @@ function onInstructionsInput(value: string) {
 	flex: 1;
 	min-height: 0;
 	display: flex;
+	width: 100%;
 }
 
-.instructionsEditor > :global(.cm-editor) {
-	flex: 1;
-	min-height: 0;
+.instructionsEditor :global(.n8n-markdown),
+.instructionsEditor :global(textarea) {
+	min-height: 160px;
 }
 
 .field {

@@ -1,12 +1,12 @@
 import type { McpRegistryServer } from './mcp-registry.types';
 
 export const notionMockServer: McpRegistryServer = {
-	id: 42,
 	name: 'com.notion/mcp',
 	slug: 'notion',
 	title: 'Notion',
 	description:
 		"Notion's official MCP server lets you use your Notion workspace as a system of record for knowledge work and software development. Search questions about the codebase and business, fetch links to pages such as tech specs and PRDs, and track tasks with your team.",
+	tagline: 'Connect to the Notion MCP Server',
 	version: '1.2.0',
 	updatedAt: '2026-04-22T10:00:00.000Z',
 	icons: [{ src: 'https://mcp.notion.com/notion-logo-block-main.svg', mimeType: 'image/svg+xml' }],
@@ -39,12 +39,58 @@ export const notionMockServer: McpRegistryServer = {
 	tags: ['productivity', 'docs', 'knowledge-base'],
 };
 
+export const slackExtendingMockServer: McpRegistryServer = {
+	name: 'com.slack/mcp',
+	slug: 'slack',
+	title: 'Slack',
+	description: "Slack's MCP server reuses the existing Slack credential type.",
+	tagline: 'Connect to the Slack MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-05-10T10:00:00.000Z',
+	icons: [{ src: 'https://slack.com/icon.svg', mimeType: 'image/svg+xml' }],
+	websiteUrl: 'https://slack.com',
+	authType: 'extendsCredential',
+	remotes: [{ type: 'streamable-http', url: 'https://mcp.slack.com/mcp' }],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	extendsCredential: {
+		extends: 'slackOAuth2Api',
+		authUrl: 'https://slack.com/oauth/v2_user/authorize',
+		accessTokenUrl: 'https://slack.com/api/oauth.v2.user.access',
+		scope: 'channels:read chat:write',
+		authQueryParameters: '',
+	},
+};
+
+export const gmailDirectExtendMockServer: McpRegistryServer = {
+	name: 'com.google/gmail-mcp',
+	slug: 'gmail',
+	title: 'Gmail',
+	description: 'Gmail MCP server reusing the existing Gmail OAuth2 credential as-is.',
+	tagline: 'Connect to the Gmail MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-05-12T10:00:00.000Z',
+	icons: [{ src: 'https://gmail.com/icon.svg', mimeType: 'image/svg+xml' }],
+	websiteUrl: 'https://gmail.com',
+	authType: 'extendsCredential',
+	remotes: [{ type: 'streamable-http', url: 'https://mcp.gmail.com/mcp' }],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	extendsCredential: {
+		extends: 'gmailOAuth2',
+	},
+};
+
 export const linearMockServer: McpRegistryServer = {
-	id: 101,
 	name: 'app.linear/linear',
 	slug: 'linear',
 	title: 'Linear',
 	description: 'MCP server for Linear project management and issue tracking',
+	tagline: 'Connect to the Linear MCP Server',
 	version: '1.0.0',
 	updatedAt: '2026-05-05T10:00:00.000Z',
 	icons: [

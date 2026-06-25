@@ -82,7 +82,7 @@ const disabledHint = computed(() => {
 	// NDV-specific: when the button's node is a trigger with issues
 	// and the active NDV node is a different node, show "fix previous"
 	if (isTriggerNode.value && hasIssues.value) {
-		const activeNode = ndvStore.activeNode;
+		const activeNode = ndvStore.value.activeNode;
 		if (activeNode && activeNode.name !== props.nodeName) {
 			return i18n.baseText('ndv.execute.fixPrevious');
 		}

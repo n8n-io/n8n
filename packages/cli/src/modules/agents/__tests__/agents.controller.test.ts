@@ -1,151 +1,192 @@
-import { ControllerRegistryMetadata } from '@n8n/decorators';
-import { Container } from '@n8n/di';
+import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentPublishService } from '../agent-publish.service';
+import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
-import type { AgentsBuilderService } from '../builder/agents-builder.service';
-import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { AgentScheduleService } from '../integrations/agent-schedule.service';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsController } from '../agents.controller';
+import {
+	expectProjectScopedAgentRoutes,
+	getRoutesByHandlerName,
+} from './test-utils/controller-route-metadata';
 
-// The webhook route is the single exception: it is `skipAuth: true` (no
-// req.user) and authenticates inbound third-party callbacks via per-platform
-// signature verification inside the handler.
-const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook']);
-
-const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-	AgentsController as never,
-);
-
-const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, route]) => ({
-	handlerName,
-	route,
-}));
-
-describe('AgentsController route access scopes', () => {
-	it.each(routeCases)(
-		'$handlerName is gated by a project-scoped agent:* check',
-		({ handlerName, route }) => {
-			if (UNAUTHENTICATED_HANDLERS.has(handlerName)) {
-				expect(route.accessScope).toBeUndefined();
-				expect(route.skipAuth).toBe(true);
-				return;
-			}
-
-			expect(route.accessScope).toBeDefined();
-			expect(route.accessScope?.globalOnly).toBe(false);
-			expect(route.accessScope?.scope.startsWith('agent:')).toBe(true);
-		},
+function makeController({
+	agentsService = mock<
+		Pick<
+			AgentsService,
+			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
+		>
+	>(),
+	agentPublishService = mock<AgentPublishService>(),
+	agentValidationService = mock<AgentValidationService>(),
+	credentialsService = mock<CredentialsService>(),
+}: {
+	agentsService?: jest.Mocked<
+		Pick<
+			AgentsService,
+			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
+		>
+	>;
+	agentPublishService?: jest.Mocked<AgentPublishService>;
+	agentValidationService?: jest.Mocked<AgentValidationService>;
+	credentialsService?: jest.Mocked<CredentialsService>;
+} = {}) {
+	const agentRunnableStateService = new AgentRunnableStateService(
+		credentialsService,
+		agentValidationService,
+		agentPublishService,
 	);
 
+	return {
+		controller: new AgentsController(
+			agentsService as unknown as AgentsService,
+			agentRunnableStateService,
+		),
+		agentsService,
+		agentPublishService,
+		agentValidationService,
+	};
+}
+
+describe('AgentsController route access scopes', () => {
+	expectProjectScopedAgentRoutes(AgentsController);
+
+	const routes = getRoutesByHandlerName(AgentsController);
+
 	it.each([
-		['listSkills', 'agent:read'],
-		['getSkill', 'agent:read'],
-		['createSkill', 'agent:update'],
-		['updateSkill', 'agent:update'],
-		['deleteSkill', 'agent:update'],
-		['revertToPublished', 'agent:update'],
+		['create', 'agent:create'],
+		['list', 'agent:list'],
+		['get', 'agent:read'],
+		['delete', 'agent:delete'],
 	])('%s uses %s', (handlerName, scope) => {
-		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
 });
 
-describe('AgentsController integration credentials', () => {
-	it('lists credentials through the workflow-scoped user project resolver', async () => {
-		const credentialsService = mock<CredentialsService>();
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{
-				id: 'cred-allowed',
-				name: 'Allowed Slack',
-				type: 'slackApi',
-				scopes: [],
-				isManaged: false,
-				isGlobal: false,
-				isResolvable: true,
-			},
-		]);
+describe('AgentsController list', () => {
+	const req = { params: { projectId: 'project-1' }, query: {}, user: { id: 'user-1' } } as never;
 
-		const controller = new AgentsController(
-			mock<AgentsService>(),
-			mock<AgentsBuilderService>(),
-			credentialsService,
-			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
-			mock<AgentRepository>(),
-			mock<AgentExecutionService>(),
-			mock<ChatIntegrationRegistry>(),
-		);
+	it('uses backend listing when no query options are provided', async () => {
+		const { controller, agentsService } = makeController();
+		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
+		const res = mock<Response>();
+		const query = {
+			skip: 0,
+			take: 10,
+		} as never;
+		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 
-		await expect(
-			controller.listCredentials({
-				params: { projectId: 'project-1', agentId: 'agent-1' },
-				user: { id: 'user-1' },
-			} as never),
-		).resolves.toEqual([{ id: 'cred-allowed', name: 'Allowed Slack', type: 'slackApi' }]);
+		await controller.list(req, res, query);
 
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
-			{ id: 'user-1' },
-			{ projectId: 'project-1' },
-		);
-		expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
+		expect(agentsService.findByProjectIdPaginated).toHaveBeenCalledWith('project-1', query);
+		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+		expect(res.json).toHaveBeenCalledWith(response);
 	});
 
-	it('rejects credentials that are not usable in the agent project', async () => {
-		const credentialsService = mock<CredentialsService>();
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{
-				id: 'cred-allowed',
-				name: 'Allowed Slack',
-				type: 'slackApi',
-				scopes: [],
-				isManaged: false,
-				isGlobal: false,
-				isResolvable: true,
-			},
-		]);
+	it('uses backend listing when pagination, sorting, or filters are provided', async () => {
+		const { controller, agentsService } = makeController();
+		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
+		const res = mock<Response>();
+		const query = {
+			skip: 0,
+			take: 50,
+			sortBy: 'name:asc',
+			filter: { query: 'support' },
+		} as never;
+		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
+		const listReq = {
+			params: { projectId: 'project-1' },
+			query: { skip: '0', take: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
+			user: { id: 'user-1' },
+		} as never;
 
-		const chatIntegrationService = mock<ChatIntegrationService>();
-		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue({
+		await controller.list(listReq, res, query);
+
+		expect(agentsService.findByProjectIdPaginated).toHaveBeenCalledWith('project-1', query);
+		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+		expect(res.json).toHaveBeenCalledWith(response);
+	});
+});
+
+describe('AgentsController agent resource', () => {
+	it('adds runnable state to the single-agent response', async () => {
+		const agentsService =
+			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
+		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
-			publishedVersion: {},
-			integrations: [],
 		} as never);
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 
-		const controller = new AgentsController(
-			mock<AgentsService>(),
-			mock<AgentsBuilderService>(),
-			credentialsService,
-			chatIntegrationService,
-			mock<AgentScheduleService>(),
-			agentRepository,
-			mock<AgentExecutionService>(),
-			mock<ChatIntegrationRegistry>(),
+		const { controller } = makeController({
+			agentsService: agentsService as never,
+			agentPublishService,
+			agentValidationService,
+		});
+
+		const result = await controller.get(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
 		);
 
-		await expect(
-			controller.connectIntegration(
-				{
-					params: { projectId: 'project-1' },
-					user: { id: 'user-1' },
-				} as never,
-				undefined as never,
-				'agent-1',
-				{ type: 'slack', credentialId: 'cred-outside-project' },
-			),
-		).rejects.toThrow(NotFoundError);
-
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
-			{ id: 'user-1' },
-			{ projectId: 'project-1' },
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'agent-1',
+				isRunnable: true,
+			}),
 		);
-		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			expect.any(AgentsCredentialProvider),
+		);
+	});
+
+	it('marks the single-agent response as not runnable when validation reports missing fields', async () => {
+		const agentsService =
+			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as never);
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({
+			missing: ['credential'],
+		});
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
+
+		const { controller } = makeController({
+			agentsService: agentsService as never,
+			agentPublishService,
+			agentValidationService,
+		});
+
+		const result = await controller.get(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+		);
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'agent-1',
+				isRunnable: false,
+			}),
+		);
 	});
 });

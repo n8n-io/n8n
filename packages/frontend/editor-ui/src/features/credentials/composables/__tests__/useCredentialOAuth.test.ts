@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useCredentialOAuth } from '../useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ICredentialsResponse } from '../../credentials.types';
@@ -28,11 +29,25 @@ const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
 	displayName: 'OAuth2 API',
 	properties: [
-		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: false,
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
+			default: '',
+			required: true,
+		},
 		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
 			default: '',
 			required: true,
 		},
@@ -95,6 +110,31 @@ const mcpOAuth2ApiWithNoVisibleProps: ICredentialType = {
 			name: 'serverUrl',
 			type: 'hidden',
 			default: 'https://mcp.example.com/mcp',
+		},
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'hidden',
+			default: 'none',
+		},
+	],
+};
+
+const oauth2ApiWithVisibleAllowedHttpRequestDomains: ICredentialType = {
+	name: 'customOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Custom OAuth2 API',
+	properties: [
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'options',
+			options: [
+				{ name: 'All', value: 'all' },
+				{ name: 'Specific Domains', value: 'domains' },
+				{ name: 'None', value: 'none' },
+			],
+			default: 'all',
 		},
 	],
 };
@@ -239,7 +279,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes.slackOAuth2Api = {
 				...slackOAuth2Api,
-				__overwrittenProperties: ['clientId'],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
@@ -260,7 +300,7 @@ describe('useCredentialOAuth', () => {
 						required: true,
 					},
 				],
-				__overwrittenProperties: ['clientId'],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
@@ -319,6 +359,25 @@ describe('useCredentialOAuth', () => {
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 			expect(canOAuthCredentialQuickConnect('mcpOAuth2Api')).toBe(true);
+		});
+
+		it('should not stack-overflow when the extends chain has a cycle', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.cyclicA = {
+				name: 'cyclicA',
+				extends: ['cyclicB'],
+				displayName: 'Cyclic A',
+				properties: [],
+			};
+			credentialsStore.state.credentialTypes.cyclicB = {
+				name: 'cyclicB',
+				extends: ['cyclicA', 'oAuth2Api'],
+				displayName: 'Cyclic B',
+				properties: [],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(() => canOAuthCredentialQuickConnect('cyclicA')).not.toThrow();
 		});
 	});
 
@@ -493,6 +552,106 @@ describe('useCredentialOAuth', () => {
 			const result = await promise;
 			expect(result).toBe(false);
 		});
+
+		it('should resolve true when the callback posts success via window.opener from a trusted origin', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			// Embed setup: editor and n8n backend live on different origins, so the
+			// BroadcastChannel never delivers and we rely on window.opener.
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential);
+
+			// Let the window 'message' listener attach before dispatching.
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: 'success',
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const result = await promise;
+			expect(result).toBe(true);
+			expect(mockPopup.close).toHaveBeenCalled();
+		});
+
+		it('should resolve false when the callback posts error via window.opener from a trusted origin', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: 'error',
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const result = await promise;
+			expect(result).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalled();
+		});
+
+		it('should ignore window messages from untrusted origins', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const controller = new AbortController();
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential, controller.signal);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', { data: 'success', origin: 'https://evil.example.com' }),
+			);
+
+			const race = await Promise.race([
+				promise.then(() => 'resolved'),
+				new Promise<string>((r) => setTimeout(() => r('pending'), 50)),
+			]);
+			expect(race).toBe('pending');
+
+			controller.abort();
+			await promise;
+		});
+
+		it('should ignore unrelated window messages without failing the flow', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			useRootStore().setUrlBaseEditor('https://integration-app.brevo.com');
+			MockBroadcastChannel.noopEventListener = true;
+
+			const controller = new AbortController();
+			const { authorize } = useCredentialOAuth();
+			const promise = authorize(mockCredential, controller.signal);
+
+			await new Promise((r) => setTimeout(r, 0));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: { type: 'unrelated' },
+					origin: 'https://integration-app.brevo.com',
+				}),
+			);
+
+			const race = await Promise.race([
+				promise.then(() => 'resolved'),
+				new Promise<string>((r) => setTimeout(() => r('pending'), 50)),
+			]);
+			expect(race).toBe('pending');
+
+			controller.abort();
+			await promise;
+		});
 	});
 
 	describe('createAndAuthorize', () => {
@@ -559,6 +718,43 @@ describe('useCredentialOAuth', () => {
 
 			return credentialsStore;
 		}
+
+		it('should not set allowedHttpRequestDomains for hidden property', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('mcpOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'mcpOAuth2Api',
+					data: {},
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it('should set allowedHttpRequestDomains when property is not hidden', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.customOAuth2Api =
+				oauth2ApiWithVisibleAllowedHttpRequestDomains;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('customOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'customOAuth2Api',
+					data: { allowedHttpRequestDomains: 'none' },
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
 
 		it('should track "User created credentials" after credential creation', async () => {
 			setupSuccessfulOAuthFlow();

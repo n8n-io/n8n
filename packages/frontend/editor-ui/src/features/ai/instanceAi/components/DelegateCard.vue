@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { N8nBadge, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
 import { useToolLabel } from '../toolLabels';
+import TimelineStepChevron from './TimelineStepChevron.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
 
 const props = defineProps<{
@@ -36,7 +37,7 @@ const briefing = computed(() => {
 		<CollapsibleTrigger as-child>
 			<TimelineStepButton :loading="props.isLoading" size="medium">
 				<template #icon>
-					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
+					<TimelineStepChevron :open="isOpen" />
 				</template>
 				{{ i18n.baseText('instanceAi.delegateCard.delegatingTo') }}:
 				<N8nText bold>{{ role }}</N8nText>

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nInput, N8nTooltip } from '@n8n/design-system';
-import { useElementSize } from '@vueuse/core';
+import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useTemplateRef } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { useI18n } from '@n8n/i18n';
@@ -15,7 +14,6 @@ const props = defineProps<{
 	messagingState: MessagingState;
 	acceptedMimeTypes: string;
 	canUploadFiles: boolean;
-	calloutVisible: boolean;
 	isSpeechSupported: boolean;
 	isListening: boolean;
 	checkedToolIds: string[];
@@ -27,7 +25,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	submit: [];
 	'update:message': [value: string];
-	keydown: [e: KeyboardEvent];
 	fileSelect: [e: Event];
 	attach: [];
 	mic: [];
@@ -38,10 +35,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const inputRef = useTemplateRef<HTMLElement>('inputRef');
+const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
-const attachmentsEl = useTemplateRef('attachmentsEl');
-const attachmentsElSize = useElementSize(attachmentsEl, undefined, { box: 'border-box' });
 
 defineExpose({
 	inputRef,
@@ -50,11 +45,7 @@ defineExpose({
 </script>
 
 <template>
-	<form
-		:class="[$style.prompt, { [$style.hasCallout]: calloutVisible }]"
-		:style="{ '--attachments-el--height': `${attachmentsElSize.height.value}px` }"
-		@submit.prevent="emit('submit')"
-	>
+	<form :class="$style.prompt" @submit.prevent="emit('submit')">
 		<input
 			ref="fileInputRef"
 			type="file"
@@ -64,36 +55,36 @@ defineExpose({
 			@change="emit('fileSelect', $event)"
 		/>
 
-		<div :class="$style.header">
-			<slot name="callouts" />
+		<slot name="callouts" />
 
-			<div v-if="attachments.length > 0" ref="attachmentsEl" :class="$style.attachments">
-				<ChatFile
-					v-for="(file, index) in attachments"
-					:key="index"
-					:file="file"
-					:is-previewable="true"
-					:is-removable="messagingState === 'idle'"
-					@remove="emit('removeAttachment', $event)"
-				/>
-			</div>
-		</div>
-
-		<N8nInput
+		<N8nChatInput
 			ref="inputRef"
 			:model-value="props.message"
-			type="textarea"
 			:placeholder="placeholder"
-			autocomplete="off"
-			:autosize="{ minRows: 1, maxRows: 6 }"
-			autofocus
+			:streaming="messagingState === 'receiving'"
 			:disabled="messagingState !== 'idle'"
+			:submit-disabled="messagingState !== 'idle' || !message.trim()"
+			:autosize="{ minRows: 1, maxRows: 6 }"
+			send-button-test-id="chat-hub-send-message-button"
+			stop-button-test-id="chat-hub-send-message-button"
+			autofocus
 			@update:model-value="emit('update:message', $event)"
-			@keydown="emit('keydown', $event)"
-		/>
-
-		<div :class="$style.footer">
-			<div :class="$style.tools">
+			@submit="emit('submit')"
+			@stop="emit('stop')"
+		>
+			<template #leading>
+				<div v-if="attachments.length > 0" :class="$style.attachments">
+					<ChatFile
+						v-for="(file, index) in attachments"
+						:key="index"
+						:file="file"
+						:is-previewable="true"
+						:is-removable="messagingState === 'idle'"
+						@remove="emit('removeAttachment', $event)"
+					/>
+				</div>
+			</template>
+			<template #left-actions>
 				<ToolsSelector
 					:class="$style.toolsButton"
 					:checked-tool-ids="checkedToolIds"
@@ -108,8 +99,8 @@ defineExpose({
 					"
 					@toggle="emit('toolToggle', $event)"
 				/>
-			</div>
-			<div :class="$style.actions">
+			</template>
+			<template #right-actions>
 				<N8nTooltip
 					:content="
 						!canUploadFiles
@@ -127,112 +118,32 @@ defineExpose({
 						@click.stop="emit('attach')"
 					/>
 				</N8nTooltip>
-				<N8nIconButton
+				<N8nTooltip
 					v-if="isSpeechSupported"
-					variant="outline"
-					:title="
-						isListening
-							? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
-							: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
-					"
-					:disabled="messagingState !== 'idle'"
-					:icon="isListening ? 'square' : 'mic'"
-					:class="{ [$style.recording]: isListening }"
-					icon-size="large"
-					@click.stop="emit('mic')"
-				/>
-				<N8nIconButton
-					v-if="messagingState !== 'receiving'"
-					type="submit"
-					:disabled="messagingState !== 'idle' || !message.trim()"
-					:title="i18n.baseText('chatHub.chat.prompt.button.send')"
-					:loading="messagingState === 'waitingFirstChunk'"
-					icon="arrow-up"
-					icon-size="large"
-					@click.stop
-				/>
-				<N8nIconButton
-					v-else
-					native-type="button"
-					:title="i18n.baseText('chatHub.chat.prompt.button.stopGenerating')"
-					icon="square"
-					icon-size="large"
-					@click.stop="emit('stop')"
-				/>
-			</div>
-		</div>
+					:content="i18n.baseText('chatHub.chat.prompt.button.voiceInput')"
+					placement="top"
+				>
+					<N8nIconButton
+						variant="ghost"
+						:disabled="messagingState !== 'idle'"
+						:icon="isListening ? 'square' : 'mic'"
+						:class="{ [$style.recording]: isListening }"
+						icon-size="large"
+						@click.stop="emit('mic')"
+					/>
+				</N8nTooltip>
+			</template>
+		</N8nChatInput>
 	</form>
 </template>
 
 <style lang="scss" module>
 .prompt {
 	width: 100%;
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-
-	& textarea {
-		font-size: var(--font-size--md);
-		line-height: 1.5em;
-		padding: var(--spacing--sm);
-		padding-top: calc(var(--spacing--sm) + var(--attachments-el--height));
-		padding-bottom: 64px;
-		color: var(--color--text--shade-1);
-		box-shadow: 0 10px 24px 0 #00000010;
-		border-radius: 16px;
-		background: var(--color--background--surface);
-
-		&::placeholder {
-			color: var(--color--text--tint-1);
-		}
-	}
-
-	:global(.n8n-input__wrapper) {
-		--input--radius: 16px;
-	}
-
-	&.hasCallout textarea {
-		padding-top: calc(
-			var(--spacing--sm) + var(--attachments-el--height) + 52px /* callout height */
-		);
-	}
 }
 
 .fileInput {
 	display: none;
-}
-
-.header,
-.footer {
-	position: absolute;
-	left: 1px;
-	width: calc(100% - 2px);
-	z-index: 10;
-	background: var(--color--background--surface);
-	border-radius: 16px;
-	pointer-events: none; /* click to focus textarea */
-
-	& > * {
-		pointer-events: auto;
-	}
-}
-
-.header {
-	top: 1px;
-}
-
-.footer {
-	bottom: 1px;
-	padding: var(--spacing--sm);
-	display: flex;
-	align-items: flex-end;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-}
-
-.tools {
-	flex-grow: 1;
 }
 
 .toolsButton {
@@ -240,35 +151,13 @@ defineExpose({
 	height: 30px;
 }
 
-.actions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-
-	& button path {
-		stroke-width: 2.5;
-	}
-}
-
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
-	padding-bottom: 0;
 }
 
 .recording {
-	animation: chatHubPromptRecordingPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes chatHubPromptRecordingPulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.6;
-	}
+	color: var(--color--danger);
 }
 </style>

@@ -9,12 +9,14 @@ import type {
 	SectionCreateElement,
 	SimplifiedNodeType,
 	SubcategorizedNodeTypes,
+	SubcategoryCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
 	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_OTHER_TOOLS,
+	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
@@ -22,6 +24,7 @@ import {
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
+	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
@@ -288,7 +291,17 @@ export const removePreviewToken = (key: string) =>
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
-	if (element.type !== 'node' || element.properties.tag) return element;
+	if (element.type !== 'node') return element;
+
+	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
+	if (
+		aiSubcategories.includes(AI_CATEGORY_MCP_NODES) &&
+		!aiSubcategories.includes(AI_CATEGORY_ROOT_NODES)
+	) {
+		element.properties.isNew = true;
+	}
+
+	if (element.properties.tag) return element;
 
 	if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
@@ -304,10 +317,14 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		useSettingsStore().isAiGatewayEnabled &&
 		useAiGatewayStore().isNodeSupported(element.properties.name)
 	) {
-		element.properties.tag = {
-			text: i18n.baseText('generic.freeCredits'),
-			pill: true,
-		};
+		const versions = useNodeTypesStore().getNodeVersions(element.properties.name);
+		const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+		if (useAiGatewayStore().isNodeTypeVersionSupported(element.properties.name, latestVersion)) {
+			element.properties.tag = {
+				text: i18n.baseText('generic.freeCredits'),
+				pill: true,
+			};
+		}
 	}
 
 	return element;
@@ -454,13 +471,54 @@ export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement
 	};
 }
 
-export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false } = {}) {
+// Nodes that expose a "send and wait" operation and are grouped under the
+// Human-in-the-Loop ("Human review") subcategory in the node creator.
+export function getSendAndWaitNodes(nodes: SimplifiedNodeType[]) {
+	return (nodes ?? [])
+		.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
+		.map((node) => node.name);
+}
+
+// Synthetic search result that mirrors the "Human review" subcategory tile shown
+// in the RegularView. Selecting it navigates into the existing HITL subcategory,
+// because subcategory tiles themselves are not part of the searchable node base.
+export function getHumanInTheLoopCallout(nodes: SimplifiedNodeType[]): SubcategoryCreateElement {
+	return {
+		key: HITL_SUBCATEGORY,
+		type: 'subcategory',
+		properties: {
+			title: HITL_SUBCATEGORY,
+			icon: 'badge-check',
+			sections: [
+				{
+					key: 'sendAndWait',
+					title: i18n.baseText('nodeCreator.sectionNames.sendAndWait'),
+					items: getSendAndWaitNodes(nodes),
+				},
+			],
+		},
+	};
+}
+
+export function getRootSearchCallouts(
+	search: string,
+	{ isRagStarterCalloutVisible = false } = {},
+	nodes: SimplifiedNodeType[] = [],
+) {
 	const results: INodeCreateElement[] = [];
+	const normalizedSearch = search.toLowerCase();
 
 	const ragKeywords = ['rag', 'vec', 'know'];
-	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => normalizedSearch.startsWith(x))) {
 		results.push(getRagStarterCallout());
 	}
+
+	// "human in the loop" is covered by the "human" prefix.
+	const hitlKeywords = ['human', 'hitl', 'approval', 'review'];
+	if (hitlKeywords.some((x) => normalizedSearch.startsWith(x))) {
+		results.push(getHumanInTheLoopCallout(nodes));
+	}
+
 	return results;
 }
 

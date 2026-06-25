@@ -10,17 +10,6 @@ function toResolvedCredential(data: unknown): ResolvedCredential {
 	return { ...resolved, apiKey };
 }
 
-function findCredential<T extends Pick<CredentialListItem, 'id' | 'name'>>(
-	credentials: T[],
-	credentialIdOrName: string,
-): T | null {
-	return (
-		credentials.find((c) => c.id === credentialIdOrName) ??
-		credentials.find((c) => c.name.toLowerCase() === credentialIdOrName.toLowerCase()) ??
-		null
-	);
-}
-
 /**
  * Resolves and lists n8n credentials for use by SDK agents.
  *
@@ -37,16 +26,15 @@ export class AgentsCredentialProvider implements CredentialProvider {
 	) {}
 
 	/**
-	 * Resolve a credential by ID or name, then decrypt and return the raw data.
+	 * Resolve a credential by ID, then decrypt and return the raw data.
 	 *
-	 * Only credentials visible to this provider's scope are considered. ID is
-	 * tried first, then name (case-insensitive).
+	 * Only credentials visible to this provider's scope are considered.
 	 */
-	async resolve(credentialIdOrName: string): Promise<ResolvedCredential> {
-		const credential = await this.findCredentialEntity(credentialIdOrName);
+	async resolve(credentialId: string): Promise<ResolvedCredential> {
+		const credential = await this.findCredentialEntity(credentialId);
 
 		if (!credential) {
-			throw new Error(`Credential "${credentialIdOrName}" not found or not accessible`);
+			throw new Error(`Credential "${credentialId}" not found or not accessible`);
 		}
 
 		const data = await this.credentialsService.decrypt(credential, true);
@@ -58,49 +46,58 @@ export class AgentsCredentialProvider implements CredentialProvider {
 	 */
 	async list(): Promise<CredentialListItem[]> {
 		if (this.user) {
-			const workflowCredentials =
-				await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
+			// this fetches intersection of project and global credentials the user has access to
+			// credentials available to project but not user are not listed
+			// used to limit available credentials to the user's access when calling agent builder
+			const accessible = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+				this.user,
+				{
 					projectId: this.projectId,
-				});
+				},
+			);
 
-			return workflowCredentials.map((c) => ({
+			return accessible.map((c) => ({
 				id: c.id,
 				name: c.name,
 				type: c.type,
 			}));
 		}
 
-		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
-			this.projectId,
-		);
+		// this fetches all credentials accessible to the project
+		const accessible = await this.getAllProjectAndGlobalCredentials();
 
-		return projectCredentials.map((c) => ({
+		return accessible.map((c) => ({
 			id: c.id,
 			name: c.name,
 			type: c.type,
 		}));
 	}
 
-	private async findCredentialEntity(
-		credentialIdOrName: string,
-	): Promise<CredentialsEntity | null> {
-		if (!this.user) {
-			const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
-				this.projectId,
-			);
-			return findCredential(projectCredentials, credentialIdOrName);
-		}
+	private async findCredentialEntity(credentialId: string): Promise<CredentialsEntity | null> {
+		const accessible = await this.getAllProjectAndGlobalCredentials();
+		return accessible.find((c) => c.id === credentialId) ?? null;
+	}
 
-		const scopedCredential = findCredential(await this.list(), credentialIdOrName);
-		if (!scopedCredential) return null;
-
+	private async getAllProjectAndGlobalCredentials(): Promise<CredentialsEntity[]> {
 		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
 			this.projectId,
 		);
-		const projectCredential = projectCredentials.find((c) => c.id === scopedCredential.id);
-		if (projectCredential) return projectCredential;
-
 		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
-		return globalCredentials.find((c) => c.id === scopedCredential.id) ?? null;
+		const allCredsSet = new Set();
+		const allCreds: CredentialsEntity[] = [];
+
+		const addCreds = (creds: CredentialsEntity[]) => {
+			for (const cred of creds) {
+				if (!allCredsSet.has(cred.id)) {
+					allCredsSet.add(cred.id);
+					allCreds.push(cred);
+				}
+			}
+		};
+
+		addCreds(projectCredentials);
+		addCreds(globalCredentials);
+
+		return allCreds;
 	}
 }

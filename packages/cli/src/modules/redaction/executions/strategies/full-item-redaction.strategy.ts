@@ -26,7 +26,7 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 		const runData = execution.data.resultData.runData;
 		if (!runData) return;
 
-		const reason = context.hasDynamicCredentials
+		const reason = context.enforceDynCredRedaction
 			? 'dynamic_credentials'
 			: context.redactExecutionData === true
 				? 'user_requested'

@@ -1,6 +1,7 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 
 import { createLogger } from '../../logger';
+import { getRelayHost, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
 import { isEligibleTab } from '../../relayConnection';
 import type {
 	ConnectionStatus,
@@ -25,6 +26,17 @@ export function useConnection() {
 	const settings = ref<TabManagementSettings>({ ...DEFAULT_SETTINGS });
 	const relayUrl = ref<string | null>(null);
 
+	// Set when the page is opened with `?autoConnect=1` AND the relay URL
+	// points to localhost. Skips the manual click: every available tab is
+	// selected and `connect()` fires once relayUrl + tab registry are ready.
+	//
+	// The localhost gate keeps this safe for the only legitimate use case
+	// (an eval daemon running on the user's machine spawning a local relay),
+	// while blocking the remote-phishing path where an attacker tricks a
+	// user into opening a crafted chrome-extension URL pointing at an
+	// attacker-controlled WSS endpoint.
+	const isAutoConnect = ref<boolean>(false);
+
 	// ── Single source of truth: reactive tab registry ─────────────────────────
 	// Maps chromeTabId → tab object. Kept in sync by Chrome tab event listeners.
 	const tabRegistry = reactive(new Map<number, chrome.tabs.Tab>());
@@ -46,6 +58,8 @@ export function useConnection() {
 
 	// ── Computeds ─────────────────────────────────────────────────────────────
 	const hasRelayUrl = computed(() => !!relayUrl.value);
+	const relayHost = computed(() => getRelayHost(relayUrl.value));
+	const isRelayAllowed = computed(() => isAllowedRelayUrl(relayUrl.value));
 
 	const allSelected = computed(
 		() =>
@@ -113,6 +127,12 @@ export function useConnection() {
 			return;
 		}
 
+		if (!isAllowedRelayUrl(relayUrl.value)) {
+			errorMessage.value = `Can't connect to ${relayHost.value ?? 'this address'} — not a recognized n8n instance.`;
+			log.warn('connect: relay URL not allowed', relayUrl.value);
+			return;
+		}
+
 		log.debug('connect: relay URL =', relayUrl.value, 'selectedTabs:', selectedTabIds.size);
 		status.value = 'connecting';
 		errorMessage.value = '';
@@ -163,6 +183,9 @@ export function useConnection() {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
+			// Drop the now-stale connection params from the page URL. The live value lives in
+			// relayUrl + session storage, so a manual reload reads the fresh URL, not the old token.
+			window.history.replaceState(null, '', window.location.pathname);
 			if (status.value === 'connected') {
 				status.value = 'disconnected';
 				controlledTabIds.value = []; // controlledTabDetails auto-computes to []
@@ -224,6 +247,14 @@ export function useConnection() {
 			}
 		}
 
+		// Auto-connect is only honored when the relay URL points to localhost.
+		// See the comment on `isAutoConnect` above for the threat model.
+		const wantsAutoConnect = params.get('autoConnect') === '1';
+		isAutoConnect.value = wantsAutoConnect && isLocalhostRelay(relayUrl.value);
+		if (wantsAutoConnect && !isAutoConnect.value) {
+			log.warn('autoConnect ignored: relay URL is not localhost', relayUrl.value);
+		}
+
 		// Set status + controlledTabIds before loading registry to prevent
 		// pre-connect UI from rendering briefly while status is still being read.
 		const currentStatus: unknown = await chrome.runtime.sendMessage({ type: 'getStatus' });
@@ -241,6 +272,17 @@ export function useConnection() {
 		chrome.tabs.onCreated.addListener(onTabCreated);
 		chrome.tabs.onRemoved.addListener(onTabRemoved);
 		chrome.tabs.onUpdated.addListener(onTabUpdated);
+
+		// Auto-connect for eval harness — select all eligible tabs and connect.
+		// The eval daemon sets `?autoConnect=1` so subsequent `browser_connect`
+		// calls don't require a manual click between scenarios. Already
+		// gated on a localhost relay URL above.
+		if (isAutoConnect.value && relayUrl.value && status.value === 'disconnected') {
+			for (const tab of availableTabs.value) {
+				if (tab.id !== undefined) selectedTabIds.add(tab.id);
+			}
+			void connect();
+		}
 	});
 
 	return {
@@ -252,6 +294,9 @@ export function useConnection() {
 		settings,
 		relayUrl,
 		hasRelayUrl,
+		relayHost,
+		isRelayAllowed,
+		isAutoConnect,
 		controlledTabs: controlledTabDetails,
 		allSelected,
 		someSelected,

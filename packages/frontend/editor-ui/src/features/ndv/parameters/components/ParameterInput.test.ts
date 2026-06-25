@@ -15,12 +15,10 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	createTestExpressionLocalResolveContext,
 	createMockEnterpriseSettings,
-	createTestNode,
-	createTestWorkflowObject,
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
+import { type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
@@ -77,7 +75,8 @@ beforeEach(() => {
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
-		injectNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => ({ value: mockNdvState })),
+		injectNDVStoreIfProvided: vi.fn(() => ({ value: mockNdvState })),
 	};
 });
 
@@ -104,6 +103,15 @@ vi.mock('vue-router', () => {
 		}),
 		useRoute: () => ({}),
 		RouterLink: vi.fn(),
+	};
+});
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
 	};
 });
 
@@ -723,16 +731,7 @@ describe('ParameterInput.vue', () => {
 	});
 
 	describe('data mapper', () => {
-		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
-			connections: {
-				n1: {
-					[NodeConnectionTypes.Main]: [[{ node: 'n0', index: 0, type: NodeConnectionTypes.Main }]],
-				},
-			},
-		});
 		const ctx = createTestExpressionLocalResolveContext({
-			workflow,
 			nodeName: 'n0',
 			inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
 		});

@@ -1,4 +1,6 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import { mock } from 'jest-mock-extended';
 
 jest.mock('@n8n/instance-ai', () =>
 	jest.requireActual('../../../../../@n8n/instance-ai/src/runtime/liveness-policy'),
@@ -10,7 +12,12 @@ import {
 	type InstanceAiLivenessTimeoutReason,
 } from '@n8n/instance-ai';
 
-import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from '../liveness';
+import {
+	INSTANCE_AI_RUN_TIMEOUT_REASON,
+	InstanceAiLivenessService,
+	type InstanceAiLivenessSweepResult,
+} from '../liveness';
+import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
 
 type TestSuspendedRun = {
 	runId: string;
@@ -22,11 +29,13 @@ function createLivenessService() {
 	const policyConfig = createInstanceAiLivenessPolicyConfig();
 	const policy = new InstanceAiLivenessPolicy(policyConfig);
 	const runState = {
-		sweepTimedOut: jest.fn((_policy: InstanceAiLivenessPolicy, _now?: number) => ({
-			activeThreadIds: [] as string[],
-			suspendedThreadIds: [] as string[],
-			confirmationRequestIds: [] as string[],
-		})),
+		sweepTimedOut: jest.fn(
+			(_policy: InstanceAiLivenessPolicy, _now?: number): InstanceAiLivenessSweepResult => ({
+				activeThreadIds: [] as string[],
+				suspendedThreadIds: [] as string[],
+				confirmationRequestIds: [] as string[],
+			}),
+		),
 		cancelActiveRun: jest.fn(
 			(_threadId: string): { runId: string; abortController: AbortController } | undefined =>
 				undefined,
@@ -36,11 +45,23 @@ function createLivenessService() {
 		getPendingConfirmation: jest.fn(
 			(_requestId: string): { threadId: string } | undefined => undefined,
 		),
+		hasPendingConfirmationForThread: jest.fn((_threadId: string) => false),
 		rejectPendingConfirmation: jest.fn((_requestId: string) => true),
 	};
 	const backgroundTasks = {
 		timeoutTimedOutTasks: jest.fn(
-			async (_policy: InstanceAiLivenessPolicy, _now?: number) =>
+			async (
+				_policy: InstanceAiLivenessPolicy,
+				_now?: number,
+				_options?: {
+					shouldSkipTask?: (task: {
+						threadId: string;
+						taskId: string;
+						role: string;
+						timeoutReason?: InstanceAiLivenessTimeoutReason;
+					}) => boolean;
+				},
+			) =>
 				[] as Array<{
 					threadId: string;
 					taskId: string;
@@ -56,10 +77,8 @@ function createLivenessService() {
 	const finalizeCancelledSuspendedRun = jest.fn(
 		(_suspended: TestSuspendedRun, _reason: string) => {},
 	);
-	const logger = {
-		debug: jest.fn(),
-		warn: jest.fn(),
-	};
+	const onPendingConfirmationRejected = jest.fn((_requestId: string) => {});
+	const logger = mock<Logger>();
 
 	const service = new InstanceAiLivenessService<TestSuspendedRun>({
 		policy,
@@ -68,6 +87,7 @@ function createLivenessService() {
 		backgroundTasks,
 		eventBus,
 		finalizeCancelledSuspendedRun,
+		onPendingConfirmationRejected,
 		logger,
 	});
 
@@ -78,14 +98,22 @@ function createLivenessService() {
 		backgroundTasks,
 		eventBus,
 		finalizeCancelledSuspendedRun,
+		onPendingConfirmationRejected,
 		logger,
 	};
 }
 
 describe('InstanceAiLivenessService', () => {
 	it('cancels timed-out run surfaces without cascading into background tasks', async () => {
-		const { service, policy, runState, backgroundTasks, eventBus, finalizeCancelledSuspendedRun } =
-			createLivenessService();
+		const {
+			service,
+			policy,
+			runState,
+			backgroundTasks,
+			eventBus,
+			finalizeCancelledSuspendedRun,
+			onPendingConfirmationRejected,
+		} = createLivenessService();
 		const activeAbortController = new AbortController();
 		const suspendedAbortController = new AbortController();
 		const suspended = {
@@ -93,11 +121,27 @@ describe('InstanceAiLivenessService', () => {
 			threadId: 'thread-suspended',
 			abortController: suspendedAbortController,
 		};
+		const activeTimeout: InstanceAiRunTimeoutDetails = {
+			reason: 'idle_timeout',
+			surface: 'active-run',
+			timeoutMs: 600_000,
+			elapsedMs: 650_000,
+			idleMs: 606_000,
+		};
+		const suspendedTimeout: InstanceAiRunTimeoutDetails = {
+			reason: 'max_lifetime',
+			surface: 'suspended-run',
+			timeoutMs: 1_800_000,
+			elapsedMs: 1_801_000,
+			idleMs: 900_000,
+		};
 
 		runState.sweepTimedOut.mockReturnValue({
 			activeThreadIds: ['thread-active'],
 			suspendedThreadIds: ['thread-suspended'],
 			confirmationRequestIds: ['request-1'],
+			activeTimeouts: { 'thread-active': activeTimeout },
+			suspendedTimeouts: { 'thread-suspended': suspendedTimeout },
 		});
 		runState.cancelActiveRun.mockReturnValue({
 			runId: 'run-active',
@@ -127,7 +171,22 @@ describe('InstanceAiLivenessService', () => {
 			INSTANCE_AI_RUN_TIMEOUT_REASON,
 		);
 		expect(runState.rejectPendingConfirmation).toHaveBeenCalledWith('request-1');
-		expect(backgroundTasks.timeoutTimedOutTasks).toHaveBeenCalledWith(policy, 123_456);
+		expect(onPendingConfirmationRejected).toHaveBeenCalledWith('request-1');
+		expect(backgroundTasks.timeoutTimedOutTasks).toHaveBeenCalledWith(
+			policy,
+			123_456,
+			expect.objectContaining({ shouldSkipTask: expect.any(Function) }),
+		);
+		const timeoutOptions = backgroundTasks.timeoutTimedOutTasks.mock.calls[0]?.[2];
+		runState.hasPendingConfirmationForThread.mockReturnValueOnce(true);
+		expect(
+			timeoutOptions?.shouldSkipTask?.({
+				threadId: 'thread-bg',
+				taskId: 'task-1',
+				role: 'workflow-builder',
+			}),
+		).toBe(true);
+		expect(runState.hasPendingConfirmationForThread).toHaveBeenCalledWith('thread-bg');
 		expect(eventBus.publish).toHaveBeenCalledWith(
 			'thread-active',
 			expect.objectContaining({ responseId: 'run-timeout:run-active' }),
@@ -136,7 +195,14 @@ describe('InstanceAiLivenessService', () => {
 			'thread-confirmation',
 			expect.objectContaining({ responseId: 'run-timeout:run-confirmation' }),
 		);
-		expect(service.consumeRunTimedOut('run-active')).toBe(true);
+		expect(service.consumeRunTimeout('run-active')).toEqual({
+			timedOut: true,
+			details: activeTimeout,
+		});
+		expect(service.consumeRunTimeout('run-suspended')).toEqual({
+			timedOut: true,
+			details: suspendedTimeout,
+		});
 		expect(service.hasTimedOutActiveRunThread('thread-active')).toBe(true);
 	});
 

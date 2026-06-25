@@ -1,27 +1,33 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useSidebarState } from '../instanceAiLayout';
-import { INSTANCE_AI_SETTINGS_VIEW } from '../constants';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 
 const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
-const router = useRouter();
 const sidebar = useSidebarState();
+const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-function goToSettings() {
-	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
-}
+// The active thread comes from the `:threadId` route param (INSTANCE_AI_THREAD_VIEW);
+// undefined on the empty/new-conversation view, in which case no per-thread total shows.
+const activeThreadId = computed(() => {
+	const id = route.params.threadId;
+	return typeof id === 'string' ? id : undefined;
+});
+
+const threadCreditsUsed = computed(() =>
+	activeThreadId.value ? store.threadCreditsUsed(activeThreadId.value) : undefined,
+);
 </script>
 
 <template>
@@ -51,16 +57,10 @@ function goToSettings() {
 				v-if="store.creditsRemaining !== undefined"
 				:credits-remaining="store.creditsRemaining"
 				:credits-quota="store.creditsQuota"
+				:credits-used="threadCreditsUsed"
 				:is-low-credits="store.isLowCredits"
+				button-size="small"
 				@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-			/>
-			<N8nIconButton
-				icon="cog"
-				variant="ghost"
-				size="small"
-				icon-size="large"
-				data-test-id="instance-ai-settings-button"
-				@click="goToSettings"
 			/>
 			<slot name="actions" />
 		</div>
