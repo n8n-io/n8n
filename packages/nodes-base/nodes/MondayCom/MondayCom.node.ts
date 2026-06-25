@@ -596,13 +596,27 @@ export class MondayCom implements INodeType {
 										name
 										created_at
 										state
+										subitems {
+											id
+											name
+										}
 										column_values {
 											id
 											text
 											type
 											value
+											... on BoardRelationValue {
+												display_value
+												linked_item_ids
+											}
+											... on DependencyValue {
+												display_value
+												linked_item_ids
+											}
+											... on MirrorValue {
+												display_value
+											}
 											column {
-
 												title
 												archived
 												description
@@ -629,11 +643,26 @@ export class MondayCom implements INodeType {
 							name
 							created_at
 							state
+							subitems {
+								id
+								name
+							}
 							column_values {
 								id
 								text
 								type
 								value
+								... on BoardRelationValue {
+									display_value
+									linked_item_ids
+								}
+								... on DependencyValue {
+									display_value
+									linked_item_ids
+								}
+								... on MirrorValue {
+									display_value
+								}
 								column {
 									title
 									archived
@@ -690,11 +719,26 @@ export class MondayCom implements INodeType {
 							board {
 								id
 							}
+							subitems {
+								id
+								name
+							}
 							column_values {
 								id
 								text
 								type
 								value
+								... on BoardRelationValue {
+									display_value
+									linked_item_ids
+								}
+								... on DependencyValue {
+									display_value
+									linked_item_ids
+								}
+								... on MirrorValue {
+									display_value
+								}
 								column {
 									title
 									archived
