@@ -903,6 +903,7 @@ export interface RequestHelperFunctions {
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		sanitizedRequest?: IDataObject,
 	): Promise<any[]>;
 
 	/**
@@ -2820,6 +2821,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 		resumeFormUrl: string;
 		customData?: IWorkflowExecutionCustomData;
 	};
+	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
@@ -3266,6 +3268,8 @@ export interface IWorkflowExecutionDataProcess {
 	tracingContext?: { traceparent: string; tracestate?: string };
 	/** Encrypted credential context for a manual editor-triggered execution. */
 	encryptedRunnerIdentity?: string;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3375,6 +3379,8 @@ export interface IWorkflowExecuteAdditionalData {
 	 * data consistently across the entire execution tree.
 	 */
 	rootExecutionMode?: WorkflowExecuteMode;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,

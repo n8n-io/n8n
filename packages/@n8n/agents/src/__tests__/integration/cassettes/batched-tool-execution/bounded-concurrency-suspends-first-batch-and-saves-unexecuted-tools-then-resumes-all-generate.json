@@ -1,0 +1,218 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete multiple files, you MUST call delete_file for EACH file using parallel tool calls in the same turn. Never skip a file."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Delete these three files: /tmp/a.txt, /tmp/b.txt, /tmp/c.txt. You MUST call delete_file for each file using parallel tool calls in the same turn. After deleting, confirm success."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a single file at the given path. Can only delete one file per call.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01SqbbqKTYTHTaJmwgPwKiE8\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll delete all three files for you using parallel tool calls.\"},{\"type\":\"tool_use\",\"id\":\"toolu_011Rigyqqm9h4JQPVGxEPq3f\",\"name\":\"delete_file\",\"input\":{\"path\":\"/tmp/a.txt\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01CF1T7BTYK9QcfVGHeVM5cp\",\"name\":\"delete_file\",\"input\":{\"path\":\"/tmp/b.txt\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01T3brAGXWYs1VhDiCfr5mn1\",\"name\":\"delete_file\",\"input\":{\"path\":\"/tmp/c.txt\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":694,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":154,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:54Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:55Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:54Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:54Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1037197096e5b2d-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:55 GMT",
+			"request-id": "req_011CcLBR3ZQPduBzWajaZo1Y",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=MyMMnaa7mNAxDX7MIfc6lkUwwAZGoh_X6FH8JlZ0Wa4-1782217194.0887506-1.0.1.1-0E1pUfq1hymnGthFgf5ljQBYMce1Dvn9s74ZZkXz3uM; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-3b1740a2b501d4a12c0bd6d1890f229f-50171d135e150a4a-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete multiple files, you MUST call delete_file for EACH file using parallel tool calls in the same turn. Never skip a file."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Delete these three files: /tmp/a.txt, /tmp/b.txt, /tmp/c.txt. You MUST call delete_file for each file using parallel tool calls in the same turn. After deleting, confirm success."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll delete all three files for you using parallel tool calls."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_011Rigyqqm9h4JQPVGxEPq3f",
+							"name": "delete_file",
+							"input": {
+								"path": "/tmp/a.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01CF1T7BTYK9QcfVGHeVM5cp",
+							"name": "delete_file",
+							"input": {
+								"path": "/tmp/b.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01T3brAGXWYs1VhDiCfr5mn1",
+							"name": "delete_file",
+							"input": {
+								"path": "/tmp/c.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_011Rigyqqm9h4JQPVGxEPq3f",
+							"content": "{\"deleted\":true,\"path\":\"/tmp/a.txt\"}"
+						},
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01CF1T7BTYK9QcfVGHeVM5cp",
+							"content": "{\"deleted\":true,\"path\":\"/tmp/b.txt\"}"
+						},
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01T3brAGXWYs1VhDiCfr5mn1",
+							"content": "{\"deleted\":true,\"path\":\"/tmp/c.txt\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a single file at the given path. Can only delete one file per call.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_019VbgRSvVgseufZRsHK3fEe\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! All three files have been successfully deleted:\\n\\n✓ `/tmp/a.txt` - deleted\\n✓ `/tmp/b.txt` - deleted\\n✓ `/tmp/c.txt` - deleted\\n\\nAll files were removed in parallel in a single operation.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":978,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":64,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:55Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:56Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:55Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:55Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103719edef95b2d-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:56 GMT",
+			"request-id": "req_011CcLBR8tP2cKaBoPbXBrxB",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=_NWgKJ8clX6bIKDrhKFGLmumn5Q1iOAaFm1FtWjtqKI-1782217195.340547-1.0.1.1-ZfAfsnVwtlPWUxY9ZiCO5_qB9ZMlI2Q62jydOxbK0BE; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-878beddd9bfd1db499865c5f20ade58d-7bc3ab6ca678ef9e-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

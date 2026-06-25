@@ -1,0 +1,246 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"output_config": {
+				"format": {
+					"type": "json_schema",
+					"schema": {
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"type": "object",
+						"properties": {
+							"city": {
+								"description": "The name of the city",
+								"type": "string"
+							},
+							"country": {
+								"description": "The country the city is in",
+								"type": "string"
+							},
+							"population_millions": {
+								"description": "Approximate population in millions",
+								"type": "number"
+							}
+						},
+						"additionalProperties": false,
+						"required": ["city", "country", "population_millions"]
+					}
+				}
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You answer geography questions. Use the lookup_capital tool when asked about capitals. Always respond with the structured output schema."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is the capital of Japan? Use the lookup tool."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup_capital",
+					"description": "Look up the capital city of a country",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"country": {
+								"type": "string",
+								"description": "Country name"
+							}
+						},
+						"required": ["country"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c5544d8f1a310cbdf32b463e0f124397b2cab1ea0ab4b756dbaa55a9229378212524699281a568fe7b156060868fb6976a73cb7b4eecf76c99566422cb961402ce8887883e76244664d916e2c61130689190d777605b585a491a18088da5a4ee1cd5a2ecde7507dd7eaf3f287abd02725032fd1166bc570c462fe1ebb078f838c5cfc362bd89bf9c7cf305f2b34c9083b73a0118820a114d4a2bac896422b06fdf7308d13aee098335c04ca9f5010af4b32423a8054a8aa874a8b1b2ae5e1957461eed824c00763fbccf41a09813179e302a6b783ba257f39e50dee2eab72901b9392dc9a3e683e565fc892de6e76c95832d63131adce510c8af94201e157960909c91e86532d93c934fc2f98c2c303036725ca1d238d5045595ed4ed5e9d0bee10733f9545bb1b8def62b21bb44925ef6729b7c527b7817add5bc0c54b73edd4bde2b9e468fe3757ffc24c6b3b70ffd0fcf6bffe9fde81de4607099de696b17a5e3029d8aa877a95c19816dab64add649f23189549e443c0aabcf49a0536676a6288304c22d1324e9887f366117d232618f9ceadab7f147b0e618ecd047857a070203a82e8b7d9542b61310b634d16f26c0b2093ca24303d50d3f5fa5c40954a9a0db636bdddfa6d6ba460dd9ad69a957dc555d2d121a3a5a4ba839f7ffb88aaaffb78b2e96477529f69a7d4d0e9a46fd06ab4e639629060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:03Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371d3a852c24f-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:05 GMT",
+			"request-id": "req_011CcLBRkxnkA4SwJgggYRsb",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=gSfsRsC7uGN0UrDKA0MOAs992LR9L4uIPKyPtCMrpfg-1782217203.7891371-1.0.1.1-Jwa7jFbSKiavXRlSIoaYk9kHdm50P68CCPft4n67duI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-99afbc802701131c0f3dc03a6a3e6c79-ce923dd72380c11a-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"output_config": {
+				"format": {
+					"type": "json_schema",
+					"schema": {
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"type": "object",
+						"properties": {
+							"city": {
+								"description": "The name of the city",
+								"type": "string"
+							},
+							"country": {
+								"description": "The country the city is in",
+								"type": "string"
+							},
+							"population_millions": {
+								"description": "Approximate population in millions",
+								"type": "number"
+							}
+						},
+						"additionalProperties": false,
+						"required": ["city", "country", "population_millions"]
+					}
+				}
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You answer geography questions. Use the lookup_capital tool when asked about capitals. Always respond with the structured output schema."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is the capital of Japan? Use the lookup tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01TGJHw2HTcHg6E2QfwrUDGB",
+							"name": "lookup_capital",
+							"input": {
+								"country": "Japan"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01TGJHw2HTcHg6E2QfwrUDGB",
+							"content": "{\"capital\":\"Tokyo\",\"population_millions\":13.9}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup_capital",
+					"description": "Look up the capital city of a country",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"country": {
+								"type": "string",
+								"description": "Country name"
+							}
+						},
+						"required": ["country"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013b554c18adb3010bde72bcc9c9d12673785e8d6527a281416b697521731b1a689882cb9d228c404ff7b516277e3d4bbdbcbfa62fcde93e7cd1b8fe9409645565308b82519183dcf14328aec04dc3604024624e4c3338813d44e91010195c1a868be43bd8ff3fbf96abe5c2c57c56251400e5aa57784ad5c149f36c7ef75bbfe603f3f16de7d7d683f3edcdd3f427e530972f0ce240043d081d1a6b295b34c9641fcf8994360d7484f189c0561a3313d14e877245bd10854c4a84d18b038b8d7b6892cd9edc90610ebd5fb1c2aac76242b4fc8da5939562c06de13aae7b8e16c2a40cd8e6af268e4aafe57ffc416bb5bb6cbc145be868a1c02f983ae48b2260f0252300abd4a19db5fe453df724b0e0458c7120fa80d6e0c41d7654f57379bd165e87da072635cb59f1efd84e45c4dd1f1d2f2359f3aeecf311d93f07c1300ddb870a3edf6a652060984e7cc29328c2f9b3b4b46e62ec8d8d45f596fed54f6ee5e8be7cd1c549adb124456c237b76f5d09795642e5a265dfe35fb0417bc11bd74473f9346b6d8c7636244d71f76edd41f7c26c5df3da685d73657d228ee12f3019c48884abc6477b0a6495e4e82dfcf7b6766fb7ae37fbb55c8dbe83a9d6a762bce6209df9034818585052050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:05Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371dd2e3ac24f-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:06 GMT",
+			"request-id": "req_011CcLBRsSy66VmeWrnxZsL2",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=on7QRdhwPqxPuFGPn9lw.wuyOAVnhHP4sPZhtLyXWxM-1782217205.3111753-1.0.1.1-47Em1vNi9XCkxhy_FrOkraa4qRaTswkdTAVfz4ACH_g; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e7be44e80dfe62b72e37dfea3a18ed82-5dd2cd3e358566eb-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

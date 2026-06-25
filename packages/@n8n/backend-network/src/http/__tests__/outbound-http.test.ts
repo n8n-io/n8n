@@ -17,7 +17,7 @@ vi.mock('undici', async (importOriginal) => {
 		fetch: vi.fn().mockResolvedValue({
 			ok: true,
 			status: 200,
-			text: async () => 'ok',
+			text: vi.fn().mockResolvedValue('ok'),
 		}),
 	};
 });

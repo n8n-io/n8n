@@ -38,6 +38,7 @@ export class OAuthConsentController {
 				data: {
 					clientName: consentDetails.clientName,
 					clientId: consentDetails.clientId,
+					redirectUri: consentDetails.redirectUri,
 					resourceName: consentDetails.resourceName,
 				},
 			});

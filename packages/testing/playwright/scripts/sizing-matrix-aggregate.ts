@@ -6,17 +6,25 @@
  *
  *   CURRENTS_API_KEY=… ... --currents-run <runId>
  *
+ * In `--input` mode the report can be either a loose `run-report.json` file or
+ * an inline base64 attachment inside a Playwright `test-results.json` (how the
+ * benchmark lanes emit it). Inline attachments are decoded to loose files first
+ * so the filesystem scan picks them up — no Currents/secret coupling needed.
+ *
  * Hardware defaults to the Blacksmith CI runner (8 vCPU / 16 GB). Override
  * via `--hardware-runner/--hardware-vcpu/--hardware-ram-gb` or
  * `SIZING_MATRIX_RUNNER/VCPU/RAM_GB` env when running off-CI, or the matrix
  * will mis-attribute the source.
  */
 
+import type { JSONReport, JSONReportSuite } from '@playwright/test/reporter';
 import { readdirSync, readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 
 const CURRENTS_API = 'https://api.currents.dev/v1';
+
+const RUN_REPORT_ATTACHMENT = 'run-report.json';
 
 // Repo root anchored to this file's location, so version/sha auto-detection
 // works regardless of the cwd the script is invoked from.
@@ -29,109 +37,13 @@ import {
 	type AggregateInput,
 	type HardwareInfo,
 	type SpecMapping,
-	type Topology,
 } from '../utils/benchmark/sizing-matrix';
+import { DEFAULT_MAPPING } from './sizing-matrix-topologies';
 
 const DEFAULT_HARDWARE: HardwareInfo = {
 	runner: 'blacksmith-8vcpu-ubuntu-2204',
 	vcpu: 8,
 	ramGb: 16,
-};
-
-const S0_SINGLE_MAIN: Topology = {
-	mains: 1,
-	webhookProcs: 0,
-	workers: 0,
-	mainVcpu: 2,
-	mainRamGb: 4,
-	pgVcpu: 2,
-	pgRamGb: 4,
-	redisVcpu: 1,
-	redisRamGb: 1,
-};
-
-const S1_QUEUE_BASELINE: Topology = {
-	...S0_SINGLE_MAIN,
-	workers: 1,
-	workerVcpu: 2,
-	workerRamGb: 4,
-};
-
-const S1_DEDICATED_PROC_BASELINE: Topology = {
-	...S1_QUEUE_BASELINE,
-	webhookProcs: 1,
-};
-
-const S2_DEDICATED_PROC_2WP_1W: Topology = {
-	...S1_DEDICATED_PROC_BASELINE,
-	webhookProcs: 2,
-};
-
-const S2_DEDICATED_PROC_2WP_2W: Topology = {
-	...S2_DEDICATED_PROC_2WP_1W,
-	workers: 2,
-};
-
-// Webhook and kafka triggers collapse into the same cell — shape is workload
-// archetype, not ingress protocol.
-const DEFAULT_MAPPING: SpecMapping = {
-	'webhook/webhook-single-instance.spec.ts': {
-		scale: 'S0',
-		shape: 'L',
-		topology: S0_SINGLE_MAIN,
-	},
-	'webhook/webhook-dedicated-proc-baseline.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_DEDICATED_PROC_BASELINE,
-	},
-	'webhook/webhook-dedicated-proc-2wp-1w.spec.ts': {
-		scale: 'S2',
-		shape: 'L',
-		topology: S2_DEDICATED_PROC_2WP_1W,
-	},
-	'webhook/webhook-dedicated-proc-2wp-2w.spec.ts': {
-		scale: 'S2',
-		shape: 'L',
-		topology: S2_DEDICATED_PROC_2WP_2W,
-	},
-	'webhook/webhook-save-data-overhead.spec.ts': {
-		scale: 'S1',
-		shape: 'D',
-		topology: S1_DEDICATED_PROC_BASELINE,
-	},
-	// `webhook-sync-latency-floor` is deliberately unmapped — measures latency at
-	// fixed concurrency, not throughput, and distorts the S1-L distribution.
-	'kafka/single-instance-ceiling.spec.ts': {
-		scale: 'S0',
-		shape: 'L',
-		topology: S0_SINGLE_MAIN,
-	},
-	'kafka/queue-mode-sustained-rate.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/burst-drain-capacity.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/node-count-scaling.spec.ts': {
-		scale: 'S1',
-		shape: 'X',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/output-size-impact.spec.ts': {
-		scale: 'S1',
-		shape: 'D',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/steady-rate-breaking-point.spec.ts': {
-		scale: 'S0',
-		shape: 'X',
-		topology: S0_SINGLE_MAIN,
-	},
 };
 
 interface CliArgs {
@@ -313,7 +225,7 @@ function sanitiseFilename(spec: string): string {
 	return spec.replace(/[^a-z0-9._-]+/gi, '-').slice(0, 120);
 }
 
-function findRunReports(root: string): string[] {
+function findFiles(root: string, match: (path: string) => boolean): string[] {
 	const found: string[] = [];
 	const stack = [root];
 	while (stack.length) {
@@ -321,7 +233,7 @@ function findRunReports(root: string): string[] {
 		if (!current) continue;
 		const stat = statSync(current);
 		if (stat.isFile()) {
-			if (current.endsWith('.json') && current.includes('run-report')) found.push(current);
+			if (match(current)) found.push(current);
 			continue;
 		}
 		if (!stat.isDirectory()) continue;
@@ -330,6 +242,60 @@ function findRunReports(root: string): string[] {
 		}
 	}
 	return found.sort();
+}
+
+function findRunReports(root: string): string[] {
+	return findFiles(root, (p) => p.endsWith('.json') && p.includes('run-report'));
+}
+
+/** Decodes every `run-report.json` attachment in a Playwright JSON report. */
+function collectRunReportBodies(suites: JSONReportSuite[]): string[] {
+	const bodies: string[] = [];
+	const walk = (suite: JSONReportSuite): void => {
+		for (const spec of suite.specs ?? []) {
+			for (const test of spec.tests ?? []) {
+				for (const result of test.results ?? []) {
+					for (const attachment of result.attachments ?? []) {
+						if (attachment.name === RUN_REPORT_ATTACHMENT && attachment.body) {
+							bodies.push(Buffer.from(attachment.body, 'base64').toString('utf8'));
+						}
+					}
+				}
+			}
+		}
+		for (const child of suite.suites ?? []) walk(child);
+	};
+	for (const suite of suites) walk(suite);
+	return bodies;
+}
+
+/**
+ * Each benchmark lane uploads its Playwright `test-results.json`, which carries
+ * the run-report as an inline base64 attachment (from
+ * `testInfo.attach('run-report.json', { body })`) rather than as a loose file.
+ * The filesystem scan in `findRunReports` only sees loose files, so decode each
+ * inline attachment to a loose `run-report.*.json` next to its source report
+ * first. Returns the number of reports written. Idempotent across re-runs.
+ */
+export function extractInlineRunReports(root: string): number {
+	let extracted = 0;
+	for (const file of findFiles(root, (p) => basename(p) === 'test-results.json')) {
+		let report: JSONReport;
+		try {
+			report = JSON.parse(readFileSync(file, 'utf8')) as JSONReport;
+		} catch (error) {
+			console.warn(`[sizing-matrix] Failed to parse ${file}: ${(error as Error).message}`);
+			continue;
+		}
+		const bodies = collectRunReportBodies(report.suites ?? []);
+		const laneDir = dirname(file);
+		const label = sanitiseFilename(relative(root, laneDir) || 'lane');
+		bodies.forEach((body, index) => {
+			writeFileSync(join(laneDir, `${label}.run-report.${index}.json`), body);
+			extracted++;
+		});
+	}
+	return extracted;
 }
 
 function loadReport(path: string): { path: string; report: RunReport } | undefined {
@@ -358,6 +324,12 @@ async function main(): Promise<void> {
 		reportPaths = fetched.reportPaths;
 		if (fetched.commitSha) commitSha = fetched.commitSha;
 	} else if (args.input) {
+		const extracted = extractInlineRunReports(args.input);
+		if (extracted > 0) {
+			console.log(
+				`[sizing-matrix] Extracted ${extracted} inline run-report.json attachment(s) from test-results.json`,
+			);
+		}
 		reportPaths = findRunReports(args.input);
 	} else {
 		throw new Error('Either --input or --currents-run is required');
@@ -412,7 +384,9 @@ async function main(): Promise<void> {
 	}
 }
 
-main().catch((error) => {
-	console.error(`[sizing-matrix] ${(error as Error).message}`);
-	process.exit(1);
-});
+if (require.main === module) {
+	main().catch((error) => {
+		console.error(`[sizing-matrix] ${(error as Error).message}`);
+		process.exit(1);
+	});
+}

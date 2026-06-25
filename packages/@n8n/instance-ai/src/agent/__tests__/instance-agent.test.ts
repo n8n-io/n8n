@@ -11,6 +11,7 @@ const mockAgentInstances: Array<{
 	memory: Mock;
 	telemetry: Mock;
 	workspace: Mock;
+	thinking: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -32,6 +33,7 @@ vi.mock('@n8n/agents', () => ({
 		this.memory = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
+		this.thinking = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -529,5 +531,46 @@ describe('createInstanceAgent', () => {
 			reflectorThresholdTokens: 40_000,
 		});
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
+	});
+
+	it('enables adaptive thinking by default for Anthropic models', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-4-8',
+			context: {
+				runLabel: 'thinking-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'thinking-test',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+		});
+	});
+
+	it('skips thinking when explicitly disabled', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-4-8',
+			context: {
+				runLabel: 'thinking-off',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'thinking-off',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+			thinkingEnabled: false,
+		} as never);
+
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 });

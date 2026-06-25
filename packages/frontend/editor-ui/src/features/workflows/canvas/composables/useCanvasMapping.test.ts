@@ -429,6 +429,23 @@ describe('useCanvasMapping — mapped connections', () => {
 		expect(mapped.value[0].data?.status).toBe('pinned');
 	});
 
+	it('marks the connection as "pinned" when source output was simulated and has run data', () => {
+		const { allNodes, connections } = makeWorkflow({
+			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+		});
+		const rd = createEmptyCanvasRenderData();
+		rd.executionSimulationByNodeName.Alpha = { reason: 'Source declares verification output' };
+		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
+
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref(allNodes),
+			connections: ref(connections),
+			renderData: shallowRef(rd),
+		});
+
+		expect(mapped.value[0].data?.status).toBe('pinned');
+	});
+
 	it('marks the connection as "success" when source produced run data and target has run data too', () => {
 		const { allNodes, connections } = makeWorkflow({
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },

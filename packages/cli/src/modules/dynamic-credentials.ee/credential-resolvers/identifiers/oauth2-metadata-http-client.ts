@@ -10,7 +10,7 @@ import { IdentifierValidationError } from './identifier-interface';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-export const REQUEST_TIMEOUT = 10 * Time.seconds.toMilliseconds;
+const REQUEST_TIMEOUT = 10 * Time.seconds.toMilliseconds;
 const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 
 interface FetchMetadataParams {
@@ -41,6 +41,7 @@ export class OAuth2MetadataHttpClient {
 		// Self-hosted users pointing the resolver at an internal IdP can allowlist via SsrfProtectionConfig.
 		this.http = outboundHttp.requests({
 			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
+			timeout: REQUEST_TIMEOUT,
 		});
 	}
 
@@ -76,7 +77,6 @@ export class OAuth2MetadataHttpClient {
 			url: metadataUri,
 			method: 'GET',
 			json: true,
-			timeout: REQUEST_TIMEOUT,
 		});
 
 		if (response.statusCode !== 200) {
