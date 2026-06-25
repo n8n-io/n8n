@@ -37,7 +37,7 @@
 | # | Decision | Choice |
 |---|----------|--------|
 | 1 | Parallelization | **Phase 1 (single-instance) first, then Phase 2 (matrix sharding).** Not shared-DB multi-lane (Option C) for now. |
-| 2 | Trigger | **Manual only** (`workflow_dispatch`) — no per-PR or scheduled runs in the first version (Claude build cost / Anthropic rate limits). A **temporary** `pull_request` trigger smoke-tests this PR and is removed before merge. `workflow_dispatch` only becomes usable once the workflow is on `master`. |
+| 2 | Trigger | **Manual only** (`workflow_dispatch`) — no per-PR or scheduled runs in the first version (Claude build cost / Anthropic rate limits). `workflow_dispatch` only becomes usable once the workflow is on `master`. (A temporary `push`/`pull_request` smoke trigger was used during the PR to validate the pipeline, then removed — `pull_request` is flagged by Poutine's `untrusted_checkout_exec`, so a branch-scoped `push` is the safe temp trigger if you need to re-validate pre-merge.) |
 | 3 | LangSmith | **Wired from the start** — dedicated `--dataset mcp-workflow-evals` + `--baseline-prefix mcp-baseline-` for isolation from the Instance AI dataset/baseline. |
 | 4 | Claude↔MCP wiring | **Generate `~/.claude.json` in CI** (keep `build-mcp-manifest.ts` unchanged). Plus `~/.claude/settings.json` for headless MCP trust (see §6). |
 
@@ -256,26 +256,25 @@ support single-instance/single-URL exactly as called here.
 - [x] `test-evals-mcp.yml` reusable job (boot 1 container → MCP enable → API key
       + Claude config → build → eval → summary → log capture → teardown →
       artifacts). Added a `filter` input (single-case smoke / debugging).
-- [x] `ci-mcp-evals.yml` trigger — `workflow_dispatch` only (no `schedule`),
-      plus a **temporary** `pull_request` smoke trigger (forces
-      `filter=contact-form-automation`, `iterations=1`, min concurrency on PR
-      events). **Remove the `pull_request:` trigger + the
-      `github.event_name == 'pull_request'` fallbacks before merge.**
+- [x] `ci-mcp-evals.yml` trigger — `workflow_dispatch` only (no `schedule`). The
+      temporary smoke trigger has been **removed** (final state is dispatch-only).
 - [x] Document the new workflow in `.github/WORKFLOWS.md` (explanatory note;
       no scheduled-jobs row since there's no schedule).
 - [x] Validate workflows with `actionlint` (exit 0).
-- [ ] **Spike (needs a CI run):** the temporary `pull_request` trigger runs the
-      one-case headless-Claude smoke automatically on the draft PR. Confirm the
-      container boots (instance-ai, no sandbox), the MCP key mint works,
-      `WORKFLOW_ID` is captured (no trust/permission prompt), and the prebuilt
-      eval scores it. This is the §6 risk; validate before full-tier runs.
-- [ ] **Needs a CI run:** verify `/rest/mcp/api-key` returns an unredacted JWT on
-      the freshly-seeded owner (the whole build phase depends on it).
-- [ ] **Needs a CI run:** confirm `mcp` tier (23 cases) builds + evals end-to-end
-      on one instance within `timeout-minutes: 120`.
-- [ ] **Needs a CI run:** create the initial `mcp-baseline` (dispatch with
-      `experiment-name=mcp-baseline iterations=10`).
-- [ ] **Tune after first run:** `build-concurrency` / `eval-concurrency` /
+- [x] **Spike validated (smoke run green):** container boots (instance-ai, no
+      sandbox), MCP enabled via API after reset, key mint works, Claude builds
+      headless and emits `WORKFLOW_ID` (no trust/permission prompt), prebuilt eval
+      scores it. `contact-form-automation` scored 60% at N=1 (2/5 fail on
+      error-handling scenarios — expected builder variance, see §9).
+- [x] **Validated:** `/rest/mcp/api-key` returns an unredacted JWT on the
+      freshly-seeded owner.
+- [ ] **Post-merge follow-up:** confirm the full `mcp` tier (23 cases) builds +
+      evals end-to-end on one instance within `timeout-minutes: 120` (only a
+      single case was run during the smoke).
+- [ ] **Post-merge follow-up (not a gate):** create the initial `mcp-baseline`
+      (dispatch on master with `experiment-name=mcp-baseline iterations=10`).
+      Regression comparison is best-effort and auto-skipped until this exists.
+- [ ] **Tune after first full run:** `build-concurrency` / `eval-concurrency` /
       timeout for the 4vcpu runner (current defaults 3 / 6 / 120m).
 
 ### Phase 1 — implementation notes (what landed)
@@ -306,10 +305,20 @@ support single-instance/single-URL exactly as called here.
 ### How to run / smoke-test
 
 **`workflow_dispatch` only works once the workflow is on `master`** (GitHub
-limitation). So before merge, the **temporary `pull_request` trigger** is how we
-smoke-test: pushing the branch / opening a draft PR auto-runs the one-case
-(`contact-form-automation`, `iterations=1`) smoke. Iterate on failures, then
-remove the temp trigger.
+limitation). To smoke-test a NEW/changed version **before** it's on master, add a
+**temporary branch-scoped `push` trigger** (not `pull_request` — that's flagged by
+Poutine's `untrusted_checkout_exec` because a fork could run code with secrets):
+
+```yaml
+on:
+  push:
+    branches: [<your-branch>]   # TEMPORARY — remove before merge
+  workflow_dispatch: { ... }
+```
+
+Force cheap smoke values for the push event via `with:` (e.g.
+`filter: ${{ inputs.filter || (github.event_name == 'push' && 'contact-form-automation' || '') }}`),
+then remove the `push:` trigger + those fallbacks before merge.
 
 After the workflow is on `master`, dispatch any branch's version:
 

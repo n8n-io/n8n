@@ -2,20 +2,14 @@ name: 'CI: MCP Workflow Evals'
 
 # MCP workflow evals are manual only (workflow_dispatch). The build phase drives
 # the `claude` CLI (Anthropic cost + rate limits), so there is no per-PR or
-# scheduled run in this first version. NOTE: workflow_dispatch only becomes
-# available once this workflow is on the default branch (master).
-#
-# TEMPORARY (remove before merge): the `pull_request` trigger below smoke-tests a
-# single cheap case while this PR is open, because workflow_dispatch can't run a
-# workflow that isn't on master yet. Strip the `pull_request:` trigger and the
-# `github.event_name == 'pull_request'` fallbacks below before merging — only
-# workflow_dispatch should remain.
+# scheduled run in this first version. Dispatch from the Actions tab (or `gh
+# workflow run ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh
+# the LangSmith baseline, or filter=<slug> to run a single case.
 on:
-  pull_request: {}
   workflow_dispatch:
     inputs:
       branch:
-        description: 'GitHub branch to test'
+        description: 'GitHub branch to test (pass -f branch=<branch> together with --ref <branch>)'
         required: false
         default: 'master'
       tier:
@@ -59,12 +53,10 @@ jobs:
     with:
       branch: ${{ inputs.branch || github.sha }}
       tier: ${{ inputs.tier || 'mcp' }}
-      # TEMPORARY pull_request smoke test: force one cheap case at minimal
-      # concurrency. Dispatch runs use the declared input defaults instead.
-      filter: ${{ inputs.filter || (github.event_name == 'pull_request' && 'contact-form-automation' || '') }}
-      iterations: ${{ inputs.iterations || (github.event_name == 'pull_request' && '1' || '3') }}
-      build-concurrency: ${{ inputs.build-concurrency || (github.event_name == 'pull_request' && '1' || '3') }}
-      eval-concurrency: ${{ inputs.eval-concurrency || (github.event_name == 'pull_request' && '2' || '6') }}
+      filter: ${{ inputs.filter || '' }}
+      iterations: ${{ inputs.iterations || '3' }}
+      build-concurrency: ${{ inputs.build-concurrency || '3' }}
+      eval-concurrency: ${{ inputs.eval-concurrency || '6' }}
       model: ${{ inputs.model || 'claude-sonnet-4-6' }}
       experiment-name: ${{ inputs.experiment-name || '' }}
     secrets: inherit
