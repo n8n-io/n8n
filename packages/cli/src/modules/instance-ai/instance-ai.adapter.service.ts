@@ -48,7 +48,11 @@ import type { User, ExecutionSummaries } from '@n8n/db';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { createTriggerExecutionData } from './trigger-run-data';
+import {
+	buildInstanceAiRunPinDataPlan,
+	pruneUnreachedVerificationPinData,
+	sdkPinDataToRuntime,
+} from './instance-ai-run-pin-data';
 import {
 	resolveNodeTypeDefinition,
 	resolveBuiltinNodeDefinitionDirs,
@@ -71,21 +75,17 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permis
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
-	type IDataObject,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
-	type IPinData,
-	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 	type DataTableFilter,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
-	type WorkflowExecutionMockDataSource,
 	type ExecutionError,
 	NodeHelpers,
 	Workflow,
@@ -950,62 +950,32 @@ export class InstanceAiAdapterService {
 					pushRef,
 				};
 
-				// Merge pin data from three sources:
-				// 1. Workflow-level pinData (from the saved workflow)
-				// 2. Verification pinData (passed by verify-built-workflow for mocked credential verification)
-				// 3. Trigger input pinData (from the inputData parameter)
-				const workflowPinData = workflow.pinData ?? {};
-				const verificationPinData = options?.verificationPinData
-					? (sdkPinDataToRuntime(options.verificationPinData) ?? {})
-					: {};
-				const basePinData = { ...workflowPinData, ...verificationPinData };
-				let nonVerificationPinData = { ...workflowPinData };
-				const mockDataSources: WorkflowExecutionMockDataSource[] = [];
-
-				if (inputData && triggerNode) {
-					mockDataSources.push('trigger_input');
-				}
-
-				if (Object.keys(verificationPinData).length > 0) {
-					mockDataSources.push('verification_pin_data');
-				}
-
-				if (Object.keys(workflowPinData).length > 0) {
-					mockDataSources.push('workflow_pin_data');
-				}
-
-				if (inputData && triggerNode) {
-					const triggerPinData = getPinDataForTrigger(triggerNode, inputData);
-					const mergedPinData = { ...basePinData, ...triggerPinData };
-					nonVerificationPinData = { ...nonVerificationPinData, ...triggerPinData };
-					const triggerItems = triggerPinData[triggerNode.name];
-
-					runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-					runData.pinData = mergedPinData;
-					runData.executionData = createTriggerExecutionData({
-						triggerNode,
-						pinData: mergedPinData,
-						triggerItems,
-					});
+				const pinDataPlan = buildInstanceAiRunPinDataPlan({
+					workflowPinData: workflow.pinData ?? {},
+					verificationPinData: options?.verificationPinData,
+					inputData,
+					triggerNode,
+				});
+				if (pinDataPlan.startNodeName) {
+					runData.startNodes = [{ name: pinDataPlan.startNodeName, sourceData: null }];
 				} else if (triggerNode) {
 					// No inputData but we have a trigger node (e.g. test-trigger from
 					// setup-workflow). Tell the execution engine which node to start from
 					// so it doesn't fail to auto-detect webhook-only triggers like ChatTrigger.
 					runData.triggerToStartFrom = { name: triggerNode.name };
-					const pinData = Object.keys(basePinData).length > 0 ? basePinData : undefined;
-					if (pinData) {
-						runData.pinData = pinData;
-					}
-					// Also persist pin data in executionData so queued workers can hydrate
+				}
+				if (pinDataPlan.runPinData) {
+					runData.pinData = pinDataPlan.runPinData;
+				}
+				if (pinDataPlan.triggerExecutionData) {
+					// Persist pin data in executionData so queued workers can hydrate
 					// verification fixtures while starting from the trigger node.
-					runData.executionData = createTriggerExecutionData({ triggerNode, pinData });
-				} else if (Object.keys(basePinData).length > 0) {
-					runData.pinData = basePinData;
+					runData.executionData = pinDataPlan.triggerExecutionData;
 				}
 
 				runData.source = 'instance_ai';
 				runData.telemetryMetadata = {
-					mockDataSources,
+					mockDataSources: pinDataPlan.mockDataSources,
 				};
 
 				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
@@ -1024,12 +994,12 @@ export class InstanceAiAdapterService {
 				const executionId = await workflowRunner.run(runData);
 				const pruneVerificationPins = async (executedNodeNames?: string[]) => {
 					try {
-						await pruneUnreachedVerificationPinData(
+						await pruneUnreachedVerificationPinData({
 							executionId,
-							verificationPinData,
-							nonVerificationPinData,
+							verificationPinData: pinDataPlan.verificationPinData,
+							nonVerificationPinData: pinDataPlan.nonVerificationPinData,
 							executedNodeNames,
-						);
+						});
 					} catch (error) {
 						logger.warn('Failed to prune verification pin data from execution', {
 							executionId,
@@ -2895,132 +2865,6 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 	}
 }
 
-/**
- * Validate that `inputData` matches the shape the caller of `verify-built-workflow`
- * is expected to pass for this trigger. Throws a descriptive error when the shape
- * is wrong — this is surfaced to the orchestrator via the execution result and
- * prevents the common "null downstream values" misdiagnosis where the orchestrator
- * would otherwise patch the workflow's expressions (breaking it in production).
- */
-function validateInputDataShape(node: INode, inputData: Record<string, unknown>): void {
-	if (node.type === FORM_TRIGGER_NODE_TYPE) {
-		// Production Form Trigger emits field values FLAT on `json` alongside
-		// `submittedAt` and `formMode`. Callers that place fields under `formFields`
-		// (whether pure-wrap `{formFields: {...}}` or mixed-key `{formFields: {...},
-		// other: ...}`) produce pin data where `$json.<field>` resolves to null and
-		// downstream expressions look broken. Any top-level `formFields` object is
-		// treated as a mistake — real Form Trigger fields are scalars and would not
-		// surface as a nested object here.
-		const formFieldsValue = inputData.formFields;
-		const looksWrapped = typeof formFieldsValue === 'object' && formFieldsValue !== null;
-		if (looksWrapped) {
-			throw new Error(
-				'verify-built-workflow: inputData for a Form Trigger must be a flat field map ' +
-					'(e.g. {name: "Alice", email: "a@b.c"}), NOT wrapped in `formFields`. ' +
-					'The production Form Trigger emits fields directly on $json, so downstream ' +
-					'expressions like $json.name are correct. Re-run with the flat shape.',
-			);
-		}
-	}
-}
-
-/** Construct proper pin data per trigger type. */
-function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): IPinData {
-	validateInputDataShape(node, inputData);
-
-	switch (node.type) {
-		case CHAT_TRIGGER_NODE_TYPE:
-			return {
-				[node.name]: [
-					{
-						json: {
-							sessionId: `instance-ai-${Date.now()}`,
-							action: 'sendMessage',
-							chatInput:
-								typeof inputData.chatInput === 'string'
-									? inputData.chatInput
-									: JSON.stringify(inputData),
-						},
-					},
-				],
-			};
-
-		case FORM_TRIGGER_NODE_TYPE:
-			return {
-				[node.name]: [
-					{
-						json: {
-							submittedAt: new Date().toISOString(),
-							formMode: 'instanceAi',
-							...inputData,
-						},
-					},
-				],
-			};
-
-		case WEBHOOK_NODE_TYPE: {
-			// Allow callers that already wrap the payload as an envelope
-			// (`{body, headers?, query?}`) — unwrap once so the adapter's outer
-			// `body: inputData` wrapper doesn't create double nesting. But only
-			// treat `inputData` as an envelope when ALL top-level keys look like
-			// envelope fields; otherwise a flat payload that happens to contain a
-			// `body` field (e.g. `{event: 'signup', body: {...}}`) would have its
-			// sibling fields silently dropped, producing the same "null downstream
-			// values" failure the Form Trigger validator exists to prevent.
-			const envelopeKeys = new Set(['body', 'headers', 'query']);
-			const inputKeys = Object.keys(inputData);
-			const looksLikeEnvelope =
-				inputKeys.length > 0 &&
-				inputKeys.every((k) => envelopeKeys.has(k)) &&
-				typeof inputData.body === 'object' &&
-				inputData.body !== null;
-			const body = looksLikeEnvelope ? (inputData.body as Record<string, unknown>) : inputData;
-			const headers =
-				looksLikeEnvelope && typeof inputData.headers === 'object' && inputData.headers !== null
-					? (inputData.headers as Record<string, unknown>)
-					: {};
-			const query =
-				looksLikeEnvelope && typeof inputData.query === 'object' && inputData.query !== null
-					? (inputData.query as Record<string, unknown>)
-					: {};
-			return {
-				[node.name]: [
-					{
-						json: { headers, query, body },
-					},
-				],
-			};
-		}
-
-		case SCHEDULE_TRIGGER_NODE_TYPE: {
-			const now = new Date();
-			return {
-				[node.name]: [
-					{
-						json: {
-							timestamp: now.toISOString(),
-							'Readable date': now.toLocaleString(),
-							'Day of week': now.toLocaleDateString('en-US', { weekday: 'long' }),
-							Year: String(now.getFullYear()),
-							Month: now.toLocaleDateString('en-US', { month: 'long' }),
-							'Day of month': String(now.getDate()).padStart(2, '0'),
-							Hour: String(now.getHours()).padStart(2, '0'),
-							Minute: String(now.getMinutes()).padStart(2, '0'),
-							Second: String(now.getSeconds()).padStart(2, '0'),
-						},
-					},
-				],
-			};
-		}
-
-		default:
-			// Generic fallback for unknown trigger types
-			return {
-				[node.name]: [{ json: inputData as never }],
-			};
-	}
-}
-
 /** Extract structured debug info from a completed execution. */
 export async function extractExecutionDebugInfo(
 	executionId: string,
@@ -3129,68 +2973,6 @@ export async function extractExecutionDebugInfo(
 		failedNode,
 		nodeTrace,
 	};
-}
-
-/**
- * Convert SDK pinData (Record<string, IDataObject[]>) to runtime format (IPinData).
- * SDK stores plain objects; runtime wraps each item in { json: item }.
- */
-function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IPinData {
-	const result: IPinData = {};
-	if (!pinData) return result;
-	for (const [nodeName, items] of Object.entries(pinData)) {
-		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
-	}
-	return result;
-}
-
-async function pruneUnreachedVerificationPinData(
-	executionId: string,
-	verificationPinData: IPinData,
-	nonVerificationPinData: IPinData,
-	executedNodeNames?: string[],
-) {
-	const verificationNodeNames = Object.keys(verificationPinData);
-	if (verificationNodeNames.length === 0) return;
-
-	const executionPersistence = Container.get(ExecutionPersistence);
-	const execution = await executionPersistence.findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
-	const executionData = execution?.data;
-	const resultData = executionData?.resultData;
-	const persistedPinData = resultData?.pinData;
-	if (!executionData || !resultData || !persistedPinData) return;
-
-	const reachedNodeNames = new Set(executedNodeNames ?? Object.keys(resultData.runData ?? {}));
-	let nextPinData: IPinData | undefined;
-
-	for (const nodeName of verificationNodeNames) {
-		if (reachedNodeNames.has(nodeName) || persistedPinData[nodeName] === undefined) continue;
-
-		nextPinData ??= { ...persistedPinData };
-		const preservedPinData = nonVerificationPinData[nodeName];
-		if (preservedPinData) {
-			nextPinData[nodeName] = preservedPinData;
-		} else {
-			delete nextPinData[nodeName];
-		}
-	}
-
-	if (!nextPinData) return;
-
-	const nextExecutionData: IRunExecutionData = {
-		...executionData,
-		resultData: {
-			...resultData,
-			pinData: nextPinData,
-		},
-	};
-
-	await executionPersistence.updateExistingExecution(executionId, {
-		data: nextExecutionData,
-	});
 }
 
 /**

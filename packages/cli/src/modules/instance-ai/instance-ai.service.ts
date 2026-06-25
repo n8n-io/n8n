@@ -55,6 +55,8 @@ import {
 	truncateToTitle,
 	generateTitleForRun,
 	patchThread,
+	createOrchestratorRunControl,
+	createOrchestratorRunControlForState,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -66,7 +68,8 @@ import {
 	type PlannedTaskRecord,
 	type PlannedTaskService,
 	type PlannedWorkflowVerification,
-	type OrchestrationRunTerminationState,
+	type OrchestratorRunHandoffState,
+	type OrchestratorRunStopSignal,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type ServiceProxyConfig,
@@ -3021,10 +3024,8 @@ export class InstanceAiService {
 				tracing.orchestratorRun = actorRun;
 			}
 
-			const runTermination: OrchestrationRunTerminationState = {};
-			orchestrationContext.requestRunTermination = (reason) => {
-				runTermination.reason ??= reason;
-			};
+			const runControl = createOrchestratorRunControl(orchestrationContext);
+			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
 			const agent = await createInstanceAgent({
 				modelId,
@@ -3051,7 +3052,7 @@ export class InstanceAiService {
 							eventBus: this.eventBus,
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
-							shouldTerminate: () => runTermination.reason !== undefined,
+							stopSignal,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
@@ -3063,7 +3064,7 @@ export class InstanceAiService {
 						eventBus: this.eventBus,
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
-						shouldTerminate: () => runTermination.reason !== undefined,
+						stopSignal,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 			if (result.status === 'suspended') {
@@ -3083,7 +3084,7 @@ export class InstanceAiService {
 						modelId,
 						checkpoint,
 						plannedBuild,
-						runTermination,
+						runHandoff: runControl.state,
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -3201,7 +3202,7 @@ export class InstanceAiService {
 					messageId,
 				});
 			}
-			if (runTermination.reason === undefined) {
+			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
 					correlationId: messageId,
@@ -3725,10 +3726,7 @@ export class InstanceAiService {
 		}
 
 		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-		const runTermination: OrchestrationRunTerminationState = {};
-		environment.orchestrationContext.requestRunTermination = (reason) => {
-			runTermination.reason ??= reason;
-		};
+		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
 		let agent;
 		try {
 			agent = await createInstanceAgent({
@@ -3765,7 +3763,7 @@ export class InstanceAiService {
 				checkpoint: orphan.checkpointTaskId
 					? { isCheckpointFollowUp: true, checkpointTaskId: orphan.checkpointTaskId }
 					: undefined,
-				runTermination,
+				runHandoff: runControl.state,
 			},
 		};
 	}
@@ -3816,7 +3814,7 @@ export class InstanceAiService {
 			messageGroupId,
 			checkpoint,
 			plannedBuild,
-			runTermination,
+			runHandoff,
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
@@ -3897,7 +3895,7 @@ export class InstanceAiService {
 			modelId,
 			checkpoint,
 			plannedBuild,
-			runTermination,
+			runHandoff,
 		});
 		return true;
 	}
@@ -3924,7 +3922,7 @@ export class InstanceAiService {
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 			plannedBuild?: PlannedBuildFollowUp;
-			runTermination?: OrchestrationRunTerminationState;
+			runHandoff?: OrchestratorRunHandoffState;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -3956,6 +3954,8 @@ export class InstanceAiService {
 				opts.agentRunId,
 				opts.toolCallId,
 			);
+			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
+			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
 			const result = opts.tracing
 				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
@@ -3968,7 +3968,7 @@ export class InstanceAiService {
 							logger: this.logger,
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
-							shouldTerminate: () => opts.runTermination?.reason !== undefined,
+							stopSignal,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
@@ -3981,7 +3981,7 @@ export class InstanceAiService {
 						logger: this.logger,
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
-						shouldTerminate: () => opts.runTermination?.reason !== undefined,
+						stopSignal,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 
@@ -4003,7 +4003,7 @@ export class InstanceAiService {
 						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 						checkpoint: opts.checkpoint,
 						plannedBuild: opts.plannedBuild,
-						runTermination: opts.runTermination,
+						runHandoff: runControl.state,
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -4116,7 +4116,7 @@ export class InstanceAiService {
 					},
 				);
 			}
-			if (opts.runTermination?.reason === undefined) {
+			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
 					messageGroupId,
 					workSummary: result.workSummary,

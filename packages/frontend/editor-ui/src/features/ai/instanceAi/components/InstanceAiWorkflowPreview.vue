@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, provide, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, provide, useTemplateRef } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
@@ -11,16 +11,14 @@ import {
 	InstanceAiEditorCapabilityKey,
 	type InstanceAiEditorCapability,
 } from '@/app/composables/useInstanceAiEditorCapability';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
@@ -46,52 +44,12 @@ const emit = defineEmits<{
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
-const workflowsStore = useWorkflowsStore();
-const latestAgentExecution =
-	shallowRef<Awaited<ReturnType<typeof workflowsStore.fetchExecutionDataById>>>();
-const supersededAgentExecutionId = shallowRef<string | null>(null);
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
 }
 
-function restoreExecutionResult() {
-	void showExecutionResult(props.executionResult);
-}
-
 defineExpose({ requestFitView });
-
-// === Artifact-context push listeners ===
-// Registered here (in the AI-aware wrapper) rather than inside the generic
-// WorkflowCanvasHost so the host stays decoupled from instance-ai concerns.
-// This wrapper's setup runs before the host body's, which runs before
-// MainHeader's onBeforeMount registers the global push handler — so our
-// listener fires first, which is required for the activeExecutionId reset
-// below to take effect before the global executionStarted handler reads it.
-const pushStore = usePushConnectionStore();
-
-// Reset activeExecutionId to null on Instance AI executionStarted events for
-// the displayed workflow. The global executionStarted handler only enters its
-// needsInit branch (which calls promotePendingExecution and re-points
-// activeExecutionId at the new run) when activeExecutionId is null/undefined or
-// we're in an iframe. Human runs already set the pending state in runWorkflowApi
-// and must not be overwritten by stale agent verification results.
-const removeExecutionStartedListener = pushStore.addEventListener((event) => {
-	if (event.type !== 'executionStarted') return;
-	if (event.data.workflowId !== props.workflowId) return;
-	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
-	if (event.data.source !== 'instance_ai') {
-		supersededAgentExecutionId.value = props.executionResult?.executionId ?? null;
-		return;
-	}
-	if (
-		typeof executionState.activeExecutionId === 'string' &&
-		executionState.activeExecutionId !== event.data.executionId
-	) {
-		return;
-	}
-	executionState.setActiveExecutionId(null);
-});
 
 // On executionFinished with errors, surface a structured failures report so
 // InstanceAiThreadView can offer "Fix with AI". This used to come via
@@ -143,74 +101,10 @@ function reportWorkflowFailures(executionId: string, workflowId: string) {
 	emit('workflow-failures', { workflowId, executionId, errors });
 }
 
-let latestExecutionLoadRequest = 0;
-
-function applyAgentExecution(execution: NonNullable<typeof latestAgentExecution.value>): boolean {
-	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
-	const activeExecutionId = executionState.activeExecutionId;
-
-	if (activeExecutionId === null) return false;
-	if (typeof activeExecutionId === 'string' && activeExecutionId !== execution.id) return false;
-
-	useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
-	executionState.setDisplayedExecutionId(execution.id);
-	if (activeExecutionId === undefined) {
-		executionState.setActiveExecutionId(undefined);
-	}
-
-	return true;
-}
-
-async function showExecutionResult(executionResult: ExecutionResult | undefined) {
-	if (!executionResult) return;
-	if (supersededAgentExecutionId.value === executionResult.executionId) return;
-
-	if (latestAgentExecution.value?.id === executionResult.executionId) {
-		applyAgentExecution(latestAgentExecution.value);
-		return;
-	}
-
-	const request = ++latestExecutionLoadRequest;
-	let execution: Awaited<ReturnType<typeof workflowsStore.fetchExecutionDataById>>;
-	try {
-		execution = await workflowsStore.fetchExecutionDataById(executionResult.executionId);
-	} catch {
-		return;
-	}
-	if (request !== latestExecutionLoadRequest) return;
-	if (!execution || execution.workflowId !== props.workflowId) return;
-
-	latestAgentExecution.value = execution;
-	if (supersededAgentExecutionId.value !== execution.id) {
-		applyAgentExecution(execution);
-	}
-}
-
-const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
-	if (event.type !== 'executionFinished') return;
-	if (event.data.workflowId !== props.workflowId) return;
-	// Only genuine failures. Anything else — success, but also canceled — must
-	// not fall through to collectValidationIssues(), which would show a
-	// misleading Fix with AI card right after the user stopped a run.
-	if (event.data.status !== 'error' && event.data.status !== 'crashed') return;
-	// Only offer "Fix with AI" for human-initiated runs. When the agent ran the
-	// workflow itself (source 'instance_ai'), it already sees the errors in its
-	// tool result and fixes them on its own.
-	if (event.data.source === 'instance_ai') return;
-	reportWorkflowFailures(event.data.executionId, event.data.workflowId);
-});
-
-watch(
-	() => [props.workflowId, props.executionResult?.executionId] as const,
-	() => {
-		void showExecutionResult(props.executionResult);
-	},
-	{ immediate: true },
-);
-
-onBeforeUnmount(() => {
-	removeExecutionStartedListener();
-	removeExecutionFinishedListener();
+const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
+	workflowId: () => props.workflowId,
+	executionResult: () => props.executionResult,
+	reportWorkflowFailures,
 });
 
 // === Editing lock ===

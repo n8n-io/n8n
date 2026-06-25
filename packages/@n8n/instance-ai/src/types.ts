@@ -36,6 +36,7 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
+import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
@@ -1232,12 +1233,6 @@ export interface WorkflowTaskService {
 
 // ── Orchestration context (plan + delegate tools) ───────────────────────────
 
-export type OrchestrationRunTerminationReason = 'planned-tasks-scheduled';
-
-export interface OrchestrationRunTerminationState {
-	reason?: OrchestrationRunTerminationReason;
-}
-
 export interface OrchestrationContext {
 	threadId: string;
 	runId: string;
@@ -1300,8 +1295,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
-	/** End the current orchestrator stream once a tool result has reached the UI. */
-	requestRunTermination?: (reason: OrchestrationRunTerminationReason) => void;
+	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
+	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */

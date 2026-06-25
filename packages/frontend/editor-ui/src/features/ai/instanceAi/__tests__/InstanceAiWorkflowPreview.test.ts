@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
-import { createRunExecutionData } from 'n8n-workflow';
+import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, nextTick, reactive } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +9,10 @@ import {
 	type OnPushMessageHandler,
 } from '@/app/stores/pushConnection.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import {
+	disposeWorkflowExecutionStateStore,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -49,7 +52,15 @@ const WorkflowCanvasHostStub = defineComponent({
 	},
 });
 
-function makeExecution(id: string): IExecutionResponse {
+interface MakeExecutionOptions {
+	workflowPinData?: IPinData;
+	resultPinData?: IPinData;
+	includeResultPinData?: boolean;
+}
+
+function makeExecution(id: string, options: MakeExecutionOptions = {}): IExecutionResponse {
+	const resultPinData = options.resultPinData ?? { Mocked: [{ json: { source: id } }] };
+
 	return {
 		id,
 		workflowId: 'wf-1',
@@ -71,19 +82,23 @@ function makeExecution(id: string): IExecutionResponse {
 			settings: { executionOrder: 'v1' },
 			versionId: 'version-1',
 			activeVersionId: null,
+			...(options.workflowPinData !== undefined ? { pinData: options.workflowPinData } : {}),
 		},
 		data: createRunExecutionData({
 			resultData: {
 				runData: {},
-				pinData: {
-					Mocked: [{ json: { source: id } }],
-				},
+				...(options.includeResultPinData === false ? {} : { pinData: resultPinData }),
 			},
 		}),
 	};
 }
 
-async function mountPreview() {
+interface MountPreviewOptions {
+	executionFactory?: (executionId: string) => IExecutionResponse;
+	executionResult?: { executionId: string; status: 'success' | 'error' };
+}
+
+async function mountPreview(options: MountPreviewOptions = {}) {
 	const listeners: OnPushMessageHandler[] = [];
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -96,13 +111,17 @@ async function mountPreview() {
 
 	const workflowsStore = useWorkflowsStore();
 	vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockImplementation(async (executionId) =>
-		makeExecution(executionId),
+		(options.executionFactory ?? makeExecution)(executionId),
 	);
+	const executionResult: MountPreviewOptions['executionResult'] =
+		'executionResult' in options
+			? options.executionResult
+			: { executionId: 'exec-agent-1', status: 'success' };
 
 	const wrapper = mount(InstanceAiWorkflowPreview, {
 		props: {
 			workflowId: 'wf-1',
-			executionResult: { executionId: 'exec-agent-1', status: 'success' },
+			executionResult,
 		},
 		global: {
 			stubs: {
@@ -139,6 +158,81 @@ describe('InstanceAiWorkflowPreview', () => {
 			id: 'exec-agent-1',
 		});
 		expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+	});
+
+	it('restores the cached agent execution after workflow setup reload disposes state', async () => {
+		const { wrapper, workflowsStore } = await mountPreview();
+		const documentId = createWorkflowDocumentId('wf-1');
+		const executionState = useWorkflowExecutionStateStore(documentId);
+
+		expect(executionState.displayedExecutionId).toBe('exec-agent-1');
+
+		executionState.resetExecutionState();
+		disposeWorkflowExecutionStateStore(executionState);
+
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+		await nextTick();
+
+		const restoredExecutionState = useWorkflowExecutionStateStore(documentId);
+		expect(restoredExecutionState.displayedExecutionId).toBe('exec-agent-1');
+		expect(restoredExecutionState.activeExecutionPinDataByNodeName).toEqual({
+			Mocked: [{ json: { source: 'exec-agent-1' } }],
+		});
+		expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+	});
+
+	it('restores execution pin data from the workflow snapshot when result data omits it', async () => {
+		const workflowPinData: IPinData = { Mocked: [{ json: { source: 'workflow-snapshot' } }] };
+
+		await mountPreview({
+			executionFactory: (executionId) =>
+				makeExecution(executionId, {
+					workflowPinData,
+					includeResultPinData: false,
+				}),
+		});
+
+		const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+		expect(executionState.activeExecutionPinDataByNodeName).toEqual(workflowPinData);
+		expect(
+			useExecutionDataStore(createExecutionDataId('exec-agent-1')).execution?.data?.resultData
+				.pinData,
+		).toEqual(workflowPinData);
+	});
+
+	it('retries restoring the agent execution after Instance AI startup state clears', async () => {
+		const { wrapper, listeners } = await mountPreview({
+			executionResult: undefined,
+		});
+		const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-agent-1',
+					mode: 'manual',
+					source: 'instance_ai',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+
+		await wrapper.setProps({
+			executionResult: { executionId: 'exec-agent-1', status: 'success' },
+		});
+		await flushPromises();
+		expect(executionState.displayedExecutionId).toBeUndefined();
+
+		executionState.setActiveExecutionId(undefined);
+		await nextTick();
+
+		expect(executionState.displayedExecutionId).toBe('exec-agent-1');
+		expect(executionState.activeExecutionPinDataByNodeName).toEqual({
+			Mocked: [{ json: { source: 'exec-agent-1' } }],
+		});
 	});
 
 	it('does not let a stale agent execution replace an active user execution', async () => {

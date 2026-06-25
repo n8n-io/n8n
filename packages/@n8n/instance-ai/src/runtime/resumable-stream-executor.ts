@@ -4,6 +4,10 @@ import { isRecord } from '@n8n/utils';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
+import type {
+	OrchestratorRunHandoffReason,
+	OrchestratorRunStopSignal,
+} from './orchestrator-run-control';
 import { mapAgentChunkToEvent } from '../stream/map-chunk';
 import { OutputRedactor } from '../stream/output-redaction';
 import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
@@ -34,7 +38,7 @@ export interface ResumableStreamContext {
 	logger: Logger;
 	onActivity?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
-	shouldTerminate?: () => boolean;
+	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 }
@@ -80,6 +84,8 @@ export interface ExecuteResumableStreamResult {
 	workSummary: WorkSummary;
 	/** Accumulated token usage and cost, when the stream emitted usage. */
 	usage?: RunTokenUsage;
+	/** Reason this stream stopped early after publishing the current chunk. */
+	stopReason?: OrchestratorRunHandoffReason;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -291,7 +297,7 @@ function publishRedactedEvents(
 
 interface StreamPassResult {
 	cancelled: boolean;
-	terminated: boolean;
+	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
 	error?: unknown;
@@ -355,7 +361,6 @@ async function consumeStreamPass(args: {
 			}
 			return {
 				cancelled: true,
-				terminated: false,
 				hasError,
 				drainedCorrectionsForResume,
 				currentResponseId,
@@ -418,10 +423,11 @@ async function consumeStreamPass(args: {
 			drainedCorrectionsForResume.push(...corrections);
 		}
 
-		if (options.context.shouldTerminate?.() === true) {
+		const stopSignal = options.context.stopSignal?.();
+		if (stopSignal) {
 			return {
 				cancelled: false,
-				terminated: true,
+				stopReason: stopSignal.reason,
 				suspension,
 				hasError,
 				error,
@@ -436,7 +442,6 @@ async function consumeStreamPass(args: {
 
 	return {
 		cancelled: false,
-		terminated: false,
 		suspension,
 		hasError,
 		error,
@@ -497,7 +502,7 @@ export async function executeResumableStream(
 			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
 		}
 
-		if (pass.terminated) {
+		if (pass.stopReason) {
 			return {
 				status: hasError ? 'errored' : 'completed',
 				agentRunId: activeAgentRunId,
@@ -505,6 +510,7 @@ export async function executeResumableStream(
 				...(error !== undefined ? { error } : {}),
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
+				stopReason: pass.stopReason,
 			};
 		}
 

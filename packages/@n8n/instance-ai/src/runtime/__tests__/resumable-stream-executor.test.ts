@@ -286,12 +286,12 @@ describe('executeResumableStream', () => {
 		expect(secondText?.responseId).toBe('agent-run-1:step:2');
 	});
 
-	it('stops consuming after a requested termination while publishing the current tool result', async () => {
+	it('stops consuming after a requested handoff while publishing the current tool result', async () => {
 		const eventBus = createEventBus();
-		let shouldTerminate = false;
+		let shouldStop = false;
 		eventBus.publish.mockImplementation((_: string, event: PublishedEvent) => {
 			if (event.type === 'tool-result') {
-				shouldTerminate = true;
+				shouldStop = true;
 			}
 		});
 
@@ -321,7 +321,7 @@ describe('executeResumableStream', () => {
 				eventBus,
 				signal: new AbortController().signal,
 				logger: createLogger(),
-				shouldTerminate: () => shouldTerminate,
+				stopSignal: () => (shouldStop ? { reason: 'planned-tasks-scheduled' } : undefined),
 			},
 			control: { mode: 'manual' },
 		});
@@ -329,6 +329,7 @@ describe('executeResumableStream', () => {
 		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
 
 		expect(result.status).toBe('completed');
+		expect(result.stopReason).toBe('planned-tasks-scheduled');
 		expect(publishedEvents.some((event) => event.type === 'tool-call')).toBe(true);
 		expect(publishedEvents.some((event) => event.type === 'tool-result')).toBe(true);
 		expect(

@@ -623,8 +623,6 @@ export type {
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
-	OrchestrationRunTerminationReason,
-	OrchestrationRunTerminationState,
 	SpawnBackgroundTaskOptions,
 	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
@@ -664,6 +662,13 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 } from './types';
+export type {
+	OrchestratorRunHandoffReason,
+	OrchestratorRunHandoffState,
+	OrchestratorRunStopSignal,
+} from './runtime/orchestrator-run-control';
+export { createOrchestratorRunControl } from './runtime/orchestrator-run-control';
+export { createOrchestratorRunControlForState } from './runtime/orchestrator-run-control';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export const classifyAttachments: typeof StructuredFileParserMod.classifyAttachments = lazyFunction(
 	() => loadStructuredFileParser().classifyAttachments,
