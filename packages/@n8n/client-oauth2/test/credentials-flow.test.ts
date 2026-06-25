@@ -1,5 +1,6 @@
 import nock from 'nock';
 
+import { CLIENT_ASSERTION_TYPE } from '@/client-assertion';
 import { ClientOAuth2, type ClientOAuth2Options } from '@/client-oauth2';
 import { ClientOAuth2Token } from '@/client-oauth2-token';
 import type { Headers } from '@/types';
@@ -114,6 +115,55 @@ describe('CredentialsFlow', () => {
 			const { headers, body } = await requestPromise;
 			expect(headers?.authorization).toBe(undefined);
 			expect(body).toEqual('grant_type=client_credentials&scope=&client_id=abc&client_secret=123');
+		});
+
+		describe('with certificate (private_key_jwt) client authentication', () => {
+			const certAuthClient = new ClientOAuth2({
+				clientId: config.clientId,
+				clientCertificate: { privateKey: config.privateKey, certificate: config.certificate },
+				accessTokenUri: config.accessTokenUri,
+				authorizationGrants: ['credentials'],
+			});
+
+			const captureTokenCall = async () => {
+				const nockScope = nock(config.baseUrl)
+					.post('/login/oauth/access_token')
+					.once()
+					.reply(200, { access_token: config.accessToken, refresh_token: config.refreshToken });
+				return await new Promise<{ headers: Headers; body: URLSearchParams }>((resolve) => {
+					nockScope.once('request', (req) => {
+						const rawBody = (req.requestBodyBuffers as Buffer).toString('utf-8');
+						resolve({ headers: req.headers, body: new URLSearchParams(rawBody) });
+					});
+				});
+			};
+
+			it('sends a signed assertion instead of a secret', async () => {
+				const requestPromise = captureTokenCall();
+				const token = await certAuthClient.credentials.getToken();
+
+				const { headers, body } = await requestPromise;
+				expect(body.get('grant_type')).toBe('client_credentials');
+				expect(body.get('client_id')).toBe(config.clientId);
+				expect(body.get('client_assertion_type')).toBe(CLIENT_ASSERTION_TYPE);
+				expect(body.get('client_assertion')).toEqual(expect.any(String));
+				expect(body.get('client_secret')).toBeNull();
+				expect(headers.authorization).toBeUndefined();
+				expect(token).toBeInstanceOf(ClientOAuth2Token);
+				expect(token.accessToken).toBe(config.accessToken);
+			});
+		});
+
+		it('should throw when neither a secret nor a certificate is configured', async () => {
+			const authClient = new ClientOAuth2({
+				clientId: config.clientId,
+				accessTokenUri: config.accessTokenUri,
+				authorizationGrants: ['credentials'],
+			});
+
+			await expect(authClient.credentials.getToken()).rejects.toThrow(
+				'Expected "clientSecret" to exist',
+			);
 		});
 
 		describe('#sign', () => {
