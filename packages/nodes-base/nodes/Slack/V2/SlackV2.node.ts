@@ -150,7 +150,7 @@ export class SlackV2 implements INodeType {
 				...messageFields,
 				...getSendAndWaitProperties(
 					[
-						{ ...sendToSelector, default: 'user' },
+						{ ...sendToSelector, default: 'user', displayOptions: { show: {} } },
 						{
 							...channelRLC,
 							displayOptions: {
