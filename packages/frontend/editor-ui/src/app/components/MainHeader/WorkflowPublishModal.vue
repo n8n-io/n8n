@@ -70,7 +70,11 @@ const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlock
 
 const inputsDisabled = computed(() => {
 	return (
-		!wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value || publishing.value
+		!wfHasAnyChanges.value ||
+		!containsTrigger.value ||
+		hasNodeIssues.value ||
+		publishing.value ||
+		publishingEnvId.value !== null
 	);
 });
 
@@ -252,7 +256,18 @@ async function handlePublishToEnvironment(envId: string) {
 
 	publishingEnvId.value = envId;
 	try {
-		await environmentsStore.publishToEnvironment(workflowId, envId, versionId);
+		await environmentsStore.publishToEnvironment(
+			workflowId,
+			envId,
+			versionId,
+			versionName.value,
+			description.value,
+		);
+		workflowDocumentStore.value?.setVersionData({
+			versionId,
+			name: versionName.value,
+			description: description.value,
+		});
 		showMessage({
 			title: 'Published to environment',
 			type: 'success',
@@ -412,6 +427,14 @@ async function handlePublish() {
 					>
 						Some credentials are not bound for this environment. Resolve them before publishing.
 					</N8nCallout>
+					<WorkflowVersionForm
+						ref="publishForm"
+						v-model:version-name="versionName"
+						v-model:description="description"
+						:disabled="inputsDisabled"
+						version-name-test-id="workflow-publish-version-name-input"
+						description-test-id="workflow-publish-description-input"
+					/>
 					<div :class="$style.actions">
 						<N8nButton
 							variant="subtle"
@@ -424,6 +447,7 @@ async function handlePublish() {
 							:disabled="
 								!selectedEnvId ||
 								publishingEnvId !== null ||
+								versionName.trim().length === 0 ||
 								(!!selectedEnvId && !envHasAllBindings(selectedEnvId))
 							"
 							:loading="publishingEnvId === selectedEnvId"

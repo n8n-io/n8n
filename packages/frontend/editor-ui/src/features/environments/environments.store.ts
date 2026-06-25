@@ -89,12 +89,16 @@ export const useEnvironmentsStore = defineStore(STORES.ENVIRONMENTS, () => {
 		workflowId: string,
 		environmentId: string,
 		versionId: string,
+		name?: string,
+		description?: string,
 	): Promise<void> {
 		await environmentsApi.publishToEnvironment(
 			rootStore.restApiContext,
 			workflowId,
 			environmentId,
 			versionId,
+			name,
+			description,
 		);
 		publishedVersions.value = { ...publishedVersions.value, [environmentId]: versionId };
 	}

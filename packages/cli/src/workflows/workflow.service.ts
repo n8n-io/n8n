@@ -839,6 +839,17 @@ export class WorkflowService {
 				);
 			}
 
+			if (options.name !== undefined || options.description !== undefined) {
+				const updateFields: UpdateWorkflowHistoryVersionDto = {};
+				if (options.name !== undefined) updateFields.name = options.name;
+				if (options.description !== undefined) updateFields.description = options.description;
+				await this.workflowHistoryService.updateVersion(
+					workflowId,
+					versionIdToActivate,
+					updateFields,
+				);
+			}
+
 			await this.workflowPublishedEnvVersionRepository.setPublishedVersion(
 				workflowId,
 				options.environmentId,

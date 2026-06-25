@@ -70,10 +70,14 @@ export const publishToEnvironment = async (
 	workflowId: string,
 	environmentId: string,
 	versionId: string,
+	name?: string,
+	description?: string,
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'POST', `/workflows/${workflowId}/activate`, {
 		versionId,
 		environmentId,
+		name,
+		description,
 	});
 };
 
