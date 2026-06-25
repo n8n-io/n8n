@@ -24,6 +24,7 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -61,6 +62,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const userRepository = mockInstance(UserRepository);
 	const redactionProxy = mockInstance(ExecutionRedactionServiceProxy);
 	const workflowHookContext = mockInstance(WorkflowHookContextService);
+	const activeExecutions = mockInstance(ActiveExecutions);
 
 	const nodeName = 'Test Node';
 	const nodeType = 'n8n-nodes-base.testNode';
@@ -1518,7 +1520,7 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					workflowData,
 					undefined,
-					parentExecution,
+					{ parentExecution },
 				);
 			});
 
@@ -1586,6 +1588,327 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
 				expect(binaryDataService.duplicateBinaryData).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('subworkflow progress push', () => {
+			const parentWorkflowId = 'parent-workflow-id';
+			const parentExecutionId = 'parent-execution-id';
+			const parentExecution = {
+				workflowId: parentWorkflowId,
+				executionId: parentExecutionId,
+			};
+			const parentNode: INode = {
+				id: 'parent-node-id',
+				name: 'Execute Sub-workflow',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+			const rootPushRef = 'root-push-ref';
+
+			function buildHooks(childWorkflowData: IWorkflowBase = workflowData) {
+				return getLifecycleHooksForSubExecutions(
+					'integrated',
+					executionId,
+					childWorkflowData,
+					undefined,
+					{ parentExecution, parentNode },
+				);
+			}
+
+			function stubActiveExecution(id: string, opts: { pushRef?: string; parentId?: string }) {
+				activeExecutions.has.mockImplementation((requested) => requested === id);
+				activeExecutions.getExecutionOrFail.mockImplementation((requested) => {
+					if (requested !== id) throw new Error(`Unexpected execution lookup: ${requested}`);
+					return {
+						executionData: {
+							pushRef: opts.pushRef,
+							executionData: opts.parentId
+								? { parentExecution: { executionId: opts.parentId, workflowId: 'wf' } }
+								: undefined,
+						},
+					} as never;
+				});
+			}
+
+			beforeEach(() => {
+				push.send.mockReset();
+				activeExecutions.has.mockReset();
+				activeExecutions.getExecutionOrFail.mockReset();
+			});
+
+			it('emits subworkflowExecutionStarted on workflowExecuteBefore with the parent pushRef', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					{
+						type: 'subworkflowExecutionStarted',
+						data: {
+							parentExecutionId,
+							parentNodeName: parentNode.name,
+							executionId,
+							totalNodes: workflowData.nodes.length,
+						},
+					},
+					rootPushRef,
+				);
+			});
+
+			it('emits subworkflowNodeProgress with running phase on nodeExecuteBefore', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'subworkflowNodeProgress',
+						data: expect.objectContaining({
+							parentExecutionId,
+							parentNodeName: parentNode.name,
+							executionId,
+							currentNodeName: nodeName,
+							currentNodeIndex: 1,
+							phase: 'running',
+						}),
+					}),
+					rootPushRef,
+				);
+			});
+
+			it('emits success phase on nodeExecuteAfter for a successful node', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				const success = mock<ITaskData>({ error: undefined });
+				await hooks.runHook('nodeExecuteAfter', [nodeName, success, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'subworkflowNodeProgress',
+						data: expect.objectContaining({ phase: 'success' }),
+					}),
+					rootPushRef,
+				);
+			});
+
+			it('emits error phase on nodeExecuteAfter when task data contains an error', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				const errored = mock<ITaskData>({ error: expressionError });
+				await hooks.runHook('nodeExecuteAfter', [nodeName, errored, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'subworkflowNodeProgress',
+						data: expect.objectContaining({ phase: 'error' }),
+					}),
+					rootPushRef,
+				);
+			});
+
+			it('emits subworkflowExecutionFinished with the run status', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					{
+						type: 'subworkflowExecutionFinished',
+						data: {
+							parentExecutionId,
+							parentNodeName: parentNode.name,
+							executionId,
+							status: 'success',
+						},
+					},
+					rootPushRef,
+				);
+			});
+
+			it('does not register push hooks when parent node is omitted', async () => {
+				const hooks = getLifecycleHooksForSubExecutions(
+					'integrated',
+					executionId,
+					workflowData,
+					undefined,
+					{ parentExecution },
+				);
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(push.send).not.toHaveBeenCalled();
+			});
+
+			it('does not emit when no ancestor in the chain has a pushRef', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: undefined });
+				const hooks = buildHooks();
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(push.send).not.toHaveBeenCalled();
+			});
+
+			it('walks up nested sub-execution chains to the root pushRef', async () => {
+				const grandparentId = 'grandparent-execution-id';
+
+				activeExecutions.has.mockImplementation((id) =>
+					[parentExecutionId, grandparentId].includes(id),
+				);
+				activeExecutions.getExecutionOrFail.mockImplementation((id) => {
+					if (id === parentExecutionId) {
+						return {
+							executionData: {
+								pushRef: undefined,
+								executionData: {
+									parentExecution: { executionId: grandparentId, workflowId: 'wf' },
+								},
+							},
+						} as never;
+					}
+					if (id === grandparentId) {
+						return {
+							executionData: {
+								pushRef: rootPushRef,
+								executionData: undefined,
+							},
+						} as never;
+					}
+					throw new Error(`Unexpected lookup: ${id}`);
+				});
+
+				const hooks = buildHooks();
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'subworkflowExecutionStarted' }),
+					rootPushRef,
+				);
+			});
+
+			it('retries pushRef resolution after a transient miss', async () => {
+				activeExecutions.has.mockReturnValue(false);
+				const hooks = buildHooks();
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				expect(push.send).not.toHaveBeenCalled();
+
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'subworkflowNodeProgress' }),
+					rootPushRef,
+				);
+			});
+
+			it('excludes disabled nodes and sticky notes from totalNodes', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const activeNode = workflowData.nodes[0];
+				const hooks = buildHooks({
+					...workflowData,
+					nodes: [
+						activeNode,
+						{ ...activeNode, id: 'active-2', name: 'Second Node' },
+						{ ...activeNode, id: 'disabled-1', name: 'Disabled Node', disabled: true },
+						{ ...activeNode, id: 'sticky-1', name: 'Sticky', type: 'n8n-nodes-base.stickyNote' },
+					],
+				});
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'subworkflowExecutionStarted',
+						data: expect.objectContaining({ totalNodes: 2 }),
+					}),
+					rootPushRef,
+				);
+			});
+
+			it('counts unique nodes, not executions, so loops never exceed the total', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				// A loop revisits node A: A → B → A
+				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+				await hooks.runHook('nodeExecuteAfter', ['Node A', taskData, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
+				await hooks.runHook('nodeExecuteAfter', ['Node B', taskData, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+
+				const lastCall = push.send.mock.calls.at(-1)?.[0];
+				expect(lastCall).toMatchObject({
+					type: 'subworkflowNodeProgress',
+					data: { currentNodeName: 'Node A', currentNodeIndex: 2 },
+				});
+			});
+
+			describe('throttling', () => {
+				it('suppresses same-node running repeats within the throttle window', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(1);
+				});
+
+				it('emits same-node running repeats once the throttle window has elapsed', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+					jest.advanceTimersByTime(150);
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(2);
+				});
+
+				it('always emits on node-name change regardless of the window', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+					await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(2);
+					expect(push.send.mock.calls.at(-1)?.[0]).toMatchObject({
+						data: { currentNodeName: 'Node B', phase: 'running' },
+					});
+				});
+
+				it('always emits on phase change regardless of the window', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					// before → after → before on the same node, all within the window:
+					// the after (phase success) and the second before (phase running)
+					// must both emit so the UI never shows a stale phase.
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+					await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(3);
+					expect(push.send.mock.calls.at(-1)?.[0]).toMatchObject({
+						data: { phase: 'running' },
+					});
+				});
 			});
 		});
 	});
