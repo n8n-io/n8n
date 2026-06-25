@@ -483,8 +483,10 @@ export const fileFields: INodeProperties[] = [
 				resource: ['file'],
 			},
 		},
+		placeholder: 'root',
 		default: '',
-		description: 'ID of the parent folder that will contain the file',
+		description:
+			"ID of the parent folder that will contain the file. Use `root` for the drive's top-level folder.",
 	},
 	{
 		displayName: 'Binary File',
