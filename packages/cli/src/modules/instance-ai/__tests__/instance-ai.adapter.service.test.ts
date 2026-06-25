@@ -2688,6 +2688,7 @@ describe('createExecutionAdapter run()', () => {
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
+				error: 'boom',
 			}),
 		);
 	});
@@ -2715,6 +2716,7 @@ describe('createExecutionAdapter run()', () => {
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
+				error: expect.stringContaining('timed out'),
 			}),
 		);
 	});
@@ -2740,6 +2742,7 @@ describe('createExecutionAdapter run()', () => {
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
+				error: 'Failed to run workflow due to missing execution data',
 			}),
 		);
 	});

@@ -1005,7 +1005,10 @@ export class InstanceAiAdapterService {
 					mockDataSources,
 				};
 
-				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+				const trackBuilderExecutedWorkflow = (
+					status: ExecutionResult['status'],
+					error?: string,
+				) => {
 					if (!threadId) return;
 
 					telemetry.track('Builder executed workflow', {
@@ -1015,6 +1018,7 @@ export class InstanceAiAdapterService {
 						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
 						exec_type: runData.executionMode,
 						status,
+						...(error ? { error } : {}),
 					});
 				};
 
@@ -1055,7 +1059,7 @@ export class InstanceAiAdapterService {
 									status: 'error',
 									error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 								} satisfies ExecutionResult;
-								trackBuilderExecutedWorkflow(result.status);
+								trackBuilderExecutedWorkflow(result.status, result.error);
 								return result;
 							}
 							throw error;
@@ -1098,13 +1102,16 @@ export class InstanceAiAdapterService {
 					}
 
 					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
-					trackBuilderExecutedWorkflow(result.status);
+					trackBuilderExecutedWorkflow(result.status, result.error);
 					return result;
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
 					// silently dropped from telemetry.
-					trackBuilderExecutedWorkflow('error');
+					trackBuilderExecutedWorkflow(
+						'error',
+						error instanceof Error ? error.message : String(error),
+					);
 					throw error;
 				}
 			},
