@@ -53,6 +53,7 @@ describe('PlaywrightAdapter remote mode', () => {
 		expect(relay.waitForExtension).toHaveBeenCalled();
 		expect(connectOverCDP).toHaveBeenCalledWith('ws://127.0.0.1:5678/browser-use/cdp/sess', {
 			headers: { authorization: 'tok' },
+			noDefaults: true,
 		});
 	});
 
@@ -64,6 +65,7 @@ describe('PlaywrightAdapter remote mode', () => {
 
 		expect(connectOverCDP).toHaveBeenCalledWith('ws://127.0.0.1:9999/cdp/relay-default', {
 			headers: undefined,
+			noDefaults: true,
 		});
 	});
 });
