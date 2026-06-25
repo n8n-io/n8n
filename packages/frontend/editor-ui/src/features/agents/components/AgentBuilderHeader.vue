@@ -276,8 +276,12 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 .left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
 	display: flex;
 	align-items: center;
-	height: var(--height--md);
+	min-height: var(--height--md);
 	padding: var(--spacing--2xs) var(--spacing--xs);
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
+	line-height: var(--line-height--sm);
 }
 
 .crumbSeparator {
@@ -298,6 +302,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: var(--line-height--sm);
 }
 
 .agentSwitcherLabel {
