@@ -7,6 +7,7 @@ import { isRecord } from '@n8n/utils';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import type { ConversationSeed } from './conversation-seed';
 import { parseSeedWorkflowCode } from './parse-seed-workflow';
 
@@ -14,7 +15,14 @@ import { parseSeedWorkflowCode } from './parse-seed-workflow';
  *  every workspace). Override per case with `seedThread.project` if it differs. */
 const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
-const WORKFLOW_BUILD_TOOLS = new Set(['build-workflow', 'patch-workflow', 'submit-workflow']);
+// Reference the live IAI tool-id so a rename there follows here (or breaks the
+// import) instead of drifting silently. patch/submit-workflow were removed in
+// #32545 but stay as literals so older traces still reconstruct.
+const WORKFLOW_BUILD_TOOLS = new Set<string>([
+	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+	'patch-workflow',
+	'submit-workflow',
+]);
 
 // The source thread may live in a different workspace than the eval writes to
 // (e.g. seed from prod, trace to staging). A PAT spans workspaces, so we
@@ -434,9 +442,10 @@ function buildSeedWorkflows(
 	const getAsCodeByWorkflowId = new Map<string, string>();
 	// workflowId -> reconstructed source + name at its latest successful build.
 	const builtByWorkflowId = new Map<string, { code: string; diverged: boolean; name?: string }>();
-	// A build-shaped run (source in, workflowId out) whose name isn't in the known
-	// set → the build tool was likely renamed.
-	let renamedBuildSuspected = false;
+	// Workflow ids that had a build-shaped run (source in, success + workflowId out),
+	// regardless of the tool's name — used below to detect silent reconstruction
+	// drift (builds happened but nothing reconstructed).
+	const buildSignalIds = new Set<string>();
 
 	for (const tool of toolRuns) {
 		if (new Date(tool.start_time ?? 0).getTime() >= boundaryMs) continue;
@@ -466,21 +475,14 @@ function buildSeedWorkflows(
 		const filePath = asString(input.filePath);
 		const inlineCode = asString(input.code);
 		if (filePath === undefined && inlineCode === undefined) continue;
-		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) {
-			renamedBuildSuspected = true;
-			continue;
-		}
+		// A build happened for this id (even if the tool's name isn't recognised).
+		buildSignalIds.add(workflowId);
+		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) continue;
 		// Current builder: the workspace file's content at this build. Legacy: inline code.
 		const code = filePath !== undefined ? (files.get(filePath) ?? '') : (inlineCode ?? '');
 		const diverged = filePath !== undefined ? divergedPaths.has(filePath) : false;
 		// Sorted ascending → the latest successful build wins.
 		builtByWorkflowId.set(workflowId, { code, diverged, name: asString(out.workflowName) });
-	}
-
-	if (builtByWorkflowId.size === 0 && renamedBuildSuspected) {
-		throw new Error(
-			`Thread ${threadId}: a tool run built a workflow (source in, workflowId out) but its name isn't in the known build set {${[...WORKFLOW_BUILD_TOOLS].join(', ')}} — the build tool was likely renamed; update WORKFLOW_BUILD_TOOLS.`,
-		);
 	}
 
 	const workflows: ConversationSeed['workflows'] = [];
@@ -526,6 +528,21 @@ function buildSeedWorkflows(
 	if (skipped.length > 0) {
 		console.warn(
 			`[seed] Thread ${threadId}: ${skipped.length} built workflow(s) could not be reconstructed and were skipped: ${skipped.join(', ')}`,
+		);
+	}
+
+	// Loud tripwire for silent reconstruction drift: the trace shows builds but we
+	// recovered nothing. A reconstruction throw routes to framework_issue (seeding
+	// failure) — never a silent 0-workflow seed. Catches a renamed build tool or an
+	// input/output shape change (e.g. the #32545 inline-code → filePath switch).
+	if (buildSignalIds.size > 0 && workflows.length === 0) {
+		throw new Error(
+			`Thread ${threadId}: ${buildSignalIds.size} workflow(s) were built in the trace but reconstruction recovered 0 — the build tool was likely renamed or its input/output shape changed (e.g. inline-code → filePath). Update reconstruction (WORKFLOW_BUILD_TOOLS / source extraction in buildSeedWorkflows).`,
+		);
+	}
+	if (workflows.length < buildSignalIds.size) {
+		console.warn(
+			`[seed] Thread ${threadId}: reconstructed ${workflows.length}/${buildSignalIds.size} built workflow(s) — partial; check for trace-shape drift if unexpected.`,
 		);
 	}
 

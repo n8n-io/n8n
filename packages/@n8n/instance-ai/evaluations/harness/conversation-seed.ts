@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
@@ -181,7 +182,7 @@ type SeedStepInterpreter = (call: SeedToolCall) => TranscriptStep | null;
 
 const interpretAskUser: SeedStepInterpreter = (call) => {
 	const questions = call.input?.questions;
-	if (call.toolName !== 'ask-user' || !Array.isArray(questions)) return null;
+	if (call.toolName !== DOMAIN_TOOL_IDS.ASK_USER || !Array.isArray(questions)) return null;
 	const parsed = extractAskUserQuestions(questions);
 	if (parsed.length === 0) return null;
 	// The kept (resume) block carries the user's answers in its output.
@@ -193,7 +194,7 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 
 const interpretPlan: SeedStepInterpreter = (call) => {
 	const tasks = call.input?.tasks;
-	if (call.toolName !== 'create-tasks' || !Array.isArray(tasks)) return null;
+	if (call.toolName !== ORCHESTRATION_TOOL_IDS.CREATE_TASKS || !Array.isArray(tasks)) return null;
 	const parsed = extractPlanTasks(tasks);
 	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
 };

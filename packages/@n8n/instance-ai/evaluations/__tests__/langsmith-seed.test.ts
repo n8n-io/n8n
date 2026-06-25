@@ -256,6 +256,28 @@ describe('reconstructSeedFromThread', () => {
 		);
 	});
 
+	it('throws when builds succeeded but no source was recoverable (shape drift)', async () => {
+		// A recognised filePath build (post-#32545) whose workspace file was never
+		// captured and has no get-as-code fallback → nothing to reconstruct from.
+		const build: FakeRun = {
+			id: 'tool1',
+			run_type: 'tool',
+			name: 'build-workflow',
+			start_time: t(5),
+			inputs: { filePath: 'src/workflows/main.workflow.ts' },
+			outputs: { success: true, workflowId: 'WF1' },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Done.' } },
+			build,
+			turn('r2', 30, 'Change'),
+		];
+		await expect(reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs))).rejects.toThrow(
+			/built in the trace but reconstruction recovered 0/,
+		);
+	});
+
 	it('does not false-positive on a read-only tool that returns a workflowId', async () => {
 		// get-workflow returns a workflowId but takes no `code` — not build-like,
 		// so the drift detector stays quiet and the seed simply has no workflow.
