@@ -123,10 +123,11 @@
   },
   "scripts": {
     "test": "tsc && mocha --file ./build/compiled/test/utils/test-setup.js --recursive --timeout 90000 ./build/compiled/test",
-    "test:unit": "pnpm test-fast",
+    "test:unit": "pnpm test",
     "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 90000 ./build/compiled/test",
     "typecheck": "tsc --noEmit",
     "build": "pnpm compile",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "compile": "tsc -p tsconfig.build.json",
     "watch": "tsc -w -p tsconfig.build.json"
   },
