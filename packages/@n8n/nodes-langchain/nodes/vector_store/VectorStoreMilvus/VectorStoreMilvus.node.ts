@@ -1,6 +1,6 @@
 import { Milvus } from '@langchain/community/vectorstores/milvus';
 import type { IndexCreateOptions, MilvusLibArgs } from '@langchain/community/vectorstores/milvus';
-import { IndexType, MetricType, MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '@n8n/ai-utilities';
@@ -13,18 +13,41 @@ const distanceStrategyField: INodeProperties = {
 	displayName: 'Distance Strategy',
 	name: 'distanceStrategy',
 	type: 'options',
-	default: MetricType.L2,
+	default: 'L2',
 	description: 'The method to calculate the distance between two vectors',
-	options: Object.values(MetricType).map((m) => ({ name: m, value: m })),
+	options: [
+		{ name: 'BM25', value: 'BM25' },
+		{ name: 'COSINE', value: 'COSINE' },
+		{ name: 'HAMMING', value: 'HAMMING' },
+		{ name: 'IP', value: 'IP' },
+		{ name: 'JACCARD', value: 'JACCARD' },
+		{ name: 'L2', value: 'L2' },
+		{ name: 'SUBSTRUCTURE', value: 'SUBSTRUCTURE' },
+		{ name: 'SUPERSTRUCTURE', value: 'SUPERSTRUCTURE' },
+		{ name: 'TANIMOTO', value: 'TANIMOTO' },
+	],
 };
 
 const indexTypeField: INodeProperties = {
 	displayName: 'Index Type',
 	name: 'indexType',
 	type: 'options',
-	default: IndexType.AUTOINDEX,
+	default: 'AUTOINDEX',
 	description: 'The type of index used in the Milvus database',
-	options: Object.values(IndexType).map((i) => ({ name: i, value: i })),
+	options: [
+		{ name: 'AUTOINDEX', value: 'AUTOINDEX' },
+		{ name: 'BIN_FLAT', value: 'BIN_FLAT' },
+		{ name: 'BIN_IVF_FLAT', value: 'BIN_IVF_FLAT' },
+		{ name: 'DISKANN', value: 'DISKANN' },
+		{ name: 'FLAT', value: 'FLAT' },
+		{ name: 'HNSW', value: 'HNSW' },
+		{ name: 'IVF_FLAT', value: 'IVF_FLAT' },
+		{ name: 'IVF_PQ', value: 'IVF_PQ' },
+		{ name: 'IVF_SQ8', value: 'IVF_SQ8' },
+		{ name: 'SCANN', value: 'SCANN' },
+		{ name: 'SPARSE_INVERTED_INDEX', value: 'SPARSE_INVERTED_INDEX' },
+		{ name: 'SPARSE_WAND', value: 'SPARSE_WAND' },
+	],
 };
 
 const insertFields: INodeProperties[] = [
@@ -89,10 +112,10 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			databaseName: string;
 		}>('milvusApi');
 		const database = credentials.databaseName?.trim() || 'default';
-		const indexCreateOptions: IndexCreateOptions = {
-			index_type: context.getNodeParameter('options.indexType', itemIndex, IndexType.AUTOINDEX),
-			metric_type: context.getNodeParameter('options.distanceStrategy', itemIndex, MetricType.L2),
-		};
+		const indexCreateOptions = {
+			index_type: context.getNodeParameter('options.indexType', itemIndex, 'AUTOINDEX') as string,
+			metric_type: context.getNodeParameter('options.distanceStrategy', itemIndex, 'L2') as string,
+		} as IndexCreateOptions;
 		const config: MilvusLibArgs = {
 			url: credentials.baseUrl,
 			username: credentials.username,

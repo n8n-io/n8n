@@ -39,6 +39,8 @@ export class MilvusApi implements ICredentialType {
 			type: 'string',
 			default: 'default',
 			placeholder: 'default',
+			description:
+				"The Milvus database to connect to. Defaults to the built-in 'default' database.",
 		},
 	];
 
