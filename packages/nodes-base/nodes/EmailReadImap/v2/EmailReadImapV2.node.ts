@@ -479,7 +479,7 @@ export class EmailReadImapV2 implements INodeType {
 						this.emitError(
 							new NodeOperationError(this.getNode(), 'Imap connection closed unexpectedly', {
 								description:
-									'The IMAP server closed the connection without reporting an error. This usually means the mail server dropped an idle connection (some providers do so every few hours) or was temporarily unavailable (e.g. a restart, maintenance or network issue). n8n will automatically retry reactivating the workflow. If this recurs frequently, enable the "Force Reconnect" option and set an interval shorter than your provider\'s idle timeout.',
+									'The IMAP server closed the connection without reporting an error. This is usually caused by the mail server (or a proxy/firewall in between) periodically closing long-lived connections, or by the server being temporarily unavailable (e.g. a restart or maintenance). n8n keeps the connection alive and will automatically retry reactivating the workflow, so occasional disconnects are expected. If they occur on a regular cycle, enable the "Force Reconnect" option with an interval shorter than that cycle, so n8n reconnects proactively instead of erroring.',
 							}),
 						);
 					}
