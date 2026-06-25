@@ -346,49 +346,209 @@ function buildSeedMessages(
 	return messages;
 }
 
-/** Compile the seed's workflows from the build tool's captured SDK code — latest
- *  successful build per workflow id before the boundary. */
+/** Replay one content-mutating workspace tool onto the reconstructed file map,
+ *  in timeline order. The builder authors a workflow as a file and builds it via
+ *  `build-workflow {filePath}`, so the SDK source is the file's content at build
+ *  time — assembled from these ops, never an inline build arg. Returns false when
+ *  an edit can't be applied faithfully (a str-replace whose anchor is absent),
+ *  signalling the file's reconstruction has diverged from the real sandbox. */
+function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
+	const input = isRecord(tool.inputs) ? tool.inputs : {};
+	// A failed edit (a non-unique or absent str-replace anchor, etc.) left the real
+	// file unchanged — skip it so the replay doesn't drift from the sandbox.
+	if (isRecord(tool.outputs) && tool.outputs.success === false) return true;
+	if (tool.name === 'workspace_write_file') {
+		const path = asString(input.path);
+		const content = asString(input.content);
+		if (path && content !== undefined) files.set(path, content);
+		return true;
+	}
+	if (tool.name === 'workspace_append_file') {
+		const path = asString(input.path);
+		if (path) files.set(path, (files.get(path) ?? '') + (asString(input.content) ?? ''));
+		return true;
+	}
+	if (tool.name === 'workspace_str_replace_file') {
+		// The tool requires one exact, unique match; mirror it (first occurrence).
+		const path = asString(input.path);
+		const current = path !== undefined ? files.get(path) : undefined;
+		const oldStr = asString(input.old_str);
+		const newStr = asString(input.new_str);
+		if (path === undefined || current === undefined || !oldStr || newStr === undefined) return true;
+		if (!current.includes(oldStr)) return false;
+		files.set(path, current.replace(oldStr, newStr));
+		return true;
+	}
+	if (tool.name === 'workspace_batch_str_replace_file') {
+		const path = asString(input.path);
+		let current = path !== undefined ? files.get(path) : undefined;
+		if (path === undefined || current === undefined) return true;
+		let applied = true;
+		const replacements = Array.isArray(input.replacements) ? input.replacements : [];
+		for (const replacement of replacements) {
+			if (!isRecord(replacement)) continue;
+			const oldStr = asString(replacement.old_str);
+			const newStr = asString(replacement.new_str);
+			if (!oldStr || newStr === undefined) continue;
+			if (!current.includes(oldStr)) {
+				applied = false;
+				continue;
+			}
+			current = current.replace(oldStr, newStr);
+		}
+		files.set(path, current);
+		return applied;
+	}
+	if (tool.name === 'workspace_move_file' || tool.name === 'workspace_copy_file') {
+		const src = asString(input.src);
+		const dest = asString(input.dest);
+		const content = src !== undefined ? files.get(src) : undefined;
+		if (src !== undefined && dest !== undefined && content !== undefined) {
+			files.set(dest, content);
+			if (tool.name === 'workspace_move_file') files.delete(src);
+		}
+		return true;
+	}
+	if (tool.name === 'workspace_delete_file') {
+		const path = asString(input.path);
+		if (path) files.delete(path);
+		return true;
+	}
+	return true; // read/list/grep/etc. — no content change
+}
+
+/** Reconstruct the seed's workflows — the latest successful build per workflow id
+ *  before the boundary. Since #32545 the builder writes each workflow to a
+ *  workspace file and builds via `build-workflow {filePath}` (no inline code), so
+ *  we replay the file mutations and snapshot each file's content at its build.
+ *  Older threads (inline `code`) and a `get-as-code` capture are used as
+ *  fallbacks, so both trace generations reconstruct. A workflow is emitted only
+ *  when a successful build references it — arbitrary written files are ignored. */
 function buildSeedWorkflows(
 	toolRuns: Run[],
 	boundaryMs: number,
 	threadId: string,
 ): ConversationSeed['workflows'] {
-	const latestBuildByWorkflowId = new Map<string, Run>();
-	// Name-independent build signal (code in + workflowId out): detects a renamed
-	// build tool instead of silently dropping the workflow.
-	let sawBuildLikeRun = false;
+	const files = new Map<string, string>();
+	const divergedPaths = new Set<string>();
+	const getAsCodeByWorkflowId = new Map<string, string>();
+	// workflowId -> reconstructed source + name at its latest successful build.
+	const builtByWorkflowId = new Map<string, { code: string; diverged: boolean; name?: string }>();
+	// A build-shaped run (source in, workflowId out) whose name isn't in the known
+	// set → the build tool was likely renamed.
+	let renamedBuildSuspected = false;
+
 	for (const tool of toolRuns) {
-		if (new Date(tool.start_time).getTime() >= boundaryMs) continue;
-		const out = (tool.outputs ?? {}) as Record<string, unknown>;
+		if (new Date(tool.start_time ?? 0).getTime() >= boundaryMs) continue;
+
+		if (tool.name.startsWith('workspace_')) {
+			const path = asString((isRecord(tool.inputs) ? tool.inputs : {}).path);
+			const applied = applyFileMutation(files, tool);
+			// A full write replaces the file, healing any earlier divergence.
+			if (tool.name === 'workspace_write_file') {
+				if (path !== undefined) divergedPaths.delete(path);
+			} else if (!applied && path !== undefined) {
+				divergedPaths.add(path);
+			}
+			continue;
+		}
+
+		const out = isRecord(tool.outputs) ? tool.outputs : {};
+		if (tool.name.includes('get-as-code')) {
+			const code = asString(out.code);
+			const workflowId = asString(out.workflowId);
+			if (code && workflowId) getAsCodeByWorkflowId.set(workflowId, code);
+		}
+
 		const workflowId = asString(out.workflowId);
-		const buildLike = out.success === true && !!workflowId && !!asString(tool.inputs?.code);
-		if (buildLike) sawBuildLikeRun = true;
-		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) continue;
-		if (!buildLike || !workflowId) continue;
-		// Sorted ascending, so a later run overwrites — last successful build wins.
-		latestBuildByWorkflowId.set(workflowId, tool);
+		if (out.success !== true || workflowId === undefined) continue;
+		const input = isRecord(tool.inputs) ? tool.inputs : {};
+		const filePath = asString(input.filePath);
+		const inlineCode = asString(input.code);
+		if (filePath === undefined && inlineCode === undefined) continue;
+		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) {
+			renamedBuildSuspected = true;
+			continue;
+		}
+		// Current builder: the workspace file's content at this build. Legacy: inline code.
+		const code = filePath !== undefined ? (files.get(filePath) ?? '') : (inlineCode ?? '');
+		const diverged = filePath !== undefined ? divergedPaths.has(filePath) : false;
+		// Sorted ascending → the latest successful build wins.
+		builtByWorkflowId.set(workflowId, { code, diverged, name: asString(out.workflowName) });
 	}
 
-	if (latestBuildByWorkflowId.size === 0 && sawBuildLikeRun) {
+	if (builtByWorkflowId.size === 0 && renamedBuildSuspected) {
 		throw new Error(
-			`Thread ${threadId}: a tool run built a workflow (SDK code in, workflowId out) but its name isn't in the known build set {${[...WORKFLOW_BUILD_TOOLS].join(', ')}} — the build tool was likely renamed; update WORKFLOW_BUILD_TOOLS.`,
+			`Thread ${threadId}: a tool run built a workflow (source in, workflowId out) but its name isn't in the known build set {${[...WORKFLOW_BUILD_TOOLS].join(', ')}} — the build tool was likely renamed; update WORKFLOW_BUILD_TOOLS.`,
 		);
 	}
 
 	const workflows: ConversationSeed['workflows'] = [];
-	for (const [workflowId, build] of latestBuildByWorkflowId) {
-		const code = unredactCode(asString(build.inputs?.code) ?? '');
-		const parsed = parseSeedWorkflowCode(code);
-		const out = (build.outputs ?? {}) as Record<string, unknown>;
+	const degraded: string[] = [];
+	const skipped: string[] = [];
+	for (const [workflowId, built] of builtByWorkflowId) {
+		const getAsCode = getAsCodeByWorkflowId.get(workflowId) ?? '';
+		// Resolve in descending order of trust: a clean replay of the built file,
+		// then a `get-as-code` capture, then a diverged replay as a last resort.
+		// All are credential-redaction-restored before parsing.
+		const candidates: Array<[string, string]> = [
+			['replay', built.diverged ? '' : built.code],
+			['get-as-code', getAsCode],
+			['diverged-replay', built.diverged ? built.code : ''],
+		];
+		let resolved: ReturnType<typeof tryParseSeedWorkflow>;
+		let via = '';
+		for (const [label, code] of candidates) {
+			if (code === '') continue;
+			resolved = tryParseSeedWorkflow(unredactCode(code));
+			if (resolved) {
+				via = label;
+				break;
+			}
+		}
+		if (!resolved) {
+			skipped.push(workflowId);
+			continue;
+		}
+		if (via !== 'replay') degraded.push(`${workflowId}→${via}`);
 		workflows.push({
 			id: workflowId,
-			name: asString(out.workflowName) ?? parsed.workflow.name ?? 'workflow',
-			nodes: (parsed.workflow.nodes ?? []) as Array<Record<string, unknown>>,
-			connections: (parsed.workflow.connections ?? {}) as Record<string, unknown>,
+			name: built.name ?? resolved.name ?? 'workflow',
+			nodes: resolved.nodes,
+			connections: resolved.connections,
 		});
+	}
+	if (degraded.length > 0) {
+		console.warn(
+			`[seed] Thread ${threadId}: ${degraded.length} workflow(s) reconstructed via a fallback source (file replay diverged — likely an untracked shell edit); verify before trusting: ${degraded.join(', ')}`,
+		);
+	}
+	if (skipped.length > 0) {
+		console.warn(
+			`[seed] Thread ${threadId}: ${skipped.length} built workflow(s) could not be reconstructed and were skipped: ${skipped.join(', ')}`,
+		);
 	}
 
 	return workflows;
+}
+
+/** Parse reconstructed SDK code into workflow JSON, returning undefined instead
+ *  of throwing so a caller can fall back to another source. */
+function tryParseSeedWorkflow(
+	code: string,
+):
+	| { name?: string; nodes: Array<Record<string, unknown>>; connections: Record<string, unknown> }
+	| undefined {
+	try {
+		const { workflow } = parseSeedWorkflowCode(code);
+		return {
+			name: workflow.name,
+			nodes: (workflow.nodes ?? []) as unknown as Array<Record<string, unknown>>,
+			connections: (workflow.connections ?? {}) as Record<string, unknown>,
+		};
+	} catch {
+		return undefined;
+	}
 }
 
 type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
@@ -405,7 +565,7 @@ function buildSeedDataTables(toolRuns: Run[], boundaryMs: number): ConversationS
 	const created = new Map<string, ConversationSeed['dataTables'][number]>();
 
 	for (const tool of toolRuns) {
-		if (new Date(tool.start_time).getTime() >= boundaryMs) continue;
+		if (new Date(tool.start_time ?? 0).getTime() >= boundaryMs) continue;
 		const out = isRecord(tool.outputs) ? tool.outputs : {};
 
 		// A `create`: output carries the new table's id, name and columns.
