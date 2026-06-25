@@ -1,5 +1,6 @@
 import type { SecretsManager, SecretsManagerClientConfig } from '@aws-sdk/client-secrets-manager';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { INodeProperties } from 'n8n-workflow';
 
@@ -99,7 +100,10 @@ export class AwsSecretsManager extends SecretsProvider {
 
 	private client: SecretsManager;
 
-	constructor(private readonly logger = Container.get(Logger)) {
+	constructor(
+		private readonly logger = Container.get(Logger),
+		private readonly outboundHttp = Container.get(OutboundHttp),
+	) {
 		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -114,6 +118,15 @@ export class AwsSecretsManager extends SecretsProvider {
 			const { accessKeyId, secretAccessKey } = context.settings;
 			clientConfig.credentials = { accessKeyId, secretAccessKey };
 		}
+
+		// Drive the AWS SDK's HTTP transport through n8n's outbound client,
+		// so its calls reuse our agents (proxy + TLS) like every other outbound request.
+		// SigV4 signing and the credential chain stay with the SDK.
+		clientConfig.requestHandler = this.outboundHttp
+			.transport({
+				ssrf: 'disabled', // fixed AWS-resolved Secrets Manager host, not user-controlled
+			})
+			.getNodeAgent();
 
 		const { SecretsManager } = await import('@aws-sdk/client-secrets-manager');
 		this.client = new SecretsManager(clientConfig);

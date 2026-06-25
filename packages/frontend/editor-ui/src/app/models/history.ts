@@ -1,5 +1,5 @@
 import type { INodeUi, XYPosition } from '@/Interface';
-import type { IConnection, INodeParameters } from 'n8n-workflow';
+import type { IConnection, INodeParameters, IWorkflowGroup } from 'n8n-workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 // Command names don't serve any particular purpose in the app
@@ -14,6 +14,9 @@ export const enum COMMANDS {
 	ENABLE_NODE_TOGGLE = 'enableNodeToggle',
 	RENAME_NODE = 'renameNode',
 	REPLACE_NODE_PARAMETERS = 'replaceNodeParameters',
+	ADD_NODE_GROUP = 'addNodeGroup',
+	REMOVE_NODE_GROUP = 'removeNodeGroup',
+	UPDATE_NODE_GROUP = 'updateNodeGroup',
 }
 
 // Triggering multiple canvas actions in sequence leaves
@@ -318,6 +321,102 @@ export class ReplaceNodeParametersCommand extends Command {
 				currentProperties: this.currentParameters,
 				newProperties: this.newParameters,
 			});
+			resolve();
+		});
+	}
+}
+
+function cloneGroup(group: IWorkflowGroup): IWorkflowGroup {
+	return { ...group, nodeIds: [...group.nodeIds] };
+}
+
+function groupsAreEqual(a: IWorkflowGroup, b: IWorkflowGroup): boolean {
+	return (
+		a.id === b.id &&
+		a.name === b.name &&
+		a.nodeIds.length === b.nodeIds.length &&
+		a.nodeIds.every((nodeId, index) => nodeId === b.nodeIds[index])
+	);
+}
+
+export class AddNodeGroupCommand extends Command {
+	group: IWorkflowGroup;
+
+	constructor(group: IWorkflowGroup, timestamp: number) {
+		super(COMMANDS.ADD_NODE_GROUP, timestamp);
+		this.group = cloneGroup(group);
+	}
+
+	getReverseCommand(timestamp: number): Command {
+		return new RemoveNodeGroupCommand(this.group, timestamp);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof AddNodeGroupCommand && anotherCommand.group.id === this.group.id
+		);
+	}
+
+	async revert(): Promise<void> {
+		return await new Promise<void>((resolve) => {
+			historyBus.emit('revertAddNodeGroup', { group: this.group });
+			resolve();
+		});
+	}
+}
+
+export class RemoveNodeGroupCommand extends Command {
+	group: IWorkflowGroup;
+
+	constructor(group: IWorkflowGroup, timestamp: number) {
+		super(COMMANDS.REMOVE_NODE_GROUP, timestamp);
+		this.group = cloneGroup(group);
+	}
+
+	getReverseCommand(timestamp: number): Command {
+		return new AddNodeGroupCommand(this.group, timestamp);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof RemoveNodeGroupCommand && anotherCommand.group.id === this.group.id
+		);
+	}
+
+	async revert(): Promise<void> {
+		return await new Promise<void>((resolve) => {
+			historyBus.emit('revertRemoveNodeGroup', { group: this.group });
+			resolve();
+		});
+	}
+}
+
+export class UpdateNodeGroupCommand extends Command {
+	before: IWorkflowGroup;
+
+	after: IWorkflowGroup;
+
+	constructor(before: IWorkflowGroup, after: IWorkflowGroup, timestamp: number) {
+		super(COMMANDS.UPDATE_NODE_GROUP, timestamp);
+		this.before = cloneGroup(before);
+		this.after = cloneGroup(after);
+	}
+
+	getReverseCommand(timestamp: number): Command {
+		return new UpdateNodeGroupCommand(this.after, this.before, timestamp);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof UpdateNodeGroupCommand &&
+			groupsAreEqual(anotherCommand.before, this.before) &&
+			groupsAreEqual(anotherCommand.after, this.after)
+		);
+	}
+
+	async revert(): Promise<void> {
+		return await new Promise<void>((resolve) => {
+			historyBus.emit('revertUpdateNodeGroup', { group: this.before });
 			resolve();
 		});
 	}

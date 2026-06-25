@@ -1094,25 +1094,25 @@ describe('WorkflowCard', () => {
 		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
-	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
+	it('should show private credential indicator when workflow has resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: true,
 		});
 
 		const { getByTestId } = renderComponent({ props: { data } });
 
-		const indicator = getByTestId('workflow-card-dynamic-credentials');
+		const indicator = getByTestId('workflow-card-private-credential');
 		expect(indicator).toBeVisible();
 	});
 
-	it('should hide dynamic credentials indicator when workflow has no resolvable credentials', () => {
+	it('should hide private credential indicator when workflow has no resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: false,
 		});
 
 		const { queryByTestId } = renderComponent({ props: { data } });
 
-		const indicator = queryByTestId('workflow-card-dynamic-credentials');
+		const indicator = queryByTestId('workflow-card-private-credential');
 		expect(indicator).toBeNull();
 	});
 

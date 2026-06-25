@@ -16,20 +16,20 @@ CREATE TABLE "agent_task_run_lock" ("agentId" varchar(36) NOT NULL, "taskId" var
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
-| taskId | varchar(32) |  | false |  |  |  |
-| holderId | varchar |  | false |  |  |  |
-| heldUntil | datetime(3) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| heldUntil | datetime(3) |  | false |  |  |  |
+| holderId | varchar |  | false |  |  |  |
+| taskId | varchar(32) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
-| taskId | PRIMARY KEY | PRIMARY KEY (taskId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
 | sqlite_autoindex_agent_task_run_lock_1 | PRIMARY KEY | PRIMARY KEY (agentId, taskId) |
+| taskId | PRIMARY KEY | PRIMARY KEY (taskId) |
 
 ## Indexes
 
@@ -46,25 +46,24 @@ erDiagram
 
 "agent_task_run_lock" {
   varchar_36_ agentId PK
-  varchar_32_ taskId PK
-  varchar holderId
-  datetime_3_ heldUntil
   datetime_3_ createdAt
+  datetime_3_ heldUntil
+  varchar holderId
+  varchar_32_ taskId PK
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 ```
 

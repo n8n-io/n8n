@@ -1,0 +1,103 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. Use list_files to list and delete_file to delete. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "You must call both tools in parallel: call list_files with dir=\"/home\" AND call delete_file with path=\"/home/readme.md\". Do not skip either tool."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "list_files",
+					"description": "List files in a directory",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"dir": {
+								"type": "string",
+								"description": "Directory path"
+							}
+						},
+						"required": ["dir"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "delete_file",
+					"description": "Delete a file at the given path — dangerous operation",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c5565b6fda30147ee757a0f31c5652f532fcd6ad5a2b6d2feb18451a9365e2d3e0d5b133fb8415a1fcf7c9404a42a11d5337f2e673f1f9be73f1094ed1106b67e8bd48917b128e5a529060ed39d02c4760d05042549d81cd21b312353048b42824762642dd179d93ce69e7b87b7c1a77bb3144a064b8c3a7bc1bdfa483c1f8ba97c9d80cfb37571fae6f3f5dc6438836224104ceea2010de2b4fc284b089358486807dfb1e81279b7387c25b03cc145aaf441e7f1668126c08259250da57b2a242af4c5e10277b8fc6033b3fe945908864823c71284859c39b16dd4aef50c85dbaca3704c07c82193aa1f969f6d47ead8d279bda32025b50135e041edd5425c849a103062133523819926ceed005e23c450b0c8c252ea6426931d60865d90e5fd96ae1b2deab5cf2b1b6c9fdf6aa6f3159c491f8b0645bd707b22b3fb256f3c26355f9702e78371ef8fec778f676f8feabffdceb5fdfa5e77d73db83088cc8829f569ef89dd2e81761f28280cdcb9055ad03dbc70052394ca8e25467952b936ed0684310c22ee6123589e7992f4c1acc979235a065e97e786b1e8d73e14809bd100203a8b06e223e089af928e47004ac3d82a389cd7003dea1f18da0ac23daddb5367fa9696d5ec3f2d275fb0e41bcff109cfd22f3eeeaeaa27ff190cefa5f660394c7ee723d041235122ec660cf2978f5d2c57fdbe80786301f412e68526befa3f05c67f82693f0fc3bf89f1036fafbb5ba3bded603d5e6de4aaca1841a91c66eadb7f21f6ed8f2dfadd88d9dd83bdbf5b0aeff599ea6b1ae83caef37ca140d3709090000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:05Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371df29215ba3-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:06 GMT",
+			"request-id": "req_011CcLBRtroiv7NQhef3vdK2",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=aSLCT1qa2zYmUxdmpYRodm_MmSYS0mdjz2kMPVcY3bc-1782217205.6268735-1.0.1.1-EJQLCeqeMhhs2HoiHrmF3Z0_HlmHLWR05I0IGbd3nso; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-37c699a5aab479ccb7b02eaf36c1a580-5e36d34034c85411-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

@@ -89,7 +89,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -97,9 +97,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with custom expiration', async () => {
@@ -121,7 +119,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			},
 		});
 
-		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
+		const { getByText, getAllByText, getByPlaceholderText, getByTestId } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -142,11 +140,14 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(expirationSelect);
 
-		const customOption = getByText('Custom');
+		// 'Custom' also exists as a scopes radio option, so scope the query to the dropdown
+		const customOption = getAllByText('Custom').find((element) =>
+			element.closest('.el-select-dropdown__item'),
+		);
 
 		expect(customOption).toBeInTheDocument();
 
-		await userEvent.click(customOption);
+		await userEvent.click(customOption as HTMLElement);
 
 		const customExpirationInput = getByPlaceholderText('yyyy-mm-dd');
 
@@ -158,17 +159,13 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		expect(getByText('***456')).toBeInTheDocument();
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
 		expect(
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
-
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with no expiration', async () => {
@@ -203,7 +200,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -211,9 +208,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with scopes pre-selected', async () => {
@@ -231,21 +226,18 @@ describe('ApiKeyCreateOrEditModal', () => {
 		const inputLabel = getByPlaceholderText('e.g Internal Project');
 		const saveButton = getByText('Save');
 
-		const scopesSelect = getByTestId('scopes-select');
-
 		expect(inputLabel).toBeInTheDocument();
-		expect(scopesSelect).toBeInTheDocument();
+		expect(getByTestId('api-key-scopes')).toBeInTheDocument();
 		expect(saveButton).toBeInTheDocument();
 
 		// All available scopes should be pre-selected for new keys
-		expect(scopesSelect).toHaveTextContent('user:create');
-		expect(scopesSelect).toHaveTextContent('user:list');
+		await retry(() => expect(getByTestId('scopes-mode-all')).toBeChecked());
 
 		await userEvent.type(inputLabel, 'new label');
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -253,9 +245,25 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
+	});
 
-		expect(getByText('new api key')).toBeInTheDocument();
+	test('shows a rotated key in the same created view, with the rotation title', async () => {
+		const { getByText } = renderComponent({
+			props: {
+				mode: 'new',
+				rotatedApiKey: testApiKey,
+			},
+		});
+
+		await retry(() => expect(getByText('API key rotated successfully')).toBeInTheDocument());
+
+		// Same created-view affordances as a freshly created key.
+		expect(getByText('Done')).toBeInTheDocument();
+		expect(
+			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
+		).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow editing API key label', async () => {

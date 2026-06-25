@@ -90,7 +90,8 @@ describe('WorkflowPublisher', () => {
 				WorkflowPublishingPolicy.PreservePublishedState,
 			);
 
-			expect(result).toBe(workflow);
+			expect(result.workflow).toBe(workflow);
+			expect(result.publishing).toEqual({ state: 'unchanged' });
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 		});
@@ -116,7 +117,8 @@ describe('WorkflowPublisher', () => {
 				versionId: 'v1',
 				source: 'import',
 			});
-			expect(result).toBe(published);
+			expect(result.workflow).toBe(published);
+			expect(result.publishing).toEqual({ state: 'published' });
 		});
 
 		it('keeps the saved workflow and logs when publishing fails', async () => {
@@ -135,11 +137,105 @@ describe('WorkflowPublisher', () => {
 				WorkflowPublishingPolicy.PublishAll,
 			);
 
-			expect(result).toBe(workflow);
+			expect(result.workflow).toBe(workflow);
+			expect(result.publishing).toEqual({
+				state: 'failed',
+				error: 'no trigger node',
+			});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to apply publishing policy to imported workflow',
 				expect.objectContaining({ workflowId: 'wf-1', action: 'publish' }),
 			);
+		});
+
+		it('skips publish but still unpublishes when stub credentials block activation', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'wf-1',
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				isArchived: false,
+			});
+			const unpublished = mock<WorkflowEntity>({ id: 'wf-1', activeVersionId: null });
+			workflowService.deactivateWorkflow.mockResolvedValue(unpublished);
+
+			const updateItem: PersistedWorkflowPlanItem = {
+				action: 'update',
+				sourceWorkflowId: 'wf-stubbed',
+				sourcePublished: false,
+				entity: mock<WorkflowEntity>(),
+				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
+			};
+
+			const result = await publisher.apply(
+				user,
+				updateItem,
+				workflow,
+				WorkflowPublishingPolicy.MatchSource,
+				new Set(['wf-stubbed']),
+			);
+
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
+				source: 'import',
+			});
+			expect(result.workflow).toBe(unpublished);
+			expect(result.publishing).toEqual({ state: 'unpublished' });
+		});
+
+		it('does not publish workflows blocked by stub credentials', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'wf-1',
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+			});
+
+			const result = await publisher.apply(
+				user,
+				createItem(true),
+				workflow,
+				WorkflowPublishingPolicy.PublishAll,
+				new Set(['wf-1']),
+			);
+
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.workflow).toBe(workflow);
+			expect(result.publishing).toEqual({
+				state: 'blocked',
+				blockedReason: 'stub-credential',
+			});
+		});
+
+		it('reports unchanged when stub credentials block publishing an already-published update', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'wf-1',
+				versionId: 'v2',
+				activeVersionId: 'v1',
+				isArchived: false,
+			});
+
+			const updateItem: PersistedWorkflowPlanItem = {
+				action: 'update',
+				sourceWorkflowId: 'wf-stubbed',
+				sourcePublished: true,
+				entity: mock<WorkflowEntity>(),
+				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
+			};
+
+			const result = await publisher.apply(
+				user,
+				updateItem,
+				workflow,
+				WorkflowPublishingPolicy.PreservePublishedState,
+				new Set(['wf-stubbed']),
+			);
+
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.workflow).toBe(workflow);
+			expect(result.publishing).toEqual({
+				state: 'unchanged',
+				skippedPublishReason: 'stub-credential',
+			});
 		});
 	});
 });

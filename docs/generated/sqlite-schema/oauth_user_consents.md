@@ -15,18 +15,18 @@ CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false |  |  |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
 | clientId | varchar |  | false |  | [oauth_clients](oauth_clients.md) |  |
 | grantedAt | bigint |  | false |  |  |  |
+| id | INTEGER |  | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_oauth_user_consents_1 | UNIQUE | UNIQUE (userId, clientId) |
 
 ## Indexes
@@ -40,41 +40,41 @@ CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" 
 ```mermaid
 erDiagram
 
-"oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "oauth_user_consents" {
-  INTEGER id
-  varchar userId FK
   varchar clientId FK
   bigint grantedAt
-}
-"user" {
-  varchar id PK
-  varchar_255_ email
-  varchar_32_ firstName
-  varchar_32_ lastName
-  varchar password
-  TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
-  varchar_128_ roleSlug FK
+  INTEGER id
+  varchar userId FK
 }
 "oauth_clients" {
+  varchar_255_ clientSecret
+  bigint clientSecretExpiresAt
+  datetime_3_ createdAt
+  TEXT grantTypes
   varchar id PK
   varchar_255_ name
   TEXT redirectUris
-  TEXT grantTypes
-  varchar_255_ clientSecret
-  bigint clientSecretExpiresAt
   varchar_255_ tokenEndpointAuthMethod
+  datetime_3_ updatedAt
+}
+"user" {
   datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
   datetime_3_ updatedAt
 }
 ```

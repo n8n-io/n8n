@@ -8,6 +8,7 @@
 	"complexity": "complex",
 	"tags": ["telegram", "binary", "audio", "openai", "whisper", "webhook"],
 	"triggerType": "webhook",
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",
