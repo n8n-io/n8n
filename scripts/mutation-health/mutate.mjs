@@ -21,8 +21,10 @@
  *
  * Outputs (under <package-dir>/reports/mutation/):
  *   raw.json      — full Stryker Mutation Testing Elements report
- *   raw.html      — Stryker's HTML report (browse for human review)
- *   summary.json  — compact actionable summary (this script)
+ *   summary.json  — compact actionable summary (this script). Emitted even on a
+ *                   non-zero / timed-out Stryker exit, as long as Stryker wrote
+ *                   a (partial) raw.json — a run that can't finish still surfaces
+ *                   the survivors it found rather than dying with nothing.
  *
  * Each summary file row also carries a `coverage` fraction in [0,1] — the share
  * of mutants a test actually exercised — so the global picker can read
@@ -362,8 +364,17 @@ async function main() {
 	// picker can then advance to the next file the following night. See DEVP-414.
 	const noTestsExecuted = /no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
 
-	if (strykerExitCode !== 0 && !noTestsExecuted) {
-		die(3, `Stryker exited with code ${strykerExitCode}`);
+	// A non-zero Stryker exit (an instrumentation crash, an internal timeout, or
+	// an external wall-clock kill) shouldn't throw away results Stryker already
+	// wrote. If a raw.json exists we fall through and build a partial summary from
+	// it below; only die when there's genuinely nothing to salvage.
+	const strykerFailedWithoutReport =
+		strykerExitCode !== 0 && !noTestsExecuted && !existsSync(rawJsonPath);
+	if (strykerFailedWithoutReport) {
+		die(
+			3,
+			`Stryker exited with code ${strykerExitCode} without producing ${path.relative(repoRoot, rawJsonPath)}`,
+		);
 	}
 
 	if (noTestsExecuted) {
@@ -400,8 +411,19 @@ async function main() {
 		generatedAt: new Date().toISOString(),
 	});
 
+	// Stryker wrote a report but exited non-zero — the run was cut short (internal
+	// timeout, crash mid-run, or wall-clock kill). Flag the summary as partial so
+	// downstream consumers know the survivor list may be incomplete.
+	const partial = strykerExitCode !== 0;
+	if (partial) summary.partial = true;
+
 	await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
 
+	if (partial) {
+		process.stderr.write(
+			`\n⚠ Stryker exited with code ${strykerExitCode}; summary built from a partial raw.json — results may be incomplete.\n`,
+		);
+	}
 	process.stderr.write('\n=== Mutation summary ===\n');
 	for (const f of summary.files) {
 		const mark = f.thresholdMet ? '✓' : '✗';
