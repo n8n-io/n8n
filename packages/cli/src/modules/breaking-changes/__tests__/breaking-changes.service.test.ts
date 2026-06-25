@@ -112,6 +112,49 @@ describe('BreakingChangeService', () => {
 			expect(fileAccessResult?.affectedWorkflows).toHaveLength(1);
 		});
 
+		it('should ignore malformed latestEvent values when computing lastExecutedAt', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Workflow With Stats', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+
+			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.count.mockResolvedValue(1);
+			workflowStatisticsRepository.find.mockResolvedValue([
+				{
+					workflowId: 'wf-1',
+					count: 1,
+					latestEvent: 'not-a-date',
+				} as never,
+				{
+					workflowId: 'wf-1',
+					count: 2,
+					latestEvent: null,
+				} as never,
+				{
+					workflowId: 'wf-1',
+					count: 3,
+					latestEvent: new Date('2025-01-02T00:00:00.000Z'),
+				} as never,
+				{
+					workflowId: 'wf-1',
+					count: 4,
+					latestEvent: '2025-01-03T00:00:00.000Z',
+				} as never,
+			]);
+
+			const report = await service.detect('v2');
+			const removedNodesResult = report.report.workflowResults.find(
+				(result) => result.ruleId === 'removed-nodes-v2',
+			);
+
+			expect(removedNodesResult?.affectedWorkflows).toHaveLength(1);
+			expect(removedNodesResult?.affectedWorkflows[0]).toMatchObject({
+				id: 'wf-1',
+				numberOfExecutions: 10,
+				lastExecutedAt: new Date('2025-01-03T00:00:00.000Z'),
+			});
+		});
+
 		it('should include all required fields in the report', async () => {
 			workflowRepository.find.mockResolvedValue([]);
 			workflowRepository.count.mockResolvedValue(0);
