@@ -1,6 +1,7 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig, SecurityConfig } from '@n8n/config';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { GlobalConfig, SecurityConfig, SsrfProtectionConfig } from '@n8n/config';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -137,6 +138,8 @@ export class FrontendService {
 		private readonly ownershipService: OwnershipService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -403,6 +406,10 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
+			egressProtection: {
+				mode: this.ssrfProtectionService.mode,
+				editable: this.ssrfProtectionConfig.editable,
+			},
 			chatTrigger: {
 				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
 			},
@@ -603,6 +610,11 @@ export class FrontendService {
 
 		// Refresh environment feature flags
 		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();
+
+		// Re-resolve so runtime overrides to the egress protection mode surface
+		// to the FE without an instance restart.
+		this.settings.egressProtection.mode = this.ssrfProtectionService.mode;
+		this.settings.egressProtection.editable = this.ssrfProtectionConfig.editable;
 
 		return this.settings;
 	}

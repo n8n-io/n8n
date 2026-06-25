@@ -1,5 +1,6 @@
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import type { SsrfProtectionService } from '@n8n/backend-network';
+import type { GlobalConfig, SecurityConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -188,6 +189,14 @@ describe('FrontendService', () => {
 		getPublishedCount: jest.fn().mockResolvedValue(7),
 	});
 
+	const ssrfProtectionService = mock<SsrfProtectionService>({
+		mode: 'log',
+	});
+
+	const ssrfProtectionConfig = mock<SsrfProtectionConfig>({
+		editable: true,
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -216,6 +225,8 @@ describe('FrontendService', () => {
 				ownershipService,
 				aiUsageService,
 				workflowRepository,
+				ssrfProtectionService,
+				ssrfProtectionConfig,
 			),
 			license,
 		};

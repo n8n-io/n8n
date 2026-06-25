@@ -163,6 +163,10 @@ export const defaultSettings: FrontendSettings = {
 	security: {
 		blockFileAccessToN8nFiles: false,
 	},
+	egressProtection: {
+		mode: 'off',
+		editable: false,
+	},
 	aiAssistant: {
 		enabled: false,
 		setup: false,
