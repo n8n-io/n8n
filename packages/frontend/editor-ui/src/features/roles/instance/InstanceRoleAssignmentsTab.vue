@@ -49,8 +49,8 @@ watch(
 	async () => await execute(),
 );
 
-// Tracks the row currently being updated so we can show a spinner and disable it.
-const updatingUserId = ref<string | null>(null);
+// Tracks the rows currently being updated so we can show a spinner and disable them.
+const updatingUserIds = ref(new Set<string>());
 
 // Assignable instance roles (owner already filtered out by the store) drive the dropdown,
 // so custom roles appear alongside the built-in ones.
@@ -74,7 +74,7 @@ function canEditMember(member: RoleMember): boolean {
 }
 
 async function changeRole(userId: string, newRoleName: string) {
-	updatingUserId.value = userId;
+	updatingUserIds.value.add(userId);
 	try {
 		await usersStore.updateGlobalRole({ id: userId, newRoleName });
 		await execute(); // a member whose role changed away drops off this list
@@ -86,7 +86,7 @@ async function changeRole(userId: string, newRoleName: string) {
 	} catch (e) {
 		showError(e, i18n.baseText('roles.instance.assignments.changeRole.error'));
 	} finally {
-		updatingUserId.value = null;
+		updatingUserIds.value.delete(userId);
 	}
 }
 
@@ -175,7 +175,7 @@ onMounted(async () => {
 							v-if="canEditMember(member)"
 							placement="bottom-start"
 							:items="roleOptions"
-							:disabled="updatingUserId === member.userId"
+							:disabled="updatingUserIds.has(member.userId)"
 							data-test-id="instance-role-member-dropdown"
 							@select="(slug: string) => changeRole(member.userId, slug)"
 						>
@@ -183,11 +183,11 @@ onMounted(async () => {
 								<button
 									:class="$style.roleLabel"
 									type="button"
-									:disabled="updatingUserId === member.userId"
+									:disabled="updatingUserIds.has(member.userId)"
 								>
 									<N8nText color="text-dark">{{ roleLabel(member.role) }}</N8nText>
 									<N8nIcon
-										v-if="updatingUserId === member.userId"
+										v-if="updatingUserIds.has(member.userId)"
 										icon="spinner"
 										spin
 										color="text-dark"

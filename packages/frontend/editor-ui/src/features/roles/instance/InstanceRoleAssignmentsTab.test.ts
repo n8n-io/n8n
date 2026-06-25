@@ -156,6 +156,47 @@ describe('InstanceRoleAssignmentsTab', () => {
 		});
 	});
 
+	it('disables each row independently when two role changes overlap', async () => {
+		const deferred = new Map<string, () => void>();
+		usersStore.updateGlobalRole.mockImplementation(
+			async ({ id }: { id: string }) =>
+				await new Promise<void>((resolve) => deferred.set(id, resolve)),
+		);
+		rolesStore.fetchRoleMembers.mockResolvedValue(
+			membersResponse([
+				member({ userId: 'u-a', email: 'a@n8n.io' }),
+				member({ userId: 'u-b', email: 'b@n8n.io' }),
+			]),
+		);
+
+		const { getAllByTestId } = renderComponent({ props: { roleSlug: 'global:admin' } });
+
+		await waitFor(() => expect(getAllByTestId('instance-role-member-row')).toHaveLength(2));
+
+		// The role-label activator button (type="button") carries the per-row disabled state.
+		const activator = (row: HTMLElement) =>
+			row.querySelector('button[type="button"]') as HTMLButtonElement;
+		const rows = () => getAllByTestId('instance-role-member-row');
+
+		// Start both edits; neither updateGlobalRole promise has resolved yet.
+		const dropdowns = getAllByTestId('action-global:member');
+		await userEvent.click(dropdowns[0]);
+		await userEvent.click(dropdowns[1]);
+
+		await waitFor(() => {
+			expect(activator(rows()[0]).disabled).toBe(true);
+			expect(activator(rows()[1]).disabled).toBe(true);
+		});
+
+		// Resolving one edit must re-enable only its own row.
+		deferred.get('u-a')?.();
+		await waitFor(() => expect(activator(rows()[0]).disabled).toBe(false));
+		expect(activator(rows()[1]).disabled).toBe(true);
+
+		deferred.get('u-b')?.();
+		await waitFor(() => expect(activator(rows()[1]).disabled).toBe(false));
+	});
+
 	it('is read-only without user:changeRole', async () => {
 		mockHasPermission.mockReturnValue(false);
 		rolesStore.fetchRoleMembers.mockResolvedValue(membersResponse([member()]));
