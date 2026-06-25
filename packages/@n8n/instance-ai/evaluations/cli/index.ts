@@ -39,6 +39,7 @@ import {
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
+import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import { cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
@@ -202,6 +203,8 @@ async function main(): Promise<void> {
 
 		const totalDuration = Date.now() - startTime;
 		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+		// Gated tiers report an absolute green verdict in place of the baseline comparison.
+		const gate = isGatedTier(args.tier) ? evaluateGate(evaluation, { slugByTestCase }) : undefined;
 		const { jsonPath, prCommentPath } = writeEvalResults(
 			evaluation,
 			totalDuration,
@@ -211,6 +214,7 @@ async function main(): Promise<void> {
 			commitSha,
 			slugByTestCase,
 			ciRunUrl(),
+			gate,
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -220,7 +224,7 @@ async function main(): Promise<void> {
 		const debugHtmlPath = writeRunDebugReport(reportResults);
 		console.log(`LLM debug:  ${debugHtmlPath}`);
 		console.log(
-			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
+			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 	} finally {
 		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
@@ -241,7 +245,7 @@ async function main(): Promise<void> {
 async function runWithLangSmith(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	experimentName: string;
-	outcome: ComparisonOutcome;
+	outcome: ComparisonOutcome | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
 	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
@@ -713,13 +717,17 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			logger,
 		});
 
-		const outcome = await tryRunComparison({
-			lsClient,
-			prExperimentName: experimentResults.experimentName,
-			evaluation,
-			testCasesWithFiles,
-			logger,
-		});
+		// Gated tiers (e.g. `pr`) assert an absolute green bar instead of comparing
+		// to a baseline — skip the comparison entirely.
+		const outcome = isGatedTier(args.tier)
+			? undefined
+			: await tryRunComparison({
+					lsClient,
+					prExperimentName: experimentResults.experimentName,
+					evaluation,
+					testCasesWithFiles,
+					logger,
+				});
 
 		const slugByTestCase = new Map<WorkflowTestCase, string>(
 			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
@@ -1101,6 +1109,7 @@ function writeEvalResults(
 	commitSha: string | undefined,
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
 	runUrl: string | undefined,
+	gate: GateResult | undefined,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1136,6 +1145,8 @@ function writeEvalResults(
 			: undefined,
 		comparisonStatus: outcome?.kind ?? 'not_attempted',
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
+		// Absolute green-gate verdict for curated tiers (undefined for baseline-compared runs).
+		gate,
 		testCases: testCases.map((tc) => ({
 			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
@@ -1184,7 +1195,7 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl }),
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl, gate }),
 	);
 
 	return { jsonPath, prCommentPath };

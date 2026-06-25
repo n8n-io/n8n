@@ -26,6 +26,7 @@ import {
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
+import type { GateCriterion, GateResult, GateUnit } from './gate';
 import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS } from '../binaryChecks/types';
 import type {
@@ -47,6 +48,9 @@ interface FormatOptions {
 	 *  multiple `happy-path` scenarios. When omitted, the breakdown is
 	 *  skipped (no name-only fallback — that lookup was wrong on real data). */
 	slugByTestCase?: Map<WorkflowTestCase, string>;
+	/** Absolute green-gate verdict for curated tiers. When set, the comment renders
+	 *  the gate verdict in place of the baseline comparison. */
+	gate?: GateResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,16 +63,23 @@ export function formatComparisonMarkdown(
 	options: FormatOptions = {},
 ): string {
 	const lines: string[] = [];
-	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
+	const gate = options.gate;
+	const comparison = !gate && outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	lines.push(formatHeading());
 	lines.push('');
 	lines.push(renderRerunCallout(options.runUrl));
 	lines.push('');
-	lines.push(formatTopAlert(outcome));
-	lines.push('');
-	lines.push(formatAggregateBlock(evaluation, comparison));
-	lines.push('');
+	if (gate) {
+		lines.push(formatGateAlertMarkdown(gate));
+		lines.push('');
+		lines.push(...renderGateSummaryMarkdown(gate));
+	} else {
+		lines.push(formatTopAlert(outcome));
+		lines.push('');
+		lines.push(formatAggregateBlock(evaluation, comparison));
+		lines.push('');
+	}
 
 	if (comparison) {
 		const hard = hardRegressions(comparison);
@@ -145,6 +156,95 @@ export function formatComparisonMarkdown(
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Absolute green-gate verdict (curated tiers, no baseline)
+// ---------------------------------------------------------------------------
+
+function gateCriterionLabel(criterion: GateCriterion): string {
+	switch (criterion.kind) {
+		case 'passAtK':
+			return 'pass@k = 100% (every unit passes at least once across k runs)';
+		case 'minAggregatePassRate':
+			return `aggregate pass rate ≥ ${Math.round(criterion.minRate * 100)}%`;
+	}
+}
+
+function gateFailuresCell(unit: GateUnit): string {
+	if (!unit.failureCategories) return '';
+	return Object.entries(unit.failureCategories)
+		.sort((a, b) => b[1] - a[1])
+		.map(([cat, n]) => `${n}× ${cat}`)
+		.join(', ');
+}
+
+function formatGateAlertMarkdown(gate: GateResult): string {
+	const n = gate.units.length;
+	const k = gate.totalRuns;
+	if (gate.green) {
+		return [
+			'> [!TIP]',
+			`> 🟢 All ${n} unit${n === 1 ? '' : 's'} green over ${k} run${k === 1 ? '' : 's'}.`,
+		].join('\n');
+	}
+	const m = gate.failing.length;
+	return [
+		'> [!CAUTION]',
+		`> 🔴 ${m} of ${n} unit${n === 1 ? '' : 's'} not green over ${k} run${k === 1 ? '' : 's'}.`,
+	].join('\n');
+}
+
+function renderGateSummaryMarkdown(gate: GateResult): string[] {
+	const lines: string[] = [];
+	const { passed, total, rate } = gate.aggregate;
+	lines.push(
+		`**Gate**: ${gateCriterionLabel(gate.criterion)} — ${(rate * 100).toFixed(1)}% pass (${passed}/${total} trials over ${gate.units.length} units · k=${gate.totalRuns})`,
+	);
+	if (gate.excluded.length > 0) {
+		lines.push(`_${gate.excluded.length} unit(s) not gated (no judge verdict)._`);
+	}
+	lines.push('');
+	if (gate.failing.length > 0) {
+		lines.push('#### Not green');
+		lines.push('');
+		lines.push('| Unit | Pass | Failures |');
+		lines.push('|---|---|---|');
+		for (const u of gate.failing) {
+			const rateU = u.total > 0 ? Math.round(u.passRate * 100) : 0;
+			lines.push(
+				`| \`${u.slug}\` | ${u.passCount}/${u.total} (${rateU}%) | ${gateFailuresCell(u)} |`,
+			);
+		}
+		lines.push('');
+	}
+	return lines;
+}
+
+function formatTerminalGateLine(gate: GateResult): string {
+	const n = gate.units.length;
+	const k = gate.totalRuns;
+	return gate.green
+		? `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green over ${k} run${k === 1 ? '' : 's'}`
+		: `▶ GATE: ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} NOT green over ${k} run${k === 1 ? '' : 's'}`;
+}
+
+function formatTerminalGateSummary(gate: GateResult): string[] {
+	const lines: string[] = [];
+	const { passed, total, rate } = gate.aggregate;
+	lines.push(TERMINAL_INDENT + `gate: ${gateCriterionLabel(gate.criterion)}`);
+	lines.push(
+		TERMINAL_INDENT +
+			`aggregate: ${(rate * 100).toFixed(1)}% (${passed}/${total} trials, ${gate.units.length} units, k=${gate.totalRuns})`,
+	);
+	if (gate.excluded.length > 0) {
+		lines.push(TERMINAL_INDENT + `${gate.excluded.length} not gated (no judge verdict)`);
+	}
+	for (const u of gate.failing) {
+		const cats = u.failureCategories ? `  [${gateFailuresCell(u)}]` : '';
+		lines.push(TERMINAL_INDENT + `  NOT GREEN  ${u.slug}  ${u.passCount}/${u.total}${cats}`);
+	}
+	return lines;
 }
 
 // Evals fire on PR open/ready, not on push — lead with a one-click re-run prompt.
@@ -702,18 +802,25 @@ export function formatComparisonTerminal(
 	options: FormatOptions = {},
 ): string {
 	const lines: string[] = [];
-	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
+	const gate = options.gate;
+	const comparison = !gate && outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const titleSuffix = options.commitSha ? ` — ${options.commitSha.slice(0, 8)}` : '';
 	const title = `Instance AI Workflow Eval${titleSuffix}`;
 	lines.push(title);
 	lines.push('═'.repeat(title.length));
 
-	lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(outcome));
-	lines.push('');
-
-	lines.push(...formatTerminalAggregate(evaluation, comparison));
-	lines.push('');
+	if (gate) {
+		lines.push(TERMINAL_INDENT + formatTerminalGateLine(gate));
+		lines.push('');
+		lines.push(...formatTerminalGateSummary(gate));
+		lines.push('');
+	} else {
+		lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(outcome));
+		lines.push('');
+		lines.push(...formatTerminalAggregate(evaluation, comparison));
+		lines.push('');
+	}
 
 	lines.push(...formatTerminalPerTestCase(evaluation, options.slugByTestCase));
 
