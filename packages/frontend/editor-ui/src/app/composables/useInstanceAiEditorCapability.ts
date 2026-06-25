@@ -9,13 +9,19 @@ export type InstanceAiEditorActionSource =
 
 /** The credential type (and optional node) the user wants setup guidance for. */
 export interface InstanceAiCredentialContext {
-	name: string;
+	credentialType: string;
 	displayName: string;
 	/** Node the credential is being configured for (the editor scenario). */
 	nodeName?: string;
+	/** Node type the credential is being configured for (the editor scenario). */
+	nodeType?: string;
 	/** The existing credential's id, when one is already selected (vs. creating a
 	 *  new one) — lets the agent act on it directly instead of guessing. */
 	id?: string;
+	/** n8n docs URL for this credential type, when available in the modal. */
+	documentationUrl?: string;
+	/** OAuth redirect/callback URL shown in the modal, when this is an OAuth credential. */
+	oauthRedirectUrl?: string;
 }
 
 /**

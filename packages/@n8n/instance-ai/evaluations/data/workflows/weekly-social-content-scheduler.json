@@ -1,0 +1,65 @@
+{
+	"description": "Weekly social content scheduler: a Monday schedule trigger scrapes fresh content ideas from Hacker News, reads this week's planned ideas from Google Sheets, uses Gemini to write tailored post copy, then fans out to post to X, LinkedIn, and Reddit — each scheduled for a distinct day/time across the week.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every Monday, scrape this week's content ideas from the web, read my planned ideas from a Google Sheet, then use Gemini to write tailored content and schedule them to post throughout the week on X, LinkedIn, and Reddit."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: Schedule Trigger every Monday → scrape fresh ideas from the web → read this week's planned ideas from Google Sheets → Google Gemini drafts tailored copy for each channel → post to X, LinkedIn, and Reddit, staggered across the week. Which source should I scrape, which spreadsheet holds the planned ideas, and what day/time should each platform post go out?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"Scrape the top trending topics from Hacker News, and read the 'Content Ideas' tab in my Marketing spreadsheet. Use Gemini to tailor the copy per platform — concise with hashtags for X, professional for LinkedIn, a discussion-style post for Reddit. Stagger them across the week: X on Monday 9am, LinkedIn on Wednesday 2pm, Reddit on Friday 11am.",
+				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "I'll wire Schedule Trigger (weekly, Monday) → scrape Hacker News → Google Sheets read 'Content Ideas' → Google Gemini drafts platform-tailored copy → three branches posting to X (Mon 9am), LinkedIn (Wed 2pm), and Reddit (Fri 11am). Ready for me to build it?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, go ahead."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"schedule",
+		"gemini",
+		"google-sheets",
+		"web-scrape",
+		"twitter",
+		"linkedin",
+		"reddit",
+		"social"
+	],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The workflow is triggered by a Schedule Trigger node (n8n-nodes-base.scheduleTrigger) configured to run weekly on Mondays.",
+		"A web-scraping step (e.g. an HTTP Request node hitting Hacker News) gathers trending content ideas from the web.",
+		"A Google Sheets node reads this week's planned content ideas.",
+		"An AI agent or llm chain wired to Google Gemini writes tailored post copy.",
+		"The workflow posts to three distinct social platforms: X/Twitter, LinkedIn, and Reddit.",
+		"The three platform posts are staggered across the week with distinct day/time targets (e.g. X Monday, LinkedIn Wednesday, Reddit Friday) rather than all going out at the same moment."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Ideas are scraped and read, Gemini drafts tailored copy, and all three platform posts go out",
+			"dataSetup": "The Schedule Trigger fires on Monday. The Hacker News scrape returns a list of top trending stories (e.g. 'Show HN: an open-source workflow engine', 'The state of no-code in 2026'). The Google Sheets read on the 'Content Ideas' tab returns planned ideas (e.g. 'Product launch recap', 'Customer tip of the week'). Gemini returns tailored post copy for each platform. The X (Twitter), LinkedIn, and Reddit post nodes each return a success response.",
+			"successCriteria": "The workflow executes without errors. Content ideas are gathered from both the web scrape and the Google Sheet, Gemini generates tailored post copy, and a post is sent to all three platforms — X, LinkedIn, and Reddit. Each platform post is configured for a distinct day/time across the week (e.g. X Monday 9am, LinkedIn Wednesday 2pm, Reddit Friday 11am). None of the three platform branches is skipped."
+		},
+		{
+			"name": "platform-tailored-content",
+			"description": "Generated copy is tailored to each platform's format",
+			"dataSetup": "The Schedule Trigger fires on Monday. The Hacker News scrape and Google Sheets read both return content ideas. Gemini returns platform-specific drafts: a short post with hashtags for X, a professional post for LinkedIn, and a longer discussion-style post for Reddit. The X, LinkedIn, and Reddit post nodes each return a success response.",
+			"successCriteria": "The workflow executes without errors. The copy sent to each platform reflects platform-appropriate tailoring rather than identical text — the X post is concise (and may include hashtags), the LinkedIn post reads professionally, and the Reddit post is a longer discussion-style post. All three posts are dispatched to their respective platforms."
+		}
+	]
+}

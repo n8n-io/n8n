@@ -1,0 +1,72 @@
+{
+	"description": "Flight deal monitor: daily schedule searches business-class BER→LAX flights ~3 months out",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Scrape flights 3 months in advance traveling from the first week of the month to the last week of the month, business class, Berlin (BER) to Los Angeles (LAX). Find a direct flight for less than 2000 euros. Log every queried entry on every run, send an alert email if a flight is found under budget, and every 7 days if no flight was found within budget send a weekly summary email of the prices."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: daily Schedule Trigger → compute search dates (~3 months out, first-to-last week of the month) → search BER→LAX business-class flights (e.g. SerpAPI Google Flights via HTTP) → log every query to a Data Table → if a direct flight is under €2000, send a Gmail deal alert; plus a weekly Schedule Trigger → read this week's logged checks from the Data Table → if none were in budget, send a Gmail weekly price summary. Which email address should receive the alerts and summary, and do you have a SerpAPI key or should I use a placeholder?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "I'll wire a daily branch (Schedule → compute dates → flight search → log to Data Table → budget/direct check → Gmail alert) and a weekly branch (Schedule every 7 days → read week's log → no-deals check → Gmail summary). Ready for me to build it?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, go ahead."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"schedule",
+		"http-request",
+		"data-table",
+		"code",
+		"conditional",
+		"gmail",
+		"flight-search",
+		"multi-branch"
+	],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The workflow includes a daily Schedule Trigger node (n8n-nodes-base.scheduleTrigger) that kicks off the flight search run.",
+		"Computes outbound/return search dates roughly three months ahead, covering travel from the first week of the month through the last week of the month.",
+		"An HTTP Request node (or equivalent flight-search integration) queries business-class flights from Berlin (BER) to Los Angeles (LAX).",
+		"Every search run is logged to a Data Table before or alongside the alerting logic.",
+		"A decision node checks for a direct flight priced under €2000.",
+		"When a qualifying deal is found, the workflow sends a Gmail alert email about the flight.",
+		"The workflow includes a separate weekly Schedule Trigger (every 7 days) that reads the past week's logged searches from the Data Table.",
+		"When no budget-friendly direct flights were logged that week, the weekly branch sends a Gmail summary email of the prices checked."
+	],
+	"executionScenarios": [
+		{
+			"name": "daily-qualifying-deal-found",
+			"description": "Daily run finds a direct business BER→LAX flight under €2000",
+			"dataSetup": "The daily Schedule Trigger fires. Departure in the first week of the target month and a return in the last week. The flight-search request returns at least one direct business-class BER→LAX option priced at €1850 plus higher-priced alternatives. The Data Table insert/update returns success. The budget/direct decision node routes to the qualifying branch. The Gmail deal-alert node returns success.",
+			"successCriteria": "The workflow executes without errors on the daily deal-alert path only: daily Schedule Trigger → compute dates → flight search (BER→LAX, business class) → log query to Data Table → budget/direct decision → Gmail deal alert. A row is written to the Data Table for this search. A Gmail alert is sent mentioning a direct BER→LAX business-class flight under €2000 (e.g. €1850). The weekly summary branch and its Gmail node are not executed."
+		},
+		{
+			"name": "daily-no-qualifying-deal",
+			"description": "Daily run finds flights but none are direct and under €2000",
+			"dataSetup": "The daily Schedule Trigger fires. The flight-search HTTP request returns BER→LAX business-class options, but the cheapest direct fare is €2400 and connecting options are also above €2000. The Data Table insert/update returns success. The budget/direct decision node routes to the non-qualifying branch (no deal).",
+			"successCriteria": "The workflow executes without errors on the daily log-only path: daily Schedule Trigger → compute dates → flight search → log query to Data Table → budget/direct decision. A row is written to the Data Table recording the search and prices. No Gmail deal-alert node is executed. The weekly summary branch is not executed."
+		},
+		{
+			"name": "weekly-summary-no-deals",
+			"description": "Weekly run sends a summary when no in-budget deals were logged that week",
+			"dataSetup": "The weekly Schedule Trigger fires every 7 days. The Data Table read returns several logged searches from the past week — e.g. three daily checks with lowest direct business BER→LAX prices of €2400, €2350, and €2480 — and none under €2000. The 'no deals in budget' decision node routes to the summary branch. The Gmail weekly-summary node returns success.",
+			"successCriteria": "The workflow executes without errors on the weekly summary path only: weekly Schedule Trigger → read this week's Data Table entries → decision branch (no-in-budget) → Gmail weekly summary. A Gmail summary email is sent covering the week's checked prices. The daily flight-search branch and deal-alert Gmail node are not executed."
+		}
+	]
+}

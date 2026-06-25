@@ -12,7 +12,7 @@ export function createExecutionRef(workflowId: string, executionId: string): Exe
 
 export type WorkflowSnapshot = Pick<
 	IWorkflowBase,
-	'id' | 'name' | 'nodes' | 'connections' | 'settings'
+	'id' | 'name' | 'nodes' | 'connections' | 'settings' | 'nodeGroups'
 >;
 
 export type ExecutionDataPayload = {
