@@ -11,7 +11,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
+import { GlobalConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -360,12 +360,11 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 @Service()
 export class InstanceAiService {
 	private _mcpClientManager?: McpClientManager;
-	private readonly _ssrfProtectionConfig: SsrfProtectionConfig;
 	private readonly _ssrfProtectionService: SsrfProtectionService;
 	private get mcpClientManager(): McpClientManager {
 		if (!this._mcpClientManager) {
 			this._mcpClientManager = new McpClientManager(
-				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
+				this._ssrfProtectionService.isActive() ? this._ssrfProtectionService : undefined,
 			);
 		}
 		return this._mcpClientManager;
@@ -478,7 +477,6 @@ export class InstanceAiService {
 		private readonly userRepository: UserRepository,
 		private readonly temporaryWorkflowService: InstanceAiTemporaryWorkflowService,
 		private readonly errorReporter: ErrorReporter,
-		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
@@ -566,7 +564,6 @@ export class InstanceAiService {
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
-		this._ssrfProtectionConfig = ssrfProtectionConfig;
 		this._ssrfProtectionService = ssrfProtectionService;
 
 		// When the admin changes MCP settings, tear down existing clients so the

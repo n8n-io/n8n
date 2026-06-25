@@ -1,7 +1,6 @@
 import type { InstanceAiMcpUpdateConnectionRequestDto } from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -132,7 +131,6 @@ export class InstanceAiMcpRegistryService {
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
@@ -246,11 +244,7 @@ export class InstanceAiMcpRegistryService {
 		const slugCounts = new Map<string, number>();
 
 		// One proxy-aware, SSRF-protected transport shared across all resolved MCP connections.
-		const aiMcpFetch = createAiMcpFetch(
-			this.outboundHttp,
-			this.ssrfConfig,
-			this.ssrfProtectionService,
-		);
+		const aiMcpFetch = createAiMcpFetch(this.outboundHttp, this.ssrfProtectionService);
 
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {

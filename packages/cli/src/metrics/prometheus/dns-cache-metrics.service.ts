@@ -1,5 +1,5 @@
-import { InMemoryDnsCache } from '@n8n/backend-network';
-import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
+import { InMemoryDnsCache, SsrfProtectionService } from '@n8n/backend-network';
+import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
@@ -20,11 +20,11 @@ export class PrometheusDnsCacheMetricsService implements PrometheusMetricsCollec
 	constructor(
 		private readonly dnsCache: InMemoryDnsCache,
 		private readonly config: PrometheusMetricsConfig,
-		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	get enabled(): boolean {
-		return this.config.includeDnsCacheMetrics && this.ssrfConfig.enabled;
+		return this.config.includeDnsCacheMetrics && this.ssrfProtectionService.isActive();
 	}
 
 	init() {

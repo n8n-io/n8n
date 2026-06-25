@@ -2,7 +2,6 @@ import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfBlockedIpError } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -20,7 +19,6 @@ describe('WorkflowsController', () => {
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
 	const logger = mock<Logger>();
-	const ssrfConfig = { enabled: false } as SsrfProtectionConfig;
 	const ssrfProtectionService = mock<SsrfProtectionService>();
 	const httpClient = mock<HttpRequestClient>();
 	const outboundHttp = mock<OutboundHttp>();
@@ -29,11 +27,10 @@ describe('WorkflowsController', () => {
 	beforeEach(() => {
 		controller.projectService = projectService;
 		controller.logger = logger;
-		controller.ssrfConfig = ssrfConfig;
 		controller.ssrfProtectionService = ssrfProtectionService;
 		controller.outboundHttp = outboundHttp;
-		ssrfConfig.enabled = false;
 		jest.clearAllMocks();
+		ssrfProtectionService.isActive.mockReturnValue(false);
 		outboundHttp.requests.mockReturnValue(httpClient);
 	});
 
@@ -135,7 +132,7 @@ describe('WorkflowsController', () => {
 
 		describe('when URL protection is enabled', () => {
 			beforeEach(() => {
-				ssrfConfig.enabled = true;
+				ssrfProtectionService.isActive.mockReturnValue(true);
 				projectService.getProjectWithScope.mockResolvedValue({} as any);
 			});
 
@@ -182,7 +179,7 @@ describe('WorkflowsController', () => {
 
 		describe('when URL protection is disabled', () => {
 			it('should create the client with SSRF disabled', async () => {
-				ssrfConfig.enabled = false;
+				ssrfProtectionService.isActive.mockReturnValue(false);
 				projectService.getProjectWithScope.mockResolvedValue({} as any);
 				const mockWorkflowData = { nodes: [], connections: {} };
 				requestMock.mockResolvedValue(mockWorkflowData);

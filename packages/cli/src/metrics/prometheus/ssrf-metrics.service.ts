@@ -1,4 +1,4 @@
-import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
+import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
@@ -18,11 +18,10 @@ export class PrometheusSsrfMetricsService implements PrometheusMetricsCollector 
 	constructor(
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly config: PrometheusMetricsConfig,
-		private readonly ssrfConfig: SsrfProtectionConfig,
 	) {}
 
 	get enabled(): boolean {
-		return this.config.includeSsrfMetrics && this.ssrfConfig.enabled;
+		return this.config.includeSsrfMetrics && this.ssrfProtectionService.isActive();
 	}
 
 	init() {

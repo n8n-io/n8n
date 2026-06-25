@@ -1,5 +1,4 @@
 import type { CustomFetch, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 
 const DEFAULT_AI_REQUEST_TIMEOUT_MS = Time.hours.toMilliseconds;
@@ -51,13 +50,12 @@ export function createAiProxyFetch(outboundHttp: OutboundHttp): CustomFetch {
  */
 export function createAiMcpFetch(
 	outboundHttp: OutboundHttp,
-	ssrfConfig: SsrfProtectionConfig,
 	ssrfProtectionService: SsrfProtectionService,
 ): CustomFetch {
 	return outboundHttp
 		.transport({
 			proxy: 'env',
-			ssrf: ssrfConfig.enabled ? ssrfProtectionService : 'disabled',
+			ssrf: ssrfProtectionService.isActive() ? ssrfProtectionService : 'disabled',
 			timeouts: {
 				headersTimeout: AI_REQUEST_TIMEOUT_MS,
 				bodyTimeout: AI_REQUEST_TIMEOUT_MS,

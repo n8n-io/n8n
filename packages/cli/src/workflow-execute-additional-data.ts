@@ -3,7 +3,7 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import type { ServiceIdentifier } from '@n8n/di';
@@ -769,10 +769,11 @@ export async function getBase({
 			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).getRunnerStatus(taskType),
 	};
 
-	const ssrfConfig = Container.get(SsrfProtectionConfig);
-	if (ssrfConfig.enabled) {
-		additionalData.ssrfBridge = Container.get(SsrfProtectionService);
-	}
+	// Attach the bridge unconditionally: it self-gates on the effective mode (a
+	// no-op passthrough when off). `additionalData` is built once per execution, so
+	// gating here would freeze the mode for the whole run; letting the bridge decide
+	// per call means a runtime mode change applies to in-flight executions too.
+	additionalData.ssrfBridge = Container.get(SsrfProtectionService);
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
 		// @ts-expect-error Adding an index signature `[key: string]: unknown`

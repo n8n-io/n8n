@@ -16,7 +16,6 @@ import {
 	type ConfigValidationError,
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -264,7 +263,6 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
-		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
@@ -631,11 +629,7 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: createAiMcpFetch(
-					this.outboundHttp,
-					this.ssrfConfig,
-					this.ssrfProtectionService,
-				),
+				proxyFetch: createAiMcpFetch(this.outboundHttp, this.ssrfProtectionService),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];

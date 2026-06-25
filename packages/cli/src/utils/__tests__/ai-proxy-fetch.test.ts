@@ -1,5 +1,4 @@
 import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import {
@@ -34,10 +33,10 @@ describe('AI outbound fetch helpers', () => {
 		transport.asCustomFetch.mockReturnValue(fetch);
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.transport.mockReturnValue(transport);
-		const ssrfConfig = { enabled: true } as SsrfProtectionConfig;
 		const ssrfProtectionService = mock<SsrfProtectionService>();
+		ssrfProtectionService.isActive.mockReturnValue(true);
 
-		expect(createAiMcpFetch(outboundHttp, ssrfConfig, ssrfProtectionService)).toBe(fetch);
+		expect(createAiMcpFetch(outboundHttp, ssrfProtectionService)).toBe(fetch);
 
 		expect(outboundHttp.transport).toHaveBeenCalledWith({
 			proxy: 'env',
@@ -55,10 +54,10 @@ describe('AI outbound fetch helpers', () => {
 		transport.asCustomFetch.mockReturnValue(fetch);
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.transport.mockReturnValue(transport);
-		const ssrfConfig = { enabled: false } as SsrfProtectionConfig;
 		const ssrfProtectionService = mock<SsrfProtectionService>();
+		ssrfProtectionService.isActive.mockReturnValue(false);
 
-		expect(createAiMcpFetch(outboundHttp, ssrfConfig, ssrfProtectionService)).toBe(fetch);
+		expect(createAiMcpFetch(outboundHttp, ssrfProtectionService)).toBe(fetch);
 
 		expect(outboundHttp.transport).toHaveBeenCalledWith({
 			proxy: 'env',

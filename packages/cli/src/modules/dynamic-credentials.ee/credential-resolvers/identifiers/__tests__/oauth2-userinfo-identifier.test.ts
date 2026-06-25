@@ -1,6 +1,5 @@
 import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 
@@ -46,8 +45,7 @@ describe('OAuth2UserInfoIdentifier', () => {
 			logger,
 			cache,
 			outboundHttp,
-			mock<SsrfProtectionService>(),
-			mock<SsrfProtectionConfig>({ enabled: true }),
+			mock<SsrfProtectionService>({ isActive: () => true }),
 		);
 		identifier = new OAuth2UserInfoIdentifier(logger, cache, httpClient);
 		cache.get.mockResolvedValue(undefined);

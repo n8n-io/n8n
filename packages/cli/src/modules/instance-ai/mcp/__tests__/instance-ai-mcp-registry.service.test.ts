@@ -5,7 +5,6 @@ import type {
 	OutboundHttp,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -92,8 +91,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			oauthService,
 			eventService,
 			outboundHttp,
-			mock<SsrfProtectionConfig>({ enabled: true }),
-			mock<SsrfProtectionService>(),
+			mock<SsrfProtectionService>({ isActive: () => true }),
 		);
 
 		return {
