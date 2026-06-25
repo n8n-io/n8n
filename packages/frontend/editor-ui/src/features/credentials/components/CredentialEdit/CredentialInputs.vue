@@ -16,9 +16,13 @@ type Props = {
 	credentialData: ICredentialDataDecryptedObject;
 	documentationUrl: string;
 	showValidationWarnings?: boolean;
+	isReadOnly?: boolean;
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	showValidationWarnings: false,
+	isReadOnly: false,
+});
 
 const { check: envFeatureFlag } = useEnvFeatureFlag();
 
@@ -65,6 +69,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:node-values="credentialDataValues"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
+				:is-read-only="isReadOnly"
 				:label="{ size: 'medium' }"
 				event-source="credentials"
 				@update="valueChanged"
