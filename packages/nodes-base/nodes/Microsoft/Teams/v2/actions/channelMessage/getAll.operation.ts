@@ -39,7 +39,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			'GET',
 			`/beta/teams/${teamId}/channels/${channelId}/messages`,
 			{},
+			{
+				$top: limit,
+			},
 		);
-		return responseData.splice(0, limit);
+		return responseData;
 	}
 }
