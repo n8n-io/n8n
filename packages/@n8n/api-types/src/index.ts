@@ -400,6 +400,8 @@ export type {
 	InstanceAiModelCredential,
 	InstanceAiSandboxProvider,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolFilterResponse,
+	InstanceAiMcpConnectionToolResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
