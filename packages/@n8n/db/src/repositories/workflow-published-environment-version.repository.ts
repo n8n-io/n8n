@@ -53,7 +53,6 @@ export class WorkflowPublishedEnvironmentVersionRepository extends Repository<Wo
 		const records = await this.find({
 			where: { workflowId },
 			relations: ['environment'],
-			select: ['environmentId', 'publishedVersionId'],
 		});
 		return records.map((r) => ({
 			environmentId: r.environmentId,

@@ -544,6 +544,8 @@ export class WorkflowsController {
 	@Get('/:workflowId/published-env-versions')
 	@ProjectScope('workflow:read')
 	async getPublishedEnvVersions(
+		_req: AuthenticatedRequest,
+		_res: express.Response,
 		@Param('workflowId') workflowId: string,
 	): Promise<Record<string, string>> {
 		return await this.workflowPublishedEnvVersionRepository.getPublishedVersionsForWorkflow(
