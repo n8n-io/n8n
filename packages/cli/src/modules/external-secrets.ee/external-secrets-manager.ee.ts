@@ -308,8 +308,10 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	private async reloadProvidersFromConnectionsRepo(): Promise<void> {
-		this.logger.debug('Initializing external secrets with project-based providers');
 		const connections = await this.secretsProviderConnectionRepository.findAll();
+		this.logger.debug('Reloading external secrets provider connections from repository', {
+			connectionCount: connections.length,
+		});
 
 		for (const connection of connections) {
 			if (!connection.isEnabled) {
@@ -355,10 +357,17 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		providerType: string,
 		config: SecretsProviderSettings,
 	): Promise<void> {
+		this.logger.debug('Adding external secrets provider connection', {
+			providerKey,
+			providerType,
+		});
+
 		const result = await this.providerLifecycle.initialize(providerType, config);
 
 		if (!result.success || !result.provider) {
-			this.logger.error(`Failed to initialize provider ${providerKey}`, {
+			this.logger.error('Failed to initialize external secrets provider connection', {
+				providerKey,
+				providerType,
 				error: result.error,
 			});
 			return;
@@ -379,10 +388,17 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		providerType: string,
 		config: SecretsProviderSettings,
 	): Promise<void> {
+		this.logger.debug('Replacing external secrets provider connection', {
+			providerKey,
+			providerType,
+		});
+
 		const result = await this.providerLifecycle.initialize(providerType, config);
 
 		if (!result.success || !result.provider) {
-			this.logger.error(`Failed to initialize provider ${providerKey}`, {
+			this.logger.error('Failed to initialize replacement external secrets provider connection', {
+				providerKey,
+				providerType,
 				error: result.error,
 			});
 			await this.removeProviderConnection(providerKey);
@@ -392,7 +408,9 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		if (config.connected) {
 			const connectResult = await this.providerLifecycle.connect(result.provider);
 			if (!connectResult.success) {
-				this.logger.error(`Failed to connect provider ${providerKey}`, {
+				this.logger.error('Failed to connect replacement external secrets provider connection', {
+					providerKey,
+					providerType,
 					error: connectResult.error,
 				});
 				await this.providerLifecycle.disconnect(result.provider);
@@ -405,16 +423,22 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		this.providerRegistry.add(providerKey, result.provider);
 
 		if (existingProvider) {
-			this.logger.debug(`Tearing down provider connection: ${providerKey}`);
+			this.logger.debug('Disconnecting previous external secrets provider connection', {
+				providerKey,
+				providerType,
+			});
 			await this.providerLifecycle.disconnect(existingProvider);
 		}
 	}
 
 	private async removeProviderConnection(providerKey: string): Promise<void> {
+		this.logger.debug('Removing external secrets provider connection', {
+			providerKey,
+		});
+
 		this.retryManager.cancelRetry(providerKey);
 		const existingProvider = this.providerRegistry.get(providerKey);
 		if (existingProvider) {
-			this.logger.debug(`Tearing down provider connection: ${providerKey}`);
 			await this.providerLifecycle.disconnect(existingProvider);
 			this.providerRegistry.remove(providerKey);
 		}
