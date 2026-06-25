@@ -81,16 +81,29 @@ async function runProvider(
 
 /** Environment variables (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN). */
 export async function resolveEnvironmentViaSdk(): Promise<SystemCredentials | null> {
-	if (!getEnv('AWS_ACCESS_KEY_ID') || !getEnv('AWS_SECRET_ACCESS_KEY')) return null;
-	const { fromEnv } = await import('@aws-sdk/credential-providers');
-	return await runProvider(fromEnv());
+	const accessKeyId = getEnv('AWS_ACCESS_KEY_ID')?.trim();
+	const secretAccessKey = getEnv('AWS_SECRET_ACCESS_KEY')?.trim();
+	if (!accessKeyId || !secretAccessKey) return null;
+	// Read and trim directly — fromEnv() returns process.env values verbatim (no trim),
+	// which breaks SigV4 signing when keys are injected with trailing newlines.
+	return { accessKeyId, secretAccessKey, sessionToken: getEnv('AWS_SESSION_TOKEN')?.trim() };
 }
 
 /** EKS IRSA web-identity (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE → STS). */
 export async function resolveWebIdentityViaSdk(region?: string): Promise<SystemCredentials | null> {
 	if (!getEnv('AWS_ROLE_ARN') || !getEnv('AWS_WEB_IDENTITY_TOKEN_FILE')) return null;
 	const { fromTokenFile } = await import('@aws-sdk/credential-providers');
-	return await runProvider(fromTokenFile(region ? { clientConfig: { region } } : {}));
+	const { NodeHttpHandler } = await import('@smithy/node-http-handler');
+	// Pin to single-attempt + 2 s timeout to match the other remote resolvers.
+	return await runProvider(
+		fromTokenFile({
+			clientConfig: {
+				...(region ? { region } : {}),
+				maxAttempts: 1,
+				requestHandler: new NodeHttpHandler({ requestTimeout: 2000, connectionTimeout: 2000 }),
+			},
+		}),
+	);
 }
 
 /** EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI + token). */

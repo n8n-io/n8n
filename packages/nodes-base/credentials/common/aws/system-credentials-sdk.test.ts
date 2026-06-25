@@ -24,6 +24,11 @@ const {
 	};
 });
 
+const { MockNodeHttpHandler } = vi.hoisted(() => ({
+	MockNodeHttpHandler: vi.fn(),
+}));
+
+vi.mock('@smithy/node-http-handler', () => ({ NodeHttpHandler: MockNodeHttpHandler }));
 vi.mock('@n8n/di', () => ({ Container: mockContainer }));
 vi.mock('@n8n/config', () => ({ SecurityConfig: MockSecurityConfig }));
 vi.mock('@aws-sdk/credential-providers', () => ({
@@ -115,22 +120,27 @@ describe('system-credentials-sdk', () => {
 
 	describe('per-source SDK resolvers', () => {
 		describe('environment', () => {
-			it('resolves via fromEnv when both keys are present', async () => {
-				mockEnvGetter.mockImplementation((key: string) =>
-					key === 'AWS_ACCESS_KEY_ID' || key === 'AWS_SECRET_ACCESS_KEY' ? 'set' : undefined,
-				);
+			it('returns trimmed credentials when both keys are present', async () => {
+				mockEnvGetter.mockImplementation((key: string) => {
+					if (key === 'AWS_ACCESS_KEY_ID') return 'AKIAIOSFODNN7EXAMPLE\n';
+					if (key === 'AWS_SECRET_ACCESS_KEY') return 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n';
+					if (key === 'AWS_SESSION_TOKEN') return 'token-value\n';
+					return undefined;
+				});
 
 				const result = await resolveEnvironmentViaSdk();
-				expect(result).toEqual(SDK_IDENTITY);
-				expect(fromEnv).toHaveBeenCalledTimes(1);
+				expect(result).toEqual({
+					accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+					secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+					sessionToken: 'token-value',
+				});
 			});
 
-			it('returns null without calling the SDK when keys are missing', async () => {
+			it('returns null when keys are missing', async () => {
 				mockEnvGetter.mockReturnValue(undefined);
 
 				const result = await resolveEnvironmentViaSdk();
 				expect(result).toBeNull();
-				expect(fromEnv).not.toHaveBeenCalled();
 			});
 		});
 
@@ -144,13 +154,25 @@ describe('system-credentials-sdk', () => {
 			it('resolves via fromTokenFile when IRSA env is present', async () => {
 				const result = await resolveWebIdentityViaSdk();
 				expect(result).toEqual(SDK_IDENTITY);
-				expect(fromTokenFile).toHaveBeenCalledWith({});
+				expect(MockNodeHttpHandler).toHaveBeenCalledWith({
+					requestTimeout: 2000,
+					connectionTimeout: 2000,
+				});
+				expect(fromTokenFile).toHaveBeenCalledWith({
+					clientConfig: { maxAttempts: 1, requestHandler: expect.any(Object) },
+				});
 			});
 
 			it('passes region to the STS client config when provided', async () => {
 				const result = await resolveWebIdentityViaSdk('eu-west-1');
 				expect(result).toEqual(SDK_IDENTITY);
-				expect(fromTokenFile).toHaveBeenCalledWith({ clientConfig: { region: 'eu-west-1' } });
+				expect(MockNodeHttpHandler).toHaveBeenCalledWith({
+					requestTimeout: 2000,
+					connectionTimeout: 2000,
+				});
+				expect(fromTokenFile).toHaveBeenCalledWith({
+					clientConfig: { region: 'eu-west-1', maxAttempts: 1, requestHandler: expect.any(Object) },
+				});
 			});
 
 			it('returns null without calling the SDK when IRSA env is absent', async () => {
@@ -263,12 +285,19 @@ describe('system-credentials-sdk', () => {
 		});
 
 		it('returns the first resolvable source with its source label', async () => {
-			mockEnvGetter.mockImplementation((key: string) =>
-				key === 'AWS_ACCESS_KEY_ID' || key === 'AWS_SECRET_ACCESS_KEY' ? 'set' : undefined,
-			);
+			mockEnvGetter.mockImplementation((key: string) => {
+				if (key === 'AWS_ACCESS_KEY_ID') return 'AKIAIOSFODNN7EXAMPLE';
+				if (key === 'AWS_SECRET_ACCESS_KEY') return 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
+				return undefined;
+			});
 
 			const result = await getSystemCredentials('us-east-1');
-			expect(result).toEqual({ ...SDK_IDENTITY, source: 'environment' });
+			expect(result).toEqual({
+				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+				secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+				sessionToken: undefined,
+				source: 'environment',
+			});
 		});
 
 		it('preserves source order, falling through unconfigured sources to EC2', async () => {
@@ -288,7 +317,9 @@ describe('system-credentials-sdk', () => {
 
 			const result = await getSystemCredentials('us-east-1');
 			expect(result).toEqual({ ...SDK_IDENTITY, source: 'roleForServiceAccount' });
-			expect(fromTokenFile).toHaveBeenCalledWith({ clientConfig: { region: 'us-east-1' } });
+			expect(fromTokenFile).toHaveBeenCalledWith({
+				clientConfig: { region: 'us-east-1', maxAttempts: 1, requestHandler: expect.any(Object) },
+			});
 		});
 	});
 });
