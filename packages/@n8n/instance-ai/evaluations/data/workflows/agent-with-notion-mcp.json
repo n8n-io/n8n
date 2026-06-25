@@ -7,6 +7,7 @@
 	],
 	"complexity": "medium",
 	"tags": ["build", "agent", "ai-tool", "mcp-registry", "notion"],
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",
