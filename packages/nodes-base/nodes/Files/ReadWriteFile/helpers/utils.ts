@@ -35,10 +35,11 @@ export function errorMapper(
 }
 
 export function escapeSpecialCharacters(str: string) {
-	// Escape parentheses and square brackets (glob metacharacters)
-	str = str.replace(/[()[\]]/g, '\\$&');
-
-	return str;
+  // Return the string as-is since we're passing it to a glob library
+  // and we want glob metacharacters to be interpreted correctly
+  // Users who need to match literal metacharacters should use proper glob escaping
+  // (e.g., [[]] to match a literal [)
+  return str;
 }
 
 export function normalizeFileSelector(fileSelectorRaw: string) {
