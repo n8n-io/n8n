@@ -5,7 +5,9 @@ import { harmCategories, harmThresholds } from './safety-options';
 
 export function getAdditionalOptions({
 	supportsThinkingBudget,
-}: { supportsThinkingBudget: boolean }) {
+}: {
+	supportsThinkingBudget: boolean;
+}) {
 	const baseOptions: INodeProperties = {
 		displayName: 'Options',
 		name: 'options',
