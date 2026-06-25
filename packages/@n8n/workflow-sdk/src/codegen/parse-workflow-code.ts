@@ -248,6 +248,33 @@ function readAndFixSingleQuotedString(code: string, start: number): [string, num
 					result += "\\')";
 					i += 2;
 					break;
+				} else if (code[i] === "'") {
+					// Apostrophe inside the node name (e.g. "Bob's Node") — escape it too.
+					result += "\\'";
+					i++;
+				} else {
+					result += code[i];
+					i++;
+				}
+			}
+			continue;
+		}
+
+		// Check for unescaped bracket-access key, e.g. .json['my key']
+		// Same problem as $('...'): the inner single quotes break the outer string.
+		if (code[i] === '[' && code[i + 1] === "'") {
+			result += "[\\'";
+			i += 2;
+
+			// Find the closing ']
+			while (i < code.length) {
+				if (code[i] === '\\' && i + 1 < code.length) {
+					result += code[i] + code[i + 1];
+					i += 2;
+				} else if (code[i] === "'" && code[i + 1] === ']') {
+					result += "\\']";
+					i += 2;
+					break;
 				} else {
 					result += code[i];
 					i++;
