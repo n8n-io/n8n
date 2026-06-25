@@ -4,6 +4,7 @@ import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWork
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
 import { isStringArrayRecord } from '@/app/utils/objectUtils';
+import { applyOffset } from '../canvas.utils';
 import {
 	aggregateNodeGroupLayoutOffsets,
 	computeNodeGroupLayoutPushes,
@@ -264,7 +265,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 					if (!position) continue;
 					bakedMoves.push({
 						id: nodeId,
-						position: { x: position[0] + offset.x, y: position[1] + offset.y },
+						position: applyOffset(position, offset),
 					});
 				}
 			}
@@ -287,10 +288,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			return [
 				{
 					id: nodeId,
-					position: {
-						x: position[0] + offset.x,
-						y: position[1] + offset.y,
-					},
+					position: applyOffset(position, offset),
 				},
 			];
 		});
