@@ -826,7 +826,11 @@ export class JiraTrigger implements INodeType {
 
 			try {
 				httpQueryAuth = await this.getCredentials<ICredentialDataDecryptedObject>('httpQueryAuth');
-			} catch (error) {}
+			} catch (error) {
+				this.logger.warn('Failed to retrieve httpQueryAuth credentials for Jira webhook', {
+					error: error instanceof Error ? error.message : error,
+				});
+			}
 
 			if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {
 				response

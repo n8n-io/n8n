@@ -25,72 +25,128 @@ async function parseJSONBody(
 	if (body.acl) {
 		try {
 			body.acl = JSON.parse(body.acl as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket ACL as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.billing) {
 		try {
 			body.billing = JSON.parse(body.billing as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket billing as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.cors) {
 		try {
 			body.cors = JSON.parse(body.cors as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket CORS as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.customPlacementConfig) {
 		try {
 			body.customPlacementConfig = JSON.parse(body.customPlacementConfig as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket customPlacementConfig as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.dataLocations) {
 		try {
 			body.dataLocations = JSON.parse(body.dataLocations as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket dataLocations as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.defaultObjectAcl) {
 		try {
 			body.defaultObjectAcl = JSON.parse(body.defaultObjectAcl as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket defaultObjectAcl as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.encryption) {
 		try {
 			body.encryption = JSON.parse(body.encryption as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket encryption as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.iamConfiguration) {
 		try {
 			body.iamConfiguration = JSON.parse(body.iamConfiguration as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket iamConfiguration as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.labels) {
 		try {
 			body.labels = JSON.parse(body.labels as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket labels as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.lifecycle) {
 		try {
 			body.lifecycle = JSON.parse(body.lifecycle as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket lifecycle as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.logging) {
 		try {
 			body.logging = JSON.parse(body.logging as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket logging as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.retentionPolicy) {
 		try {
 			body.retentionPolicy = JSON.parse(body.retentionPolicy as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket retentionPolicy as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.versioning) {
 		try {
 			body.versioning = JSON.parse(body.versioning as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket versioning as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 	if (body.website) {
 		try {
 			body.website = JSON.parse(body.website as string);
-		} catch (error) {}
+		} catch (error) {
+			console.warn('Failed to parse Google Cloud Storage bucket website as JSON', {
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 	}
 
 	requestOptions.body = Object.assign(requestOptions.body, body);
