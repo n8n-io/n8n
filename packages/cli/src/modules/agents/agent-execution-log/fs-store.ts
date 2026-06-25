@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { JsonFileStore } from '@/storage/json-file-store';
@@ -59,6 +60,16 @@ export class AgentExecutionLogFsStore implements AgentExecutionLogStore {
 
 	async delete(ref: AgentExecutionLogRef | AgentExecutionLogRef[]): Promise<void> {
 		await this.store.delete(ref);
+	}
+
+	async deleteByAgentId(agentId: string): Promise<void> {
+		await fs.rm(
+			path.join(this.storageConfig.storagePath, 'agents', this.encodePathSegment(agentId)),
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	}
 
 	private resolveLogDir({ agentId, threadId, executionId }: AgentExecutionLogRef) {

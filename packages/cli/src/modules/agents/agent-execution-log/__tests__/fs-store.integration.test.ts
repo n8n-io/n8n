@@ -73,6 +73,20 @@ describe('AgentExecutionLogFsStore', () => {
 		await expect(store.read(ref)).resolves.toBeNull();
 	});
 
+	it('deletes all execution logs for an agent', async () => {
+		const secondRef = { ...ref, threadId: 'thread-2', executionId: 'execution-2' };
+		const otherAgentRef = { ...ref, agentId: 'agent-2', executionId: 'execution-3' };
+		await store.write(ref, payload);
+		await store.write(secondRef, payload);
+		await store.write(otherAgentRef, payload);
+
+		await store.deleteByAgentId(ref.agentId);
+
+		await expect(store.read(ref)).resolves.toBeNull();
+		await expect(store.read(secondRef)).resolves.toBeNull();
+		await expect(store.read(otherAgentRef)).resolves.toEqual({ ...payload, version: 1 });
+	});
+
 	it('reports and drops corrupted payloads during batch reads', async () => {
 		const badRef = { ...ref, executionId: 'bad' };
 		await store.write(ref, payload);

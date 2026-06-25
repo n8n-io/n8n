@@ -27,10 +27,6 @@ describe('AgentExecutionLogPersistence', () => {
 		persistence = new AgentExecutionLogPersistence(fsStore);
 	});
 
-	it('exposes the filesystem write location before writing', () => {
-		expect(persistence.getWriteStorageLocation()).toBe('fs');
-	});
-
 	it('writes new agent execution logs to filesystem storage', async () => {
 		fsStore.write.mockResolvedValue(42);
 
@@ -64,5 +60,11 @@ describe('AgentExecutionLogPersistence', () => {
 		await persistence.delete([{ ...ref, storedAt: 'fs' }]);
 
 		expect(fsStore.delete).toHaveBeenCalledWith([{ ...ref, storedAt: 'fs' }]);
+	});
+
+	it('deletes filesystem-backed logs for an agent', async () => {
+		await persistence.deleteByAgentId('agent-1');
+
+		expect(fsStore.deleteByAgentId).toHaveBeenCalledWith('agent-1');
 	});
 });

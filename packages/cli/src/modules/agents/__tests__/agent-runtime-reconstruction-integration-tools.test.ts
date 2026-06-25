@@ -29,6 +29,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentExecutionLogPersistence } from '../agent-execution-log-persistence';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -280,6 +281,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,
+			mock<AgentExecutionLogPersistence>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

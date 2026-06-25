@@ -106,7 +106,6 @@ describe('AgentExecutionService', () => {
 			thread: makeThread(),
 			created: false,
 		});
-		agentExecutionLogPersistence.getWriteStorageLocation.mockReturnValue('fs');
 		agentExecutionLogPersistence.write.mockResolvedValue({ storedAt: 'fs', sizeBytes: 123 });
 		agentExecutionLogPersistence.readMany.mockResolvedValue(new Map());
 		agentExecutionLogPersistence.delete.mockResolvedValue();
@@ -170,7 +169,7 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('inserts a pointer-only execution row before writing the external transcript payload', async () => {
+		it('writes the external transcript payload before inserting the pointer-only execution row', async () => {
 			agentExecutionThreadRepository.findOrCreateWithManager.mockResolvedValue({
 				thread: makeThread(),
 				created: false,
@@ -192,7 +191,7 @@ describe('AgentExecutionService', () => {
 
 			expect(transactionManager.insert).toHaveBeenCalledWith(
 				expect.any(Function),
-				expect.objectContaining({ logStoredAt: 'fs', logSizeBytes: 0 }),
+				expect.objectContaining({ logStoredAt: 'fs', logSizeBytes: 123 }),
 			);
 			const insertedRow = transactionManager.insert.mock.calls[0][1];
 			expect(insertedRow).not.toHaveProperty('userMessage');
@@ -214,19 +213,8 @@ describe('AgentExecutionService', () => {
 					error: 'ignored by status only when present',
 				},
 			);
-			expect(transactionManager.update).toHaveBeenCalledWith(
-				expect.any(Function),
-				expect.objectContaining({ id: expect.any(String) }),
-				{ logSizeBytes: 123 },
-			);
-			const sizeUpdateIndex = transactionManager.update.mock.calls.findIndex(
-				([, , update]) => update.logSizeBytes === 123,
-			);
-			expect(transactionManager.insert.mock.invocationCallOrder[0]).toBeLessThan(
-				agentExecutionLogPersistence.write.mock.invocationCallOrder[0],
-			);
 			expect(agentExecutionLogPersistence.write.mock.invocationCallOrder[0]).toBeLessThan(
-				transactionManager.update.mock.invocationCallOrder[sizeUpdateIndex],
+				transactionManager.insert.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -283,14 +271,35 @@ describe('AgentExecutionService', () => {
 				}),
 			).rejects.toThrow(writeError);
 
-			expect(transactionManager.insert.mock.invocationCallOrder[0]).toBeLessThan(
-				agentExecutionLogPersistence.write.mock.invocationCallOrder[0],
-			);
+			expect(transactionManager.insert).not.toHaveBeenCalled();
 			expect(agentExecutionLogPersistence.delete).not.toHaveBeenCalled();
 			expect(telemetry.trackAgentTurnFinished).not.toHaveBeenCalled();
-			expect(
-				transactionManager.update.mock.calls.some(([, , update]) => update.logSizeBytes === 123),
-			).toBe(false);
+		});
+
+		it('cleans up the external payload when the database write fails after payload storage', async () => {
+			const dbError = new Error('db failed');
+			agentExecutionThreadRepository.findOrCreateWithManager.mockResolvedValue({
+				thread: makeThread(),
+				created: true,
+			});
+			transactionManager.insert.mockRejectedValueOnce(dbError);
+
+			await expect(
+				service.recordMessage({
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record: makeMessageRecord(),
+				}),
+			).rejects.toThrow(dbError);
+
+			const [writeRef] = agentExecutionLogPersistence.write.mock.calls[0];
+			expect(agentExecutionLogPersistence.delete).toHaveBeenCalledWith({
+				...writeRef,
+				storedAt: 'fs',
+			});
 		});
 
 		it('stamps the task snapshot version on newly created task sessions', async () => {

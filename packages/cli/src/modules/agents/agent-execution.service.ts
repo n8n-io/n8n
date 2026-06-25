@@ -7,7 +7,10 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
-import { AgentExecutionLogPersistence } from './agent-execution-log-persistence';
+import {
+	AgentExecutionLogPersistence,
+	type AgentExecutionLogTarget,
+} from './agent-execution-log-persistence';
 import type { AgentExecutionLogPayload } from './agent-execution-log/types';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
@@ -101,72 +104,84 @@ export class AgentExecutionService {
 			timeline: record.timeline.length > 0 ? record.timeline : null,
 			error: record.error,
 		};
-		const storedAt = this.agentExecutionLogPersistence.getWriteStorageLocation();
 
-		const { thread, created, insertedId } = await this.runSerializableRecordTransaction(
-			async (tx) => {
-				const threadResult = await this.agentExecutionThreadRepository.findOrCreateWithManager(
-					tx,
-					threadId,
-					agentId,
-					agentName,
-					projectId,
-					threadMetadata,
-					taskId,
-					taskVersionId,
-				);
+		const { sizeBytes: logSizeBytes, storedAt: writtenStoredAt } =
+			await this.agentExecutionLogPersistence.write(logRef, logPayload);
+		const writtenLogTarget: AgentExecutionLogTarget = { ...logRef, storedAt: writtenStoredAt };
 
-				if (!threadResult.created) {
-					await tx.update(AgentExecutionThread, { id: threadId }, { updatedAt: new Date() });
-				}
+		const { thread, created, insertedId } = await (async () => {
+			try {
+				return await this.runSerializableRecordTransaction(async (tx) => {
+					const threadResult = await this.agentExecutionThreadRepository.findOrCreateWithManager(
+						tx,
+						threadId,
+						agentId,
+						agentName,
+						projectId,
+						threadMetadata,
+						taskId,
+						taskVersionId,
+					);
 
-				await tx.insert(AgentExecution, {
-					id: executionId,
-					threadId,
-					status,
-					startedAt,
-					stoppedAt,
-					duration: record.duration,
-					model: record.model,
-					promptTokens: record.usage?.promptTokens ?? null,
-					completionTokens: record.usage?.completionTokens ?? null,
-					totalTokens: record.usage?.totalTokens ?? null,
-					cost: record.totalCost,
-					hitlStatus: hitlStatus ?? null,
-					source: source ?? null,
-					logStoredAt: storedAt,
-					logSizeBytes: 0,
-				});
+					if (!threadResult.created) {
+						await tx.update(AgentExecutionThread, { id: threadId }, { updatedAt: new Date() });
+					}
 
-				const { sizeBytes } = await this.agentExecutionLogPersistence.write(logRef, logPayload);
-				await tx.update(AgentExecution, { id: executionId }, { logSizeBytes: sizeBytes });
-
-				if (!threadResult.thread.firstMessage && cleanedMessage) {
-					await tx
-						.createQueryBuilder()
-						.update(AgentExecutionThread)
-						.set({ firstMessage: cleanedMessage })
-						.where('id = :threadId', { threadId })
-						.andWhere('"firstMessage" IS NULL')
-						.execute();
-				}
-
-				if (record.usage) {
-					await this.incrementUsageWithManager(tx, threadId, {
-						promptTokens: record.usage.promptTokens,
-						completionTokens: record.usage.completionTokens,
-						cost: record.totalCost ?? 0,
+					await tx.insert(AgentExecution, {
+						id: executionId,
+						threadId,
+						status,
+						startedAt,
+						stoppedAt,
 						duration: record.duration,
+						model: record.model,
+						promptTokens: record.usage?.promptTokens ?? null,
+						completionTokens: record.usage?.completionTokens ?? null,
+						totalTokens: record.usage?.totalTokens ?? null,
+						cost: record.totalCost,
+						hitlStatus: hitlStatus ?? null,
+						source: source ?? null,
+						logStoredAt: writtenStoredAt,
+						logSizeBytes,
 					});
-				}
 
-				return {
-					thread: threadResult.thread,
-					created: threadResult.created,
-					insertedId: executionId,
-				};
-			},
-		);
+					if (!threadResult.thread.firstMessage && cleanedMessage) {
+						await tx
+							.createQueryBuilder()
+							.update(AgentExecutionThread)
+							.set({ firstMessage: cleanedMessage })
+							.where('id = :threadId', { threadId })
+							.andWhere('"firstMessage" IS NULL')
+							.execute();
+					}
+
+					if (record.usage) {
+						await this.incrementUsageWithManager(tx, threadId, {
+							promptTokens: record.usage.promptTokens,
+							completionTokens: record.usage.completionTokens,
+							cost: record.totalCost ?? 0,
+							duration: record.duration,
+						});
+					}
+
+					return {
+						thread: threadResult.thread,
+						created: threadResult.created,
+						insertedId: executionId,
+					};
+				});
+			} catch (error) {
+				await this.agentExecutionLogPersistence.delete(writtenLogTarget).catch((deleteError) => {
+					this.logger.warn('Failed to clean up agent execution log after record failure', {
+						agentId,
+						threadId,
+						executionId,
+						error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+					});
+				});
+				throw error;
+			}
+		})();
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.

@@ -5,6 +5,7 @@ import type { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentExecutionLogPersistence } from '../agent-execution-log-persistence';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -38,11 +39,13 @@ function makeService() {
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
+	const agentExecutionLogPersistence = mock<AgentExecutionLogPersistence>();
 	const agentTaskService = mock<AgentTaskService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
+	agentExecutionLogPersistence.deleteByAgentId.mockResolvedValue();
 	Container.set(AgentTaskService, agentTaskService);
 
 	const service = new AgentsService(
@@ -52,6 +55,7 @@ function makeService() {
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
+		agentExecutionLogPersistence,
 	);
 
 	return {
@@ -60,6 +64,7 @@ function makeService() {
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
+		agentExecutionLogPersistence,
 		agentTaskService,
 	};
 }
@@ -102,6 +107,7 @@ describe('AgentsService', () => {
 			agentKnowledgeService,
 			runtimeCacheService,
 			testChatService,
+			agentExecutionLogPersistence,
 			agentTaskService,
 		} = makeService();
 		const agent = makeAgent();
@@ -116,12 +122,28 @@ describe('AgentsService', () => {
 			'user-1',
 		);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			agentExecutionLogPersistence.deleteByAgentId.mock.invocationCallOrder[0],
+		);
+		expect(agentExecutionLogPersistence.deleteByAgentId).toHaveBeenCalledWith(agentId);
+		expect(agentExecutionLogPersistence.deleteByAgentId.mock.invocationCallOrder[0]).toBeLessThan(
 			agentRepository.remove.mock.invocationCallOrder[0],
 		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
+	});
+
+	it('does not delete the agent row when execution log cleanup fails', async () => {
+		const { service, agentRepository, agentExecutionLogPersistence } = makeService();
+		const agent = makeAgent();
+		const cleanupError = new Error('storage down');
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentExecutionLogPersistence.deleteByAgentId.mockRejectedValue(cleanupError);
+
+		await expect(service.delete(agentId, projectId, 'user-1')).rejects.toThrow(cleanupError);
+		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 
 	it('still deletes the agent when best-effort cleanup fails', async () => {

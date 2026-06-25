@@ -21,10 +21,6 @@ export type AgentExecutionLogTarget = AgentExecutionLogRef & {
 export class AgentExecutionLogPersistence {
 	constructor(private readonly fsStore: AgentExecutionLogFsStore) {}
 
-	getWriteStorageLocation(): AgentExecutionLogStorageLocation {
-		return 'fs';
-	}
-
 	async write(
 		ref: AgentExecutionLogRef,
 		payload: AgentExecutionLogPayload,
@@ -53,5 +49,9 @@ export class AgentExecutionLogPersistence {
 	async delete(target: AgentExecutionLogTarget | AgentExecutionLogTarget[]): Promise<void> {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length > 0) await this.fsStore.delete(targets);
+	}
+
+	async deleteByAgentId(agentId: string): Promise<void> {
+		await this.fsStore.deleteByAgentId(agentId);
 	}
 }

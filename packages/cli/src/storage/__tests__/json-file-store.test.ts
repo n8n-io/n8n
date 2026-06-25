@@ -68,6 +68,20 @@ describe('JsonFileStore', () => {
 		expect(files.filter((file) => file.includes('.tmp.'))).toHaveLength(0);
 	});
 
+	it('uses unique temp files for writes to the same target', async () => {
+		const rename = fs.rename;
+		const tempPaths: string[] = [];
+		jest.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+			tempPaths.push(String(from));
+			await rename(from, to);
+		});
+
+		await store.write(ref, { message: 'first' });
+		await store.write(ref, { message: 'second' });
+
+		expect(new Set(tempPaths).size).toBe(tempPaths.length);
+	});
+
 	it('reads stored bundles and returns null for missing files', async () => {
 		await store.write(ref, payload);
 

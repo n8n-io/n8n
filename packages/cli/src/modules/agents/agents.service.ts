@@ -4,6 +4,7 @@ import { In, ProjectRelationRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
+import { AgentExecutionLogPersistence } from './agent-execution-log-persistence';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
@@ -19,6 +20,7 @@ export class AgentsService {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
+		private readonly agentExecutionLogPersistence: AgentExecutionLogPersistence,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -114,6 +116,7 @@ export class AgentsService {
 				error: error instanceof Error ? error.message : error,
 			});
 		}
+		await this.agentExecutionLogPersistence.deleteByAgentId(agentId);
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);

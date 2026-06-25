@@ -1,5 +1,6 @@
 import { assertDir } from '@n8n/backend-common';
 import chunk from 'lodash/chunk';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -30,7 +31,7 @@ export class JsonFileStore<TRef, TPayload, TBundle> {
 		const writePath = this.resolveFilePath(ref);
 		await assertDir(path.dirname(writePath));
 
-		const tempPath = `${writePath}.tmp.${Date.now()}`;
+		const tempPath = `${writePath}.tmp.${process.pid}.${randomUUID()}`;
 		let success = false;
 
 		try {
