@@ -12,8 +12,10 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { JOB_TYPE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
+import { poolQueueName } from '../queue-name';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
+import type { WorkerPoolsService } from '../worker-pools.service';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -63,6 +65,7 @@ describe('ScalingService', () => {
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const workerPoolsService = mock<WorkerPoolsService>();
 
 	let scalingService: ScalingService;
 
@@ -89,6 +92,7 @@ describe('ScalingService', () => {
 		// @ts-expect-error readonly property
 		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
+		workerPoolsService.getAvailablePools.mockResolvedValue([]);
 
 		scalingService = new ScalingService(
 			mockLogger(),
@@ -100,6 +104,7 @@ describe('ScalingService', () => {
 			executionPersistence,
 			instanceSettings,
 			mock(),
+			workerPoolsService,
 		);
 
 		getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
@@ -425,6 +430,7 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				workerPoolsService,
 			);
 
 			await scalingService.setupQueue();
@@ -462,6 +468,7 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				workerPoolsService,
 			);
 
 			await scalingService.setupQueue();
@@ -494,6 +501,7 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				workerPoolsService,
 			);
 
 			await scalingService.setupQueue();
@@ -546,6 +554,24 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
+			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		});
+
+		it('should instantiate lazily-created pool queues before scanning so pooled jobs are not lost', async () => {
+			await scalingService.setupQueue();
+			Bull.mockClear();
+			workerPoolsService.getAvailablePools.mockResolvedValue(['gpu']);
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['123']);
+			// findJobsByStatus scans queues in insertion order: default `jobs` first (empty), then the
+			// lazily-created `jobs-gpu` which holds the job. Without the fix, `jobs-gpu` is never
+			// created/scanned, so the execution looks dangling and gets crashed.
+			queue.getJobs
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce([mock<Job>({ data: { executionId: '123' } })]);
+
+			await scalingService.recoverFromQueue();
+
+			expect(Bull).toHaveBeenCalledWith(poolQueueName('gpu'), expect.anything());
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
 		});
 	});
