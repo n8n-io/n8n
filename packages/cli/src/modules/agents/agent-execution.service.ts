@@ -110,36 +110,41 @@ export class AgentExecutionService {
 				? logPayload
 				: { assistantResponse: '', toolCalls: null, timeline: null, error: null };
 
-		const inserted = await this.agentExecutionRepository.save(
-			this.agentExecutionRepository.create({
-				threadId,
-				status,
-				startedAt,
-				stoppedAt,
-				duration: record.duration,
-				userMessage: cleanedMessage,
-				assistantResponse: entityLogPayload.assistantResponse,
-				model: record.model,
-				promptTokens: record.usage?.promptTokens ?? null,
-				completionTokens: record.usage?.completionTokens ?? null,
-				totalTokens: record.usage?.totalTokens ?? null,
-				cost: record.totalCost,
-				toolCalls: entityLogPayload.toolCalls,
-				timeline: entityLogPayload.timeline,
-				error: entityLogPayload.error,
-				hitlStatus: hitlStatus ?? null,
-				source: source ?? null,
-				storedAt,
-				logSizeBytes: 0,
-			}),
-		);
+		const inserted = await this.agentExecutionRepository.manager.transaction(async (tx) => {
+			const repository = tx.getRepository(AgentExecution);
+			const saved = await repository.save(
+				repository.create({
+					threadId,
+					status,
+					startedAt,
+					stoppedAt,
+					duration: record.duration,
+					userMessage: cleanedMessage,
+					assistantResponse: entityLogPayload.assistantResponse,
+					model: record.model,
+					promptTokens: record.usage?.promptTokens ?? null,
+					completionTokens: record.usage?.completionTokens ?? null,
+					totalTokens: record.usage?.totalTokens ?? null,
+					cost: record.totalCost,
+					toolCalls: entityLogPayload.toolCalls,
+					timeline: entityLogPayload.timeline,
+					error: entityLogPayload.error,
+					hitlStatus: hitlStatus ?? null,
+					source: source ?? null,
+					storedAt,
+					logSizeBytes: 0,
+				}),
+			);
 
-		const logSizeBytes = await this.agentExecutionLogPersistence.write(
-			{ agentId, threadId, executionId: inserted.id },
-			logPayload,
-			storedAt,
-		);
-		await this.agentExecutionRepository.update(inserted.id, { logSizeBytes });
+			const logSizeBytes = await this.agentExecutionLogPersistence.write(
+				{ agentId, threadId, executionId: saved.id },
+				logPayload,
+				storedAt,
+				tx,
+			);
+			await tx.update(AgentExecution, saved.id, { logSizeBytes });
+			return saved;
+		});
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.
@@ -249,18 +254,9 @@ export class AgentExecutionService {
 		if (!thread) return false;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		await this.agentExecutionLogPersistence.delete(
-			executions
-				.filter((execution) => execution.storedAt !== undefined)
-				.map((execution) => ({
-					agentId,
-					threadId: execution.threadId,
-					executionId: execution.id,
-					storedAt: execution.storedAt,
-				})),
-		);
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
+		await this.deleteMemoryThread(agentId, threadId);
+		await this.deleteExecutionLogs(agentId, executions);
 		return true;
 	}
 
@@ -360,6 +356,39 @@ export class AgentExecutionService {
 			});
 			return execution;
 		});
+	}
+
+	private async deleteMemoryThread(agentId: string, threadId: string) {
+		try {
+			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution memory thread', {
+				agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async deleteExecutionLogs(agentId: string, executions: AgentExecution[]) {
+		try {
+			await this.agentExecutionLogPersistence.delete(
+				executions
+					.filter((execution) => execution.storedAt !== undefined)
+					.map((execution) => ({
+						agentId,
+						threadId: execution.threadId,
+						executionId: execution.id,
+						storedAt: execution.storedAt,
+					})),
+			);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs after deleting thread', {
+				agentId,
+				executionIds: executions.map((execution) => execution.id),
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }
 

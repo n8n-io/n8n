@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
-import type { ExecutionDataStorageLocation } from '@n8n/db';
+import type { EntityManager, ExecutionDataStorageLocation } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -46,8 +46,9 @@ export class AgentExecutionLogPersistence {
 		ref: AgentExecutionLogRef,
 		payload: AgentExecutionLogPayload,
 		location: ExecutionDataStorageLocation = this.currentLocation,
+		tx?: EntityManager,
 	) {
-		return await this.getStoreFor(location).write(ref, payload);
+		return await this.getStoreFor(location).write(ref, payload, tx);
 	}
 
 	async read(ref: AgentExecutionLogRef, location: ExecutionDataStorageLocation) {

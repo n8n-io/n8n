@@ -7,7 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentExecutionLogPersistence } from '../agent-execution-log-persistence';
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import type { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecution } from '../entities/agent-execution.entity';
 import type { MessageRecord } from '../execution-recorder';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
@@ -68,6 +68,21 @@ describe('AgentExecutionService', () => {
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
+		const transactionManager = {
+			getRepository: jest.fn().mockReturnValue({
+				create: agentExecutionRepository.create,
+				save: agentExecutionRepository.save,
+			}),
+			update: agentExecutionRepository.update,
+		};
+		Object.assign(agentExecutionRepository, {
+			manager: {
+				transaction: jest.fn(
+					async (callback: (manager: typeof transactionManager) => Promise<unknown>) =>
+						await callback(transactionManager),
+				),
+			},
+		});
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
@@ -212,8 +227,9 @@ describe('AgentExecutionService', () => {
 					error: null,
 				},
 				'fs',
+				expect.any(Object),
 			);
-			expect(agentExecutionRepository.update).toHaveBeenCalledWith('execution-1', {
+			expect(agentExecutionRepository.update).toHaveBeenCalledWith(AgentExecution, 'execution-1', {
 				logSizeBytes: 42,
 			});
 		});
