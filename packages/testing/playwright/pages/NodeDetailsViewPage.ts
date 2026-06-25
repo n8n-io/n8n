@@ -4,6 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { ActionToggle } from './components/ActionToggle';
 import { CodeNodeEditor } from './components/CodeNodeEditor';
 import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
@@ -25,6 +26,7 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly resourceLocator = new ResourceLocator(this.container);
 	readonly codeNodeEditor = new CodeNodeEditor(this.container);
 	readonly nodeCreator = new NodeCreator(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
 
 	constructor(page: Page) {
 		super(page);
@@ -427,15 +429,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
-		return this.page.getByTestId('action-removeAllFields');
+		return this.actionToggle.getAction('removeAllFields');
 	}
 
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').getByRole('button').click();
-		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
-		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
+		await this.actionToggle.open(selectColumn);
+		await expect(this.actionToggle.getAction('refreshFieldList')).toBeVisible();
+		await this.actionToggle.getAction('refreshFieldList').click();
 	}
 
 	getAddValueButton() {

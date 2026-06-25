@@ -190,6 +190,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`debugging-executions`');
 		});
 
+		it('routes n8n docs and credential setup help through the docs skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**n8n docs/product guidance**');
+			expect(prompt).toContain('credential setup');
+			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('`n8n-docs`');
+		});
+
 		it('keeps replan stall prevention in the core follow-up triggers', () => {
 			const prompt = getSystemPrompt({});
 

@@ -21,7 +21,7 @@
 	"complexity": "medium",
 	"tags": ["behaviour", "clarification", "question-tool", "chat", "ai-agent"],
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"processExpectations": [
 		"Before building, the agent asked for missing human choices such as the website source or output destination.",
 		"The agent asked those follow-up questions using the structured ask-user question tool: the conversation metrics show at least one confirmation with inputType `questions`.",
 		"The agent did not ask the missing-detail follow-up questions only as a plain assistant text message."

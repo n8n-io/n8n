@@ -18,13 +18,7 @@ function makeController({
 	agentsService = mock<
 		Pick<
 			AgentsService,
-			| 'create'
-			| 'findById'
-			| 'findByProjectId'
-			| 'findByProjectIdPaginated'
-			| 'updateName'
-			| 'updateDescription'
-			| 'delete'
+			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
 		>
 	>(),
 	agentPublishService = mock<AgentPublishService>(),
@@ -34,13 +28,7 @@ function makeController({
 	agentsService?: jest.Mocked<
 		Pick<
 			AgentsService,
-			| 'create'
-			| 'findById'
-			| 'findByProjectId'
-			| 'findByProjectIdPaginated'
-			| 'updateName'
-			| 'updateDescription'
-			| 'delete'
+			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
 		>
 	>;
 	agentPublishService?: jest.Mocked<AgentPublishService>;
@@ -73,7 +61,6 @@ describe('AgentsController route access scopes', () => {
 		['create', 'agent:create'],
 		['list', 'agent:list'],
 		['get', 'agent:read'],
-		['update', 'agent:update'],
 		['delete', 'agent:delete'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);

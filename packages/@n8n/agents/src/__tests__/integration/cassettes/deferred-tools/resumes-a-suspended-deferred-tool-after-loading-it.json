@@ -64,35 +64,31 @@
 			}
 		},
 		"status": 200,
-		"response": [
-			"1f8b080000000000000a7552616bdb3010fd2be2beec8b531cb3749dbf153ad84a298c31bab40c71b1ceb188ac73a453a809feef43694d978d7e12f7de3bdd7b271da167430e6a681c26438b0eed2e2d3e2e568baaac56cbb25c4201d6400d7ddcea72f973bfbbef0ef76bbff1cfbfc2d5ade5cbf5fa1a0a9071a0aca218714b50406097018cd146412f5040c35ec80bd44fc7592ff49c99d351c3b70fcea98edca0464eca902321251d8a12ea070e1846d55a472a45ebb7ca504b219051c2ece285ba23513da92818446d46150943d36565cb4149470a8721f0102ce67b99dd054cc59b1766a753a43971ae932e975f2f5bd38edbc72fd5cdf8fdc7e1faf6eee1b17a80023cf6b9ef658c3e99c8bd7e4802f511f689c20835cc39ce22c0544083ce51c8d25707c6066a04a6e977015178d08130b23ff7762222ed13f986a0f6c9b957d090a07571c6d2e925eae38b232dbc231fa1beaaaa3cbae9483781502c7b7dae28673e109af7b8b9370fa0a1a39e023abdeaffd7bfb1cbee5f762a8093fc0d7dfa5c40a470b00d69b1793d90ff8fc1604ecb6d29e4e07a4b0c3578168d07b40e3779a7d31f31624231d1020000"
-		],
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01P4zLTLZSYkt6J89mGPavjf\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you delete that temporary file using deferred tools. Let me start by searching for the appropriate tool.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01M3X7gr1rdFV8pSZi6q1a7n\",\"name\":\"search_tools\",\"input\":{\"query\":\"delete temporary file\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":822,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":79,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "4000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:04Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:04Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:54Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:55Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:03Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4800000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:04Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:53Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:54Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f0b8fa8234d0-WAW",
+			"cf-ray": "a103718e29f85b18-VIE",
 			"connection": "keep-alive",
-			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 22 Jun 2026 08:39:04 GMT",
-			"request-id": "req_011CcHzmPppZqFeuxYeCdsS3",
+			"date": "Tue, 23 Jun 2026 12:19:56 GMT",
+			"request-id": "req_011CcLBQwhgLVZ5LhRP2FRFJ",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=OLQEH0W4Mie4_gEPtT0x2AIL31tyt1pFCM80AuxwyAI-1782117543.8333683-1.0.1.1-WPU7AzPCyd2izSp1aGDdwgxQMf1SdrDe6LndVt68O1Q; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=a0g84Izr0C9fMtuhBfFJlFsyE8EWnfAqMyKEiX8kKkw-1782217192.669118-1.0.1.1-6qOPTkhhD3Bw756XID8bjJaxITDTr1_EYD6jkdl_VMM; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-69fa1295500d30f946427e17cfc0326e-9c5da3f1fa418bb1-01",
-			"transfer-encoding": "chunked",
+			"traceresponse": "00-be4e1dd276c491584d2a748a888ad0bc-90258ea068a7d0f5-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -130,7 +126,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01H6fdfygZE2DyQSvAJLWZ2W",
+							"id": "toolu_01M3X7gr1rdFV8pSZi6q1a7n",
 							"name": "search_tools",
 							"input": {
 								"query": "delete temporary file"
@@ -146,7 +142,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01H6fdfygZE2DyQSvAJLWZ2W",
+							"tool_use_id": "toolu_01M3X7gr1rdFV8pSZi6q1a7n",
 							"content": "{\"results\":[{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":false}]}"
 						}
 					]
@@ -193,35 +189,31 @@
 			}
 		},
 		"status": 200,
-		"response": [
-			"1f8b080000000000000a75515d4fdb3014fd2be63ebb28a9da21f23a24b43121364125364d9667df34168e6f665f434b95ff3e3925626ce2c9f2f9b8e7faf8003d59f4d080f13a5b5c74da3de4c56ab15e2cabe5baaeaa1a24380b0df469abaafabc5d6e6e868bcfcf71ff85e2fa6e63beedf60924f07ec0a2c294f4164142245f009d924bac03830443813130343f0eb39e715798e968e032a2e613f149b4948315dca160227f2aaee9497864d1a3f0a4ad707c0aa37c9d42e4554e38ef5aee5955f5edfee9eafb2d3d7fe8beb6e162b3db5ddddf7dbc040941f7c55766a9222ec6306486e63099af8fbc458f8c8ab11f54eb3cc228c168ef314ec263b875110dc338fe949098061551270a6fd79a8884bf330683d084ecfd0b6891b5f369c6f2545f7338eea3981e302468ce57ab126d3a54a694e428a8b78a6ae6236afb1e377b4b000e1df618b557ebfe7ffd2b5b77ffb2a304cafc3774b69490303e3a838a5da907caa75b1ded546d8bb13c5c6d91a08140acf4a3765eff2a9d8e7f0020577b7186020000"
-		],
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01C96gd6fg1jTrhj9ruQrze6\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Great! I found the tool. Now let me load it.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01RfvyKRhE9JsEsc3yzT1EZg\",\"name\":\"load_tool\",\"input\":{\"toolName\":\"delete_temp_file\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":944,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":72,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "3996000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:05Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:05Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:57Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:57Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:04Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4796000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:05Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:57Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:57Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f0bf1d1d34d0-WAW",
+			"cf-ray": "a10371a65c895b18-VIE",
 			"connection": "keep-alive",
-			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 22 Jun 2026 08:39:05 GMT",
-			"request-id": "req_011CcHzmU2qHLWeAj6xBLRm4",
+			"date": "Tue, 23 Jun 2026 12:19:57 GMT",
+			"request-id": "req_011CcLBRFMpBpnKCFd91jsNN",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=mhTXif6_fmre150VZ4.r__CUl_WsyC_kVB0CZktc0a0-1782117544.8150804-1.0.1.1-UFfeJr.2bTWCXmhHpMhAymXWYKsar6hUKnkKbhDtxg4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=upG1l2t3ZDp9n631zkfJl_0G0jab1syqJx.KIbRU9E0-1782217196.540988-1.0.1.1-326BZ5uWlBe6z8XhqjTvql9KN_XZgwxTkaR7kngxYrM; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-7283ccfc01ffddbbfcfaa9754cd59c41-89d7ac11bd197cb1-01",
-			"transfer-encoding": "chunked",
+			"traceresponse": "00-68afec6345bfc7d19c2c158eb6e2d14a-4d33ead1c6bccbdd-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -259,7 +251,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01H6fdfygZE2DyQSvAJLWZ2W",
+							"id": "toolu_01M3X7gr1rdFV8pSZi6q1a7n",
 							"name": "search_tools",
 							"input": {
 								"query": "delete temporary file"
@@ -275,7 +267,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01H6fdfygZE2DyQSvAJLWZ2W",
+							"tool_use_id": "toolu_01M3X7gr1rdFV8pSZi6q1a7n",
 							"content": "{\"results\":[{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":false}]}"
 						}
 					]
@@ -289,7 +281,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01TywKZToz6hQfnDVxxKYUCG",
+							"id": "toolu_01RfvyKRhE9JsEsc3yzT1EZg",
 							"name": "load_tool",
 							"input": {
 								"toolName": "delete_temp_file"
@@ -305,7 +297,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01TywKZToz6hQfnDVxxKYUCG",
+							"tool_use_id": "toolu_01RfvyKRhE9JsEsc3yzT1EZg",
 							"content": "{\"status\":\"loaded\",\"toolName\":\"delete_temp_file\",\"tool\":{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":true},\"message\":\"Tool \\\"delete_temp_file\\\" is loaded and will be available on the next model turn.\"}"
 						}
 					]
@@ -368,35 +360,31 @@
 			}
 		},
 		"status": 200,
-		"response": [
-			"1f8b080000000000000a7552c16ed43014fc15f3cec93659d84372436de15255486591104296b1271b53c70ef6cbb265957f474e1b958238f979669e679eed330dc1c0514bdaa9c9a0ec95bd9fca37e5aedc56db5d5d553515640db534a483aceabbcf4377f5e975bf6f6e77fbb7373747deeebfdf5141fc3022ab90923a800a8ac16540a564132bcf54900e9ee199da2fe755cf386566595afa80d841f32bf1b187e0109cb049f8f053b8a00ccc46dce61a2c0608ad9c1396050761e0c010dc4374d641285e6a9c9466312aeec54398441aa16d6761363417cf014270724a58c7ccfb4956f555a3bb1e97d7d77e3f34e88f97bfd2fb775b2ac8ab21f73d7a4ac630ca6c9afbfd3831b567ca96d4d2050fe38541871861ca7c70c948bce113d35c501e0031eb9fa2181ba199e6f96b4189c32823540afe65c88548f831c16b50eb27e79e400356d6a5159b967768cf8fb124877bf8446d5d3775f6d63da48e506c83972f25d5ca4728f33f6eedcd0e187b0c88cac9ddf0affe99adfbbfd9b9a030f19f50531594108f5643b2cdf743f9fb1815cd72c51d629e5c1e10a8251f58aaa3b24e7d73a079fe0dc73ca617d0020000"
-		],
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01NG5zxKxFBmY7LyY6okmcVe\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! The tool is now loaded. Now I'll call it to delete the file at the exact path you specified.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01JmvR4w8aqfnRZ9gfAJ9Gih\",\"name\":\"delete_temp_file\",\"input\":{\"path\":\"/tmp/deferred-tool-test.txt\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1191,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":90,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "3999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:06Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:07Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:58Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:58Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:06Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4799000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:06Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:58Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:58Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f0c4cf7d34d0-WAW",
+			"cf-ray": "a10371af8b7f5b18-VIE",
 			"connection": "keep-alive",
-			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 22 Jun 2026 08:39:07 GMT",
-			"request-id": "req_011CcHzmXwyNfCPhc94MnRig",
+			"date": "Tue, 23 Jun 2026 12:19:59 GMT",
+			"request-id": "req_011CcLBRLHV7P56fisgPweD5",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=2eb1GP75Bt33OHm7SRghbK68oQc_DkFkQIZ8Q7Paxq4-1782117545.7299514-1.0.1.1-e5Nd9qEIG6hfu8nY.84Rh4dY2acvzjD7_Xk_Km8PcPc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=Ugie2cLKNHOJ0UwkW2V7pej9KJawJ9ryw3Srn1zAXd4-1782217198.0015771-1.0.1.1-JJhg4dkOoiXFhWseNfzi1AbegFte1m4E5AvhmT6pOkw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-b4c030fe6ad5a88e4dcd21167ba6c709-c05e665e39f0d448-01",
-			"transfer-encoding": "chunked",
+			"traceresponse": "00-7978c762b774f439426ef92bec105d82-c90b9e0e28b0f2b8-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -434,7 +422,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01H6fdfygZE2DyQSvAJLWZ2W",
+							"id": "toolu_01M3X7gr1rdFV8pSZi6q1a7n",
 							"name": "search_tools",
 							"input": {
 								"query": "delete temporary file"
@@ -450,7 +438,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01H6fdfygZE2DyQSvAJLWZ2W",
+							"tool_use_id": "toolu_01M3X7gr1rdFV8pSZi6q1a7n",
 							"content": "{\"results\":[{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":false}]}"
 						}
 					]
@@ -464,7 +452,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01TywKZToz6hQfnDVxxKYUCG",
+							"id": "toolu_01RfvyKRhE9JsEsc3yzT1EZg",
 							"name": "load_tool",
 							"input": {
 								"toolName": "delete_temp_file"
@@ -480,7 +468,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01TywKZToz6hQfnDVxxKYUCG",
+							"tool_use_id": "toolu_01RfvyKRhE9JsEsc3yzT1EZg",
 							"content": "{\"status\":\"loaded\",\"toolName\":\"delete_temp_file\",\"tool\":{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":true},\"message\":\"Tool \\\"delete_temp_file\\\" is loaded and will be available on the next model turn.\"}"
 						}
 					]
@@ -490,11 +478,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Perfect! The tool is now loaded. Now let me call it to delete the file at the exact path you specified."
+							"text": "Perfect! The tool is now loaded. Now I'll call it to delete the file at the exact path you specified."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01D9cfheCEEnUm9ehvCzsGF2",
+							"id": "toolu_01JmvR4w8aqfnRZ9gfAJ9Gih",
 							"name": "delete_temp_file",
 							"input": {
 								"path": "/tmp/deferred-tool-test.txt"
@@ -510,7 +498,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01D9cfheCEEnUm9ehvCzsGF2",
+							"tool_use_id": "toolu_01JmvR4w8aqfnRZ9gfAJ9Gih",
 							"content": "{\"deleted\":true,\"path\":\"/tmp/deferred-tool-test.txt\"}"
 						}
 					]
@@ -573,35 +561,31 @@
 			}
 		},
 		"status": 200,
-		"response": [
-			"1f8b080000000000000a7d924d8fd3301086ff8a990b529574932ebde48a38802812da4a1c287266ed4963ad63a7f624b454fdefc869a3554170b23ceff38c3fcfd0794d162a5016074d798be665c8dfe5eb7c55acd66551949081d1504117f7b2283f1df08bee3687edb75f9bf1b4da941f5cf87a840cf8d453a22846dc136410bc4d058cd14446c79081f28ec93154dfcf33cf744cc93454f034284531be111fdf8e24e275d60cd69e84264b4c5a704ba2319644fdc05dffa0a9a11048e7ecbdcd99222ff9c8b518a271fb099e099188a5d8b624fae0536361dce8ed48badab97229168b27c2a05ae3f68b85687cb8e969dd49be35ade384c9548af5cead92fad9a3be8a49aaaf9664ea7a99765bdf35b01ef5a4d73bf798ecf768edab3da13f0db7d38c8ea858f4c8edff8fbc733bb79d2fa7c5289e899c50de352674a405c6f90e9770f9914164dfcb4018bd830ac869c94370700b221d06728aa07283b5b7a2264663e35c1ba697aece605c3fb064ff422e42553e96ab0c14aa96a40a846cbc93f74831e78150ff2b9bddb402f52d7514d0ca75f737ff9a96ed9fe925033ff0ddfe8a750691c26814493614a082f44335069d3ebb6b28a4a3cb3d79a8c0799638a2b1f86c092e97df187d0ec533030000"
-		],
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01J736xzkCNVLDKwh8SmiGKc\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Done! I successfully deleted the file `/tmp/deferred-tool-test.txt`. The process was:\\n1. **Searched** for a tool to delete temporary files using `search_tools`\\n2. **Loaded** the `delete_temp_file` tool using `load_tool`\\n3. **Called** `delete_temp_file` with the exact path `/tmp/deferred-tool-test.txt`\\n\\nThe file has been successfully deleted.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1312,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":105,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "4000000",
-			"anthropic-ratelimit-input-tokens-remaining": "3999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:08Z",
-			"anthropic-ratelimit-output-tokens-limit": "800000",
-			"anthropic-ratelimit-output-tokens-remaining": "800000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:08Z",
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:59Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:00Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:07Z",
-			"anthropic-ratelimit-tokens-limit": "4800000",
-			"anthropic-ratelimit-tokens-remaining": "4799000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:08Z",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:59Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:59Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a0f9f0d15d7734d0-WAW",
+			"cf-ray": "a10371b638a95b18-VIE",
 			"connection": "keep-alive",
-			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Mon, 22 Jun 2026 08:39:09 GMT",
-			"request-id": "req_011CcHzmgVgMYe1P5MVRMkya",
+			"date": "Tue, 23 Jun 2026 12:20:00 GMT",
+			"request-id": "req_011CcLBRQsZS9e2equwys2Lq",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=SqoRxPie97fnNmccosc.gP5LwME2YivaZ.f3B17WoSQ-1782117547.7322502-1.0.1.1-pWZaqB3mX0wSNvUlDjJr2kjmgxEoCGyqAz2bmEPBeNY; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"set-cookie": "_cfuvid=LEU_gEUWwVkdmWjhXBPN9CdTv2iImMV8csNAYg8S0XY-1782217199.0797477-1.0.1.1-W_Xj4pBazkBdRV7VTiVZWI3KmWFsZ5sJSuckMEJtht0; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-db1eb67e41af9bf1b47a8a5a58c80e4c-b3f1eb37105c4ead-01",
-			"transfer-encoding": "chunked",
+			"traceresponse": "00-ab7bd9921a05df247926e2d4417a76fc-84dafd36d03464e3-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

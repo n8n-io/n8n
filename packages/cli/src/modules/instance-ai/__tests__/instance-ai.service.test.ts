@@ -387,10 +387,6 @@ type StartRunServiceInternals = {
 		setTimeZone: jest.MockedFunction<(threadId: string, timeZone: string) => void>;
 	};
 	threadPushRef: Map<string, string>;
-	userMessagePersistenceByRun: Map<
-		string,
-		{ userId: string; message: { id: string; text: string } }
-	>;
 	executeRun: jest.Mock;
 	trackInFlightExecution: jest.Mock;
 };
@@ -409,7 +405,6 @@ function createStartRunService(): StartRunServiceInternals {
 		setTimeZone: jest.fn(),
 	};
 	service.threadPushRef = new Map();
-	service.userMessagePersistenceByRun = new Map();
 	service.executeRun = jest.fn();
 	service.trackInFlightExecution = jest.fn();
 	return service;
@@ -1096,6 +1091,33 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
+	});
+
+	it('passes handoff context into executeRun', () => {
+		const service = createStartRunService();
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		service.startRun(fakeUser, 'thread-a', 'How do I set this up?', undefined, context);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'How do I set this up?',
+			expect.any(AbortController),
+			undefined,
+			context,
+			'group-1',
+			undefined,
+		);
 	});
 });
 
@@ -2136,6 +2158,13 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
+		});
+		// user_id must be present so the heartbeat event reaches PostHog
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'completed',
+			user_id: 'user-1',
 		});
 	});
 

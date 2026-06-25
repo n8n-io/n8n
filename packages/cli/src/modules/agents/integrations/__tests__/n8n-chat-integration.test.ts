@@ -184,7 +184,8 @@ describe('internal integration dispatch', () => {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const registry = new ChatIntegrationRegistry();
 	const userRepository = mock<UserRepository>();
-	registry.register(new N8nChatIntegration(userRepository));
+	const n8nChat = new N8nChatIntegration(userRepository);
+	registry.register(n8nChat);
 
 	const descriptor: IntegrationToolConnectionDescriptor = {
 		agentId: 'agent-1',
@@ -194,6 +195,9 @@ describe('internal integration dispatch', () => {
 		actionToolName: 'chat_action',
 		contextQueries: ['get_current_message_context', 'get_current_subject', 'get_current_user'],
 		actions: ['respond'],
+		contextToolDefinitions: [...n8nChat.contextToolDefinitions],
+		actionToolDefinitions: [...n8nChat.actionToolDefinitions],
+		actionToolGuidance: n8nChat.actionToolGuidance,
 	};
 
 	it('action tool description warns against plain-text responds on the in-app channel', () => {

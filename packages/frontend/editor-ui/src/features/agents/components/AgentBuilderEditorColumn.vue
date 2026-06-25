@@ -114,6 +114,7 @@ const i18n = useI18n();
 							@open-skill="emit('open-skill', $event)"
 							@add-tool="emit('add-tool')"
 							@add-skill="emit('add-skill')"
+							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"

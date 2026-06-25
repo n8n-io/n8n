@@ -25,6 +25,7 @@
 	"complexity": "medium",
 	"tags": ["build", "webhook", "gmail", "telegram", "google-sheets", "multi-action"],
 	"triggerType": "webhook",
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",
