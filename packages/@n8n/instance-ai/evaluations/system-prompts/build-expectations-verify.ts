@@ -12,6 +12,7 @@ These expectations are NOT about whether the workflow executes correctly — the
 ## How to judge
 
 - Judge **each expectation independently** and literally. Read what it actually asserts.
+- The unit of evaluation is the **whole conversation** — every turn (both sides) and the tool interactions within them, not just the latest turn. Follow each expectation's own specifics: when it calls out a particular turn, moment, or ordering, hold it to that.
 - **Process / temporal claims** ("asked X before building", "pushed back on the plan", "asked N questions") → judge from the transcript and the metrics. Order matters: "asked before building" means the question appears in the transcript prior to the workflow being created/finalized.
 - **Setup cards** are one of the ways the builder asks the user for node configuration — it surfaces a card listing the credentials and/or parameters it needs the user to fill. A value appearing in a setup card means the builder asked the user to provide that value (the user may fill or dismiss it); treat it the same as the builder asking for that value directly.
 - **Outcome claims** ("the final workflow contains a Switch routing to Slack", "the follow-up change is reflected") → judge from the workflow structure. If no workflow was built, any expectation that requires the final workflow **fails**.

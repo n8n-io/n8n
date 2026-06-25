@@ -57,12 +57,9 @@ export function conversationUserTurnsAsText(conversation: ConversationTurn[] | u
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			// Seeded turns are restored prior context — they predate the evaluated
-			// run, and judges must not score them as live behaviour.
-			const seededSuffix = turn.seeded
-				? ' (seeded prior context — predates the evaluated run)'
-				: '';
-			const lines: string[] = [`### Turn ${String(i + 1)}${seededSuffix}`];
+			// Every turn — including any that restore a prior conversation — counts as
+			// the agent's behaviour; the judge evaluates the whole conversation as one.
+			const lines: string[] = [`### Turn ${String(i + 1)}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);
