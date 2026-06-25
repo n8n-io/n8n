@@ -31,8 +31,8 @@
 		},
 		{
 			"name": "fewer-than-three-stories",
-			"description": "The API returns fewer than 3 stories",
-			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns only 2 stories, each with a title and url. The Slack post-message node returns a success response.",
+			"description": "The API returns exactly 2 stories",
+			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns exactly 2 stories, each with a title and url. The Slack post-message node returns a success response.",
 			"successCriteria": "The workflow handles having fewer than 3 stories gracefully — it posts the 2 available stories to #engineering (C04ENGINEER1) without erroring on the missing third."
 		}
 	]
