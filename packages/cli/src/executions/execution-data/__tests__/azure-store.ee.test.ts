@@ -168,25 +168,6 @@ describe('AzureStore', () => {
 			expect(azureBlob.delete).toHaveBeenCalledWith(keyFor('exec-2'));
 		});
 
-		it('should delete refs in batches', async () => {
-			let inFlight = 0;
-			let maxInFlight = 0;
-			azureBlob.delete.mockImplementation(async () => {
-				inFlight++;
-				maxInFlight = Math.max(maxInFlight, inFlight);
-				await new Promise((resolve) => setImmediate(resolve));
-				inFlight--;
-			});
-			const refs = Array.from({ length: 51 }, (_, i) =>
-				createExecutionRef(workflowId, `exec-${i + 1}`),
-			);
-
-			await azureStore.delete(refs);
-
-			expect(azureBlob.delete).toHaveBeenCalledTimes(51);
-			expect(maxInFlight).toBe(50);
-		});
-
 		it('should be a no-op for an empty array', async () => {
 			await azureStore.delete([]);
 

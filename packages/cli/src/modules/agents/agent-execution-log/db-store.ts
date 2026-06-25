@@ -1,6 +1,7 @@
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
@@ -27,22 +28,20 @@ export class DbStore implements AgentExecutionLogStore {
 		tx?: EntityManager,
 	): Promise<number> {
 		const repository = this.getRepository(tx);
-		const execution = await repository.findOne({
-			where: { id: executionId },
-			select: ['id', 'assistantResponse', 'toolCalls', 'timeline', 'error'],
-		});
+		const update: QueryDeepPartialEntity<AgentExecution> = {
+			assistantResponse: payload.assistantResponse,
+			// TypeORM's update type cannot express @JsonColumn values with unknown nested fields.
+			toolCalls: payload.toolCalls as QueryDeepPartialEntity<AgentExecution>['toolCalls'],
+			timeline: payload.timeline as QueryDeepPartialEntity<AgentExecution>['timeline'],
+			error: payload.error,
+		};
+		const result = await repository.update({ id: executionId }, update);
 
-		if (!execution) {
+		if (result.affected === 0) {
 			throw new UnexpectedError('Agent execution row is missing while writing log payload', {
 				extra: { executionId },
 			});
 		}
-
-		execution.assistantResponse = payload.assistantResponse;
-		execution.toolCalls = payload.toolCalls;
-		execution.timeline = payload.timeline;
-		execution.error = payload.error;
-		await repository.save(execution);
 
 		return measureAgentExecutionLogBundleBytes(payload);
 	}
@@ -78,16 +77,6 @@ export class DbStore implements AgentExecutionLogStore {
 		}
 
 		return bundles;
-	}
-
-	async delete(ref: AgentExecutionLogRef | AgentExecutionLogRef[]) {
-		const refs = Array.isArray(ref) ? ref : [ref];
-		if (refs.length === 0) return;
-
-		await this.repository.update(
-			{ id: In(refs.map((r) => r.executionId)) },
-			{ assistantResponse: '', toolCalls: null, timeline: null, error: null },
-		);
 	}
 
 	private toPayload(

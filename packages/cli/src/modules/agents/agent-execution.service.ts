@@ -8,7 +8,10 @@ import { Telemetry } from '@/telemetry';
 import { AgentExecutionLogPersistence } from './agent-execution-log-persistence';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
-import type { AgentExecutionLogPayload } from './agent-execution-log/types';
+import type {
+	AgentExecutionLogPayload,
+	ExternalAgentExecutionLogRef,
+} from './agent-execution-log/types';
 import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
@@ -107,14 +110,7 @@ export class AgentExecutionService {
 		const storedAt = this.agentExecutionLogPersistence.currentLocation;
 		const logPayload = this.toLogPayload(record);
 
-		let writtenExternalLogRef:
-			| {
-					agentId: string;
-					threadId: string;
-					executionId: string;
-					storedAt: AgentExecution['storedAt'];
-			  }
-			| undefined;
+		let writtenExternalLogRef: ExternalAgentExecutionLogRef | undefined;
 
 		const inserted = await (async () => {
 			try {
@@ -279,9 +275,17 @@ export class AgentExecutionService {
 		if (!thread) return false;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		await this.deleteExecutionLogs(agentId, executions);
+		const externalLogRefs = this.toExternalLogRefs(agentId, executions);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
+		await this.agentExecutionLogPersistence.delete(externalLogRefs).catch((error) => {
+			this.logger.warn('Failed to clean up agent execution logs after deleting thread', {
+				agentId,
+				threadId,
+				executionIds: externalLogRefs.map((ref) => ref.executionId),
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 		return true;
 	}
 
@@ -313,7 +317,9 @@ export class AgentExecutionService {
 		return {
 			...page,
 			threads: page.threads.map((thread) =>
-				Object.assign(thread, { firstMessage: messageMap.get(thread.id) ?? null }),
+				Object.assign(new AgentExecutionThread(), thread, {
+					firstMessage: messageMap.get(thread.id) ?? null,
+				}),
 			),
 		};
 	}
@@ -393,17 +399,21 @@ export class AgentExecutionService {
 		});
 	}
 
-	private async deleteExecutionLogs(agentId: string, executions: AgentExecution[]) {
-		await this.agentExecutionLogPersistence.delete(
-			executions
-				.filter((execution) => execution.storedAt !== 'db')
-				.map((execution) => ({
-					agentId,
-					threadId: execution.threadId,
-					executionId: execution.id,
-					storedAt: execution.storedAt,
-				})),
-		);
+	private toExternalLogRefs(
+		agentId: string,
+		executions: AgentExecution[],
+	): ExternalAgentExecutionLogRef[] {
+		const refs: ExternalAgentExecutionLogRef[] = [];
+		for (const execution of executions) {
+			if (execution.storedAt === 'db') continue;
+			refs.push({
+				agentId,
+				threadId: execution.threadId,
+				executionId: execution.id,
+				storedAt: execution.storedAt,
+			});
+		}
+		return refs;
 	}
 }
 

@@ -644,16 +644,6 @@ describe('GlobalConfig', () => {
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
 	});
 
-	it('should parse N8N_AGENT_EXECUTION_LOG_STORAGE_MODE from env variables', () => {
-		process.env = {
-			N8N_AGENT_EXECUTION_LOG_STORAGE_MODE: 's3',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.executionLogStorageMode).toBe('s3');
-		expect(config.agents.executionLogStorageModeTag).toBe('s3');
-	});
-
 	it('should fall back to the default for invalid N8N_AGENT_EXECUTION_LOG_STORAGE_MODE values', () => {
 		process.env = {
 			N8N_AGENT_EXECUTION_LOG_STORAGE_MODE: 'invalid-mode',
@@ -683,13 +673,18 @@ describe('GlobalConfig', () => {
 			N8N_PASSWORD_MIN_LENGTH: '12',
 			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
 			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
+			N8N_AGENT_EXECUTION_LOG_STORAGE_MODE: 'azure',
 			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
 		};
 		const config = Container.get(GlobalConfig);
-		const { executionLogStorageModeTag, ...defaultAgentsConfig } = defaultConfig.agents;
+		const {
+			executionLogStorageModeTag: defaultExecutionLogStorageModeTag,
+			...defaultAgentsConfig
+		} = defaultConfig.agents;
 
-		expect(config.agents.executionLogStorageModeTag).toBe(executionLogStorageModeTag);
+		expect(defaultExecutionLogStorageModeTag).toBe('fs');
+		expect(config.agents.executionLogStorageModeTag).toBe('az');
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
@@ -742,6 +737,7 @@ describe('GlobalConfig', () => {
 			},
 			agents: {
 				...defaultAgentsConfig,
+				executionLogStorageMode: 'azure',
 				sandboxEphemeral: true,
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
 			},

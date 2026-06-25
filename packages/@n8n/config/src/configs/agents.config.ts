@@ -2,7 +2,12 @@ import { Time } from '@n8n/constants';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
-import { STORAGE_MODE_TAGS, storageModeSchema, type StorageMode } from './storage-mode';
+import {
+	STORAGE_MODE_TAGS,
+	storageModeSchema,
+	type StorageMode,
+	type StorageModeTag,
+} from './storage-mode';
 
 /**
  * Known agent sub-feature modules. Add a token here to make it valid in
@@ -87,7 +92,7 @@ export class AgentsConfig {
 	@Env('DAYTONA_API_KEY')
 	daytonaApiKey: string = '';
 
-	get executionLogStorageModeTag(): 'db' | 'fs' | 's3' | 'az' {
+	get executionLogStorageModeTag(): StorageModeTag {
 		return STORAGE_MODE_TAGS[this.executionLogStorageMode];
 	}
 }

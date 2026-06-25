@@ -44,6 +44,16 @@ import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
+type ExternalStorageValidationOptions = {
+	provider: 'S3' | 'Azure Blob';
+	featureName: string;
+	modeEnvVar: string;
+	enabled: boolean;
+	isLicensed: boolean;
+	isConfigured?: boolean;
+	requiredEnvVar?: string;
+};
+
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
 
@@ -258,101 +268,66 @@ export abstract class BaseCommand<F = never> {
 		const { DatabaseManager } = await import('@/binary-data/database.manager');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
 
-		if (isS3WriteMode) {
-			const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
-			if (!isLicensed) {
-				this.logger.error(
-					'S3 binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
-				);
-				process.exit(1);
-			}
-		}
-
-		if (isAzureWriteMode) {
-			const isLicensed = Container.get(LicenseState).isBinaryDataAzureLicensed();
-			if (!isLicensed) {
-				this.logger.error(
-					'Azure Blob binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
-				);
-				process.exit(1);
-			}
-			if (Container.get(AzureBlobConfig).containerName === '') {
-				this.logger.error(
-					'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
-				);
-				process.exit(1);
-			}
-		}
-
 		const executionDataMode = Container.get(StorageConfig).mode;
 		const agentExecutionLogMode = Container.get(AgentsConfig).executionLogStorageMode;
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
 		const isAzureConfigured = Container.get(AzureBlobConfig).containerName !== '';
-		const isExecutionDataS3Mode = executionDataMode === 's3';
-		const isExecutionDataAzureMode = executionDataMode === 'azure';
-		const isAgentExecutionLogS3Mode = agentExecutionLogMode === 's3';
-		const isAgentExecutionLogAzureMode = agentExecutionLogMode === 'azure';
-		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
-		const isExecutionDataAzureLicensed = Container.get(LicenseState).isExecutionDataAzureLicensed();
+		const isS3ExternalStorageLicensed = Container.get(LicenseState).isExecutionDataS3Licensed();
+		const isAzureExternalStorageLicensed =
+			Container.get(LicenseState).isExecutionDataAzureLicensed();
+		const externalDataStorageFeatures = [
+			{
+				mode: executionDataMode,
+				featureName: 'execution data',
+				modeEnvVar: 'N8N_EXECUTION_DATA_STORAGE_MODE',
+			},
+			{
+				mode: agentExecutionLogMode,
+				featureName: 'agent execution log',
+				modeEnvVar: 'N8N_AGENT_EXECUTION_LOG_STORAGE_MODE',
+			},
+		];
+		const usesS3ExternalDataStorage = externalDataStorageFeatures.some(({ mode }) => mode === 's3');
+		const usesAzureExternalDataStorage = externalDataStorageFeatures.some(
+			({ mode }) => mode === 'azure',
+		);
 
-		if (isExecutionDataS3Mode) {
-			if (!isExecutionDataS3Licensed) {
-				this.logger.error(
-					'S3 execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
-				);
-				process.exit(1);
-			}
-			if (!isS3Configured) {
-				this.logger.error(
-					'S3 execution data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
-				);
-				process.exit(1);
-			}
-		}
+		this.validateExternalStorageFeature({
+			provider: 'S3',
+			featureName: 'binary data',
+			modeEnvVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			enabled: isS3WriteMode,
+			isLicensed: Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3),
+		});
+		this.validateExternalStorageFeature({
+			provider: 'Azure Blob',
+			featureName: 'binary data',
+			modeEnvVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			enabled: isAzureWriteMode,
+			isLicensed: Container.get(LicenseState).isBinaryDataAzureLicensed(),
+			isConfigured: isAzureConfigured,
+			requiredEnvVar: 'N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME',
+		});
 
-		if (isExecutionDataAzureMode) {
-			if (!isExecutionDataAzureLicensed) {
-				this.logger.error(
-					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
-				);
-				process.exit(1);
-			}
-			if (!isAzureConfigured) {
-				this.logger.error(
-					'Azure Blob execution data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
-				);
-				process.exit(1);
-			}
-		}
-
-		if (isAgentExecutionLogS3Mode) {
-			if (!isExecutionDataS3Licensed) {
-				this.logger.error(
-					'S3 agent execution log storage requires a valid license. Either set `N8N_AGENT_EXECUTION_LOG_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
-				);
-				process.exit(1);
-			}
-			if (!isS3Configured) {
-				this.logger.error(
-					'S3 agent execution log storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
-				);
-				process.exit(1);
-			}
-		}
-
-		if (isAgentExecutionLogAzureMode) {
-			if (!isExecutionDataAzureLicensed) {
-				this.logger.error(
-					'Azure Blob agent execution log storage requires a valid license. Either set `N8N_AGENT_EXECUTION_LOG_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
-				);
-				process.exit(1);
-			}
-			if (!isAzureConfigured) {
-				this.logger.error(
-					'Azure Blob agent execution log storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
-				);
-				process.exit(1);
-			}
+		for (const { mode, featureName, modeEnvVar } of externalDataStorageFeatures) {
+			this.validateExternalStorageFeature({
+				provider: 'S3',
+				featureName,
+				modeEnvVar,
+				enabled: mode === 's3',
+				isLicensed: isS3ExternalStorageLicensed,
+				isConfigured: isS3Configured,
+				requiredEnvVar: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
+			});
+			this.validateExternalStorageFeature({
+				provider: 'Azure Blob',
+				featureName,
+				modeEnvVar,
+				enabled: mode === 'azure',
+				isLicensed: isAzureExternalStorageLicensed,
+				isConfigured: isAzureConfigured,
+				requiredEnvVar: 'N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME',
+			});
 		}
 
 		try {
@@ -364,7 +339,7 @@ export abstract class BaseCommand<F = never> {
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
 			}
 		} catch {
-			if (isS3WriteMode || isExecutionDataS3Mode || isAgentExecutionLogS3Mode) {
+			if (isS3WriteMode || usesS3ExternalDataStorage) {
 				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
 				process.exit(1);
 			}
@@ -377,7 +352,7 @@ export abstract class BaseCommand<F = never> {
 				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
 			}
 		} catch {
-			if (isAzureWriteMode || isExecutionDataAzureMode || isAgentExecutionLogAzureMode) {
+			if (isAzureWriteMode || usesAzureExternalDataStorage) {
 				this.logger.error(
 					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
 				);
@@ -386,6 +361,32 @@ export abstract class BaseCommand<F = never> {
 		}
 
 		await binaryDataService.init();
+	}
+
+	private validateExternalStorageFeature({
+		provider,
+		featureName,
+		modeEnvVar,
+		enabled,
+		isLicensed,
+		isConfigured = true,
+		requiredEnvVar,
+	}: ExternalStorageValidationOptions) {
+		if (!enabled) return;
+
+		if (!isLicensed) {
+			this.logger.error(
+				`${provider} ${featureName} storage requires a valid license. Either set \`${modeEnvVar}\` to something else, or upgrade to a license that supports this feature.`,
+			);
+			process.exit(1);
+		}
+
+		if (!isConfigured && requiredEnvVar) {
+			this.logger.error(
+				`${provider} ${featureName} storage requires \`${requiredEnvVar}\` to be set.`,
+			);
+			process.exit(1);
+		}
 	}
 
 	protected async initObjectStoreIfConfigured() {

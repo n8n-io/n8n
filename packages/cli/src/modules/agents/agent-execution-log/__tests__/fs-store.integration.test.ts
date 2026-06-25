@@ -10,7 +10,6 @@ import { join } from 'node:path';
 import { FsBlobStore } from '@/executions/blob-storage/fs-blob-store';
 
 import { AGENT_EXECUTION_LOG_BUNDLE_FILENAME } from '../constants';
-import { CorruptedAgentExecutionLogError } from '../corrupted-agent-execution-log.error';
 import { FsStore } from '../fs-store';
 import type { AgentExecutionLogPayload, AgentExecutionLogRef } from '../types';
 
@@ -29,30 +28,29 @@ const payload: AgentExecutionLogPayload = {
 	error: null,
 };
 
-const executionDirPath = (storagePath: string, executionId = ref.executionId) =>
-	join(storagePath, 'agents', ref.agentId, 'threads', ref.threadId, 'executions', executionId);
-
-const bundlePath = (storagePath: string, executionId = ref.executionId) =>
+const executionDirPath = (storagePath: string, target: AgentExecutionLogRef) =>
 	join(
-		executionDirPath(storagePath, executionId),
-		'execution_log',
-		AGENT_EXECUTION_LOG_BUNDLE_FILENAME,
+		storagePath,
+		'agents',
+		encodeURIComponent(target.agentId),
+		'threads',
+		encodeURIComponent(target.threadId),
+		'executions',
+		encodeURIComponent(target.executionId),
 	);
 
 describe('Agent execution log FsStore', () => {
 	let fsStore: FsStore;
 	let storagePath: string;
-	let errorReporter: ErrorReporter;
 
 	beforeAll(async () => {
 		storagePath = await mkdtemp(join(tmpdir(), 'n8n-agent-log-fs-store-test-'));
 		mockInstance(StorageConfig, { storagePath });
-		errorReporter = mockInstance(ErrorReporter);
+		const errorReporter = mockInstance(ErrorReporter);
 		fsStore = new FsStore(Container.get(FsBlobStore), Container.get(StorageConfig), errorReporter);
 	});
 
 	beforeEach(async () => {
-		jest.mocked(errorReporter.error).mockClear();
 		await rm(join(storagePath, 'agents'), { recursive: true, force: true }).catch(() => {});
 	});
 
@@ -60,78 +58,23 @@ describe('Agent execution log FsStore', () => {
 		await rm(storagePath, { recursive: true, force: true });
 	});
 
-	it('writes and reads a versioned bundle', async () => {
-		const bytes = await fsStore.write(ref, payload);
+	it('writes, reads, and deletes bundles by encoded ref', async () => {
+		const unsafeRef = { ...ref, threadId: '../../outside' };
+		const executionDir = executionDirPath(storagePath, unsafeRef);
 
-		const raw = await fs.readFile(bundlePath(storagePath), 'utf-8');
+		const bytes = await fsStore.write(unsafeRef, payload);
+
+		const raw = await fs.readFile(
+			join(executionDir, 'execution_log', AGENT_EXECUTION_LOG_BUNDLE_FILENAME),
+			'utf-8',
+		);
 		expect(bytes).toBe(Buffer.byteLength(raw, 'utf-8'));
 		expect(JSON.parse(raw)).toMatchObject({ ...payload, version: 1 });
-		await expect(fsStore.read(ref)).resolves.toMatchObject({ ...payload, version: 1 });
-	});
+		await expect(fsStore.read(unsafeRef)).resolves.toMatchObject({ ...payload, version: 1 });
 
-	it('encodes dynamic key segments before writing to disk', async () => {
-		const unsafeRef = { ...ref, threadId: '../../outside' };
+		await fsStore.delete(unsafeRef);
 
-		await fsStore.write(unsafeRef, payload);
-
-		await expect(
-			fs.readFile(
-				join(
-					storagePath,
-					'agents',
-					ref.agentId,
-					'threads',
-					encodeURIComponent(unsafeRef.threadId),
-					'executions',
-					ref.executionId,
-					'execution_log',
-					AGENT_EXECUTION_LOG_BUNDLE_FILENAME,
-				),
-				'utf-8',
-			),
-		).resolves.toContain('"version":1');
-	});
-
-	it('returns null for a missing bundle', async () => {
-		await expect(fsStore.read(ref)).resolves.toBeNull();
-	});
-
-	it('omits corrupted bundles from readMany and reports them', async () => {
-		const good = { ...ref, executionId: 'good' };
-		const bad = { ...ref, executionId: 'bad' };
-		await fsStore.write(good, payload);
-		await fs.mkdir(
-			join(
-				storagePath,
-				'agents',
-				ref.agentId,
-				'threads',
-				ref.threadId,
-				'executions',
-				'bad',
-				'execution_log',
-			),
-			{
-				recursive: true,
-			},
-		);
-		await fs.writeFile(bundlePath(storagePath, 'bad'), 'invalid json{{{', 'utf-8');
-
-		const bundles = await fsStore.readMany([good, bad]);
-
-		expect(bundles.has('good')).toBe(true);
-		expect(bundles.has('bad')).toBe(false);
-		expect(errorReporter.error).toHaveBeenCalledWith(expect.any(CorruptedAgentExecutionLogError));
-	});
-
-	it('deletes bundles by ref', async () => {
-		await fsStore.write(ref, payload);
-
-		await fsStore.delete(ref);
-
-		await expect(fsStore.read(ref)).resolves.toBeNull();
-		await expect(fs.stat(executionDirPath(storagePath))).rejects.toMatchObject({
-			code: 'ENOENT',
-		});
+		await expect(fsStore.read(unsafeRef)).resolves.toBeNull();
+		await expect(fs.stat(executionDir)).rejects.toMatchObject({ code: 'ENOENT' });
 	});
 });

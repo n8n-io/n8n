@@ -1,4 +1,4 @@
-import type { EntityManager } from '@n8n/db';
+import type { EntityManager, ExecutionDataStorageLocation } from '@n8n/db';
 
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
 
@@ -6,6 +6,14 @@ export type AgentExecutionLogRef = {
 	agentId: string;
 	threadId: string;
 	executionId: string;
+};
+
+export type StoredAgentExecutionLogRef = AgentExecutionLogRef & {
+	storedAt: ExecutionDataStorageLocation;
+};
+
+export type ExternalAgentExecutionLogRef = AgentExecutionLogRef & {
+	storedAt: Exclude<ExecutionDataStorageLocation, 'db'>;
 };
 
 export type AgentExecutionLogPayload = {
@@ -29,5 +37,8 @@ export interface AgentExecutionLogStore {
 	): Promise<number>;
 	read(ref: AgentExecutionLogRef, tx?: EntityManager): Promise<AgentExecutionLogBundle | null>;
 	readMany(refs: AgentExecutionLogRef[]): Promise<Map<string, AgentExecutionLogBundle>>;
+}
+
+export interface DeletableAgentExecutionLogStore extends AgentExecutionLogStore {
 	delete(ref: AgentExecutionLogRef | AgentExecutionLogRef[]): Promise<void>;
 }

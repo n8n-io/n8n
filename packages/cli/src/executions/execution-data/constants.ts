@@ -14,4 +14,6 @@ export const executionDataBundleKey = ({ workflowId, executionId }: ExecutionRef
 		executionId,
 		'execution_data',
 		EXECUTION_DATA_BUNDLE_FILENAME,
-	].join('/');
+	]
+		.map(encodeURIComponent)
+		.join('/');

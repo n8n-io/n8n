@@ -5,6 +5,7 @@ import {
 	STORAGE_MODE_TAGS,
 	STORAGE_MODES,
 	type StorageMode,
+	type StorageModeTag,
 	storageModeSchema,
 } from '@n8n/config';
 import { existsSync, renameSync } from 'node:fs';
@@ -21,7 +22,7 @@ export class StorageConfig {
 	@Env('N8N_EXECUTION_DATA_STORAGE_MODE', storageModeSchema)
 	mode: StorageMode = 'database';
 
-	get modeTag(): 'db' | 'fs' | 's3' | 'az' {
+	get modeTag(): StorageModeTag {
 		return STORAGE_MODE_TAGS[this.mode];
 	}
 

@@ -51,9 +51,9 @@ export class FsStore
 		return path.join(
 			this.storageConfig.storagePath,
 			'workflows',
-			workflowId,
+			encodeURIComponent(workflowId),
 			'executions',
-			executionId,
+			encodeURIComponent(executionId),
 		);
 	}
 }

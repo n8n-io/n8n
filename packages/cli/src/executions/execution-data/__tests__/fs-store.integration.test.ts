@@ -250,6 +250,26 @@ describe('delete', () => {
 		await expect(fs.stat(executionDir)).rejects.toThrow();
 	});
 
+	it('should encode dynamic key segments before writing and deleting', async () => {
+		const unsafeRef = createExecutionRef('../workflow', '../../execution');
+		const executionDir = join(
+			storagePath,
+			'workflows',
+			encodeURIComponent(unsafeRef.workflowId),
+			'executions',
+			encodeURIComponent(unsafeRef.executionId),
+		);
+
+		await fsStore.write(unsafeRef, payload);
+		await expect(
+			fs.readFile(join(executionDir, 'execution_data', EXECUTION_DATA_BUNDLE_FILENAME), 'utf-8'),
+		).resolves.toContain('"version":1');
+
+		await fsStore.delete(unsafeRef);
+
+		await expect(fs.stat(executionDir)).rejects.toThrow();
+	});
+
 	it('should delete data for multiple executions', async () => {
 		const refs = [
 			createExecutionRef(workflowId, 'exec-1'),

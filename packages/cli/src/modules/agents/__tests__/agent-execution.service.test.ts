@@ -233,53 +233,6 @@ describe('AgentExecutionService', () => {
 			});
 		});
 
-		it('routes database-mode log payload through persistence', async () => {
-			agentExecutionLogPersistence.currentLocation = 'db';
-			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
-				thread: makeThread(),
-				created: false,
-			});
-			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
-
-			await service.recordMessage({
-				threadId: 'thread-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				projectId: 'project-1',
-				userMessage: 'Run',
-				record: makeMessageRecord({
-					assistantResponse: 'Done',
-					toolCalls: [{ name: 'lookup', input: { q: 'x' }, output: { ok: true } }],
-				}),
-			});
-
-			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					assistantResponse: '',
-					toolCalls: null,
-					timeline: null,
-					error: null,
-					storedAt: 'db',
-					logSizeBytes: 0,
-				}),
-			);
-			expect(agentExecutionLogPersistence.write).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1' },
-				{
-					assistantResponse: 'Done',
-					toolCalls: [{ name: 'lookup', input: { q: 'x' }, output: { ok: true } }],
-					timeline: null,
-					error: null,
-				},
-				'db',
-				expect.any(Object),
-			);
-			expect(agentExecutionRepository.update).toHaveBeenCalledWith(AgentExecution, 'execution-1', {
-				logSizeBytes: 42,
-			});
-		});
-
 		it('syncs a generated title from memory on later messages when the thread has no title yet', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread({ title: null }),
@@ -518,49 +471,6 @@ describe('AgentExecutionService', () => {
 			expect(result).toEqual({ thread, executions });
 		});
 
-		it('hydrates externally stored execution logs', async () => {
-			const thread = makeThread();
-			const executions = [
-				{
-					id: 'execution-1',
-					threadId: 'thread-1',
-					storedAt: 'fs',
-					assistantResponse: '',
-					toolCalls: null,
-					timeline: null,
-					error: null,
-				},
-			] as AgentExecution[];
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
-			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
-			agentExecutionLogPersistence.readMany.mockResolvedValue(
-				new Map([
-					[
-						'execution-1',
-						{
-							assistantResponse: 'Stored response',
-							toolCalls: null,
-							timeline: null,
-							error: null,
-							version: 1,
-						},
-					],
-				]),
-			);
-
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
-
-			expect(agentExecutionLogPersistence.readMany).toHaveBeenCalledWith([
-				{
-					agentId: 'agent-1',
-					threadId: 'thread-1',
-					executionId: 'execution-1',
-					storedAt: 'fs',
-				},
-			]);
-			expect(result?.executions[0].assistantResponse).toBe('Stored response');
-		});
-
 		it('hydrates only externally stored logs in mixed-storage threads', async () => {
 			const thread = makeThread();
 			const executions = [
@@ -650,7 +560,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('cleans external logs and SDK memory before deleting the execution thread', async () => {
+		it('cleans SDK memory and deletes the execution thread before external logs', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -688,11 +598,11 @@ describe('AgentExecutionService', () => {
 				},
 			]);
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
-			expect(agentExecutionLogPersistence.delete.mock.invocationCallOrder[0]).toBeLessThan(
-				memoryBackend.deleteThread.mock.invocationCallOrder[0],
-			);
 			expect(memoryBackend.deleteThread.mock.invocationCallOrder[0]).toBeLessThan(
 				agentExecutionThreadRepository.delete.mock.invocationCallOrder[0],
+			);
+			expect(agentExecutionThreadRepository.delete.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionLogPersistence.delete.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -702,17 +612,24 @@ describe('AgentExecutionService', () => {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 			} as AgentExecutionThread);
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
+				{
+					id: 'fs-execution',
+					threadId: 'thread-1',
+					storedAt: 'fs',
+				},
+			] as AgentExecution[]);
 			memoryBackend.deleteThread.mockRejectedValue(new Error('memory cleanup failed'));
 
 			await expect(service.deleteThread('project-1', 'agent-1', 'thread-1')).rejects.toThrow(
 				'memory cleanup failed',
 			);
 
-			expect(agentExecutionLogPersistence.delete).toHaveBeenCalledWith([]);
+			expect(agentExecutionLogPersistence.delete).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
 		});
 
-		it('does not delete the execution thread when external log cleanup fails', async () => {
+		it('keeps the thread deleted when external log cleanup fails', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -727,12 +644,18 @@ describe('AgentExecutionService', () => {
 			] as AgentExecution[]);
 			agentExecutionLogPersistence.delete.mockRejectedValue(new Error('log cleanup failed'));
 
-			await expect(service.deleteThread('project-1', 'agent-1', 'thread-1')).rejects.toThrow(
-				'log cleanup failed',
-			);
+			await expect(service.deleteThread('project-1', 'agent-1', 'thread-1')).resolves.toBe(true);
 
-			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
-			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
+			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
+			expect(agentExecutionLogPersistence.delete).toHaveBeenCalledWith([
+				{
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					executionId: 'fs-execution',
+					storedAt: 'fs',
+				},
+			]);
 		});
 
 		it('does not clean SDK memory when the execution thread is not found', async () => {
