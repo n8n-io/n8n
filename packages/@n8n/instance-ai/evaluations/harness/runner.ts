@@ -35,6 +35,7 @@ import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
+import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
@@ -57,7 +58,11 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { failedBuildsPerTurn, userTurnsAsText } from '../utils/conversation-text';
+import {
+	conversationUserTurnsAsText,
+	failedBuildsPerTurn,
+	userTurnsAsText,
+} from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -209,10 +214,12 @@ export async function runWorkflowTestCase(
 			});
 
 	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
-		// No transcript in prebuilt mode — checks run with empty prompt context.
+		// No transcript in prebuilt mode, but the authored conversation still
+		// carries the user's request — feed it so prompt-aware checks (e.g.
+		// fulfills_user_request) grade against real intent instead of "".
 		build.workflowChecks = await runWorkflowChecks({
 			workflow: build.workflowJsons[0],
-			prompt: '',
+			prompt: conversationUserTurnsAsText(testCase.conversation),
 			agentText: undefined,
 			logger,
 		});
@@ -234,21 +241,28 @@ export async function runWorkflowTestCase(
 		result.workflowChecks = build.workflowChecks;
 	}
 
-	// Optional author build expectations — informational, judged concurrently with scenarios.
-	const wantsExpectations =
-		(testCase.buildExpectations?.length ?? 0) > 0 && (build.transcript?.length ?? 0) > 0;
-	const expectationsPromise: Promise<BuildExpectationResult[]> = wantsExpectations
-		? verifyBuildExpectations(testCase.buildExpectations!, {
-				transcript: build.transcript!,
-				workflowJson: build.workflowJsons[0],
-				metrics: build.conversationMetrics,
-			}).catch((error: unknown) => {
-				logger.warn(
-					`  Build expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
-				);
-				return allFailVerdicts(testCase.buildExpectations!, 'judge error');
-			})
-		: Promise.resolve<BuildExpectationResult[]>([]);
+	// Optional author expectations — informational, judged concurrently with scenarios.
+	const { expectations: expectationsToJudge, transcript: expectationsTranscript } =
+		selectAuthorExpectations({
+			testCase,
+			transcript: build.transcript,
+			buildSucceeded: build.success,
+			isPrebuilt: config.prebuiltWorkflowId !== undefined,
+			logger,
+		});
+	const expectationsPromise: Promise<BuildExpectationResult[]> =
+		expectationsToJudge.length > 0
+			? verifyBuildExpectations(expectationsToJudge, {
+					transcript: expectationsTranscript,
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+				}).catch((error: unknown) => {
+					logger.warn(
+						`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return allFailVerdicts(expectationsToJudge, 'judge error');
+				})
+			: Promise.resolve<BuildExpectationResult[]>([]);
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;

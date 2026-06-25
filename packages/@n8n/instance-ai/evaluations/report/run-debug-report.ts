@@ -27,6 +27,7 @@ import path from 'path';
 
 import { getTestCaseAnchorId } from './report-anchors';
 import type { WorkflowTestCaseResult } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -46,7 +47,7 @@ function sanitizeAnchor(value: string): string {
 }
 
 function getTestCaseLabel(result: WorkflowTestCaseResult): string {
-	const prompt = result.testCase.conversation[0]?.text ?? '';
+	const prompt = caseDisplayPrompt(result.testCase);
 	const iterPrefix = /^\[iter \d+\/\d+\]\s*/.exec(prompt)?.[0] ?? '';
 	const truncatedPrompt = prompt.length > 100 ? `${prompt.slice(0, 100)}...` : prompt;
 	return iterPrefix + (result.fileSlug ?? result.testCase.description ?? truncatedPrompt);
