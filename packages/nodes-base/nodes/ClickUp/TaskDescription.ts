@@ -261,6 +261,16 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Points',
+				name: 'points',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				description: 'Sprint points for the task',
+				default: 0,
+			},
+			{
 				displayName: 'Priority',
 				name: 'priority',
 				type: 'number',
@@ -394,6 +404,16 @@ export const taskFields: INodeProperties[] = [
 				name: 'parentId',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Points',
+				name: 'points',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				description: 'Sprint points for the task',
+				default: 0,
 			},
 			{
 				displayName: 'Priority',
