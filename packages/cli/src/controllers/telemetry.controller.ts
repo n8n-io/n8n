@@ -22,6 +22,16 @@ export class TelemetryController {
 			on: {
 				proxyReq: (proxyReq, req) => {
 					proxyReq.removeHeader('cookie');
+					const body = 'body' in req ? req.body : undefined;
+					if (typeof body === 'string' && body.length > 0) {
+						// `text/plain` payloads (e.g. `sendBeacon` batches) are parsed into a
+						// string by our body parser, which also consumes the request stream.
+						// `fixRequestBody` only re-writes json/urlencoded/multipart bodies, so
+						// re-write string bodies explicitly to keep the proxied request intact.
+						proxyReq.setHeader('content-length', Buffer.byteLength(body));
+						proxyReq.write(body);
+						return;
+					}
 					fixRequestBody(proxyReq, req);
 					return;
 				},
@@ -98,6 +108,19 @@ export class TelemetryController {
 	// cookie-stripped, rate-limited, and proxies only to the fixed diagnostics target.
 	@Post('/proxy/:version/page', { skipAuth: true, ipRateLimit: { limit: 50, windowMs: 60_000 } })
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		this.applyCors(req, res);
+		await this.proxy(req, res, next);
+	}
+
+	// Public telemetry passthrough: no scope decorator. The endpoint is unauthenticated,
+	// cookie-stripped, rate-limited, and proxies only to the fixed diagnostics target.
+	// Used by the RudderStack SDK in beacon mode, which sends event batches to
+	// `<dataPlaneUrl>/beacon/v1/batch` via `navigator.sendBeacon`.
+	@Post('/proxy/beacon/:version/batch', {
+		skipAuth: true,
+		ipRateLimit: { limit: 100, windowMs: 60_000 },
+	})
+	async batch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		this.applyCors(req, res);
 		await this.proxy(req, res, next);
 	}
