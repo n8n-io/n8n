@@ -1152,7 +1152,19 @@ describe('DbConnectionMonitor', () => {
 			);
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			dataSource.query.mockRejectedValue(new Error('pool dead'));
+			const poolClient = { query: vi.fn(), release: vi.fn() };
+			const pool = { connect: vi.fn().mockResolvedValue(poolClient) };
+			poolClient.query.mockRejectedValue(new Error('pool dead'));
+			(
+				dataSource as unknown as {
+					driver: { master: typeof pool; obtainMasterConnection: () => Promise<unknown> };
+				}
+			).driver = {
+				master: pool,
+				obtainMasterConnection: vi.fn().mockResolvedValue(undefined),
+			};
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			vi.spyOn(freshMonitor as any, 'scheduleNextPing').mockImplementation(() => {});
 
 			// @ts-expect-error private property
 			await freshMonitor.ping();
