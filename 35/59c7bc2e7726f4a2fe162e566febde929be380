@@ -1,0 +1,25 @@
+packages/core/src/observability/tracing/sentry-tracing.ts
+  s_7b264d13e73311::t_b8f37ddf594232 2,4,14-15,17-18,22,25,27
+  s_7b264d13e73311::t_fe09d788fe8dce 16,19-21,23-24,26
+packages/core/src/observability/tracing/__tests__/sentry-tracing.test.ts
+  s_7b264d13e73311::t_e26a498593f753 128-157,160-161,163-165,167-179
+  s_7b264d13e73311::t_1153857cebd9cd 158-159,162,166
+  s_7b264d13e73311::t_11bc87543e98f3 7
+  s_7b264d13e73311::t_0b1925a867e579 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3559c7bc2e7726f4a2fe162e566febde929be380",
+  "prompts": {},
+  "sessions": {
+    "s_7b264d13e73311": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc6aba2d-277d-4ad2-a0a9-613396647a6b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
