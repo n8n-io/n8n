@@ -163,6 +163,46 @@ class TestTransitiveDependencyTrust:
         finally:
             _evict("parentpkg", "childdep")
 
+    def _build_stdlib_importer(self, tmp_path, monkeypatch):
+        # An allowlisted package whose code imports a stdlib module via importlib.
+        pkg = tmp_path / "stdlibparent"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text(
+            "import importlib\n"
+            "def use():\n"
+            "    return importlib.import_module('base64').b64encode(b'x')\n"
+        )
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+    def test_package_may_import_non_allowlisted_stdlib_when_trusted(
+        self, tmp_path, monkeypatch
+    ):
+        # Trust covers package-initiated stdlib imports too, not only external
+        # ones: an allowlisted package can import a stdlib module that stdlib_allow
+        # does not list. (stdlib_allow has importlib but not base64.)
+        self._build_stdlib_importer(tmp_path, monkeypatch)
+        code = "import importlib\nreturn str(importlib.import_module('stdlibparent').use())"
+        try:
+            result = _run(
+                code, _config({"stdlibparent"}, trust=True, stdlib={"importlib"})
+            )
+        finally:
+            _evict("stdlibparent")
+        assert "eA==" in result
+
+    def test_package_non_allowlisted_stdlib_rejected_by_default(
+        self, tmp_path, monkeypatch
+    ):
+        # Default (opt-in off): the package's stdlib import is still validated
+        # against stdlib_allow and rejected.
+        self._build_stdlib_importer(tmp_path, monkeypatch)
+        code = "import importlib\nreturn str(importlib.import_module('stdlibparent').use())"
+        try:
+            with pytest.raises(SecurityViolationError):
+                _run(code, _config({"stdlibparent"}, trust=False, stdlib={"importlib"}))
+        finally:
+            _evict("stdlibparent")
+
 
 class TestUserCodeAttribution:
     """Pin the frame contract behind ``_import_initiated_by_user_code``: the
