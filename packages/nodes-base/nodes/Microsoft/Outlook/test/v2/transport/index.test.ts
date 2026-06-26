@@ -280,14 +280,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			const nextLink =
 				'https://graph.microsoft.com/v1.0/users/user%40example.com/messages?$skip=10&$top=10';
 
-			await microsoftApiRequest.call(
-				mockExecuteFunctions,
-				'GET',
-				'/messages',
-				{},
-				{},
-				nextLink,
-			);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', {}, {}, nextLink);
 
 			const callArgs = mockRequestWithAuthentication.mock.calls[0][1] as IDataObject;
 			expect(callArgs.uri).toBe(nextLink);

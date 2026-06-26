@@ -259,9 +259,7 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 	};
 
 	it('should accept a user GUID', () => {
-		expect(() =>
-			validateMailbox('11111111-1111-1111-1111-111111111111', node),
-		).not.toThrow();
+		expect(() => validateMailbox('11111111-1111-1111-1111-111111111111', node)).not.toThrow();
 	});
 
 	it('should accept a UPN', () => {
@@ -277,7 +275,9 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 	});
 
 	it('should throw the static "required" error for empty/whitespace', () => {
-		expect(() => validateMailbox('', node)).toThrow('A mailbox is required for the Service Principal');
+		expect(() => validateMailbox('', node)).toThrow(
+			'A mailbox is required for the Service Principal',
+		);
 		// whitespace is trimmed by the caller, so the validator sees '' here too
 		expect(() => validateMailbox('', node)).toThrow(NodeOperationError);
 	});

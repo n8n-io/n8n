@@ -36,7 +36,9 @@ describe('Test MicrosoftOutlookV2, Service Principal => message:getAll (paginate
 						subject: 'Page 1 Email',
 						bodyPreview: 'first page',
 						from: { emailAddress: { name: 'John Doe', address: 'john.doe@example.com' } },
-						toRecipients: [{ emailAddress: { name: 'Jane Smith', address: 'jane.smith@example.com' } }],
+						toRecipients: [
+							{ emailAddress: { name: 'Jane Smith', address: 'jane.smith@example.com' } },
+						],
 						categories: [],
 						hasAttachments: false,
 					},

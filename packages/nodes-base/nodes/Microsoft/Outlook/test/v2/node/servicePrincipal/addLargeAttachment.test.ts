@@ -37,7 +37,7 @@ describe('Microsoft Outlook V2 - Service Principal MessageAttachment:add (large 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation(((paramName: string) => {
 			const params: Record<string, unknown> = {
 				authentication: 'microsoftEntraServicePrincipalApi',
 				mailbox: 'user@example.com',
@@ -46,7 +46,7 @@ describe('Microsoft Outlook V2 - Service Principal MessageAttachment:add (large 
 				options: {},
 			};
 			return params[paramName];
-		});
+		}) as unknown as IExecuteFunctions['getNodeParameter']);
 		mockExecuteFunctions.getCredentials.mockResolvedValue({
 			accessToken: 'test-access-token',
 			graphApiBaseUrl: 'https://graph.microsoft.com',
@@ -63,14 +63,13 @@ describe('Microsoft Outlook V2 - Service Principal MessageAttachment:add (large 
 		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: Array<{ json: unknown }>) => data,
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation(
-			(data: unknown) => [{ json: data }],
-		);
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: unknown) => [
+			{ json: data },
+		]);
 
 		// First transport call (createUploadSession) returns the non-Graph uploadUrl.
 		mockRequestWithAuthentication.mockResolvedValue({
-			'@odata.context':
-				'https://graph.microsoft.com/v1.0/$metadata#microsoft.graph.uploadSession',
+			'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#microsoft.graph.uploadSession',
 			expirationDateTime: '2023-12-19T13:00:00.0000000Z',
 			nextExpectedRanges: ['0-'],
 			uploadUrl,

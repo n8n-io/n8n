@@ -8,6 +8,7 @@ import type {
 	INodeExecutionData,
 	IPollFunctions,
 } from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 
 import { prepareApiError, validateMailbox } from '../helpers/utils';
 
@@ -48,9 +49,12 @@ export function resolveMailbox(
 	credentialType: OutlookCredentialType,
 ): string | undefined {
 	if (credentialType !== 'microsoftEntraServicePrincipalApi') return undefined;
-	// Id-mode RLC with extractValue yields the bare string id.
-	const raw = this.getNodeParameter('mailbox', 0, '', { extractValue: true });
-	const mailbox = (typeof raw === 'string' ? raw : '').trim();
+	// Read at item index 0 (per-node constant, same as the `authentication` selector).
+	// The 2-arg form is the only one valid across execute/poll/loadOptions contexts;
+	// the id-mode RLC has no extractValue regex, so its `.value` is already the bare id.
+	const raw = this.getNodeParameter('mailbox', 0);
+	const value = isResourceLocatorValue(raw) ? raw.value : raw;
+	const mailbox = (typeof value === 'string' ? value : '').trim();
 	validateMailbox(mailbox, this.getNode());
 	return mailbox;
 }
