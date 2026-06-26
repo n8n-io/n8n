@@ -355,7 +355,7 @@ describe('GET /credentials', () => {
 
 		expect(sharedCred.id).toBe(sharedCredential.id);
 		expect(sharedCred.data).not.toBeDefined();
-		expect(sharedCred.scopes).toEqual(['credential:read'].sort());
+		expect(sharedCred.scopes).toEqual(['credential:connect', 'credential:read'].sort());
 
 		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
 		expect(teamCredAsViewer.data).not.toBeDefined();
