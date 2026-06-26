@@ -49,7 +49,7 @@ describe('PublicationStatusReporter', () => {
 	});
 
 	test('completed marks the record completed and clears activation errors', async () => {
-		await reporter.report(makeRecord(), { type: 'completed' });
+		await reporter.report(makeRecord(), { type: 'completed', triggerStatuses: [] });
 
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
@@ -113,10 +113,10 @@ describe('PublicationStatusReporter', () => {
 	test('partial marks partial_success, registers per-node detail, and pushes the failures', async () => {
 		await reporter.report(makeRecord(), {
 			type: 'partial',
-			activatedNodeIds: ['a'],
-			failures: [
-				{ nodeId: 'b', nodeName: 'Schedule', error: new Error('cron unavailable') },
-				{ nodeId: 'c', nodeName: 'Kafka', error: new Error('broker down') },
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', errorMessage: null },
+				{ nodeId: 'b', nodeName: 'Schedule', status: 'failed', errorMessage: 'cron unavailable' },
+				{ nodeId: 'c', nodeName: 'Kafka', status: 'failed', errorMessage: 'broker down' },
 			],
 		});
 

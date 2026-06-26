@@ -8,8 +8,8 @@ import { Push } from '@/push';
 import type {
 	PublicationResult,
 	PublicationSkipReason,
+	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
-import type { TriggerActivationFailure } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place
@@ -75,7 +75,7 @@ export class PublicationStatusReporter {
 			}
 
 			case 'partial': {
-				await this.reportPartial(record, result.failures);
+				await this.reportPartial(record, result.triggerStatuses);
 				return;
 			}
 		}
@@ -92,14 +92,15 @@ export class PublicationStatusReporter {
 	 */
 	private async reportPartial(
 		record: WorkflowPublicationOutbox,
-		failures: TriggerActivationFailure[],
+		triggerStatuses: TriggerPublicationStatus[],
 	): Promise<void> {
+		const failures = triggerStatuses.filter((s) => s.status === 'failed');
 		const errorMessage = this.formatActivationError(failures);
 
 		this.logger.warn('Workflow partially published; some triggers failed to activate', {
 			workflowId: record.workflowId,
 			outboxId: record.id,
-			failedNodeIds: failures.map((failure) => failure.nodeId),
+			failedNodeIds: failures.map((s) => s.nodeId),
 		});
 
 		await this.outboxRepository.markPartialSuccess(record.id, errorMessage);
@@ -111,20 +112,18 @@ export class PublicationStatusReporter {
 				workflowId: record.workflowId,
 				activeVersionId: record.publishedVersionId,
 				errorMessage,
-				failedNodes: failures.map((failure) => ({
-					nodeId: failure.nodeId,
-					nodeName: failure.nodeName,
-					errorMessage: failure.error.message,
+				failedNodes: failures.map((s) => ({
+					nodeId: s.nodeId,
+					nodeName: s.nodeName,
+					errorMessage: s.errorMessage ?? '',
 				})),
 			},
 		});
 	}
 
 	/** Builds a human-readable message naming each failed node and its error. */
-	private formatActivationError(failures: TriggerActivationFailure[]): string {
-		const detail = failures
-			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
-			.join('; ');
+	private formatActivationError(failures: TriggerPublicationStatus[]): string {
+		const detail = failures.map((s) => `"${s.nodeName}": ${s.errorMessage ?? ''}`).join('; ');
 
 		return `Some triggers failed to activate: ${detail}`;
 	}
