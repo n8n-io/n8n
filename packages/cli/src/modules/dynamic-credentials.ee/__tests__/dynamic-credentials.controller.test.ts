@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { type CredentialsEntity } from '@n8n/db';
+import { type AuthenticatedRequest, type CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Request, Response } from 'express';
@@ -33,7 +33,7 @@ describe('DynamicCredentialsController', () => {
 	const dynamicCredentialWebService = mockInstance(DynamicCredentialWebService);
 	const cipher = mockInstance(Cipher);
 	const authorizeIntentService = mockInstance(AuthorizeIntentService);
-	mockInstance(CredentialsFinderService);
+	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	mockInstance(CredentialConnectionStatusService);
 	mockInstance(EventService);
 
@@ -53,6 +53,33 @@ describe('DynamicCredentialsController', () => {
 			identity: 'token123',
 			version: 1 as const,
 			metadata: {},
+		});
+
+		// Default: caller can access the credential
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
+	});
+
+	describe('in-app access control', () => {
+		it('returns 404 when an authenticated user cannot access the credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			const user = mock<AuthenticatedRequest['user']>({ id: 'user-123' });
+			const req = mock<AuthenticatedRequest>({
+				user,
+				params: { id: 'foreign-credential' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer token123' },
+			});
+			const res = mock<Response>();
+
+			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
+				'Credential not found',
+			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'foreign-credential',
+				user,
+				['credential:update'],
+			);
+			expect(enterpriseCredentialsService.getOne).not.toHaveBeenCalled();
 		});
 	});
 

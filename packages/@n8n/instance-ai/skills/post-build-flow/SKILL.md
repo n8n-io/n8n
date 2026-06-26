@@ -105,6 +105,19 @@ workflow as a precondition for running it.
 7. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically.
 
+## Claiming success
+
+Do not tell the user a workflow is "fixed", "verified", "tested", "working", or
+has "no errors" unless this turn has a passing `verify-built-workflow` or
+`executions(action="run")` that exercised the path being claimed. A successful
+`build-workflow`/save, a static `workflows(action="validate")`, or your own
+narration are NOT execution evidence. For a produced artifact (a file, generated
+document, or Code-node output), read the real output before calling it complete;
+do not infer correctness from the fact that a node ran. If you could not run the
+failing path or inspect the artifact, say so plainly — "I couldn't verify X
+because Y" — and name what is unconfirmed. An honest "could not verify" beats an
+unverified success claim.
+
 ## Credentials before build
 
 Call `credentials(action="list")` first to know what's available. Build the

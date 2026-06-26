@@ -1,13 +1,13 @@
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController } from '@n8n/decorators';
+import { RestController, StaticRouterMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Router } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
 @RestController('/ph')
 export class PostHogController {
-	static routers = [
+	static routers: StaticRouterMetadata[] = [
 		{
 			path: '/',
 			router: (() => {

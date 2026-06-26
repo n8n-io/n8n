@@ -1,0 +1,73 @@
+name: 'CI: MCP Workflow Evals'
+
+# MCP workflow evals are manual only (workflow_dispatch). The build phase drives
+# the `claude` CLI (Anthropic cost + rate limits), so there is no per-PR or
+# scheduled run in this first version. Dispatch from the Actions tab (or `gh
+# workflow run ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh
+# the LangSmith baseline, or filter=<slug> to run a single case.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Git ref to test. Defaults to the dispatched ref (--ref); override with -f branch=<ref>.'
+        required: false
+        default: ''
+      tier:
+        description: 'Test-case dataset to build + eval (e.g. `mcp`, `full`)'
+        required: false
+        default: 'mcp'
+      filter:
+        description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
+        required: false
+        default: ''
+      iterations:
+        description: 'Builds per test case (-n) and verifier iterations (use 10 for a baseline)'
+        required: false
+        default: '3'
+      build-concurrency:
+        description: 'Parallel claude build processes (-j)'
+        required: false
+        default: '3'
+      eval-concurrency:
+        description: 'Concurrent scenario executions in the verifier'
+        required: false
+        default: '6'
+      model:
+        description: 'Anthropic model id for the claude build step'
+        required: false
+        default: 'claude-sonnet-4-6'
+      experiment-name:
+        description: 'LangSmith experiment name (set to mcp-baseline to refresh the baseline)'
+        required: false
+        default: ''
+
+# Minimal token. The reusable workflow also declares `contents: read`.
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-evals:
+    name: MCP Workflow Evals
+    if: github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-evals-mcp.yml
+    with:
+      branch: ${{ inputs.branch || github.sha }}
+      tier: ${{ inputs.tier || 'mcp' }}
+      filter: ${{ inputs.filter || '' }}
+      iterations: ${{ inputs.iterations || '3' }}
+      build-concurrency: ${{ inputs.build-concurrency || '3' }}
+      eval-concurrency: ${{ inputs.eval-concurrency || '6' }}
+      model: ${{ inputs.model || 'claude-sonnet-4-6' }}
+      experiment-name: ${{ inputs.experiment-name || '' }}
+    # Pass only the secrets the reusable workflow needs (not `secrets: inherit`).
+    secrets:
+      EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+      N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+      N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+      N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+      EVALS_LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+      EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}

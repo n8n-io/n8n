@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 import type { AgentDbMessage, ContentToolCall } from '../../types/sdk/message';
@@ -37,10 +38,6 @@ const loadToolOutputSchema = z.object({
 type SearchToolsOutput = z.infer<typeof searchToolsOutputSchema>;
 type ToolSummary = z.infer<typeof toolSummarySchema>;
 type LoadToolOutput = z.infer<typeof loadToolOutputSchema>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function tokenize(value: string): Set<string> {
 	return new Set(
