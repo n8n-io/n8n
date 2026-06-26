@@ -1,14 +1,13 @@
+import type { Sandbox, SandboxState } from '@daytona/sdk';
 import { redactText } from '@n8n/agents';
 import { loadDaytona } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { Sandbox, SandboxState } from '@daytonaio/sdk';
-import { nanoid } from 'nanoid';
 import { InstanceSettings } from 'n8n-core';
-import { createHash } from 'node:crypto';
-
 import { OperationalError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+import { createHash } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -25,13 +24,6 @@ import {
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
 } from './agent-knowledge-commands';
-import {
-	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-	assertKnowledgePathSegment,
-	buildKnowledgeVolumeSubpath,
-	fromVolumeStorageReference,
-	type AgentKnowledgeFilesystem,
-} from './agent-knowledge-storage';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import {
 	assertValidKnowledgeFilePath,
@@ -48,6 +40,13 @@ import {
 	type SearchKnowledgeRequest,
 	type SearchKnowledgeResult,
 } from './agent-knowledge-retrieval';
+import {
+	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
+	assertKnowledgePathSegment,
+	buildKnowledgeVolumeSubpath,
+	fromVolumeStorageReference,
+	type AgentKnowledgeFilesystem,
+} from './agent-knowledge-storage';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -563,27 +562,20 @@ export class AgentKnowledgeSandboxService {
 			return sandboxByName;
 		}
 
-		let page = 1;
-		while (true) {
-			const listedSandboxes = await daytona.list(labels, page, SANDBOX_LIST_PAGE_SIZE);
-			for (const sandbox of listedSandboxes.items) {
-				if (!isUsableSandbox(sandbox) || !hasMatchingVolumeMount(sandbox, volumeMount)) {
-					continue;
-				}
-
-				if (sandbox.state !== SANDBOX_STATE_STARTED) {
-					await sandbox.start(timeoutSeconds);
-				}
-
-				const reusableSandbox = await this.resolveReusableSandbox(daytona, sandbox, connection);
-				this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId });
-				return reusableSandbox;
+		// list() is a cursor-paginated async iterator in the Daytona SDK; it transparently fetches
+		// subsequent pages as we iterate.
+		for await (const sandbox of daytona.list({ labels, limit: SANDBOX_LIST_PAGE_SIZE })) {
+			if (!isUsableSandbox(sandbox) || !hasMatchingVolumeMount(sandbox, volumeMount)) {
+				continue;
 			}
 
-			if (page >= listedSandboxes.totalPages) {
-				break;
+			if (sandbox.state !== SANDBOX_STATE_STARTED) {
+				await sandbox.start(timeoutSeconds);
 			}
-			page += 1;
+
+			const reusableSandbox = await this.resolveReusableSandbox(daytona, sandbox, connection);
+			this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId });
+			return reusableSandbox;
 		}
 
 		const image = connection.image;

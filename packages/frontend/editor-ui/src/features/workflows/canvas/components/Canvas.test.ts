@@ -35,6 +35,16 @@ import {
 } from '../composables/useCanvasNodeGroupView';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const trackSpy = vi.hoisted(() => vi.fn());
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
@@ -589,7 +599,6 @@ describe('Canvas', () => {
 				getCurrentGroupIds: () => workflowDocumentStore.allGroups.map((group) => group.id),
 				onNodeGroupsChange: workflowDocumentStore.onNodeGroupsChange,
 				isGroupingEnabled: () => true,
-				forceAllGroupsExpanded: () => false,
 			});
 		}
 

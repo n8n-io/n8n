@@ -66,5 +66,53 @@ test.describe(
 			expect(details.data).toContain('Webhook received');
 			expect(details.data).not.toContain('draft-only');
 		});
+
+		// Direct DB access (services.postgres) is only available on the postgres
+		// infra modes, so this test is skipped under sqlite.
+		test('reconciles a webhook that went missing from storage on re-publish', async ({
+			api,
+			services,
+		}) => {
+			test.skip(!services.postgres, 'requires direct postgres access');
+
+			const { workflowId, webhookPath } = await api.workflows.importWorkflowFromFile(
+				'simple-webhook-test.json',
+			);
+
+			const countWebhooks = async () =>
+				Number.parseInt(
+					(
+						await services.postgres.exec(
+							`SELECT COUNT(*) FROM webhook_entity WHERE "workflowId" = '${workflowId}';`,
+						)
+					).trim() || '0',
+					10,
+				);
+
+			// Activation is applied asynchronously by the outbox consumer, so wait for
+			// the webhook to be registered in storage.
+			await expect.poll(countWebhooks, { timeout: 10_000 }).toBe(1);
+
+			// Simulate a missed/partial registration: drop the row while the published
+			// version stays the same, so the next publish has an empty trigger diff.
+			await services.postgres.exec(
+				`DELETE FROM webhook_entity WHERE "workflowId" = '${workflowId}';`,
+			);
+			expect(await countWebhooks()).toBe(0);
+
+			// Re-publishing the same version reconciles the desired webhooks against
+			// stored state and re-registers the missing one.
+			const published = await api.workflows.getWorkflow(workflowId);
+			await api.workflows.activate(workflowId, published.versionId!);
+
+			await expect.poll(countWebhooks, { timeout: 10_000 }).toBe(1);
+
+			// The reconciled webhook is functional end to end.
+			const response = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+				method: 'POST',
+				data: { message: 'after-reconciliation' },
+			});
+			expect(response.ok()).toBe(true);
+		});
 	},
 );

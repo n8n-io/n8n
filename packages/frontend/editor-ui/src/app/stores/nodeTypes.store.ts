@@ -35,6 +35,7 @@ import { computed, ref } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import type { WorkflowObjectAccessors } from '../types';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
@@ -340,14 +341,45 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		);
 	};
 
+	// Read full node descriptions from the local SQLite database, falling back to
+	// REST for any node not present locally (e.g. community/dynamic nodes).
+	const loadNodesInformationFromLocalDb = async (
+		nodeInfos: INodeTypeNameVersion[],
+	): Promise<INodeTypeDescription[]> => {
+		try {
+			const { getNodeType } = await import('@/app/workers');
+			const found: INodeTypeDescription[] = [];
+			const missing: INodeTypeNameVersion[] = [];
+
+			for (const nodeInfo of nodeInfos) {
+				const nodeType = await getNodeType(nodeInfo.name, nodeInfo.version);
+				if (nodeType) {
+					found.push(nodeType);
+				} else {
+					missing.push(nodeInfo);
+				}
+			}
+
+			if (missing.length) {
+				found.push(...(await nodeTypesApi.getNodesInformation(rootStore.restApiContext, missing)));
+			}
+
+			return found;
+		} catch (error) {
+			return await nodeTypesApi.getNodesInformation(rootStore.restApiContext, nodeInfos);
+		}
+	};
+
 	const getNodesInformation = async (
 		nodeInfos: INodeTypeNameVersion[],
 		replace = true,
 	): Promise<INodeTypeDescription[]> => {
-		const nodesInformation = await nodeTypesApi.getNodesInformation(
-			rootStore.restApiContext,
-			nodeInfos,
-		);
+		// The local DB holds untranslated descriptions, so only read from it for
+		// the English locale; other locales need per-node translations from REST.
+		const nodesInformation =
+			isDataWorkerEnabled() && rootStore.defaultLocale === 'en'
+				? await loadNodesInformationFromLocalDb(nodeInfos)
+				: await nodeTypesApi.getNodesInformation(rootStore.restApiContext, nodeInfos);
 
 		nodesInformation.forEach((nodeInformation) => {
 			if (nodeInformation.translation) {
@@ -372,8 +404,25 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	// Sync the local SQLite database with the server (cheap incremental diff after
+	// the initial load) and read all node descriptions back from it. Returns an
+	// empty array if the database is unavailable so the caller can fall back to REST.
+	const loadNodeTypesFromLocalDb = async (): Promise<INodeTypeDescription[]> => {
+		try {
+			const { loadNodeTypes, getAllNodeTypes } = await import('@/app/workers');
+			await loadNodeTypes(rootStore.baseUrl);
+			return await getAllNodeTypes();
+		} catch (error) {
+			return [];
+		}
+	};
+
 	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		const fetchedNodeTypes = isDataWorkerEnabled() ? await loadNodeTypesFromLocalDb() : [];
+		const nodeTypes = fetchedNodeTypes.length
+			? fetchedNodeTypes
+			: await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}

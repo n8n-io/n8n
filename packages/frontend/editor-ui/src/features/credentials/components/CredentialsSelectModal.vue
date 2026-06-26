@@ -26,6 +26,8 @@ const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 
+const searchQuery = ref('');
+
 onMounted(async () => {
 	try {
 		await credentialsStore.fetchCredentialTypes(false);
@@ -41,9 +43,19 @@ onMounted(async () => {
 });
 
 // Exclude purpose built credentials for ChatHub
-const selectableCredentialTypes = computed(() =>
+const allSelectableCredentialTypes = computed(() =>
 	credentialsStore.allCredentialTypes.filter((c) => !c.name.startsWith('chatHub')),
 );
+
+const selectableCredentialTypes = computed(() => {
+	if (!searchQuery.value) return allSelectableCredentialTypes.value;
+	const q = searchQuery.value.toLowerCase();
+	return allSelectableCredentialTypes.value.filter((c) => c.displayName.toLowerCase().includes(q));
+});
+
+function filterCredentials(query: string) {
+	searchQuery.value = query;
+}
 
 function onSelect(type: string) {
 	selected.value = type;
@@ -106,6 +118,7 @@ function openCredentialType() {
 					:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					:model-value="selected"
+					:filter-method="filterCredentials"
 					data-test-id="new-credential-type-select"
 					@update:model-value="onSelect"
 				>

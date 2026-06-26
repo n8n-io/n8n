@@ -1,14 +1,17 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import type { ConfirmationData, SuspendedRunState } from '@n8n/instance-ai';
+import {
+	orchestratorAgentId,
+	type ConfirmationData,
+	type RunStateRegistry,
+	type SuspendedRunState,
+} from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 
 import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
+import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -60,17 +63,13 @@ export interface SuspendedRunRebuilder {
 export type OrphanConfirmationStore = Pick<InstanceAiPendingConfirmationRepository, 'claim'>;
 
 /** The slice of the run-state registry the restorer writes to. */
-export interface SuspendedRunStateRegistry {
-	suspendRun(threadId: string, state: SuspendedRunState<User>): void;
-}
+export type SuspendedRunStateRegistry = Pick<RunStateRegistry<User>, 'suspendRun'>;
 
 /** The slice of snapshot storage the restorer uses to terminalise a snapshot. */
 export type RunSnapshotCanceller = Pick<DbSnapshotStorage, 'markRunCancelled'>;
 
 /** The slice of the event bus the restorer uses to drop a stale client card. */
-export interface RunFinishEventPublisher {
-	publish(threadId: string, event: InstanceAiEvent): void;
-}
+export type RunFinishEventPublisher = Pick<InProcessEventBus, 'publish'>;
 
 export interface SuspendedRunRestorerOptions {
 	logger: Logger;
@@ -200,7 +199,7 @@ export class SuspendedRunRestorer {
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			payload: { status: 'cancelled', reason },
 		});
 	}
