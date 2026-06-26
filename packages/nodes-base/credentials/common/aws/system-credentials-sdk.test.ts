@@ -4,7 +4,7 @@ const {
 	mockContainer,
 	MockSecurityConfig,
 	fromEnv,
-	fromTokenFile,
+	fromWebToken,
 	fromHttp,
 	fromContainerMetadata,
 	fromInstanceMetadata,
@@ -17,7 +17,7 @@ const {
 		mockContainer: { get: vi.fn() },
 		MockSecurityConfig,
 		fromEnv: vi.fn(),
-		fromTokenFile: vi.fn(),
+		fromWebToken: vi.fn(),
 		fromHttp: vi.fn(),
 		fromContainerMetadata: vi.fn(),
 		fromInstanceMetadata: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock('@n8n/di', () => ({ Container: mockContainer }));
 vi.mock('@n8n/config', () => ({ SecurityConfig: MockSecurityConfig }));
 vi.mock('@aws-sdk/credential-providers', () => ({
 	fromEnv,
-	fromTokenFile,
+	fromWebToken,
 	fromHttp,
 	fromContainerMetadata,
 	fromInstanceMetadata,
@@ -81,7 +81,7 @@ describe('system-credentials-sdk', () => {
 		// Every provider factory returns a provider resolving the standard identity.
 		const provider = vi.fn().mockResolvedValue(SDK_IDENTITY);
 		fromEnv.mockReturnValue(provider);
-		fromTokenFile.mockReturnValue(provider);
+		fromWebToken.mockReturnValue(provider);
 		fromHttp.mockReturnValue(provider);
 		fromContainerMetadata.mockReturnValue(provider);
 		fromInstanceMetadata.mockReturnValue(provider);
@@ -147,14 +147,26 @@ describe('system-credentials-sdk', () => {
 		describe('roleForServiceAccount (IRSA)', () => {
 			beforeEach(() => {
 				mockEnvGetter.mockImplementation((key: string) =>
-					key === 'AWS_ROLE_ARN' || key === 'AWS_WEB_IDENTITY_TOKEN_FILE' ? 'set' : undefined,
+					key === 'AWS_ROLE_ARN'
+						? 'arn:aws:iam::123456789012:role/my-role'
+						: key === 'AWS_WEB_IDENTITY_TOKEN_FILE'
+							? '/var/run/secrets/eks.amazonaws.com/serviceaccount/token'
+							: undefined,
 				);
+				mockReadFile.mockResolvedValue('jwt-token\n');
 			});
 
-			it('resolves via fromTokenFile when IRSA env is present', async () => {
+			it('reads and trims the token, then resolves via fromWebToken with the pinned session name', async () => {
 				const result = await resolveWebIdentityViaSdk();
 				expect(result).toEqual(SDK_IDENTITY);
-				expect(fromTokenFile).toHaveBeenCalledWith({
+				expect(mockReadFile).toHaveBeenCalledWith(
+					'/var/run/secrets/eks.amazonaws.com/serviceaccount/token',
+					'utf-8',
+				);
+				expect(fromWebToken).toHaveBeenCalledWith({
+					webIdentityToken: 'jwt-token',
+					roleArn: 'arn:aws:iam::123456789012:role/my-role',
+					roleSessionName: 'n8n-web-identity-session',
 					clientConfig: {
 						maxAttempts: 1,
 						requestHandler: { requestTimeout: 2000, connectionTimeout: 2000 },
@@ -165,7 +177,10 @@ describe('system-credentials-sdk', () => {
 			it('passes region to the STS client config when provided', async () => {
 				const result = await resolveWebIdentityViaSdk('eu-west-1');
 				expect(result).toEqual(SDK_IDENTITY);
-				expect(fromTokenFile).toHaveBeenCalledWith({
+				expect(fromWebToken).toHaveBeenCalledWith({
+					webIdentityToken: 'jwt-token',
+					roleArn: 'arn:aws:iam::123456789012:role/my-role',
+					roleSessionName: 'n8n-web-identity-session',
 					clientConfig: {
 						region: 'eu-west-1',
 						maxAttempts: 1,
@@ -179,7 +194,23 @@ describe('system-credentials-sdk', () => {
 
 				const result = await resolveWebIdentityViaSdk();
 				expect(result).toBeNull();
-				expect(fromTokenFile).not.toHaveBeenCalled();
+				expect(fromWebToken).not.toHaveBeenCalled();
+			});
+
+			it('returns null without calling the SDK when the token file is unreadable', async () => {
+				mockReadFile.mockRejectedValue(new Error('ENOENT'));
+
+				const result = await resolveWebIdentityViaSdk();
+				expect(result).toBeNull();
+				expect(fromWebToken).not.toHaveBeenCalled();
+			});
+
+			it('returns null without calling the SDK when the token file is empty', async () => {
+				mockReadFile.mockResolvedValue('   \n');
+
+				const result = await resolveWebIdentityViaSdk();
+				expect(result).toBeNull();
+				expect(fromWebToken).not.toHaveBeenCalled();
 			});
 		});
 
@@ -380,17 +411,21 @@ describe('system-credentials-sdk', () => {
 			const result = await getSystemCredentials('us-east-1');
 			expect(result).toEqual({ ...SDK_IDENTITY, source: 'instanceMetadata' });
 			expect(fromEnv).not.toHaveBeenCalled();
-			expect(fromTokenFile).not.toHaveBeenCalled();
+			expect(fromWebToken).not.toHaveBeenCalled();
 		});
 
 		it('resolves the IRSA source via the SDK', async () => {
 			mockEnvGetter.mockImplementation((key: string) =>
 				key === 'AWS_ROLE_ARN' || key === 'AWS_WEB_IDENTITY_TOKEN_FILE' ? 'set' : undefined,
 			);
+			mockReadFile.mockResolvedValue('jwt-token\n');
 
 			const result = await getSystemCredentials('us-east-1');
 			expect(result).toEqual({ ...SDK_IDENTITY, source: 'roleForServiceAccount' });
-			expect(fromTokenFile).toHaveBeenCalledWith({
+			expect(fromWebToken).toHaveBeenCalledWith({
+				webIdentityToken: 'jwt-token',
+				roleArn: 'set',
+				roleSessionName: 'n8n-web-identity-session',
 				clientConfig: { region: 'us-east-1', maxAttempts: 1, requestHandler: expect.any(Object) },
 			});
 		});

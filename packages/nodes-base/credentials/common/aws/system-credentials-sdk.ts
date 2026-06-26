@@ -91,14 +91,35 @@ export async function resolveEnvironmentViaSdk(): Promise<SystemCredentials | nu
 
 /** EKS IRSA web-identity (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE → STS). */
 export async function resolveWebIdentityViaSdk(region?: string): Promise<SystemCredentials | null> {
-	if (!getEnv('AWS_ROLE_ARN') || !getEnv('AWS_WEB_IDENTITY_TOKEN_FILE')) return null;
-	const { fromTokenFile } = await import('@aws-sdk/credential-providers');
+	const roleArn = getEnv('AWS_ROLE_ARN');
+	const tokenFile = getEnv('AWS_WEB_IDENTITY_TOKEN_FILE');
+	if (!roleArn || !tokenFile) return null;
+
+	// Read and trim the token ourselves: fromTokenFile reads the file verbatim
+	// (no trim), so a trailing newline in a projected token would be rejected by STS.
+	let webIdentityToken: string;
+	try {
+		const { readFile } = await import('node:fs/promises');
+		webIdentityToken = (await readFile(tokenFile, 'utf-8')).trim();
+	} catch {
+		return null;
+	}
+	if (!webIdentityToken) return null;
+
+	// fromWebToken (not fromTokenFile) so we can pass the pre-trimmed token and pin
+	// the legacy RoleSessionName, which CloudTrail and IAM sts:RoleSessionName
+	// conditions may depend on. It threads clientConfig into the STS client exactly
+	// as fromTokenFile does, preserving the regional (incl. China/GovCloud) endpoint.
+	const { fromWebToken } = await import('@aws-sdk/credential-providers');
 	// Pin to single-attempt + 2 s timeout to match the other remote resolvers.
 	// Pass the handler config as a plain object so NodeHttpHandler.create() builds
 	// the handler internally — avoids importing @smithy/node-http-handler directly
 	// (it's not a declared dependency of nodes-base).
 	return await runProvider(
-		fromTokenFile({
+		fromWebToken({
+			webIdentityToken,
+			roleArn,
+			roleSessionName: 'n8n-web-identity-session',
 			clientConfig: {
 				...(region ? { region } : {}),
 				maxAttempts: 1,
