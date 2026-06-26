@@ -1,6 +1,7 @@
 import type Sentry from '@sentry/node';
+import { ensureError } from 'n8n-workflow';
 
-import type { Span, StartSpanOpts, Tracer } from './tracing';
+import { SpanStatus, type Span, type StartSpanOpts, type Tracer } from './tracing';
 
 /**
  * Tracing implementation that uses Sentry to trace spans
@@ -10,7 +11,17 @@ export class SentryTracing implements Tracer {
 
 	async startSpan<T>(options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T> {
 		return await this.sentry.startSpan(options, async (span) => {
-			return await spanCb(span);
+			try {
+				return await spanCb(span);
+			} catch (e) {
+				const error = ensureError(e);
+				span.setStatus({ code: SpanStatus.error, message: error.message });
+				span.setAttributes({
+					'error.type': error.constructor.name,
+					'error.message': error.message,
+				});
+				throw e;
+			}
 		});
 	}
 }

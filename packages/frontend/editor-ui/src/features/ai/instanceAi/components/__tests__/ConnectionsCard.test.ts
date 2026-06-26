@@ -17,12 +17,21 @@ const { mcpExperimentMock, browserUseExperimentMock } = vi.hoisted(() => ({
 	browserUseExperimentMock: vi.fn(),
 }));
 
+const { mcpExperimentMock, computerUseExperimentMock } = vi.hoisted(() => ({
+	mcpExperimentMock: vi.fn(),
+	computerUseExperimentMock: vi.fn(),
+}));
+
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpExperimentMock,
 }));
 
 vi.mock('@/experiments/instanceAiBrowserUse', () => ({
 	useInstanceAiBrowserUseExperiment: browserUseExperimentMock,
+}));
+
+vi.mock('@/experiments/instanceAiComputerUse', () => ({
+	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
 }));
 
 const settingsStoreMock = vi.fn();
@@ -102,6 +111,7 @@ describe('ConnectionsCard', () => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
 	});
@@ -111,7 +121,12 @@ describe('ConnectionsCard', () => {
 		expect(getByText('browser-use-row')).toBeVisible();
 	});
 
-	describe('when the experiment is disabled', () => {
+	it('renders the computer use row when the experiment is enabled', () => {
+		const { getByText } = renderComponent();
+		expect(getByText('computer-use-row')).toBeVisible();
+	});
+
+	describe('when browser use experiment is disabled', () => {
 		beforeEach(() => {
 			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		});
@@ -125,5 +140,33 @@ describe('ConnectionsCard', () => {
 			const { getByText } = renderComponent();
 			expect(getByText('computer-use-row')).toBeVisible();
 		});
+	});
+    
+	describe('when computer use experiment is disabled', () => {
+		beforeEach(() => {
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+		});
+
+		it('hides the computer use row', () => {
+			const { queryByText } = renderComponent();
+			expect(queryByText('computer-use-row')).toBeNull();
+		});
+
+		it('hides the empty-state CTA and shows the simplified title', () => {
+			const { queryByTestId, getByText } = renderComponent();
+			expect(queryByTestId('instance-ai-connections-empty-cta')).toBeNull();
+			expect(getByText('instanceAi.connections.empty.titleNoComputerUse')).toBeVisible();
+		});
+
+		it('omits computer use from the add menu', () => {
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('instance-ai-connections-add')).toBeNull();
+		});
+	});
+
+	it('shows the empty-state CTA when the experiment is enabled but no connections exist', () => {
+		settingsStoreMock.mockReturnValue(makeSettingsStore({ connections: [] }));
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('instance-ai-connections-empty-cta')).toBeVisible();
 	});
 });
