@@ -171,10 +171,6 @@ export class ExternalSecretsProviderConnectionManager {
 	): Promise<ProviderConnectResult> {
 		const existingProvider = this.providerRegistry.get(providerKey);
 
-		if (existingProvider && existingProvider !== replacementProvider) {
-			await this.delayBeforeProviderSwapForRepro(providerKey);
-		}
-
 		this.providerRegistry.set(providerKey, replacementProvider);
 
 		if (existingProvider && existingProvider !== replacementProvider) {
@@ -186,30 +182,6 @@ export class ExternalSecretsProviderConnectionManager {
 		}
 
 		return { success: true };
-	}
-
-	private async delayBeforeProviderSwapForRepro(providerKey: string): Promise<void> {
-		const delayMs = Number.parseInt(
-			process.env.N8N_EXTERNAL_SECRETS_RELOAD_REPRO_DELAY_MS ?? '0',
-			10,
-		);
-
-		if (!Number.isFinite(delayMs) || delayMs <= 0) return;
-
-		const targetProviderKey = process.env.N8N_EXTERNAL_SECRETS_RELOAD_REPRO_PROVIDER_KEY;
-		if (targetProviderKey && targetProviderKey !== providerKey) return;
-
-		this.logger.warn('External secrets reload repro delay before provider swap', {
-			providerKey,
-			delayMs,
-		});
-
-		await new Promise((resolve) => setTimeout(resolve, delayMs));
-
-		this.logger.warn('External secrets reload repro delay finished', {
-			providerKey,
-			delayMs,
-		});
 	}
 
 	private async connectProvider(providerKey: string): Promise<ProviderConnectResult> {
