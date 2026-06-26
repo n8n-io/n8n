@@ -1,0 +1,458 @@
+/**
+ * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
+ */
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
+
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import type { InstanceAiContext } from '../types';
+import { NodeSearchEngine } from './nodes/node-search-engine';
+import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
+import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
+import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
+import { buildCredentialMap } from './workflows/resolve-credentials';
+
+// ── Action schemas ──────────────────────────────────────────────────────────
+
+const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
+const NODE_TYPES_ARRAY_DESCRIPTION =
+	'Node type IDs for node-level lookups (max 5). Entries may be plain strings or objects with action-specific options.';
+
+const listAction = z.object({
+	action: z.literal('list').describe('List available node types'),
+	query: z
+		.string()
+		.optional()
+		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+});
+
+const searchAction = z.object({
+	action: z
+		.literal('search')
+		.describe(
+			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
+		),
+	query: z
+		.string()
+		.optional()
+		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+	connectionType: z
+		.enum(AI_CONNECTION_TYPES)
+		.optional()
+		.describe('Filter results by AI sub-node connection type.'),
+	limit: z
+		.number()
+		.optional()
+		.default(10)
+		.describe('Maximum number of results to return (default: 10)'),
+});
+
+const describeAction = z.object({
+	action: z.literal('describe').describe('Get detailed description of a node type'),
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+});
+
+const nodeRequestObjectSchema = z.object({
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+	version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
+	resource: z.string().optional().describe('Resource discriminator for split nodes'),
+	operation: z.string().optional().describe('Operation discriminator for split nodes'),
+	mode: z.string().optional().describe('Mode discriminator for split nodes'),
+});
+
+const nodeRequestSchema = z.union([
+	z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+	nodeRequestObjectSchema,
+]);
+
+const typeDefinitionAction = z.object({
+	action: z
+		.literal('type-definition')
+		.describe(
+			'Get TypeScript type definitions for nodes — exact parameter names, enum values, credential types, display conditions, and `@builderHint` annotations.',
+		),
+	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
+});
+
+const suggestedAction = z.object({
+	action: z
+		.literal('suggested')
+		.describe(
+			'Get curated node recommendations by category. Call first when the workflow fits a known category.',
+		),
+	categories: z
+		.array(z.string())
+		.min(1)
+		.max(3)
+		.describe(`Workflow technique categories: ${categoryList.join(', ')}`),
+});
+
+const exploreResourcesAction = z.object({
+	action: z
+		.literal('explore-resources')
+		.describe("Query live credential-backed resource lists for a node's RLC parameters"),
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+	version: z.number().describe('Node version, e.g. 4.7'),
+	methodName: z
+		.string()
+		.describe(
+			"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+				'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+				'do not invent or guess method names; they must match the annotation exactly.',
+		),
+	methodType: z
+		.enum(['listSearch', 'loadOptions'])
+		.describe(
+			'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+				'"loadOptions" for @loadOptionsMethod annotations. ' +
+				'Pick the one matching the annotation you found in the type definition.',
+		),
+	credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
+	credentialId: z.string().describe('Credential ID from list-credentials'),
+	filter: z.string().optional().describe('Search/filter text to narrow results'),
+	paginationToken: z
+		.string()
+		.optional()
+		.describe('Pagination token from a previous call to get more results'),
+	currentNodeParameters: z
+		.record(z.unknown())
+		.optional()
+		.describe(
+			'Current node parameters for dependent lookups. Some methods need prior selections — ' +
+				'e.g. sheetsSearch needs documentId: { __rl: true, mode: "id", value: "spreadsheetId" } ' +
+				'to list sheets within that spreadsheet. Check displayOptions in the type definition.',
+		),
+});
+
+const fullInputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		listAction,
+		searchAction,
+		describeAction,
+		typeDefinitionAction,
+		suggestedAction,
+		exploreResourcesAction,
+	]),
+);
+
+type FullInput = z.infer<typeof fullInputSchema>;
+
+interface SearchEngineCache {
+	nodeTypes?: SearchableNodeType[];
+	nodeCount?: number;
+	engine?: NodeSearchEngine;
+}
+
+// ── Handlers ────────────────────────────────────────────────────────────────
+
+async function handleList(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'list' }>,
+) {
+	const nodes = await context.nodeService.listAvailable({
+		query: input.query,
+	});
+	return { nodes };
+}
+
+async function handleSearch(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'search' }>,
+	cache: SearchEngineCache,
+) {
+	const nodeTypes = await context.nodeService.listSearchable();
+	let engine = cache.engine;
+	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
+		cache.nodeTypes = nodeTypes;
+		cache.nodeCount = nodeTypes.length;
+		engine = new NodeSearchEngine(nodeTypes);
+		cache.engine = engine;
+	}
+
+	let results;
+	if (input.connectionType) {
+		results = engine.searchByConnectionType(input.connectionType, input.limit, input.query);
+	} else if (input.query) {
+		results = engine.searchByName(input.query, input.limit);
+	} else {
+		return { results: [], totalResults: 0 };
+	}
+
+	// Enrich results with discriminator info (resources/operations) when available
+	const enriched = await Promise.all(
+		results.map(async (r) => {
+			if (!context.nodeService.listDiscriminators) return r;
+			const disc = await context.nodeService.listDiscriminators(r.name);
+			if (!disc) return r;
+			return { ...r, discriminators: disc };
+		}),
+	);
+
+	// Steer the language model subnode toward a provider the user already has a
+	// credential for, so the builder stops defaulting to OpenAI when only another
+	// provider is configured. Only hits the credential list when relevant.
+	const hasLanguageModelRequirement = enriched.some((r) =>
+		r.subnodeRequirements?.some((req) => req.connectionType === 'ai_languageModel'),
+	);
+	if (!hasLanguageModelRequirement) {
+		return { results: enriched, totalResults: enriched.length };
+	}
+
+	const credentialMap = await buildCredentialMap(context.credentialService);
+	const suggestedModelNode = pickPreferredChatModelNode(credentialMap.keys());
+	if (!suggestedModelNode) {
+		return { results: enriched, totalResults: enriched.length };
+	}
+
+	const withSuggestions = enriched.map((r) =>
+		r.subnodeRequirements
+			? {
+					...r,
+					subnodeRequirements: r.subnodeRequirements.map((req) =>
+						req.connectionType === 'ai_languageModel'
+							? { ...req, suggestedNode: suggestedModelNode }
+							: req,
+					),
+				}
+			: r,
+	);
+
+	return {
+		results: withSuggestions,
+		totalResults: withSuggestions.length,
+	};
+}
+
+async function handleDescribe(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'describe' }>,
+) {
+	try {
+		const desc = await context.nodeService.getDescription(input.nodeType);
+		return { found: true, ...desc };
+	} catch {
+		return {
+			found: false,
+			error: `Node type "${input.nodeType}" not found. Use the search action to discover available node types.`,
+			name: input.nodeType,
+			displayName: '',
+			description: '',
+			properties: [],
+			inputs: [],
+			outputs: [],
+		};
+	}
+}
+
+async function handleTypeDefinition(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'type-definition' }>,
+) {
+	// Native tool validation uses the flattened top-level schema (required for
+	// Anthropic's `type: "object"` constraint), which makes every variant field
+	// optional. Re-assert the variant contract so missing/invalid inputs return
+	// a structured error the model can self-correct from, instead of crashing
+	// downstream on `input.nodeTypes.map`.
+	const parsed = typeDefinitionAction.safeParse(input);
+	if (!parsed.success) {
+		return {
+			definitions: [],
+			error: parsed.error.issues
+				.map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+				.join('; '),
+		};
+	}
+	const { nodeTypes } = parsed.data;
+
+	if (!context.nodeService.getNodeTypeDefinition) {
+		return {
+			definitions: nodeTypes.map((req: z.infer<typeof nodeRequestSchema>) => ({
+				nodeType: typeof req === 'string' ? req : req.nodeType,
+				content: '',
+				error: 'Node type definitions are not available.',
+			})),
+		};
+	}
+
+	const definitions = await Promise.all(
+		nodeTypes.map(async (req: z.infer<typeof nodeRequestSchema>) => {
+			const nodeType = typeof req === 'string' ? req : req.nodeType;
+			const options = typeof req === 'string' ? undefined : req;
+
+			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
+
+			if (!result) {
+				return {
+					nodeType,
+					content: '',
+					error: `No type definition found for '${nodeType}'.`,
+				};
+			}
+
+			if (result.error) {
+				return {
+					nodeType,
+					content: '',
+					error: result.error,
+				};
+			}
+
+			return {
+				nodeType,
+				version: result.version,
+				content: result.content,
+				...(result.builderHint ? { builderHint: result.builderHint } : {}),
+			};
+		}),
+	);
+
+	return { definitions };
+}
+
+// eslint-disable-next-line @typescript-eslint/require-await
+async function handleSuggested(input: Extract<FullInput, { action: 'suggested' }>) {
+	const results: Array<{
+		category: string;
+		description: string;
+		patternHint: string;
+		suggestedNodes: Array<{ name: string; note?: string }>;
+	}> = [];
+	const unknownCategories: string[] = [];
+
+	for (const cat of input.categories) {
+		const data = suggestedNodesData[cat];
+		if (data) {
+			results.push({
+				category: cat,
+				description: data.description,
+				patternHint: data.patternHint,
+				suggestedNodes: data.nodes,
+			});
+		} else {
+			unknownCategories.push(cat);
+		}
+	}
+
+	return { results, unknownCategories };
+}
+
+async function handleExploreResources(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'explore-resources' }>,
+) {
+	if (!context.nodeService.exploreResources) {
+		return {
+			results: [],
+			error: 'Resource exploration is not available.',
+		};
+	}
+
+	try {
+		const result = await context.nodeService.exploreResources(input);
+		return {
+			results: result.results,
+			paginationToken: result.paginationToken,
+			...(result.builderHint ? { builderHint: result.builderHint } : {}),
+		};
+	} catch (error) {
+		return {
+			results: [],
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+// ── Tool factory ────────────────────────────────────────────────────────────
+
+export function createNodesTool(
+	context: InstanceAiContext,
+	surface: 'full' | 'orchestrator' = 'full',
+) {
+	const searchEngineCache: SearchEngineCache = {};
+
+	if (surface === 'orchestrator') {
+		const orchestratorExploreAction = z.object({
+			action: z
+				.literal('explore-resources')
+				.describe("Query real resources for a node's RLC parameters"),
+			nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
+			version: z.number().describe('Node version, e.g. 4.7'),
+			methodName: z
+				.string()
+				.describe(
+					"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+						'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+						'do not invent or guess method names; they must match the annotation exactly.',
+				),
+			methodType: z
+				.enum(['listSearch', 'loadOptions'])
+				.describe(
+					'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+						'"loadOptions" for @loadOptionsMethod annotations. ' +
+						'Pick the one matching the annotation you found in the type definition.',
+				),
+			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
+			credentialId: z.string().describe('Credential ID from list-credentials'),
+			filter: z.string().optional().describe('Search/filter text to narrow results'),
+			paginationToken: z
+				.string()
+				.optional()
+				.describe('Pagination token from a previous call to get more results'),
+			currentNodeParameters: z
+				.record(z.unknown())
+				.optional()
+				.describe(
+					'Current node parameters for dependent lookups. Some methods need prior selections — ' +
+						'e.g. sheetsSearch needs documentId: { __rl: true, mode: "id", value: "spreadsheetId" } ' +
+						'to list sheets within that spreadsheet. Check displayOptions in the type definition.',
+				),
+		});
+
+		const orchestratorInputSchema = sanitizeInputSchema(
+			z.discriminatedUnion('action', [typeDefinitionAction, orchestratorExploreAction]),
+		);
+
+		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
+
+		return new Tool('nodes')
+			.description(
+				"Read node type definitions or query real resources for a node's RLC parameters " +
+					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+					'`explore-resources` with the real method name and a credential.',
+			)
+			.input(orchestratorInputSchema)
+			.handler(async (input: OrchestratorInput) => {
+				switch (input.action) {
+					case 'type-definition':
+						return await handleTypeDefinition(context, input);
+					case 'explore-resources':
+						return await handleExploreResources(context, input);
+				}
+			})
+			.build();
+	}
+
+	return new Tool('nodes')
+		.description(
+			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, and `explore-resources` for live credential-backed lists.',
+		)
+		.input(fullInputSchema)
+		.handler(async (input: FullInput) => {
+			switch (input.action) {
+				case 'list':
+					return await handleList(context, input);
+				case 'search':
+					return await handleSearch(context, input, searchEngineCache);
+				case 'describe':
+					return await handleDescribe(context, input);
+				case 'type-definition':
+					return await handleTypeDefinition(context, input);
+				case 'suggested':
+					return await handleSuggested(input);
+				case 'explore-resources':
+					return await handleExploreResources(context, input);
+			}
+		})
+		.build();
+}

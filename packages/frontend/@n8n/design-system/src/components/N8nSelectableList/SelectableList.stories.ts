@@ -7,6 +7,9 @@ export default {
 	component: N8nSelectableList,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: { component: 'A list component with keyboard and pointer selection behavior.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

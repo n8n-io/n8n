@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-import { computed, watch, useTemplateRef, onBeforeUnmount } from 'vue';
+import { computed, onMounted, watch, useTemplateRef, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
@@ -17,6 +18,11 @@ import { N8nResizeWrapper } from '@n8n/design-system';
 import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.vue';
 import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 import FocusPanel from '@/app/components/FocusPanel.vue';
+import EvaluationsWizardSidepanel from '@/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.vue';
+import EvaluationsPaywall from '@/features/ai/evaluation.ee/components/Paywall/EvaluationsPaywall.vue';
+import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
+import { useAiRootNodes } from '@/features/ai/evaluation.ee/composables/useAiRootNodes';
+import { useEvaluationsLicense } from '@/features/ai/evaluation.ee/composables/useEvaluationsLicense';
 
 defineOptions({ name: 'FocusSidebar' });
 
@@ -30,13 +36,14 @@ const emit = defineEmits<{
 
 const wrapperRef = useTemplateRef('wrapper');
 
+const workflowId = useInjectWorkflowId();
 const focusPanelStore = useFocusPanelStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
 const deviceSupport = useDeviceSupport();
-const vueFlow = useVueFlow(workflowsStore.workflowId);
+const vueFlow = useVueFlow(workflowId.value);
 const activeElement = useActiveElement();
 
 useTelemetryContext({ view_shown: 'focus_panel' });
@@ -47,9 +54,38 @@ const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
 const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
+const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
+	useEvaluationsWizardSidepanelExperiment();
+const aiRootNodes = useAiRootNodes();
+const hasAiRootNode = computed(() => aiRootNodes.value.length > 0);
+const { isLicensed, isResolved, ensureLicenseLoaded } = useEvaluationsLicense();
 
 const showSetupPanel = computed(
 	() => setupPanelStore.isFeatureEnabled && selectedTab.value === 'setup',
+);
+const showEvaluationsPanel = computed(
+	() =>
+		isEvaluationsWizardSidepanelEnabled.value &&
+		hasAiRootNode.value &&
+		selectedTab.value === 'evaluations' &&
+		isResolved.value &&
+		isLicensed.value,
+);
+const showEvaluationsPaywall = computed(
+	() =>
+		isEvaluationsWizardSidepanelEnabled.value &&
+		hasAiRootNode.value &&
+		selectedTab.value === 'evaluations' &&
+		isResolved.value &&
+		!isLicensed.value,
+);
+
+// Tab bar visibility used to track only the setup panel; now it also needs to
+// stay shown when the evaluations tab is available, otherwise the user has no
+// way to switch back.
+const showTabs = computed(
+	() =>
+		isSetupPanelEnabled.value || (isEvaluationsWizardSidepanelEnabled.value && hasAiRootNode.value),
 );
 
 const node = computed<INodeUi | undefined>(() => {
@@ -60,7 +96,7 @@ const node = computed<INodeUi | undefined>(() => {
 	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
 	return selected?.data?.render.type === CanvasNodeRenderType.Default
-		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		? (workflowDocumentStore?.value?.allNodes ?? []).find((n) => n.id === selected.id)
 		: undefined;
 });
 
@@ -124,6 +160,10 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 	emit('contextMenuAction', action, nodeIds);
 }
 
+onMounted(() => {
+	void ensureLicenseLoaded();
+});
+
 onBeforeUnmount(() => {
 	unregisterKeyboardListener();
 });
@@ -151,11 +191,17 @@ onBeforeUnmount(() => {
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
-				<div v-if="isSetupPanelEnabled">
+				<div v-if="showTabs">
 					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
 				</div>
 				<div v-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
 					<SetupPanel />
+				</div>
+				<div v-else-if="showEvaluationsPanel" :class="$style['setup-panel-wrapper']">
+					<EvaluationsWizardSidepanel />
+				</div>
+				<div v-else-if="showEvaluationsPaywall" :class="$style['setup-panel-wrapper']">
+					<EvaluationsPaywall />
 				</div>
 				<FocusPanel
 					v-else

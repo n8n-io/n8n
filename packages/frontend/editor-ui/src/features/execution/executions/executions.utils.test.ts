@@ -44,6 +44,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'test-workflow',
+	}),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
 		activeExecutionId: '123',
 	}),
 }));
@@ -538,6 +544,54 @@ describe('waitingNodeTooltip', () => {
 		// Test without workflow - should return the raw tooltip string
 		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
 	});
+
+	it('should use metadata.resumeUrl when provided for webhook resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		const metadata = { resumeUrl: 'http://signed.com/wait/123?signature=abc123' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/wait/123?signature=abc123');
+	});
+
+	it('should use metadata.resumeFormUrl when provided for form resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'form',
+			},
+		};
+		const metadata = { resumeFormUrl: 'http://signed.com/form/123?signature=xyz789' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/form/123?signature=xyz789');
+	});
+
+	it('should fall back to constructed URL when metadata is not provided', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		// No metadata passed - should use constructed URL from store
+		const result = waitingNodeTooltip(node, mockWorkflow);
+		expect(result).toContain('http://localhost:5678/webhook-waiting/123');
+	});
 });
 
 const executionErrorFactory = (error: Record<string, unknown>) =>
@@ -594,6 +648,23 @@ describe('getExecutionErrorToastConfiguration', () => {
 			title: 'Subworkflow failed',
 			message: 'Workflow XYZ failed',
 		});
+	});
+
+	it('returns config for WorkflowHasIssuesError with multi-line message preserved', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'WorkflowHasIssuesError',
+				message: 'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+			}),
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.title).toBe('pushConnection.workflowHasIssues.title');
+		const message = result.message as VNode;
+		expect(message.props?.style).toBe('white-space: pre-line');
+		expect(message.children).toBe(
+			'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+		);
 	});
 
 	it('returns config for configuration-node error with node name', () => {

@@ -16,14 +16,27 @@ import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue'
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
-import { N8nHeading, N8nTabs, N8nTooltip, N8nButton, N8nText, N8nLink } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nNotice,
+	N8nTabs,
+	N8nTooltip,
+	N8nButton,
+	N8nText,
+	N8nLink,
+	N8nInputLabel,
+	N8nInput,
+	N8nCallout,
+	N8nPreviewTag,
+} from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
-type MCPTabs = 'workflows' | 'oauth';
+type MCPTabs = 'workflows' | 'oauth' | 'settings';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -38,30 +51,74 @@ const uiStore = useUIStore();
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
 
-const tabs = ref<Array<TabOptions<MCPTabs>>>([
-	{
-		label: i18n.baseText('settings.mcp.tabs.workflows'),
-		value: 'workflows',
-	},
-	{
-		label: i18n.baseText('settings.mcp.tabs.oauth'),
-		value: 'oauth',
-	},
-]);
+const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdmin = computed(() => usersStore.isAdmin);
+const canManageMcpInstance = computed(() => isOwner.value || isAdmin.value);
+
+const tabs = computed<Array<TabOptions<MCPTabs>>>(() => {
+	const base: Array<TabOptions<MCPTabs>> = [
+		{
+			label: i18n.baseText('settings.mcp.tabs.workflows'),
+			value: 'workflows',
+		},
+		{
+			label: i18n.baseText('settings.mcp.tabs.oauth'),
+			value: 'oauth',
+		},
+	];
+	if (canManageMcpInstance.value) {
+		base.push({
+			label: i18n.baseText('settings.mcp.tabs.oauthSettings'),
+			value: 'settings',
+		});
+	}
+	return base;
+});
 
 const workflowsLoading = ref(false);
 const availableWorkflows = ref<WorkflowListItem[]>([]);
+const availableWorkflowsTotal = ref(0);
+const workflowsTableState = ref<TableOptions>({
+	page: 0,
+	itemsPerPage: 10,
+	sortBy: [],
+});
+const workflowsTableItemsPerPage = ref(workflowsTableState.value.itemsPerPage);
 
 const oAuthClientsLoading = ref(false);
 const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
-const isOwner = computed(() => usersStore.isInstanceOwner);
-const isAdmin = computed(() => usersStore.isAdmin);
+const redirectUrisInput = ref('');
+const redirectUrisError = ref('');
+const redirectUrisLoading = ref(false);
+const redirectUriWarningDismissed = ref(false);
 
-const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
+
+const canSeeInstanceStats = canManageMcpInstance;
+
+const showInstanceCapacityNotice = computed(
+	() => canSeeInstanceStats.value && mcpStore.instanceClientStats?.atCapacity === true,
+);
+
+const instanceCapacityNoticeContent = computed(() => {
+	const stats = mcpStore.instanceClientStats;
+	if (!stats) return '';
+	return i18n.baseText('settings.mcp.instanceCapacity.warning', {
+		interpolate: { count: String(stats.count), limit: String(stats.limit) },
+	});
+});
+
+const showRedirectUriWarning = computed(
+	() =>
+		canManageMcpInstance.value &&
+		mcpStore.mcpAccessEnabled &&
+		mcpStore.allowedRedirectUris.length === 0 &&
+		!redirectUriWarningDismissed.value,
+);
 
 const showConnectWorkflowsButton = computed(() => {
-	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
+	return selectedTab.value === 'workflows' && availableWorkflowsTotal.value > 0;
 });
 
 const onTabSelected = async (tab: MCPTabs) => {
@@ -71,6 +128,8 @@ const onTabSelected = async (tab: MCPTabs) => {
 	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
 		await fetchoAuthCLients();
 		telemetry.track('User clicked connected clients tab');
+	} else if (tab === 'settings' && mcpStore.allowedRedirectUris.length === 0) {
+		await loadRedirectUris();
 	}
 };
 
@@ -97,9 +156,10 @@ const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean)
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
 		if (isEnabled) {
+			workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
 			await fetchAvailableWorkflows();
 		} else {
-			availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflowId);
+			await fetchAvailableWorkflows();
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
@@ -137,8 +197,26 @@ const onTableRefresh = async () => {
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
 	try {
-		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
-		availableWorkflows.value = workflows;
+		const response = await mcpStore.fetchWorkflowsAvailableForMCP(
+			workflowsTableState.value.page + 1,
+			workflowsTableState.value.itemsPerPage,
+		);
+		if (response.data.length === 0 && response.count > 0 && workflowsTableState.value.page > 0) {
+			const maxPage = Math.max(
+				0,
+				Math.ceil(response.count / workflowsTableState.value.itemsPerPage) - 1,
+			);
+			workflowsTableState.value = { ...workflowsTableState.value, page: maxPage };
+			const clampedResponse = await mcpStore.fetchWorkflowsAvailableForMCP(
+				workflowsTableState.value.page + 1,
+				workflowsTableState.value.itemsPerPage,
+			);
+			availableWorkflows.value = clampedResponse.data;
+			availableWorkflowsTotal.value = clampedResponse.count;
+			return;
+		}
+		availableWorkflows.value = response.data;
+		availableWorkflowsTotal.value = response.count;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 	} finally {
@@ -152,11 +230,18 @@ const onRefreshWorkflows = async () => {
 	await fetchAvailableWorkflows();
 };
 
+const onWorkflowsTableUpdate = async (options: TableOptions) => {
+	const pageSizeChanged = options.itemsPerPage !== workflowsTableItemsPerPage.value;
+	workflowsTableState.value = { ...options, page: pageSizeChanged ? 0 : options.page };
+	workflowsTableItemsPerPage.value = options.itemsPerPage;
+	await fetchAvailableWorkflows();
+};
+
 const fetchoAuthCLients = async () => {
 	try {
 		oAuthClientsLoading.value = true;
 		const clients = await mcpStore.getAllOAuthClients();
-		connectedOAuthClients.value = clients;
+		connectedOAuthClients.value = clients ?? [];
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
@@ -194,19 +279,112 @@ const openConnectWorkflowsModal = () => {
 	telemetry.track('User clicked connect workflows from mcp settings');
 };
 
+const loadRedirectUris = async () => {
+	try {
+		const uris = await mcpStore.fetchAllowedRedirectUris();
+		redirectUrisInput.value = uris.join(', ');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.allowedRedirectUris.error.loading'));
+	}
+};
+
+const validateRedirectUris = (urisString: string): { valid: boolean; error?: string } => {
+	const uris = urisString
+		.split(',')
+		.map((uri) => uri.trim())
+		.filter((uri) => uri.length > 0);
+
+	// Empty list is valid (backward compatible - no restrictions)
+	if (uris.length === 0) {
+		return { valid: true };
+	}
+
+	for (const uri of uris) {
+		try {
+			const url = new URL(uri);
+
+			if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+				return {
+					valid: false,
+					error: i18n.baseText('settings.mcp.allowedRedirectUris.validation.invalidProtocol', {
+						interpolate: { url: uri },
+					}),
+				};
+			}
+
+			const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+			if (!isLocalhost && url.protocol !== 'https:') {
+				return {
+					valid: false,
+					error: i18n.baseText('settings.mcp.allowedRedirectUris.validation.httpsRequired', {
+						interpolate: { url: uri },
+					}),
+				};
+			}
+		} catch (error) {
+			return {
+				valid: false,
+				error: i18n.baseText('settings.mcp.allowedRedirectUris.validation.invalidUrl', {
+					interpolate: { url: uri },
+				}),
+			};
+		}
+	}
+
+	return { valid: true };
+};
+
+const saveRedirectUris = async () => {
+	redirectUrisError.value = '';
+
+	const validation = validateRedirectUris(redirectUrisInput.value);
+	if (!validation.valid) {
+		redirectUrisError.value = validation.error ?? '';
+		return;
+	}
+
+	try {
+		redirectUrisLoading.value = true;
+		const uris = redirectUrisInput.value
+			.split(',')
+			.map((uri) => uri.trim())
+			.filter((uri) => uri.length > 0);
+
+		await mcpStore.setAllowedRedirectUris(uris);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.mcp.allowedRedirectUris.success'),
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.allowedRedirectUris.error.saving'));
+	} finally {
+		redirectUrisLoading.value = false;
+	}
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
 	if (!mcpStore.mcpAccessEnabled) {
 		return;
 	}
-	await fetchAvailableWorkflows();
+	const fetches: Array<Promise<unknown>> = [fetchAvailableWorkflows(), fetchoAuthCLients()];
+	if (canManageMcpInstance.value) {
+		fetches.push(loadRedirectUris());
+		fetches.push(mcpStore.getInstanceClientStats());
+	}
+	await Promise.all(fetches);
 });
 </script>
 <template>
 	<div :class="$style.container">
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
 			<div :class="$style.headings">
-				<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+				<div :class="$style['heading-row']">
+					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+					<N8nTooltip :content="i18n.baseText('settings.mcp.preview.tooltip')">
+						<N8nPreviewTag size="medium" />
+					</N8nTooltip>
+				</div>
 				<div v-show="mcpStore.mcpAccessEnabled" data-test-id="mcp-settings-description">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.mcp.description') }}.
@@ -226,13 +404,32 @@ onMounted(async () => {
 				:access-enabled="mcpStore.mcpAccessEnabled"
 				:toggle-disabled="!canToggleMCP"
 				:loading="mcpStatusLoading"
+				:managed-by-env="mcpStore.mcpManagedByEnv"
 				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
+		<N8nCallout
+			v-if="showRedirectUriWarning"
+			theme="warning"
+			:class="$style['redirect-uri-warning']"
+			data-test-id="mcp-redirect-uri-warning"
+		>
+			{{ i18n.baseText('settings.mcp.allowedRedirectUris.warning') }}
+			<template #trailingContent>
+				<N8nButton
+					icon="x"
+					variant="ghost"
+					size="small"
+					iconOnly
+					@click="redirectUriWarningDismissed = true"
+				/>
+			</template>
+		</N8nCallout>
 		<MCPEmptyState
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
+			:managed-by-env="mcpStore.mcpManagedByEnv"
 			@turn-on-mcp="onToggleMCPAccess(true)"
 		/>
 		<div
@@ -240,6 +437,12 @@ onMounted(async () => {
 			:class="$style.container"
 			data-test-id="mcp-enabled-section"
 		>
+			<N8nNotice
+				v-if="showInstanceCapacityNotice"
+				theme="warning"
+				data-test-id="mcp-instance-capacity-notice"
+				:content="instanceCapacityNoticeContent"
+			/>
 			<header :class="$style['tabs-header']">
 				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
 				<div :class="$style.actions">
@@ -266,12 +469,15 @@ onMounted(async () => {
 			<main>
 				<WorkflowsTable
 					v-if="selectedTab === 'workflows'"
+					v-model:table-options="workflowsTableState"
 					:data-test-id="'mcp-workflow-table'"
 					:workflows="availableWorkflows"
+					:total-count="availableWorkflowsTotal"
 					:loading="workflowsLoading"
 					@remove-mcp-access="(workflow) => onToggleWorkflowMCPAccess(workflow.id, false)"
 					@connect-workflows="openConnectWorkflowsModal"
 					@update-description="onUpdateDescription"
+					@update:options="onWorkflowsTableUpdate"
 					@refresh="onRefreshWorkflows"
 				/>
 				<OAuthClientsTable
@@ -282,6 +488,39 @@ onMounted(async () => {
 					@revoke-client="revokeClientAccess"
 					@refresh="onTableRefresh"
 				/>
+				<section
+					v-else-if="selectedTab === 'settings'"
+					:class="$style['oauth-settings-content']"
+					data-test-id="mcp-oauth-settings-tab"
+				>
+					<N8nInputLabel
+						:label="i18n.baseText('settings.mcp.allowedRedirectUris.label')"
+						:tooltip-text="i18n.baseText('settings.mcp.allowedRedirectUris.description')"
+						:show-tooltip="true"
+					>
+						<N8nInput
+							v-model="redirectUrisInput"
+							type="textarea"
+							:rows="6"
+							:placeholder="i18n.baseText('settings.mcp.allowedRedirectUris.placeholder')"
+							:disabled="!canToggleMCP"
+							data-test-id="mcp-redirect-uris-input"
+						/>
+					</N8nInputLabel>
+					<div v-if="redirectUrisError" :class="$style['error-message']">
+						<N8nText color="danger" size="small">{{ redirectUrisError }}</N8nText>
+					</div>
+					<div :class="$style['save-button-container']">
+						<N8nButton
+							:label="i18n.baseText('settings.mcp.allowedRedirectUris.save')"
+							:loading="redirectUrisLoading"
+							:disabled="!canToggleMCP"
+							size="small"
+							data-test-id="mcp-redirect-uris-save-button"
+							@click="saveRedirectUris"
+						/>
+					</div>
+				</section>
 			</main>
 		</div>
 	</div>
@@ -311,6 +550,13 @@ onMounted(async () => {
 	min-height: 60px;
 }
 
+.heading-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--5xs);
+}
+
 .tabs-header {
 	display: flex;
 	justify-content: space-between;
@@ -320,5 +566,22 @@ onMounted(async () => {
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
+}
+
+.redirect-uri-warning {
+	margin-bottom: var(--spacing--sm);
+}
+
+.oauth-settings-content {
+	padding-top: var(--spacing--sm);
+	max-width: 800px;
+}
+
+.error-message {
+	margin-top: var(--spacing--2xs);
+}
+
+.save-button-container {
+	margin-top: var(--spacing--sm);
 }
 </style>

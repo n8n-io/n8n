@@ -21,6 +21,8 @@ export interface MigrationContext {
 		columnName(name: string): string;
 		tableName(name: string): string;
 		indexName(name: string): string;
+		triggerName(name: string): string;
+		functionName(name: string): string;
 	};
 	runQuery<T>(sql: string, namedParameters?: ObjectLiteral): Promise<T>;
 	runInBatches<T>(
@@ -44,7 +46,12 @@ export interface BaseMigration {
 	up: MigrationFn;
 	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 	down?: MigrationFn | never;
-	transaction?: false;
+	/**
+	 * Run the migration on SQLite with foreign keys disabled. This should be
+	 * used for migrations that need to recreate tables that have FKs from
+	 * other tables. Otherwise it can cause data loss due CASCADE behaviour.
+	 */
+	withFKsDisabled?: true;
 }
 
 export interface ReversibleMigration extends BaseMigration {

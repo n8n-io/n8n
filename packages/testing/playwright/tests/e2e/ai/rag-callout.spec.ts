@@ -1,44 +1,46 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('RAG callout experiment', {
-	annotation: [
-		{ type: 'owner', description: 'AI' },
-	],
-}, () => {
-	test.describe('NDV callout', () => {
-		test('should show callout and open template on click', async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-			await n8n.canvas.addNode('Zep Vector Store', {
-				action: 'Add documents to vector store',
-				closeNDV: false,
+test.describe(
+	'RAG callout experiment',
+	{
+		annotation: [{ type: 'owner', description: 'AI' }],
+	},
+	() => {
+		test.describe('NDV callout', () => {
+			test('should show callout and open template on click', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
+				await n8n.canvas.addNode('Zep Vector Store', {
+					action: 'Add documents to vector store',
+					closeNDV: false,
+				});
+
+				await expect(n8n.canvas.getRagCalloutTip()).toBeVisible();
+
+				const popupPromise = n8n.page.waitForEvent('popup');
+				await n8n.canvas.clickRagTemplateLink();
+
+				const popup = await popupPromise;
+				expect(popup.url()).toContain('/workflows/templates/rag-starter-template?fromJson=true');
+
+				await popup.close();
 			});
-
-			await expect(n8n.canvas.getRagCalloutTip()).toBeVisible();
-
-			const popupPromise = n8n.page.waitForEvent('popup');
-			await n8n.canvas.clickRagTemplateLink();
-
-			const popup = await popupPromise;
-			expect(popup.url()).toContain('/workflows/templates/rag-starter-template?fromJson=true');
-
-			await popup.close();
 		});
-	});
 
-	test.describe('search callout', () => {
-		test('should show callout and open template on click', async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-			await n8n.canvas.clickNodeCreatorPlusButton();
-			await n8n.canvas.fillNodeCreatorSearchBar('rag');
+		test.describe('search callout', () => {
+			test('should show callout and open template on click', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
+				await n8n.canvas.clickNodeCreatorPlusButton();
+				await n8n.canvas.fillNodeCreatorSearchBar('rag');
 
-			const popupPromise = n8n.page.waitForEvent('popup');
-			await expect(n8n.canvas.getRagTemplateLink()).toBeVisible();
-			await n8n.canvas.clickRagTemplateLink();
+				const popupPromise = n8n.page.waitForEvent('popup');
+				await expect(n8n.canvas.getRagTemplateLink()).toBeVisible();
+				await n8n.canvas.clickRagTemplateLink();
 
-			const popup = await popupPromise;
-			expect(popup.url()).toContain('/workflows/templates/rag-starter-template?fromJson=true');
+				const popup = await popupPromise;
+				expect(popup.url()).toContain('/workflows/templates/rag-starter-template?fromJson=true');
 
-			await popup.close();
+				await popup.close();
+			});
 		});
-	});
-});
+	},
+);

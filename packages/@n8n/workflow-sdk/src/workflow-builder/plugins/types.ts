@@ -348,6 +348,23 @@ export interface SerializerContext extends PluginContext {
 
 	/** Workflow meta information (if set) */
 	readonly meta?: Record<string, unknown>;
+
+	/** Whether to use Dagre-based layout for node positioning */
+	readonly tidyUp?: boolean;
+
+	/**
+	 * Node groups carried by member node *ID* — already resolved to the IDs the emitted
+	 * nodes carry. `id`, when present, is the source group ID (from fromJSON); the serializer
+	 * reuses it, otherwise assigns one.
+	 */
+	readonly nodeGroups?: ReadonlyArray<{ id?: string; name: string; memberIds: string[] }>;
+
+	/**
+	 * Existing group IDs keyed by group name. When a group name matches, the serializer
+	 * reuses that ID instead of deriving a deterministic one (preserves UI-assigned IDs
+	 * across edits). Groups without a match fall back to the deterministic ID.
+	 */
+	readonly existingGroupIdsByName?: ReadonlyMap<string, string>;
 }
 
 /**

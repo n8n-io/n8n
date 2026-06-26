@@ -9,6 +9,11 @@ export default {
 	component: N8nTabs,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A tab navigation component for switching between content panels.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-3' },
 	},
 };

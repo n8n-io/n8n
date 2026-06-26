@@ -1,18 +1,19 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IBinaryData, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'stream';
 
-jest.mock('xlsx', () => ({
-	read: jest.fn(),
+vi.mock('xlsx', () => ({
+	read: vi.fn(),
 	utils: {
-		sheet_to_json: jest.fn(),
+		sheet_to_json: vi.fn(),
 	},
 }));
 
 import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
 
 import { execute } from '../v2/fromFile.operation';
+import type { Mock } from 'vitest';
 
 describe('fromFile.operation - xlsx parsing logic', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -59,9 +60,9 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 	];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
-			(paramName: string, _itemIndex: number, defaultValue?: any) => {
+			(paramName, _itemIndex, defaultValue) => {
 				switch (paramName) {
 					case 'fileFormat':
 						return 'xlsx';
@@ -82,8 +83,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			id: 'test-node-id',
 		} as INode);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
-		(xlsxRead as jest.Mock).mockReturnValue(mockWorkbook);
-		(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockParsedData);
+		(xlsxRead as Mock).mockReturnValue(mockWorkbook);
+		(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockParsedData);
 	});
 
 	describe('Basic xlsx parsing', () => {
@@ -240,7 +241,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 				['John', 25],
 				['Jane', 30],
 			];
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockArrayData);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockArrayData);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -260,7 +261,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 	describe('Error handling', () => {
 		it('should throw error when workbook has no sheets', async () => {
 			const emptyWorkbook = { SheetNames: [], Sheets: {} };
-			(xlsxRead as jest.Mock).mockReturnValue(emptyWorkbook);
+			(xlsxRead as Mock).mockReturnValue(emptyWorkbook);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -282,7 +283,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 		it('should handle continueOnFail gracefully', async () => {
 			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
-			(xlsxRead as jest.Mock).mockImplementation(() => {
+			(xlsxRead as Mock).mockImplementation(() => {
 				throw new Error('Invalid file format');
 			});
 
@@ -302,7 +303,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 				fileExtension: 'pdf',
 			});
 
-			(xlsxRead as jest.Mock).mockImplementation(() => {
+			(xlsxRead as Mock).mockImplementation(() => {
 				throw new Error('Parse error');
 			});
 
@@ -422,7 +423,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
-			const callArgs = (xlsxRead as jest.Mock).mock.calls[0];
+			const callArgs = (xlsxRead as Mock).mock.calls[0];
 			const passedData = callArgs[0];
 			const expectedBinaryString = Buffer.from(
 				mockBinaryDataInMemory.data,
@@ -480,7 +481,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
 
 			// Verify the string is the result of buffer.toString('binary')
-			const callArgs = (xlsxRead as jest.Mock).mock.calls[0];
+			const callArgs = (xlsxRead as Mock).mock.calls[0];
 			const passedData = callArgs[0];
 			const expectedBinaryString = mockBuffer.toString('binary');
 			expect(passedData).toBe(expectedBinaryString);
@@ -542,8 +543,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			});
 
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(specialCharBinaryData);
-			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookWithSpecialChars);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockSpecialCharData);
+			(xlsxRead as Mock).mockReturnValue(mockWorkbookWithSpecialChars);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockSpecialCharData);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -578,8 +579,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			};
 
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(encodingTestData);
-			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookEncoding);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue([
+			(xlsxRead as Mock).mockReturnValue(mockWorkbookEncoding);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue([
 				{ text: 'Encoding test: café naïve résumé' },
 			]);
 
@@ -599,9 +600,9 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: undefined, type: 'binary' });
 
 			// Reset mocks for second test
-			jest.clearAllMocks();
-			(xlsxRead as jest.Mock).mockReturnValue(mockWorkbookEncoding);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue([
+			vi.clearAllMocks();
+			(xlsxRead as Mock).mockReturnValue(mockWorkbookEncoding);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue([
 				{ text: 'Encoding test: café naïve résumé' },
 			]);
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(encodingTestData);
@@ -660,8 +661,8 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			});
 
 			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(internationalBinaryData);
-			(xlsxRead as jest.Mock).mockReturnValue(mockInternationalWorkbook);
-			(xlsxUtils.sheet_to_json as jest.Mock).mockReturnValue(mockInternationalData);
+			(xlsxRead as Mock).mockReturnValue(mockInternationalWorkbook);
+			(xlsxUtils.sheet_to_json as Mock).mockReturnValue(mockInternationalData);
 
 			const items: INodeExecutionData[] = [{ json: {} }];
 
@@ -688,7 +689,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName: string, _itemIndex: number, defaultValue?: any) => {
 					switch (paramName) {
@@ -794,6 +795,260 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			await expect(execute.call(mockExecuteFunctions, items)).rejects.toThrow(
 				'Max number of skipped records exceeded',
+			);
+		});
+	});
+
+	describe('CSV parsing with includeEmptyCells', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockExecuteFunctions.getNode.mockReturnValue({
+				name: 'SpreadsheetFile',
+				type: 'n8n-nodes-base.spreadsheetFile',
+				id: 'test-node-id',
+			} as INode);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		});
+
+		const csvWithEmptyCell = 'id,name,city\n1,Alice,\n2,Bob,NYC\n';
+		const buildBinaryData = (): IBinaryData => ({
+			data: Buffer.from(csvWithEmptyCell, 'utf8').toString(BINARY_ENCODING),
+			mimeType: 'text/csv',
+			fileExtension: 'csv',
+			fileName: 'test.csv',
+		});
+
+		it('should drop empty-string cells by default (includeEmptyCells unset)', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(buildBinaryData());
+
+			const result = await execute.call(mockExecuteFunctions, [{ json: {} }]);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob', city: 'NYC' });
+		});
+
+		it('should preserve empty-string cells when includeEmptyCells is true', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options') return { includeEmptyCells: true };
+				return undefined;
+			});
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(buildBinaryData());
+
+			const result = await execute.call(mockExecuteFunctions, [{ json: {} }]);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice', city: '' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob', city: 'NYC' });
+		});
+	});
+
+	describe('CSV parsing with empty lines', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue?: any) => {
+					switch (paramName) {
+						case 'fileFormat':
+							return 'csv';
+						case 'binaryPropertyName':
+							return 'data';
+						case 'options':
+							return {};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			mockExecuteFunctions.getNode.mockReturnValue({
+				name: 'SpreadsheetFile',
+				type: 'n8n-nodes-base.spreadsheetFile',
+				id: 'test-node-id',
+			} as INode);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		});
+
+		it('should handle CSV with trailing empty lines when failOnCsvBufferError is enabled', async () => {
+			const csvData = 'id,name\n1,"Alice"\n2,"Bob"\n\n\n';
+			const binaryData: IBinaryData = {
+				data: Buffer.from(csvData, 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test.csv',
+			};
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binaryData);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+			const result = await execute.call(mockExecuteFunctions, items, 'fileFormat', {
+				failOnCsvBufferError: true,
+			});
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob' });
+		});
+
+		it('should handle CSV with trailing empty lines without failOnCsvBufferError', async () => {
+			const csvData = 'id,name\n1,"Alice"\n2,"Bob"\n\n\n';
+			const binaryData: IBinaryData = {
+				data: Buffer.from(csvData, 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test.csv',
+			};
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binaryData);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob' });
+		});
+
+		it('should handle CSV with empty lines in the middle of the file', async () => {
+			const csvData = 'id,name\n1,"Alice"\n\n2,"Bob"\n';
+			const binaryData: IBinaryData = {
+				data: Buffer.from(csvData, 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test.csv',
+			};
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binaryData);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+			const result = await execute.call(mockExecuteFunctions, items, 'fileFormat', {
+				failOnCsvBufferError: true,
+			});
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob' });
+		});
+
+		it('should return empty results for CSV with only empty lines after header', async () => {
+			const csvData = 'id,name\n\n\n';
+			const binaryData: IBinaryData = {
+				data: Buffer.from(csvData, 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test.csv',
+			};
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binaryData);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+			const result = await execute.call(mockExecuteFunctions, items, 'fileFormat', {
+				failOnCsvBufferError: true,
+			});
+
+			expect(result).toHaveLength(0);
+		});
+	});
+
+	describe('CSV parsing with empty lines (stream path)', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName, _itemIndex, defaultValue) => {
+					switch (paramName) {
+						case 'fileFormat':
+							return 'csv';
+						case 'binaryPropertyName':
+							return 'data';
+						case 'options':
+							return {};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			mockExecuteFunctions.getNode.mockReturnValue({
+				name: 'SpreadsheetFile',
+				type: 'n8n-nodes-base.spreadsheetFile',
+				id: 'test-node-id',
+			} as INode);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		});
+
+		it('should handle CSV with trailing empty lines via stream', async () => {
+			const csvData = 'id,name\n1,"Alice"\n2,"Bob"\n\n\n';
+			const mockStream = new Readable();
+			mockStream.push(Buffer.from(csvData, 'utf8'));
+			mockStream.push(null);
+
+			const binaryData: IBinaryData = {
+				id: 'binary-data-id-csv',
+				data: '',
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test.csv',
+			};
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryStream.mockResolvedValue(mockStream);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob' });
+			expect(mockExecuteFunctions.helpers.getBinaryStream).toHaveBeenCalledWith(
+				'binary-data-id-csv',
+			);
+		});
+
+		it('should handle CSV with empty lines in the middle via stream', async () => {
+			const csvData = 'id,name\n1,"Alice"\n\n2,"Bob"\n';
+			const mockStream = new Readable();
+			mockStream.push(Buffer.from(csvData, 'utf8'));
+			mockStream.push(null);
+
+			const binaryData: IBinaryData = {
+				id: 'binary-data-id-csv',
+				data: '',
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test.csv',
+			};
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryStream.mockResolvedValue(mockStream);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob' });
+		});
+
+		it('should reject when source stream errors', async () => {
+			const mockStream = new Readable({
+				read() {
+					process.nextTick(() => this.destroy(new Error('stream read failure')));
+				},
+			});
+
+			const binaryData: IBinaryData = {
+				id: 'binary-data-id-csv',
+				data: '',
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test.csv',
+			};
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryStream.mockResolvedValue(mockStream);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+			await expect(execute.call(mockExecuteFunctions, items)).rejects.toThrow(
+				'stream read failure',
 			);
 		});
 	});

@@ -1,4 +1,8 @@
-import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
+import type {
+	RoleAssignmentsResponse,
+	RoleMembersResponse,
+	RoleProjectMembersResponse,
+} from '@n8n/api-types';
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -21,6 +25,7 @@ import type {
 	Scope,
 	Role as RoleDTO,
 	AssignableProjectRole,
+	AssignableGlobalRole,
 	RoleNamespace,
 } from '@n8n/permissions';
 import {
@@ -39,6 +44,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { RoleCacheService } from './role-cache.service';
+import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
 
 @Service()
 export class RoleService {
@@ -48,6 +54,7 @@ export class RoleService {
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
 		private readonly logger: Logger,
+		private readonly roleDeletionCheckProxy: RoleDeletionCheckProxy,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
@@ -58,6 +65,14 @@ export class RoleService {
 			usedByUsers,
 			usedByProjects,
 		};
+	}
+
+	async getRoleMembers(slug: string): Promise<RoleMembersResponse> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) throw new NotFoundError('Role not found'); // 404
+		if (role.roleType !== 'global') throw new BadRequestError('Role is not a global role'); // 400
+		const members = await this.roleRepository.findUsersWithGlobalRole(role.slug);
+		return { members, total: members.length };
 	}
 
 	async getAllRoles(withCount: boolean = false): Promise<RoleDTO[]> {
@@ -136,6 +151,13 @@ export class RoleService {
 		const usersWithRole = await this.roleRepository.countUsersWithRole(role);
 		if (usersWithRole > 0) {
 			throw new BadRequestError('Cannot delete role assigned to users');
+		}
+
+		// Let optional modules (e.g. SSO provisioning) veto deletion of a role
+		// they still reference, so it isn't silently orphaned.
+		const blockers = await this.roleDeletionCheckProxy.findRoleDeletionBlockers(slug);
+		if (blockers.length > 0) {
+			throw new BadRequestError(`Cannot delete role: ${blockers.join('; ')}`);
 		}
 
 		await this.roleRepository.removeBySlug(slug);
@@ -352,11 +374,11 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole) {
+	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {
-			// This is a custom role, there for we need to check if
+			// This is a custom role, therefore we need to check if
 			// custom roles are licensed
 			return this.license.isCustomRolesLicensed();
 		}

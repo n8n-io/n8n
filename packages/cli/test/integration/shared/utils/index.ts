@@ -21,7 +21,8 @@ import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
-import type { INodeTypeData, INode } from 'n8n-workflow';
+import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
+import type { INodeType, INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
@@ -107,6 +108,10 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 			type: new FormTrigger(),
 			sourcePath: '',
 		},
+		'n8n-nodes-base.webhook': {
+			type: mock<INodeType>({ description: new WebhookNode().description }),
+			sourcePath: '',
+		},
 	};
 
 	ScheduleTrigger.prototype.trigger = async () => ({});
@@ -117,6 +122,12 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 		if (!node) throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeType);
 		return node;
 	});
+
+	// LoadNodesAndCredentials.getCredential() iterates all loaders and
+	// tries to check for `credentialType in loader.known.credentials`.
+	// The `in` operator throws if `known.credentials` is undefined. Set it to empty maps so
+	// the loop is safe to iterate (credentials are registered via loaded.credentials, not the loader).
+	Object.assign(loader, { known: { nodes: {}, credentials: {} } });
 
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };

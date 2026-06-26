@@ -25,6 +25,9 @@
         "isPaused": {
             "type": "boolean"
         },
+        "jobTitle": {
+            "type": "string"
+        },
         "lastName": {
             "type": "string"
         },
@@ -32,5 +35,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

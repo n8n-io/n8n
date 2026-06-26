@@ -40,7 +40,7 @@ const handleCopy = async (value: string) => {
 				{{ props.label }}
 			</label>
 			<div v-if="props.infoTip" :class="$style['info-tip']">
-				<N8nInfoTip type="tooltip" size="small">
+				<N8nInfoTip type="tooltip" size="small" :enterable="false">
 					{{ props.infoTip }}
 				</N8nInfoTip>
 			</div>
@@ -98,12 +98,17 @@ const handleCopy = async (value: string) => {
 	gap: var(--spacing--4xs);
 
 	.info-tip {
-		display: none;
+		visibility: hidden;
 		cursor: pointer;
+		padding-top: 1px;
+
+		:global(.n8n-info-tip) {
+			display: flex;
+		}
 	}
 
-	&:hover .info-tip {
-		display: block;
+	&:hover .info-tip span {
+		visibility: visible;
 	}
 }
 
@@ -132,6 +137,16 @@ const handleCopy = async (value: string) => {
 		min-width: 0;
 		display: flex;
 		align-items: center;
+
+		:global(.n8n-input__wrapper) {
+			--input--border--shadow: 0 0 0 0 transparent;
+			--input--border--shadow--hover: 0 0 0 0 transparent;
+			--input--border--shadow--focus: 0 0 0 0 transparent;
+
+			&:focus-within {
+				outline: none;
+			}
+		}
 	}
 
 	:global(.n8n-input) {
@@ -157,9 +172,15 @@ const handleCopy = async (value: string) => {
 	button {
 		border: none;
 		border-radius: 0;
+		box-shadow: none;
 
 		&:hover {
 			border-color: inherit;
+			box-shadow: none;
+		}
+
+		&:active {
+			box-shadow: none;
 		}
 	}
 

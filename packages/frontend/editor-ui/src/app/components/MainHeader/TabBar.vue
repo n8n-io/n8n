@@ -7,9 +7,11 @@ withDefaults(
 	defineProps<{
 		items: ITabBarItem[];
 		modelValue?: string;
+		floating?: boolean;
 	}>(),
 	{
 		modelValue: MAIN_HEADER_TABS.WORKFLOW,
+		floating: false,
 	},
 );
 
@@ -27,6 +29,7 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 		v-if="items"
 		:class="{
 			[$style.container]: true,
+			[$style.floating]: floating,
 			['tab-bar-container']: true,
 		}"
 	>
@@ -51,6 +54,11 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 	border-radius: var(--radius);
 	transition: all 150ms ease-in-out;
 	z-index: 100; // Should float above other layout components in any page
+	align-items: center;
+}
+
+.floating {
+	top: var(--spacing--4xs);
 }
 
 @media screen and (max-width: 430px) {

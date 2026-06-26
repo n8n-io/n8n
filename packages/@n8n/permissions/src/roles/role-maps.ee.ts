@@ -4,6 +4,7 @@ import type {
 	GlobalRole,
 	ProjectRole,
 	Scope,
+	SecretsProviderConnectionSharingRole,
 	WorkflowSharingRole,
 } from '../types.ee';
 import {
@@ -27,6 +28,10 @@ import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 } from './scopes/workflow-sharing-scopes.ee';
+import {
+	SECRETS_PROVIDER_CONNECTION_SHARING_OWNER_SCOPES,
+	SECRETS_PROVIDER_CONNECTION_SHARING_USER_SCOPES,
+} from './scopes/secrets-provider-connection-sharing-scopes.ee';
 
 export const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:owner': GLOBAL_OWNER_SCOPES,
@@ -53,9 +58,18 @@ export const WORKFLOW_SHARING_SCOPE_MAP: Record<WorkflowSharingRole, Scope[]> = 
 	'workflow:editor': WORKFLOW_SHARING_EDITOR_SCOPES,
 };
 
+export const SECRETS_PROVIDER_CONNECTION_SHARING_SCOPE_MAP: Record<
+	SecretsProviderConnectionSharingRole,
+	Scope[]
+> = {
+	'secretsProviderConnection:owner': SECRETS_PROVIDER_CONNECTION_SHARING_OWNER_SCOPES,
+	'secretsProviderConnection:user': SECRETS_PROVIDER_CONNECTION_SHARING_USER_SCOPES,
+};
+
 export const ALL_ROLE_MAPS = {
 	global: GLOBAL_SCOPE_MAP,
 	project: PROJECT_SCOPE_MAP,
 	credential: CREDENTIALS_SHARING_SCOPE_MAP,
 	workflow: WORKFLOW_SHARING_SCOPE_MAP,
+	secretsProviderConnection: SECRETS_PROVIDER_CONNECTION_SHARING_SCOPE_MAP,
 } as const;

@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { ChatHubTool } from '../chat-hub-tool.entity';
@@ -11,6 +11,7 @@ import { ChatHubToolService } from '../chat-hub-tool.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { NodeTypes } from '@/node-types';
 
 const mockDefinition: INode = {
 	parameters: {
@@ -50,6 +51,7 @@ describe('ChatHubToolService', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	const chatToolRepository = mock<ChatHubToolRepository>();
+	const nodeTypes = mock<NodeTypes>();
 	const mockUser = mock<User>({ id: mockUserId });
 	const mockManager = mock<EntityManager>();
 
@@ -65,7 +67,11 @@ describe('ChatHubToolService', () => {
 			return await (fn as (em: EntityManager) => Promise<unknown>)(mockManager);
 		});
 
-		service = new ChatHubToolService(logger, chatToolRepository);
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { properties: [] },
+		} as unknown as INodeType);
+
+		service = new ChatHubToolService(logger, chatToolRepository, nodeTypes);
 	});
 
 	describe('getToolsByUserId', () => {
@@ -187,6 +193,88 @@ describe('ChatHubToolService', () => {
 				parameters: {
 					url: '={{ $env.API_URL }}',
 					options: {},
+				},
+			};
+
+			await expect(service.createTool(mockUser, { definition: defWithExpression })).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(chatToolRepository.createTool).not.toHaveBeenCalled();
+		});
+
+		it('should allow expressions that match node description defaults', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					properties: [
+						{
+							displayName: 'Start',
+							name: 'start',
+							type: 'string',
+							default: '={{ $now }}',
+						},
+						{
+							displayName: 'End',
+							name: 'end',
+							type: 'string',
+							default: "={{ $now.plus(1, 'hour') }}",
+						},
+					],
+				},
+			} as unknown as INodeType);
+
+			const defWithDefaults: INode = {
+				...mockDefinition,
+				parameters: {
+					start: '={{ $now }}',
+					end: "={{ $now.plus(1, 'hour') }}",
+				},
+			};
+			const created = makeTool();
+			chatToolRepository.createTool.mockResolvedValue(created);
+
+			await expect(
+				service.createTool(mockUser, { definition: defWithDefaults }),
+			).resolves.toBeDefined();
+			expect(chatToolRepository.createTool).toHaveBeenCalled();
+		});
+
+		it('should still reject arbitrary expressions even when some defaults are allowed', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					properties: [
+						{
+							displayName: 'Start',
+							name: 'start',
+							type: 'string',
+							default: '={{ $now }}',
+						},
+					],
+				},
+			} as unknown as INodeType);
+
+			const defWithMixed: INode = {
+				...mockDefinition,
+				parameters: {
+					start: '={{ $now }}',
+					secret: '={{ $env.SECRET }}',
+				},
+			};
+
+			await expect(service.createTool(mockUser, { definition: defWithMixed })).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(chatToolRepository.createTool).not.toHaveBeenCalled();
+		});
+
+		it('should fall back to strict validation when node type lookup fails', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Node type not found');
+			});
+
+			const defWithExpression: INode = {
+				...mockDefinition,
+				parameters: {
+					start: '={{ $now }}',
 				},
 			};
 

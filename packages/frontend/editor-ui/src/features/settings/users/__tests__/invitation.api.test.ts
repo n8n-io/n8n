@@ -15,7 +15,7 @@ describe('invitation.api', () => {
 	});
 
 	describe('acceptInvitation', () => {
-		it('should call /invitations/accept endpoint when token is provided', async () => {
+		it('should call /invitations/accept endpoint with token', async () => {
 			const token = 'valid-jwt-token';
 			const params = {
 				token,
@@ -36,34 +36,7 @@ describe('invitation.api', () => {
 			);
 		});
 
-		it('should call /invitations/:id/accept endpoint when token is not provided', async () => {
-			const inviteeId = uuidv4();
-			const params = {
-				inviterId: uuidv4(),
-				inviteeId,
-				firstName: 'John',
-				lastName: 'Doe',
-				password: 'Password123!',
-			};
-
-			vi.mocked(makeRestApiRequest).mockResolvedValue({ id: uuidv4() } as never);
-
-			await acceptInvitation(mockContext, params);
-
-			expect(makeRestApiRequest).toHaveBeenCalledWith(
-				mockContext,
-				'POST',
-				`/invitations/${inviteeId}/accept`,
-				expect.objectContaining({
-					inviterId: params.inviterId,
-					firstName: params.firstName,
-					lastName: params.lastName,
-					password: params.password,
-				}),
-			);
-		});
-
-		it('should throw error when token is not provided and inviteeId is missing', async () => {
+		it('should throw error when token is not provided', async () => {
 			const params = {
 				firstName: 'John',
 				lastName: 'Doe',
@@ -71,7 +44,7 @@ describe('invitation.api', () => {
 			};
 
 			await expect(acceptInvitation(mockContext, params as never)).rejects.toThrow(
-				'inviteeId is required when not using token',
+				'Token is required',
 			);
 
 			expect(makeRestApiRequest).not.toHaveBeenCalled();

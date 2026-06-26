@@ -8,6 +8,7 @@ import vault from '../../externalSecrets.ee/assets/images/hashicorp.webp';
 import AwsSecretsManager from '../../externalSecrets.ee/assets/images/aws-secrets-manager.svg';
 import AzureKeyVault from '../../externalSecrets.ee/assets/images/azure-key-vault.svg';
 import GcpSecretsManager from '../../externalSecrets.ee/assets/images/gcp-secrets-manager.svg';
+import OnePassword from '../../externalSecrets.ee/assets/images/one-password.svg';
 
 const { provider } = defineProps<{
 	provider: SecretProviderTypeResponse;
@@ -23,5 +24,6 @@ const image = computed(() => {
 	<AwsSecretsManager v-if="provider.type === 'awsSecretsManager'" />
 	<AzureKeyVault v-else-if="provider.type === 'azureKeyVault'" />
 	<GcpSecretsManager v-else-if="provider.type === 'gcpSecretsManager'" />
+	<OnePassword v-else-if="provider.type === 'onePassword'" />
 	<img v-else :src="image" :alt="provider.displayName" width="28" height="28" />
 </template>

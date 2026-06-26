@@ -1,21 +1,23 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Schedule Trigger node', {
-	annotation: [
-		{ type: 'owner', description: 'NODES' },
-	],
-}, () => {
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.start.fromBlankCanvas();
-	});
+test.describe(
+	'Schedule Trigger node',
+	{
+		annotation: [{ type: 'owner', description: 'NODES' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
+		});
 
-	test('should execute schedule trigger node and return timestamp in output', async ({ n8n }) => {
-		await n8n.canvas.addNode('Schedule Trigger');
+		test('should execute schedule trigger node and return timestamp in output', async ({ n8n }) => {
+			await n8n.canvas.addNode('Schedule Trigger');
 
-		await n8n.ndv.execute();
+			await n8n.ndv.execute();
 
-		await expect(n8n.ndv.outputPanel.get()).toContainText('timestamp');
+			await expect(n8n.ndv.outputPanel.get()).toContainText('timestamp');
 
-		await n8n.ndv.clickBackToCanvasButton();
-	});
-});
+			await n8n.ndv.clickBackToCanvasButton();
+		});
+	},
+);

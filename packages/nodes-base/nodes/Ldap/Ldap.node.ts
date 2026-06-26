@@ -13,8 +13,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { BINARY_AD_ATTRIBUTES, createLdapClient, resolveBinaryAttributes } from './Helpers';
+import {
+	BINARY_AD_ATTRIBUTES,
+	createLdapClient,
+	escapeValue,
+	resolveBinaryAttributes,
+} from './Helpers';
 import { ldapFields } from './LdapDescription';
+import { getResolvables } from '@utils/utilities';
 
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
@@ -375,8 +381,19 @@ export class Ldap implements INodeType {
 					if (searchFor === 'custom') {
 						searchFor = this.getNodeParameter('customFilter', itemIndex) as string;
 					} else {
-						const searchText = this.getNodeParameter('searchText', itemIndex) as string;
-						const attribute = this.getNodeParameter('attribute', itemIndex) as string;
+						let searchText = this.getNodeParameter('searchText', itemIndex, undefined, {
+							rawExpressions: true,
+						}) as string;
+						searchText = searchText.replace(/^=+/, '');
+						const resolvables = getResolvables(searchText);
+						for (const resolvable of resolvables) {
+							const resolvedValue = escapeValue(
+								String(this.evaluateExpression(`${resolvable}`, itemIndex)),
+							);
+							searchText = searchText.replace(resolvable, resolvedValue);
+						}
+
+						const attribute = escapeValue(this.getNodeParameter('attribute', itemIndex) as string);
 						searchFor = `(&${searchFor}(${attribute}=${searchText}))`;
 					}
 

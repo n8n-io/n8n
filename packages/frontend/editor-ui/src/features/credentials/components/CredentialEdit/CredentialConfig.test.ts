@@ -13,10 +13,22 @@ import { STORES } from '@n8n/stores';
 import { vi } from 'vitest';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mock('@n8n/i18n', async () => {
 	const actual = await vi.importActual('@n8n/i18n');
@@ -48,7 +60,7 @@ const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 	props: {
 		isManaged: true,
 		mode: 'edit',
-		credentialType: {} as ICredentialType,
+		credentialType: mockCredentialType,
 		credentialProperties: [],
 		credentialData: {} as ICredentialDataDecryptedObject,
 		credentialPermissions: {
@@ -175,7 +187,7 @@ describe('CredentialConfig', () => {
 	});
 
 	describe('Dynamic Credentials Section', () => {
-		it('should not display dynamic credentials section when isDynamicCredentialsEnabled is false', async () => {
+		it('should not display dynamic credentials section when isPrivateCredentialsEnabled is false', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -183,7 +195,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: false,
+					isPrivateCredentialsEnabled: false,
 					isOAuthType: true,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -198,7 +210,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when isOAuthType is false', async () => {
@@ -209,7 +221,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: false,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -224,7 +236,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks create permission for new credential', async () => {
@@ -235,7 +247,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -250,7 +262,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks update permission for existing credential', async () => {
@@ -261,7 +273,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
 					credentialPermissions: {
@@ -276,7 +288,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
@@ -287,7 +299,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: true,
 					isResolvable: false,
@@ -303,8 +315,8 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-card-end-user')).toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for existing credential', async () => {
@@ -315,7 +327,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
 					isResolvable: false,
@@ -331,8 +343,129 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-card-end-user')).toBeInTheDocument();
+		});
+
+		it('should disable the end-user credential card when the credential is already shared', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					isShared: true,
+					credentialPermissions: {
+						create: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: true,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-card-end-user')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+		});
+	});
+
+	describe('Disconnect button on success banner', () => {
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: false,
+			share: false,
+			list: true,
+			move: false,
+		};
+
+		const oAuthConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: true,
+			requiredPropertiesFilled: true,
+			credentialPermissions: writePermissions,
+		};
+
+		it('renders Disconnect when resolvable, connectedByMe and dynamic credentials enabled', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isPrivateCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			expect(screen.getByTestId('oauth-disconnect-button')).toBeInTheDocument();
+		});
+
+		it('hides Disconnect when connectedByMe is false', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isPrivateCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: false,
+				},
+			});
+
+			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+		});
+
+		it('hides Disconnect for static (non-resolvable) credentials', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isPrivateCredentialsEnabled: true,
+					isResolvable: false,
+					connectedByMe: true,
+				},
+			});
+
+			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+		});
+
+		it('hides Disconnect when dynamic credentials are disabled', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isPrivateCredentialsEnabled: false,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+		});
+
+		it('emits disconnect on click', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isPrivateCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			await screen.getByTestId('oauth-disconnect-button').click();
+			expect(emitted().disconnect).toBeTruthy();
 		});
 	});
 
@@ -521,7 +654,9 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			const ndvStore = mockedStore(useNDVStore);
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.setWorkflowId('test-workflow-id');
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 			ndvStore.activeNode = {
 				parameters: { authentication: 'accessToken' },
 				type: 'n8n-nodes-base.dropbox',
@@ -606,6 +741,39 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Docs callout visibility', () => {
+		const credentialTypeWithDocs: ICredentialType = {
+			name: 'testCredential',
+			displayName: 'Test Credential',
+			documentationUrl: 'https://example.com/docs',
+			properties: [{ displayName: 'Key', name: 'key', type: 'string', default: '' }],
+		};
+
+		it('should not show docs callout when user lacks write permission', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialId: 'existing-cred-123',
+					credentialType: credentialTypeWithDocs,
+					credentialProperties: credentialTypeWithDocs.properties,
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialPermissions: {
+						create: false,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByText('Need help filling out these fields?')).not.toBeInTheDocument();
 		});
 	});
 });

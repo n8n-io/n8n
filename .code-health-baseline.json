@@ -1,0 +1,1063 @@
+{
+	"version": 1,
+	"generated": "2026-06-04T06:55:45.363Z",
+	"totalViolations": 148,
+	"violations": {
+		"packages/@n8n/ai-workflow-builder.ee/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 76,
+				"message": "langsmith@^0.4.6 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "6ee5e003d795"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 63,
+				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "d2120f012c93"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 74,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9c770d66baf2"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 80,
+				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "85c311d87491"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 87,
+				"message": "@types/turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "407c8d1b3428"
+			}
+		],
+		"packages/@n8n/json-schema-to-zod/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 64,
+				"message": "zod@^3.25.76 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "0e18482e8781"
+			}
+		],
+		"packages/@n8n/nodes-langchain/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 272,
+				"message": "@n8n/typeorm@0.3.20-16 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "a7c1bca1c439"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 273,
+				"message": "mysql2@3.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "2d7d1b715d0c"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 301,
+				"message": "openai@^6.34.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "3c1f53f0afe3"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 307,
+				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "88d67e2ef747"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 265,
+				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "69d6fa7e46f9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 283,
+				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "8cd029bb871e"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 293,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "26f20ebea4b1"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 298,
+				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "46cb48884e22"
+			}
+		],
+		"packages/@n8n/tournament/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 47,
+				"message": "@types/node@^18.13.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "6368b5d3b924"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 55,
+				"message": "typescript@^5.0.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "f668021a144e"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 58,
+				"message": "ast-types appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "27edcbb2b4f8"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 59,
+				"message": "esprima-next appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "75058f9a4d30"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 60,
+				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "5f2b50fef19d"
+			}
+		],
+		"packages/frontend/@n8n/chat/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 60,
+				"message": "unplugin-icons@^0.19.0 should use \"catalog:frontend\" (exists in pnpm-workspace.yaml [frontend])",
+				"hash": "a0d24d761026"
+			}
+		],
+		"packages/frontend/@n8n/design-system/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 88,
+				"message": "@vueuse/core@* should use \"catalog:frontend\" (exists in pnpm-workspace.yaml [frontend])",
+				"hash": "237e9d17c4ba"
+			}
+		],
+		"packages/cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 146,
+				"message": "@opentelemetry/sdk-trace-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "1cf7f6bcf5d1"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 147,
+				"message": "@opentelemetry/sdk-trace-node appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "a3dad0b8dc21"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 157,
+				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "949e802528f7"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 212,
+				"message": "prettier appears in 3 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "3cab98902302"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 228,
+				"message": "undici appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "91c29775e961"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 231,
+				"message": "ws appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "cd07242e8163"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 80,
+				"message": "@types/psl appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6e62e0076b0a"
+			}
+		],
+		"packages/@n8n/agents/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 76,
+				"message": "@opentelemetry/sdk-trace-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "c5c495ac3508"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 77,
+				"message": "@opentelemetry/sdk-trace-node appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "a77ced903cdf"
+			}
+		],
+		"packages/node-dev/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 49,
+				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6988b9f58c92"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 48,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "da9b64834300"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 55,
+				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "632a744e397e"
+			}
+		],
+		"packages/nodes-base/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 920,
+				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "2d1fab7a5b05"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 976,
+				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "3f93c404ae9c"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 909,
+				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "ca4ac788adc6"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 921,
+				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "1a1b5bbc50c9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 926,
+				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9795e6c6d9e9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 940,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "02341f2b5e3e"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 951,
+				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f688907d087a"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 901,
+				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "ac254baa61f9"
+			}
+		],
+		"packages/@n8n/node-cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 53,
+				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "da74ed210d07"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 60,
+				"message": "prettier appears in 3 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "188baf266f61"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 52,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9711a9b00bf9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 56,
+				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6a9e12780943"
+			}
+		],
+		"packages/frontend/editor-ui/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 71,
+				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "bd9a2eeb072b"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 93,
+				"message": "prettier appears in 3 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9e9c7ec09a0b"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 80,
+				"message": "esprima-next appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "62156c2613b2"
+			}
+		],
+		"packages/@n8n/ai-utilities/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 107,
+				"message": "undici appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "c14cd05614e8"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 102,
+				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "884a45bdbcf2"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 110,
+				"message": "n8n-workflow appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "ea4fbfff30ba"
+			}
+		],
+		"packages/@n8n/mcp-browser/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 37,
+				"message": "ws appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9650c1b55f3c"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 29,
+				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "0c97891a24f4"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 31,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "8466b03b1044"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 36,
+				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f23a9d3d7aa2"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 44,
+				"message": "@types/turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "3f9e46e56803"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 27,
+				"message": "@joplin/turndown-plugin-gfm appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "743e3a7dbb32"
+			}
+		],
+		"packages/@n8n/task-runner/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 51,
+				"message": "ws appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "51cb5069f382"
+			}
+		],
+		"packages/@n8n/instance-ai/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 89,
+				"message": "@types/psl appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "56dabb51b433"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 56,
+				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "8fa6b9a8fc91"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 76,
+				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9a9d97065952"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 90,
+				"message": "@types/turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "12e346c47b39"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 55,
+				"message": "@joplin/turndown-plugin-gfm appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "a3cf1504b5c2"
+			}
+		],
+		"packages/@n8n/benchmark/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 38,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "67f9d81d9528"
+			}
+		],
+		"packages/@n8n/cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 75,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "733c3960022e"
+			}
+		],
+		"packages/@n8n/computer-use/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 48,
+				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f50c1eee2ed6"
+			}
+		],
+		"packages/workflow/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 64,
+				"message": "ast-types appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "1c7d7cf0b0fe"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 66,
+				"message": "esprima-next appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "627a716b5d23"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 74,
+				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "b660317b5f6f"
+			}
+		],
+		"packages/@n8n/eslint-plugin-community-nodes/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 49,
+				"message": "n8n-workflow appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "c5830b76ff8e"
+			}
+		],
+		"packages/@n8n/stylelint-config/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 30,
+				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "955f3fe044c7"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 46,
+				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "955f3fe044c7"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1690000000030-RemoveResetPasswordColumns.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1690000000030-RemoveResetPasswordColumns.ts (1690000000030) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "c524a9ca4292"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1690000000040-AddMfaColumns.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1690000000040-AddMfaColumns.ts (1690000000040) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "9d571251376b"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1693491613982-ExecutionSoftDelete.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1693491613982-ExecutionSoftDelete.ts (1693491613982) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "7ade19d27ea8"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1693554410387-DisallowOrphanExecutions.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1693554410387-DisallowOrphanExecutions.ts (1693554410387) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "d46b0ae69b38"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1695128658538-AddWorkflowMetadata.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1695128658538-AddWorkflowMetadata.ts (1695128658538) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "52c9ad1e00dc"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1695829275184-ModifyWorkflowHistoryNodesAndConnections.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1695829275184-ModifyWorkflowHistoryNodesAndConnections.ts (1695829275184) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "e05c9af6e2f9"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1705429061930-DropRoleMapping.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1705429061930-DropRoleMapping.ts (1705429061930) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "8d325473bce5"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1712044305787-RemoveNodesAccess.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1712044305787-RemoveNodesAccess.ts (1712044305787) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "8d2bbe7bc09d"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1714133768519-CreateProject.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1714133768519-CreateProject.ts (1714133768519) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "cdd159d80c55"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1714133768521-MakeExecutionStatusNonNullable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1714133768521-MakeExecutionStatusNonNullable.ts (1714133768521) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "7e726215f602"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1724951148974-AddApiKeysTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1724951148974-AddApiKeysTable.ts (1724951148974) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "3eaa3fa96ad1"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1727427440136-SeparateExecutionCreationFromStart.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1727427440136-SeparateExecutionCreationFromStart.ts (1727427440136) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "702281e1c037"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1729607673464-UpdateProcessedDataValueColumnToText.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1729607673464-UpdateProcessedDataValueColumnToText.ts (1729607673464) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "cf281457e81a"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1729607673469-AddProjectIcons.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1729607673469-AddProjectIcons.ts (1729607673469) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "d3c84ea555a6"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1731404028106-AddDescriptionToTestDefinition.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1731404028106-AddDescriptionToTestDefinition.ts (1731404028106) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "c0b12dc71971"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1742918400000-AddScopesColumnToApiKeys.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1742918400000-AddScopesColumnToApiKeys.ts (1742918400000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "1bd84c6e2704"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1750252139168-LinkRoleToUserTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1750252139168-LinkRoleToUserTable.ts (1750252139168) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "ae1fdf257787"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1750252139170-RemoveOldRoleColumn.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1750252139170-RemoveOldRoleColumn.ts (1750252139170) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "121d2727ab80"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1752669793000-AddInputsOutputsToTestCaseExecution.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1752669793000-AddInputsOutputsToTestCaseExecution.ts (1752669793000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "01857ec1a3d0"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1756906557570-AddTimestampsToRoleAndRoleIndexes.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1756906557570-AddTimestampsToRoleAndRoleIndexes.ts (1756906557570) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "3170ea3366de"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1758731786132-AddAudienceColumnToApiKey.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1758731786132-AddAudienceColumnToApiKey.ts (1758731786132) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "d52a1dd1e54e"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1760020000000-CreateChatHubAgentTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1760020000000-CreateChatHubAgentTable.ts (1760020000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "f8b39208c141"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1760965142113-DropUnusedChatHubColumns.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1760965142113-DropUnusedChatHubColumns.ts (1760965142113) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "55d389c0489c"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1761773155024-AddAttachmentsToChatHubMessages.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1761773155024-AddAttachmentsToChatHubMessages.ts (1761773155024) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "5f07b3ecd092"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1761830340990-AddToolsColumnToChatHubTables.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1761830340990-AddToolsColumnToChatHubTables.ts (1761830340990) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "77e018405eed"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1762177736257-AddWorkflowDescriptionColumn.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1762177736257-AddWorkflowDescriptionColumn.ts (1762177736257) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "f660693c50e8"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1762763704614-BackfillMissingWorkflowHistoryRecords.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1762763704614-BackfillMissingWorkflowHistoryRecords.ts (1762763704614) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "9918ff139099"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1762847206508-AddWorkflowHistoryAutoSaveFields.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1762847206508-AddWorkflowHistoryAutoSaveFields.ts (1762847206508) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "806cf49b747e"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1763047800000-AddActiveVersionIdColumn.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1763047800000-AddActiveVersionIdColumn.ts (1763047800000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "35d686155538"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1764276827837-AddCreatorIdToProjectTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1764276827837-AddCreatorIdToProjectTable.ts (1764276827837) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "1ed16ec75965"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1765459448000-AddResolvableFieldsToCredentials.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1765459448000-AddResolvableFieldsToCredentials.ts (1765459448000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "94d3e53d35b4"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1765788427674-AddIconToAgentTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1765788427674-AddIconToAgentTable.ts (1765788427674) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "8886bd530de2"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1766068346315-AddChatMessageIndices.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1766068346315-AddChatMessageIndices.ts (1766068346315) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "dc5d53f65c2a"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1769000000000-AddPublishedVersionIdToWorkflowDependency.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1769000000000-AddPublishedVersionIdToWorkflowDependency.ts (1769000000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "e6f6c0d42f7f"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1770000000000-CreateChatHubToolsTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1770000000000-CreateChatHubToolsTable.ts (1770000000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "61f4de8f7db3"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1771500000002-AddFilesColumnToChatHubAgents.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1771500000002-AddFilesColumnToChatHubAgents.ts (1771500000002) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "5ee6be686a28"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1772000000000-AddSuggestedPromptsToAgentTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1772000000000-AddSuggestedPromptsToAgentTable.ts (1772000000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "48bcd6bfe745"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1772619247761-AddRoleColumnToProjectSecretsProviderAccess.ts (1772619247761) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "acc7cac40f87"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1772700000000-AddTypeToChatHubSessions.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1772700000000-AddTypeToChatHubSessions.ts (1772700000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "0279dc26f034"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1774280963551-AddRestoreFieldsToWorkflowBuilderSession.ts (1774280963551) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "5bb3e906cdbb"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull.ts (1775740765000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "c7e78794aefa"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1777045000000-AddTracingContextToExecution.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1777045000000-AddTracingContextToExecution.ts (1777045000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "41a43f631a32"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots.ts (1777100000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "b541b874f037"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1778000000000-AddExecutionDeduplicationKey.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1778000000000-AddExecutionDeduplicationKey.ts (1778000000000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "278684d916e8"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1778100002000-AddEvaluationConfigColumnsToTestRun.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1778100002000-AddEvaluationConfigColumnsToTestRun.ts (1778100002000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "f61392909be0"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1778496086558-CreateEvaluationCollection.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1778496086558-CreateEvaluationCollection.ts (1778496086558) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "7a5d5dd7ac85"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000002-DropAgentExecutionWorkingMemory.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000002-DropAgentExecutionWorkingMemory.ts (1784000000002) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "88c53222237a"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000006-AddNodeGroupsColumnToWorkflowAndHistory.ts (1784000000006) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "e946194f33ec"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000007-CreateInstanceAiCheckpointTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000007-CreateInstanceAiCheckpointTable.ts (1784000000007) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "e5ea3b8289ec"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000011-CreateAgentHistoryTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000011-CreateAgentHistoryTable.ts (1784000000011) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "696e69444d0a"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000014-PersistInstanceAiPendingConfirmations.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000014-PersistInstanceAiPendingConfirmations.ts (1784000000014) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "bd255e8eeb5b"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000015-AddSourceWorkflowIdToWorkflow.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000015-AddSourceWorkflowIdToWorkflow.ts (1784000000015) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "45b35ca6fa25"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000017-AddLastUsedAtToApiKey.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000017-AddLastUsedAtToApiKey.ts (1784000000017) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "bc7d45e6e54e"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000018-CreateAgentFilesTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000018-CreateAgentFilesTable.ts (1784000000018) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "11a6b05559ae"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000019-AddCustomTelemetryTagsToProject.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000019-AddCustomTelemetryTagsToProject.ts (1784000000019) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "357263c229a1"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000021-CreateAgentTaskDefinitionTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000021-CreateAgentTaskDefinitionTable.ts (1784000000021) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "a161a7d7e616"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000022-AddSubAgentLinkageToAgentExecutionThreads.ts (1784000000022) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "287b98643496"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000024-AddResourceToOAuthAuthorizationCodes.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000024-AddResourceToOAuthAuthorizationCodes.ts (1784000000024) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "f3aa84779924"
+			}
+		],
+		"packages/@n8n/db/src/migrations/postgresdb/1758794506893-AddProjectIdToVariableTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1758794506893-AddProjectIdToVariableTable.ts (1758794506893) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "7aebfa806bd9"
+			}
+		],
+		"packages/@n8n/db/src/migrations/sqlite/1764276827837-AddCreatorIdToProjectTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1764276827837-AddCreatorIdToProjectTable.ts (1764276827837) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "e50608c0e078"
+			}
+		],
+		"packages/@n8n/db/src/migrations/sqlite/1764689448000-AddResolvableFieldsToCredentials.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1764689448000-AddResolvableFieldsToCredentials.ts (1764689448000) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
+				"hash": "ac2493848228"
+			}
+		],
+		"package.json": [
+			{
+				"rule": "stale-overrides",
+				"line": 107,
+				"message": "Override \"@azure/identity\" duplicates a catalog entry for @azure/identity — set the override to \"catalog:\" or remove it",
+				"hash": "ef24d04a4347"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 108,
+				"message": "Override \"@lezer/common\" duplicates a catalog entry for @lezer/common — set the override to \"catalog:\" or remove it",
+				"hash": "1e5d2fb72ef8"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 111,
+				"message": "Override \"@types/node\" duplicates a catalog entry for @types/node — set the override to \"catalog:\" or remove it",
+				"hash": "d3577ed2e92d"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 112,
+				"message": "Override \"chokidar\" duplicates a catalog entry for chokidar — set the override to \"catalog:\" or remove it",
+				"hash": "8496c5755ef0"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 122,
+				"message": "Override \"vue-tsc\" duplicates a catalog entry for vue-tsc — set the override to \"catalog:frontend\" or remove it",
+				"hash": "5414a6c2842f"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 128,
+				"message": "Override \"form-data\" duplicates a catalog entry for form-data — set the override to \"catalog:\" or remove it",
+				"hash": "ec13014b18ab"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 131,
+				"message": "Override \"nodemailer\" duplicates a catalog entry for nodemailer — set the override to \"catalog:\" or remove it",
+				"hash": "1a696378ebfc"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 133,
+				"message": "Override \"zod\" duplicates a catalog entry for zod — set the override to \"catalog:\" or remove it",
+				"hash": "6224a1e7997d"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 142,
+				"message": "Override \"@rudderstack/rudder-sdk-node@<=3.0.0\" duplicates a catalog entry for @rudderstack/rudder-sdk-node — set the override to \"catalog:\" or remove it",
+				"hash": "71f703e2c449"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 153,
+				"message": "Override \"lodash\" duplicates a catalog entry for lodash — set the override to \"catalog:\" or remove it",
+				"hash": "3cbb69cc0ff8"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 161,
+				"message": "Override \"flatted\" duplicates a catalog entry for flatted — set the override to \"catalog:\" or remove it",
+				"hash": "7fe03ed5fec2"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 170,
+				"message": "Override \"yaml@<=2.8.3\" duplicates a catalog entry for yaml — set the override to \"catalog:\" or remove it",
+				"hash": "a5ab421c217c"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 171,
+				"message": "Override \"axios\" duplicates a catalog entry for axios — set the override to \"catalog:\" or remove it",
+				"hash": "3bd62181cb8d"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 175,
+				"message": "Override \"uuid@<=13.0.1\" duplicates a catalog entry for uuid — set the override to \"catalog:\" or remove it",
+				"hash": "abd23b6d69fe"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 184,
+				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
+				"hash": "170e854b445c"
+			}
+		]
+	}
+}

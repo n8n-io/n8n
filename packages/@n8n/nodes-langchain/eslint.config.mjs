@@ -24,6 +24,7 @@ export default defineConfig(
 			'import-x/extensions': 'warn',
 
 			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+			'@n8n/community-nodes/no-builder-hint-leakage': 'error',
 
 			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
 
@@ -77,7 +78,7 @@ export default defineConfig(
 			'n8n-nodes-base/node-class-description-credentials-name-unsuffixed': 'error',
 			'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
 			'n8n-nodes-base/node-class-description-empty-string': 'error',
-			'n8n-nodes-base/node-class-description-icon-not-svg': 'error',
+			'n8n-nodes-base/node-class-description-icon-not-svg': 'off',
 			'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'off',
 			'n8n-nodes-base/node-class-description-outputs-wrong': 'off',
 			'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',

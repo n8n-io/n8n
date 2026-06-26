@@ -11,7 +11,7 @@ describe('AnthropicApi Credential', () => {
 		expect(anthropicApi.documentationUrl).toBe('anthropic');
 		expect(anthropicApi.properties).toHaveLength(5);
 		expect(anthropicApi.test.request.baseURL).toBe('={{$credentials?.url}}');
-		expect(anthropicApi.test.request.url).toBe('/v1/messages');
+		expect(anthropicApi.test.request.url).toBe('/v1/models');
 	});
 
 	describe('authenticate', () => {

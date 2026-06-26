@@ -87,6 +87,33 @@ describe('CredentialIcon', () => {
 		expect(getByRole('img')).toHaveAttribute('src', useRootStore().baseUrl + testIconUrl);
 	});
 
+	it('shows named icon when referenced node uses a named icon (e.g. HTTP Request)', () => {
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'httpQueryAuth',
+				icon: 'node:n8n-nodes-base.httpRequest',
+			}),
+		]);
+
+		useNodeTypesStore().setNodeTypes([
+			mock<INodeTypeDescription>({
+				version: 1,
+				name: 'n8n-nodes-base.httpRequest',
+				icon: 'node:http-request',
+				iconUrl: undefined,
+			}),
+		]);
+
+		const { container } = renderComponent({
+			pinia,
+			props: {
+				credentialTypeName: 'httpQueryAuth',
+			},
+		});
+
+		expect(container.querySelector('.nodeIconPlaceholder')).not.toBeInTheDocument();
+	});
+
 	it('shows fallback icon when icon is not found', () => {
 		useCredentialsStore().setCredentialTypes([
 			mock<ICredentialType>({

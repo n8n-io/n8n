@@ -1,3 +1,4 @@
+import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
@@ -9,9 +10,11 @@ import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
 import { createObservabilityHelper } from './observability';
-import { postgres } from './postgres';
+import { postgres, createPostgresHelper } from './postgres';
+import { postgresExporter } from './postgres-exporter';
 import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
+import { sandbox } from './sandbox';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
 import type { Service, ServiceName, ServiceResult, HelperFactories } from './types';
@@ -39,9 +42,13 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	mysql: mysqlService,
 	localstack,
 	kent,
+	postgresExporter,
+	cadvisor,
+	sandbox,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
+	postgres: createPostgresHelper,
 	mailpit: createMailpitHelper,
 	gitea: createGiteaHelper,
 	keycloak: createKeycloakHelper,

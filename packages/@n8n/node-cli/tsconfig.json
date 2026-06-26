@@ -1,7 +1,6 @@
 {
 	"extends": ["@n8n/typescript-config/tsconfig.common.json"],
 	"compilerOptions": {
-		"baseUrl": ".",
 		"rootDir": "src",
 		"outDir": "dist",
 		"types": ["vite/client", "vitest/globals"],

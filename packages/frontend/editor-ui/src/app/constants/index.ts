@@ -7,6 +7,7 @@ export * from './emails';
 export * from './enterprise';
 export * from './events';
 export * from './experiments';
+export * from './telemetry';
 export * from './injectionKeys';
 export * from './limits';
 export * from './localStorage';

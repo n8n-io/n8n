@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "answer": {
+            "type": "string"
+        },
         "createdDate": {
             "type": "string"
         },
@@ -19,13 +22,54 @@
         "lastModifiedDate": {
             "type": "string"
         },
+        "metadados": {
+            "type": "object",
+            "properties": {
+                "Email": {
+                    "type": "string"
+                },
+                "EnvioEmail": {
+                    "type": "string"
+                },
+                "FollowUp": {
+                    "type": "string"
+                },
+                "IdLead": {
+                    "type": "string"
+                },
+                "MensagemTimestamp": {
+                    "type": "string"
+                },
+                "Nome": {
+                    "type": "string"
+                },
+                "RespostaAgenteTimestamp": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Telefone": {
+                    "type": "string"
+                }
+            }
+        },
         "partitionKey": {
+            "type": "string"
+        },
+        "query": {
             "type": "string"
         },
         "resourceId": {
             "type": "string"
         },
         "selfLink": {
+            "type": "string"
+        },
+        "timestamp": {
             "type": "string"
         },
         "timeStamp": {
@@ -35,5 +79,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

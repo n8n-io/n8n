@@ -1,0 +1,13 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"compilerOptions": {
+		"composite": true,
+		"module": "CommonJS",
+		"moduleResolution": "node",
+		"noEmit": false,
+		"rootDir": "src",
+		"outDir": "dist"
+	},
+	"include": ["src/server/**/*.ts", "src/apps-manifest.ts", "src/telemetry-contract.ts"],
+	"exclude": ["src/**/*.test.ts"]
+}

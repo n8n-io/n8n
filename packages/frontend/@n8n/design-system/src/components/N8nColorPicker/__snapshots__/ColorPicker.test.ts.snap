@@ -72,7 +72,7 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
       <!--v-if-->
       <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
       <div
-        class="inputWrapper"
+        class="n8n-input__wrapper inputWrapper"
       >
         <!-- Prefix slot -->
         <!--v-if-->

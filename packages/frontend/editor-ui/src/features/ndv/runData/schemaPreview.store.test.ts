@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { INode } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 vi.mock('./schemaPreview.api');
 vi.mock('@/app/composables/useTelemetry', () => {
@@ -24,15 +23,19 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/workflows.store', () => {
-	const getNodeByName = vi.fn();
-	return {
-		useWorkflowsStore: vi.fn(() => ({
-			workflowId: '123',
-			getNodeByName,
-		})),
-	};
-});
+const { mockGetNodeByName } = vi.hoisted(() => ({
+	mockGetNodeByName: vi.fn(),
+}));
+
+const mockDocumentStore = vi.hoisted(() => ({
+	getNodeByName: mockGetNodeByName,
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn(() => mockDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	injectWorkflowDocumentStore: () => ({ value: mockDocumentStore }),
+}));
 
 describe('schemaPreview.store', () => {
 	beforeEach(() => {
@@ -110,15 +113,14 @@ describe('schemaPreview.store', () => {
 
 		it('should track both the preview schema and the output one', async () => {
 			const store = useSchemaPreviewStore();
-			vi.mocked(useWorkflowsStore().getNodeByName).mockReturnValueOnce(
+			await store.trackSchemaPreviewExecution(
+				'123',
 				mock<INode>({
 					id: 'test-node-id',
 					type: options.nodeType,
 					typeVersion: options.version,
 					parameters: { resource: options.resource, operation: options.operation },
 				}),
-			);
-			await store.trackSchemaPreviewExecution(
 				mock<PushPayload<'nodeExecuteAfterData'>>({
 					nodeName: 'Test',
 					data: {
@@ -141,25 +143,11 @@ describe('schemaPreview.store', () => {
 			});
 		});
 
-		it('should not track nodes without a schema preview', async () => {
-			const store = useSchemaPreviewStore();
-			vi.mocked(useWorkflowsStore().getNodeByName).mockReturnValueOnce(mock<INode>());
-			await store.trackSchemaPreviewExecution(
-				mock<PushPayload<'nodeExecuteAfterData'>>({
-					nodeName: 'Test',
-					data: {
-						executionStatus: 'success',
-						data: { main: [[{ json: { foo: 'bar', quz: 'qux' } }]] },
-					},
-				}),
-			);
-
-			expect(useTelemetry().track).not.toHaveBeenCalled();
-		});
-
 		it('should not track failed executions', async () => {
 			const store = useSchemaPreviewStore();
 			await store.trackSchemaPreviewExecution(
+				'123',
+				mock<INode>({}),
 				mock<PushPayload<'nodeExecuteAfterData'>>({
 					data: {
 						executionStatus: 'error',

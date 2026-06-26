@@ -1,0 +1,53 @@
+export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
+
+export interface TimelineItem {
+	kind: EventKind;
+	executionId: string;
+	timestamp: number;
+	endTimestamp?: number;
+	content?: string;
+	toolName?: string;
+	toolCallId?: string;
+	toolInput?: unknown;
+	toolOutput?: unknown;
+	toolSuccess?: boolean;
+	workflowId?: string;
+	workflowName?: string;
+	workflowExecutionId?: string;
+	workflowTriggerType?: string;
+	nodeType?: string;
+	nodeTypeVersion?: number;
+	nodeDisplayName?: string;
+	/**
+	 * Configured node parameters from the agent's JSON config (only set for
+	 * `kind: 'node'`). Surfaced in the IO viewer so the user can see the node's
+	 * actual config — channel, operation, `$fromAI(...)` templates — alongside
+	 * the LLM's runtime input items.
+	 */
+	nodeParameters?: Record<string, unknown>;
+	/**
+	 * Resolved display name for a `delegate_subagent` tool call — the configured
+	 * sub-agent's name, falling back to the humanized task name. Set by the view
+	 * so the row/chart/detail can render "Sub-agent · <name>".
+	 */
+	subAgentName?: string;
+	resumed?: boolean;
+	/**
+	 * True for the tool-call entry a resumed execution records when the user
+	 * answers an interactive suspension: it carries the user's feedback as its
+	 * output and is labelled "User feedback received" instead of a tool call.
+	 */
+	isUserFeedback?: boolean;
+}
+
+export interface IdleRange {
+	start: number;
+	end: number;
+}
+
+export interface FilterOption {
+	key: string;
+	label: string;
+	color: string;
+	count: number;
+}

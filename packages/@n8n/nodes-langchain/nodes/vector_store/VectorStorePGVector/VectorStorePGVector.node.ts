@@ -184,7 +184,7 @@ const retrieveFields: INodeProperties[] = [
  * similaritySearchVectorWithScore should use this.filter instead of
  * expecting it from the parameter
  */
-class ExtendedPGVectorStore extends PGVectorStore {
+export class ExtendedPGVectorStore extends PGVectorStore {
 	static async initialize(
 		embeddings: EmbeddingsInterface,
 		args: PGVectorStoreArgs & { dimensions?: number },

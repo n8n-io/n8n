@@ -27,6 +27,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -41,6 +42,7 @@ const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
+const { fetchDependencyCounts } = useDependencies();
 
 const loading = ref(true);
 
@@ -79,6 +81,16 @@ const currentProject = computed(() => {
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
+const addDataTableDisabled = computed(
+	() => readOnlyEnv.value || !dataTableStore.projectPermissions.dataTable.create,
+);
+
+const addDataTableDisabledTooltip = computed(() =>
+	readOnlyEnv.value
+		? i18n.baseText('readOnlyEnv.cantAdd.any')
+		: i18n.baseText('dataTable.empty.button.disabled.tooltip'),
+);
+
 const DATA_TABLE_SORT_MAP = {
 	lastUpdated: 'updatedAt:desc',
 	lastCreated: 'createdAt:desc',
@@ -114,6 +126,9 @@ const fetchDataTables = async () => {
 	} finally {
 		delayedLoading.cancel();
 		loading.value = false;
+
+		const dataTableIds = dataTableStore.dataTables.map((dt) => dt.id);
+		void fetchDependencyCounts(dataTableIds, 'dataTable');
 	}
 };
 
@@ -210,12 +225,12 @@ watch(
 				:description="i18n.baseText('dataTable.empty.description')"
 				:button-text="i18n.baseText('dataTable.add.button.label')"
 				button-type="secondary"
-				:button-disabled="!dataTableStore.projectPermissions.dataTable.create"
-				:button-icon="!dataTableStore.projectPermissions.dataTable.create ? 'lock' : undefined"
+				:button-disabled="addDataTableDisabled"
+				:button-icon="addDataTableDisabled ? 'lock' : undefined"
 				@click:button="onAddModalClick"
 			>
 				<template #disabledButtonTooltip>
-					{{ i18n.baseText('dataTable.empty.button.disabled.tooltip') }}
+					{{ addDataTableDisabledTooltip }}
 				</template>
 			</N8nActionBox>
 		</template>

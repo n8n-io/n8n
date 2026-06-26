@@ -15,8 +15,6 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 
 import {
 	N8nButton,
@@ -39,7 +37,6 @@ const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
-const postHog = usePostHog();
 
 const clipboard = useClipboard();
 const { showMessage, showError } = useToast();
@@ -89,10 +86,6 @@ const isChatUsersEnabled = computed((): boolean => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions]
 	);
 });
-
-const isTamperProofInviteLinksEnabled = computed(() =>
-	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
-);
 
 const invitedUsers = computed(() => {
 	if (!showInviteUrls.value) return [];
@@ -176,17 +169,13 @@ async function onSubmit() {
 
 		if (successfulUrlInvites.length) {
 			if (successfulUrlInvites.length === 1) {
-				if (isTamperProofInviteLinksEnabled.value) {
-					try {
-						const url = await usersStore.generateInviteLink({
-							id: successfulUrlInvites[0].user.id,
-						});
-						void clipboard.copy(url.link);
-					} catch (error) {
-						showError(error, i18n.baseText('settings.users.inviteLinkError'));
-					}
-				} else {
-					void clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
+				try {
+					const url = await usersStore.generateInviteLink({
+						id: successfulUrlInvites[0].user.id,
+					});
+					void clipboard.copy(url.link);
+				} catch (error) {
+					showError(error, i18n.baseText('settings.users.inviteLinkError'));
 				}
 			}
 
@@ -265,19 +254,12 @@ async function onCopyInviteLink(user: IInviteResponse['user']) {
 		return;
 	}
 
-	if (isTamperProofInviteLinksEnabled.value) {
-		try {
-			const url = await usersStore.generateInviteLink({ id: user.id });
-			void clipboard.copy(url.link);
-			showCopyInviteLinkToast([]);
-		} catch (error) {
-			showError(error, i18n.baseText('settings.users.inviteLinkError'));
-		}
-	} else {
-		if (user.inviteAcceptUrl) {
-			void clipboard.copy(user.inviteAcceptUrl);
-			showCopyInviteLinkToast([]);
-		}
+	try {
+		const url = await usersStore.generateInviteLink({ id: user.id });
+		void clipboard.copy(url.link);
+		showCopyInviteLinkToast([]);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.inviteLinkError'));
 	}
 }
 
@@ -374,7 +356,7 @@ onMounted(() => {
 			<div v-if="showInviteUrls">
 				<N8nUsersList :users="invitedUsers">
 					<template #actions="{ user }">
-						<N8nTooltip v-if="isTamperProofInviteLinksEnabled">
+						<N8nTooltip>
 							<template #content>
 								{{ i18n.baseText('settings.users.actions.generateInviteLink') }}
 							</template>
@@ -383,19 +365,6 @@ onMounted(() => {
 								icon="link"
 								:aria-label="i18n.baseText('settings.users.actions.generateInviteLink')"
 								data-test-id="generate-invite-link-button"
-								@click="onCopyInviteLink(user)"
-							></N8nIconButton>
-						</N8nTooltip>
-						<N8nTooltip v-else-if="user.inviteAcceptUrl">
-							<template #content>
-								{{ i18n.baseText('settings.users.inviteLink.copy') }}
-							</template>
-							<N8nIconButton
-								variant="subtle"
-								icon="link"
-								:aria-label="i18n.baseText('settings.users.inviteLink.copy')"
-								data-test-id="copy-invite-link-button"
-								:data-invite-link="user.inviteAcceptUrl"
 								@click="onCopyInviteLink(user)"
 							></N8nIconButton>
 						</N8nTooltip>

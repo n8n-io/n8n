@@ -16,28 +16,27 @@ import {
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
 	workflowFailedToActivate,
+	workflowPartiallyActivated,
 	executionFinished,
 	executionRecovered,
 	workflowActivated,
 	workflowDeactivated,
 	workflowAutoDeactivated,
+	workflowSettingsUpdated,
 } from '@/app/composables/usePushConnection/handlers';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
-import { createEventQueue } from '@n8n/utils/event-queue';
+import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { createEventQueue } from '@n8n/utils/create-event-queue';
 import type { useRouter } from 'vue-router';
 
-export function usePushConnection({
-	router,
-	workflowState,
-}: {
-	router: ReturnType<typeof useRouter>;
-	workflowState?: WorkflowState;
-}) {
+export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const pushStore = usePushConnectionStore();
-	const options = {
-		router,
-		workflowState: workflowState ?? injectWorkflowState(),
-	};
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	// Resolved once at setup (inject is only valid here); read per event below.
+	// A host can opt this editor out of success and/or error execution result
+	// toasts (e.g. the Instance AI preview, which shows results in its own UI).
+	const { executionSuccessToasts, executionErrorToasts } = useEditorContext();
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
 
@@ -59,6 +58,15 @@ export function usePushConnection({
 	 * Process received push message event by calling the correct handler
 	 */
 	async function processEvent(event: PushMessage) {
+		// Resolve the current workflow document per event so handlers always act on
+		// the workflow the user is currently viewing, even as they navigate.
+		const options: PushHandlerOptions = {
+			router,
+			documentId: workflowDocumentStore.value.documentId,
+			suppressExecutionSuccessToasts: !executionSuccessToasts.value,
+			suppressExecutionErrorToasts: !executionErrorToasts.value,
+		};
+
 		switch (event.type) {
 			case 'testWebhookDeleted':
 				return await testWebhookDeleted(event, options);
@@ -75,7 +83,7 @@ export function usePushConnection({
 			case 'nodeExecuteAfter':
 				return await nodeExecuteAfter(event, options);
 			case 'nodeExecuteAfterData':
-				return await nodeExecuteAfterData(event);
+				return await nodeExecuteAfterData(event, options);
 			case 'executionStarted':
 				return await executionStarted(event, options);
 			case 'sendWorkerStatusMessage':
@@ -84,16 +92,20 @@ export function usePushConnection({
 				return await sendConsoleMessage(event);
 			case 'workflowFailedToActivate':
 				return await workflowFailedToActivate(event, options);
+			case 'workflowPartiallyActivated':
+				return await workflowPartiallyActivated(event, options);
 			case 'executionFinished':
 				return await executionFinished(event, options);
 			case 'executionRecovered':
 				return await executionRecovered(event, options);
 			case 'workflowActivated':
-				return await workflowActivated(event);
+				return await workflowActivated(event, options);
 			case 'workflowDeactivated':
-				return await workflowDeactivated(event);
+				return await workflowDeactivated(event, options);
 			case 'workflowAutoDeactivated':
-				return await workflowAutoDeactivated(event);
+				return await workflowAutoDeactivated(event, options);
+			case 'workflowSettingsUpdated':
+				return await workflowSettingsUpdated(event, options);
 			case 'updateBuilderCredits':
 				return await builderCreditsUpdated(event);
 		}

@@ -1,6 +1,8 @@
+import { StartTestRunRequestDto } from '@n8n/api-types';
 import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Delete, Get, Post, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
+import { type Scope } from '@n8n/permissions';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -9,7 +11,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
-import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -23,18 +24,39 @@ export class TestRunsController {
 		private readonly telemetry: Telemetry,
 	) {}
 
-	/**
-	 * Get the test run (or just check that it exists and the user has access to it)
-	 */
-	private async getTestRun(testRunId: string, workflowId: string, user: User) {
-		const sharedWorkflowsIds = await getSharedWorkflowIds(user, ['workflow:read']);
+	private async assertUserHasAccessToWorkflow(
+		workflowId: string,
+		user: User,
+		scopes: Scope[] = ['workflow:read'],
+	) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, scopes);
 
-		if (!sharedWorkflowsIds.includes(workflowId)) {
-			throw new NotFoundError('Test run not found');
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
 		}
+	}
+
+	/**
+	 * Get the test run (or just check that it exists and the user has access to it).
+	 *
+	 * The lookup is scoped to the route's `workflowId` so a user with access
+	 * to one workflow cannot reach another workflow's run by guessing IDs —
+	 * absent or cross-workflow runs return the same 404.
+	 *
+	 * `scopes` defaults to `workflow:read`. Mutating endpoints should pass a
+	 * stronger scope (e.g. `workflow:execute`) so a read-only user cannot
+	 * trigger state changes through this controller.
+	 */
+	private async getTestRun(
+		testRunId: string,
+		workflowId: string,
+		user: User,
+		scopes: Scope[] = ['workflow:read'],
+	) {
+		await this.assertUserHasAccessToWorkflow(workflowId, user, scopes);
 
 		const testRun = await this.testRunRepository.findOne({
-			where: { id: testRunId },
+			where: { id: testRunId, workflow: { id: workflowId } },
 		});
 
 		if (!testRun) throw new NotFoundError('Test run not found');
@@ -45,6 +67,8 @@ export class TestRunsController {
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { workflowId } = req.params;
+
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
 		return await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
 	}
@@ -75,8 +99,8 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Check test run exist
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Deleting mutates run state — require workflow:execute
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -89,8 +113,10 @@ export class TestRunsController {
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		const { id: testRunId } = req.params;
 
-		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Cancelling mutates execution state — require workflow:execute
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:execute',
+		]);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
@@ -102,24 +128,55 @@ export class TestRunsController {
 		res.status(202).json({ success: true });
 	}
 
-	@Post('/:workflowId/test-runs/new')
-	async create(req: TestRunsRequest.Create, res: express.Response) {
-		const { workflowId } = req.params;
+	@Post('/:workflowId/test-runs/:id/test-cases/:caseId/cancel')
+	async cancelCase(req: TestRunsRequest.CancelCase) {
+		const { caseId } = req.params;
 
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:read',
-		]);
+		// Cancelling a pending case mutates execution state — require workflow:execute
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
-		if (!workflow) {
-			// user trying to access a workflow they do not own
-			// and was not shared to them
-			// Or does not exist.
-			return res.status(404).json({ message: 'Not Found' });
+		const cancelled = await this.testCaseExecutionRepository.cancelIfNew(req.params.id, caseId);
+		if (!cancelled) {
+			throw new ConflictError(
+				`Test case "${caseId}" cannot be cancelled — it is not in a pending state`,
+			);
 		}
 
-		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, workflow.id);
+		this.telemetry.track('User cancelled a test case', {
+			run_id: req.params.id,
+			case_id: caseId,
+		});
 
-		return res.status(202).json({ success: true });
+		return { success: true };
+	}
+
+	@Post('/:workflowId/test-runs/new')
+	async create(
+		req: TestRunsRequest.Create,
+		res: express.Response,
+		@Body payload: StartTestRunRequestDto,
+	) {
+		const { workflowId } = req.params;
+
+		// Starting a run triggers real executions — require workflow:execute
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user, ['workflow:execute']);
+
+		const concurrency = payload.concurrency ?? 1;
+
+		// Await sync setup so the 202 carries testRunId; case execution is
+		// detached inside startTestRun via `finished` (discarded here).
+		const { testRun } = await this.testRunnerService.startTestRun(
+			req.user,
+			workflowId,
+			concurrency,
+			payload.evaluationConfigId
+				? {
+						evaluationConfigId: payload.evaluationConfigId,
+						compileFromConfig: payload.compileFromConfig === true,
+					}
+				: undefined,
+		);
+
+		res.status(202).json({ success: true, testRunId: testRun.id });
 	}
 }

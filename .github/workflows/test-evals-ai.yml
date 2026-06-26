@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Check for no-prompt-changes opt-out
         id: check
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const SKIP_TAG = '(no-prompt-changes)';
@@ -110,6 +110,10 @@ jobs:
     steps:
       - name: Set configuration based on trigger
         id: config
+        env:
+          BRANCH: ${{ inputs.branch || 'master' }}
+          SPEC_REPETITIONS: ${{ inputs.spec_repetitions || '1' }}
+          SPEC_JUDGES: ${{ inputs.spec_judges || '1' }}
         run: |
           EVENT_NAME="${{ github.event_name }}"
 
@@ -124,9 +128,9 @@ jobs:
           else
             # Manual dispatch: use provided values for spec evals
             {
-              echo "branch=${{ inputs.branch || 'master' }}"
-              echo "spec_repetitions=${{ inputs.spec_repetitions || '1' }}"
-              echo "spec_judges=${{ inputs.spec_judges || '1' }}"
+              echo "branch=$BRANCH"
+              echo "spec_repetitions=$SPEC_REPETITIONS"
+              echo "spec_judges=$SPEC_JUDGES"
               echo "experiment_prefix=CI_manual"
             } >> "$GITHUB_OUTPUT"
           fi

@@ -45,6 +45,8 @@ export declare namespace ExecutionRequest {
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId>;
 
+	type GetVersions = AuthenticatedRequest<{ workflowId: string }>;
+
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 
 	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow?: boolean }, {}>;

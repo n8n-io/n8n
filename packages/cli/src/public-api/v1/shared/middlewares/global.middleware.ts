@@ -4,15 +4,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
-import type { NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
+import type { PaginatedRequest } from '@/public-api/types';
 
-import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 const UNLIMITED_USERS_QUOTA = -1;
@@ -62,20 +61,22 @@ export const projectScope = (scopes: Scope | Scope[], resource: ProjectScopeReso
 	buildScopeMiddleware(Array.isArray(scopes) ? scopes : [scopes], resource, { globalOnly: false });
 
 export const validCursor = (
-	req: PaginatedRequest,
+	req: Request,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	if (req.query.cursor) {
-		const { cursor } = req.query;
+	const paginatedReq = req as unknown as PaginatedRequest;
+
+	if (paginatedReq.query.cursor) {
+		const { cursor } = paginatedReq.query;
 		try {
 			const paginationData = decodeCursor(cursor);
 			if ('offset' in paginationData) {
-				req.query.offset = paginationData.offset;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.offset = paginationData.offset;
+				paginatedReq.query.limit = paginationData.limit;
 			} else {
-				req.query.lastId = paginationData.lastId;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.lastId = paginationData.lastId;
+				paginatedReq.query.limit = paginationData.limit;
 			}
 		} catch (error) {
 			return res.status(400).json({
@@ -87,25 +88,51 @@ export const validCursor = (
 	return next();
 };
 
-const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
-export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	return Container.get(License).isApiKeyScopesEnabled()
-		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
-		: emptyMiddleware;
+export type ScopeTaggedMiddleware = Middleware & {
+	__apiKeyScope: ApiKeyScope;
 };
+
+export type Middleware = (req: Request, res: Response, next: NextFunction) => unknown;
+
+function tagMiddleware(middleware: Middleware, apiKeyScope: ApiKeyScope): ScopeTaggedMiddleware {
+	const tagged: ScopeTaggedMiddleware = Object.assign(
+		(req: Request, res: Response, next: NextFunction) => middleware(req, res, next),
+		{ __apiKeyScope: apiKeyScope },
+	);
+	return tagged;
+}
+
+function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
+	return async (
+		req: AuthenticatedRequest,
+		res: express.Response,
+		next: express.NextFunction,
+	): Promise<void> => {
+		const { tokenGrant } = req;
+
+		if (!tokenGrant) {
+			res.status(403).json({ message: 'Forbidden' });
+			return;
+		}
+
+		if (!tokenGrant.apiKeyScopes?.includes(endpointScope)) {
+			res.status(403).json({ message: 'Forbidden' });
+			return;
+		}
+
+		next();
+		return;
+	};
+}
+
+export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
+	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
-	if ('scope' in config) {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
-			: globalScope(config.scope);
-	} else {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
-			: globalScope(config.globalScope);
-	}
+	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
+	return tagMiddleware(makePublicApiScopeEnforcementMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (

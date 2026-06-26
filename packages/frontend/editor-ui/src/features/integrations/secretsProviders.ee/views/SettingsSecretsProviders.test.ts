@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import userEvent from '@testing-library/user-event';
+import { screen, within } from '@testing-library/vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
@@ -28,7 +29,18 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+const mockShowMessage = vi.fn();
+const mockShowError = vi.fn();
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: vi.fn(() => ({
+		showMessage: mockShowMessage,
+		showError: mockShowError,
+	})),
+}));
+
 const mockReloadConnection = vi.fn();
+const mockActivateConnection = vi.fn();
 
 vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: () => ({
@@ -41,6 +53,7 @@ vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 		createConnection: vi.fn(),
 		updateConnection: vi.fn(),
 		testConnection: vi.fn(),
+		activateConnection: mockActivateConnection,
 	}),
 }));
 
@@ -73,6 +86,11 @@ let server: ReturnType<typeof setupServer>;
 
 const renderComponent = createComponentRenderer(SettingsSecretsProviders);
 
+const openActionsMenu = async (getByTestId: (id: string) => HTMLElement) => {
+	const actionToggle = getByTestId('secrets-provider-action-toggle');
+	await userEvent.click(within(actionToggle).getByRole('button'));
+};
+
 describe('SettingsSecretsProviders', () => {
 	beforeAll(() => {
 		server = setupServer();
@@ -82,6 +100,7 @@ describe('SettingsSecretsProviders', () => {
 		mockFetchProviders.mockResolvedValue(undefined);
 		mockFetchActiveConnections.mockResolvedValue(undefined);
 		mockFetchConnection.mockResolvedValue(undefined);
+		mockActivateConnection.mockResolvedValue(undefined);
 		mockIsEnterpriseEnabled.value = false;
 		mockProviders.value = [];
 		mockActiveProviders.value = [];
@@ -157,6 +176,7 @@ describe('SettingsSecretsProviders', () => {
 				id: '1',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				state: 'connected',
 				projects: [],
 				settings: {},
@@ -185,6 +205,7 @@ describe('SettingsSecretsProviders', () => {
 				id: '1',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				state: 'connected',
 				projects: [],
 				settings: {},
@@ -197,6 +218,7 @@ describe('SettingsSecretsProviders', () => {
 				id: '2',
 				name: 'gcp-staging',
 				type: 'gcpSecretsManager',
+				isEnabled: true,
 				state: 'connected',
 				projects: [],
 				settings: {},
@@ -267,6 +289,7 @@ describe('SettingsSecretsProviders', () => {
 				id: '1',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				state: 'connected',
 				projects: [],
 				settings: {},
@@ -291,7 +314,8 @@ describe('SettingsSecretsProviders', () => {
 			const { getByTestId } = renderComponent({ pinia });
 
 			// Click the action toggle to open the dropdown, then click reload
-			await userEvent.click(getByTestId('action-reload'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-reload'));
 
 			await vi.waitFor(() => {
 				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
@@ -313,7 +337,8 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('action-reload'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-reload'));
 
 			await vi.waitFor(() => {
 				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
@@ -335,13 +360,80 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('action-reload'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-reload'));
 
 			await vi.waitFor(() => {
 				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
 			});
 
 			expect(mockFetchConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('handleActivate', () => {
+		const activeProviders: SecretProviderConnection[] = [
+			{
+				id: '1',
+				name: 'aws-prod',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				isEnabled: false,
+				projects: [],
+				settings: {},
+				secretsCount: 5,
+				secrets: [],
+				createdAt: '2024-01-20T10:00:00Z',
+				updatedAt: '2024-01-20T10:00:00Z',
+			},
+		];
+
+		it('should call activateConnection, fetchConnection and show success toast on success', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockResolvedValue({ ...activeProviders[0], isEnabled: true });
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-activate'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).toHaveBeenCalledWith('aws-prod');
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should show error toast and not fetch connection when activation fails', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockRejectedValue(new Error('Activation failed'));
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-activate'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).not.toHaveBeenCalled();
+			expect(mockShowError).toHaveBeenCalled();
 		});
 	});
 });

@@ -765,14 +765,13 @@ export class EditImage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Edit Image',
 		name: 'editImage',
-		icon: 'fa:image',
+		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
-			color: '#553399',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -1083,6 +1082,8 @@ export class EditImage implements INodeType {
 					);
 					gmInstance = gm(binaryDataBuffer);
 					gmInstance = gmInstance.background('transparent');
+					gmInstance = gmInstance.autoOrient();
+					gmInstance = gmInstance.out('-orient', 'TopLeft');
 				}
 
 				const newItem: INodeExecutionData = {
@@ -1138,16 +1139,10 @@ export class EditImage implements INodeType {
 						cleanupFunctions.push(cleanup);
 						await fsWriteFile(path, binaryDataBuffer);
 
-						if (operations[0].operation === 'create') {
-							// It seems like if the image gets created newly we have to create a new gm instance
-							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png'))
-								.compose(operator)
-								.geometry(geometryString)
-								.composite(path);
-						} else {
-							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
-						}
+						gmInstance = gm(gmInstance!.stream('png'))
+							.compose(operator)
+							.geometry(geometryString)
+							.composite(path);
 
 						if (operations.length !== i + 1) {
 							// If there are other operations after the current one create a new gm instance

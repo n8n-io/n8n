@@ -15,6 +15,7 @@ describe('roles store', () => {
 			global: [],
 			credential: [],
 			workflow: [],
+			secretsProviderConnection: [],
 			project: [
 				{
 					displayName: 'Project Admin',
@@ -117,5 +118,76 @@ describe('roles store', () => {
 			'project:editor',
 			'project:admin',
 		]);
+	});
+
+	it('should exclude global:owner and order instance roles (ordered system roles first, then custom alphabetically)', async () => {
+		vi.spyOn(rolesApi, 'getRoles').mockResolvedValue({
+			project: [],
+			credential: [],
+			workflow: [],
+			secretsProviderConnection: [],
+			global: [
+				{
+					displayName: 'Owner',
+					slug: 'global:owner',
+					description: 'Owner',
+					scopes: [],
+					licensed: true,
+					systemRole: true,
+					roleType: 'global',
+					usedByUsers: 1,
+				},
+				{
+					displayName: 'Zeta',
+					slug: 'custom:zeta',
+					description: 'Custom Zeta',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+				{
+					displayName: 'Member',
+					slug: 'global:member',
+					description: 'Member',
+					scopes: [],
+					licensed: true,
+					systemRole: true,
+					roleType: 'global',
+					usedByUsers: 5,
+				},
+				{
+					displayName: 'Alpha',
+					slug: 'custom:alpha',
+					description: 'Custom Alpha',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+				{
+					displayName: 'Admin',
+					slug: 'global:admin',
+					description: 'Admin',
+					scopes: [],
+					licensed: true,
+					systemRole: true,
+					roleType: 'global',
+					usedByUsers: 2,
+				},
+			],
+		});
+		await rolesStore.fetchRoles();
+
+		expect(rolesStore.processedInstanceRoles.map(({ slug }) => slug)).toEqual([
+			'global:admin',
+			'global:member',
+			'custom:alpha',
+			'custom:zeta',
+		]);
+		// global:owner is never managed via the Roles UI
+		expect(rolesStore.processedInstanceRoles.some((r) => r.slug === 'global:owner')).toBe(false);
 	});
 });

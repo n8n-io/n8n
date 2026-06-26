@@ -3,23 +3,21 @@ import {
 	ArchiveWorkflowDto,
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
+	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
-	ROLE,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
+import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import {
-	SharedWorkflow,
-	WorkflowEntity,
+	AuthenticatedRequest,
 	ProjectRelationRepository,
 	ProjectRepository,
-	TagRepository,
-	SharedWorkflowRepository,
+	SharedWorkflow,
+	WorkflowEntity,
 	WorkflowRepository,
-	AuthenticatedRequest,
 } from '@n8n/db';
 import {
 	Body,
@@ -34,70 +32,61 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import axios from 'axios';
 import express from 'express';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
-import { CollaborationService } from '../collaboration/collaboration.service';
+import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
 
+import { CollaborationService } from '../collaboration/collaboration.service';
+import { WorkflowCreationService } from './workflow-creation.service';
+import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { CredentialsService } from '../credentials/credentials.service';
 
+import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
-import type { IWorkflowResponse } from '@/interfaces';
+import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
-import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { TagService } from '@/services/tag.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-import * as WorkflowHelpers from '@/workflow-helpers';
 
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly externalHooks: ExternalHooks,
-		private readonly tagRepository: TagRepository,
+		private readonly authService: AuthService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
-		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
-		private readonly credentialsService: CredentialsService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly collaborationService: CollaborationService,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	@Post('/')
@@ -109,165 +98,21 @@ export class WorkflowsController {
 			}
 		}
 
-		const { autosaved = false } = body;
+		const newWorkflow = createWorkflowEntityFromPayload(body);
 
-		const newWorkflow = new WorkflowEntity();
-
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in CreateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, etc. are never set from user input
-		Object.assign(newWorkflow, body);
-
-		// Ensure workflow is created as inactive
-		newWorkflow.active = false;
-		newWorkflow.versionId = uuid();
-
-		await validateEntity(newWorkflow);
-
-		await this.externalHooks.run('workflow.create', [newWorkflow]);
-
-		const { tags: tagIds } = body;
-
-		if (tagIds?.length && !this.globalConfig.tags.disabled) {
-			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
-		}
-
-		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
-
-		WorkflowHelpers.addNodeIds(newWorkflow);
-
-		if (this.license.isSharingEnabled()) {
-			// This is a new workflow, so we simply check if the user has access to
-			// all used credentials
-
-			const allCredentials = await this.credentialsService.getMany(req.user, {
-				includeGlobal: true,
-			});
-
-			try {
-				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
-					newWorkflow,
-					allCredentials,
-				);
-			} catch (error) {
-				throw new BadRequestError(
-					'The workflow you are trying to save contains credentials that are not shared with you',
-				);
-			}
-		}
-
-		const { manager: dbManager } = this.projectRepository;
-
-		let project: Project | null = null;
-		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			const { parentFolderId } = body;
-			let { projectId } = body;
-
-			if (projectId === undefined) {
-				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-					req.user.id,
-					transactionManager,
-				);
-				// Chat users are not allowed to create workflows even within their personal project,
-				// so even though we found the project ensure it gets found via expected scope too.
-				projectId = personalProject.id;
-			}
-
-			project = await this.projectService.getProjectWithScope(
-				req.user,
-				projectId,
-				['workflow:create'],
-				transactionManager,
-			);
-
-			if (project === null) {
-				throw new BadRequestError(
-					"You don't have the permissions to save the workflow in this project.",
-				);
-			}
-
-			// Strip redactionPolicy if user lacks scope (projectId is already resolved here)
-			if (newWorkflow.settings?.redactionPolicy !== undefined) {
-				const canUpdateRedaction = await userHasScopes(
-					req.user,
-					['workflow:updateRedactionSetting'],
-					false,
-					{ projectId },
-				);
-				if (!canUpdateRedaction) {
-					delete newWorkflow.settings.redactionPolicy;
-				}
-			}
-
-			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-			if (parentFolderId) {
-				try {
-					const parentFolder = await this.folderService.findFolderInProjectOrFail(
-						parentFolderId,
-						project.id,
-						transactionManager,
-					);
-					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
-				} catch {}
-			}
-
-			const newSharedWorkflow = this.sharedWorkflowRepository.create({
-				role: 'workflow:owner',
-				projectId: project.id,
-				workflow,
-			});
-
-			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-
-			await this.workflowHistoryService.saveVersion(
-				req.user,
-				workflow,
-				workflow.id,
-				autosaved,
-				transactionManager,
-			);
-
-			return await this.workflowFinderService.findWorkflowForUser(
-				workflow.id,
-				req.user,
-				['workflow:read'],
-				{
-					em: transactionManager,
-					includeTags: true,
-					includeParentFolder: true,
-					includeActiveVersion: true,
-				},
-			);
+		const savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
+			tagIds: body.tags,
+			parentFolderId: body.parentFolderId,
+			projectId: body.projectId,
+			autosaved: body.autosaved,
+			uiContext: body.uiContext,
 		});
-
-		if (!savedWorkflow) {
-			this.logger.error('Failed to create workflow', { userId: req.user.id });
-			throw new InternalServerError('Failed to save workflow');
-		}
-
-		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
-			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
-				requestOrder: tagIds,
-			});
-		}
 
 		const savedWorkflowWithMetaData =
 			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
-
 		// @ts-expect-error: This is added as part of addOwnerAndSharings but
 		// shouldn't be returned to the frontend
 		delete savedWorkflowWithMetaData.shared;
-
-		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-		this.eventService.emit('workflow-created', {
-			user: req.user,
-			workflow: newWorkflow,
-			publicApi: false,
-			projectId: project!.id,
-			projectType: project!.type,
-			uiContext: body.uiContext,
-		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
@@ -331,13 +176,8 @@ export class WorkflowsController {
 				"You don't have the permissions to create a workflow in this project.",
 			);
 		}
-		let workflowData: IWorkflowResponse | undefined;
-		try {
-			const { data } = await axios.get<IWorkflowResponse>(query.url);
-			workflowData = data;
-		} catch (error) {
-			throw new BadRequestError('The URL does not point to valid JSON file!');
-		}
+
+		const workflowData = await this.fetchWorkflowFromUrl(query.url);
 
 		// Do a very basic check if it is really a n8n-workflow-json
 		if (
@@ -458,7 +298,6 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		let updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
 
 		// Validate timeSavedMode if present
@@ -469,20 +308,10 @@ export class WorkflowsController {
 			throw new BadRequestError('Invalid timeSavedMode');
 		}
 
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in UpdateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, active, activeVersionId, etc. are never set from user input
-		Object.assign(updateData, rest);
+		const updateData = createWorkflowEntityFromPayload(rest);
 
+		// Credential tamper protection is enforced centrally in WorkflowService.update
 		const isSharingEnabled = this.license.isSharingEnabled();
-		if (isSharingEnabled) {
-			updateData = await this.enterpriseWorkflowService.preventTampering(
-				updateData,
-				workflowId,
-				req.user,
-			);
-		}
-
 		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
 			tagIds: tags,
 			parentFolderId,
@@ -679,11 +508,14 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found`);
 		}
 
+		const n8nAuthCookie = this.authService.getCookieToken(req);
+
 		const result = await this.workflowExecutionService.executeManually(
 			dbWorkflow,
 			req.body,
 			req.user,
 			req.headers['push-ref'],
+			n8nAuthCookie,
 		);
 
 		if ('executionId' in result) {
@@ -808,11 +640,20 @@ export class WorkflowsController {
 	@Get('/:workflowId/executions/last-successful')
 	@ProjectScope('workflow:read')
 	async getLastSuccessfulExecution(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: unknown,
 		@Param('workflowId') workflowId: string,
 	) {
-		const lastExecution = await this.executionService.getLastSuccessfulExecution(workflowId);
+		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+		const redactExecutionData = redactQuery.success
+			? redactQuery.data.redactExecutionData
+			: undefined;
+
+		const lastExecution = await this.executionService.getLastSuccessfulExecution(
+			workflowId,
+			req.user,
+			redactExecutionData,
+		);
 
 		return lastExecution ?? null;
 	}
@@ -820,7 +661,7 @@ export class WorkflowsController {
 	@Post('/with-node-types')
 	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
 		try {
-			const hasPermission = req.user.role.slug === ROLE.Owner || req.user.role.slug === ROLE.Admin;
+			const hasPermission = hasGlobalScope(req.user, ['workflow:read']);
 
 			if (!hasPermission) {
 				res.json({ data: [], count: 0 });
@@ -842,5 +683,35 @@ export class WorkflowsController {
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);
 		}
+	}
+
+	private async fetchWorkflowFromUrl(url: string) {
+		const client = this.outboundHttp.requests({
+			// user-supplied URL
+			ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
+		});
+
+		try {
+			return await client.request<IWorkflowResponse>({ method: 'GET', url });
+		} catch (error) {
+			const blockedError = this.findSsrfBlockedError(error);
+			if (blockedError) throw blockedError;
+			throw new BadRequestError('The URL does not point to valid JSON file!');
+		}
+	}
+
+	/**
+	 * Walk the error cause chain to find a {@link SsrfBlockedIpError} buried
+	 * inside axios/redirect wrappers (AxiosError → RedirectionError → SsrfBlockedIpError).
+	 */
+	private findSsrfBlockedError(error: unknown): SsrfBlockedIpError | undefined {
+		let current = ensureError(error);
+
+		for (let depth = 0; depth < 4 && current; depth++) {
+			if (current instanceof SsrfBlockedIpError) return current;
+			current = ensureError(current.cause);
+		}
+
+		return undefined;
 	}
 }

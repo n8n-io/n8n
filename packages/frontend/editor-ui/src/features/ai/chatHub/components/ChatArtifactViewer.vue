@@ -68,6 +68,7 @@ const markdownContent = computed(() => ({
 					:class="isMarkdown ? $style.markdown : ''"
 					:single-pre="!isMarkdown"
 					:source="markdownContent"
+					footnote-style="normal"
 				/>
 			</div>
 		</div>
@@ -134,6 +135,11 @@ const markdownContent = computed(() => ({
 .content {
 	flex: 1;
 	overflow-x: hidden;
+	// ChatMarkdownChunk uses `inherit` — set the values previously hardcoded
+	// in the chunk so the artifact viewer preserves existing appearance.
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
 }
 
 .iframe {

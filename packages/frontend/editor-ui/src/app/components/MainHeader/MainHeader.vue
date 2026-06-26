@@ -11,16 +11,15 @@ import {
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
@@ -33,9 +32,10 @@ const route = useRoute();
 const locale = useI18n();
 const pushConnection = usePushConnection({ router });
 const toast = useToast();
-const ndvStore = useNDVStore();
+// The editor header renders before a workflow document is loaded (e.g. the
+// blank-canvas boot window), so use the non-throwing accessor and guard reads.
+const ndvStore = injectNDVStoreIfProvided();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
@@ -67,14 +67,16 @@ const tabBarItems = computed(() => {
 	];
 });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value?.activeNode ?? null);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
-const workflow = computed(() => workflowsStore.workflow);
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
+const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
+const workflowDescription = computed(() => workflowDocumentStore?.value?.description ?? '');
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -92,13 +94,12 @@ const showGitHubButton = computed(
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
-	if (!workflow.value.parentFolder) {
-		return undefined;
-	}
+	const folder = workflowDocumentStore?.value?.parentFolder;
+	if (!folder) return undefined;
 	return {
-		id: workflow.value.parentFolder.id,
-		name: workflow.value.parentFolder.name,
-		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+		id: folder.id,
+		name: folder.name,
+		parentFolder: folder.parentFolderId ?? undefined,
 	};
 });
 
@@ -143,13 +144,13 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	}
 
 	// Store the current workflow ID, but only if it's not a new workflow
-	if (typeof to.params.name === 'string') {
-		workflowToReturnTo.value = to.params.name;
+	if (typeof to.params.workflowId === 'string') {
+		workflowToReturnTo.value = to.params.workflowId;
 	}
 
 	if (
 		from?.name === VIEWS.EXECUTION_PREVIEW &&
-		to.params.name === from.params.name &&
+		to.params.workflowId === from.params.workflowId &&
 		typeof from.params.executionId === 'string'
 	) {
 		executionToReturnTo.value = from.params.executionId;
@@ -182,7 +183,7 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 	if (workflowToReturnTo.value && workflowToReturnTo.value !== '') {
 		routeToNavigateTo = {
 			name: VIEWS.WORKFLOW,
-			params: { name: workflowToReturnTo.value },
+			params: { workflowId: workflowToReturnTo.value },
 			query: route.query,
 		};
 	} else {
@@ -214,12 +215,12 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflowId.value, executionId: executionToReturnToValue },
+				params: { workflowId: workflowId.value, executionId: executionToReturnToValue },
 				query: route.query,
 			}
 		: {
 				name: VIEWS.EXECUTION_HOME,
-				params: { name: workflowId.value },
+				params: { workflowId: workflowId.value },
 				query: route.query,
 			};
 
@@ -237,7 +238,7 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 async function navigateToEvaluationsView(openInNewTab: boolean) {
 	const routeToNavigateTo: RouteLocationRaw = {
 		name: VIEWS.EVALUATION_EDIT,
-		params: { name: workflowId.value },
+		params: { workflowId: workflowId.value },
 		query: route.query,
 	};
 
@@ -247,7 +248,7 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 		await router.push(routeToNavigateTo);
 	}
 }
@@ -263,8 +264,8 @@ async function onWorkflowDeactivated() {
 	) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
-			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
-			workflowsStore.setWorkflow(updatedWorkflow);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowId.value);
+			workflowDocumentStore?.value?.hydrate(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
 				message: locale.baseText('mcp.workflowDeactivated.message'),
@@ -280,18 +281,21 @@ async function onWorkflowDeactivated() {
 <template>
 	<div :class="$style.container">
 		<div
-			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+			:class="{
+				[$style['main-header']]: true,
+				[$style.expanded]: !uiStore.sidebarMenuCollapsed,
+				[$style['canvas-only']]: settingsStore.isCanvasOnly,
+			}"
 		>
-			<div v-show="!hideMenuBar" :class="$style['top-menu']">
+			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
-					v-if="workflow?.name"
-					:id="workflow.id"
+					v-if="workflowName"
+					:id="workflowId"
 					:tags="workflowTags"
-					:name="workflow.name"
-					:scopes="workflow.scopes"
+					:name="workflowName"
 					:current-folder="parentFolderForBreadcrumbs"
-					:is-archived="workflow.isArchived"
-					:description="workflow.description"
+					:is-archived="workflowIsArchived"
+					:description="workflowDescription"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
@@ -318,6 +322,7 @@ async function onWorkflowDeactivated() {
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
 				:model-value="activeHeaderTab"
+				:floating="settingsStore.isCanvasOnly"
 				@update:model-value="onTabSelected"
 			/>
 		</div>
@@ -338,6 +343,12 @@ async function onWorkflowDeactivated() {
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.canvas-only {
+	min-height: 0;
+	border-bottom: none;
+	background-color: transparent;
 }
 
 .top-menu {

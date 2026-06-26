@@ -1,5 +1,4 @@
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -8,8 +7,9 @@ import type {
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { workflowDetailsOutputSchema } from './schemas';
+import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
+import { getMcpWorkflow } from './workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -111,15 +111,13 @@ export async function getWorkflowDetails(
 	projectService: ProjectService,
 	{ workflowId }: { workflowId: string },
 ): Promise<WorkflowDetailsResult> {
-	const workflow = await workflowFinderService.findWorkflowForUser(
+	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
 		['workflow:read'],
+		workflowFinderService,
 		{ includeActiveVersion: true },
 	);
-	if (!workflow || workflow.isArchived || !workflow.settings?.availableInMCP) {
-		throw new UserError('Workflow not found');
-	}
 
 	// Compute user scopes for this workflow
 	const projectRelations = await projectService.getProjectRelationsForUser(user);
@@ -136,6 +134,7 @@ export async function getWorkflowDetails(
 						({ credentials: _credentials, ...node }) => node,
 					),
 					connections: workflow.activeVersion.connections ?? {},
+					nodeGroups: workflow.activeVersion.nodeGroups ?? [],
 				}
 			: null;
 
@@ -165,8 +164,9 @@ export async function getWorkflowDetails(
 		settings: workflow.settings ?? null,
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+		nodeGroups: workflow.nodeGroups ?? [],
 		activeVersion,
-		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
+		tags: toTagSummary(workflow.tags),
 		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,
 		description: workflow.description ?? undefined,
