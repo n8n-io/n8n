@@ -232,6 +232,28 @@ describe('formatComparisonMarkdown — gate mode', () => {
 		);
 	});
 
+	it('renders a yellow WARNING when all units pass@k but one had a failing run', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'notification-router',
+				scenarios: [
+					{ name: 'low', passes: [true, true, true] },
+					{ name: 'high', passes: [true, false, true], failureCategory: 'builder_issue' },
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+		const md = formatComparisonMarkdown(evaluation, undefined, { slugByTestCase, gate });
+
+		expect(gate.green).toBe(true); // pass@k still met
+		expect(md).toMatch(/> \[!WARNING\]/);
+		expect(md).toMatch(/🟡 All 2 units green over 3 runs, but 1 had a failing run/);
+		expect(md).toMatch(/#### Passed with failures/);
+		expect(md).toMatch(/`notification-router\/high` \| 2\/3 \(67%\) \| 1× builder_issue/);
+		expect(md).not.toMatch(/#### Not green/);
+		expect(md).not.toMatch(/> \[!CAUTION\]/);
+	});
+
 	it('renders the gate even if a comparison outcome is also passed (gate wins)', () => {
 		const { evaluation, slugByTestCase } = makeEval(3, [
 			{ slug: 'a', scenarios: [{ name: 'happy', passes: [true, true, true] }] },
@@ -278,5 +300,22 @@ describe('formatComparisonTerminal — gate mode', () => {
 		expect(out).toMatch(/▶ GATE: 1 of 2 units NOT green over 3 runs/);
 		expect(out).toMatch(/NOT GREEN {2}rest-api-data-pipeline\/empty-response {2}0\/3/);
 		expect(out).not.toMatch(/\| /);
+	});
+
+	it('marks green-but-flaky units as FLAKY in the gate summary', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'notification-router',
+				scenarios: [
+					{ name: 'low', passes: [true, true, true] },
+					{ name: 'high', passes: [true, false, true], failureCategory: 'builder_issue' },
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+		const out = formatComparisonTerminal(evaluation, undefined, { slugByTestCase, gate });
+
+		expect(out).toMatch(/▶ GATE: all 2 units green over 3 runs, 1 with a failing run/);
+		expect(out).toMatch(/FLAKY +notification-router\/high +2\/3/);
 	});
 });
