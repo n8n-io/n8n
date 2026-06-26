@@ -7,9 +7,9 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { mailboxDescription } from './v2/descriptions';
 import { getPollResponse } from './trigger/GenericFunctions';
 import { properties as messageProperties } from './trigger/MessageDescription';
+import { mailboxDescription } from './v2/descriptions';
 import { loadOptions } from './v2/methods';
 
 export class MicrosoftOutlookTrigger implements INodeType {

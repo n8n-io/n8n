@@ -9,9 +9,9 @@ import * as folder from './folder';
 import * as folderMessage from './folderMessage';
 import * as message from './message';
 import * as messageAttachment from './messageAttachment';
-import { mailboxDescription } from '../descriptions';
 import { sendAndWaitWebhooksDescription } from '../../../../../utils/sendAndWait/descriptions';
 import { SEND_AND_WAIT_WAITING_TOOLTIP } from '../../../../../utils/sendAndWait/utils';
+import { mailboxDescription } from '../descriptions';
 
 export const description: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
