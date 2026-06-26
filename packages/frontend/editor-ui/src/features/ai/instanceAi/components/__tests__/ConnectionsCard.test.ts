@@ -12,15 +12,13 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-const { mcpExperimentMock, browserUseExperimentMock } = vi.hoisted(() => ({
-	mcpExperimentMock: vi.fn(),
-	browserUseExperimentMock: vi.fn(),
-}));
-
-const { mcpExperimentMock, computerUseExperimentMock } = vi.hoisted(() => ({
-	mcpExperimentMock: vi.fn(),
-	computerUseExperimentMock: vi.fn(),
-}));
+const { mcpExperimentMock, browserUseExperimentMock, computerUseExperimentMock } = vi.hoisted(
+	() => ({
+		mcpExperimentMock: vi.fn(),
+		browserUseExperimentMock: vi.fn(),
+		computerUseExperimentMock: vi.fn(),
+	}),
+);
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpExperimentMock,
@@ -141,7 +139,7 @@ describe('ConnectionsCard', () => {
 			expect(getByText('computer-use-row')).toBeVisible();
 		});
 	});
-    
+
 	describe('when computer use experiment is disabled', () => {
 		beforeEach(() => {
 			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
