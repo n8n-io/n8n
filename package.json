@@ -195,6 +195,7 @@
       "@turbo/darwin-64@<=2.9.18": "2.9.18",
       "@turbo/linux-64@<=2.9.18": "2.9.18",
       "@turbo/windows-64@<=2.9.18": "2.9.18",
+      "ibm-cloud-sdk-core": "^5.5.0",
       "undici@5": "catalog:undici-v6",
       "undici@6": "catalog:undici-v6",
       "undici@7": "catalog:undici-v7",
