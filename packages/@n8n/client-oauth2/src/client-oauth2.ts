@@ -8,7 +8,13 @@ import type { ClientOAuth2TokenData } from './client-oauth2-token';
 import { ClientOAuth2Token } from './client-oauth2-token';
 import { CodeFlow } from './code-flow';
 import { CredentialsFlow } from './credentials-flow';
-import type { Headers, OAuth2AccessTokenErrorResponse } from './types';
+import type {
+	ClientCertificate,
+	Headers,
+	OAuth2AccessTokenErrorResponse,
+	OAuth2AuthenticationMethod,
+	OAuth2ClientCredentialType,
+} from './types';
 import { getAuthError } from './utils';
 
 export interface ClientOAuth2RequestObject {
@@ -22,9 +28,11 @@ export interface ClientOAuth2RequestObject {
 
 export interface ClientOAuth2Options {
 	clientId: string;
+	clientCredentialType?: OAuth2ClientCredentialType;
 	clientSecret?: string;
+	clientCertificate?: ClientCertificate;
 	accessTokenUri: string;
-	authentication?: 'header' | 'body';
+	authentication?: OAuth2AuthenticationMethod;
 	authorizationUri?: string;
 	redirectUri?: string;
 	scopes?: string[];
