@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Outlook/MicrosoftOutlookTrigger.node.ts
+  s_51def3912d3fc1::t_98de0801c94ed4 12
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/node.description.ts
+  s_51def3912d3fc1::t_6ec47823ad1c56 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "80d230de1e3b68c05f2e2e31a0a8d4cdfb7a5998",
+  "prompts": {},
+  "sessions": {
+    "s_51def3912d3fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31afa3d2-fd0e-4f42-93c3-95839cb0136c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
