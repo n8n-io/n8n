@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import {
 	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
@@ -12,7 +13,7 @@ import type {
 	AgentsChatInteractionRenderer,
 } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
-import type { InteractivePayload } from '../../composables/agentChatMessages';
+import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import AskCredentialCard from './AskCredentialCard.vue';
 import AskLlmCard from './AskLlmCard.vue';
 import AskQuestionCard from './AskQuestionCard.vue';
@@ -71,6 +72,25 @@ const interactiveRenderers = [
 			payload.toolName === ASK_CREDENTIAL_TOOL_NAME && hasCredentialContext(context),
 		getProps: (payload, context) => {
 			if (payload.toolName !== ASK_CREDENTIAL_TOOL_NAME || !hasCredentialContext(context))
+				return {};
+			return {
+				purpose: payload.input.purpose,
+				credentialType: payload.input.credentialType,
+				nodeType: payload.input.nodeType,
+				credentialSlot: payload.input.credentialSlot,
+				projectId: context.projectId,
+				agentId: context.agentId,
+				resolvedValue: payload.resolvedValue,
+			};
+		},
+	},
+	{
+		key: 'ask_embedding_credential',
+		component: AskCredentialCard,
+		matches: (payload, context) =>
+			payload.toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME && hasCredentialContext(context),
+		getProps: (payload, context) => {
+			if (payload.toolName !== ASK_EMBEDDING_CREDENTIAL_TOOL_NAME || !hasCredentialContext(context))
 				return {};
 			return {
 				purpose: payload.input.purpose,

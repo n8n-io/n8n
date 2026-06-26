@@ -276,6 +276,14 @@ resource:
 For resources that cannot be created via n8n, explain clearly what the user
 needs to create manually and what ID or value belongs in setup.
 
+If part of the requested workflow is infeasible (no node or API for it, a source
+that blocks automated access, an action that cannot be performed
+programmatically, or a third-party API whose region/use-case coverage you have
+not verified), do not quietly substitute a stand-in and present it as the
+requested capability. Flag the substitution as an approximation that may not
+work — and any unverified region/country support — and name that gap in the
+one-line completion summary so the result is not mistaken for the original ask.
+
 ## Compositional Workflows
 
 For complex workflows, you may decompose work into supporting sub-workflows and
@@ -388,13 +396,15 @@ column names.
   explicitly expects an object and the placeholder is the direct value of one
   field.
 - For unresolved resource-locator fields (values shaped like `{ __rl: true,
-  mode, value }`, such as Slack channel selectors), use the resource-locator
-  object shape instead of a raw `placeholder()` string. Pick the mode per the
-  resource-locator rule in Node Configuration Safety Rules: a `name`/`url`
-  mode with the known value when the locator offers one and you know the
-  resource by name; otherwise id mode with an empty value and a cached result
-  name, for example `{ __rl: true, mode: 'id', value: '',
-  cachedResultName: 'Select support channel to monitor' }`.
+  mode, value }`, such as Slack channel or Google Sheets document selectors),
+  use the resource-locator object shape instead of a raw `placeholder()`
+  string. Prefer the locator's picker (`list`) mode when it offers one, since
+  it gives the user a searchable picker at setup, with an empty value and a
+  `cachedResultName` hint, for example `{ __rl: true, mode: 'list', value: '',
+  cachedResultName: 'Select support channel to monitor' }`. Not every locator
+  has a `list` mode; when it doesn't, use a `name`/`url` mode with the known
+  value, or `id` mode only when you have a concrete ID. Never use `id` with an
+  empty or placeholder value.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field
