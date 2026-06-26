@@ -88,16 +88,6 @@ function displayNodeParameter(parameter: INodeProperties) {
 	);
 }
 
-function isHiddenByAiGateway(option: INodeProperties | INodePropertyCollection): boolean {
-	const node = activeNode.value;
-	if (!node?.credentials) return false;
-	const hasGatewayCredential = Object.values(node.credentials).some(
-		(cred) => cred.__aiGatewayManaged === true,
-	);
-	if (!hasGatewayCredential) return false;
-	return aiGatewayStore.isManagedHiddenParameter(node.type, option.name);
-}
-
 function getOptionProperties(
 	optionName: string,
 ): INodePropertyCollection | INodeProperties | INodePropertyOptions | undefined {
@@ -143,10 +133,13 @@ const filteredOptions = computed(() => {
 	return props.parameter.options.filter((option) => {
 		// Accept both INodeProperties and INodePropertyCollection
 		if (isINodeProperties(option)) {
-			return displayNodeParameter(option) && !isHiddenByAiGateway(option);
+			return (
+				displayNodeParameter(option) &&
+				!aiGatewayStore.isNodePropertyHidden(activeNode.value, option.name)
+			);
 		}
 		if (isINodePropertyCollection(option)) {
-			return !isHiddenByAiGateway(option);
+			return !aiGatewayStore.isNodePropertyHidden(activeNode.value, option.name);
 		}
 		return false;
 	});

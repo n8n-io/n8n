@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { ref } from 'vue';
+import type { INode } from 'n8n-workflow';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
@@ -119,8 +120,13 @@ describe('useAiGateway', () => {
 		});
 	});
 
-	describe('isManagedHiddenParameter()', () => {
-		it('should delegate to the store config', async () => {
+	describe('isNodePropertyHidden()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-base.browserbase',
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should delegate to the store', async () => {
 			mockGetGatewayConfig.mockResolvedValue({
 				nodes: [],
 				credentialTypes: [],
@@ -130,14 +136,14 @@ describe('useAiGateway', () => {
 			const aiGatewayStore = useAiGatewayStore();
 			await aiGatewayStore.fetchConfig();
 
-			const { isManagedHiddenParameter } = useAiGateway();
-			expect(isManagedHiddenParameter('n8n-nodes-base.browserbase', 'modelSource')).toBe(true);
-			expect(isManagedHiddenParameter('n8n-nodes-base.browserbase', 'otherParam')).toBe(false);
+			const { isNodePropertyHidden } = useAiGateway();
+			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(true);
+			expect(isNodePropertyHidden(managedNode, 'otherParam')).toBe(false);
 		});
 
 		it('should return false when no config is loaded', () => {
-			const { isManagedHiddenParameter } = useAiGateway();
-			expect(isManagedHiddenParameter('n8n-nodes-base.browserbase', 'modelSource')).toBe(false);
+			const { isNodePropertyHidden } = useAiGateway();
+			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
 		});
 	});
 });

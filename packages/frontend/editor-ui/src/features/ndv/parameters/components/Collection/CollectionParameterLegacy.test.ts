@@ -21,7 +21,7 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 // Controllable active node + gateway lookups so the AI Gateway hiding path can be
 // exercised. Defaults match the no-active-node behaviour the other tests rely on.
 let mockActiveNode: unknown = null;
-const mockIsManagedHiddenParameter = vi.fn((_type: string, _param: string) => false);
+const mockIsNodePropertyHidden = vi.fn((_node: unknown, _param: string) => false);
 
 vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
@@ -38,7 +38,7 @@ vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
 });
 
 vi.mock('@/app/stores/aiGateway.store', () => ({
-	useAiGatewayStore: () => ({ isManagedHiddenParameter: mockIsManagedHiddenParameter }),
+	useAiGatewayStore: () => ({ isNodePropertyHidden: mockIsNodePropertyHidden }),
 }));
 
 describe('CollectionParameterLegacy.vue', () => {
@@ -527,21 +527,15 @@ describe('CollectionParameterLegacy.vue', () => {
 		});
 	});
 
-	describe('AI Gateway hidden parameters', () => {
-		const gatewayManagedNode = {
-			type: 'n8n-nodes-base.browserbase',
-			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
-		};
-
+	describe('AI Gateway hidden properties', () => {
 		afterEach(() => {
 			mockActiveNode = null;
-			mockIsManagedHiddenParameter.mockReset();
-			mockIsManagedHiddenParameter.mockReturnValue(false);
+			mockIsNodePropertyHidden.mockReset();
+			mockIsNodePropertyHidden.mockReturnValue(false);
 		});
 
-		it('removes options the gateway declares hidden when a managed credential is attached', async () => {
-			mockActiveNode = gatewayManagedNode;
-			mockIsManagedHiddenParameter.mockImplementation((_type, param) => param === 'value');
+		it('removes properties the store reports as hidden', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'value');
 
 			const { getAllByTestId } = renderComponent();
 			await flushPromises();
@@ -551,9 +545,8 @@ describe('CollectionParameterLegacy.vue', () => {
 			expect(options[0]).toHaveTextContent('Currency');
 		});
 
-		it('keeps options when the gateway does not declare them hidden', async () => {
-			mockActiveNode = gatewayManagedNode;
-			mockIsManagedHiddenParameter.mockReturnValue(false);
+		it('keeps properties the store does not hide', async () => {
+			mockIsNodePropertyHidden.mockReturnValue(false);
 
 			const { getAllByTestId } = renderComponent();
 			await flushPromises();
@@ -561,25 +554,8 @@ describe('CollectionParameterLegacy.vue', () => {
 			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
 		});
 
-		it('keeps options when no credential is gateway-managed', async () => {
-			mockActiveNode = {
-				type: 'n8n-nodes-base.browserbase',
-				credentials: { browserbaseApi: { id: 'cred-1', name: 'My Key' } },
-			};
-			mockIsManagedHiddenParameter.mockImplementation((_type, param) => param === 'value');
-
-			const { getAllByTestId } = renderComponent();
-			await flushPromises();
-
-			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
-			expect(mockIsManagedHiddenParameter).not.toHaveBeenCalled();
-		});
-
-		it('removes collection-type options the gateway declares hidden', async () => {
-			mockActiveNode = gatewayManagedNode;
-			mockIsManagedHiddenParameter.mockImplementation(
-				(_type, param) => param === 'nestedCollection',
-			);
+		it('removes hidden collection-type options', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'nestedCollection');
 
 			const { getAllByTestId } = renderComponent({
 				props: {

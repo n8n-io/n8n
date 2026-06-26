@@ -61,7 +61,7 @@ import {
 	FIXED_COLLECTION_PARAMETERS,
 } from './ParameterInputList.test.constants';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { INodeProperties } from 'n8n-workflow';
+import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
 import { WAIT_NODE_TYPE } from '@/app/constants';
@@ -1748,7 +1748,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
-				isManagedHiddenParameter: vi.fn(() => false),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1783,7 +1783,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
-				isManagedHiddenParameter: vi.fn(() => false),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1839,7 +1839,9 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
-				isManagedHiddenParameter: vi.fn((_type: string, param: string) => param === 'modelSource'),
+				isNodePropertyHidden: vi.fn(
+					(_node: INode | null, param: string) => param === 'modelSource',
+				),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1881,7 +1883,9 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
-				isManagedHiddenParameter: vi.fn((_type: string, param: string) => param === 'modelSource'),
+				isNodePropertyHidden: vi.fn(
+					(_node: INode | null, param: string) => param === 'modelSource',
+				),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1947,7 +1951,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
-				isManagedHiddenParameter: vi.fn(() => false),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,
@@ -1981,7 +1985,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
-				isManagedHiddenParameter: vi.fn(() => false),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
 				fetchError: { value: null } as never,

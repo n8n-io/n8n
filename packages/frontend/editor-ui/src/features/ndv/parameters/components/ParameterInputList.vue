@@ -448,7 +448,7 @@ function isHiddenByAiGateway(parameter: INodeProperties): boolean {
 	);
 	if (!hasGatewayCredential) return false;
 
-	if (aiGateway.isManagedHiddenParameter(node.value.type, parameter.name)) {
+	if (aiGateway.isNodePropertyHidden(node.value, parameter.name)) {
 		return true;
 	}
 

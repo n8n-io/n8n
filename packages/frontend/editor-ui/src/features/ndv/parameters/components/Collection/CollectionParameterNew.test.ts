@@ -21,7 +21,7 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 // Controllable active node + gateway lookups so the AI Gateway hiding path can be
 // exercised. Defaults match the no-active-node behaviour the other tests rely on.
 let mockActiveNode: unknown = null;
-const mockIsManagedHiddenParameter = vi.fn((_type: string, _param: string) => false);
+const mockIsNodePropertyHidden = vi.fn((_node: unknown, _param: string) => false);
 
 vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
@@ -38,7 +38,7 @@ vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
 });
 
 vi.mock('@/app/stores/aiGateway.store', () => ({
-	useAiGatewayStore: () => ({ isManagedHiddenParameter: mockIsManagedHiddenParameter }),
+	useAiGatewayStore: () => ({ isNodePropertyHidden: mockIsNodePropertyHidden }),
 }));
 
 describe('CollectionParameterNew.vue', () => {
@@ -491,7 +491,7 @@ describe('CollectionParameterNew.vue', () => {
 		});
 	});
 
-	describe('AI Gateway hidden parameters', () => {
+	describe('AI Gateway hidden properties', () => {
 		// Single, unselected property option so that hiding it empties the add menu,
 		// which removes the bottom add dropdown (isAddDisabled).
 		const singleOptionProps: Props = {
@@ -510,20 +510,14 @@ describe('CollectionParameterNew.vue', () => {
 			values: {},
 		};
 
-		const gatewayManagedNode = {
-			type: 'n8n-nodes-base.browserbase',
-			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
-		};
-
 		afterEach(() => {
 			mockActiveNode = null;
-			mockIsManagedHiddenParameter.mockReset();
-			mockIsManagedHiddenParameter.mockReturnValue(false);
+			mockIsNodePropertyHidden.mockReset();
+			mockIsNodePropertyHidden.mockReturnValue(false);
 		});
 
-		it('removes options the gateway declares hidden when a managed credential is attached', async () => {
-			mockActiveNode = gatewayManagedNode;
-			mockIsManagedHiddenParameter.mockImplementation((_type, param) => param === 'simpleField');
+		it('removes properties the store reports as hidden', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'simpleField');
 
 			const { queryByTestId } = renderComponent({ props: singleOptionProps });
 			await flushPromises();
@@ -531,9 +525,8 @@ describe('CollectionParameterNew.vue', () => {
 			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
 		});
 
-		it('keeps options when the gateway does not declare them hidden', async () => {
-			mockActiveNode = gatewayManagedNode;
-			mockIsManagedHiddenParameter.mockReturnValue(false);
+		it('keeps properties the store does not hide', async () => {
+			mockIsNodePropertyHidden.mockReturnValue(false);
 
 			const { getByTestId } = renderComponent({ props: singleOptionProps });
 			await flushPromises();
@@ -541,25 +534,8 @@ describe('CollectionParameterNew.vue', () => {
 			expect(getByTestId('collection-parameter-add-dropdown')).toBeInTheDocument();
 		});
 
-		it('keeps options when no credential is gateway-managed', async () => {
-			mockActiveNode = {
-				type: 'n8n-nodes-base.browserbase',
-				credentials: { browserbaseApi: { id: 'cred-1', name: 'My Key' } },
-			};
-			mockIsManagedHiddenParameter.mockImplementation((_type, param) => param === 'simpleField');
-
-			const { getByTestId } = renderComponent({ props: singleOptionProps });
-			await flushPromises();
-
-			expect(getByTestId('collection-parameter-add-dropdown')).toBeInTheDocument();
-			expect(mockIsManagedHiddenParameter).not.toHaveBeenCalled();
-		});
-
-		it('removes collection-type options the gateway declares hidden', async () => {
-			mockActiveNode = gatewayManagedNode;
-			mockIsManagedHiddenParameter.mockImplementation(
-				(_type, param) => param === 'nestedCollection',
-			);
+		it('removes hidden collection-type options', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'nestedCollection');
 
 			const singleCollectionProps: Props = {
 				...baseProps,

@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, vi, beforeEach, expect } from 'vitest';
+import type { INode } from 'n8n-workflow';
 import { useAiGatewayStore } from './aiGateway.store';
 
 const mockGetGatewayConfig = vi.fn();
@@ -375,35 +376,39 @@ describe('aiGateway.store', () => {
 		});
 	});
 
-	describe('isManagedHiddenParameter()', () => {
-		it('should return true for a parameter listed for the node', async () => {
+	describe('isNodePropertyHidden()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-browserbase.browserbase',
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should return true when a managed credential is attached and the property is listed', async () => {
 			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
 			const store = useAiGatewayStore();
 			await store.fetchConfig();
 
-			expect(
-				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'modelSource'),
-			).toBe(true);
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(true);
 		});
 
-		it('should return false for a parameter not listed for the node', async () => {
+		it('should return false when a managed credential is attached but the property is not listed', async () => {
 			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
 			const store = useAiGatewayStore();
 			await store.fetchConfig();
 
-			expect(
-				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'driverModel'),
-			).toBe(false);
+			expect(store.isNodePropertyHidden(managedNode, 'driverModel')).toBe(false);
 		});
 
-		it('should return false for a node with no hiddenNodeProperties entry', async () => {
+		it('should return false when the node type has no hiddenNodeProperties entry', async () => {
 			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
 			const store = useAiGatewayStore();
 			await store.fetchConfig();
 
-			expect(store.isManagedHiddenParameter('@n8n/n8n-nodes-langchain.openAi', 'modelSource')).toBe(
-				false,
-			);
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
 		});
 
 		it('should return false when config has no hiddenNodeProperties field', async () => {
@@ -412,17 +417,44 @@ describe('aiGateway.store', () => {
 			const store = useAiGatewayStore();
 			await store.fetchConfig();
 
-			expect(
-				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'modelSource'),
-			).toBe(false);
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
 		});
 
 		it('should return false when config has not been loaded', () => {
 			const store = useAiGatewayStore();
 
-			expect(
-				store.isManagedHiddenParameter('n8n-nodes-browserbase.browserbase', 'modelSource'),
-			).toBe(false);
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when no credential is gateway-managed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: 'n8n-nodes-browserbase.browserbase',
+				credentials: { browserbaseApi: { id: 'cred-1', name: 'My Key' } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when the node has no credentials', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = { type: 'n8n-nodes-browserbase.browserbase' } as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when the node is null', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(null, 'modelSource')).toBe(false);
 		});
 	});
 
