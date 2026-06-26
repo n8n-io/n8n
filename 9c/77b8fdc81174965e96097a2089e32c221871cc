@@ -1,0 +1,168 @@
+packages/cli/src/modules/instance-pull.ee/binding-session.service.ts
+  s_dc48143040d456::t_f3b4c2f4caf4db 63-74
+  s_dc48143040d456::t_fb20ea8e90f82f 54-57,60
+  s_dc48143040d456::t_4df5cda983cbb3 1-29,33-53,58-59,61-62,75
+  s_dc48143040d456::t_58906741600c75 30-32
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_dc48143040d456::t_4c32bc95d418bf 562,577
+tasks/demo/start.sh
+  s_dc48143040d456::t_f410625b7bdc10 1-47
+tasks/demo/README.md
+  s_dc48143040d456::t_287b324adf1321 1-67
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_dc48143040d456::t_ae0e4d31746e1c 11,13,15
+  s_dc48143040d456::t_6566c6beea0615 30
+  s_dc48143040d456::t_8bdfa1eeab1784 77-90
+  s_dc48143040d456::t_09fa311926e956 35-37,39-44
+  s_dc48143040d456::t_39a8346414c3f5 10
+tasks/demo/n8n-deploy.mjs
+  s_dc48143040d456::t_285a7c241735b2 1-26,30-92,94-95,97-181,190-191
+  s_dc48143040d456::t_7ca088efde0452 182-189
+  s_dc48143040d456::t_7c86620d5c0137 27-29
+  s_dc48143040d456::t_4e91c248d7c06e 93,96
+packages/cli/src/modules/n8n-packages/io/fs/filesystem-package-writer.ts
+  s_dc48143040d456::t_e2d69985a34825 1-70
+packages/frontend/editor-ui/src/app/constants/actions.ts
+  s_dc48143040d456::t_8099ac1ec05d4d 17
+packages/cli/src/public-api/v1/openapi.yml
+  s_dc48143040d456::t_b300c602a86c31 149-150
+packages/frontend/editor-ui/src/features/credential-binding/views/CredentialBindingView.vue
+  s_dc48143040d456::t_0391327e003bdb 213
+  s_dc48143040d456::t_8d3871b013b1d7 186
+  s_dc48143040d456::t_8571ceb02a0a3e 129
+  s_dc48143040d456::t_e6f0526b6d339e 1-15,17-128,130-185,187-212,214-313
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_dc48143040d456::t_add18b7d1117e4 62
+packages/cli/src/credentials/credentials.service.ts
+  s_dc48143040d456::t_bc9da0ef4c8972 53
+  s_dc48143040d456::t_e9108d1046c6aa 13
+  s_dc48143040d456::t_f824b6ec0938ef 1445-1452,1454
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_dc48143040d456::t_bad8fd3369280e 36
+packages/@n8n/cli/package.json
+  s_dc48143040d456::t_9fdb2e5ca06ef7 78-79
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_dc48143040d456::t_8a7b7b39021ca8 256-260
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_dc48143040d456::t_6751c4cc03ea52 364-365
+packages/@n8n/cli/src/client.ts
+  s_dc48143040d456::t_17f4bcab5ad144 19-24
+  s_dc48143040d456::t_a53ca47fda38ea 440,449
+  s_dc48143040d456::t_0c3453bd38c728 453-466
+packages/cli/src/modules/instance-pull.ee/git/git-ops.ts
+  s_dc48143040d456::t_f84cc94e00c515 49,53-56
+  s_dc48143040d456::t_748cd8cd7b2002 101-109
+  s_dc48143040d456::t_750731c9133846 1-48,50-52,57-100,110-120
+packages/cli/src/modules/instance-pull.ee/raise-review.service.ts
+  s_dc48143040d456::t_a8df3308661112 1-38,42,54-109
+  s_dc48143040d456::t_d5ea8fc5af6935 39-41,43-53
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_dc48143040d456::t_60147a9e3c7b43 38
+  s_dc48143040d456::t_1cff8d92de6bef 414-431
+  s_dc48143040d456::t_a96c8df775d391 201-208
+packages/frontend/editor-ui/src/features/credential-binding/credential-binding.api.ts
+  s_dc48143040d456::t_e618d93d9b4de7 1-37,39-65
+packages/cli/src/modules/instance-pull.ee/raise-review.controller.ts
+  s_dc48143040d456::t_57bc8efe183973 1,3-7,15-19,21-28
+  s_dc48143040d456::t_723cddf919a71c 2,8-14,20
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_dc48143040d456::t_88271942f7bd57 80
+packages/@n8n/api-types/src/dto/credentials/create-credential.dto.ts
+  s_dc48143040d456::t_0c5969ede55e90 13-17
+tasks/demo/github-workflows/deploy-dry-run.yml
+  s_dc48143040d456::t_67c8f2ed8034a4 44-48,51-52
+  s_dc48143040d456::t_88bb58dbcd567d 1-43,49-50,53-72
+tasks/demo/github-workflows/deploy-apply.yml
+  s_dc48143040d456::t_f0f9e0ed2638b6 1-36
+packages/@n8n/cli/src/index.ts
+  s_dc48143040d456::t_c76bb4ac7d3474 11
+  s_dc48143040d456::t_e12b98ba6607a7 130-131
+packages/cli/src/modules/instance-pull.ee/instance-pull.module.ts
+  s_dc48143040d456::t_aea14d45afca9b 1-17,19,21-22
+  s_dc48143040d456::t_92142b4ba1ab01 18,20
+tasks/demo/instance-pull.env
+  s_dc48143040d456::t_d61da7947b0051 1-34
+packages/@n8n/cli/src/commands/package/shared.ts
+  s_dc48143040d456::t_ec02646e6ac789 47-58,61-63
+packages/cli/src/modules/instance-pull.ee/instance-pull.controller.ts
+  s_dc48143040d456::t_2a76b723008621 33
+  s_dc48143040d456::t_77e94caeaa4c0d 63
+  s_dc48143040d456::t_fa770e8f989993 1-6,8-14,22-32,34-62,64-81,85,87-89,98-101
+  s_dc48143040d456::t_2c14f85d9b9706 82,84,86
+  s_dc48143040d456::t_105aaee874e0ad 90-97
+  s_dc48143040d456::t_489c492739a41f 15-21
+  s_dc48143040d456::t_fa087f14bb7883 7
+packages/frontend/editor-ui/src/app/api/workflows.ts
+  s_dc48143040d456::t_38c2a0cb11749f 193-199
+packages/cli/src/services/frontend.service.ts
+  s_dc48143040d456::t_393a378de36ba0 417-420
+  s_dc48143040d456::t_0873c7e9a82fed 20
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dc48143040d456::t_67e8a25b6f7f0c 1005-1025
+  s_dc48143040d456::t_5ce49d5fc5b2f8 1827-1830
+tasks/todo.md
+  s_dc48143040d456::t_2460ee434c23b3 21-27,29-30
+  s_dc48143040d456::t_79c07022688071 49
+  s_dc48143040d456::t_972f5bba93c648 7-8
+  s_dc48143040d456::t_2375aea1cc6f58 41-48
+  s_dc48143040d456::t_44ff1cd154d51e 36-40,50-53
+  s_dc48143040d456::t_79fe31ab9d215b 9-15
+  s_dc48143040d456::t_4f64fe928cdc8a 31-34
+  s_dc48143040d456::t_7622f617a4e068 1-6,16,35,54-63
+  s_dc48143040d456::t_9bbaf5ace52567 17-20
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_dc48143040d456::t_3b22ae5830eb81 156-199
+  s_dc48143040d456::t_20b9aea7dd6a25 225-228,233,236-240
+  s_dc48143040d456::t_c009956db52d94 26
+  s_dc48143040d456::t_0518f9da361778 57-59,61-71
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_dc48143040d456::t_6bedfa17b36c23 30-39
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_dc48143040d456::t_32e23ddf27e264 1168-1177
+packages/cli/src/modules/instance-pull.ee/instance-pull.config.ts
+  s_dc48143040d456::t_c98924897a40da 1-48
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_dc48143040d456::t_627293fb6a301e 76-84,91
+  s_dc48143040d456::t_020c655890581a 9
+  s_dc48143040d456::t_58c3531eacf80e 27
+  s_dc48143040d456::t_51ef0b3b6090a1 125-127
+  s_dc48143040d456::t_207976dbe4fd37 10
+  s_dc48143040d456::t_1eae39ac249dd6 100-124,128-138
+packages/@n8n/cli/src/commands/deploy.ts
+  s_dc48143040d456::t_9c7b552a65dfa8 12-15,18,22
+  s_dc48143040d456::t_0cbc78af4a7d09 1-9,19,21,27-95,101-114,122,125,136-145,148,150-160
+  s_dc48143040d456::t_4ea611d1289e29 10-11,16-17,20,23-24,26
+  s_dc48143040d456::t_f2918efc780f65 96-97,99-100,115-121,123-124,126-135,146-147
+  s_dc48143040d456::t_ada91e03fefc69 149
+packages/frontend/editor-ui/src/Interface.ts
+  s_dc48143040d456::t_2b250712a929c8 661-662
+packages/cli/src/modules/instance-pull.ee/github/github-client.ts
+  s_dc48143040d456::t_9779d8d97fa659 1-160
+tasks/plan.md
+  s_dc48143040d456::t_c91a7ce2b76d05 1-286
+packages/frontend/editor-ui/src/app/router.ts
+  s_dc48143040d456::t_bb8931740083f9 113-115
+  s_dc48143040d456::t_94e8e96ed6e06d 555-564
+packages/cli/src/modules/instance-pull.ee/deploy.service.ts
+  s_dc48143040d456::t_8c1f41e98a515c 30-37
+  s_dc48143040d456::t_813f8b7873f402 1-5,7-29,38-41
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.validate.yml
+  s_dc48143040d456::t_a64502c9ba1b68 19-21
+  s_dc48143040d456::t_bb8aa2550a7abf 1-18,22-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c77b8fdc81174965e96097a2089e32c221871cc",
+  "prompts": {},
+  "sessions": {
+    "s_dc48143040d456": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82252b23-2da8-4106-842f-e1a4e77dedc5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
