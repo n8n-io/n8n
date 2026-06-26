@@ -6,7 +6,7 @@
  * replaced with local types so the package stays decoupled.
  */
 
-import { sublimeSearch } from '@n8n/utils';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 
 import type {
 	BuilderHintInputs,

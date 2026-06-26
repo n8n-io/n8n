@@ -37,7 +37,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { sanitizeFilename } from '@n8n/utils';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import multer from 'multer';
 

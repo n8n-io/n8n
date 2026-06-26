@@ -14,7 +14,7 @@ import {
 	type AgentPersistedMessageDto,
 	type InteractiveToolName,
 } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,

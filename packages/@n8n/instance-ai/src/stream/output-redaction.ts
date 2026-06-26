@@ -6,7 +6,7 @@ import {
 	type RedactionOptions,
 } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { Logger } from '../logger';
 

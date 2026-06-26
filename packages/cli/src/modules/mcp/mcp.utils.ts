@@ -2,7 +2,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
 import type { INode } from 'n8n-workflow';
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import { isJSONRPCRequest } from './mcp.typeguards';

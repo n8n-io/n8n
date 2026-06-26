@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 const APPROVAL_INPUT_MAX_LENGTH = 1500;
 

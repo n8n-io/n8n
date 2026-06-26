@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';

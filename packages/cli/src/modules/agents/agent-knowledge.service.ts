@@ -7,7 +7,7 @@ import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

@@ -12,7 +12,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { truncateBeforeLast } from '@n8n/utils';
+import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,

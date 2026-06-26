@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 export const METRIC_IDS = ['correctness', 'relevance', 'tool_use', 'helpfulness'] as const;

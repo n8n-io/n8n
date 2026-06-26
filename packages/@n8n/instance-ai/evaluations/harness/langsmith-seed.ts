@@ -3,7 +3,7 @@
 // seed, last = live), and compile the seed workflow from the build tool's
 // captured SDK code at the boundary. Transient: traces retain ~14 days.
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 

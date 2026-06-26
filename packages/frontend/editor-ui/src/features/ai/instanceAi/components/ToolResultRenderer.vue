@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { McpToolCallResult } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultTable from './ToolResultTable.vue';

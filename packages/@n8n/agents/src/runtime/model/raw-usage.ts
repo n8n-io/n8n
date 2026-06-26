@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { type ProviderId } from './provider-credentials';
 import type { TokenUsage } from '../../types';

@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'fs';
 import { basename, dirname, join, posix, relative } from 'path';

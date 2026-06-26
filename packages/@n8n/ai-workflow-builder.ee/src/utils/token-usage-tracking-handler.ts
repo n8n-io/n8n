@@ -1,6 +1,6 @@
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { LLMResult } from '@langchain/core/outputs';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 export interface AccumulatedTokenUsage {
 	inputTokens: number;

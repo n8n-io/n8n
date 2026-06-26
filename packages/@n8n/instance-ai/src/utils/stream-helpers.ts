@@ -3,7 +3,7 @@
  * Eliminates duplication across agent tools and the service layer.
  */
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 /** Parsed suspension data from a `tool-call-suspended` chunk. */
 export interface SuspensionInfo {

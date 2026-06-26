@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';

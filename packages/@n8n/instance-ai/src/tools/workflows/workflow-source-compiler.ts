@@ -1,5 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { detectArrayInputCollapse } from './detect-array-input-collapse';

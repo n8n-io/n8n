@@ -5,7 +5,7 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import { findPlaceholderDetails } from '@n8n/utils';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import type { IConnections, INode } from 'n8n-workflow';
