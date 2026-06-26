@@ -236,6 +236,7 @@ onMounted(() => {
 	// Fixed card width matching the Figma "WF Agent Node" frame (424px less the
 	// handle gutters); no spacing token maps to this exact value.
 	--agent-card--border-color: var(--border-color);
+	--agent-card--header-dot-color: var(--border-color);
 	// Hard-coded 12px per Figma. The matching token (--radius--sm) can't be used:
 	// the legacy theme globally overrides it to ~2px, which renders square.
 	--agent-card--radius: 12px;
@@ -264,9 +265,8 @@ onMounted(() => {
 	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--lg);
 	border: 2px solid var(--agent-card--border-color);
 	border-radius: var(--agent-card--radius) var(--agent-card--radius) 0 0;
-	// Solid surface base (never transparent) + a dot grid matching the canvas,
-	// faded toward the left/right edges by a surface sheen so the dots read
-	// strongest in the centre (matches the Figma "dotted header").
+	// Solid surface base (never transparent) + a dot grid,
+	// faded toward the left/right edges by a surface sheen
 	background-color: var(--background--surface);
 	background-image:
 		linear-gradient(
@@ -276,11 +276,27 @@ onMounted(() => {
 			color-mix(in srgb, var(--background--surface) 6%, transparent) 69.71%,
 			var(--background--surface) 90.29%
 		),
-		radial-gradient(oklch(from var(--canvas--dot--color) l c h / 0.5) 1px, transparent 1px);
-	background-repeat: no-repeat, repeat;
+		// square dot pattern
+		conic-gradient(
+				from 0deg at 2px 2px,
+				transparent 75%,
+				var(--agent-card--header-dot-color) 75% 100%
+			),
+		// another (offset) square dot pattern
+		conic-gradient(
+				from 0deg at 2px 2px,
+				transparent 75%,
+				var(--agent-card--header-dot-color) 75% 100%
+			);
+	background-position:
+		0 0,
+		0 0,
+		8px 4px;
+	background-repeat: no-repeat, repeat, repeat;
 	background-size:
 		100% 100%,
-		16px 16px;
+		16px 8px,
+		16px 8px;
 }
 
 .headerLabel {
