@@ -19,8 +19,8 @@ import type {
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place
  * that writes terminal outbox statuses and the only place that maps a result to
- * its side effects: clearing or (in a later phase) recording activation errors,
- * and pushing publication status to the UI.
+ * its side effects: persisting per-trigger status rows, clearing legacy activation
+ * errors on success, and pushing publication status to the UI.
  */
 @Service()
 export class PublicationStatusReporter {
@@ -100,9 +100,9 @@ export class PublicationStatusReporter {
 
 	/**
 	 * Reports a partial publication: the new version stays published with the
-	 * surviving triggers running. Records a `partial_success` status, registers a
-	 * structured per-node activation error so it surfaces on reload, and pushes the
-	 * failure detail to connected clients. The workflow is not unpublished.
+	 * surviving triggers running. Marks the outbox record `partial_success`,
+	 * full-replaces the workflow's per-trigger status rows, and pushes the
+	 * per-node failure detail to connected clients. The workflow is not unpublished.
 	 *
 	 * The push is leader-local for now; multi-main pubsub routing is tracked as
 	 * follow-up work (see CAT-3423).
@@ -120,11 +120,11 @@ export class PublicationStatusReporter {
 			failedNodeIds: failures.map((s) => s.nodeId),
 		});
 
-		await this.outboxRepository.markPartialSuccess(record.id, errorMessage);
 		await this.triggerStatusRepository.replaceForWorkflow(
 			record.workflowId,
 			this.toRows(record, triggerStatuses),
 		);
+		await this.outboxRepository.markPartialSuccess(record.id, errorMessage);
 
 		this.push.broadcast({
 			type: 'workflowPartiallyActivated',

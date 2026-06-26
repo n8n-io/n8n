@@ -1,13 +1,15 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { WorkflowPublicationTriggerStatusRepository } from '@n8n/db';
+import { WorkflowPublicationTriggerStatusRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 describe('WorkflowPublicationTriggerStatusRepository', () => {
 	let repo: WorkflowPublicationTriggerStatusRepository;
+	let workflowRepository: WorkflowRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 		repo = Container.get(WorkflowPublicationTriggerStatusRepository);
+		workflowRepository = Container.get(WorkflowRepository);
 	});
 	afterEach(async () => {
 		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
@@ -37,5 +39,18 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		]);
 		await repo.deleteForWorkflow(wf.id);
 		expect(await repo.findByWorkflowId(wf.id)).toHaveLength(0);
+	});
+
+	it('FK CASCADE deletes trigger status rows when parent workflow is deleted', async () => {
+		const wf = await createWorkflow();
+		await repo.replaceForWorkflow(wf.id, [
+			{ nodeId: 'n1', nodeName: 'A', versionId: 'v1', status: 'activated', errorMessage: null },
+			{ nodeId: 'n2', nodeName: 'B', versionId: 'v1', status: 'failed', errorMessage: 'boom' },
+		]);
+		expect(await repo.findByWorkflowId(wf.id)).toHaveLength(2);
+
+		await workflowRepository.delete(wf.id);
+
+		expect(await repo.findByWorkflowId(wf.id)).toEqual([]);
 	});
 });
