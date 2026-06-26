@@ -42,6 +42,8 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 		const messageId = this.getNodeParameter('messageId', i) as string;
 
+		// OAuth2-only path (chat is hidden + guarded under SP), so `chatId` is
+		// interpolated raw without buildTeamsPath by design.
 		return await microsoftApiRequest.call(
 			this,
 			'GET',

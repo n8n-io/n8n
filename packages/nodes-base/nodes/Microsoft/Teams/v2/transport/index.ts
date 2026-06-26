@@ -13,9 +13,9 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { capitalize } from '../../../../../utils/utilities';
 
 /**
- * Credential-name literal of the shared app-only (Service Principal) credential.
- * Used as the `authentication` selector value AND the credential type, so a rename
- * stays in one place (mirrors the OneDrive reference scheme).
+ * Credential-name literal of the shared `microsoftEntraServicePrincipalApi`
+ * (app-only) credential. Used as both the `authentication` selector value and the
+ * credential type, so a rename stays in one place.
  */
 export const SERVICE_PRINCIPAL_AUTH = 'microsoftEntraServicePrincipalApi';
 
@@ -116,14 +116,9 @@ type TeamsPathSegment = string | { id: string };
 /**
  * Single, non-bypassable path builder for every Graph path that interpolates a
  * user-supplied id. `segments` is an ordered mix of literal strings and id parts
- * (`{ id: value }`). Under the Service Principal credential each `{ id }` is
- * validated (`validateTeamsId`) — the tenant-wide app token makes a path-escape
- * org-wide, so rejecting `/ \ ? #` + control is the path-injection guard. The id is
- * then interpolated RAW (no `encodeURIComponent`), sending the identical proven
- * OAuth2 URL shape byte-for-byte (encoding `:`→`%3A` would be an unverified Graph
- * shape). Under OAuth2 the id is passed through verbatim with no validation, so the
- * SP path sends the same raw shape while being strictly more locked-down. The SP gate
- * is read once here.
+ * (`{ id: value }`). Under SP each `{ id }` is validated then interpolated RAW;
+ * under OAuth2 it is passed through verbatim. See `validateTeamsId` /
+ * `TEAMS_ID_REJECT` for why validation (not encoding) is the guard.
  */
 export function buildTeamsPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -139,6 +134,22 @@ export function buildTeamsPath(
 			return segment.id.trim();
 		})
 		.join('');
+}
+
+/**
+ * Shape-validates Planner body IDs (`planId`/`bucketId`) under SP for `task:create`
+ * and `task:update`. These go into the JSON body (not a path), so this is
+ * defense-in-depth — a malformed id is a bad request — NOT the path-injection fix
+ * (that is `buildTeamsPath` on path-interpolated ids). No-op under OAuth2.
+ */
+export function validateTaskBodyIdsUnderSp(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	ids: { planId?: string; bucketId?: string },
+): void {
+	if (getTeamsCredentialType.call(this) !== SERVICE_PRINCIPAL_AUTH) return;
+	const node = this.getNode();
+	if (ids.planId !== undefined) validateTeamsId(ids.planId, node);
+	if (ids.bucketId !== undefined) validateTeamsId(ids.bucketId, node);
 }
 
 export async function microsoftApiRequest(
@@ -198,8 +209,19 @@ export async function microsoftApiRequest(
 				rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
 
 			let message: string;
-			if (httpCode === 404) {
-				const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
+			// `resource` exists on the action node but NOT in the trigger IHookFunctions
+			// context — read it defensively so a 404 in the trigger falls through to the
+			// generic static message instead of "Undefined not found".
+			let nodeResource: string | undefined;
+			try {
+				const resource = this.getNodeParameter('resource', 0) as string | undefined;
+				if (typeof resource === 'string' && resource !== '') {
+					nodeResource = capitalize(resource);
+				}
+			} catch {
+				nodeResource = undefined;
+			}
+			if (httpCode === 404 && nodeResource) {
 				message = `${nodeResource} not found`;
 			} else if (httpCode === 401) {
 				message =

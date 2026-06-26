@@ -4,7 +4,32 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
-import { buildTeamsPath, microsoftApiRequest } from '../../transport';
+import {
+	buildTeamsPath,
+	microsoftApiRequest,
+	SERVICE_PRINCIPAL_AUTH,
+	SP_HIDE,
+	validateTaskBodyIdsUnderSp,
+} from '../../transport';
+
+// SP-shown By-ID copy of an RLC inside the updateFields collection: app-only has no
+// group-scoped list to depend on, so drop list mode + `loadOptionsDependsOn` and
+// default to By-ID, mirroring task:getAll / task:create.
+const byIdUnderSp = (
+	rlc: INodeProperties,
+	overrides: Partial<INodeProperties> = {},
+): INodeProperties => ({
+	...rlc,
+	...overrides,
+	default: { mode: 'id', value: '' },
+	modes: (rlc.modes ?? []).filter((mode) => mode.name === 'id'),
+	typeOptions: undefined,
+	displayOptions: {
+		show: {
+			'/authentication': [SERVICE_PRINCIPAL_AUTH],
+		},
+	},
+});
 
 const properties: INodeProperties[] = [
 	{
@@ -34,13 +59,17 @@ const properties: INodeProperties[] = [
 					loadOptionsDependsOn: ['updateFields.groupId.value'],
 				},
 			},
+			// OAuth2 bucket picker (list, depends on plan) — hidden under SP.
 			{
 				...bucketRLC,
 				required: false,
 				typeOptions: {
 					loadOptionsDependsOn: ['updateFields.planId.value'],
 				},
+				displayOptions: { hide: { ...SP_HIDE } },
 			},
+			// SP bucket picker: By-ID.
+			byIdUnderSp(bucketRLC, { required: false }),
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
@@ -50,12 +79,15 @@ const properties: INodeProperties[] = [
 				description:
 					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
+			// Group picker is OAuth2-only (used to scope the plan/bucket lists); hidden
+			// under SP, which uses By-ID plan/bucket.
 			{
 				...groupRLC,
 				required: false,
 				typeOptions: {
 					loadOptionsDependsOn: ['/groupSource'],
 				},
+				displayOptions: { hide: { ...SP_HIDE } },
 			},
 			{
 				displayName: 'Percent Complete',
@@ -70,6 +102,7 @@ const properties: INodeProperties[] = [
 				description:
 					'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
+			// OAuth2 plan picker (list, depends on group) — hidden under SP.
 			{
 				...planRLC,
 				required: false,
@@ -77,7 +110,10 @@ const properties: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsDependsOn: ['updateFields.groupId.value'],
 				},
+				displayOptions: { hide: { ...SP_HIDE } },
 			},
+			// SP plan picker: By-ID.
+			byIdUnderSp(planRLC, { required: false }),
 			{
 				displayName: 'Title',
 				name: 'title',
@@ -137,6 +173,13 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			updateFields.dueDateTime = updateFields.dueDateTime.toISO();
 		}
 	}
+
+	// `planId`/`bucketId` are written into the PATCH body; shape-validate them under SP
+	// (defense-in-depth, same as task:create).
+	validateTaskBodyIdsUnderSp.call(this, {
+		planId: updateFields.planId as string | undefined,
+		bucketId: updateFields.bucketId as string | undefined,
+	});
 
 	const body: IDataObject = {};
 	Object.assign(body, updateFields);

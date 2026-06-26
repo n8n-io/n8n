@@ -179,7 +179,7 @@ export async function getResourcePath(
 						extractValue: true,
 					}) as string;
 					if (isServicePrincipal) {
-						// SP path: validate + encode, and DO NOT decodeURIComponent.
+						// SP path: validate + interpolate raw (no decode, no encode).
 						return buildTeamsPath.call(this, [
 							'/teams/',
 							{ id: teamId },

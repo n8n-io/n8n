@@ -5,16 +5,44 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
 import {
-	getTeamsCredentialType,
 	microsoftApiRequest,
 	SERVICE_PRINCIPAL_AUTH,
-	validateTeamsId,
+	SP_HIDE,
+	validateTaskBodyIdsUnderSp,
 } from '../../transport';
 
+// SP-shown By-ID copy of an RLC: app-only has no group-scoped list to depend on, so
+// drop list mode + `loadOptionsDependsOn` and default to By-ID, mirroring task:getAll.
+const byIdUnderSp = (rlc: INodeProperties): INodeProperties => ({
+	...rlc,
+	default: { mode: 'id', value: '' },
+	modes: (rlc.modes ?? []).filter((mode) => mode.name === 'id'),
+	typeOptions: undefined,
+	displayOptions: {
+		show: {
+			'/authentication': [SERVICE_PRINCIPAL_AUTH],
+		},
+	},
+});
+
 const properties: INodeProperties[] = [
-	groupRLC,
-	planRLC,
-	bucketRLC,
+	// OAuth2 pickers: list mode with group/plan dependency — hidden under SP.
+	{
+		...groupRLC,
+		displayOptions: { hide: { ...SP_HIDE } },
+	},
+	{
+		...planRLC,
+		displayOptions: { hide: { ...SP_HIDE } },
+	},
+	{
+		...bucketRLC,
+		displayOptions: { hide: { ...SP_HIDE } },
+	},
+	// SP pickers: By-ID plan + bucket (group is not needed once By-ID). `groupRLC` is
+	// hidden under SP above.
+	byIdUnderSp(planRLC),
+	byIdUnderSp(bucketRLC),
 	{
 		displayName: 'Title',
 		name: 'title',
@@ -37,7 +65,7 @@ const properties: INodeProperties[] = [
 				name: 'assignedTo',
 				description: 'Who the task should be assigned to',
 				typeOptions: {
-					loadOptionsDependsOn: ['groupId.balue'],
+					loadOptionsDependsOn: ['groupId.value'],
 				},
 			},
 			{
@@ -81,15 +109,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
 	const bucketId = this.getNodeParameter('bucketId', i, '', { extractValue: true }) as string;
 
-	// `planId`/`bucketId` go into the JSON body (not a path), so JSON encoding handles
-	// escaping. Under the app-only credential, still shape-validate them as
-	// defense-in-depth (a malformed id is a bad request) — this is NOT the
-	// path-injection fix (that is `buildTeamsPath` on path-interpolated ids).
-	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
-		const node = this.getNode();
-		validateTeamsId(planId, node);
-		validateTeamsId(bucketId, node);
-	}
+	validateTaskBodyIdsUnderSp.call(this, { planId, bucketId });
 
 	const title = this.getNodeParameter('title', i) as string;
 	const options = this.getNodeParameter('options', i);
