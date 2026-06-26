@@ -2,7 +2,7 @@
 import { N8nIcon, N8nMarkdownEditor, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { reactive, toRef } from 'vue';
-import type { ToolCall } from '../composables/agentChatMessages';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
 import {

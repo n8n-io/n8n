@@ -6536,6 +6536,7 @@
 	"agents.chat.misconfigured.openBuild": "Finish setup in Build",
 	"agents.chat.misconfigured.dismiss": "Dismiss",
 	"agents.chat.askCredential.skip": "Skip",
+	"agents.chat.askCredential.managed": "Managed by n8n",
 	"agents.chat.toolNames.webSearch": "Web search",
 	"agents.chat.toolNames.findFile": "Find file",
 	"agents.chat.toolNames.searchText": "Search text",

@@ -29,6 +29,7 @@ import { CredentialTypes } from '@/credential-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
+import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
@@ -49,6 +50,7 @@ import {
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
+	buildAskEmbeddingCredentialTool,
 	buildAskLlmTool,
 	buildAskQuestionTool,
 	buildResolveLlmTool,
@@ -261,6 +263,7 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
@@ -624,6 +627,11 @@ export class AgentsBuilderToolsService {
 			buildAskCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			}),
+			buildAskEmbeddingCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
