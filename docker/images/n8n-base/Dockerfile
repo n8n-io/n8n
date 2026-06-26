@@ -27,6 +27,10 @@ RUN apk add --no-cache busybox-binsh && \
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
     apk del apk-tools
 
+# Alpine 3.24 ships node at /usr/bin; symlink it to /usr/local/bin so the path
+# matches what the cloud launch and AppArmor profile expect.
+RUN mkdir -p /usr/local/bin && ln -sf /usr/bin/node /usr/local/bin/node
+
 WORKDIR /home/node
 # This base image installs global npm modules under /usr/local; set NODE_PATH
 # so packages added via `npm install -g` are require()-able at runtime.
