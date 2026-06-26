@@ -1,14 +1,15 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { createIpRateLimit, Get, Options, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { NextFunction, Response } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 
-// Window is fixed at 60s; only the count is configurable. Read at class-load so the
+// Window is fixed; only the count is configurable. Read at class-load so the
 // limit is baked into the route decorator.
-const TELEMETRY_WINDOW_MS = 60_000;
+const TELEMETRY_WINDOW_MS = 1 * Time.minutes.toMilliseconds;
 const diagnosticsConfig = Container.get(GlobalConfig).diagnostics;
 const telemetryRateLimit = createIpRateLimit(
 	diagnosticsConfig.telemetryRateLimit,
