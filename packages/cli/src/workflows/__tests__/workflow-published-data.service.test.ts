@@ -65,6 +65,7 @@ describe('WorkflowPublishedDataService', () => {
 			versionId: 'v1',
 			nodes: [],
 			connections: {},
+			nodeGroups: [],
 		};
 	}
 

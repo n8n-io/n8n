@@ -19,6 +19,10 @@ export type PublishedWorkflowDataForExecution = Pick<
 	| 'versionCounter'
 	| 'nodes'
 	| 'connections'
+	// We don't need this during workflow execution, but execution persistence
+	// snapshots this into the execution's workflowData, and the UI uses it when
+	// browsing workflow's execution history.
+	| 'nodeGroups'
 	| 'versionId'
 >;
 
@@ -84,6 +88,7 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 				'publishedVersion.versionId',
 				'publishedVersion.nodes',
 				'publishedVersion.connections',
+				'publishedVersion.nodeGroups',
 			])
 			.where('mapping.workflowId = :workflowId', { workflowId })
 			.getOne();
@@ -108,6 +113,7 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 			versionCounter: workflow.versionCounter,
 			nodes: publishedVersion.nodes,
 			connections: publishedVersion.connections,
+			nodeGroups: publishedVersion.nodeGroups,
 			versionId: publishedVersion.versionId,
 		};
 	}

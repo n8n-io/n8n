@@ -274,8 +274,8 @@ export class TriggerExecutionContextFactory {
 
 	/**
 	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the cached
-	 * published data. `pinData`, `meta` and `nodeGroups` are deliberately left out —
-	 * they are irrelevant to a production trigger execution.
+	 * published data. `pinData` and `meta` are deliberately left out — they are
+	 * irrelevant to a production trigger execution.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */

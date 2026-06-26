@@ -425,6 +425,7 @@ describe('TriggerExecutionContextFactory', () => {
 		test('sources nodes/connections/versionId from the published version and other fields from the workflow projection', async () => {
 			const publishedNodes: INode[] = [{ id: 'n1' } as INode];
 			const publishedConnections: IConnections = {};
+			const publishedNodeGroups = [{ id: 'g1', name: 'Group', nodeIds: ['n1'] }];
 			const workflowData = {
 				id: 'wf-1',
 				name: 'My workflow',
@@ -440,6 +441,7 @@ describe('TriggerExecutionContextFactory', () => {
 				versionId: 'published-version',
 				nodes: publishedNodes,
 				connections: publishedConnections,
+				nodeGroups: publishedNodeGroups,
 			} satisfies PublishedWorkflowDataForExecution;
 
 			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
@@ -451,6 +453,7 @@ describe('TriggerExecutionContextFactory', () => {
 			// Topology + version that actually ran come from the published snapshot.
 			expect(result.nodes).toBe(publishedNodes);
 			expect(result.connections).toBe(publishedConnections);
+			expect(result.nodeGroups).toBe(publishedNodeGroups);
 			expect(result.versionId).toBe('published-version');
 
 			// Other execution-relevant fields come from the live workflow entity.
@@ -465,7 +468,6 @@ describe('TriggerExecutionContextFactory', () => {
 			// Deliberately excluded from a production trigger execution.
 			expect(result.pinData).toBeUndefined();
 			expect(result.meta).toBeUndefined();
-			expect(result.nodeGroups).toBeUndefined();
 		});
 
 		test('throws UnexpectedError when the service returns null', async () => {
