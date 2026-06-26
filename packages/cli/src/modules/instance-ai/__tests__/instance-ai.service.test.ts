@@ -2,6 +2,7 @@
 jest.mock('@n8n/instance-ai', () => {
 	const { z } = jest.requireActual('zod');
 	return {
+		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
@@ -750,7 +751,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
-			gatewayService: { findGateway: jest.Mock };
+			gatewayService: { findGateway: jest.Mock; applyToolPolicy: jest.Mock };
 			aiService: { isProxyEnabled: jest.Mock };
 			adapterService: {
 				createContext: jest.Mock;
@@ -794,7 +795,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
-		service.gatewayService = { findGateway: jest.fn(() => undefined) };
+		service.gatewayService = { findGateway: jest.fn(() => undefined), applyToolPolicy: jest.fn() };
 		service.aiService = { isProxyEnabled: jest.fn(() => false) };
 		service.adapterService = {
 			createContext: jest.fn(() => ({})),
@@ -1904,7 +1905,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
 
 		expect(plannedTaskService.markRunning).toHaveBeenCalledWith('thread-a', 'wf-1', {
-			agentId: 'agent-001',
+			agentId: 'orchestrator-plan-run-1',
 		});
 		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith('build-workflow', graph, {
 			buildTask,

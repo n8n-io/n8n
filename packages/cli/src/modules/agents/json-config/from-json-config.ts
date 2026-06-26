@@ -21,6 +21,7 @@ import type {
 	AgentJsonToolConfig,
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
@@ -64,6 +65,13 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
+export interface ManagedEmbeddingProviderOptions {
+	apiKey?: string;
+	baseURL?: string;
+	fetch?: typeof globalThis.fetch;
+}
+export type ManagedEmbeddingProviderOptionsResolver =
+	() => Promise<ManagedEmbeddingProviderOptions | null>;
 
 type MemoryWorkerModelConfig = {
 	model: string;
@@ -88,6 +96,8 @@ export interface BuildFromJsonOptions {
 	 *
 	 */
 	buildMcpClient?: McpClientBuilder;
+	/** Resolves proxy-backed OpenAI embedding options for `credential: "managed"`. */
+	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
 }
@@ -155,6 +165,7 @@ export async function buildFromJson(
 			config.memory,
 			options.memoryFactory,
 			options.credentialProvider,
+			options.resolveManagedEmbeddingProviderOptions,
 		);
 	}
 
@@ -374,6 +385,7 @@ async function applyMemoryFromConfig(
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
 	credentialProvider: CredentialProvider,
+	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
 ) {
 	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
@@ -383,7 +395,11 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
-			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
+			await resolveEpisodicMemoryJsonConfig(
+				memoryConfig.episodicMemory,
+				credentialProvider,
+				resolveManagedEmbeddingProviderOptions,
+			),
 		);
 	}
 
@@ -437,6 +453,7 @@ async function applyMemoryFromConfig(
 async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
+	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
 ) {
 	const {
 		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
@@ -444,12 +461,18 @@ async function resolveEpisodicMemoryJsonConfig(
 		createEpisodicMemoryReflectFn,
 	} = await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
-	const raw = await credentialProvider.resolve(config.credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	const embeddingProviderOptions = {
-		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
-		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
-	};
+	const embeddingProviderOptions =
+		config.credential === MANAGED_CREDENTIAL_TOKEN
+			? await resolveManagedEmbeddingProviderOptions?.()
+			: await resolveEmbeddingProviderOptionsFromCredential(
+					config.credential,
+					embeddingModel,
+					credentialProvider,
+				);
+
+	if (!embeddingProviderOptions) {
+		throw new Error('Managed Episodic Memory embeddings require the AI assistant proxy.');
+	}
 
 	return {
 		enabled: true,
@@ -466,6 +489,19 @@ async function resolveEpisodicMemoryJsonConfig(
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		embeddingProviderOptions,
+	};
+}
+
+async function resolveEmbeddingProviderOptionsFromCredential(
+	credential: string,
+	embeddingModel: string,
+	credentialProvider: CredentialProvider,
+): Promise<ManagedEmbeddingProviderOptions> {
+	const raw = await credentialProvider.resolve(credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
+	return {
+		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
+		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
 	};
 }
 

@@ -32,6 +32,11 @@ export class BaseModal extends FloatingUiHelper {
 		await this.container.waitFor({ state: 'visible' });
 	}
 
+	/** A text element visible inside this modal's container (e.g. a validation error). */
+	getText(text: string | RegExp, options?: { exact?: boolean }): Locator {
+		return this.container.getByText(text, options);
+	}
+
 	async fillInput(text: string) {
 		await this.container.getByRole('textbox').fill(text);
 	}
