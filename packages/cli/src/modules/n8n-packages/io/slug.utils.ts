@@ -24,6 +24,6 @@ export function slugify(name: string): string {
 /**
  * Generates a filesystem-safe slug from an entity name
  */
-export function generateSlug(name: string): string {
-	return slugify(name) || DEFAULT_EMPTY_SLUG_FALLBACK;
+export function generateSlug(name: string, fallback = DEFAULT_EMPTY_SLUG_FALLBACK): string {
+	return slugify(name) || fallback;
 }
