@@ -992,7 +992,7 @@
     "ssh2-sftp-client": "12.1.0",
     "tar": "catalog:",
     "tmp-promise": "3.0.3",
-    "ts-ics": "1.2.2",
+    "ts-ics": "2.4.5",
     "undici": "catalog:undici-v6",
     "uuid": "catalog:",
     "vm2": "catalog:",
