@@ -1,4 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { mock } from 'jest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
@@ -15,7 +16,11 @@ import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
 import { buildMcpToolName } from '../McpClientTool/utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
+// Explicit factory (not automock) so the constructor is a tracked spy we can
+// assert the transport's `requestInit` (and thus the abort signal) against.
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+	StreamableHTTPClientTransport: vi.fn(),
+}));
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
@@ -77,71 +82,37 @@ describe('runtime', () => {
 	});
 
 	describe('buildMcpToolkit', () => {
-		it('passes the execution cancel signal to connectMcpClient while connecting', async () => {
+		it('passes the execution cancel signal to the transport while connecting', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'close').mockResolvedValue();
 			const abort = new AbortController();
-			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
-				ok: true,
-				result: {
-					close: vi.fn(),
-				},
-			});
-			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
-
-			vi.resetModules();
-			vi.doMock('./utils', async () => {
-				const actual = await vi.importActual('./utils');
-				return {
-					...(actual as Record<string, unknown>),
-					connectMcpClientForCredential,
-					getAllTools,
-					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
-				};
-			});
-			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
 			const ctx = createSupplyDataCtx({
 				getExecutionCancelSignal: jest.fn(() => abort.signal),
 			});
 
-			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
+			await buildMcpToolkit(ctx, 0, baseConfig);
 
-			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+			expect(StreamableHTTPClientTransport).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ signal: abort.signal }),
+				expect.objectContaining({ requestInit: { signal: abort.signal } }),
 			);
-			vi.doUnmock('./utils');
 		});
 
 		it('passes undefined as signal when getExecutionCancelSignal returns no signal', async () => {
-			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
-				ok: true,
-				result: {
-					close: vi.fn(),
-				},
-			});
-			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
-
-			vi.resetModules();
-			vi.doMock('./utils', async () => {
-				const actual = await vi.importActual('./utils');
-				return {
-					...(actual as Record<string, unknown>),
-					connectMcpClientForCredential,
-					getAllTools,
-					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
-				};
-			});
-			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'close').mockResolvedValue();
 			const ctx = createSupplyDataCtx({
 				getExecutionCancelSignal: jest.fn(() => undefined),
 			});
 
-			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
+			await buildMcpToolkit(ctx, 0, baseConfig);
 
-			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ signal: undefined }),
-			);
-			vi.doUnmock('./utils');
+			// With no signal the transport is created without a `requestInit`, so no
+			// abort signal is wired into the connection.
+			const [, transportOptions] = vi.mocked(StreamableHTTPClientTransport).mock.calls[0];
+			expect(transportOptions).not.toHaveProperty('requestInit');
 		});
 
 		it('surfaces a cancelled connection result without listing tools', async () => {
