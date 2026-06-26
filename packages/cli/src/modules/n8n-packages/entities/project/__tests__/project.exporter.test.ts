@@ -91,7 +91,7 @@ describe('ProjectExporter', () => {
 		const { exporter } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
-		const entries = await exporter.export({ user, projectIds: [project.id], writer });
+		const { entries } = await exporter.export({ user, projectIds: [project.id], writer });
 
 		expect(entries).toEqual([
 			{
