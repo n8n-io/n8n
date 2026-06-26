@@ -25,6 +25,7 @@ const {
 	paneType,
 	collapsingTableColumnName,
 	showRedactedOverlay = true,
+	enableRunSelection = false,
 } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
@@ -32,6 +33,7 @@ const {
 	collapsingTableColumnName: string | null;
 	searchShortcut?: SearchShortcut;
 	showRedactedOverlay?: boolean;
+	enableRunSelection?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -72,6 +74,15 @@ const runDataProps = computed<
 		overrideOutputs: [source.previousNodeOutput ?? 0],
 	};
 });
+// For the source-based path (input pane), RunData must read the source node's
+// OUTPUT data (taskData.data), not its inputOverride (what it received). Using
+// paneType="output" makes getNodeInputData skip inputOverride and read taskData.data,
+// which is the data the selected node actually receives as input.
+const effectivePaneType = computed<NodePanelType>(() =>
+	paneType === 'input' && !isSubNodeLog(logEntry) && !!runDataProps.value?.overrideOutputs
+		? 'output'
+		: paneType,
+);
 const isExecuting = computed(
 	() =>
 		paneType === 'output' &&
@@ -92,14 +103,14 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 	<RunData
 		v-if="runDataProps"
 		v-bind="runDataProps"
-		:key="`run-data${popOutWindow ? '-pop-out' : ''}`"
+		:key="`run-data-${logEntry.id}${popOutWindow ? '-pop-out' : ''}`"
 		:class="$style.component"
 		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
 		:executing-message="locale.baseText('ndv.output.executing')"
-		:pane-type="paneType"
-		:disable-run-index-selection="true"
+		:pane-type="effectivePaneType"
+		:disable-run-index-selection="!enableRunSelection"
 		:compact="true"
 		:show-actions-on-hover="true"
 		:disable-pin="true"
@@ -115,6 +126,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		@display-mode-change="handleChangeDisplayMode"
 		@collapsing-table-column-changed="emit('collapsingTableColumnChanged', $event)"
 	>
+		<template v-if="$slots['run-selector-prepend']" #run-selector-prepend>
+			<slot name="run-selector-prepend" />
+		</template>
+
 		<template #header>
 			<N8nText :class="$style.title" :bold="true" color="text-light" size="small">
 				{{ title }}

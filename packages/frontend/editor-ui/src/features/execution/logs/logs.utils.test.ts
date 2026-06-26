@@ -16,6 +16,8 @@ import {
 	processFiles,
 	extractBotResponse,
 	wrapLogEntriesInGroups,
+	getGroupInputEntries,
+	getGroupOutputEntries,
 } from './logs.utils';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
@@ -1956,5 +1958,195 @@ describe(wrapLogEntriesInGroups, () => {
 		]);
 
 		expect(getDefaultCollapsedEntries(result)).toEqual({});
+	});
+});
+
+describe('group input / output entries', () => {
+	const triggerNode = createTestNode({ name: 'Trigger', id: 'id-trigger' });
+	const nodeA = createTestNode({ name: 'A', id: 'id-a' });
+	const nodeB = createTestNode({ name: 'B', id: 'id-b' });
+	const nodeC = createTestNode({ name: 'C', id: 'id-c' });
+	const nodeD = createTestNode({ name: 'D', id: 'id-d' });
+	const nodeE = createTestNode({ name: 'E', id: 'id-e' });
+
+	const mainTo = (node: string) => ({
+		main: [[{ node, type: NodeConnectionTypes.Main, index: 0 }]],
+	});
+
+	const mainBranch = (...nodes: string[]) => ({
+		main: nodes.map((node) => [{ node, type: NodeConnectionTypes.Main, index: 0 }]),
+	});
+
+	function buildGroup(
+		runData: IRunExecutionData['resultData']['runData'],
+		nodeIds: string[],
+		options?: { nodes?: INodeUi[]; connections?: IConnections },
+	) {
+		const nodes = options?.nodes ?? [triggerNode, nodeA, nodeB, nodeC];
+		const connections = options?.connections ?? {
+			Trigger: mainTo('A'),
+			A: mainTo('B'),
+			B: mainTo('C'),
+		};
+		const workflow = createTestWorkflowObject({ id: 'wf-1', nodes, connections });
+		const response = createTestWorkflowExecutionResponse({
+			id: 'exec-1',
+			workflowData: createTestWorkflow({ id: 'wf-1', nodes }),
+			data: createRunExecutionData({ resultData: { runData } }),
+		});
+		const [group] = wrapLogEntriesInGroups(createLogTree(workflow, response), [
+			{ id: 'g1', name: 'G', nodeIds },
+		]).filter(isLogGroupEntry);
+		return group;
+	}
+
+	const baseRunData = {
+		Trigger: [createTestTaskData({ startTime: 1 })],
+		A: [createTestTaskData({ startTime: 2 })],
+		B: [createTestTaskData({ startTime: 3 })],
+		C: [createTestTaskData({ startTime: 4 })],
+		D: [createTestTaskData({ startTime: 5 })],
+	};
+
+	describe(getGroupInputEntries, () => {
+		it('returns only root members (not targeted by any internal connection)', () => {
+			// a → b → [c, d],  group [a, b, c, d]
+			const group = buildGroup(baseRunData, ['id-a', 'id-b', 'id-c', 'id-d'], {
+				nodes: [triggerNode, nodeA, nodeB, nodeC, nodeD],
+				connections: {
+					Trigger: mainTo('A'),
+					A: mainTo('B'),
+					B: mainBranch('C', 'D'),
+				},
+			});
+
+			expect(getGroupInputEntries(group).map((e) => e.node.name)).toEqual(['A']);
+		});
+
+		it('returns a single root for a linear group', () => {
+			// a → b → c, group [b, c]
+			const group = buildGroup(baseRunData, ['id-b', 'id-c'], {
+				nodes: [triggerNode, nodeA, nodeB, nodeC],
+				connections: { Trigger: mainTo('A'), A: mainTo('B'), B: mainTo('C') },
+			});
+
+			expect(getGroupInputEntries(group).map((e) => e.node.name)).toEqual(['B']);
+		});
+
+		it('returns the single member for a one-member group', () => {
+			const group = buildGroup(baseRunData, ['id-b'], {
+				nodes: [triggerNode, nodeA, nodeB, nodeC],
+				connections: { Trigger: mainTo('A'), A: mainTo('B'), B: mainTo('C') },
+			});
+
+			expect(getGroupInputEntries(group).map((e) => e.node.name)).toEqual(['B']);
+		});
+
+		it('deduplicates a member with multiple runs to its first run', () => {
+			const group = buildGroup(
+				{
+					Trigger: [createTestTaskData({ startTime: 1 })],
+					A: [createTestTaskData({ startTime: 2 })],
+					B: [
+						createTestTaskData({ startTime: 3, executionIndex: 1 }),
+						createTestTaskData({ startTime: 5, executionIndex: 3 }),
+					],
+					C: [createTestTaskData({ startTime: 4, executionIndex: 2 })],
+				},
+				['id-b', 'id-c'],
+				{
+					nodes: [triggerNode, nodeA, nodeB, nodeC],
+					connections: { Trigger: mainTo('A'), A: mainTo('B'), B: mainTo('C') },
+				},
+			);
+
+			const entries = getGroupInputEntries(group);
+			expect(entries).toHaveLength(1);
+			expect(entries[0].node.name).toBe('B');
+			expect(entries[0].runIndex).toBe(0);
+		});
+
+		it('falls back to inputLogEntry when no root is found', () => {
+			// Cyclic group where every member is targeted by another member.
+			// In practice validation prevents this, but the fallback keeps the pane non-empty.
+			const group = buildGroup(baseRunData, ['id-a', 'id-b'], {
+				nodes: [triggerNode, nodeA, nodeB],
+				connections: {
+					Trigger: mainTo('A'),
+					A: mainTo('B'),
+					B: mainTo('A'),
+				},
+			});
+
+			expect(getGroupInputEntries(group)).toEqual([group.inputLogEntry]);
+		});
+	});
+
+	describe(getGroupOutputEntries, () => {
+		it('returns leaf members for a branched group', () => {
+			// a → b → [c, d],  group [a, b, c, d]
+			const group = buildGroup(baseRunData, ['id-a', 'id-b', 'id-c', 'id-d'], {
+				nodes: [triggerNode, nodeA, nodeB, nodeC, nodeD],
+				connections: {
+					Trigger: mainTo('A'),
+					A: mainTo('B'),
+					B: mainBranch('C', 'D'),
+				},
+			});
+
+			expect(getGroupOutputEntries(group).map((e) => e.node.name)).toEqual(['C', 'D']);
+		});
+
+		it('includes leaves that pass data externally', () => {
+			// a → b → [c → e (external), d],  group [a, b, c, d]
+			const group = buildGroup(
+				{ ...baseRunData, E: [createTestTaskData({ startTime: 6 })] },
+				['id-a', 'id-b', 'id-c', 'id-d'],
+				{
+					nodes: [triggerNode, nodeA, nodeB, nodeC, nodeD, nodeE],
+					connections: {
+						Trigger: mainTo('A'),
+						A: mainTo('B'),
+						B: mainBranch('C', 'D'),
+						C: mainTo('E'),
+					},
+				},
+			);
+
+			expect(getGroupOutputEntries(group).map((e) => e.node.name)).toEqual(['C', 'D']);
+		});
+
+		it('returns a single leaf for a linear group', () => {
+			// a → b → c, group [b, c]
+			const group = buildGroup(baseRunData, ['id-b', 'id-c'], {
+				nodes: [triggerNode, nodeA, nodeB, nodeC],
+				connections: { Trigger: mainTo('A'), A: mainTo('B'), B: mainTo('C') },
+			});
+
+			expect(getGroupOutputEntries(group).map((e) => e.node.name)).toEqual(['C']);
+		});
+
+		it('returns the single member for a one-member group', () => {
+			const group = buildGroup(baseRunData, ['id-b'], {
+				nodes: [triggerNode, nodeA, nodeB, nodeC],
+				connections: { Trigger: mainTo('A'), A: mainTo('B'), B: mainTo('C') },
+			});
+
+			expect(getGroupOutputEntries(group).map((e) => e.node.name)).toEqual(['B']);
+		});
+
+		it('falls back to outputLogEntry when no leaf is found', () => {
+			// Cyclic group where every member has an outgoing internal connection.
+			const group = buildGroup(baseRunData, ['id-a', 'id-b'], {
+				nodes: [triggerNode, nodeA, nodeB],
+				connections: {
+					Trigger: mainTo('A'),
+					A: mainTo('B'),
+					B: mainTo('A'),
+				},
+			});
+
+			expect(getGroupOutputEntries(group)).toEqual([group.outputLogEntry]);
+		});
 	});
 });

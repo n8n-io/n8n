@@ -416,6 +416,69 @@ export function wrapLogEntriesInGroups(
 	return result.sort(sortLogEntries);
 }
 
+/**
+ * Root member entries of a group — members not targeted by any main connection
+ * from another member. These are the entry points where data first enters the
+ * group's internal flow. Deduplicated by node ID (first run only); RunData's
+ * own run selector handles additional runs. Falls back to
+ * {@link LogGroupEntry.inputLogEntry} when no root is found.
+ */
+export function getGroupInputEntries(group: LogGroupEntry): LogEntry[] {
+	const members = dedupeMembersByNodeId(group.children);
+	const memberNames = new Set(members.map((m) => m.node.name));
+
+	// Collect every node name that is targeted by a main connection from a member.
+	const internalTargets = new Set<string>();
+	for (const member of members) {
+		const outputs = group.workflow.connectionsBySourceNode[member.node.name]?.main ?? [];
+		for (const connections of outputs) {
+			for (const connection of connections ?? []) {
+				if (memberNames.has(connection.node)) {
+					internalTargets.add(connection.node);
+				}
+			}
+		}
+	}
+
+	const roots = members.filter((m) => !internalTargets.has(m.node.name));
+	return roots.length > 0 ? roots : [group.inputLogEntry];
+}
+
+/**
+ * Leaf member entries of a group — members with no outgoing main connection to
+ * another member. These are the last nodes in each internal branch, regardless
+ * of whether they pass data externally. Deduplicated by node ID (first run
+ * only); RunData's own run selector handles additional runs. Falls back to
+ * {@link LogGroupEntry.outputLogEntry} when no leaf is found.
+ */
+export function getGroupOutputEntries(group: LogGroupEntry): LogEntry[] {
+	const members = dedupeMembersByNodeId(group.children);
+	const memberNames = new Set(members.map((m) => m.node.name));
+
+	const leaves = members.filter((member) => {
+		const outputs = group.workflow.connectionsBySourceNode[member.node.name]?.main ?? [];
+		// A leaf has no main output targeting another member.
+		return !outputs.some((connections) =>
+			(connections ?? []).some((connection) => memberNames.has(connection.node)),
+		);
+	});
+
+	return leaves.length > 0 ? leaves : [group.outputLogEntry];
+}
+
+function dedupeMembersByNodeId(children: LogEntry[]): LogEntry[] {
+	const seen = new Set<string>();
+	const result: LogEntry[] = [];
+
+	for (const child of children) {
+		if (seen.has(child.node.id)) continue;
+		seen.add(child.node.id);
+		result.push(child);
+	}
+
+	return result;
+}
+
 export function findLogEntryById(id: string, entries: LogTreeEntry[]) {
 	return findLogEntryRec((entry) => entry.id === id, entries);
 }

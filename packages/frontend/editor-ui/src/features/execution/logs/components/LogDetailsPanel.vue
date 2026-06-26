@@ -3,6 +3,7 @@ import LogsViewExecutionSummary from '@/features/execution/logs/components/LogsV
 import LogsViewConsumedTokenCountText from '@/features/execution/logs/components/LogsViewConsumedTokenCountText.vue';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import LogsViewRunData from '@/features/execution/logs/components/LogsViewRunData.vue';
+import LogsGroupRunData from '@/features/execution/logs/components/LogsGroupRunData.vue';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import {
 	isLogGroupEntry,
@@ -17,6 +18,8 @@ import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeN
 import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
+	getGroupInputEntries,
+	getGroupOutputEntries,
 	getSubtreeTotalConsumedTokens,
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
@@ -75,6 +78,14 @@ const isGroup = computed(() => isLogGroupEntry(logEntry));
 const inputEntry = computed(() => (isLogGroupEntry(logEntry) ? logEntry.inputLogEntry : logEntry));
 const outputEntry = computed(() =>
 	isLogGroupEntry(logEntry) ? logEntry.outputLogEntry : logEntry,
+);
+// A group can have multiple boundary members on either side; the panes let the
+// user switch between them (run selection is handled by RunData below).
+const groupInputEntries = computed(() =>
+	isLogGroupEntry(logEntry) ? getGroupInputEntries(logEntry) : [],
+);
+const groupOutputEntries = computed(() =>
+	isLogGroupEntry(logEntry) ? getGroupOutputEntries(logEntry) : [],
 );
 const type = computed(() =>
 	isLogGroupEntry(logEntry) ? undefined : nodeTypeStore.getNodeType(logEntry.node.type),
@@ -223,7 +234,19 @@ function handleResizeEnd() {
 					@resize="resizer.onResize"
 					@resizeend="handleResizeEnd"
 				>
+					<LogsGroupRunData
+						v-if="isGroup"
+						pane-type="input"
+						:title="locale.baseText('logs.details.header.actions.input')"
+						:entries="groupInputEntries"
+						:default-entry="inputEntry"
+						:collapsing-table-column-name="collapsingInputTableColumnName"
+						:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
+						:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
+						@collapsing-table-column-changed="emit('collapsingInputTableColumnChanged', $event)"
+					/>
 					<LogsViewRunData
+						v-else
 						data-test-id="log-details-input"
 						pane-type="input"
 						:title="locale.baseText('logs.details.header.actions.input')"
@@ -234,8 +257,20 @@ function handleResizeEnd() {
 						@collapsing-table-column-changed="emit('collapsingInputTableColumnChanged', $event)"
 					/>
 				</N8nResizeWrapper>
+				<LogsGroupRunData
+					v-if="isGroup && panels !== LOG_DETAILS_PANEL_STATE.INPUT"
+					pane-type="output"
+					:class="$style.outputPanel"
+					:title="locale.baseText('logs.details.header.actions.output')"
+					:entries="groupOutputEntries"
+					:default-entry="outputEntry"
+					:collapsing-table-column-name="collapsingOutputTableColumnName"
+					:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
+					:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
+					@collapsing-table-column-changed="emit('collapsingOutputTableColumnChanged', $event)"
+				/>
 				<LogsViewRunData
-					v-if="isTriggerNode || panels !== LOG_DETAILS_PANEL_STATE.INPUT"
+					v-else-if="isTriggerNode || panels !== LOG_DETAILS_PANEL_STATE.INPUT"
 					data-test-id="log-details-output"
 					pane-type="output"
 					:class="$style.outputPanel"
