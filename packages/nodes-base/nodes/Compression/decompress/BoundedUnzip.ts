@@ -13,6 +13,11 @@ import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
  * themselves zip archives) are never surfaced. The size and entry-count limits
  * are enforced from the central directory metadata, before any entry is
  * inflated.
+ *
+ * For ZIP64 entries the central-directory uncompressed-size field carries the
+ * 0xFFFFFFFF sentinel and the true size lives in the ZIP64 extended-information
+ * extra field; fflate resolves that field into `originalSize`, so the bound is
+ * enforced on the real size.
  */
 export async function boundedUnzip(
 	data: Buffer,
