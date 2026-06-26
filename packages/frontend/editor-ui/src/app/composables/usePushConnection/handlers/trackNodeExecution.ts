@@ -7,6 +7,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { TelemetryHelpers } from 'n8n-workflow';
+import { runWhenIdle } from '@/app/utils/idleUtils';
 
 export async function trackNodeExecution(
 	pushData: PushPayload<'nodeExecuteAfter'>,
@@ -15,25 +16,30 @@ export async function trackNodeExecution(
 	const nodeName = pushData.nodeName;
 
 	if (pushData.data.error) {
-		const telemetry = useTelemetry();
-		const workflowHelpers = useWorkflowHelpers();
-		const settingsStore = useSettingsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		const node = workflowDocumentStore.getNodeByName(nodeName);
-		telemetry.track('Manual exec errored', {
-			error_title: pushData.data.error.message,
-			node_type: node?.type,
-			node_type_version: node?.typeVersion,
-			node_id: node?.id,
-			node_graph_string: JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowDocumentStore.serialize(),
-					workflowHelpers.getNodeTypes(),
-					{
-						isCloudDeployment: settingsStore.isCloudDeployment,
-					},
-				).nodeGraph,
-			),
+		const error = pushData.data.error;
+		// Building the node-graph payload serializes and walks the entire workflow,
+		// which is expensive on large workflows — keep it off the execution hot path.
+		runWhenIdle(() => {
+			const telemetry = useTelemetry();
+			const workflowHelpers = useWorkflowHelpers();
+			const settingsStore = useSettingsStore();
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			const node = workflowDocumentStore.getNodeByName(nodeName);
+			telemetry.track('Manual exec errored', {
+				error_title: error.message,
+				node_type: node?.type,
+				node_type_version: node?.typeVersion,
+				node_id: node?.id,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						workflowDocumentStore.serialize(),
+						workflowHelpers.getNodeTypes(),
+						{
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						},
+					).nodeGraph,
+				),
+			});
 		});
 	}
 }
