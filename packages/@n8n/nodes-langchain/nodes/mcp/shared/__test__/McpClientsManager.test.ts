@@ -197,7 +197,7 @@ describe('McpClientsManager', () => {
 		expect(manager.size).toBe(0);
 	});
 
-	it('evicts the entry when the transport errors', async () => {
+	it('evicts and closes the client when the transport errors', async () => {
 		manager = makeManager();
 		const client = fakeClient();
 		await manager.getOrConnect('k', async () => ({ client, mcpTools: [] }));
@@ -206,6 +206,28 @@ describe('McpClientsManager', () => {
 		client.onerror?.(new Error('boom'));
 
 		expect(manager.size).toBe(0);
+		// The SDK does not close the transport on error, so the cache must.
+		expect(client.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('transport error closes only the errored client, not a replacement under the same key', async () => {
+		manager = makeManager();
+		const client1 = fakeClient();
+		const client2 = fakeClient();
+
+		await manager.getOrConnect('k', async () => ({ client: client1, mcpTools: [] }));
+		client1.onclose?.();
+		expect(manager.size).toBe(0);
+
+		await manager.getOrConnect('k', async () => ({ client: client2, mcpTools: [] }));
+		expect(manager.size).toBe(1);
+
+		// A late error from the replaced client closes the orphan but leaves client2 live.
+		client1.onerror?.(new Error('boom'));
+		expect(client1.close).toHaveBeenCalledTimes(1);
+		expect(client2.close).not.toHaveBeenCalled();
+		expect(manager.size).toBe(1);
+		expect(manager.getEntry('k')?.client).toBe(client2);
 	});
 
 	it('refresh() updates lastUsedAt', async () => {

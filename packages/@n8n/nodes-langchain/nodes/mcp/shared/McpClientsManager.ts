@@ -186,7 +186,19 @@ export class McpClientsManager {
 				cacheKey: key,
 				error,
 			});
-			evictIfCurrent();
+			if (this.activeClients.get(key)?.client === client) {
+				// `remove` deletes the entry and closes the client.
+				this.remove(key, logger);
+			} else {
+				// Entry already replaced by a reconnect — close just this orphaned
+				// client without disturbing the live replacement.
+				void client.close().catch((closeError: unknown) => {
+					logger?.warn('McpClientsManager: failed to close errored client', {
+						cacheKey: key,
+						error: closeError,
+					});
+				});
+			}
 			try {
 				prevOnError?.(error);
 			} catch (chained: unknown) {
