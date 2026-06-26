@@ -887,6 +887,9 @@ importers:
       typescript:
         specifier: 6.0.2
         version: 6.0.2
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
       zx:
         specifier: ^8.8.5
         version: 8.8.5
