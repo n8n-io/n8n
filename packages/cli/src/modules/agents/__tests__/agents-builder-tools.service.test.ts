@@ -299,25 +299,21 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					id: agentId,
 					name: 'Current Agent',
-					description: 'The agent being edited',
 					activeVersionId: 'active-current',
 				},
 				{
 					id: 'agent-research',
 					name: 'Research Agent',
-					description: 'Finds information on the web',
 					activeVersionId: 'active-research',
 				},
 				{
 					id: 'agent-draft',
 					name: 'Draft Agent',
-					description: 'Not published yet',
 					activeVersionId: null,
 				},
 				{
 					id: 'agent-risk',
 					name: 'Risk Agent',
-					description: null,
 					activeVersionId: 'active-risk',
 				},
 			] as Agent[]);
@@ -330,7 +326,6 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
-						description: 'Finds information on the web',
 					},
 					{
 						agentId: 'agent-risk',
@@ -343,7 +338,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = { ...currentConfig, description: 'Updated description' };
+			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
@@ -360,7 +355,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -385,7 +380,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: 'stale-hash',
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -418,7 +413,7 @@ describe('AgentsBuilderToolsService', () => {
 			agent.integrations = [scheduleIntegration] as unknown as Agent['integrations'];
 			agentsService.findById.mockResolvedValue(agent);
 			agentsService.updateConfig.mockResolvedValue({
-				config: { ...currentConfig, integrations: [], description: 'Updated description' },
+				config: { ...currentConfig, integrations: [], instructions: 'Updated instructions' },
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -427,7 +422,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -439,7 +434,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({
 					integrations: [],
-					description: 'Updated description',
+					instructions: 'Updated instructions',
 				}),
 			);
 		});
@@ -740,7 +735,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const updatedConfig = {
 				...currentConfig,
-				description: 'Updated description',
+				instructions: 'Updated instructions',
 			};
 			const normalizedConfig = {
 				...updatedConfig,
@@ -759,7 +754,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,

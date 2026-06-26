@@ -77,9 +77,14 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
-const SubAgentConfigSchema = z.object({
-	agentId: z.string().trim().min(1),
-});
+export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
+
+const SubAgentConfigSchema = z
+	.object({
+		agentId: z.string().trim().min(1),
+		useWhen: z.string().trim().max(SUB_AGENT_USE_WHEN_MAX_LENGTH).optional(),
+	})
+	.strict();
 
 export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
 const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
@@ -276,7 +281,6 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
-	description: z.string().max(512).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
@@ -308,11 +312,6 @@ export const AgentJsonConfigSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
-			nodeTools: z
-				.object({
-					enabled: z.boolean(),
-				})
-				.optional(),
 		})
 		.optional(),
 });
@@ -365,8 +364,4 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
-}
-
-export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
-	return config?.nodeTools?.enabled === true;
 }
