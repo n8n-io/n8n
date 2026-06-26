@@ -13,8 +13,8 @@ describe('generateSlug', () => {
 		expect(generateSlug('💳 Payments')).toBe('payments');
 	});
 
-	it('falls back to "workflow" when the name yields an empty slug', () => {
-		expect(generateSlug('--')).toBe('workflow');
+	it('falls back to "entity" when the name yields an empty slug', () => {
+		expect(generateSlug('--')).toBe('entity');
 	});
 
 	it('uses a caller-provided fallback when the name yields an empty slug', () => {
