@@ -221,6 +221,10 @@ skip it rather than dispatch a no-op reviewer:
 5. **Frontend / Vue** *(only when the diff touches frontend)* — Vue 3 + Pinia reactivity, design-system
    and i18n conventions, a11y, component health. (`n8n:autodev-vue-reviewer`; fallback
    `expert-vue3-developer` + the `n8n:design-system` skill)
+6. **Simplicity / over-engineering** — the orchestrator runs `/ponytail-review` on the diff itself
+   (it's a skill, not a subagent — agents can't load it). Flag speculative abstractions, needless
+   config/flexibility, error handling for impossible cases, and code that could be inlined or
+   deleted; tag `[MINOR]`–`[MAJOR]` and feed valid findings into the fix loop.
 
 **Always add an independent automated second-opinion pass when one is available** (e.g. `codex review`,
 or a `cubic` / `/run-review` pass) as another lens — treat its findings like any other reviewer's and
@@ -232,7 +236,8 @@ Collect all findings, dedupe across lenses (any second-opinion pass included), a
 
 Apply fixes for the real findings (loop back into Phase 3-style implementation as needed; write the
 missing high-value tests the testing lens identified). For anything you judge a false positive,
-record a one-line reason rather than changing code.
+record a one-line reason rather than changing code. Keep the **ponytail bias** while fixing: the
+smallest change that resolves the finding — never gold-plate or add scope in response to a review note.
 
 After fixing, **re-run the affected review lenses** on the new diff. Repeat fix → re-review until
 **no `[BLOCKER]` or `[MAJOR]` findings remain** and the package test suite is green — or the

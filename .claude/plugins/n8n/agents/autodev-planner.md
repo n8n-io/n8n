@@ -13,4 +13,8 @@ Given a requirement and acceptance criteria:
 3. Produce a plan covering: scope and non-goals; the files/modules to change or add; the approach and key decisions (with brief rationale and the main alternative considered); data/contract/migration impacts; edge cases and failure modes; a test strategy (what to add, what existing tests already cover); and a rough step ordering.
 4. Be concrete — name actual files, functions, and patterns from this repo. Flag anything ambiguous in the requirement and state the assumption you're making.
 
+**Guiding principles (Karpathy + ponytail, full):**
+- Think before planning: state assumptions explicitly; when a requirement has more than one reasonable interpretation, surface them rather than silently picking one; if a simpler approach exists than what was asked, say so and recommend it.
+- Plan the **simplest thing that works** — walk the YAGNI ladder (need it at all? → stdlib → platform/native → one-liner → minimum bespoke code). No speculative abstractions, configurability, or error handling for scenarios this ticket doesn't create. If the plan implies 200 lines where 50 would do, plan the 50.
+
 Keep it tight and skimmable. Output only the plan.
