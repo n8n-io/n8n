@@ -3,10 +3,75 @@ import type { DatabaseConfig } from '@n8n/config';
 import { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { ErrorReporter } from 'n8n-core';
+import net from 'node:net';
 import { getContainerRuntimeClient } from 'testcontainers';
 import { mock } from 'vitest-mock-extended';
 
 import { DbConnectionMonitor } from '../db-connection-monitor';
+
+// Minimal view of the pg pool we reach into to check out a client that the pool
+// can never drain on its own — the production hang.
+type PgPool = { connect: () => Promise<unknown> };
+type PgDriver = { master: PgPool };
+
+/**
+ * A pass-through TCP proxy whose established connections can be "frozen": once
+ * frozen it stops relaying bytes and never answers the peer's FIN, so a graceful
+ * socket close can never complete. This reproduces the production failure mode —
+ * a pooled connection frozen against an unreachable backend (e.g. a SHUNNED proxy)
+ * where TCP stays open but unresponsive.
+ *
+ * `allowHalfOpen: true` is essential: without it Node auto-answers the peer's FIN,
+ * which would let a graceful close finish and mask the hang.
+ *
+ * `freezeExisting()` freezes only connections open at call time; connections opened
+ * afterwards (the rebuilt pool) relay normally so recovery can reconnect.
+ */
+class FreezableProxy {
+	private server!: net.Server;
+	private readonly sockets = new Set<net.Socket>();
+	private readonly frozen = new Set<net.Socket>();
+
+	constructor(
+		private readonly targetHost: string,
+		private readonly targetPort: number,
+	) {}
+
+	async listen(): Promise<number> {
+		this.server = net.createServer({ allowHalfOpen: true }, (client) => {
+			const upstream = net.connect({ host: this.targetHost, port: this.targetPort });
+			this.sockets.add(client);
+			this.sockets.add(upstream);
+			client.on('data', (chunk) => {
+				if (!this.frozen.has(client)) upstream.write(chunk);
+			});
+			upstream.on('data', (chunk) => {
+				if (!this.frozen.has(client)) client.write(chunk);
+			});
+			const cleanup = () => {
+				if (this.frozen.has(client)) return; // leave frozen pairs dangling
+				client.destroy();
+				upstream.destroy();
+			};
+			for (const socket of [client, upstream]) {
+				socket.on('end', cleanup);
+				socket.on('close', cleanup);
+				socket.on('error', () => {});
+			}
+		});
+		await new Promise<void>((resolve) => this.server.listen(0, '127.0.0.1', resolve));
+		return (this.server.address() as net.AddressInfo).port;
+	}
+
+	freezeExisting() {
+		for (const socket of this.sockets) this.frozen.add(socket);
+	}
+
+	async close() {
+		for (const socket of this.sockets) socket.destroy();
+		await new Promise<void>((resolve) => this.server.close(() => resolve()));
+	}
+}
 
 /**
  * Integration coverage for the connection-acquisition suspension (CAT-3455).
@@ -58,13 +123,16 @@ type PgConnection = {
 	database: string;
 };
 
-const buildDatabaseConfig = () =>
+const buildDatabaseConfig = (destroyTimeoutMs = 0) =>
 	mock<DatabaseConfig>({
 		pingTimeoutMs: 5_000,
 		pingMaxFailuresBeforeRecovery: 3,
 		minRecoveryBackoffMs: 1_000,
 		maxRecoveryBackoffMs: 30_000,
 		connectionAcquisitionTimeoutMs: 30_000,
+		// `0` keeps the legacy unbounded teardown; tests that exercise the destroy
+		// timeout pass a positive value.
+		postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
 	});
 
 const newDataSource = (conn: PgConnection) =>
@@ -212,6 +280,73 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				if (dataSource.isInitialized) {
 					await dataSource.destroy();
 				}
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'bounds a hung destroy() when a pooled connection is frozen against the backend',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+
+			// Route the pool through a freezable proxy so we can reproduce the real failure
+			// mode: a checked-out connection frozen against an unreachable backend.
+			const proxy = new FreezableProxy(connection.host, connection.port);
+			const proxyPort = await proxy.listen();
+			const dataSource = new DataSource({
+				type: 'postgres',
+				host: '127.0.0.1',
+				port: proxyPort,
+				username: connection.username,
+				password: connection.password,
+				database: connection.database,
+				poolSize: 2,
+				synchronize: false,
+			});
+			await dataSource.initialize();
+
+			const destroyTimeoutMs = 2_000;
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig(destroyTimeoutMs),
+				mock<Logger>(),
+				mock<ErrorReporter>(),
+			);
+			monitor.start();
+
+			// Check out a real pool client with no in-flight query, then freeze it. It stays
+			// in the pool's client list with a healthy-looking-but-dead socket, so
+			// `pool.end()` (which `destroy()` awaits) can never drain it: a graceful
+			// `client.end()` waits on a FIN that never comes. This is the state that pins the
+			// recovery loop at attempt 1. Recovery must force-close it — release it from the
+			// pool *and* hard-destroy the socket; neither alone unblocks `end()`.
+			const pool = (dataSource.driver as unknown as PgDriver).master;
+			const leaked = await pool.connect();
+			expect(leaked).toBeDefined();
+			proxy.freezeExisting();
+
+			try {
+				const start = Date.now();
+				// Without the destroy timeout this never resolves (destroy() hangs at attempt 1).
+				await (monitor as unknown as MonitorInternals).recoverDataSource();
+				const elapsed = Date.now() - start;
+
+				// destroy() was bounded, the frozen client force-closed, and the pool rebuilt
+				// (through the proxy, which only froze the pre-existing connection).
+				expect(elapsed).toBeLessThan(destroyTimeoutMs + 15_000);
+				expect(dataSource.isInitialized).toBe(true);
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+			} finally {
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
+				await proxy.close();
 			}
 		},
 		TEST_TIMEOUT_MS,
