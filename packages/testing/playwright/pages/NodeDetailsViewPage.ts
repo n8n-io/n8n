@@ -456,6 +456,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.inlineExpressionEditor.getContent();
 	}
 
+	getInlineExpressionEditorLine(index: number) {
+		return this.inlineExpressionEditor.getLine(index);
+	}
+
 	getInlineExpressionEditorOutput() {
 		return this.inlineExpressionEditor.getOutput();
 	}
