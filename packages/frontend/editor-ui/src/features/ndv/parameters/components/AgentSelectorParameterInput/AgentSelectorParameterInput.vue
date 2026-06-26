@@ -20,6 +20,13 @@ import { useResourceLocatorModes } from '../../composables/useResourceLocatorMod
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { createAgent } from '@/features/agents/composables/useAgentApi';
+import { upsertProjectAgentsListCache } from '@/features/agents/composables/useProjectAgentsList';
+import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
@@ -35,6 +42,12 @@ export interface Props {
 	parameterIssues?: string[];
 	parameter: INodeProperties;
 	newResourceLabel?: string;
+	/**
+	 * Origin node id for the "Back to workflow" return context. Set by the canvas
+	 * agent card (AGENT-274), which renders this picker outside the NDV; in the
+	 * NDV the active node is resolved from the NDV store instead.
+	 */
+	originNodeId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -60,6 +73,11 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const projectStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const ndvStore = injectNDVStoreIfProvided();
+const rootStore = useRootStore();
+const toast = useToast();
+const telemetry = useTelemetry();
+const nav = useAgentNavigation();
 
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
@@ -144,10 +162,7 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-// The create action is hidden until AGENT-277 wires the eager-create + Agent
-// Builder navigation. The handler (`onAddResourceClicked`) and label stay
-// implemented so re-enabling it is a one-line change.
-const isAgentCreationEnabled = false;
+const isAgentCreationEnabled = true;
 
 const newResourceOptions = computed(() =>
 	isAgentCreationEnabled ? { label: getCreateResourceLabel.value } : {},
@@ -225,11 +240,45 @@ function onKeyDown(e: KeyboardEvent) {
 	}
 }
 
-function onAddResourceClicked() {
+// Eagerly create a draft agent primitive, reference it on the node, and open the
+// Agent Builder for it — mirroring the sub-workflow "+ Create" flow in
+// WorkflowSelectorParameterInput. An abandoned create leaves a harmless draft in
+// the catalog (the draft/published model keeps production executions safe).
+async function onAddResourceClicked() {
 	hideDropdown();
-	// The eager-create + Agent Builder navigation is wired by AGENT-277. Here we
-	// only surface the intent so the parent can drive the create round-trip.
-	emit('agentCreateRequested');
+	if (!projectId.value) {
+		toast.showError(
+			new Error(i18n.baseText('agentSelector.createAgentFailed')),
+			i18n.baseText('agentSelector.createAgentFailed'),
+		);
+		return;
+	}
+
+	try {
+		const agent = await createAgent(
+			rootStore.restApiContext,
+			projectId.value,
+			i18n.baseText('agents.new.defaultName'),
+		);
+		upsertProjectAgentsListCache(projectId.value, agent);
+		emit('update:modelValue', {
+			__rl: true,
+			value: agent.id,
+			mode: selectedMode.value,
+			cachedResultName: agent.name,
+		});
+		// Keep the picker's own list consistent if it is reopened.
+		void setAgentsResources();
+		telemetry.track('User created agent', { agent_id: agent.id, source: 'node_picker' });
+		emit('agentCreateRequested');
+		await nav.openBuilder(
+			projectId.value,
+			agent.id,
+			props.originNodeId ?? ndvStore.value?.activeNode?.id,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSelector.createAgentFailed'));
+	}
 }
 
 async function onRetry() {
