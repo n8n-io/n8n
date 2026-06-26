@@ -221,10 +221,11 @@ skip it rather than dispatch a no-op reviewer:
 5. **Frontend / Vue** *(only when the diff touches frontend)* — Vue 3 + Pinia reactivity, design-system
    and i18n conventions, a11y, component health. (`n8n:autodev-vue-reviewer`; fallback
    `expert-vue3-developer` + the `n8n:design-system` skill)
-6. **Simplicity / over-engineering** — the orchestrator runs `/ponytail-review` on the diff itself
-   (it's a skill, not a subagent — agents can't load it). Flag speculative abstractions, needless
-   config/flexibility, error handling for impossible cases, and code that could be inlined or
-   deleted; tag `[MINOR]`–`[MAJOR]` and feed valid findings into the fix loop.
+6. **Simplicity / over-engineering** — *if the `ponytail-review` skill is installed*, run
+   `/ponytail-review` on the diff as this lens; *if it isn't available*, apply the same checklist
+   inline (speculative abstractions, needless config/flexibility, error handling for impossible
+   cases, code that could be inlined or deleted). Tag `[MINOR]`–`[MAJOR]` and feed valid findings
+   into the fix loop.
 
 **Always add an independent automated second-opinion pass when one is available** (e.g. `codex review`,
 or a `cubic` / `/run-review` pass) as another lens — treat its findings like any other reviewer's and
