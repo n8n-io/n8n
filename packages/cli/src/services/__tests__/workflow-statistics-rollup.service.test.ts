@@ -86,6 +86,13 @@ describe('WorkflowStatisticsRollupService', () => {
 			service.init();
 			expect(startSpy).not.toHaveBeenCalled();
 		});
+
+		it('does not run after shutdown', () => {
+			const { service } = makeService({ isLeader: true });
+			expect(service.shouldRun).toBe(true);
+			service.shutdown();
+			expect(service.shouldRun).toBe(false);
+		});
 	});
 
 	describe('rollup', () => {
@@ -96,6 +103,14 @@ describe('WorkflowStatisticsRollupService', () => {
 			const folded = await rollup(service);
 
 			expect(folded).toBe(0);
+			expect(statisticsService.emitFirstOccurrenceEvent).not.toHaveBeenCalled();
+		});
+
+		it('rethrows a non-lock error so the scheduler logs and retries the tick', async () => {
+			const { service, dbLockService, statisticsService } = makeService({});
+			dbLockService.tryWithLock.mockRejectedValue(new Error('connection reset'));
+
+			await expect(rollup(service)).rejects.toThrow('connection reset');
 			expect(statisticsService.emitFirstOccurrenceEvent).not.toHaveBeenCalled();
 		});
 

@@ -581,6 +581,14 @@ describe('WorkflowStatisticsService', () => {
 					workflow.name,
 				);
 
+			const appendFor = async (name: StatisticsNames, workflowId: string, isRoot: boolean) =>
+				await workflowStatisticsRepository.appendIncrement(name, workflowId, isRoot, 'wf');
+
+			const countersByKey = async () => {
+				const rows = await workflowStatisticsRepository.find();
+				return new Map(rows.map((r) => [`${r.workflowId}|${r.name}`, r]));
+			};
+
 			test('folds many appended deltas into one counter row with exact totals', async () => {
 				if (!isPostgres) return;
 
@@ -652,6 +660,143 @@ describe('WorkflowStatisticsService', () => {
 
 				const [counter] = await workflowStatisticsRepository.find();
 				expect(counter).toMatchObject({ count: 2 });
+			});
+
+			test('folds several (workflow, name) groups in one batch, each with its own totals', async () => {
+				if (!isPostgres) return;
+
+				const workflow2 = await createWorkflow({}, user);
+
+				// Three groups folded together: exercises GROUP BY + the upsert/agg join.
+				await appendFor(StatisticsNames.productionSuccess, workflow.id, true);
+				await appendFor(StatisticsNames.productionSuccess, workflow.id, true);
+				await appendFor(StatisticsNames.productionSuccess, workflow.id, false);
+				await appendFor(StatisticsNames.productionError, workflow.id, true);
+				await appendFor(StatisticsNames.productionSuccess, workflow2.id, true);
+				await appendFor(StatisticsNames.productionSuccess, workflow2.id, true);
+
+				const { increments, firstOccurrences } =
+					await workflowStatisticsRepository.rollupIncrements(dataSource.manager, 10_000);
+
+				expect(increments).toBe(6);
+
+				// Every group is new, so each is reported once and attributed to the right (workflow, name).
+				const occKeys = new Set(firstOccurrences.map((o) => `${o.workflowId}|${o.name}`));
+				expect(occKeys).toEqual(
+					new Set([
+						`${workflow.id}|production_success`,
+						`${workflow.id}|production_error`,
+						`${workflow2.id}|production_success`,
+					]),
+				);
+
+				const counters = await countersByKey();
+				expect(counters.get(`${workflow.id}|production_success`)).toMatchObject({
+					count: 3,
+					rootCount: 2,
+				});
+				expect(counters.get(`${workflow.id}|production_error`)).toMatchObject({
+					count: 1,
+					rootCount: 1,
+				});
+				expect(counters.get(`${workflow2.id}|production_success`)).toMatchObject({
+					count: 2,
+					rootCount: 2,
+				});
+			});
+
+			test('reports a first occurrence only for groups whose counter row is new', async () => {
+				if (!isPostgres) return;
+
+				const workflow2 = await createWorkflow({}, user);
+
+				// Pre-existing counter row for workflow1/success.
+				await appendFor(StatisticsNames.productionSuccess, workflow.id, true);
+				await workflowStatisticsRepository.rollupIncrements(dataSource.manager, 10_000);
+
+				// One batch touching the existing group and a brand-new one.
+				await appendFor(StatisticsNames.productionSuccess, workflow.id, true);
+				await appendFor(StatisticsNames.productionSuccess, workflow2.id, true);
+
+				const { increments, firstOccurrences } =
+					await workflowStatisticsRepository.rollupIncrements(dataSource.manager, 10_000);
+
+				expect(increments).toBe(2);
+				expect(firstOccurrences).toHaveLength(1);
+				expect(firstOccurrences[0]).toMatchObject({
+					workflowId: workflow2.id,
+					name: 'production_success',
+				});
+
+				const counters = await countersByKey();
+				expect(counters.get(`${workflow.id}|production_success`)).toMatchObject({ count: 2 });
+				expect(counters.get(`${workflow2.id}|production_success`)).toMatchObject({ count: 1 });
+			});
+
+			test('does not regress an existing counter row to an older event time', async () => {
+				if (!isPostgres) return;
+
+				const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
+				await workflowStatisticsRepository.insert({
+					workflowId: workflow.id,
+					name: StatisticsNames.productionSuccess,
+					count: 1,
+					rootCount: 1,
+					latestEvent: future,
+					workflowName: workflow.name,
+				});
+
+				// Folding "now" events into a row whose stored timestamp is in the future.
+				await append(true);
+				await workflowStatisticsRepository.rollupIncrements(dataSource.manager, 10_000);
+
+				const [counter] = await workflowStatisticsRepository.find();
+				expect(counter).toMatchObject({ count: 2, rootCount: 2 });
+				// GREATEST keeps the newer stored timestamp, not the older folded one.
+				expect(counter.latestEvent.getTime()).toBe(future.getTime());
+			});
+
+			test('returns an empty result when there are no deltas', async () => {
+				if (!isPostgres) return;
+
+				const result = await workflowStatisticsRepository.rollupIncrements(
+					dataSource.manager,
+					10_000,
+				);
+
+				expect(result).toEqual({ increments: 0, firstOccurrences: [] });
+			});
+
+			test('carries the earliest event as the first-occurrence time and the latest as the counter time', async () => {
+				if (!isPostgres) return;
+
+				// Two deltas with explicit, ordered timestamps so MIN/MAX are deterministic.
+				const earliest = new Date('2030-01-01T00:00:00.000Z');
+				const latest = new Date('2030-01-02T00:00:00.000Z');
+				await dataSource.query(
+					`INSERT INTO ${deltaTable()} ("workflowId", "name", "rootCountDelta", "latestEvent", "workflowName")
+					 VALUES ($1, $2, 1, $3, 'older'), ($4, $5, 1, $6, 'newer')`,
+					[
+						workflow.id,
+						StatisticsNames.productionSuccess,
+						earliest,
+						workflow.id,
+						StatisticsNames.productionSuccess,
+						latest,
+					],
+				);
+
+				const { firstOccurrences } = await workflowStatisticsRepository.rollupIncrements(
+					dataSource.manager,
+					10_000,
+				);
+
+				expect(firstOccurrences).toHaveLength(1);
+				expect(firstOccurrences[0].firstEventMs).toBe(earliest.getTime()); // MIN(latestEvent)
+
+				const [counter] = await workflowStatisticsRepository.find();
+				expect(counter.latestEvent.getTime()).toBe(latest.getTime()); // MAX(latestEvent)
+				expect(counter.workflowName).toBe('newer'); // name from the most recent delta
 			});
 		});
 	});
