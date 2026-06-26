@@ -1,6 +1,6 @@
-import { reRankSearchResults } from './reRankSearchResults';
+import { reRankSearchResults } from './re-rank-search-results';
 import topLevel from './snapshots/toplevel.snapshot.json';
-import { sublimeSearch } from './sublimeSearch';
+import { sublimeSearch } from './sublime-search';
 
 // Mirrors packages/frontend/editor-ui/data/node-popularity.json scaled by the factor
 // applied in useViewStacks.ts. Only the nodes asserted below are included.
