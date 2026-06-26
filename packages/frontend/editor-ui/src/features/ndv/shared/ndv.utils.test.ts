@@ -402,6 +402,20 @@ describe('parseFromExpression', () => {
 	it('returns null for other types if value is undefined', () => {
 		expect(parseFromExpression({}, undefined, 'json', null, [])).toBeNull();
 	});
+
+	// Repro for ADO-5517 (GH #33046): the HTTP Request node's "JSON Body" field is
+	// a `json` parameter. Toggling it into Expression mode and back to Fixed mode must
+	// drop n8n's internal "=" expression marker, otherwise the stored value stays
+	// `={...}` and later fails JSON.parse() with "not valid JSON". This is hit when the
+	// expression cannot be evaluated (e.g. it contains template variables and there is
+	// no input data), so the evaluated value is undefined and the raw value must be kept
+	// verbatim minus the leading "=".
+	it('removes leading "=" from json parameter when switching back to fixed mode', () => {
+		const stored = '={"msgtype": "markdown", "markdown": {"content": "test"}}';
+		expect(parseFromExpression(stored, undefined, 'json', null, [])).toBe(
+			'{"msgtype": "markdown", "markdown": {"content": "test"}}',
+		);
+	});
 });
 
 describe('shouldSkipParamValidation', () => {
