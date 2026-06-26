@@ -99,6 +99,7 @@ function matchesQuery(item: ToolConnectionItem): boolean {
 const hasConnectedSection = computed(() => props.sections.includes('connected'));
 
 const SECTION_KINDS: Record<Exclude<SectionKey, 'connected'>, Array<ToolConnectionItem['kind']>> = {
+	'built-in-services': ['service'],
 	nodes: ['node', 'mcp-server'],
 	agents: ['agent'],
 	data: ['data-store'],
@@ -114,6 +115,7 @@ function itemsForSection(section: SectionKey): ToolConnectionItem[] {
 }
 
 const SECTION_I18N_KEY: Record<Exclude<SectionKey, 'connected'>, BaseTextKey> = {
+	'built-in-services': 'tools.connection.sections.builtInServices',
 	nodes: 'tools.connection.sections.availableNodes',
 	agents: 'tools.connection.sections.availableAgents',
 	data: 'tools.connection.sections.availableData',
@@ -311,6 +313,10 @@ function handleOpenChange(value: boolean) {
 								:item="row.item"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
+								@select-credential="
+									(item, authType, credentialId) =>
+										emit('select-credential', item, authType, credentialId)
+								"
 							/>
 						</template>
 					</N8nRecycleScroller>
@@ -324,16 +330,16 @@ function handleOpenChange(value: boolean) {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
 	height: 70vh;
 	max-height: 640px;
 	min-height: 0;
-	margin-top: var(--spacing--2xs);
 }
 
 .searchInput {
 	width: 100%;
 	flex-shrink: 0;
+	margin-top: var(--spacing--sm);
 }
 
 .tabs {

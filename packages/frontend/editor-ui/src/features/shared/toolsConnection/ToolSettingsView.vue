@@ -45,7 +45,8 @@ function onClose() {
 				<N8nIconButton
 					icon="arrow-left"
 					variant="ghost"
-					size="small"
+					size="medium"
+					:class="$style.backButton"
 					:aria-label="i18n.baseText('tools.connection.detail.back')"
 					data-test-id="tools-connection-settings-back"
 					@click="emit('back')"
@@ -76,7 +77,7 @@ function onClose() {
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
-					size="small"
+					size="medium"
 					:aria-label="i18n.baseText('tools.connection.action.close')"
 					data-test-id="tools-connection-settings-close"
 					@click="onClose"
@@ -128,7 +129,7 @@ function onClose() {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--spacing--2xs);
 	min-height: 100%;
 }
 
@@ -142,7 +143,7 @@ function onClose() {
 .headerLeft {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	min-width: 0;
 	flex: 1 1 auto;
 }
@@ -179,17 +180,16 @@ function onClose() {
 
 .tabs {
 	display: flex;
-	gap: var(--spacing--md);
-	border-bottom: 1px solid var(--color--foreground);
+	border-bottom: 1px solid var(--color--foreground--shade-1);
 	flex-shrink: 0;
+	margin-bottom: var(--spacing--2xs);
 }
 
 .tab {
 	background: none;
 	border: 0;
-	padding: var(--spacing--3xs) 0;
+	padding: var(--spacing--xs) var(--spacing--sm);
 	margin-bottom: -1px;
-	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	cursor: pointer;
