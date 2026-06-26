@@ -1,7 +1,7 @@
 import type { ChatMessageId } from '@n8n/api-types';
 import type { Response } from 'express';
 import type { ServerResponse } from 'http';
-import type { StructuredChunk } from 'n8n-workflow';
+import type { ItemChunkMetadata, StructuredChunk } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
@@ -93,8 +93,15 @@ export function interceptResponseWrites<T extends Response>(
 }
 
 type MessageKey = string;
-const keyOf = (m: StructuredChunk['metadata']): MessageKey =>
-	`${m.nodeId}|${m.runIndex}|${m.itemIndex}`;
+const hasItemMetadata = (
+	metadata: StructuredChunk['metadata'] | undefined,
+): metadata is ItemChunkMetadata =>
+	typeof metadata === 'object' &&
+	metadata !== null &&
+	'nodeId' in metadata &&
+	'runIndex' in metadata &&
+	'itemIndex' in metadata;
+const keyOf = (m: ItemChunkMetadata): MessageKey => `${m.nodeId}|${m.runIndex}|${m.itemIndex}`;
 
 export type AggregatedMessage = Pick<
 	ChatHubMessage,
@@ -159,7 +166,20 @@ export function createStructuredChunkAggregator(
 			return null;
 		}
 
-		const { type, content, metadata } = chunk;
+		const { type, metadata } = chunk;
+		if (
+			type === 'node-execute-before' ||
+			type === 'node-execute-after' ||
+			type === 'tool-call-start' ||
+			type === 'tool-call-end'
+		) {
+			return null;
+		}
+
+		if (!hasItemMetadata(metadata)) {
+			return null;
+		}
+
 		const key = keyOf(metadata);
 
 		if (type === 'begin') {
@@ -173,6 +193,7 @@ export function createStructuredChunkAggregator(
 
 		if (type === 'item') {
 			const message = await ensureMessage(key);
+			const { content } = chunk;
 			if (typeof content === 'string' && content.length) {
 				message.content += content;
 				await onItem?.(message, content);
@@ -192,6 +213,7 @@ export function createStructuredChunkAggregator(
 		const message = await ensureMessage(key);
 		message.status = 'error';
 		message.updatedAt = new Date();
+		const { content } = chunk;
 		if (typeof content === 'string') {
 			message.content = (message.content ? message.content + '\n\n' : '') + content;
 		}

@@ -16,6 +16,7 @@ export { processEventStream } from './processEventStream';
 export { loadMemory, saveToMemory, buildToolContext } from './memoryManagement';
 export { processHitlResponses, type HitlProcessingResult } from './processHitlResponses';
 export { serializeIntermediateSteps } from './serializeIntermediateSteps';
+export { getToolOutputFromExecutionData, stringifyToolOutput } from './toolOutput';
 export type {
 	ToolCallRequest,
 	ToolCallData,

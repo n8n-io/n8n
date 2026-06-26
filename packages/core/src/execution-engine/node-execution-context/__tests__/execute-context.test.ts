@@ -297,7 +297,7 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			await testExecuteContext.sendChunk('item', 0, 'test');
+			await testExecuteContext.sendChunk({ type: 'item', itemIndex: 0, content: 'test' });
 
 			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
 				expect.objectContaining({
@@ -306,6 +306,7 @@ describe('ExecuteContext', () => {
 					metadata: expect.objectContaining({
 						nodeName: 'Test Node',
 						nodeId: 'test-node-id',
+						nodeType: node.type,
 						runIndex: 0,
 						itemIndex: 0,
 						timestamp: expect.any(Number),
@@ -314,7 +315,7 @@ describe('ExecuteContext', () => {
 			]);
 		});
 
-		test('should send chunk without content when content is undefined', async () => {
+		test('should send item-scoped lifecycle chunk', async () => {
 			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
 				runHook: vi.fn(),
 			});
@@ -337,15 +338,15 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			await testExecuteContext.sendChunk('begin', 0);
+			await testExecuteContext.sendChunk({ type: 'begin', itemIndex: 0 });
 
 			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
 				expect.objectContaining({
 					type: 'begin',
-					content: undefined,
 					metadata: expect.objectContaining({
 						nodeName: 'Test Node',
 						nodeId: 'test-node-id',
+						nodeType: node.type,
 						runIndex: 0,
 						itemIndex: 0,
 						timestamp: expect.any(Number),
@@ -375,7 +376,9 @@ describe('ExecuteContext', () => {
 			);
 
 			// Should not throw error
-			await expect(testExecuteContext.sendChunk('item', 0, 'test')).resolves.toBeUndefined();
+			await expect(
+				testExecuteContext.sendChunk({ type: 'item', itemIndex: 0, content: 'test' }),
+			).resolves.toBeUndefined();
 		});
 	});
 

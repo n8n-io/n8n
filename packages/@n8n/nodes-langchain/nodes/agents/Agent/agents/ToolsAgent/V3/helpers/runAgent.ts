@@ -3,6 +3,7 @@ import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	createEngineRequests,
+	getToolOutputFromExecutionData,
 	loadMemory,
 	processEventStream,
 	saveToMemory,
@@ -23,6 +24,30 @@ import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
+
+function streamCompletedToolCalls(
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	response: EngineResponse<RequestResponseMetadata> | undefined,
+	itemIndex: number,
+) {
+	if (!('sendChunk' in ctx) || !response) return;
+
+	for (const toolResponse of response.actionResponses) {
+		const { action, data } = toolResponse;
+		if (action.metadata?.itemIndex !== itemIndex) continue;
+
+		const toolOutput = getToolOutputFromExecutionData(data);
+		ctx.sendChunk({
+			type: 'tool-call-end',
+			metadata: {
+				toolId: action.id,
+				toolName: action.metadata.toolName ?? action.nodeName,
+				toolType: 'tool_call',
+				...(toolOutput === undefined ? {} : { toolOutput }),
+			},
+		});
+	}
+}
 
 /**
  * Runs the agent for a single item, choosing between streaming or non-streaming execution.
@@ -75,6 +100,7 @@ export async function runAgent(
 		isStreamingAvailable &&
 		ctx.getNode().typeVersion >= 2.1
 	) {
+		streamCompletedToolCalls(ctx, response, itemIndex);
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 		if (memory && memoryHits) {
 			memoryHits.loads++;

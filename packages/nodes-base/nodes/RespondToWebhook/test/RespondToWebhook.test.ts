@@ -401,9 +401,13 @@ describe('RespondToWebhook Node', () => {
 
 			await respondToWebhook.execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('item', 0, { response: true });
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({
+				type: 'webhook-response',
+				response: { response: true },
+				itemIndex: 0,
+			});
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
 		});
 
@@ -423,9 +427,13 @@ describe('RespondToWebhook Node', () => {
 
 			await respondToWebhook.execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('item', 0, 'test response');
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({
+				type: 'webhook-response',
+				response: 'test response',
+				itemIndex: 0,
+			});
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
 		});
 
@@ -453,11 +461,15 @@ describe('RespondToWebhook Node', () => {
 
 			await respondToWebhook.execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('item', 0, {
-				token: expect.any(String),
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({
+				type: 'webhook-response',
+				response: {
+					token: expect.any(String),
+				},
+				itemIndex: 0,
 			});
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
 		});
 
@@ -477,9 +489,13 @@ describe('RespondToWebhook Node', () => {
 
 			await respondToWebhook.execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('item', 0, { test: 'data' });
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({
+				type: 'webhook-response',
+				response: { test: 'data' },
+				itemIndex: 0,
+			});
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
 		});
 
@@ -499,10 +515,20 @@ describe('RespondToWebhook Node', () => {
 
 			await respondToWebhook.execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('item', 0, { item: 1 });
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('item', 1, { item: 2 });
-			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({
+				type: 'webhook-response',
+				response: { item: 1 },
+				itemIndex: 0,
+			});
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 1 });
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({
+				type: 'webhook-response',
+				response: { item: 2 },
+				itemIndex: 1,
+			});
+			expect(mockExecuteFunctions.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 1 });
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
 		});
 

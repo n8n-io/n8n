@@ -179,24 +179,36 @@ export async function sendMessageStreaming(
 			const { done, value } = await reader.read();
 			if (done) break;
 
-			const nodeId = value.metadata?.nodeId || 'unknown';
-			const runIndex = value.metadata?.runIndex;
+			const nodeId =
+				value.metadata && 'nodeId' in value.metadata
+					? value.metadata.nodeId
+					: value.type === 'error'
+						? 'unknown'
+						: undefined;
+			const runIndex =
+				value.metadata && 'runIndex' in value.metadata ? value.metadata.runIndex : undefined;
 
 			switch (value.type) {
 				case 'begin':
-					handlers.onBeginMessage(nodeId, runIndex);
+					if (nodeId) {
+						handlers.onBeginMessage(nodeId, runIndex);
+					}
 					break;
 				case 'item':
 					hasReceivedChunks = true;
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'end':
-					await handlers.onEndMessage(nodeId, runIndex);
+					if (nodeId) {
+						await handlers.onEndMessage(nodeId, runIndex);
+					}
 					break;
 				case 'error':
 					hasReceivedChunks = true;
 					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
-					await handlers.onEndMessage(nodeId, runIndex);
+					if (nodeId) {
+						await handlers.onEndMessage(nodeId, runIndex);
+					}
 					break;
 			}
 		}

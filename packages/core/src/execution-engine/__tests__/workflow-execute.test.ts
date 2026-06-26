@@ -3054,16 +3054,19 @@ describe('WorkflowExecute', () => {
 
 			// ASSERT
 			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
-				{
+				expect.objectContaining({
 					type: 'error',
 					content: 'A detailed error description',
-					metadata: {
+					message: 'A detailed error description',
+					metadata: expect.objectContaining({
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
-					},
-				},
+						timestamp: expect.any(Number),
+					}),
+				}),
 			]);
 		});
 
@@ -3118,20 +3121,23 @@ describe('WorkflowExecute', () => {
 
 			// ASSERT
 			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
-				{
+				expect.objectContaining({
 					type: 'error',
 					content: 'The API returned an error',
-					metadata: {
+					message: 'The API returned an error',
+					metadata: expect.objectContaining({
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
-					},
-				},
+						timestamp: expect.any(Number),
+					}),
+				}),
 			]);
 		});
 
-		test('should not send error chunk when workflow execution succeeds', async () => {
+		test('should send lifecycle chunks when workflow execution succeeds', async () => {
 			// ARRANGE
 			const successNode: INode = {
 				id: '1',
@@ -3174,7 +3180,43 @@ describe('WorkflowExecute', () => {
 			await workflowExecute.run({ workflow, startNode: successNode });
 
 			// ASSERT
-			expect(mockHooks.runHook).not.toHaveBeenCalledWith('sendChunk', expect.anything());
+			const sentChunks = vi
+				.mocked(mockHooks.runHook)
+				.mock.calls.filter(([hookName]) => hookName === 'sendChunk')
+				.map(([, [chunk]]) => chunk);
+			expect(sentChunks).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						type: 'begin',
+						metadata: expect.objectContaining({ timestamp: expect.any(Number) }),
+					}),
+					expect.objectContaining({
+						type: 'node-execute-before',
+						metadata: expect.objectContaining({
+							nodeId: successNode.id,
+							nodeName: successNode.name,
+							nodeType: successNode.type,
+							runIndex: 0,
+							timestamp: expect.any(Number),
+						}),
+					}),
+					expect.objectContaining({
+						type: 'node-execute-after',
+						metadata: expect.objectContaining({
+							nodeId: successNode.id,
+							nodeName: successNode.name,
+							nodeType: successNode.type,
+							runIndex: 0,
+							timestamp: expect.any(Number),
+						}),
+					}),
+					expect.objectContaining({
+						type: 'end',
+						metadata: expect.objectContaining({ timestamp: expect.any(Number) }),
+					}),
+				]),
+			);
+			expect(sentChunks).not.toContainEqual(expect.objectContaining({ type: 'error' }));
 		});
 
 		test('should send error chunk when workflow execution fails with NodeOperationError', async () => {
@@ -3228,20 +3270,23 @@ describe('WorkflowExecute', () => {
 
 			// ASSERT
 			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
-				{
+				expect.objectContaining({
 					type: 'error',
 					content: 'Custom error description',
-					metadata: {
+					message: 'Custom error description',
+					metadata: expect.objectContaining({
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
-					},
-				},
+						timestamp: expect.any(Number),
+					}),
+				}),
 			]);
 		});
 
-		test('should send error chunk with undefined content when error has no description', async () => {
+		test('should send error chunk without content when error has no description', async () => {
 			// ARRANGE
 			const errorNode: INode = {
 				id: '1',
@@ -3291,17 +3336,29 @@ describe('WorkflowExecute', () => {
 
 			// ASSERT
 			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
-				{
+				expect.objectContaining({
 					type: 'error',
-					content: undefined, // When no description is available, content should be undefined
-					metadata: {
+					metadata: expect.objectContaining({
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
-					},
-				},
+						timestamp: expect.any(Number),
+					}),
+				}),
 			]);
+			const sentChunks = vi
+				.mocked(mockHooks.runHook)
+				.mock.calls.filter(([hookName]) => hookName === 'sendChunk')
+				.map(([, [chunk]]) => chunk);
+			const errorChunk = sentChunks.find(
+				(chunk): chunk is { type: 'error' } =>
+					typeof chunk === 'object' && chunk !== null && 'type' in chunk && chunk.type === 'error',
+			);
+			expect(errorChunk).toBeDefined();
+			expect(errorChunk).not.toHaveProperty('content');
+			expect(errorChunk).not.toHaveProperty('message');
 		});
 	});
 
