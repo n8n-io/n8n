@@ -422,6 +422,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
 			expect(result).toBe('/teams/1111-2222/channels/19:abc@thread.tacv2/messages');
 			expect(result).not.toContain('%3A');
+			expect(result).not.toContain('%40');
 		});
 
 		it('rejects a crafted (separator) channelId for newChannelMessage', async () => {

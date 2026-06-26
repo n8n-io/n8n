@@ -39,8 +39,9 @@ export type TeamsCredentialType =
  * allowing the generic `microsoftOAuth2Api` (Graph) credential or the app-only
  * `microsoftEntraServicePrincipalApi` (Service Principal) credential to be selected.
  *
- * Passthrough resolver: any selected value is used verbatim; only an unset value
- * (legacy nodes) falls back to the Teams credential.
+ * Allow-list resolver: only the two known non-default credential names are honored;
+ * anything else (unset/legacy nodes, an unknown value, or the load-options fallback
+ * `0`) falls back to the Teams credential.
  *
  * Shared by the action node (v2), its `listSearch` helpers and the Trigger's
  * webhook hooks, since all of them authenticate through `microsoftApiRequest`.
