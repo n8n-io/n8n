@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { generateNanoId } from '@n8n/utils';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
@@ -44,12 +45,14 @@ export interface RecordMessageParams {
 
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
-	executions: AgentExecution[];
+	executions: HydratedAgentExecution[];
 }
 
 export interface ThreadListItem extends AgentExecutionThread {
 	firstMessage: string | null;
 }
+
+export type HydratedAgentExecution = AgentExecution & AgentExecutionLogPayload;
 
 @Service()
 export class AgentExecutionService {
@@ -109,65 +112,50 @@ export class AgentExecutionService {
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const storedAt = this.agentExecutionLogPersistence.currentLocation;
 		const logPayload = this.toLogPayload(record);
+		const executionId = generateNanoId();
+		const logRef = { agentId, threadId, executionId };
+		const logSizeBytes = await this.agentExecutionLogPersistence.write(
+			logRef,
+			logPayload,
+			storedAt,
+		);
 
-		let writtenExternalLogRef: ExternalAgentExecutionLogRef | undefined;
+		const writtenExternalLogRef: ExternalAgentExecutionLogRef = { ...logRef, storedAt };
 
-		const inserted = await (async () => {
-			try {
-				return await this.agentExecutionRepository.manager.transaction(async (tx) => {
-					const repository = tx.getRepository(AgentExecution);
-					const saved = await repository.save(
-						repository.create({
+		const inserted = await this.agentExecutionRepository
+			.save(
+				this.agentExecutionRepository.create({
+					id: executionId,
+					threadId,
+					status,
+					startedAt,
+					stoppedAt,
+					duration: record.duration,
+					userMessage: cleanedMessage,
+					model: record.model,
+					promptTokens: record.usage?.promptTokens ?? null,
+					completionTokens: record.usage?.completionTokens ?? null,
+					totalTokens: record.usage?.totalTokens ?? null,
+					cost: record.totalCost,
+					hitlStatus: hitlStatus ?? null,
+					source: source ?? null,
+					storedAt,
+					logSizeBytes,
+				}),
+			)
+			.catch(async (error) => {
+				await this.agentExecutionLogPersistence
+					.deleteExternal([writtenExternalLogRef])
+					.catch((cleanupError) => {
+						this.logger.warn('Failed to clean up agent execution log after recording failed', {
+							agentId,
 							threadId,
-							status,
-							startedAt,
-							stoppedAt,
-							duration: record.duration,
-							userMessage: cleanedMessage,
-							assistantResponse: '',
-							model: record.model,
-							promptTokens: record.usage?.promptTokens ?? null,
-							completionTokens: record.usage?.completionTokens ?? null,
-							totalTokens: record.usage?.totalTokens ?? null,
-							cost: record.totalCost,
-							toolCalls: null,
-							timeline: null,
-							error: null,
-							hitlStatus: hitlStatus ?? null,
-							source: source ?? null,
-							storedAt,
-							logSizeBytes: 0,
-						}),
-					);
-
-					const logRef = { agentId, threadId, executionId: saved.id };
-					const logSizeBytes = await this.agentExecutionLogPersistence.write(
-						logRef,
-						logPayload,
-						storedAt,
-						tx,
-					);
-					if (storedAt !== 'db') writtenExternalLogRef = { ...logRef, storedAt };
-					await tx.update(AgentExecution, saved.id, { logSizeBytes });
-					return saved;
-				});
-			} catch (error) {
-				const cleanupRef = writtenExternalLogRef;
-				if (cleanupRef) {
-					await this.agentExecutionLogPersistence
-						.deleteExternal([cleanupRef])
-						.catch((cleanupError) => {
-							this.logger.warn('Failed to clean up agent execution log after recording failed', {
-								agentId,
-								threadId,
-								executionId: cleanupRef.executionId,
-								error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
-							});
+							executionId,
+							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
 						});
-				}
+					});
 				throw error;
-			}
-		})();
+			});
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.
@@ -276,7 +264,7 @@ export class AgentExecutionService {
 		});
 		if (!thread) return false;
 
-		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		const executions = await this.agentExecutionRepository.findLogRefsByThreadId(threadId);
 		const externalLogRefs = this.toExternalLogRefs(agentId, executions);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
@@ -361,14 +349,14 @@ export class AgentExecutionService {
 		};
 	}
 
-	private async hydrateExecutionLogs(agentId: string, executions: AgentExecution[]) {
-		const externalExecutions = executions.filter((execution) => {
-			return execution.storedAt !== 'db';
-		});
-		if (externalExecutions.length === 0) return executions;
+	private async hydrateExecutionLogs(
+		agentId: string,
+		executions: AgentExecution[],
+	): Promise<HydratedAgentExecution[]> {
+		if (executions.length === 0) return [];
 
 		const bundles = await this.agentExecutionLogPersistence.readMany(
-			externalExecutions.map((execution) => ({
+			executions.map((execution) => ({
 				agentId,
 				threadId: execution.threadId,
 				executionId: execution.id,
@@ -377,8 +365,6 @@ export class AgentExecutionService {
 		);
 
 		return executions.map((execution) => {
-			if (execution.storedAt === 'db') return execution;
-
 			const bundle = bundles.get(execution.id);
 			if (!bundle) {
 				throw new UnexpectedError('Agent execution log bundle is missing', {
@@ -391,31 +377,25 @@ export class AgentExecutionService {
 				});
 			}
 
-			Object.assign(execution, {
+			return Object.assign(execution, {
 				assistantResponse: bundle.assistantResponse,
 				toolCalls: bundle.toolCalls,
 				timeline: bundle.timeline,
 				error: bundle.error,
 			});
-			return execution;
 		});
 	}
 
 	private toExternalLogRefs(
 		agentId: string,
-		executions: AgentExecution[],
+		executions: Array<Pick<AgentExecution, 'id' | 'threadId' | 'storedAt'>>,
 	): ExternalAgentExecutionLogRef[] {
-		const refs: ExternalAgentExecutionLogRef[] = [];
-		for (const execution of executions) {
-			if (execution.storedAt === 'db') continue;
-			refs.push({
-				agentId,
-				threadId: execution.threadId,
-				executionId: execution.id,
-				storedAt: execution.storedAt,
-			});
-		}
-		return refs;
+		return executions.map((execution) => ({
+			agentId,
+			threadId: execution.threadId,
+			executionId: execution.id,
+			storedAt: execution.storedAt,
+		}));
 	}
 }
 

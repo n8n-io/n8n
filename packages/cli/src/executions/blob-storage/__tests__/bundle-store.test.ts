@@ -12,10 +12,6 @@ type Payload = {
 	value: string;
 };
 
-type Bundle = Payload & {
-	version: 1;
-};
-
 class CorruptedBundleError extends Error {
 	constructor(
 		readonly ref: Ref,
@@ -34,14 +30,14 @@ const createStore = (content: Buffer | null) => {
 		delete: async () => {},
 	};
 	const errorReporter = mock<ErrorReporter>();
-	const store = new BlobBundleStore<Ref, Payload, Bundle>({
+	const store = new BlobBundleStore<Ref, Payload>({
 		blobStore,
 		errorReporter,
 		version: 1,
 		key: ({ id }) => id,
 		getId: ({ id }) => id,
 		createWriteError: () => new Error('Write failed'),
-		corruptedErrorClass: CorruptedBundleError,
+		createCorruptedError: (targetRef, error) => new CorruptedBundleError(targetRef, error),
 	});
 
 	return { errorReporter, store };

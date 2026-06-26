@@ -47,7 +47,7 @@ describe('Agent execution log FsStore', () => {
 		storagePath = await mkdtemp(join(tmpdir(), 'n8n-agent-log-fs-store-test-'));
 		mockInstance(StorageConfig, { storagePath });
 		const errorReporter = mockInstance(ErrorReporter);
-		fsStore = new FsStore(Container.get(FsBlobStore), Container.get(StorageConfig), errorReporter);
+		fsStore = new FsStore(Container.get(FsBlobStore), errorReporter);
 	});
 
 	beforeEach(async () => {
@@ -75,6 +75,8 @@ describe('Agent execution log FsStore', () => {
 		await fsStore.delete(unsafeRef);
 
 		await expect(fsStore.read(unsafeRef)).resolves.toBeNull();
-		await expect(fs.stat(executionDir)).rejects.toMatchObject({ code: 'ENOENT' });
+		await expect(
+			fs.stat(join(executionDir, 'execution_log', AGENT_EXECUTION_LOG_BUNDLE_FILENAME)),
+		).rejects.toMatchObject({ code: 'ENOENT' });
 	});
 });

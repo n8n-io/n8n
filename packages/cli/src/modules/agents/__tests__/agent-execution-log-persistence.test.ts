@@ -3,8 +3,10 @@ import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import { AgentExecutionLogPersistence } from '../agent-execution-log-persistence';
-import type { AgentExecutionLogBundle, AgentExecutionLogStore } from '../agent-execution-log/types';
-import type { DbStore } from '../agent-execution-log/db-store';
+import type {
+	AgentExecutionLogBundle,
+	DeletableAgentExecutionLogStore,
+} from '../agent-execution-log/types';
 import type { FsStore } from '../agent-execution-log/fs-store';
 
 const bundle = (assistantResponse: string): AgentExecutionLogBundle => ({
@@ -17,53 +19,53 @@ const bundle = (assistantResponse: string): AgentExecutionLogBundle => ({
 
 describe('AgentExecutionLogPersistence', () => {
 	const createPersistence = (logger = mockLogger()) => {
-		const fsStore = mock<AgentExecutionLogStore>();
-		const dbStore = mock<AgentExecutionLogStore>();
+		const fsStore = mock<DeletableAgentExecutionLogStore>();
 		const persistence = new AgentExecutionLogPersistence(
 			logger,
 			{ executionLogStorageModeTag: 'fs' } as AgentsConfig,
 			fsStore as unknown as FsStore,
-			dbStore as unknown as DbStore,
 		);
 
-		return { dbStore, fsStore, logger, persistence };
+		return { fsStore, logger, persistence };
 	};
 
-	it('delegates bulk reads to each storage location', async () => {
-		const { dbStore, fsStore, persistence } = createPersistence();
+	it('delegates bulk reads to each external storage location', async () => {
+		const { fsStore, persistence } = createPersistence();
+		const s3Store = mock<DeletableAgentExecutionLogStore>();
 		fsStore.readMany.mockResolvedValue(new Map([['fs-execution', bundle('fs')]]));
-		dbStore.readMany.mockResolvedValue(new Map([['db-execution', bundle('db')]]));
+		s3Store.readMany.mockResolvedValue(new Map([['s3-execution', bundle('s3')]]));
+		persistence.setS3Store(s3Store);
 
 		const result = await persistence.readMany([
-			{
-				agentId: 'agent-1',
-				threadId: 'thread-1',
-				executionId: 'db-execution',
-				storedAt: 'db',
-			},
 			{
 				agentId: 'agent-1',
 				threadId: 'thread-1',
 				executionId: 'fs-execution',
 				storedAt: 'fs',
 			},
+			{
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 's3-execution',
+				storedAt: 's3',
+			},
 		]);
 
 		expect(result).toEqual(
 			new Map([
-				['db-execution', bundle('db')],
 				['fs-execution', bundle('fs')],
+				['s3-execution', bundle('s3')],
 			]),
 		);
-		expect(dbStore.readMany).toHaveBeenCalledWith([
-			{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'db-execution' },
-		]);
 		expect(fsStore.readMany).toHaveBeenCalledWith([
 			{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'fs-execution' },
 		]);
+		expect(s3Store.readMany).toHaveBeenCalledWith([
+			{ agentId: 'agent-1', threadId: 'thread-1', executionId: 's3-execution' },
+		]);
 	});
 
-	it('skips deleting historical S3 logs when the S3 store is not initialized', async () => {
+	it('skips deleting S3 logs when the S3 store is not initialized', async () => {
 		const logger = mockLogger();
 		const { persistence } = createPersistence(logger);
 

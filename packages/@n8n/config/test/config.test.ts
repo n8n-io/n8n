@@ -644,9 +644,9 @@ describe('GlobalConfig', () => {
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
 	});
 
-	it('should fall back to the default for invalid N8N_AGENT_EXECUTION_LOG_STORAGE_MODE values', () => {
+	it('should fall back to the default for database N8N_AGENT_EXECUTION_LOG_STORAGE_MODE values', () => {
 		process.env = {
-			N8N_AGENT_EXECUTION_LOG_STORAGE_MODE: 'invalid-mode',
+			N8N_AGENT_EXECUTION_LOG_STORAGE_MODE: 'database',
 		};
 		const config = Container.get(GlobalConfig);
 

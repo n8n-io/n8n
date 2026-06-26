@@ -1,10 +1,11 @@
-import type { AgentExecution } from '../entities/agent-execution.entity';
 import {
 	executionToMessagesDto,
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
 
-function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
+type ExecutionTranscript = Parameters<typeof executionToMessagesDto>[0];
+
+function execution(overrides: Partial<ExecutionTranscript> = {}): ExecutionTranscript {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
@@ -13,7 +14,7 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		timeline: null,
 		error: null,
 		...overrides,
-	} as unknown as AgentExecution;
+	} as ExecutionTranscript;
 }
 
 describe('execution-to-message-mapper', () => {

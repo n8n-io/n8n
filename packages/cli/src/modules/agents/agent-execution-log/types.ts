@@ -1,4 +1,4 @@
-import type { EntityManager, ExecutionDataStorageLocation } from '@n8n/db';
+import type { AgentExecutionLogStorageLocation } from '@n8n/config';
 
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
 
@@ -9,12 +9,10 @@ export type AgentExecutionLogRef = {
 };
 
 export type StoredAgentExecutionLogRef = AgentExecutionLogRef & {
-	storedAt: ExecutionDataStorageLocation;
+	storedAt: AgentExecutionLogStorageLocation;
 };
 
-export type ExternalAgentExecutionLogRef = AgentExecutionLogRef & {
-	storedAt: Exclude<ExecutionDataStorageLocation, 'db'>;
-};
+export type ExternalAgentExecutionLogRef = StoredAgentExecutionLogRef;
 
 export type AgentExecutionLogPayload = {
 	assistantResponse: string;
@@ -29,13 +27,8 @@ export type AgentExecutionLogBundle = AgentExecutionLogPayload & {
 
 export interface AgentExecutionLogStore {
 	init?(): Promise<void>;
-	/** `tx` is used only by the DB-backed store; blob stores write outside the database transaction. */
-	write(
-		ref: AgentExecutionLogRef,
-		payload: AgentExecutionLogPayload,
-		tx?: EntityManager,
-	): Promise<number>;
-	read(ref: AgentExecutionLogRef, tx?: EntityManager): Promise<AgentExecutionLogBundle | null>;
+	write(ref: AgentExecutionLogRef, payload: AgentExecutionLogPayload): Promise<number>;
+	read(ref: AgentExecutionLogRef): Promise<AgentExecutionLogBundle | null>;
 	readMany(refs: AgentExecutionLogRef[]): Promise<Map<string, AgentExecutionLogBundle>>;
 }
 

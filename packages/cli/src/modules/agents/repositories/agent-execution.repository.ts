@@ -14,6 +14,15 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
 	}
 
+	async findLogRefsByThreadId(
+		threadId: string,
+	): Promise<Array<Pick<AgentExecution, 'id' | 'threadId' | 'storedAt'>>> {
+		return await this.find({
+			where: { threadId },
+			select: ['id', 'threadId', 'storedAt'],
+		});
+	}
+
 	/**
 	 * The first user-message text in each of the given threads. Used by the
 	 * sessions list to render a preview before the LLM-generated title is

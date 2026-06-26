@@ -51,7 +51,6 @@ describe('init', () => {
 		const customStorageConfig = mock<StorageConfig>({ storagePath: customPath });
 		const customFsStore = new FsStore(
 			new FsBlobStore(customStorageConfig, Container.get(ErrorReporter)),
-			customStorageConfig,
 			Container.get(ErrorReporter),
 		);
 
@@ -238,7 +237,7 @@ describe('readMany', () => {
 });
 
 describe('delete', () => {
-	it('should delete execution directory', async () => {
+	it('should delete execution bundle', async () => {
 		await fsStore.write(ref, payload);
 
 		await fsStore.delete(ref);
@@ -246,8 +245,16 @@ describe('delete', () => {
 		const result = await fsStore.read(ref);
 		expect(result).toBeNull();
 
-		const executionDir = join(storagePath, 'workflows', workflowId, 'executions', executionId);
-		await expect(fs.stat(executionDir)).rejects.toThrow();
+		const bundlePath = join(
+			storagePath,
+			'workflows',
+			workflowId,
+			'executions',
+			executionId,
+			'execution_data',
+			EXECUTION_DATA_BUNDLE_FILENAME,
+		);
+		await expect(fs.stat(bundlePath)).rejects.toThrow();
 	});
 
 	it('should encode dynamic key segments before writing and deleting', async () => {
@@ -267,7 +274,9 @@ describe('delete', () => {
 
 		await fsStore.delete(unsafeRef);
 
-		await expect(fs.stat(executionDir)).rejects.toThrow();
+		await expect(
+			fs.stat(join(executionDir, 'execution_data', EXECUTION_DATA_BUNDLE_FILENAME)),
+		).rejects.toThrow();
 	});
 
 	it('should delete data for multiple executions', async () => {

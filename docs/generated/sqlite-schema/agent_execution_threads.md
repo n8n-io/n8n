@@ -95,12 +95,10 @@ erDiagram
   varchar_36_ versionId
 }
 "agent_execution" {
-  TEXT assistantResponse
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
-  TEXT error
   varchar_16_ hitlStatus
   varchar_36_ id PK
   bigint logSizeBytes
@@ -112,8 +110,6 @@ erDiagram
   datetime_3_ stoppedAt
   varchar_2_ storedAt
   varchar_128_ threadId FK
-  TEXT timeline
-  TEXT toolCalls
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage

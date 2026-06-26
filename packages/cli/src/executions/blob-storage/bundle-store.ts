@@ -6,32 +6,26 @@ import type { BlobStore } from './types';
 
 const MAX_READ_CONCURRENCY = 50;
 
-type CorruptedErrorClass<TRef> = new (ref: TRef, cause: unknown) => Error;
+const corruptedBundleError = Symbol('corruptedBundleError');
 
-type BlobBundleStoreOptions<
-	TRef,
-	TPayload extends object,
-	TBundle extends TPayload & { version: unknown },
-> = {
+type VersionedBundle<TPayload extends object, TVersion> = TPayload & { version: TVersion };
+
+type BlobBundleStoreOptions<TRef, TVersion> = {
 	blobStore: BlobStore;
 	errorReporter: ErrorReporter;
-	version: TBundle['version'];
+	version: TVersion;
 	key: (ref: TRef) => string;
 	getId: (ref: TRef) => string;
 	createWriteError: (ref: TRef, cause: unknown) => Error;
-	corruptedErrorClass: CorruptedErrorClass<TRef>;
+	createCorruptedError: (ref: TRef, cause: unknown) => Error;
 };
 
-export class BlobBundleStore<
-	TRef,
-	TPayload extends object,
-	TBundle extends TPayload & { version: unknown },
-> {
+export class BlobBundleStore<TRef, TPayload extends object, TVersion = 1> {
 	private readonly blobStore: BlobStore;
 
 	private readonly errorReporter: ErrorReporter;
 
-	private readonly version: TBundle['version'];
+	private readonly version: TVersion;
 
 	private readonly key: (ref: TRef) => string;
 
@@ -39,7 +33,7 @@ export class BlobBundleStore<
 
 	private readonly createWriteError: (ref: TRef, cause: unknown) => Error;
 
-	private readonly corruptedErrorClass: CorruptedErrorClass<TRef>;
+	private readonly createCorruptedError: (ref: TRef, cause: unknown) => Error;
 
 	constructor({
 		blobStore,
@@ -48,15 +42,15 @@ export class BlobBundleStore<
 		key,
 		getId,
 		createWriteError,
-		corruptedErrorClass,
-	}: BlobBundleStoreOptions<TRef, TPayload, TBundle>) {
+		createCorruptedError,
+	}: BlobBundleStoreOptions<TRef, TVersion>) {
 		this.blobStore = blobStore;
 		this.errorReporter = errorReporter;
 		this.version = version;
 		this.key = key;
 		this.getId = getId;
 		this.createWriteError = createWriteError;
-		this.corruptedErrorClass = corruptedErrorClass;
+		this.createCorruptedError = createCorruptedError;
 	}
 
 	async init() {
@@ -74,23 +68,23 @@ export class BlobBundleStore<
 		}
 	}
 
-	async read(ref: TRef): Promise<TBundle | null> {
+	async read(ref: TRef): Promise<VersionedBundle<TPayload, TVersion> | null> {
 		const content = await this.blobStore.read(this.key(ref));
 		if (!content) return null;
 
 		try {
-			const bundle = jsonParse<TBundle>(content.toString('utf-8'));
+			const bundle = jsonParse<VersionedBundle<TPayload, TVersion>>(content.toString('utf-8'));
 			if (bundle.version !== this.version) {
 				throw new Error(`Unsupported bundle version: ${String(bundle.version)}`);
 			}
 			return bundle;
 		} catch (error) {
-			throw new this.corruptedErrorClass(ref, error);
+			throw this.markCorrupted(this.createCorruptedError(ref, error));
 		}
 	}
 
-	async readMany(refs: TRef[]): Promise<Map<string, TBundle>> {
-		const bundles = new Map<string, TBundle>();
+	async readMany(refs: TRef[]): Promise<Map<string, VersionedBundle<TPayload, TVersion>>> {
+		const bundles = new Map<string, VersionedBundle<TPayload, TVersion>>();
 		if (refs.length === 0) return bundles;
 
 		for (const batch of chunk(refs, MAX_READ_CONCURRENCY)) {
@@ -112,16 +106,25 @@ export class BlobBundleStore<
 		await this.blobStore.delete(keys);
 	}
 
-	private async tryRead(ref: TRef): Promise<TBundle | null> {
+	private async tryRead(ref: TRef): Promise<VersionedBundle<TPayload, TVersion> | null> {
 		try {
 			return await this.read(ref);
 		} catch (error) {
 			// Batch reads tolerate corrupted bundles, but still fail on systemic storage errors.
-			if (error instanceof this.corruptedErrorClass) {
+			if (this.isCorruptedBundleError(error)) {
 				this.errorReporter.error(error);
 				return null;
 			}
 			throw error;
 		}
+	}
+
+	private markCorrupted<TError extends Error>(error: TError): TError {
+		Object.defineProperty(error, corruptedBundleError, { value: true });
+		return error;
+	}
+
+	private isCorruptedBundleError(error: unknown): error is Error {
+		return error instanceof Error && corruptedBundleError in error;
 	}
 }

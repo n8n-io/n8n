@@ -10,7 +10,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
-| [agent_execution](agent_execution.md) | 22 |  | table |
+| [agent_execution](agent_execution.md) | 18 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 8 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
@@ -295,12 +295,10 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution" {
-  TEXT assistantResponse
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
-  TEXT error
   varchar_16_ hitlStatus
   varchar_36_ id PK
   bigint logSizeBytes
@@ -312,8 +310,6 @@ erDiagram
   datetime_3_ stoppedAt
   varchar_2_ storedAt
   varchar_128_ threadId FK
-  TEXT timeline
-  TEXT toolCalls
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage

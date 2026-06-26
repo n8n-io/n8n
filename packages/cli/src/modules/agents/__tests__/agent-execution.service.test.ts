@@ -1,5 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ExecutionDataStorageLocation } from '@n8n/db';
+import type { AgentExecutionLogStorageLocation } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
@@ -7,11 +7,16 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentExecutionLogPersistence } from '../agent-execution-log-persistence';
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import { AgentExecution } from '../entities/agent-execution.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { MessageRecord } from '../execution-recorder';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+
+jest.mock('@n8n/utils', () => ({
+	...jest.requireActual('@n8n/utils'),
+	generateNanoId: jest.fn(() => 'execution-1'),
+}));
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
@@ -60,7 +65,7 @@ describe('AgentExecutionService', () => {
 	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
 	let telemetry: jest.Mocked<Telemetry>;
 	let agentExecutionLogPersistence: jest.Mocked<AgentExecutionLogPersistence> & {
-		currentLocation: ExecutionDataStorageLocation;
+		currentLocation: AgentExecutionLogStorageLocation;
 	};
 
 	beforeEach(() => {
@@ -68,21 +73,6 @@ describe('AgentExecutionService', () => {
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
-		const transactionManager = {
-			getRepository: jest.fn().mockReturnValue({
-				create: agentExecutionRepository.create,
-				save: agentExecutionRepository.save,
-			}),
-			update: agentExecutionRepository.update,
-		};
-		Object.assign(agentExecutionRepository, {
-			manager: {
-				transaction: jest.fn(
-					async (callback: (manager: typeof transactionManager) => Promise<unknown>) =>
-						await callback(transactionManager),
-				),
-			},
-		});
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
@@ -95,9 +85,10 @@ describe('AgentExecutionService', () => {
 			setS3Store: jest.fn(),
 			setAzStore: jest.fn(),
 		} as unknown as jest.Mocked<AgentExecutionLogPersistence> & {
-			currentLocation: ExecutionDataStorageLocation;
+			currentLocation: AgentExecutionLogStorageLocation;
 		};
 		agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([]);
+		agentExecutionRepository.findLogRefsByThreadId.mockResolvedValue([]);
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -207,16 +198,20 @@ describe('AgentExecutionService', () => {
 				}),
 			});
 
-			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
+			const savedEntity = agentExecutionRepository.create.mock.calls[0][0] as Record<
+				string,
+				unknown
+			>;
+			expect(savedEntity).toEqual(
 				expect.objectContaining({
-					assistantResponse: '',
-					toolCalls: null,
-					timeline: null,
-					error: null,
 					storedAt: 'fs',
-					logSizeBytes: 0,
+					logSizeBytes: 42,
 				}),
 			);
+			expect(savedEntity).not.toHaveProperty('assistantResponse');
+			expect(savedEntity).not.toHaveProperty('toolCalls');
+			expect(savedEntity).not.toHaveProperty('timeline');
+			expect(savedEntity).not.toHaveProperty('error');
 			expect(agentExecutionLogPersistence.write).toHaveBeenCalledWith(
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1' },
 				{
@@ -226,11 +221,8 @@ describe('AgentExecutionService', () => {
 					error: null,
 				},
 				'fs',
-				expect.any(Object),
 			);
-			expect(agentExecutionRepository.update).toHaveBeenCalledWith(AgentExecution, 'execution-1', {
-				logSizeBytes: 42,
-			});
+			expect(agentExecutionRepository.update).not.toHaveBeenCalled();
 		});
 
 		it('syncs a generated title from memory on later messages when the thread has no title yet', async () => {
@@ -462,35 +454,39 @@ describe('AgentExecutionService', () => {
 	describe('getThreadDetail', () => {
 		it('returns thread executions after ownership validation', async () => {
 			const thread = makeThread();
-			const executions = [{ id: 'execution-1', storedAt: 'db' }] as AgentExecution[];
+			const executions = [
+				{ id: 'execution-1', threadId: 'thread-1', storedAt: 'fs' },
+			] as AgentExecution[];
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
+			agentExecutionLogPersistence.readMany.mockResolvedValue(
+				new Map([
+					[
+						'execution-1',
+						{
+							assistantResponse: 'Stored response',
+							toolCalls: null,
+							timeline: null,
+							error: null,
+							version: 1,
+						},
+					],
+				]),
+			);
 
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
-			expect(result).toEqual({ thread, executions });
+			expect(result?.thread).toBe(thread);
+			expect(result?.executions[0].assistantResponse).toBe('Stored response');
 		});
 
-		it('hydrates only externally stored logs in mixed-storage threads', async () => {
+		it('hydrates externally stored logs', async () => {
 			const thread = makeThread();
 			const executions = [
 				{
-					id: 'db-execution',
-					threadId: 'thread-1',
-					storedAt: 'db',
-					assistantResponse: 'Inline response',
-					toolCalls: null,
-					timeline: null,
-					error: null,
-				},
-				{
-					id: 'fs-execution',
+					id: 'execution-1',
 					threadId: 'thread-1',
 					storedAt: 'fs',
-					assistantResponse: '',
-					toolCalls: null,
-					timeline: null,
-					error: null,
 				},
 			] as AgentExecution[];
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
@@ -498,7 +494,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionLogPersistence.readMany.mockResolvedValue(
 				new Map([
 					[
-						'fs-execution',
+						'execution-1',
 						{
 							assistantResponse: 'Stored response',
 							toolCalls: null,
@@ -516,12 +512,11 @@ describe('AgentExecutionService', () => {
 				{
 					agentId: 'agent-1',
 					threadId: 'thread-1',
-					executionId: 'fs-execution',
+					executionId: 'execution-1',
 					storedAt: 'fs',
 				},
 			]);
-			expect(result?.executions[0].assistantResponse).toBe('Inline response');
-			expect(result?.executions[1].assistantResponse).toBe('Stored response');
+			expect(result?.executions[0].assistantResponse).toBe('Stored response');
 		});
 
 		it('throws when an externally stored execution log is missing', async () => {
@@ -531,10 +526,6 @@ describe('AgentExecutionService', () => {
 					id: 'execution-1',
 					threadId: 'thread-1',
 					storedAt: 'fs',
-					assistantResponse: '',
-					toolCalls: null,
-					timeline: null,
-					error: null,
 				},
 			] as AgentExecution[];
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
@@ -566,16 +557,16 @@ describe('AgentExecutionService', () => {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 			} as AgentExecutionThread);
-			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
-				{
-					id: 'db-execution',
-					threadId: 'thread-1',
-					storedAt: 'db',
-				},
+			agentExecutionRepository.findLogRefsByThreadId.mockResolvedValue([
 				{
 					id: 'fs-execution',
 					threadId: 'thread-1',
 					storedAt: 'fs',
+				},
+				{
+					id: 's3-execution',
+					threadId: 'thread-1',
+					storedAt: 's3',
 				},
 			] as AgentExecution[]);
 
@@ -596,6 +587,12 @@ describe('AgentExecutionService', () => {
 					executionId: 'fs-execution',
 					storedAt: 'fs',
 				},
+				{
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					executionId: 's3-execution',
+					storedAt: 's3',
+				},
 			]);
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 			expect(memoryBackend.deleteThread.mock.invocationCallOrder[0]).toBeLessThan(
@@ -612,7 +609,7 @@ describe('AgentExecutionService', () => {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 			} as AgentExecutionThread);
-			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
+			agentExecutionRepository.findLogRefsByThreadId.mockResolvedValue([
 				{
 					id: 'fs-execution',
 					threadId: 'thread-1',
@@ -635,7 +632,7 @@ describe('AgentExecutionService', () => {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 			} as AgentExecutionThread);
-			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
+			agentExecutionRepository.findLogRefsByThreadId.mockResolvedValue([
 				{
 					id: 'fs-execution',
 					threadId: 'thread-1',

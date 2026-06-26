@@ -6,16 +6,11 @@ import { BlobBundleStore } from '../blob-storage/bundle-store';
 import { EXECUTION_DATA_BUNDLE_VERSION, executionDataBundleKey } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
 import { ExecutionDataWriteError } from './execution-data-write.error';
-import type {
-	ExecutionDataStore,
-	ExecutionRef,
-	ExecutionDataPayload,
-	ExecutionDataBundle,
-} from './types';
+import type { ExecutionDataStore, ExecutionRef, ExecutionDataPayload } from './types';
 
 @Service()
 export class AzureStore
-	extends BlobBundleStore<ExecutionRef, ExecutionDataPayload, ExecutionDataBundle>
+	extends BlobBundleStore<ExecutionRef, ExecutionDataPayload>
 	implements ExecutionDataStore
 {
 	constructor(blobStore: AzureBlobStore, errorReporter: ErrorReporter) {
@@ -26,7 +21,7 @@ export class AzureStore
 			key: executionDataBundleKey,
 			getId: ({ executionId }) => executionId,
 			createWriteError: (ref, error) => new ExecutionDataWriteError(ref, error),
-			corruptedErrorClass: CorruptedExecutionDataError,
+			createCorruptedError: (ref, error) => new CorruptedExecutionDataError(ref, error),
 		});
 	}
 }

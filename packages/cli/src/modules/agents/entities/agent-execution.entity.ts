@@ -1,14 +1,8 @@
-import {
-	bigintStringToNumber,
-	DateTimeColumn,
-	type ExecutionDataStorageLocation,
-	JsonColumn,
-	WithTimestampsAndStringId,
-} from '@n8n/db';
+import { bigintStringToNumber, DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
+import type { AgentExecutionLogStorageLocation } from '@n8n/config';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
-import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
 
 export type AgentExecutionStatus = 'success' | 'error';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
@@ -57,9 +51,6 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'text' })
 	userMessage: string;
 
-	@Column({ type: 'text' })
-	assistantResponse: string;
-
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	model: string | null;
 
@@ -75,15 +66,6 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'double precision', nullable: true })
 	cost: number | null;
 
-	@JsonColumn({ nullable: true })
-	toolCalls: RecordedToolCall[] | null;
-
-	@JsonColumn({ nullable: true })
-	timeline: TimelineEvent[] | null;
-
-	@Column({ type: 'text', nullable: true })
-	error: string | null;
-
 	@Column({ type: 'varchar', length: 16, nullable: true })
 	hitlStatus: AgentExecutionHitlStatus | null;
 
@@ -91,9 +73,9 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
 
-	/** Where the agent execution log payload is stored. Defaults to `db` for migrated inline logs. */
-	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
-	storedAt: ExecutionDataStorageLocation;
+	/** Where the external agent execution log payload is stored. */
+	@Column({ type: 'varchar', length: 2, nullable: false, default: 'fs' })
+	storedAt: AgentExecutionLogStorageLocation;
 
 	/** Size in bytes of the serialized agent execution log payload. `0` means unknown. */
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })

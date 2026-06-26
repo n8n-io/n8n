@@ -6,16 +6,11 @@ import { S3BlobStore } from '../blob-storage/s3-blob-store.ee';
 import { EXECUTION_DATA_BUNDLE_VERSION, executionDataBundleKey } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
 import { ExecutionDataWriteError } from './execution-data-write.error';
-import type {
-	ExecutionDataStore,
-	ExecutionRef,
-	ExecutionDataPayload,
-	ExecutionDataBundle,
-} from './types';
+import type { ExecutionDataStore, ExecutionRef, ExecutionDataPayload } from './types';
 
 @Service()
 export class S3Store
-	extends BlobBundleStore<ExecutionRef, ExecutionDataPayload, ExecutionDataBundle>
+	extends BlobBundleStore<ExecutionRef, ExecutionDataPayload>
 	implements ExecutionDataStore
 {
 	constructor(blobStore: S3BlobStore, errorReporter: ErrorReporter) {
@@ -26,7 +21,7 @@ export class S3Store
 			key: executionDataBundleKey,
 			getId: ({ executionId }) => executionId,
 			createWriteError: (ref, error) => new ExecutionDataWriteError(ref, error),
-			corruptedErrorClass: CorruptedExecutionDataError,
+			createCorruptedError: (ref, error) => new CorruptedExecutionDataError(ref, error),
 		});
 	}
 }

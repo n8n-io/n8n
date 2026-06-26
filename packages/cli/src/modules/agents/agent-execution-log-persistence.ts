@@ -1,16 +1,13 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
-import type { EntityManager, ExecutionDataStorageLocation } from '@n8n/db';
+import { AgentsConfig, type AgentExecutionLogStorageLocation } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DbStore } from './agent-execution-log/db-store';
 import { FsStore } from './agent-execution-log/fs-store';
 import type {
 	AgentExecutionLogBundle,
 	AgentExecutionLogPayload,
 	AgentExecutionLogRef,
-	AgentExecutionLogStore,
 	DeletableAgentExecutionLogStore,
 	ExternalAgentExecutionLogRef,
 	StoredAgentExecutionLogRef,
@@ -26,10 +23,9 @@ export class AgentExecutionLogPersistence {
 		private readonly logger: Logger,
 		private readonly config: AgentsConfig,
 		private readonly fsStore: FsStore,
-		private readonly dbStore: DbStore,
 	) {}
 
-	get currentLocation(): ExecutionDataStorageLocation {
+	get currentLocation(): AgentExecutionLogStorageLocation {
 		return this.config.executionLogStorageModeTag;
 	}
 
@@ -44,10 +40,9 @@ export class AgentExecutionLogPersistence {
 	async write(
 		ref: AgentExecutionLogRef,
 		payload: AgentExecutionLogPayload,
-		location: ExecutionDataStorageLocation = this.currentLocation,
-		tx?: EntityManager,
+		location: AgentExecutionLogStorageLocation = this.currentLocation,
 	) {
-		return await this.getStoreFor(location).write(ref, payload, tx);
+		return await this.getStoreFor(location).write(ref, payload);
 	}
 
 	async readMany(refs: StoredAgentExecutionLogRef[]) {
@@ -72,7 +67,7 @@ export class AgentExecutionLogPersistence {
 		);
 	}
 
-	private groupByLocation<TLocation extends ExecutionDataStorageLocation>(
+	private groupByLocation<TLocation extends AgentExecutionLogStorageLocation>(
 		refs: Array<AgentExecutionLogRef & { storedAt: TLocation }>,
 	) {
 		const refsByLocation = new Map<TLocation, AgentExecutionLogRef[]>();
@@ -103,9 +98,7 @@ export class AgentExecutionLogPersistence {
 		return undefined;
 	}
 
-	private getStoreFor(location: ExecutionDataStorageLocation): AgentExecutionLogStore {
-		if (location === 'db') return this.dbStore;
-
+	private getStoreFor(location: AgentExecutionLogStorageLocation): DeletableAgentExecutionLogStore {
 		const store = this.getExternalStore(location);
 		if (store) return store;
 

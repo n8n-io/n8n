@@ -89,7 +89,11 @@ export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
-export { AgentsConfig } from './configs/agents.config';
+export {
+	AgentsConfig,
+	type AgentExecutionLogStorageLocation,
+	type AgentExecutionLogStorageMode,
+} from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
 export { RedisConfig } from './configs/redis.config';
 export { EndpointsConfig, PrometheusMetricsConfig };

@@ -4,12 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| assistantResponse | text |  | false |  |  |  |
 | completionTokens | integer |  | true |  |  |  |
 | cost | double precision |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | duration | integer | 0 | false |  |  |  |
-| error | text |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | logSizeBytes | bigint | 0 | false |  |  | Size in bytes of the serialized agent execution log payload. 0 means unknown. |
@@ -19,10 +17,8 @@
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
-| storedAt | varchar(2) | 'db'::character varying | false |  |  | Where the agent execution log payload is stored. Defaults to db for migrated inline logs. |
+| storedAt | varchar(2) | 'fs'::character varying | false |  |  | Where the external agent execution log payload is stored. |
 | threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
-| timeline | json |  | true |  |  |  |
-| toolCalls | json |  | true |  |  |  |
 | totalTokens | integer |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userMessage | text |  | false |  |  |  |
@@ -33,10 +29,9 @@
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
 | CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying])::text[]))) |
-| CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
+| CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
-| agent_execution_assistantResponse_not_null | n | NOT NULL "assistantResponse" |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
 | agent_execution_id_not_null | n | NOT NULL id |
@@ -62,12 +57,10 @@ erDiagram
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
-  text assistantResponse
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
   integer duration
-  text error
   varchar_16_ hitlStatus
   varchar_36_ id
   bigint logSizeBytes
@@ -79,8 +72,6 @@ erDiagram
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   varchar_128_ threadId FK
-  json timeline
-  json toolCalls
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
   text userMessage
