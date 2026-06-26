@@ -13,6 +13,7 @@ import {
 	getTeamsCredentialType,
 	joinedTeamsEndpoint,
 	microsoftApiRequest,
+	microsoftApiRequestAllItems,
 	SERVICE_PRINCIPAL_AUTH,
 } from '../transport';
 
@@ -98,8 +99,12 @@ export async function getTeams(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	const { value } = await microsoftApiRequest.call(
+	// `/v1.0/teams` (SP) and `/v1.0/me/joinedTeams` (OAuth2) are both Graph-paginated
+	// collections — page through `@odata.nextLink` so all org teams are returned, not
+	// just the first ~100. `microsoftApiRequestAllItems` returns the flattened `value`.
+	const value = await microsoftApiRequestAllItems.call(
 		this,
+		'value',
 		'GET',
 		joinedTeamsEndpoint.call(this),
 	);

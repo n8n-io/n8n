@@ -107,6 +107,35 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
 	});
 
+	it('channelMessage:getAll under SP hits the exact raw /beta path (colon id, not encoded, no /me)', async () => {
+		(transport.microsoftApiRequestAllItems as Mock).mockResolvedValue([{ id: 'm1' }]);
+		ctx.helpers.returnJsonArray = vi.fn((data) =>
+			(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+		) as unknown as IExecuteFunctions['helpers']['returnJsonArray'];
+		ctx.helpers.constructExecutionMetaData = vi.fn(
+			(data) => data,
+		) as unknown as IExecuteFunctions['helpers']['constructExecutionMetaData'];
+		selectSp({
+			resource: 'channelMessage',
+			operation: 'getAll',
+			teamId: '1111-2222-3333',
+			channelId: '19:abc@thread.tacv2',
+			returnAll: true,
+		});
+
+		await node.execute.call(ctx);
+
+		expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
+			'value',
+			'GET',
+			'/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages',
+		);
+		const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2] as string;
+		expect(calledPath).not.toContain('%3A');
+		// no `/me` user-scope segment (the `me` in `/messages` is not a segment)
+		expect(calledPath).not.toMatch(/\/me(\/|$)/);
+	});
+
 	describe('task:getAll under SP', () => {
 		it('forces plan mode, never reads tasksFor, and hits the exact plan-tasks path', async () => {
 			(transport.microsoftApiRequestAllItems as Mock).mockResolvedValue([{ id: 't1' }]);

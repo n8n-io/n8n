@@ -126,6 +126,17 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			const planCopies = byName(taskGetAllFields, 'planId');
 			expect(planCopies.some((p) => isSpShown(p))).toBe(true);
 		});
+
+		it('the SP-shown plan picker defaults to By-ID mode with no auto-firing list', () => {
+			const spPlan = byName(taskGetAllFields, 'planId').find((p) => isSpShown(p));
+			expect(spPlan).toBeDefined();
+			// By-ID default so the dropdown never auto-fires getPlans with an empty groupId
+			// (which would hit the SP empty-id validation error).
+			expect((spPlan?.default as { mode?: string })?.mode).toBe('id');
+			// no list mode, and no group dependency that would trigger a load.
+			expect(spPlan?.modes?.some((m) => m.name === 'list')).toBe(false);
+			expect(spPlan?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+		});
 	});
 
 	describe('trigger — watch-all and chat fields hidden under SP', () => {
