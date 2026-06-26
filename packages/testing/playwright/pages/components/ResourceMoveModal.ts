@@ -26,6 +26,14 @@ export class ResourceMoveModal extends FloatingUiHelper {
 		return this.page.getByTestId('move-to-folder-dropdown');
 	}
 
+	async openProjectSelect(): Promise<void> {
+		await this.getProjectSelectCredential().locator('input').click();
+	}
+
+	getProjectOptions(): Locator {
+		return this.getVisiblePopoverOption();
+	}
+
 	async selectProjectOption(projectNameOrEmail: string): Promise<void> {
 		const options = this.getVisiblePopoverOption();
 		// Try to find by exact text (project name or email)

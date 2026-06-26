@@ -149,6 +149,11 @@ export class WorkflowService {
 			sharingOptions.workflowRoles = workflowRoles;
 		}
 
+		const callableForParentWorkflowId = await this.resolveCallableForParentWorkflowId(
+			user,
+			options,
+		);
+
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
 			[workflowsAndFolders, count] =
@@ -156,6 +161,7 @@ export class WorkflowService {
 					user,
 					sharingOptions,
 					options,
+					callableForParentWorkflowId,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -164,6 +170,7 @@ export class WorkflowService {
 				user,
 				sharingOptions,
 				options,
+				callableForParentWorkflowId,
 			));
 		}
 
@@ -200,6 +207,27 @@ export class WorkflowService {
 			workflows,
 			count,
 		};
+	}
+
+	private async resolveCallableForParentWorkflowId(
+		user: User,
+		options?: ListQuery.Options,
+	): Promise<string | undefined> {
+		if (options?.filter?.includeCallableSubworkflows !== true) return undefined;
+
+		const parentWorkflowId =
+			typeof options.filter.parentWorkflowId === 'string'
+				? options.filter.parentWorkflowId
+				: undefined;
+		if (!parentWorkflowId) return undefined;
+
+		const parentWorkflow = await this.workflowFinderService.findWorkflowForUser(
+			parentWorkflowId,
+			user,
+			['workflow:read'],
+		);
+
+		return parentWorkflow ? parentWorkflowId : undefined;
 	}
 
 	private async addResolvableCredentialsFlag<
@@ -391,9 +419,11 @@ export class WorkflowService {
 				},
 			);
 
-			// To save a version, we need both nodes and connections
+			// A saved version needs nodes, connections, and node groups; backfill any the update
+			// omitted from the persisted workflow so the history row records the effective state.
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
+			workflowUpdateData.nodeGroups = workflowUpdateData.nodeGroups ?? workflow.nodeGroups;
 		} else {
 			// Do not let users change versionId directly
 			workflowUpdateData.versionId = workflow.versionId;
@@ -405,10 +435,18 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
-		WorkflowHelpers.validateWorkflowNodeGroups({
-			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
-		});
+		// Validate node groups only for structural changes; a metadata-only edit re-persists
+		// already-validated groups, so re-checking is redundant and could block on legacy data.
+		if (saveNewVersion) {
+			WorkflowHelpers.validateWorkflowNodeGroups(
+				{
+					nodes: workflowUpdateData.nodes,
+					nodeGroups: workflowUpdateData.nodeGroups,
+					connections: workflowUpdateData.connections,
+				},
+				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			);
+		}
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (
@@ -995,6 +1033,13 @@ export class WorkflowService {
 
 		if (!workflow) {
 			return;
+		}
+
+		if (
+			this.globalConfig.workflows.useWorkflowPublicationService &&
+			workflow.activeVersionId !== null
+		) {
+			throw new ConflictError('Cannot delete a published workflow. Unpublish it before deleting.');
 		}
 
 		if (!workflow.isArchived && !force) {

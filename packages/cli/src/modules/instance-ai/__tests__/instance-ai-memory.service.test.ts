@@ -10,6 +10,7 @@ const mockDeleteThreadsByResourceIdPrefix = jest.fn();
 const mockListThreads = jest.fn();
 const mockSaveThreadWithProject = jest.fn();
 const mockGetThreadProjectId = jest.fn();
+const mockSaveMessages = jest.fn();
 const mockAgentMemory = {
 	listMessages: mockListMessages,
 	getThread: mockGetThread,
@@ -19,6 +20,7 @@ const mockAgentMemory = {
 	listThreads: mockListThreads,
 	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
+	saveMessages: mockSaveMessages,
 };
 
 // Mock GlobalConfig
@@ -184,11 +186,13 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		expect(result.messages).toEqual([]);
 	});
 
-	it('surfaces in-flight user message from a suspended checkpoint when memory is empty', async () => {
+	it('surfaces in-flight checkpoint messages not yet committed to memory', async () => {
 		// A turn that suspended at HITL never gets `saveToMemory` called by the
-		// SDK, so the user prompt + intermediate assistant messages live only
-		// in `state.messageList.messages`. The /messages endpoint should
-		// surface them so a page reload doesn't drop the original user message.
+		// SDK. The inbound user message is persisted on receipt, but the
+		// intermediate assistant messages (and any pending tool-call) live only
+		// in `state.messageList.messages` until the turn resumes and completes.
+		// The /messages endpoint should surface them so a page reload doesn't
+		// drop in-flight artifacts.
 		mockListMessages.mockResolvedValue({ messages: [] });
 		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
 			{
@@ -340,6 +344,87 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		expect(result.created).toBe(false);
 		expect(result.thread.title).toBe('Existing');
 	});
+});
+
+describe('InstanceAiMemoryService.restoreThreadMessages', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('preserves message ids and content verbatim, coercing createdAt back to a Date', async () => {
+		const service = createService();
+
+		const result = await service.restoreThreadMessages('user-1', 'thread-1', [
+			{
+				id: 'msg-user',
+				type: 'llm',
+				role: 'user',
+				content: [{ type: 'text', text: 'Send a daily digest to #cosmic-otter-alerts' }],
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+			{
+				id: 'msg-assistant',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Built it.' },
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						state: 'resolved',
+						input: { code: '…' },
+						output: { success: true, workflowId: 'wf-1' },
+					},
+				],
+				createdAt: '2026-01-01T00:00:01.000Z',
+			},
+		]);
+
+		expect(mockSaveMessages).toHaveBeenCalledTimes(1);
+		const args = mockSaveMessages.mock.calls[0][0];
+		expect(args.threadId).toBe('thread-1');
+		expect(args.resourceId).toBe('user-1');
+		expect(args.messages).toHaveLength(2);
+		// Verbatim restore: same ids and content blocks, createdAt as ascending Dates.
+		expect(args.messages[0].id).toBe('msg-user');
+		expect(args.messages[1].content[1].toolCallId).toBe('tc-1');
+		expect(args.messages[0].createdAt).toEqual(new Date('2026-01-01T00:00:00.000Z'));
+		expect(args.messages[1].createdAt).toEqual(new Date('2026-01-01T00:00:01.000Z'));
+		expect(result).toEqual({ restored: 2 });
+	});
+
+	it('accepts custom messages (no role, data payload)', async () => {
+		const service = createService();
+
+		await service.restoreThreadMessages('user-1', 'thread-1', [
+			{
+				id: 'msg-custom',
+				type: 'custom',
+				data: { widget: 'setup-card' },
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+		]);
+
+		expect(mockSaveMessages.mock.calls[0][0].messages[0].data).toEqual({ widget: 'setup-card' });
+	});
+
+	it.each([
+		['missing id', { role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' }],
+		['unparseable createdAt', { id: 'm', role: 'user', content: [], createdAt: 'not-a-date' }],
+		['missing content', { id: 'm', role: 'user', createdAt: '2026-01-01T00:00:00.000Z' }],
+		['custom without data', { id: 'm', type: 'custom', createdAt: '2026-01-01T00:00:00.000Z' }],
+	])(
+		'rejects a structurally invalid message (%s) without writing anything',
+		async (_label, bad) => {
+			const service = createService();
+
+			await expect(service.restoreThreadMessages('user-1', 'thread-1', [bad])).rejects.toThrow(
+				'Seed message at index 0',
+			);
+			expect(mockSaveMessages).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe('InstanceAiMemoryService.deleteThread', () => {

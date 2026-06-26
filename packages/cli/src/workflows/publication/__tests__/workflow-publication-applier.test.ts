@@ -105,6 +105,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowHistoryRepository.findOneBy.mockResolvedValue(newVersion);
 		workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
 		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
+		workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
 		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
@@ -271,6 +272,44 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
+		);
+	});
+
+	test('reconciles by registering desired webhook nodes missing from storage', async () => {
+		// Same version on both sides: the version diff is empty, but a desired
+		// webhook is not registered locally (e.g. a crash after the version
+		// advanced), so it must be re-added.
+		const trigger = triggerNode('a');
+		setTriggerSets([trigger], [{ ...trigger }]);
+		workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set(['a']));
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'completed' });
+		expect(workflowTriggerActivator.getNodesWithUnregisteredWebhooks).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'wf-1' }),
+			newVersion,
+		);
+		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'wf-1' }),
+			newVersion,
+			new Set(['a']),
+		);
+	});
+
+	test('merges webhook reconciliation with the version diff', async () => {
+		// The diff adds 'b'; reconciliation surfaces an unregistered webhook 'c'.
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+		workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set(['c']));
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'completed' });
+		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'wf-1' }),
+			newVersion,
+			new Set(['b', 'c']),
 		);
 	});
 

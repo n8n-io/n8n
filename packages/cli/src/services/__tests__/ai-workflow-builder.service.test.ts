@@ -1,23 +1,23 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
+import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
+import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 import type * as fs from 'node:fs';
 import type * as fsp from 'node:fs/promises';
-import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { SsrfProtectionService } from '@n8n/backend-network';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	AiWorkflowBuilderService: jest.fn(),
@@ -51,6 +51,7 @@ describe('WorkflowBuilderService', () => {
 	let mockSessionRepository: WorkflowBuilderSessionRepository;
 	let mockSsrfProtectionConfig: SsrfProtectionConfig;
 	let mockSsrfProtectionService: SsrfProtectionService;
+	let mockOutboundHttp: OutboundHttp;
 	let mockUser: IUser;
 
 	beforeEach(() => {
@@ -99,6 +100,10 @@ describe('WorkflowBuilderService', () => {
 		// gating tests override this.
 		mockSsrfProtectionConfig.enabled = false;
 		mockSsrfProtectionService = mock<SsrfProtectionService>();
+		mockOutboundHttp = mock<OutboundHttp>();
+		const mockTransport = mock<HttpTransport>();
+		mockTransport.asCustomFetch.mockReturnValue(jest.fn() as never);
+		(mockOutboundHttp.transport as jest.Mock).mockReturnValue(mockTransport);
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
@@ -126,6 +131,7 @@ describe('WorkflowBuilderService', () => {
 			mockSessionRepository,
 			mockSsrfProtectionConfig,
 			mockSsrfProtectionService,
+			mockOutboundHttp,
 		);
 	});
 
@@ -167,6 +173,7 @@ describe('WorkflowBuilderService', () => {
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
 				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
+				expect.any(Function), // modelFetch (proxy-aware fetch from OutboundHttp)
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
@@ -213,6 +220,7 @@ describe('WorkflowBuilderService', () => {
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
 				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
+				expect.any(Function), // modelFetch (proxy-aware fetch from OutboundHttp)
 			);
 		});
 
@@ -837,6 +845,11 @@ describe('WorkflowBuilderService - node type loading', () => {
 		);
 		MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
 
+		const outboundHttp = mock<OutboundHttp>();
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(jest.fn() as never);
+		outboundHttp.transport.mockReturnValue(transport);
+
 		const builderService = new WorkflowBuilderService(
 			loadNodesAndCredentials,
 			mock<License>({
@@ -853,6 +866,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 			mock<SsrfProtectionConfig>(),
 			mock<SsrfProtectionService>(),
+			outboundHttp,
 		);
 
 		const mockUser = mock<IUser>();

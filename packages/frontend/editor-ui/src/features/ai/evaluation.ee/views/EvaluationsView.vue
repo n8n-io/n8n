@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import ConcurrencySlider from '../components/ConcurrencySlider';
 import RunsSection from '../components/ListRuns/RunsSection.vue';
@@ -11,6 +11,7 @@ import { useEvaluationStore } from '../evaluation.store';
 import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nButton, N8nIcon, N8nPopover } from '@n8n/design-system';
 
@@ -20,6 +21,7 @@ const props = defineProps<{
 
 const locale = useI18n();
 const toast = useToast();
+const telemetry = useTelemetry();
 
 const evaluationStore = useEvaluationStore();
 const parallelEvalStore = useParallelEvalStore();
@@ -27,6 +29,25 @@ const parallelEvalStore = useParallelEvalStore();
 const selectedMetric = ref<string>('');
 const cancellingTestRun = ref<boolean>(false);
 const popoverOpen = ref(false);
+// Configs load async on mount. Until they resolve we can't tell a "no config"
+// workflow apart from one whose configs simply haven't arrived yet, so the
+// primary Run Test button stays disabled to avoid kicking off an unintended
+// direct run.
+const configsLoading = ref<boolean>(true);
+
+const activeConfigId = computed<string | null>(() => {
+	const configs = evaluationStore.evaluationConfigsByWorkflowId[props.workflowId];
+	// The eval-config flow creates a single config per workflow, so the first
+	// entry is the active one. If multi-config support lands, this needs to
+	// become an explicit user selection rather than an implicit first().
+	return configs?.[0]?.id ?? null;
+});
+
+// The split-button caret + popover appear when there's something to put in the
+// popover: concurrency controls and/or the "Run workflow" direct-run option.
+const showRunPopover = computed(
+	() => parallelEvalStore.isConcurrencyAvailable || activeConfigId.value !== null,
+);
 
 const runningTestRun = computed(() => runs.value.find((run) => run.status === 'running'));
 
@@ -47,14 +68,35 @@ const valuePillLabel = computed(() =>
 	}),
 );
 
-async function runTest() {
+onMounted(async () => {
 	try {
-		// `effectiveConcurrency` already returns 1 when concurrency is
-		// unavailable on this instance, so the BE clamp is a no-op there.
-		const options = parallelEvalStore.isConcurrencyAvailable
+		await evaluationStore.fetchEvaluationConfigs(props.workflowId);
+	} catch (error) {
+		// Non-fatal: the run falls back to a direct run. Warn the user so a
+		// missing config doesn't silently produce a config-less run.
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchConfigs'));
+	} finally {
+		configsLoading.value = false;
+	}
+});
+
+async function runTest(runType: 'config' | 'direct' = 'config') {
+	try {
+		const configId = runType === 'config' ? activeConfigId.value : null;
+		// `concurrency` is only sent when available; a plain direct run sends no
+		// options at all (undefined) so the request body stays empty.
+		const concurrencyOptions = parallelEvalStore.isConcurrencyAvailable
 			? { concurrency: concurrencyModel.value }
 			: undefined;
+		const options =
+			configId !== null
+				? { ...concurrencyOptions, evaluationConfigId: configId, compileFromConfig: true }
+				: concurrencyOptions;
 		await evaluationStore.startTestRun(props.workflowId, options);
+		telemetry.track('User ran evaluation', {
+			workflow_id: props.workflowId,
+			run_type: configId !== null ? 'config' : 'direct',
+		});
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
@@ -106,8 +148,8 @@ watch(runningTestRun, (run) => {
 		<div :class="$style.header">
 			<div :class="$style.headerInner">
 				<N8nButton
-					variant="subtle"
 					v-if="runningTestRun"
+					variant="subtle"
 					:disabled="cancellingTestRun"
 					:class="$style.runOrStopTestButton"
 					size="small"
@@ -118,25 +160,25 @@ watch(runningTestRun, (run) => {
 				<div v-else :class="$style.runTestGroup">
 					<!--
 						Split-button: solid "Run Test" on the left, caret toggle on the
-						right that opens a popover containing the concurrency slider.
-						The caret + popover are hidden entirely when the effective
-						evaluation concurrency limit resolves to 1 (Community/Pro tier
-						or explicit env override), collapsing the group back to a
-						single Run Test button — byte-identical to the legacy flow.
+						right that opens a popover.
+						When an evaluation config exists: primary click runs with the
+						config; the popover exposes a "Run workflow" option (direct run)
+						and optionally the concurrency slider.
+						When no config exists: same as before – popover shows only the
+						concurrency slider, and the caret is hidden when concurrency is
+						also unavailable.
 					-->
 					<N8nButton
 						variant="solid"
 						size="small"
-						:class="[
-							$style.runTestButton,
-							parallelEvalStore.isConcurrencyAvailable ? $style.runTestButtonWithCaret : null,
-						]"
+						:loading="configsLoading"
+						:class="[$style.runTestButton, showRunPopover ? $style.runTestButtonWithCaret : null]"
 						data-test-id="run-test-button"
 						:label="locale.baseText('evaluation.runTest')"
-						@click="runTest"
+						@click="runTest()"
 					/>
 					<N8nPopover
-						v-if="parallelEvalStore.isConcurrencyAvailable"
+						v-if="showRunPopover"
 						v-model:open="popoverOpen"
 						side="bottom"
 						align="end"
@@ -156,33 +198,55 @@ watch(runningTestRun, (run) => {
 						</template>
 						<template #content>
 							<div :class="$style.popoverBody" data-test-id="parallel-eval-controls">
-								<div :class="$style.popoverHeader">
-									<span :class="$style.popoverTitle">
-										{{ locale.baseText('evaluation.runInParallel.popover.title') }}
-									</span>
-									<span :class="$style.valuePill" data-test-id="run-in-parallel-mode-label">
-										{{ valuePillLabel }}
-									</span>
-								</div>
-								<ConcurrencySlider
-									v-model="concurrencyModel"
-									:min="1"
-									:max="parallelEvalStore.maxConcurrency"
-									:step="1"
-									show-stops
-									:show-tooltip="false"
-									:class="$style.concurrencySlider"
-									data-test-id="run-in-parallel-concurrency"
-								/>
-								<div :class="$style.scaleLabels">
-									<span>{{
-										locale.baseText('evaluation.runInParallel.popover.scaleSequential')
-									}}</span>
-									<span>{{ locale.baseText('evaluation.runInParallel.popover.scaleFaster') }}</span>
-								</div>
-								<p :class="$style.popoverHelper">
-									{{ locale.baseText('evaluation.runInParallel.popover.helper') }}
-								</p>
+								<!-- "Run workflow" option – direct run, only shown when a config exists -->
+								<template v-if="activeConfigId !== null">
+									<N8nButton
+										variant="subtle"
+										size="small"
+										:label="locale.baseText('evaluation.runWorkflow')"
+										data-test-id="run-workflow-direct-button"
+										@click="
+											runTest('direct');
+											popoverOpen = false;
+										"
+									/>
+									<hr
+										v-if="parallelEvalStore.isConcurrencyAvailable"
+										:class="$style.popoverDivider"
+									/>
+								</template>
+								<!-- Concurrency controls – only shown when concurrency is available -->
+								<template v-if="parallelEvalStore.isConcurrencyAvailable">
+									<div :class="$style.popoverHeader">
+										<span :class="$style.popoverTitle">
+											{{ locale.baseText('evaluation.runInParallel.popover.title') }}
+										</span>
+										<span :class="$style.valuePill" data-test-id="run-in-parallel-mode-label">
+											{{ valuePillLabel }}
+										</span>
+									</div>
+									<ConcurrencySlider
+										v-model="concurrencyModel"
+										:min="1"
+										:max="parallelEvalStore.maxConcurrency"
+										:step="1"
+										show-stops
+										:show-tooltip="false"
+										:class="$style.concurrencySlider"
+										data-test-id="run-in-parallel-concurrency"
+									/>
+									<div :class="$style.scaleLabels">
+										<span>{{
+											locale.baseText('evaluation.runInParallel.popover.scaleSequential')
+										}}</span>
+										<span>{{
+											locale.baseText('evaluation.runInParallel.popover.scaleFaster')
+										}}</span>
+									</div>
+									<p :class="$style.popoverHelper">
+										{{ locale.baseText('evaluation.runInParallel.popover.helper') }}
+									</p>
+								</template>
 							</div>
 						</template>
 					</N8nPopover>
@@ -335,6 +399,12 @@ watch(runningTestRun, (run) => {
 	// the inherited radius wins.
 	border-radius: 10px;
 	background-color: var(--background--surface);
+}
+
+.popoverDivider {
+	border: none;
+	border-top: 1px solid var(--border-color);
+	margin: 0;
 }
 
 .popoverHeader {

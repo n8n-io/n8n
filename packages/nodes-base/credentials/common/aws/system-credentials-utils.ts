@@ -3,6 +3,8 @@ import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 
+import { getAwsDomain, type AWSRegion } from './regions';
+
 type Resolvers =
 	| 'environment'
 	| 'roleForServiceAccount'
@@ -17,12 +19,17 @@ type ReturnData = {
 
 export const envGetter = (key: string): string | undefined => process.env[key];
 
-export const credentialsResolver: Record<Resolvers, () => Promise<ReturnData | null>> = {
+// Region-independent AWS credential providers, keyed by source.
+// `roleForServiceAccount` is excluded here because it needs the region to build
+// the regional STS endpoint; it's bound into the chain in `getSystemCredentials`.
+export const credentialsResolver: Record<
+	Exclude<Resolvers, 'roleForServiceAccount'>,
+	() => Promise<ReturnData | null>
+> = {
 	environment: getEnvironmentCredentials,
-	instanceMetadata: getInstanceMetadataCredentials,
-	containerMetadata: getContainerMetadataCredentials,
 	podIdentity: getPodIdentityCredentials,
-	roleForServiceAccount: getRoleForServiceAccountCredentials,
+	containerMetadata: getContainerMetadataCredentials,
+	instanceMetadata: getInstanceMetadataCredentials,
 };
 
 /**
@@ -34,25 +41,30 @@ export const credentialsResolver: Record<Resolvers, () => Promise<ReturnData | n
  * 4. ECS/Fargate container metadata (AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
  * 5. EC2 instance metadata service
  */
-export async function getSystemCredentials() {
+export async function getSystemCredentials(region: AWSRegion) {
 	if (!Container.get(SecurityConfig).awsSystemCredentialsAccess) {
 		throw new UserError('Access to AWS system credentials disabled, contact your administrator.');
 	}
 
-	const resolveOrder: Resolvers[] = [
-		'environment',
-		'roleForServiceAccount',
-		'podIdentity',
-		'containerMetadata',
-		'instanceMetadata',
+	// Ordered AWS credential chain; the first provider to return credentials wins.
+	// `roleForServiceAccount` is bound with the region for its regional STS endpoint.
+	const chain: Array<{ source: Resolvers; resolve: () => Promise<ReturnData | null> }> = [
+		{ source: 'environment', resolve: credentialsResolver.environment },
+		{
+			source: 'roleForServiceAccount',
+			resolve: async () => await getRoleForServiceAccountCredentials(region),
+		},
+		{ source: 'podIdentity', resolve: credentialsResolver.podIdentity },
+		{ source: 'containerMetadata', resolve: credentialsResolver.containerMetadata },
+		{ source: 'instanceMetadata', resolve: credentialsResolver.instanceMetadata },
 	];
 
-	for (const resolver of resolveOrder) {
+	for (const { source, resolve } of chain) {
 		try {
-			const credentials = await credentialsResolver[resolver]();
-			if (credentials) return { ...credentials, source: resolver };
-		} catch (error) {
-			// Ignore and continue to the next resolver
+			const credentials = await resolve();
+			if (credentials) return { ...credentials, source };
+		} catch {
+			// Provider unavailable in this environment; try the next one.
 		}
 	}
 
@@ -286,7 +298,7 @@ async function getPodIdentityCredentials() {
  * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html STS API}
  * @see {@link https://github.com/aws/aws-sdk-js-v3/blob/main/packages-internal/credential-provider-web-identity/src/fromWebToken.ts AWS SDK v3 implementation}
  */
-async function getRoleForServiceAccountCredentials() {
+export async function getRoleForServiceAccountCredentials(region: AWSRegion) {
 	const iamRole = envGetter('AWS_ROLE_ARN');
 	const webIdentityTokenFile = envGetter('AWS_WEB_IDENTITY_TOKEN_FILE');
 
@@ -314,9 +326,9 @@ async function getRoleForServiceAccountCredentials() {
 			Version: '2011-06-15',
 		});
 
-		// Global STS endpoint; China/GovCloud regions unsupported until region is passed through getSystemCredentials
+		// Regional STS endpoint so EKS/IRSA works in standard, China (.com.cn) and GovCloud regions.
 		// STS supports Accept: application/json (undocumented) to return JSON instead of XML.
-		const credentialsResponse = await fetch('https://sts.amazonaws.com', {
+		const credentialsResponse = await fetch(`https://sts.${region}.${getAwsDomain(region)}`, {
 			method: 'POST',
 			headers,
 			body: body.toString(),

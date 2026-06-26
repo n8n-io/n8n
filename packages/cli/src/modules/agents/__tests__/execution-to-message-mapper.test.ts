@@ -191,4 +191,95 @@ describe('execution-to-message-mapper', () => {
 			'execution-2:assistant',
 		]);
 	});
+
+	it('settles an earlier suspended tool call from a later resumed execution', () => {
+		const result = executionsToMessagesDto([
+			execution({
+				id: 'execution-suspended',
+				userMessage: 'Show me an action',
+				timeline: [
+					{ type: 'text', content: 'Pick one.', timestamp: 100, endTime: 110 },
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-action',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									text: 'Choose',
+									card: {
+										components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+									},
+								},
+							},
+						},
+						output: undefined,
+						startTime: 120,
+						endTime: 0,
+						success: false,
+					},
+				],
+			}),
+			execution({
+				id: 'execution-resumed',
+				userMessage: '',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-action',
+						input: undefined,
+						output: { type: 'button', value: 'approve' },
+						startTime: 200,
+						endTime: 220,
+						success: true,
+					},
+					{ type: 'text', content: 'Approved.', timestamp: 230, endTime: 240 },
+				],
+			}),
+		]);
+
+		expect(result).toEqual([
+			{
+				id: 'execution-suspended:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Show me an action' }],
+			},
+			{
+				id: 'execution-suspended:assistant',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Pick one.' },
+					{
+						type: 'tool-call',
+						toolName: 'chat_action',
+						toolCallId: 'tc-action',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									text: 'Choose',
+									card: {
+										components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+									},
+								},
+							},
+						},
+						startTime: 120,
+						endTime: 220,
+						state: 'resolved',
+						output: { type: 'button', value: 'approve' },
+					},
+				],
+			},
+			{
+				id: 'execution-resumed:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Approved.' }],
+			},
+		]);
+	});
 });

@@ -744,6 +744,52 @@ describe('RoleController', () => {
 		});
 	});
 
+	describe('GET /roles/:slug/members', () => {
+		it('should require authentication', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await testServer.authlessAgent.get('/roles/global:admin/members').expect(401);
+		});
+
+		it('should require role:read permission', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await memberAgent.get('/roles/global:admin/members').expect(403);
+		});
+
+		it('should return the role members for a holder of role:read', async () => {
+			//
+			// ARRANGE
+			//
+			const mockResponse = {
+				members: [
+					{
+						userId: 'user-1',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+						email: 'ada@example.com',
+						role: 'global:admin',
+					},
+				],
+				total: 1,
+			};
+			roleService.getRoleMembers.mockResolvedValue(mockResponse);
+
+			//
+			// ACT
+			//
+			const response = await ownerAgent.get('/roles/global:admin/members').expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response.body).toEqual({ data: mockResponse });
+			expect(roleService.getRoleMembers).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('POST /roles', () => {
 		it('should require authentication', async () => {
 			//

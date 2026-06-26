@@ -44,7 +44,13 @@ import { v4 as uuid } from 'uuid';
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createChatUser, createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	createChatUser,
+	createManyUsers,
+	createMember,
+	createOwner,
+	createUser,
+} from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -694,11 +700,70 @@ describe('POST /workflows', () => {
 		expect(response.body.data.shared).toBeUndefined();
 	});
 
-	test('create workflow without parent is provided folder does not exist in the project', async () => {
+	test('rejects workflow creation when parent folder does not exist in the project', async () => {
 		//
 		// ARRANGE
 		//
-		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, parentFolderId: 'non-existing-folder-id' })
+			.expect(404);
+
+		const workflowsInDb = await workflowRepository.findBy({ name: workflow.name });
+		expect(workflowsInDb).toHaveLength(0);
+	});
+
+	test('ignores parentFolder object when creating workflow', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+		const targetProject = await createTeamProject('Target Project', owner);
+		await Container.get(ProjectService).addUser(targetProject.id, {
+			userId: member.id,
+			role: 'project:viewer',
+		});
+		const targetFolder = await createFolder(targetProject, { name: 'Target Folder' });
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		const response = await authMemberAgent
+			.post('/workflows')
+			.send({
+				...workflow,
+				projectId: sourceProject.id,
+				parentFolder: { id: targetFolder.id, name: targetFolder.name },
+			})
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		// The supplied cross-project `parentFolder` must be ignored: the workflow is created at
+		// the root of the source project, never attached to the target project's folder.
+		expect(response.body.data.homeProject.id).toBe(sourceProject.id);
+		expect(response.body.data.parentFolder).toBeNull();
+
+		const createdWorkflow = await workflowRepository.findOne({
+			where: { id: response.body.data.id },
+			relations: ['parentFolder'],
+		});
+		expect(createdWorkflow?.parentFolder).toBeNull();
+	});
+
+	test('ignores parentFolder null when creating workflow', async () => {
+		//
+		// ARRANGE
+		//
+		// Mirrors the duplicate-from-card flow, which echoes the source workflow back —
+		// including `parentFolder: null` for a workflow that lives in the project root.
 		const workflow = makeWorkflow();
 
 		//
@@ -706,28 +771,38 @@ describe('POST /workflows', () => {
 		//
 		const response = await authOwnerAgent
 			.post('/workflows')
-			.send({ ...workflow, parentFolderId: 'non-existing-folder-id' })
+			.send({ ...workflow, parentFolder: null })
 			.expect(200);
 
 		//
 		// ASSERT
 		//
+		expect(response.body.data.parentFolder).toBeNull();
+	});
 
-		expect(response.body.data).toMatchObject({
-			active: false,
-			activeVersionId: null,
-			id: expect.any(String),
-			name: workflow.name,
-			sharedWithProjects: [],
-			usedCredentials: [],
-			homeProject: {
-				id: personalProject.id,
-				name: personalProject.name,
-				type: personalProject.type,
-			},
-			parentFolder: null,
+	test('rejects parentFolderId from another project when creating workflow', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+		const targetProject = await createTeamProject('Target Project', owner);
+		await Container.get(ProjectService).addUser(targetProject.id, {
+			userId: member.id,
+			role: 'project:viewer',
 		});
-		expect(response.body.data.shared).toBeUndefined();
+		const targetFolder = await createFolder(targetProject, { name: 'Target Folder' });
+		const workflow = makeWorkflow();
+
+		//
+		// ACT & ASSERT
+		//
+		await authMemberAgent
+			.post('/workflows')
+			.send({ ...workflow, projectId: sourceProject.id, parentFolderId: targetFolder.id })
+			.expect(404);
+
+		const workflowsInDb = await workflowRepository.findBy({ name: workflow.name });
+		expect(workflowsInDb).toHaveLength(0);
 	});
 
 	describe('Security: Mass Assignment Protection', () => {
@@ -1705,6 +1780,187 @@ describe('GET /workflows', () => {
 				.expect(200);
 
 			expect(response.body.data).toHaveLength(1); // Should return all workflows when nodeTypes is empty
+		});
+
+		describe('includeCallableSubworkflows', () => {
+			const executeWorkflowTriggerNode = (id = uuid()) => ({
+				id,
+				name: 'When Executed by Another Workflow',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+			});
+
+			test('should include workflows callable by the parent workflow based on callerPolicy', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// callerPolicy: 'any' — callable by everyone
+				const anyPolicyWorkflow = await createWorkflow(
+					{
+						name: 'Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' },
+					},
+					owner,
+				);
+
+				// callerPolicy: 'workflowsFromAList' — parentWorkflow is explicitly listed
+				const fromListWorkflow = await createWorkflow(
+					{
+						name: 'From List Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				// callerPolicy: 'none' — callable by nobody
+				await createWorkflow(
+					{
+						name: 'None Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'none' },
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				expect(returnedIds).toContain(anyPolicyWorkflow.id);
+				expect(returnedIds).toContain(fromListWorkflow.id);
+				expect(returnedIds).not.toContain(
+					(
+						await createWorkflow(
+							{
+								name: 'None Policy Check',
+								nodes: [executeWorkflowTriggerNode()],
+								settings: { callerPolicy: 'none' },
+							},
+							owner,
+						)
+					).id,
+				);
+			});
+
+			test('should not include callable workflows when includeCallableSubworkflows is false', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				const anyPolicyWorkflow = await createWorkflow(
+					{
+						name: 'Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' },
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: false,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member doesn't own anyPolicyWorkflow, so without expansion it should not be visible
+				expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
+			});
+
+			test('should not expand the list when the requester cannot read the parent workflow', async () => {
+				// Parent workflow owned by `owner`, inaccessible to `member`.
+				const parentWorkflow = await createWorkflow({ name: 'Owner Parent' }, owner);
+
+				// Subworkflow owned by the same owner, callable by same-owner workflows.
+				const sameOwnerSubworkflow = await createWorkflow(
+					{
+						name: 'Same Owner Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'workflowsFromSameOwner' },
+					},
+					owner,
+				);
+
+				// Subworkflow that explicitly allowlists the inaccessible parent id.
+				const fromListSubworkflow = await createWorkflow(
+					{
+						name: 'From List Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member cannot read the supplied parent workflow, so callable
+				// subworkflows must not be exposed regardless of caller policy.
+				expect(returnedIds).not.toContain(sameOwnerSubworkflow.id);
+				expect(returnedIds).not.toContain(fromListSubworkflow.id);
+			});
+
+			test('should match callerIds by whole id, not by substring', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// Allowlist contains the parent id only as a substring of a longer id.
+				const substringSubworkflow = await createWorkflow(
+					{
+						name: 'Substring Allowlist',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: `${parentWorkflow.id}-extra-suffix`,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// parentWorkflow.id is only a substring of the allowlisted id, so it must
+				// not be treated as an allowed caller.
+				expect(returnedIds).not.toContain(substringSubworkflow.id);
+			});
 		});
 	});
 
@@ -4939,5 +5195,67 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 			.expect(200);
 
 		expect(response.body.data).toBeNull();
+	});
+});
+
+describe('POST /workflows/with-node-types', () => {
+	const NODE_TYPE = 'n8n-nodes-base.set';
+
+	const createWorkflowWithNode = async (user: User) =>
+		await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Set',
+						type: NODE_TYPE,
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+					},
+				],
+			},
+			user,
+		);
+
+	test('should return matching workflows for owner (has workflow:read)', async () => {
+		await createWorkflowWithNode(owner);
+
+		const response = await authOwnerAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+	});
+
+	test('should return empty for member lacking workflow:read', async () => {
+		await createWorkflowWithNode(owner);
+
+		const response = await authMemberAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ data: [], count: 0 });
+	});
+
+	test('should return matching workflows for custom global role with workflow:read', async () => {
+		await createWorkflowWithNode(owner);
+
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+			roleType: 'global',
+			displayName: 'Global Workflow Reader',
+		});
+		const customUser = await createUser({ role });
+		const customAgent = testServer.authAgentFor(customUser);
+
+		const response = await customAgent
+			.post('/workflows/with-node-types')
+			.send({ nodeTypes: [NODE_TYPE] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
 	});
 });

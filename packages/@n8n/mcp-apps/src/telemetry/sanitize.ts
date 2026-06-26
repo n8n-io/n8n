@@ -1,12 +1,8 @@
-import { scrubSecretsInText } from '@n8n/utils';
+import { isRecord, scrubSecretsInText } from '@n8n/utils';
 
 const MAX_TELEMETRY_ERROR_MESSAGE_LENGTH = 500;
 const REDACTED_VALUE = '[REDACTED]';
 const CIRCULAR_VALUE = '[Circular]';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isSecretKey(key: string): boolean {
 	const probe = `${key}=value`;

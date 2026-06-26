@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
 import { VariableModal } from './components/VariableModal';
 
 export class VariablesPage extends BasePage {
@@ -78,7 +79,7 @@ export class VariablesPage extends BasePage {
 		// Use a more specific selector to avoid strict mode violation with other dialogs
 		const modal = this.page.getByRole('dialog').filter({ hasText: 'Delete variable' });
 		await expect(modal).toBeVisible();
-		await modal.locator('.btn--confirm').click();
+		await new MessageBox(modal).confirmButton.click();
 	}
 
 	async editVariable(

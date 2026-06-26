@@ -8,6 +8,7 @@ import {
 	matchGlob,
 	parseFilters,
 	evaluateFilter,
+	formatChangedFilesOutput,
 	runValidate,
 	getChangedFiles,
 	getMergeBase,
@@ -201,6 +202,32 @@ describe('evaluateFilter', () => {
 	});
 });
 
+// --- formatChangedFilesOutput (oversized change-set cap) ---
+
+describe('formatChangedFilesOutput', () => {
+	it('joins the list with newlines when under the cap', () => {
+		const files = ['packages/cli/src/a.ts', 'packages/core/src/b.ts'];
+		assert.equal(
+			formatChangedFilesOutput(files, 10),
+			'packages/cli/src/a.ts\npackages/core/src/b.ts',
+		);
+	});
+
+	it('returns the full list at exactly the cap', () => {
+		const files = ['a', 'b', 'c'];
+		assert.equal(formatChangedFilesOutput(files, 3), 'a\nb\nc');
+	});
+
+	it('returns an empty string when the list exceeds the cap', () => {
+		const files = ['a', 'b', 'c', 'd'];
+		assert.equal(formatChangedFilesOutput(files, 3), '');
+	});
+
+	it('empty input stays empty', () => {
+		assert.equal(formatChangedFilesOutput([], 10), '');
+	});
+});
+
 // --- runtime filter (E2E-chain scoping) ---
 
 describe('runtime filter', () => {
@@ -272,10 +299,7 @@ describe('runtime filter', () => {
 	});
 
 	it('does not trigger on workflow-only tooling scripts', () => {
-		assert.equal(
-			evaluateFilter(['scripts/mutation-health/pick-next.mjs'], runtimePatterns),
-			false,
-		);
+		assert.equal(evaluateFilter(['scripts/mutation-health/pick-next.mjs'], runtimePatterns), false);
 		assert.equal(evaluateFilter(['scripts/licenses/enrich-sbom.mjs'], runtimePatterns), false);
 		assert.equal(
 			evaluateFilter(['scripts/backend-module/my-feature.service.template'], runtimePatterns),
@@ -396,7 +420,10 @@ describe('getChangedFiles (shallow clone, stale base)', () => {
 		git(['push', 'origin', 'main'], builderDir);
 
 		// Shallow checkout of the PR side, mirroring CI's depth-1 clone
-		git(['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir], originalCwd);
+		git(
+			['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir],
+			originalCwd,
+		);
 		git(['config', 'user.email', 'test@test.local'], repoDir);
 		git(['config', 'user.name', 'test'], repoDir);
 		// Tiny step so the deepen loop has to iterate to reach the merge base

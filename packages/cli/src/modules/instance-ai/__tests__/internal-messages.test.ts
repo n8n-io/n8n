@@ -12,6 +12,13 @@ function editorContextMarker(
 	return `<editor-context>\n${JSON.stringify(workflows)}\n\nThe user opened this conversation from the workflow editor.\n</editor-context>`;
 }
 
+function credentialContextMarker(): string {
+	return `<credential-context>\n${JSON.stringify({
+		source: 'credential-modal',
+		credential: { credentialType: 'gmailOAuth2Api', displayName: 'Gmail OAuth2 API' },
+	})}\n\nThe user opened this conversation from the credential setup modal.\n</credential-context>`;
+}
+
 describe('cleanStoredUserMessage', () => {
 	it('returns plain text unchanged', () => {
 		expect(cleanStoredUserMessage('Hello world')).toBe('Hello world');
@@ -63,6 +70,11 @@ describe('cleanStoredUserMessage', () => {
 	it('strips an <editor-context> block followed by user text', () => {
 		const stored = `${editorContextMarker([{ type: 'workflow', id: 'wf-1' }])}\n\nFix the trigger`;
 		expect(cleanStoredUserMessage(stored)).toBe('Fix the trigger');
+	});
+
+	it('strips a <credential-context> block followed by user text', () => {
+		const stored = `${credentialContextMarker()}\n\nHow do I set up Gmail OAuth?`;
+		expect(cleanStoredUserMessage(stored)).toBe('How do I set up Gmail OAuth?');
 	});
 
 	it('strips stacked leading blocks (editor-context ahead of running-tasks)', () => {

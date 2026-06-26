@@ -1,5 +1,3 @@
-import type { Project, User } from '@n8n/db';
-
 import type {
 	ImportBindingMap,
 	CredentialMatchingMode,
@@ -49,8 +47,6 @@ export interface CredentialBindingRequest {
 	matchingMode: CredentialMatchingMode;
 	missingMode: CredentialMissingMode;
 	credentialBindings?: ImportBindingMap;
-	targetProject: Project;
-	user: User;
 }
 
 export function createFailure(

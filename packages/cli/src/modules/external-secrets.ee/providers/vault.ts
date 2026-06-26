@@ -282,9 +282,9 @@ export class VaultProvider extends SecretsProvider {
 		this.settings = settings.settings as unknown as VaultSettings;
 
 		this.#http = this.outboundHttp.requests({
-			baseURL: this.settings.url,
+			baseURL: new URL(this.settings.url).toString(), // Normalize here so a malformed URL fails at init time rather than on the first request.
 			headers: () => this.buildAuthHeaders(),
-			ssrf: 'disabled',
+			ssrf: 'disabled', // admin-configured infrastructure
 		});
 
 		this.logger.debug('Vault provider initialized');
@@ -378,12 +378,12 @@ export class VaultProvider extends SecretsProvider {
 		password: string,
 	): Promise<string | null> {
 		try {
-			const body = (await this.#http.request({
+			const body = await this.#http.request<VaultUserPassLoginResp>({
 				method: 'POST',
 				url: `auth/userpass/login/${username}`,
 				json: true,
 				body: { password },
-			})) as VaultUserPassLoginResp;
+			});
 
 			return body.auth.client_token;
 		} catch {
@@ -393,12 +393,12 @@ export class VaultProvider extends SecretsProvider {
 
 	private async authAppRole(roleId: string, secretId: string): Promise<string | null> {
 		try {
-			const body = (await this.#http.request({
+			const body = await this.#http.request<VaultAppRoleResp>({
 				method: 'POST',
 				url: 'auth/approle/login',
 				json: true,
 				body: { role_id: roleId, secret_id: secretId },
-			})) as VaultAppRoleResp;
+			});
 
 			return body.auth.client_token;
 		} catch {
@@ -437,7 +437,7 @@ export class VaultProvider extends SecretsProvider {
 			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
 			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
 			const method = (shouldPreferGet ? 'GET' : 'LIST') as IHttpRequestMethods;
-			listBody = (await this.#http.request({ url, method })) as VaultResponse<VaultSecretList>;
+			listBody = await this.#http.request<VaultResponse<VaultSecretList>>({ url, method });
 		} catch {
 			return null;
 		}
@@ -454,10 +454,10 @@ export class VaultProvider extends SecretsProvider {
 						}
 						secretPath += path + key;
 						try {
-							const secretBody = (await this.#http.request({
+							const secretBody = await this.#http.request<VaultResponse<IDataObject>>({
 								url: secretPath,
 								method: 'GET',
-							})) as VaultResponse<IDataObject>;
+							});
 							this.logger.debug(`Vault provider retrieved secrets from ${secretPath}`);
 							return [
 								key,
@@ -488,10 +488,10 @@ export class VaultProvider extends SecretsProvider {
 			return [{ path: this.normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
 		}
 
-		const mounts = (await this.#http.request({
+		const mounts = await this.#http.request<VaultResponse<VaultMountsResp>>({
 			url: 'sys/mounts',
 			method: 'GET',
-		})) as VaultResponse<VaultMountsResp>;
+		});
 		const kvMounts = Object.entries(mounts.data).filter(([, mount]) => mount.type === 'kv');
 
 		return kvMounts

@@ -18,6 +18,7 @@ export class DynamicTemplatesService {
 	) {
 		this.http = outboundHttp.requests({
 			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -26,13 +27,12 @@ export class DynamicTemplatesService {
 			return [];
 		}
 		try {
-			const response = (await this.http.request({
+			const response = await this.http.request<{ templates: DynamicTemplate[] }>({
 				url: this.globalConfig.templates.dynamicTemplatesHost,
 				method: 'GET',
 				headers: { 'Content-Type': 'application/json' },
 				json: true,
-				timeout: REQUEST_TIMEOUT_MS,
-			})) as { templates: DynamicTemplate[] };
+			});
 			return response.templates;
 		} catch (error) {
 			this.logger.error('Error fetching dynamic templates', { error });

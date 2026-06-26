@@ -7,7 +7,7 @@ import type {
 	Sandbox,
 	SandboxState,
 	VolumeMount,
-} from '@daytonaio/sdk';
+} from '@daytona/sdk';
 import { randomUUID } from 'node:crypto';
 
 import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';

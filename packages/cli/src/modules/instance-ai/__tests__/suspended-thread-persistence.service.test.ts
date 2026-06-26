@@ -5,13 +5,11 @@ import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pend
 import {
 	SuspendedThreadPersistenceService,
 	type PendingConfirmationStore,
-	type UserMessageStore,
 } from '../suspended-thread-persistence.service';
 
 type Mocks = {
 	logger: MockProxy<Logger>;
 	pendingConfirmationRepo: MockProxy<PendingConfirmationStore>;
-	agentMemory: MockProxy<UserMessageStore>;
 };
 
 function createService(confirmationTimeout = 60_000): {
@@ -21,7 +19,6 @@ function createService(confirmationTimeout = 60_000): {
 	const mocks: Mocks = {
 		logger: mock<Logger>(),
 		pendingConfirmationRepo: mock<PendingConfirmationStore>(),
-		agentMemory: mock<UserMessageStore>(),
 	};
 	// `create` is a pure builder — pass the entity through so assertions can
 	// inspect what `save` was handed.
@@ -34,7 +31,6 @@ function createService(confirmationTimeout = 60_000): {
 		logger: mocks.logger,
 		config: { confirmationTimeout },
 		pendingConfirmationRepo: mocks.pendingConfirmationRepo,
-		agentMemory: mocks.agentMemory,
 	});
 
 	return { service, mocks };
@@ -124,37 +120,5 @@ describe('SuspendedThreadPersistenceService — pending confirmation persistence
 			'Dropped stale Instance AI pending confirmations',
 			{ count: 3 },
 		);
-	});
-});
-
-describe('SuspendedThreadPersistenceService — user message persistence', () => {
-	it('persists the user message to thread memory and reports success', async () => {
-		const { service, mocks } = createService();
-
-		const ok = await service.persistUserMessageOnSuspend('thread-1', 'user-1', {
-			id: 'msg-1',
-			text: 'hello',
-		});
-
-		expect(ok).toBe(true);
-		expect(mocks.agentMemory.saveMessages).toHaveBeenCalledWith(
-			expect.objectContaining({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				messages: [expect.objectContaining({ id: 'msg-1', role: 'user' })],
-			}),
-		);
-	});
-
-	it('reports failure (so the caller retries) when the memory write throws', async () => {
-		const { service, mocks } = createService();
-		mocks.agentMemory.saveMessages.mockRejectedValue(new Error('db down'));
-
-		const ok = await service.persistUserMessageOnSuspend('thread-1', 'user-1', {
-			id: 'msg-1',
-			text: 'hello',
-		});
-
-		expect(ok).toBe(false);
 	});
 });

@@ -24,11 +24,7 @@ import type {
 	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import {
-	CANVAS_NODE_GROUP_ID_PREFIX,
-	CanvasNodeRenderType,
-	isCanvasGroupNode,
-} from '../canvas.types';
+import { CanvasNodeRenderType, createCanvasGroupNodeId, isCanvasGroupNode } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -404,6 +400,8 @@ const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
 	groupSelection,
+	renameGroup,
+	ungroup,
 	selectedGroupIds,
 } = useCanvasNodeGroupActions(selectedNodesAndGroups, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
@@ -654,7 +652,7 @@ function onCanvasGroupToggle(groupId: string) {
 		}
 	} else {
 		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
-		const groupNode = findNode(`${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`);
+		const groupNode = findNode(createCanvasGroupNodeId(groupId));
 		if (groupNode) {
 			removeSelectedNodes([groupNode]);
 		}
@@ -662,7 +660,7 @@ function onCanvasGroupToggle(groupId: string) {
 }
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
-	workflowDocumentStore.value.updateName(groupId, name);
+	renameGroup(groupId, name);
 }
 
 function onCanvasGroupUngroup(
@@ -681,7 +679,7 @@ function onCanvasGroupUngroup(
 	// Removing the group also removes its push, so commit anything it was
 	// pushing first — same principle as a newly created group not pushing.
 	commitPushedPositionsForSourceGroups([groupId]);
-	workflowDocumentStore.value.deleteGroup(groupId);
+	ungroup(groupId);
 
 	if (group) {
 		groupTelemetry.trackUngrouped(group, source);

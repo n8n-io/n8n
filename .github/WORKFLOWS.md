@@ -71,7 +71,6 @@ Complete reference for n8n's `.github/` folder.
 │  │ Schedule │───▶│  Nightly/Weekly Jobs             │    ┌────────────┐   │
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
-│                  │  ├─ test-workflows-nightly       │    └────────────┘   │
 │                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
@@ -202,6 +201,17 @@ after pushing a fix, use the workflow's manual dispatch button — also lets you
 override `tier` to `full` for broader coverage on a specific PR. The lighter
 `test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
 
+**MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
+never per-PR or scheduled in this first version.** They reuse the Instance AI
+verifier but build each workflow through the instance MCP server by driving the
+`claude` CLI, which adds Anthropic build cost on top of the verifier — too
+expensive to run automatically. The job boots one n8n container, generates an MCP
+cohort (`eval:build-mcp-manifest`), then scores it with
+`eval:instance-ai --prebuilt-workflows`, recording to the isolated
+`mcp-workflow-evals` LangSmith dataset. Dispatch from the Actions tab (set
+`experiment-name=mcp-baseline` to refresh the baseline, or `filter=<slug>` to run
+a single case). See `packages/cli/src/modules/mcp/evaluations/README.md`.
+
 ### On PR Close/Merge
 
 | Event                      | Workflow                    |
@@ -267,7 +277,7 @@ release-publish.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
-test-workflows-nightly.yml
+test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
 
 test-e2e-vm-expressions-nightly.yml
@@ -384,7 +394,6 @@ Push to master/1.x
 | Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
-| Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |

@@ -20,6 +20,8 @@ import type {
 	INode,
 	ITaskData,
 	WorkflowExecuteMode,
+	ExecuteAgentWorkflowContext,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -28,13 +30,13 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
-import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -1025,7 +1027,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 	describe('executeAgent', () => {
 		const ownershipService = mockInstance(OwnershipService);
-		const agentsService = mockInstance(AgentsService);
+		const agentExecutionOrchestratorService = mockInstance(AgentExecutionOrchestratorService);
 
 		const AGENT_ID = 'agent-id';
 		const MESSAGE = 'hello';
@@ -1034,8 +1036,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			agentsService.executeForWorkflow.mockResolvedValue(
-				mock<Awaited<ReturnType<typeof agentsService.executeForWorkflow>>>(),
+			agentExecutionOrchestratorService.executeForWorkflow.mockResolvedValue(
+				mock<Awaited<ReturnType<typeof agentExecutionOrchestratorService.executeForWorkflow>>>(),
 			);
 		});
 
@@ -1050,7 +1052,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 			expect(ownershipService.getPersonalProjectOwnerCached).not.toHaveBeenCalled();
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1059,6 +1061,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				'user-1',
 				true,
+				undefined,
 				undefined,
 			);
 		});
@@ -1085,7 +1088,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				outputSchema,
 			);
 
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1095,6 +1098,46 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'user-1',
 				true,
 				outputSchema,
+				undefined,
+			);
+		});
+
+		it('forwards the workflowContext to executeForWorkflow', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'workflow-1',
+				workflowName: 'My workflow',
+				callingNodeName: 'Message an Agent',
+				nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+
+			await executeAgent(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+				undefined,
+				workflowContext,
+			);
+
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'user-1',
+				'project-1',
+				'user-1',
+				true,
+				undefined,
+				workflowContext,
 			);
 		});
 
@@ -1115,7 +1158,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
 			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith('project-1');
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1124,6 +1167,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				undefined,
 				true,
+				undefined,
 				undefined,
 			);
 		});
@@ -1142,7 +1186,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await expect(
 				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow('Cannot execute agent without a userId in additional data');
-			expect(agentsService.executeForWorkflow).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('throws when userId is missing and no workflowId is available to resolve ownership', async () => {
@@ -1169,8 +1213,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
 
-				// agentsService.executeForWorkflow should with 8th parameter true
-				expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
+				expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 					AGENT_ID,
 					MESSAGE,
 					EXEC_ID,
@@ -1179,6 +1223,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					'project-1',
 					'user-1',
 					true,
+					undefined,
 					undefined,
 				);
 			},
@@ -1203,8 +1248,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
 
-			// agentsService.executeForWorkflow should with 8th parameter true
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1213,6 +1258,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				'user-1',
 				false,
+				undefined,
 				undefined,
 			);
 		});

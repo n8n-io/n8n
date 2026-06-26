@@ -1,4 +1,4 @@
-import { isRecord } from '@mcp-apps/utils/guards';
+import { isRecord } from '@n8n/utils';
 
 export function readJsonMessage(data: unknown): Record<string, unknown> | undefined {
 	if (typeof data !== 'string' || !data.includes('"command"')) return undefined;

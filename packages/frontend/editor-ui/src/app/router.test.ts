@@ -254,6 +254,7 @@ describe('router', () => {
 		const instanceAiModuleSettings = {
 			enabled: true,
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
 			sandboxEnabled: true,
@@ -317,6 +318,33 @@ describe('router', () => {
 			useRBACStore().setGlobalScopes(['instanceAi:message']);
 
 			expect(runRootRedirect()).toBe('/home/workflows');
+		});
+	});
+
+	describe('roles settings', () => {
+		beforeEach(async () => {
+			useRBACStore().setGlobalScopes(['role:manage']);
+			// Reset to a neutral route so each push re-triggers the guard.
+			await router.push('/workflows');
+		});
+
+		test('resolves /settings/project-roles to project roles when custom instance roles disabled', async () => {
+			settingsStore.settings.envFeatureFlags = {} as typeof settingsStore.settings.envFeatureFlags;
+
+			await router.push('/settings/project-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.PROJECT_ROLES_SETTINGS);
+		});
+
+		test('redirects /settings/project-roles to the Roles shell (project tab) when enabled', async () => {
+			settingsStore.settings.envFeatureFlags = {
+				N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: true,
+			} as typeof settingsStore.settings.envFeatureFlags;
+
+			await router.push('/settings/project-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('project');
 		});
 	});
 

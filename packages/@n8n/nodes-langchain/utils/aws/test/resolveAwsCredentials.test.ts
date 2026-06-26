@@ -208,6 +208,15 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			'Role Session Name is required when assuming a role.',
 		);
 	});
+
+	it('throws when region is not a supported AWS region', async () => {
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, region: 'not-a-region' },
+		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context)).rejects.toThrow('Unsupported AWS region');
+	});
 });
 
 describe('resolveAwsCredentials — useSystemCredentialsForRole', () => {
@@ -270,6 +279,24 @@ describe('resolveAwsCredentials — proxy target URL', () => {
 		});
 		await resolveAwsCredentials(context);
 		expect(getNodeProxyAgent).toHaveBeenCalledWith('https://sts.eu-west-2.amazonaws.com');
+	});
+
+	it('uses the China STS endpoint host for cn- regions', async () => {
+		mockedGetNodeProxyAgent.mockReturnValue(undefined);
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: {
+				region: 'cn-north-1',
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'ext-id',
+				roleSessionName: 'n8n-session',
+				stsAccessKeyId: 'AKIASTS',
+				stsSecretAccessKey: 'stsSecret',
+				useSystemCredentialsForRole: false,
+			},
+		});
+		await resolveAwsCredentials(context);
+		expect(getNodeProxyAgent).toHaveBeenCalledWith('https://sts.cn-north-1.amazonaws.com.cn');
 	});
 
 	it('builds a NodeHttpHandler only when getNodeProxyAgent returns a proxy', async () => {

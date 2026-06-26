@@ -49,6 +49,10 @@ export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema
  * - Orders examples round-robin across test cases for optimal parallelism
  * - Assigns each example to a split (test case file slug) for UI filtering
  *
+ * `filter`/`exclude`/`tier` mirror the eval CLI selection, so an isolated
+ * cohort (e.g. `--tier mcp` into a dedicated `--dataset`) only syncs its own
+ * cases rather than the whole corpus.
+ *
  * Never deletes. Orphan cleanup is manual (LangSmith UI or MCP).
  *
  * Returns the dataset name for use with evaluate().
@@ -59,8 +63,9 @@ export async function syncDataset(
 	logger: EvalLogger,
 	filter?: string,
 	exclude?: string,
+	tier?: string,
 ): Promise<string> {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter, exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter, exclude, tier);
 
 	// Round-robin ordering ensures evaluate() triggers diverse builds early
 	// rather than burning all concurrency slots on one test case.

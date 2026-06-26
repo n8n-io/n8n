@@ -281,7 +281,6 @@ describe('CommunityPackagesService', () => {
 				method: 'POST',
 				body: { name: packageName },
 				json: true,
-				timeout: 30_000,
 			});
 		});
 

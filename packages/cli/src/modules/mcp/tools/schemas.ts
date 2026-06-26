@@ -70,6 +70,14 @@ export const successMessageOutputSchema = {
 	message: z.string().describe('Description of the result'),
 } satisfies z.ZodRawShape;
 
+const nodeGroupSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		nodeIds: z.array(z.string()),
+	})
+	.describe('A named visual grouping of nodes');
+
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
 		.object({
@@ -88,10 +96,12 @@ export const workflowDetailsOutputSchema = z.object({
 			settings: workflowSettingsSchema,
 			connections: z.record(z.unknown()),
 			nodes: z.array(nodeSchema),
+			nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the workflow'),
 			activeVersion: z
 				.object({
 					nodes: z.array(nodeSchema),
 					connections: z.record(z.unknown()),
+					nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
 				})
 				.nullable()
 				.describe('Active workflow graph, if available'),

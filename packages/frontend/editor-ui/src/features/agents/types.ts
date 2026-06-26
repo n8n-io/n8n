@@ -26,7 +26,6 @@ export interface AgentSchema {
 	model: { provider: string | null; name: string | null; raw?: string };
 	credential: string | null;
 	instructions: string | null;
-	description: string | null;
 	tools: ToolSchema[];
 	providerTools: ProviderToolSchema[];
 	memory: MemorySchema | null;

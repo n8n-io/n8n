@@ -96,6 +96,45 @@ describe('McpSettingsService', () => {
 		});
 	});
 
+	describe('getAllowedRedirectUris', () => {
+		test('returns empty array by default when no setting exists', async () => {
+			findByKey.mockResolvedValue(null);
+			cacheService.get.mockResolvedValue(undefined);
+
+			await expect(service.getAllowedRedirectUris()).resolves.toEqual([]);
+			expect(findByKey).toHaveBeenCalledWith('mcp.oauth.allowedRedirectUris');
+		});
+
+		test('returns URIs from cache when available', async () => {
+			cacheService.get.mockResolvedValue(JSON.stringify(['https://example.com/callback']));
+
+			await expect(service.getAllowedRedirectUris()).resolves.toEqual([
+				'https://example.com/callback',
+			]);
+			expect(findByKey).not.toHaveBeenCalled();
+		});
+
+		test('returns URIs from database when cache is empty', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(
+				mock<Settings>({
+					key: 'mcp.oauth.allowedRedirectUris',
+					value: JSON.stringify(['https://example.com/callback', 'http://localhost:3000/callback']),
+					loadOnStartup: true,
+				}),
+			);
+
+			await expect(service.getAllowedRedirectUris()).resolves.toEqual([
+				'https://example.com/callback',
+				'http://localhost:3000/callback',
+			]);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'mcp.oauth.allowedRedirectUris',
+				JSON.stringify(['https://example.com/callback', 'http://localhost:3000/callback']),
+			);
+		});
+	});
+
 	describe('bulkSetAvailableInMCP', () => {
 		const user = mock<User>({ id: 'user-1' });
 
@@ -717,6 +756,40 @@ describe('McpSettingsService', () => {
 				['wf-1'],
 				user,
 				['workflow:update'],
+			);
+		});
+	});
+
+	describe('setAllowedRedirectUris', () => {
+		test('persists the provided URIs to settings and cache', async () => {
+			const uris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+
+			await service.setAllowedRedirectUris(uris);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{
+					key: 'mcp.oauth.allowedRedirectUris',
+					value: JSON.stringify(uris),
+					loadOnStartup: true,
+				},
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'mcp.oauth.allowedRedirectUris',
+				JSON.stringify(uris),
+			);
+		});
+
+		test('persists an empty array', async () => {
+			await service.setAllowedRedirectUris([]);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{
+					key: 'mcp.oauth.allowedRedirectUris',
+					value: JSON.stringify([]),
+					loadOnStartup: true,
+				},
+				['key'],
 			);
 		});
 	});

@@ -19,12 +19,23 @@ describe('isLangSmithEnabled', () => {
 		expect(isLangSmithEnabled({})).toBe(false);
 	});
 
+	it('returns true when proxy tracing is available', () => {
+		expect(isLangSmithEnabled({}, true)).toBe(true);
+	});
+
 	it('returns true when LANGSMITH_API_KEY is set', () => {
 		expect(isLangSmithEnabled({ LANGSMITH_API_KEY: 'ls-key' })).toBe(true);
 	});
 
 	it('returns true when LANGCHAIN_API_KEY is set', () => {
 		expect(isLangSmithEnabled({ LANGCHAIN_API_KEY: 'lc-key' })).toBe(true);
+	});
+
+	it('returns false when only endpoint or tracing flag is set without auth', () => {
+		expect(isLangSmithEnabled({ LANGSMITH_ENDPOINT: 'https://smith.example' })).toBe(false);
+		expect(isLangSmithEnabled({ LANGCHAIN_ENDPOINT: 'https://smith.example' })).toBe(false);
+		expect(isLangSmithEnabled({ LANGCHAIN_TRACING_V2: 'true' })).toBe(false);
+		expect(isLangSmithEnabled({ LANGSMITH_TRACING: 'true' })).toBe(false);
 	});
 
 	it('returns false when tracing flag is explicitly disabled', () => {
@@ -34,6 +45,7 @@ describe('isLangSmithEnabled', () => {
 		expect(isLangSmithEnabled({ LANGSMITH_API_KEY: 'ls-key', LANGSMITH_TRACING: 'false' })).toBe(
 			false,
 		);
+		expect(isLangSmithEnabled({ LANGSMITH_TRACING: 'false' }, true)).toBe(false);
 	});
 });
 
@@ -42,9 +54,41 @@ describe('buildBuilderTelemetry', () => {
 		expect(await buildBuilderTelemetry(baseOptions, {})).toBeUndefined();
 	});
 
+	it('returns undefined when only an endpoint is configured without auth', async () => {
+		expect(
+			await buildBuilderTelemetry(baseOptions, { LANGSMITH_ENDPOINT: 'https://smith.example' }),
+		).toBeUndefined();
+	});
+
 	it('returns a LangSmithTelemetry instance when an API key is present', async () => {
 		const telemetry = await buildBuilderTelemetry(baseOptions, { LANGSMITH_API_KEY: 'ls-key' });
 		expect(telemetry).toBeInstanceOf(LangSmithTelemetry);
+	});
+
+	it('returns proxy-backed LangSmithTelemetry when tracing proxy config is present', async () => {
+		const getAuthHeaders = jest.fn(async () => ({ Authorization: 'Bearer proxy-token' }));
+
+		const telemetry = await buildBuilderTelemetry(
+			{
+				...baseOptions,
+				tracingProxyConfig: {
+					apiUrl: 'https://proxy.example/api/langsmith',
+					getAuthHeaders,
+				},
+			},
+			{},
+		);
+
+		expect(telemetry).toBeInstanceOf(LangSmithTelemetry);
+		const internal = telemetry as unknown as {
+			langsmithConfig?: Record<string, unknown>;
+		};
+		expect(internal.langsmithConfig).toMatchObject({
+			apiKey: '-',
+			project: 'agent-builder',
+			endpoint: 'https://proxy.example/api/langsmith',
+			headers: getAuthHeaders,
+		});
 	});
 
 	it('seeds identifying metadata for the run', async () => {

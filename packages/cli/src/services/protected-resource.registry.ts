@@ -40,6 +40,14 @@ export interface ProtectedResource {
 	 * default.
 	 */
 	isDefault?: boolean;
+
+	/**
+	 * Optional explicit allowlist of `redirect_uri` values accepted at
+	 * `/authorize` for this resource. Returning an empty array means "no
+	 * additional restriction" — the OAuth server still enforces the
+	 * registered-URIs match per RFC 6749 §3.1.2.4.
+	 */
+	getAllowedRedirectUris?(): Promise<string[]>;
 }
 
 /**

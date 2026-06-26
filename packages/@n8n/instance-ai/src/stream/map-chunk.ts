@@ -8,6 +8,7 @@ import {
 	webSearchMetaSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 const questionItemSchema = z.object({
@@ -16,10 +17,6 @@ const questionItemSchema = z.object({
 	type: z.enum(['single', 'multi', 'text']),
 	options: z.array(z.string()).optional(),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];

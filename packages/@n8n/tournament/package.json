@@ -58,10 +58,5 @@
     "ast-types": "^0.16.1",
     "esprima-next": "^5.8.4",
     "recast": "^0.22.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "@babel/traverse": "^7.23.2"
-    }
   }
 }

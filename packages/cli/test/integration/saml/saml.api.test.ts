@@ -312,8 +312,8 @@ describe('Check endpoint permissions', () => {
 			await authMemberAgent.get('/sso/saml/metadata').expect(200);
 		});
 
-		test('should be able to access GET /sso/saml/config', async () => {
-			await authMemberAgent.get('/sso/saml/config').expect(200);
+		test('should NOT be able to access GET /sso/saml/config', async () => {
+			await authMemberAgent.get('/sso/saml/config').expect(403);
 		});
 
 		test('should NOT be able to access POST /sso/saml/config', async () => {

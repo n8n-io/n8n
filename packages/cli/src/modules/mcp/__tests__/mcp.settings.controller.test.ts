@@ -9,6 +9,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
@@ -364,6 +365,119 @@ describe('McpSettingsController', () => {
 				skippedCount: 0,
 				failedCount: 0,
 			});
+		});
+	});
+
+	describe('getAllowedRedirectUris', () => {
+		test('returns allowed redirect URIs', async () => {
+			const mockUris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(mockUris);
+
+			const result = await controller.getAllowedRedirectUris();
+
+			expect(mcpSettingsService.getAllowedRedirectUris).toHaveBeenCalled();
+			expect(result).toEqual({ uris: mockUris });
+		});
+
+		test('returns empty array when no URIs configured', async () => {
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue([]);
+
+			const result = await controller.getAllowedRedirectUris();
+
+			expect(result).toEqual({ uris: [] });
+		});
+	});
+
+	describe('updateAllowedRedirectUris', () => {
+		test('updates allowed redirect URIs successfully', async () => {
+			const uris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+			const dto = new UpdateAllowedRedirectUrisDto({ uris });
+			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
+
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
+
+			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith(uris);
+			expect(result).toEqual({ success: true });
+		});
+
+		test('propagates storage errors instead of mapping them to a client error', async () => {
+			const uris = ['https://example.com/callback'];
+			const dto = new UpdateAllowedRedirectUrisDto({ uris });
+			const dbError = new Error('Database connection failed');
+			mcpSettingsService.setAllowedRedirectUris.mockRejectedValue(dbError);
+
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow(dbError);
+		});
+
+		test('accepts empty array', async () => {
+			const dto = new UpdateAllowedRedirectUrisDto({ uris: [] });
+			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
+
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
+
+			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith([]);
+			expect(result).toEqual({ success: true });
+		});
+	});
+
+	describe('UpdateAllowedRedirectUrisDto', () => {
+		test('accepts valid http and https URIs', () => {
+			const dto = new UpdateAllowedRedirectUrisDto({
+				uris: ['https://example.com/callback', 'http://localhost:3000/callback'],
+			});
+
+			expect(dto.uris).toEqual(['https://example.com/callback', 'http://localhost:3000/callback']);
+		});
+
+		test('trims whitespace and filters out empty entries', () => {
+			const dto = new UpdateAllowedRedirectUrisDto({
+				uris: ['  https://example.com/callback  ', '', '   '],
+			});
+
+			expect(dto.uris).toEqual(['https://example.com/callback']);
+		});
+
+		test('rejects malformed URLs', () => {
+			expect(() => new UpdateAllowedRedirectUrisDto({ uris: ['not-a-url'] })).toThrow();
+		});
+
+		test('rejects non-http/https protocols', () => {
+			expect(
+				() => new UpdateAllowedRedirectUrisDto({ uris: ['ftp://example.com/callback'] }),
+			).toThrow();
+		});
+
+		test('requires HTTPS for non-localhost URIs outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				expect(
+					() => new UpdateAllowedRedirectUrisDto({ uris: ['http://example.com/callback'] }),
+				).toThrow();
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
+
+		test('allows http for localhost outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				const dto = new UpdateAllowedRedirectUrisDto({
+					uris: ['http://localhost:3000/callback', 'http://127.0.0.1:3000/callback'],
+				});
+
+				expect(dto.uris).toEqual([
+					'http://localhost:3000/callback',
+					'http://127.0.0.1:3000/callback',
+				]);
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
 		});
 	});
 

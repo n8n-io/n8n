@@ -1,35 +1,29 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
-import { CronJob } from 'cron';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentTaskService } from '../agent-task.service';
-import type { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentTask } from '../entities/agent-task.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentTask } from '../entities/agent-task.entity';
+import type { Agent } from '../entities/agent.entity';
 import type {
 	AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
 } from '../repositories/agent-task-run-lock.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
-// Keep cron validation + next-occurrence real; only the live CronJob is mocked.
-jest.mock('cron', () => {
-	const actual = jest.requireActual('cron');
-	return { ...actual, CronJob: jest.fn() };
-});
-
-const CronJobMock = CronJob as unknown as jest.Mock;
 const AGENT_ID = 'agent-1';
+
+const agentTaskGroup = (id = AGENT_ID) => ({ type: 'agent-task', id });
 
 function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {
 	return {
@@ -105,27 +99,29 @@ async function* throwingStream(): AsyncGenerator<never> {
 	throw new Error('execution failed');
 }
 
-async function runTaskOf(service: AgentTaskService, taskId: string): Promise<void> {
-	await (service as unknown as { runTask(id: string): Promise<void> }).runTask(taskId);
-}
-
-async function runScheduledTaskOf(service: AgentTaskService, taskId: string): Promise<void> {
-	await (service as unknown as { runScheduledTask(id: string): Promise<void> }).runScheduledTask(
+async function runTaskOf(
+	service: AgentTaskService,
+	agentId: string,
+	taskId: string,
+): Promise<void> {
+	await (service as unknown as { runTask(agentId: string, taskId: string): Promise<void> }).runTask(
+		agentId,
 		taskId,
 	);
 }
 
-async function flushAsyncWork(): Promise<void> {
-	await new Promise((resolve) => setImmediate(resolve));
+async function runScheduledTaskOf(
+	service: AgentTaskService,
+	agentId: string,
+	taskId: string,
+): Promise<void> {
+	await (
+		service as unknown as { runScheduledTask(agentId: string, taskId: string): Promise<void> }
+	).runScheduledTask(agentId, taskId);
 }
 
-/** Seed the live jobs map so `runTask` can resolve the agentId without registering. */
-function seedJob(service: AgentTaskService, taskId: string, agentId: string): { stop: jest.Mock } {
-	const job = { stop: jest.fn() };
-	(
-		service as unknown as { jobs: Map<string, { agentId: string; job: { stop: jest.Mock } }> }
-	).jobs.set(taskId, { agentId, job });
-	return job;
+async function flushAsyncWork(): Promise<void> {
+	await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('AgentTaskService', () => {
@@ -139,7 +135,8 @@ describe('AgentTaskService', () => {
 	let taskRunLockRepository: ReturnType<typeof mock<AgentTaskRunLockRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
-	let agentsService: ReturnType<typeof mock<AgentsService>>;
+	let agentExecutionOrchestratorService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
+	let agentTaskScheduler: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let txManager: { save: jest.Mock; remove: jest.Mock };
 	let service: AgentTaskService;
@@ -158,8 +155,9 @@ describe('AgentTaskService', () => {
 			taskRunLockRepository,
 			agentRepository,
 			projectRelationRepository,
-			agentsService,
+			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
+			agentTaskScheduler,
 			publisher,
 		);
 	}
@@ -167,7 +165,6 @@ describe('AgentTaskService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		setMultiMain(false);
-		CronJobMock.mockImplementation(() => ({ start: jest.fn(), stop: jest.fn() }));
 		taskRepository = mock<AgentTaskRepository>();
 		taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
 		taskRunLockRepository = mock<AgentTaskRunLockRepository>();
@@ -191,7 +188,11 @@ describe('AgentTaskService', () => {
 			),
 		};
 		projectRelationRepository = mock<ProjectRelationRepository>();
-		agentsService = mock<AgentsService>();
+		agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
+		agentTaskScheduler = mock<ScheduledTaskManager>();
+		agentTaskScheduler.register.mockReturnValue(true);
+		agentTaskScheduler.getTargetIds.mockReturnValue([]);
+		agentTaskScheduler.hasTarget.mockReturnValue(false);
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
 		// Default to the leader so existing registration assertions hold.
@@ -255,7 +256,7 @@ describe('AgentTaskService', () => {
 				enabled: true,
 			});
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 	});
 
@@ -292,7 +293,7 @@ describe('AgentTaskService', () => {
 			expect(dto.cronExpression).toBe('0 10 * * *');
 			expect(task.cronExpression).toBe('0 10 * * *');
 			expect(txManager.save).toHaveBeenCalled();
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('is a no-op when no field changes (skips the agent write)', async () => {
@@ -346,13 +347,12 @@ describe('AgentTaskService', () => {
 
 		it('does not stop a live cron job until the next publish reconcile', async () => {
 			const task = makeTask();
-			const job = seedJob(service, 'task-1', AGENT_ID);
 			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(task);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(makeAgent());
 
 			await service.delete(AGENT_ID, 'task-1');
 
-			expect(job.stop).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.deregisterTarget).not.toHaveBeenCalled();
 		});
 	});
 
@@ -367,12 +367,14 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).toHaveBeenCalledWith(
-				'0 9 * * *',
+			expect(agentTaskScheduler.register).toHaveBeenCalledWith(
+				{
+					group: agentTaskGroup(),
+					targetId: 'task-1',
+					expression: '0 9 * * *',
+					timezone: 'UTC',
+				},
 				expect.any(Function),
-				null,
-				true,
-				'UTC',
 			);
 		});
 
@@ -384,7 +386,7 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('registers nothing when the agent is unpublished', async () => {
@@ -394,7 +396,7 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('does not register cron jobs on a follower (leader owns the cron)', async () => {
@@ -408,7 +410,29 @@ describe('AgentTaskService', () => {
 
 			await follower.registerEnabledForAgent(AGENT_ID);
 
-			expect(CronJobMock).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
+		});
+
+		it('deregisters tasks missing from the enabled published snapshots', async () => {
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock).mockResolvedValue([
+				makeSnapshot(),
+			]);
+			agentTaskScheduler.getTargetIds.mockReturnValue(['task-1', 'stale-task']);
+			agentTaskScheduler.hasTarget.mockImplementation((_group, taskId) => taskId === 'stale-task');
+
+			await service.registerEnabledForAgent(AGENT_ID);
+
+			expect(agentTaskScheduler.deregisterTarget).toHaveBeenCalledWith(
+				agentTaskGroup(),
+				'stale-task',
+			);
+			expect(agentTaskScheduler.deregisterTarget).not.toHaveBeenCalledWith(
+				agentTaskGroup(),
+				'task-1',
+			);
 		});
 
 		it('skips a cron tick while the same task is already running', async () => {
@@ -433,19 +457,19 @@ describe('AgentTaskService', () => {
 				.mockResolvedValueOnce(makeRunLock())
 				.mockResolvedValueOnce(null)
 				.mockResolvedValueOnce(makeRunLock({ holderId: 'holder-2' }));
-			(agentsService.executeForTaskPublished as jest.Mock)
+			(agentExecutionOrchestratorService.executeForTaskPublished as jest.Mock)
 				.mockReturnValueOnce(blockingStream())
 				.mockReturnValueOnce(emptyStream());
 
 			await service.registerEnabledForAgent(AGENT_ID);
-			const onTick = CronJobMock.mock.calls[0][1] as () => void;
+			const onTick = agentTaskScheduler.register.mock.calls[0][1] as () => void;
 
 			onTick();
 			await flushAsyncWork();
 			onTick();
 			await flushAsyncWork();
 
-			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(1);
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledTimes(1);
 			expect(logger.info).toHaveBeenCalledWith(
 				'[AgentTaskService] Skipping task because previous run is still active',
 				expect.objectContaining({ taskId: 'task-1', agentId: AGENT_ID }),
@@ -456,7 +480,7 @@ describe('AgentTaskService', () => {
 			onTick();
 			await flushAsyncWork();
 
-			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(2);
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledTimes(2);
 			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(2);
 		});
 
@@ -483,19 +507,21 @@ describe('AgentTaskService', () => {
 			taskRunLockRepository.acquire
 				.mockResolvedValueOnce(makeRunLock({ holderId: 'old-leader' }))
 				.mockResolvedValueOnce(null);
-			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValueOnce(blockingStream());
+			(agentExecutionOrchestratorService.executeForTaskPublished as jest.Mock).mockReturnValueOnce(
+				blockingStream(),
+			);
 
 			await previousLeader.registerEnabledForAgent(AGENT_ID);
-			const previousLeaderTick = CronJobMock.mock.calls[0][1] as () => void;
+			const previousLeaderTick = agentTaskScheduler.register.mock.calls[0][1] as () => void;
 			previousLeaderTick();
 			await flushAsyncWork();
 
 			await nextLeader.registerEnabledForAgent(AGENT_ID);
-			const nextLeaderTick = CronJobMock.mock.calls[1][1] as () => void;
+			const nextLeaderTick = agentTaskScheduler.register.mock.calls[1][1] as () => void;
 			nextLeaderTick();
 			await flushAsyncWork();
 
-			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(1);
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledTimes(1);
 			expect(logger.info).toHaveBeenCalledWith(
 				'[AgentTaskService] Skipping task because previous run is still active',
 				expect.objectContaining({ taskId: 'task-1', agentId: AGENT_ID }),
@@ -543,18 +569,25 @@ describe('AgentTaskService', () => {
 
 			await service.handleTasksChanged({ agentId: AGENT_ID });
 
-			expect(CronJobMock).toHaveBeenCalledWith(
-				'0 9 * * *',
+			expect(agentTaskScheduler.register).toHaveBeenCalledWith(
+				{
+					group: agentTaskGroup(),
+					targetId: 'task-1',
+					expression: '0 9 * * *',
+					timezone: 'UTC',
+				},
 				expect.any(Function),
-				null,
-				true,
-				'UTC',
 			);
 		});
 	});
 
 	describe('deregisterAgentTasks', () => {
 		it("stops only the matching agent's jobs", async () => {
+			agentTaskScheduler.getTargetIds
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce(['a-task']);
+			agentTaskScheduler.deregisterGroup.mockReturnValue(true);
 			(agentRepository.findOne as jest.Mock)
 				.mockResolvedValueOnce(
 					makePublishedAgent([{ id: 'a-task', enabled: true }], { id: 'agent-a' }),
@@ -568,13 +601,13 @@ describe('AgentTaskService', () => {
 
 			await service.registerEnabledForAgent('agent-a');
 			await service.registerEnabledForAgent('agent-b');
-			const jobA = CronJobMock.mock.results[0].value;
-			const jobB = CronJobMock.mock.results[1].value;
 
 			service.deregisterAgentTasks('agent-a');
 
-			expect(jobA.stop).toHaveBeenCalled();
-			expect(jobB.stop).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.deregisterGroup).toHaveBeenCalledWith(agentTaskGroup('agent-a'));
+			expect(agentTaskScheduler.deregisterGroup).not.toHaveBeenCalledWith(
+				agentTaskGroup('agent-b'),
+			);
 		});
 	});
 
@@ -583,17 +616,18 @@ describe('AgentTaskService', () => {
 			makePublishedAgent([{ id: 'task-1', enabled }]);
 
 		it('runs the published agent with the objective', async () => {
-			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
 				makeSnapshot(),
 			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
-			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(emptyStream());
+			(agentExecutionOrchestratorService.executeForTaskPublished as jest.Mock).mockReturnValue(
+				emptyStream(),
+			);
 
-			await runTaskOf(service, 'task-1');
+			await runTaskOf(service, AGENT_ID, 'task-1');
 
-			expect(agentsService.executeForTaskPublished).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: AGENT_ID,
 					projectId: 'project-1',
@@ -607,7 +641,6 @@ describe('AgentTaskService', () => {
 		});
 
 		it('uses the published snapshot body, not the live draft row', async () => {
-			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
@@ -615,11 +648,13 @@ describe('AgentTaskService', () => {
 				makeSnapshot({ objective: 'Published objective' }),
 			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
-			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(emptyStream());
+			(agentExecutionOrchestratorService.executeForTaskPublished as jest.Mock).mockReturnValue(
+				emptyStream(),
+			);
 
-			await runTaskOf(service, 'task-1');
+			await runTaskOf(service, AGENT_ID, 'task-1');
 
-			expect(agentsService.executeForTaskPublished).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledWith(
 				expect.objectContaining({ message: expect.stringContaining('Published objective') }),
 			);
 			// The scheduled path never reads the live draft body.
@@ -627,52 +662,50 @@ describe('AgentTaskService', () => {
 		});
 
 		it('skips when the agent is unpublished', async () => {
-			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(
 				makeAgent({ activeVersionId: null }),
 			);
 
-			await runTaskOf(service, 'task-1');
+			await runTaskOf(service, AGENT_ID, 'task-1');
 
-			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
 		});
 
 		it('skips when no project member is available', async () => {
-			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
 				makeSnapshot(),
 			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue([]);
 
-			await runTaskOf(service, 'task-1');
+			await runTaskOf(service, AGENT_ID, 'task-1');
 
-			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
 			expect(taskRepository.update).not.toHaveBeenCalled();
 		});
 
 		it('skips when the published task snapshot is not enabled', async () => {
-			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
 				makeSnapshot({ enabled: false }),
 			);
 
-			await runTaskOf(service, 'task-1');
+			await runTaskOf(service, AGENT_ID, 'task-1');
 
-			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
 		});
 
 		it('logs when execution throws', async () => {
-			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
 				makeSnapshot(),
 			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
-			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(throwingStream());
+			(agentExecutionOrchestratorService.executeForTaskPublished as jest.Mock).mockReturnValue(
+				throwingStream(),
+			);
 
-			await runTaskOf(service, 'task-1');
+			await runTaskOf(service, AGENT_ID, 'task-1');
 
 			expect(taskRepository.update).not.toHaveBeenCalled();
 			expect(logger.error).toHaveBeenCalledWith(
@@ -682,20 +715,19 @@ describe('AgentTaskService', () => {
 		});
 
 		it('allows a later scheduled run after a failed execution completes', async () => {
-			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
 				makeSnapshot(),
 			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
-			(agentsService.executeForTaskPublished as jest.Mock)
+			(agentExecutionOrchestratorService.executeForTaskPublished as jest.Mock)
 				.mockReturnValueOnce(throwingStream())
 				.mockReturnValueOnce(emptyStream());
 
-			await runScheduledTaskOf(service, 'task-1');
-			await runScheduledTaskOf(service, 'task-1');
+			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
+			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
 
-			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(2);
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledTimes(2);
 			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(2);
 		});
 
@@ -709,7 +741,6 @@ describe('AgentTaskService', () => {
 						finishRun = resolve;
 					});
 				}
-				seedJob(service, 'task-1', AGENT_ID);
 				(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
 				(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
 					makeSnapshot(),
@@ -717,9 +748,11 @@ describe('AgentTaskService', () => {
 				(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue([
 					'user-1',
 				]);
-				(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(blockingStream());
+				(agentExecutionOrchestratorService.executeForTaskPublished as jest.Mock).mockReturnValue(
+					blockingStream(),
+				);
 
-				const run = runScheduledTaskOf(service, 'task-1');
+				const run = runScheduledTaskOf(service, AGENT_ID, 'task-1');
 				await Promise.resolve();
 				await Promise.resolve();
 
@@ -740,11 +773,9 @@ describe('AgentTaskService', () => {
 
 	describe('stopAll', () => {
 		it('stops local cron jobs without touching distributed run locks', async () => {
-			const job = seedJob(service, 'task-1', AGENT_ID);
-
 			service.stopAll();
 
-			expect(job.stop).toHaveBeenCalled();
+			expect(agentTaskScheduler.deregisterGroups).toHaveBeenCalledWith('agent-task');
 			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
 		});
 	});
@@ -755,11 +786,13 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(
 				makeAgent({ activeVersionId: null }),
 			);
-			(agentsService.executeForTaskNow as jest.Mock).mockReturnValue(emptyStream());
+			(agentExecutionOrchestratorService.executeForTaskNow as jest.Mock).mockReturnValue(
+				emptyStream(),
+			);
 
 			await service.runNow(AGENT_ID, 'task-1', 'user-9');
 
-			expect(agentsService.executeForTaskNow).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForTaskNow).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: AGENT_ID,
 					projectId: 'project-1',
@@ -775,13 +808,15 @@ describe('AgentTaskService', () => {
 			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(null);
 
 			await expect(service.runNow(AGENT_ID, 'missing', 'user-9')).rejects.toThrow(NotFoundError);
-			expect(agentsService.executeForTaskNow).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForTaskNow).not.toHaveBeenCalled();
 		});
 
 		it('does not write the task row after a manual run', async () => {
 			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(makeTask());
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(makeAgent());
-			(agentsService.executeForTaskNow as jest.Mock).mockReturnValue(emptyStream());
+			(agentExecutionOrchestratorService.executeForTaskNow as jest.Mock).mockReturnValue(
+				emptyStream(),
+			);
 
 			await service.runNow(AGENT_ID, 'task-1', 'user-9');
 			await new Promise((resolve) => setImmediate(resolve));

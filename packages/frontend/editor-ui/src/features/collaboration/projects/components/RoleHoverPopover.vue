@@ -9,7 +9,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import {
 	UI_VISIBLE_SCOPES,
 	TOTAL_PROJECT_PERMISSIONS,
-} from '@/features/project-roles/projectRoleScopes';
+} from '@/features/roles/project/projectRoleScopes';
 
 const props = defineProps<{
 	role: Role;

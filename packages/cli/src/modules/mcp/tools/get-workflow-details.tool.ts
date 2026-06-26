@@ -134,6 +134,7 @@ export async function getWorkflowDetails(
 						({ credentials: _credentials, ...node }) => node,
 					),
 					connections: workflow.activeVersion.connections ?? {},
+					nodeGroups: workflow.activeVersion.nodeGroups ?? [],
 				}
 			: null;
 
@@ -163,6 +164,7 @@ export async function getWorkflowDetails(
 		settings: workflow.settings ?? null,
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+		nodeGroups: workflow.nodeGroups ?? [],
 		activeVersion,
 		tags: toTagSummary(workflow.tags),
 		meta: workflow.meta ?? null,

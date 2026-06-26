@@ -48,30 +48,47 @@ subagent.
    added. Do not write agent ids from memory, prose, or user-entered free text.
 2. If published agents are available and the user has not named exact agents,
    call \`ask_question\` with \`allowMultiple: true\`. Use each option's
-   \`value\` as the returned \`agentId\`, and include descriptions when present.
+   \`value\` as the returned \`agentId\`.
 3. If no published agents are available, do not configure saved subagents.
    Inline delegation still works without saved-agent refs.
-4. Call \`read_config\`.
-5. Patch selected saved agents into \`subAgents.agents\` as
-   \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
+4. Determine the parent-owned routing guidance for each selected saved
+   subagent. Store it as \`useWhen\`, for example
+   \`{ "agentId": "<returned-agent-id>", "useWhen": "Use for billing-policy questions and invoice investigations." }\`.
+5. If it is unclear when a selected saved subagent should be used, ask the user
+   a follow-up before patching \`subAgents.agents\`. Do not invent vague routing
+   guidance.
+6. Call \`read_config\`.
+7. Patch selected saved agents into \`subAgents.agents\`. Avoid duplicates.
 
 Example patch flow:
 
 1. \`list_sub_agents()\`.
 2. If it returns one or more agents and the user has not named exact ones, call
    \`ask_question({ allowMultiple: true, ... })\` with those agents as options.
-3. \`read_config()\`.
-4. \`patch_config(...)\` adding selected \`{ "agentId": "<returned-agent-id>" }\`
-   refs to \`/subAgents/agents\`.
+3. If the user's request does not make the routing rule clear, ask when each
+   selected saved subagent should be used.
+4. \`read_config()\`.
+5. \`patch_config(...)\` adding selected
+   \`{ "agentId": "<returned-agent-id>", "useWhen": "Use for ..." }\` refs to
+   \`/subAgents/agents\`.
 
 ## Rules
 
 - If the resumed values include text that is not one of the listed agent ids,
   do not persist it as an agent id; ask a follow-up.
+- \`useWhen\` is relationship-specific routing guidance owned by this parent
+  config. It is not the child agent's global description.
+- Write \`useWhen\` only when the intended routing is clear from the user's
+  request or an explicit follow-up answer.
+- Every new or updated saved subagent ref must include \`useWhen\`.
+- Good \`useWhen\` values are concrete and intent-oriented, such as
+  "Use for invoice investigations and payment status checks."
+- Do not write vague values such as "Use when helpful", "Use for tasks", or
+  "Use for this agent."
 - Do not add custom tools, custom instructions, or custom schema fields to
   simulate subagents.
 - Preserve existing \`subAgents.agents\` refs unless the user explicitly asks to
-  change saved subagents.
+  change saved subagents. Preserve existing \`useWhen\` values when keeping refs.
 
 ## Inline model mappings
 
@@ -99,6 +116,7 @@ Example shape:
 
 - Inline delegation still works even when \`subAgents.agents\` is absent.
 - Saved refs use only returned same-project published agent ids.
+- New or updated saved refs include concrete \`useWhen\` guidance.
 - Any \`subAgents.maxChildren\` value stays within ${SUB_AGENT_MAX_CHILDREN_MIN} to ${SUB_AGENT_MAX_CHILDREN_MAX}.`,
 	};
 }

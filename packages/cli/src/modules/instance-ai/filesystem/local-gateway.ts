@@ -67,6 +67,8 @@ export class LocalGateway {
 
 	private _availableTools: McpTool[] = [];
 
+	private _excludedToolCategories: ReadonlySet<string> = new Set();
+
 	get isConnected(): boolean {
 		return this._connected;
 	}
@@ -79,13 +81,24 @@ export class LocalGateway {
 		return this._rootPath;
 	}
 
-	/** The MCP tools advertised by the client on connect. */
+	/** Restrict which tool categories are exposed to the agent. Pass an empty set to expose all. */
+	setExcludedToolCategories(categories: string[]): void {
+		this._excludedToolCategories = new Set(categories);
+	}
+
+	private isExcluded(tool: McpTool): boolean {
+		const category = tool.annotations?.category;
+		return category !== undefined && this._excludedToolCategories.has(category);
+	}
+
+	/** The MCP tools advertised by the client on connect, minus excluded categories. */
 	getAvailableTools(): McpTool[] {
-		return this._availableTools;
+		return this._availableTools.filter((t) => !this.isExcluded(t));
 	}
 
 	/** Return tools that belong to the given category (based on annotations.category). */
 	getToolsByCategory(category: string): McpTool[] {
+		if (this._excludedToolCategories.has(category)) return [];
 		return this._availableTools.filter((t) => t.annotations?.category === category);
 	}
 
@@ -164,7 +177,9 @@ export class LocalGateway {
 			connectedAt: this._connectedAt,
 			directory: this._rootPath,
 			hostIdentifier: this._hostIdentifier,
-			toolCategories: this._toolCategories,
+			toolCategories: this._toolCategories.filter(
+				(category) => !this._excludedToolCategories.has(category.name),
+			),
 		};
 	}
 
@@ -175,6 +190,14 @@ export class LocalGateway {
 	async callTool(toolCall: McpToolCallRequest): Promise<McpToolCallResult> {
 		if (!this._connected) {
 			throw new Error('Local gateway is not connected');
+		}
+
+		const tool = this._availableTools.find((t) => t.name === toolCall.name);
+		if (tool && this.isExcluded(tool)) {
+			return {
+				content: [{ type: 'text', text: `Unknown tool: ${toolCall.name}` }],
+				isError: true,
+			};
 		}
 
 		const requestId = `gw_${nanoid()}`;

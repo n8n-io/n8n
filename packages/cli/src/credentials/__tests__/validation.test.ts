@@ -139,6 +139,37 @@ describe('Credentials Validation', () => {
 				).rejects.toThrow(errorMessage);
 			});
 		});
+
+		describe('non-literal $secrets references', () => {
+			it.each([
+				['space before dot', '={{ $secrets .vault.key }}'],
+				['multiple spaces before dot', '={{ $secrets   .vault.key }}'],
+				['tab before dot', '={{ $secrets\t.vault.key }}'],
+				['newline before dot', '={{ $secrets\n.vault.key }}'],
+				['space before bracket', "={{ $secrets ['vault']['key'] }}"],
+				['newline before bracket', "={{ $secrets\n['vault']['key'] }}"],
+				['optional chaining', '={{ $secrets?.vault?.key }}'],
+				['parentheses', '={{ ($secrets).vault.key }}'],
+				['comma operator', '={{ (0, $secrets).vault.key }}'],
+				['array wrap with pop', '={{ [$secrets].pop().vault.key }}'],
+				['array wrap with at', '={{ [$secrets].at(0).vault.key }}'],
+				['inline comment', '={{ ( /* x */ $secrets ).vault.key }}'],
+				['Object() wrap', '={{ Object($secrets).vault.key }}'],
+				['nullish coalescing', '={{ ($secrets ?? {}).vault.key }}'],
+				['template-literal key', '={{ $secrets [`vault`].key }}'],
+				['concatenated key', '={{ $secrets ["va".concat("ult")].key }}'],
+			])('should throw when user lacks permission and uses %s', async (_label, expression) => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+				await expect(
+					validateExternalSecretsPermissions({
+						user: memberUser,
+						projectId,
+						dataToSave: { apiKey: expression },
+					}),
+				).rejects.toThrow(errorMessage);
+			});
+		});
 	});
 
 	describe('isChangingExternalSecretExpression', () => {
@@ -386,6 +417,55 @@ describe('Credentials Validation', () => {
 					'vault',
 					projectId,
 				);
+			});
+		});
+
+		describe('whitespace and newline between $secrets and accessor', () => {
+			it.each([
+				['space before dot', '={{ $secrets .vault.mykey }}'],
+				['tab before dot', '={{ $secrets\t.vault.mykey }}'],
+				['newline before dot', '={{ $secrets\n.vault.mykey }}'],
+				['space before bracket', "={{ $secrets ['vault']['mykey'] }}"],
+				['newline before bracket', "={{ $secrets\n['vault']['mykey'] }}"],
+			])('should check provider access for reference with %s', async (_label, expression) => {
+				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(
+						projectId,
+						{ apiKey: expression },
+						accessCheckService,
+						'create',
+					),
+				).rejects.toThrow(
+					'The secret provider "vault" used in "apiKey" does not exist in this project',
+				);
+
+				expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
+					'vault',
+					projectId,
+				);
+			});
+		});
+
+		describe('detected reference with unrecoverable provider key', () => {
+			it.each([
+				['parentheses', '={{ ($secrets).vault.mykey }}'],
+				['array wrap', '={{ [$secrets].pop().vault.mykey }}'],
+				['optional chaining', '={{ $secrets?.vault?.mykey }}'],
+				['template-literal key', '={{ $secrets [`vault`].mykey }}'],
+				['concatenated key', '={{ $secrets ["va".concat("ult")].mykey }}'],
+			])('should reject %s', async (_label, expression) => {
+				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(
+						projectId,
+						{ apiKey: expression },
+						accessCheckService,
+						'create',
+					),
+				).rejects.toThrow('Could not find a valid external secret vault name');
 			});
 		});
 

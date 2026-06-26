@@ -1,12 +1,12 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
 import { applyPinData } from './apply-pin-data.service';
-import { isRecord } from './column-ref-utils';
 import {
 	describeMetricForWorkflow,
 	recommendedMetricId,

@@ -8,7 +8,7 @@ import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import { VIEWS } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { TOTAL_PROJECT_PERMISSIONS } from '@/features/project-roles/projectRoleScopes';
+import { TOTAL_PROJECT_PERMISSIONS } from '@/features/roles/project/projectRoleScopes';
 
 const mockPush = vi.fn();
 

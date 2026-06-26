@@ -10,10 +10,7 @@ import {
 	validateNodeCredentials,
 	isNodeConnected,
 	isTriggerLikeNode,
-	toExecutionContextEstablishmentHookParameter,
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPES,
+	classifyTriggerIdentity,
 } from 'n8n-workflow';
 import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import type {
@@ -25,7 +22,7 @@ import type {
 	ICredentialType,
 } from 'n8n-workflow';
 
-import { MCP_TRIGGER_NODE_TYPE, STARTING_NODES } from '@/constants';
+import { STARTING_NODES } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -52,16 +49,6 @@ export interface WorkflowStatus {
 /** Formats credential names as a quoted, comma-separated list for error messages. */
 function formatCredentialNames(credentials: Array<{ name: string }>): string {
 	return credentials.map((c) => `"${c.name}"`).join(', ');
-}
-
-/** Whether a node's parameters declare at least one context establishment hook. */
-function hasContextEstablishmentHook(parameters: INode['parameters']): boolean {
-	const hookParams = toExecutionContextEstablishmentHookParameter(parameters);
-	return (
-		hookParams !== null &&
-		hookParams.success &&
-		hookParams.data.contextEstablishmentHooks.hooks.length > 0
-	);
 }
 
 @Service()
@@ -397,11 +384,8 @@ export class WorkflowValidationService {
 	 * - `hasExternalIdentityTrigger`: external identity (context hook, Chat Hub, sub-workflow).
 	 * - `hasN8nIdentityTrigger`: n8n user identity (manual/chat, Chat Hub, sub-workflow).
 	 *
-	 * This mirrors how the engine establishes identity at runtime: keep it in sync
-	 * with `execution-context.ts` (manual/parent inheritance) and the identity sources
-	 * accepted by the resolvers' identifiers (e.g. `N8NIdentifier`). When a new trigger
-	 * or identity source is added there, it must be reflected here too. A follow-up
-	 * tracks making this declarative instead of hardcoded.
+	 * The per-trigger classification lives in `classifyTriggerIdentity` (n8n-workflow)
+	 * so the editor's trigger-compatibility warning can reuse the exact same rules.
 	 */
 	private classifyTriggerIdentities(
 		nodes: INode[],
@@ -415,29 +399,12 @@ export class WorkflowValidationService {
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (!nodeType || !isTriggerLikeNode(nodeType)) continue;
 
-			// Sub-workflows inherit identity from the parent; Chat Hub injects it.
-			// Both satisfy either family.
-			const isSubWorkflowTrigger = node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE;
-			const isChatHubTrigger =
-				node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters.availableInChat === true;
-			const isMcpTrigger =
-				node.type === MCP_TRIGGER_NODE_TYPE && node.parameters.authentication === 'n8nOAuth2';
-			if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger) {
-				hasExternalIdentityTrigger = true;
-				hasN8nIdentityTrigger = true;
-				continue;
-			}
-
-			// Manual/chat triggers run with the n8n user identity.
-			if (MANUAL_TRIGGER_NODE_TYPES.includes(node.type)) {
-				hasN8nIdentityTrigger = true;
-				continue;
-			}
-
-			// Any other trigger with a context establishment hook provides external identity.
-			if (hasContextEstablishmentHook(node.parameters)) {
-				hasExternalIdentityTrigger = true;
-			}
+			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
+				node.type,
+				node.parameters,
+			);
+			hasExternalIdentityTrigger ||= providesExternalIdentity;
+			hasN8nIdentityTrigger ||= providesN8nIdentity;
 		}
 
 		return { hasExternalIdentityTrigger, hasN8nIdentityTrigger };
