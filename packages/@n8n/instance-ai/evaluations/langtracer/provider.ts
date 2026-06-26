@@ -7,7 +7,6 @@ import { normalizeExportedCase } from './normalize';
 import { parseSubstringList, type WorkflowTestCaseWithFile } from '../data/workflows';
 import { WorkflowTestCaseSchema } from '../data/workflows/schema';
 import type { EvalLogger } from '../harness/logger';
-import type { WorkflowTestCase } from '../types';
 
 export interface LangTracerLoadOptions {
 	/** Suite slug or numeric id. */
@@ -38,7 +37,7 @@ export function casesFromExportedFiles(
 			errors.push(`${filename}:\n${issues}`);
 			continue;
 		}
-		cases.push({ testCase: parsed.data as WorkflowTestCase, fileSlug });
+		cases.push({ testCase: parsed.data, fileSlug });
 	}
 
 	if (errors.length > 0) {

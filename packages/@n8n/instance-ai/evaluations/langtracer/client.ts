@@ -61,7 +61,8 @@ export class LangTracerClient {
 		const text = result.content.find((c) => c.type === 'text' && typeof c.text === 'string')?.text;
 
 		if (result.isError) {
-			throw new Error(`lang-tracer tool "${name}" failed: ${text ?? 'unknown error'}`);
+			// Don't echo the remote response body — it may carry sensitive content.
+			throw new Error(`lang-tracer tool "${name}" returned an error response`);
 		}
 		if (text === undefined) {
 			throw new Error(`lang-tracer tool "${name}" returned no text content`);
