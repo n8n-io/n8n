@@ -38,17 +38,16 @@ export const NoAsteriskInOptionNamesRule = createRule({
 					continue;
 				}
 
-				const nameProperty = findObjectProperty(option, 'name');
-				if (!nameProperty) {
+				const valueNode = findObjectProperty(option, 'name')?.value;
+				if (!valueNode) {
 					continue;
 				}
 
-				const name = getStringLiteralValue(nameProperty.value);
-				if (name === null || !name.includes('*')) {
+				const name = getStringLiteralValue(valueNode);
+				if (!name?.includes('*')) {
 					continue;
 				}
 
-				const valueNode = nameProperty.value;
 				context.report({
 					node: valueNode,
 					messageId: 'asteriskInOptionName',
