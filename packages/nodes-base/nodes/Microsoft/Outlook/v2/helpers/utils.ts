@@ -13,9 +13,11 @@ import { jsonParse, NodeApiError, NodeOperationError, UserError } from 'n8n-work
 // deliberately narrow (GUID | UPN | bare host/domain) and validation runs BEFORE
 // encoding — `encodeURIComponent` leaves `..` intact, so shape validation (not
 // encoding) is what keeps the value safe to interpolate into a Graph URL path.
-// A drive-style `!`-bearing id is intentionally not accepted.
+// A drive-style `!`-bearing id is intentionally not accepted. `%` is excluded from
+// the UPN local part (Microsoft UPNs never contain it) so an encoded-traversal
+// payload such as `..%2f..%2fx@y.com` is rejected outright.
 const MAILBOX_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-const MAILBOX_UPN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
+const MAILBOX_UPN = /^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+$/;
 const MAILBOX_HOST = /^[A-Za-z0-9.-]+$/;
 
 export const messageFields = [
