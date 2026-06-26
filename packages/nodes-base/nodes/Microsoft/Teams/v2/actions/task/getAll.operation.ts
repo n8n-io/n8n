@@ -12,6 +12,7 @@ import {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
 } from '../../transport';
+import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
 	{
@@ -64,23 +65,10 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		// Plan picker shown under the Service Principal credential (which has no
-		// `tasksFor` selector). The group-scoped list mode depends on `groupId`, which is
-		// hidden under SP — so default to By-ID mode and drop the list/`loadOptionsDependsOn`
-		// so the dropdown never auto-fires `getPlans` with an empty group id (which would
-		// hit the SP empty-id validation error). The By-ID value still routes through
-		// `buildTeamsPath` in execute. Plan mode is forced in execute.
-		...planRLC,
-		default: { mode: 'id', value: '' },
-		modes: (planRLC.modes ?? []).filter((mode) => mode.name === 'id'),
-		typeOptions: undefined,
-		displayOptions: {
-			show: {
-				'/authentication': [SERVICE_PRINCIPAL_AUTH],
-			},
-		},
-	},
+	// Plan picker shown under the Service Principal credential (which has no `tasksFor`
+	// selector). By-ID — plan mode is forced in execute and the value routes through
+	// `buildTeamsPath`. (See `byIdUnderSp` for why list mode is dropped under SP.)
+	byIdUnderSp(planRLC),
 	...returnAllOrLimit,
 ];
 

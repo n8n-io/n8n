@@ -265,6 +265,43 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			await expect(node.execute.call(ctx)).rejects.toThrow('The ID is not valid');
 			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
 		});
+
+		it('task:create with a By-ID assignee builds the app-only assignment from the user id', async () => {
+			(transport.microsoftApiRequest as Mock).mockResolvedValue({ id: 'task-1' });
+			ctx.helpers.returnJsonArray = vi.fn((data) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+			) as unknown as IExecuteFunctions['helpers']['returnJsonArray'];
+			ctx.helpers.constructExecutionMetaData = vi.fn(
+				(data) => data,
+			) as unknown as IExecuteFunctions['helpers']['constructExecutionMetaData'];
+			selectSp({
+				resource: 'task',
+				operation: 'create',
+				planId: 'plan-1',
+				bucketId: 'bucket-1',
+				title: 'My task',
+				options: { assignedTo: 'user-guid-123' },
+				'options.assignedTo': 'user-guid-123',
+			});
+
+			await node.execute.call(ctx);
+
+			expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/v1.0/planner/tasks',
+				expect.objectContaining({
+					planId: 'plan-1',
+					bucketId: 'bucket-1',
+					title: 'My task',
+					assignments: {
+						'user-guid-123': {
+							'@odata.type': 'microsoft.graph.plannerAssignment',
+							orderHint: ' !',
+						},
+					},
+				}),
+			);
+		});
 	});
 
 	describe('empty-ID validation under SP', () => {

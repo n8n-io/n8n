@@ -166,6 +166,23 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			const oauthCopy = byName(fields, name).find((p) => isSpHidden(p));
 			expect(oauthCopy).toBeDefined();
 		});
+
+		// `assignedTo` (member RLC) lives inside the `options` collection.
+		const optionFields = (fields.find((p) => p.name === 'options')?.options ??
+			[]) as INodeProperties[];
+		const assignedToCopies = optionFields.filter((o) => o.name === 'assignedTo');
+
+		it('an SP-shown By-ID assignedTo picker exists (no list, no deps)', () => {
+			const spCopy = assignedToCopies.find((p) => isSpShown(p));
+			expect(spCopy).toBeDefined();
+			expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+			expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+			expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+		});
+
+		it('the OAuth2 list-mode assignedTo picker is hidden under SP', () => {
+			expect(assignedToCopies.some((p) => isSpHidden(p))).toBe(true);
+		});
 	});
 
 	describe('task:update — By-ID plan/bucket under SP inside updateFields, group hidden', () => {
@@ -195,6 +212,18 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 
 		it.each(['planId', 'bucketId'])('the OAuth2 list-mode %s picker is hidden under SP', (name) => {
 			expect(byOptName(name).some((p) => isSpHidden(p))).toBe(true);
+		});
+
+		it('an SP-shown By-ID assignedTo picker exists (no list, no deps)', () => {
+			const spCopy = byOptName('assignedTo').find((p) => isSpShown(p));
+			expect(spCopy).toBeDefined();
+			expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+			expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+			expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+		});
+
+		it('the OAuth2 list-mode assignedTo picker is hidden under SP', () => {
+			expect(byOptName('assignedTo').some((p) => isSpHidden(p))).toBe(true);
 		});
 	});
 

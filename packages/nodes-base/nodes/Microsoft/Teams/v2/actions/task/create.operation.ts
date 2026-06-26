@@ -4,26 +4,8 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
-import {
-	microsoftApiRequest,
-	SERVICE_PRINCIPAL_AUTH,
-	SP_HIDE,
-	validateTaskBodyIdsUnderSp,
-} from '../../transport';
-
-// SP-shown By-ID copy of an RLC: app-only has no group-scoped list to depend on, so
-// drop list mode + `loadOptionsDependsOn` and default to By-ID, mirroring task:getAll.
-const byIdUnderSp = (rlc: INodeProperties): INodeProperties => ({
-	...rlc,
-	default: { mode: 'id', value: '' },
-	modes: (rlc.modes ?? []).filter((mode) => mode.name === 'id'),
-	typeOptions: undefined,
-	displayOptions: {
-		show: {
-			'/authentication': [SERVICE_PRINCIPAL_AUTH],
-		},
-	},
-});
+import { microsoftApiRequest, SP_HIDE, validateTaskBodyIdsUnderSp } from '../../transport';
+import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
 	// OAuth2 pickers: list mode with group/plan dependency — hidden under SP.
@@ -59,6 +41,8 @@ const properties: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add option',
 		options: [
+			// OAuth2 assignee picker (list, scoped by the group) — hidden under SP, which
+			// uses the By-ID copy below (the group picker it depends on is hidden under SP).
 			{
 				...memberRLC,
 				displayName: 'Assigned To',
@@ -67,7 +51,14 @@ const properties: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsDependsOn: ['groupId.value'],
 				},
+				displayOptions: { hide: { ...SP_HIDE } },
 			},
+			// SP assignee picker: By-ID (Planner assignment is app-only-capable with a user ID).
+			byIdUnderSp(memberRLC, {
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				description: 'Who the task should be assigned to',
+			}),
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
