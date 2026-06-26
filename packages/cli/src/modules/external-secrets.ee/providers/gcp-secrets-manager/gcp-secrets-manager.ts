@@ -43,22 +43,38 @@ export class GcpSecretsManager extends SecretsProvider {
 	}
 
 	async init(context: GcpSecretsManagerContext) {
-		this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
+		try {
+			this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
+		} catch (error) {
+			this.logger.error('Failed to initialize GCP Secrets Manager provider', {
+				error: ensureError(error),
+			});
+			throw error;
+		}
 	}
 
 	protected async doConnect(): Promise<void> {
-		const { projectId, privateKey, clientEmail } = this.settings;
+		try {
+			const { projectId, privateKey, clientEmail } = this.settings;
 
-		const { SecretManagerServiceClient: GcpClient } = await import('@google-cloud/secret-manager');
+			const { SecretManagerServiceClient: GcpClient } = await import(
+				'@google-cloud/secret-manager'
+			);
 
-		// TODO: gRPC bypasses @n8n/backend-network, so the configured proxy and SSRF/DNS rules are not enforced here.
-		// Route through it once it supports a gRPC transport.
-		this.client = new GcpClient({
-			credentials: { client_email: clientEmail, private_key: privateKey },
-			projectId,
-		});
+			// TODO: gRPC bypasses @n8n/backend-network, so the configured proxy and SSRF/DNS rules are not enforced here.
+			// Route through it once it supports a gRPC transport.
+			this.client = new GcpClient({
+				credentials: { client_email: clientEmail, private_key: privateKey },
+				projectId,
+			});
 
-		this.logger.debug('GCP Secrets Manager provider connected');
+			this.logger.debug('GCP Secrets Manager provider connected');
+		} catch (error) {
+			this.logger.error('Failed to connect GCP Secrets Manager provider', {
+				error: ensureError(error),
+			});
+			throw error;
+		}
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
@@ -68,6 +84,9 @@ export class GcpSecretsManager extends SecretsProvider {
 			await this.client.initialize();
 			return [true];
 		} catch (error: unknown) {
+			this.logger.error('GCP Secrets Manager provider test failed', {
+				error: ensureError(error),
+			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -77,73 +96,80 @@ export class GcpSecretsManager extends SecretsProvider {
 	}
 
 	async update() {
-		const { projectId } = this.settings;
+		try {
+			const { projectId } = this.settings;
 
-		const [rawSecretNames] = await this.client.listSecrets({
-			parent: `projects/${projectId}`,
-		});
+			const [rawSecretNames] = await this.client.listSecrets({
+				parent: `projects/${projectId}`,
+			});
 
-		const secretNames = rawSecretNames.reduce<string[]>((acc, cur) => {
-			if (!cur.name) return acc;
+			const secretNames = rawSecretNames.reduce<string[]>((acc, cur) => {
+				if (!cur.name) return acc;
 
-			const secretName = cur.name.split('/').pop();
+				const secretName = cur.name.split('/').pop();
 
-			if (secretName) acc.push(secretName);
+				if (secretName) acc.push(secretName);
 
-			return acc;
-		}, []);
+				return acc;
+			}, []);
 
-		const promises = secretNames.map(async (name) => {
-			let versions:
-				| [
-						protos.google.cloud.secretmanager.v1.IAccessSecretVersionResponse,
-						protos.google.cloud.secretmanager.v1.IAccessSecretVersionRequest | undefined,
-						{} | undefined,
-				  ]
-				| undefined;
+			const promises = secretNames.map(async (name) => {
+				let versions:
+					| [
+							protos.google.cloud.secretmanager.v1.IAccessSecretVersionResponse,
+							protos.google.cloud.secretmanager.v1.IAccessSecretVersionRequest | undefined,
+							{} | undefined,
+					  ]
+					| undefined;
 
-			try {
-				versions = await this.client.accessSecretVersion({
-					name: `projects/${projectId}/secrets/${name}/versions/latest`,
-				});
-			} catch (error) {
-				// Only handle expected error codes that indicate the secret is not accessible
-				// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
-				const errorCode = error?.code;
-				if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
-					this.logger.info(
-						`Skipping GCP secret: ${name}, version: latest as the version is not accessible`,
-						{
-							error: ensureError(error),
-						},
-					);
-				} else {
-					// Rethrow unexpected errors to avoid masking broader failures
-					throw error;
+				try {
+					versions = await this.client.accessSecretVersion({
+						name: `projects/${projectId}/secrets/${name}/versions/latest`,
+					});
+				} catch (error) {
+					// Only handle expected error codes that indicate the secret is not accessible
+					// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
+					const errorCode = this.getErrorCode(error);
+					if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
+						this.logger.info(
+							`Skipping GCP secret: ${name}, version: latest as the version is not accessible`,
+							{
+								error: ensureError(error),
+							},
+						);
+					} else {
+						// Rethrow unexpected errors to avoid masking broader failures
+						throw error;
+					}
 				}
-			}
 
-			if (!Array.isArray(versions) || !versions.length) return null;
+				if (!Array.isArray(versions) || !versions.length) return null;
 
-			const [latestVersion] = versions;
+				const [latestVersion] = versions;
 
-			if (!latestVersion.payload?.data) return null;
+				if (!latestVersion.payload?.data) return null;
 
-			const value = latestVersion.payload.data.toString();
+				const value = latestVersion.payload.data.toString();
 
-			if (!value) return null;
+				if (!value) return null;
 
-			return { name, value };
-		});
+				return { name, value };
+			});
 
-		const results = await Promise.all(promises);
+			const results = await Promise.all(promises);
 
-		this.cachedSecrets = results.reduce<Record<string, string>>((acc, cur) => {
-			if (cur) acc[cur.name] = cur.value;
-			return acc;
-		}, {});
+			this.cachedSecrets = results.reduce<Record<string, string>>((acc, cur) => {
+				if (cur) acc[cur.name] = cur.value;
+				return acc;
+			}, {});
 
-		this.logger.debug('GCP Secrets Manager provider secrets updated');
+			this.logger.debug('GCP Secrets Manager provider secrets updated');
+		} catch (error) {
+			this.logger.error('Failed to update GCP Secrets Manager provider secrets', {
+				error: ensureError(error),
+			});
+			throw error;
+		}
 	}
 
 	getSecret(name: string) {
@@ -177,5 +203,12 @@ export class GcpSecretsManager extends SecretsProvider {
 			clientEmail,
 			privateKey,
 		};
+	}
+
+	private getErrorCode(error: unknown): number | undefined {
+		if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
+
+		const { code } = error;
+		return typeof code === 'number' ? code : undefined;
 	}
 }

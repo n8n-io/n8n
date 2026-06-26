@@ -1,6 +1,7 @@
 import { UserError } from 'n8n-workflow';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import type { google } from '@google-cloud/secret-manager/build/protos/protos';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
@@ -19,10 +20,13 @@ const VALID_SERVICE_ACCOUNT_KEY = (projectId: string) =>
 	});
 
 describe('GCP Secrets Manager', () => {
-	const gcpSecretsManager = new GcpSecretsManager();
+	const logger = mock<Logger>();
+	let gcpSecretsManager: GcpSecretsManager;
 
-	afterEach(() => {
+	beforeEach(() => {
 		jest.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		gcpSecretsManager = new GcpSecretsManager(logger);
 	});
 
 	describe('init validation', () => {
@@ -45,6 +49,10 @@ describe('GCP Secrets Manager', () => {
 			await expect(
 				gcpSecretsManager.init(mock<GcpSecretsManagerContext>({ settings })),
 			).rejects.toThrow(UserError);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to initialize GCP Secrets Manager provider',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
 		});
 
 		it('should throw UserError when JSON lacks client_email', async () => {
@@ -139,6 +147,27 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
 	});
 
+	it('should log failed connection tests while preserving the result', async () => {
+		const PROJECT_ID = 'my-project-id';
+
+		await gcpSecretsManager.init(
+			mock<GcpSecretsManagerContext>({
+				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
+			}),
+		);
+		await gcpSecretsManager.connect();
+
+		jest
+			.spyOn(SecretManagerServiceClient.prototype, 'initialize')
+			.mockRejectedValue(new Error('Invalid credentials'));
+
+		await expect(gcpSecretsManager.test()).resolves.toEqual([false, 'Invalid credentials']);
+		expect(logger.error).toHaveBeenCalledWith(
+			'GCP Secrets Manager provider test failed',
+			expect.objectContaining({ error: expect.any(Error) }),
+		);
+	});
+
 	it('should throw a generic error when accessing secret versions', async () => {
 		/**
 		 * Arrange
@@ -180,16 +209,13 @@ describe('GCP Secrets Manager', () => {
 				] as GcpSecretVersionResponse[];
 			});
 
-		/**
-		 * Act
-		 */
-		try {
-			await gcpSecretsManager.connect();
-			await gcpSecretsManager.update();
-		} catch (error) {
-			expect(error).toBeInstanceOf(Error);
-			expect(error.message).toBe('test error');
-		}
+		await gcpSecretsManager.connect();
+
+		await expect(gcpSecretsManager.update()).rejects.toThrow('test error');
+		expect(logger.error).toHaveBeenCalledWith(
+			'Failed to update GCP Secrets Manager provider secrets',
+			expect.objectContaining({ error: expect.any(Error) }),
+		);
 	});
 
 	it('should handle errors when accessing secret versions (NOT_FOUND)', async () => {
