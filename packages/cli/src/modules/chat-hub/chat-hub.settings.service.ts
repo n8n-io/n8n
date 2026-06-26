@@ -36,8 +36,9 @@ export class ChatHubSettingsService {
 
 	async getEnabled(): Promise<boolean> {
 		const row = await this.settingsRepository.findByKey(CHAT_ENABLED_KEY);
-		// Allowed by default
-		if (!row) return true;
+		// Disabled by default; existing installs with usage get an explicit
+		// 'true' row via migration so they are unaffected by this default.
+		if (!row) return false;
 		return row.value === 'true';
 	}
 
