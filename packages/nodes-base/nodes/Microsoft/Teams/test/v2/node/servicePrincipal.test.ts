@@ -206,19 +206,22 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			expect(calledPath).not.toContain('/me');
 		});
 
-		it('rejects a separator-bearing channelId before any request', async () => {
-			selectSp({
-				resource: 'channel',
-				operation: 'get',
-				teamId: '1111-2222-3333',
-				channelId: 'x/../../groups/abc',
-			});
+		it.each(['get', 'deleteChannel'])(
+			'channel:%s rejects a separator-bearing channelId before any request',
+			async (op) => {
+				selectSp({
+					resource: 'channel',
+					operation: op,
+					teamId: '1111-2222-3333',
+					channelId: 'x/../../groups/abc',
+				});
 
-			// channel:get wraps its body in a try/catch that rethrows a generic message, but
-			// the validator throw (a NodeOperationError) is surfaced before any request.
-			await expect(node.execute.call(ctx)).rejects.toThrow();
-			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-		});
+				// The path (and its validation) is built outside the op's try/catch, so the
+				// validator's specific message surfaces instead of the generic "doesn't exist" one.
+				await expect(node.execute.call(ctx)).rejects.toThrow('The ID is not valid');
+				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('task path-id injection under SP', () => {

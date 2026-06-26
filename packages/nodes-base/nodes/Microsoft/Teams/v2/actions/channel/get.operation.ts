@@ -19,15 +19,19 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/channel-get?view=graph-rest-beta&tabs=http
 
-	try {
-		const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-		const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+	// Build (and validate) the path outside the try so an invalid-ID error surfaces
+	// with its specific message instead of the generic "channel doesn't exist" below.
+	const endpoint = buildTeamsPath.call(this, [
+		'/v1.0/teams/',
+		{ id: teamId },
+		'/channels/',
+		{ id: channelId },
+	]);
 
-		return await microsoftApiRequest.call(
-			this,
-			'GET',
-			buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels/', { id: channelId }]),
-		);
+	try {
+		return await microsoftApiRequest.call(this, 'GET', endpoint);
 	} catch (error) {
 		throw new NodeOperationError(
 			this.getNode(),
