@@ -51,6 +51,9 @@ export const DOMAIN_RESTRICTION_FIELDS: INodeProperties[] = [
 	},
 ];
 
+/** Field names injected by `injectDomainRestrictionFields`; the UI groups these under "Advanced". */
+export const DOMAIN_RESTRICTION_FIELD_NAMES = DOMAIN_RESTRICTION_FIELDS.map((field) => field.name);
+
 function isRestrictionMode(value: unknown): value is DomainRestrictionMode {
 	return value === 'all' || value === 'domains' || value === 'none';
 }
