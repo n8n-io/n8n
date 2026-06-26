@@ -557,4 +557,42 @@ describe('AgentExecutionOrchestratorService', () => {
 		).rejects.toThrow(OperationalError);
 		expect(runtime.agent.structuredOutput).toHaveBeenCalledWith(outputSchema);
 	});
+
+	it('maps structured-output stream reader errors before recording and rethrowing', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const outputSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { answer: { type: 'string' } },
+		};
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockResolvedValue({
+			stream: makeFailingStream(new Error('No output generated. Check the stream for errors.')),
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		const execution = service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			userId,
+			projectId,
+			userId,
+			false,
+			outputSchema,
+		);
+
+		await expect(execution).rejects.toThrow(OperationalError);
+		await expect(execution).rejects.toThrow("Couldn't get structured output matching the schema");
+		await expect(execution).rejects.not.toThrow('Check the stream');
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				record: expect.objectContaining({
+					error: expect.stringContaining("Couldn't get structured output matching the schema"),
+				}),
+			}),
+		);
+	});
 });

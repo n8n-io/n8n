@@ -143,6 +143,16 @@ export class AgentExecutionOrchestratorService {
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
 
+	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
+		const normalizedError = error instanceof Error ? error : new Error(String(error));
+		if (!outputSchema || normalizedError instanceof OperationalError) return normalizedError;
+
+		const structuredOutputError = describeStructuredOutputError(normalizedError.message);
+		if (!structuredOutputError) return normalizedError;
+
+		return new OperationalError(structuredOutputError, { cause: normalizedError });
+	}
+
 	createAgentExecutionCounter({
 		agentId,
 		userId,
@@ -589,9 +599,10 @@ export class AgentExecutionOrchestratorService {
 				}
 			}
 		} catch (error) {
-			recorder.record({ type: 'error', error });
+			const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
+			recorder.record({ type: 'error', error: normalizedError });
 			recorder.record({ type: 'finish', finishReason: 'error' });
-			streamError = error instanceof Error ? error : new Error(String(error));
+			streamError = normalizedError;
 		}
 
 		const messageRecord = recorder.getMessageRecord();

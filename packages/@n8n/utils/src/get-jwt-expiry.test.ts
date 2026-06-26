@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getJwtExpiry } from './jwt';
+import { getJwtExpiry } from './get-jwt-expiry';
 
 function base64url(input: string): string {
 	return Buffer.from(input, 'utf8').toString('base64url');

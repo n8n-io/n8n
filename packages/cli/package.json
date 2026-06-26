@@ -102,7 +102,7 @@
     "axios": "catalog:",
     "concurrently": "^8.2.0",
     "esbuild": "catalog:",
-    "file-type": "16.5.4",
+    "file-type": "catalog:",
     "form-data": "catalog:",
     "ioredis-mock": "^8.8.1",
     "jest-mock": "^29.6.2",

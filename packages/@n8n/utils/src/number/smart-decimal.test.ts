@@ -1,4 +1,4 @@
-import { smartDecimal } from './smartDecimal';
+import { smartDecimal } from './smart-decimal';
 
 describe('smartDecimal', () => {
 	it('should return the same value if it is an integer', () => {

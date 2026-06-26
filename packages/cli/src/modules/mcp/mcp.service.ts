@@ -80,6 +80,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type { McpAppsTelemetryVariant, McpClientInfo } from './mcp.types';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
@@ -144,6 +145,7 @@ export class McpService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -577,6 +579,8 @@ export class McpService {
 			dataTableOps,
 			this.tagService,
 			this.globalConfig,
+			this.subworkflowPolicyChecker,
+			this.workflowPublishedDataService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

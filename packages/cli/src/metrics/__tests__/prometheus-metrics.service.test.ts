@@ -6,6 +6,7 @@ import promClient from 'prom-client';
 
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
+import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
 import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
@@ -48,6 +49,7 @@ describe('PrometheusMetricsService', () => {
 	let webhook: jest.Mocked<PrometheusWebhookAndFormMetricsService>;
 	let workflowInfo: jest.Mocked<PrometheusWorkflowInfoMetricsService>;
 	let instanceAi: jest.Mocked<PrometheusInstanceAiMetricsService>;
+	let dbPool: jest.Mocked<PrometheusDbPoolMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -72,6 +74,7 @@ describe('PrometheusMetricsService', () => {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			dbPool,
 		);
 
 	beforeEach(() => {
@@ -103,6 +106,7 @@ describe('PrometheusMetricsService', () => {
 		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
+		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -133,6 +137,7 @@ describe('PrometheusMetricsService', () => {
 			expect(webhook.init).toHaveBeenCalledWith(app);
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 			expect(instanceAi.init).toHaveBeenCalledWith(app);
+			expect(dbPool.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

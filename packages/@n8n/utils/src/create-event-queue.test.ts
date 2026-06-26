@@ -1,4 +1,4 @@
-import { createEventQueue } from './event-queue';
+import { createEventQueue } from './create-event-queue';
 
 describe('createEventQueue', () => {
 	beforeEach(() => {
