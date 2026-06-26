@@ -75,6 +75,18 @@
 							}
 						]
 					},
+					"urlsUi": {
+						"urlsValues": [
+							{
+								"value": "https://example.com",
+								"type": "work"
+							},
+							{
+								"value": "https://linkedin.com/in/janesmith",
+								"type": "profile"
+							}
+						]
+					},
 					"customFieldsUi": {
 						"customFieldsValues": [
 							{

@@ -534,6 +534,73 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'URLs',
+				name: 'urlsUi',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add URL',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'urlsValues',
+						displayName: 'URL',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Home',
+										value: 'home',
+									},
+									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Blog',
+										value: 'blog',
+									},
+									{
+										name: 'Profile',
+										value: 'profile',
+									},
+									{
+										name: 'Home Page',
+										value: 'homePage',
+									},
+									{
+										name: 'FTP',
+										value: 'ftp',
+									},
+									{
+										name: 'Reservations',
+										value: 'reservations',
+									},
+									{
+										name: 'Other',
+										value: 'other',
+									},
+								],
+								default: '',
+								description:
+									'The type of the URL. The type can be custom or one of these predefined values.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The URL',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -1539,6 +1606,73 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 								description:
 									"The person's relation to the other person. The type can be custom or one of these predefined values.",
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'URLs',
+				name: 'urlsUi',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add URL',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'urlsValues',
+						displayName: 'URL',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Home',
+										value: 'home',
+									},
+									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Blog',
+										value: 'blog',
+									},
+									{
+										name: 'Profile',
+										value: 'profile',
+									},
+									{
+										name: 'Home Page',
+										value: 'homePage',
+									},
+									{
+										name: 'FTP',
+										value: 'ftp',
+									},
+									{
+										name: 'Reservations',
+										value: 'reservations',
+									},
+									{
+										name: 'Other',
+										value: 'other',
+									},
+								],
+								default: '',
+								description:
+									'The type of the URL. The type can be custom or one of these predefined values.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The URL',
 							},
 						],
 					},

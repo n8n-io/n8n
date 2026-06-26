@@ -214,6 +214,12 @@ export class GoogleContacts implements INodeType {
 							];
 						}
 
+						if (additionalFields.urlsUi) {
+							const urlsValues = (additionalFields.urlsUi as IDataObject)
+								.urlsValues as IDataObject[];
+							body.urls = urlsValues;
+						}
+
 						if (additionalFields.customFieldsUi) {
 							const customFieldsValues = (additionalFields.customFieldsUi as IDataObject)
 								.customFieldsValues as IDataObject[];
@@ -477,6 +483,13 @@ export class GoogleContacts implements INodeType {
 								},
 							];
 							updatePersonFields.push('biographies');
+						}
+
+						if (updateFields.urlsUi) {
+							const urlsValues = (updateFields.urlsUi as IDataObject)
+								.urlsValues as IDataObject[];
+							body.urls = urlsValues;
+							updatePersonFields.push('urls');
 						}
 
 						if (updateFields.customFieldsUi) {
