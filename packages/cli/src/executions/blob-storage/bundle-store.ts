@@ -79,7 +79,11 @@ export class BlobBundleStore<
 		if (!content) return null;
 
 		try {
-			return jsonParse<TBundle>(content.toString('utf-8'));
+			const bundle = jsonParse<TBundle>(content.toString('utf-8'));
+			if (bundle.version !== this.version) {
+				throw new Error(`Unsupported bundle version: ${String(bundle.version)}`);
+			}
+			return bundle;
 		} catch (error) {
 			throw new this.corruptedErrorClass(ref, error);
 		}
