@@ -13,8 +13,8 @@ describe('ProviderRegistry', () => {
 		anotherProvider = new AnotherDummyProvider();
 	});
 
-	describe('add', () => {
-		it('should add a provider to the registry', () => {
+	describe('set', () => {
+		it('should set a provider in the registry', () => {
 			registry.set('dummy', dummyProvider);
 
 			expect(registry.has('dummy')).toBe(true);
