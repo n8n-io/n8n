@@ -15,10 +15,10 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: 'GitHub branch to test'
+        description: 'Git ref to test. Defaults to the caller ref when empty.'
         required: false
         type: string
-        default: 'master'
+        default: ''
       tier:
         description: 'Test-case dataset to build + eval (e.g. "mcp")'
         required: false
@@ -73,9 +73,9 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'GitHub branch to test'
+        description: 'Git ref to test. Defaults to the dispatched ref when empty.'
         required: false
-        default: 'master'
+        default: ''
       tier:
         description: 'Test-case dataset to build + eval (e.g. "mcp")'
         required: false

@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'GitHub branch to test (pass -f branch=<branch> together with --ref <branch>)'
+        description: 'Git ref to test. Defaults to the dispatched ref (--ref); override with -f branch=<ref>.'
         required: false
-        default: 'master'
+        default: ''
       tier:
         description: 'Test-case dataset to build + eval (e.g. `mcp`, `full`)'
         required: false
