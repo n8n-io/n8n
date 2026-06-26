@@ -127,9 +127,11 @@ export async function resolvePodIdentityViaSdk(): Promise<SystemCredentials | nu
 			const { readFile } = await import('node:fs/promises');
 			awsContainerAuthorizationToken = (await readFile(tokenFile, 'utf-8')).trim() || undefined;
 		} catch {
-			return null;
+			// Fall back to the direct token when the file is unreadable (matches legacy).
 		}
-	} else {
+	}
+	// Also covers an empty/whitespace-only token file: fall back to the direct token.
+	if (!awsContainerAuthorizationToken) {
 		awsContainerAuthorizationToken = getEnv('AWS_CONTAINER_AUTHORIZATION_TOKEN');
 	}
 

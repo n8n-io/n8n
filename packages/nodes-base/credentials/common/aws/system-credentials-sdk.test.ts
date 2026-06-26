@@ -231,6 +231,56 @@ describe('system-credentials-sdk', () => {
 				});
 			});
 
+			it('falls back to the direct token when the token file is unreadable', async () => {
+				mockEnvGetter.mockImplementation((key: string) => {
+					switch (key) {
+						case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+							return 'http://169.254.170.23/v1/credentials';
+						case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+							return '/var/run/secrets/token';
+						case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+							return 'direct-token';
+						default:
+							return undefined;
+					}
+				});
+				mockReadFile.mockRejectedValue(new Error('ENOENT'));
+
+				const result = await resolvePodIdentityViaSdk();
+				expect(result).toEqual(SDK_IDENTITY);
+				expect(fromHttp).toHaveBeenCalledWith({
+					awsContainerCredentialsFullUri: 'http://169.254.170.23/v1/credentials',
+					awsContainerAuthorizationToken: 'direct-token',
+					timeout: 2000,
+					maxRetries: 0,
+				});
+			});
+
+			it('falls back to the direct token when the token file is empty', async () => {
+				mockEnvGetter.mockImplementation((key: string) => {
+					switch (key) {
+						case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+							return 'http://169.254.170.23/v1/credentials';
+						case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+							return '/var/run/secrets/token';
+						case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+							return 'direct-token';
+						default:
+							return undefined;
+					}
+				});
+				mockReadFile.mockResolvedValue('   \n');
+
+				const result = await resolvePodIdentityViaSdk();
+				expect(result).toEqual(SDK_IDENTITY);
+				expect(fromHttp).toHaveBeenCalledWith({
+					awsContainerCredentialsFullUri: 'http://169.254.170.23/v1/credentials',
+					awsContainerAuthorizationToken: 'direct-token',
+					timeout: 2000,
+					maxRetries: 0,
+				});
+			});
+
 			it('returns null without calling the SDK when FULL_URI is absent', async () => {
 				mockEnvGetter.mockReturnValue(undefined);
 
