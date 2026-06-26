@@ -128,6 +128,19 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		throw new Error('--source langtracer requires --suite <slug>');
 	}
 
+	// In langtracer mode, default the dataset + baseline to a suite-scoped, eval-tagged
+	// name so runs don't pollute the shared cohort and re-runs upsert one stable dataset.
+	let dataset = validated.dataset;
+	let baselinePrefix = validated.baselinePrefix;
+	if (validated.source === 'langtracer' && validated.suite) {
+		const suiteSlug = validated.suite
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '');
+		if (!raw.datasetProvided) dataset = `instance-ai-langtracer-${suiteSlug}`;
+		if (!raw.baselineProvided) baselinePrefix = `instance-ai-langtracer-${suiteSlug}-baseline-`;
+	}
+
 	return {
 		timeoutMs: validated.timeoutMs,
 		baseUrls: validated.baseUrls,
@@ -140,13 +153,13 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		keepWorkflows: validated.keepWorkflows,
 		deletePrebuiltWorkflows: validated.deletePrebuiltWorkflows,
 		outputDir: validated.outputDir,
-		dataset: validated.dataset,
+		dataset,
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,
 		pinAiRoots: validated.pinAiRoots,
 		tier: validated.tier,
-		baselinePrefix: validated.baselinePrefix,
+		baselinePrefix,
 		source: validated.source,
 		suite: validated.suite,
 	};
@@ -202,6 +215,10 @@ interface RawArgs {
 	baselinePrefix: string;
 	source: string;
 	suite?: string;
+	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
+	 *  derives suite-scoped defaults otherwise). */
+	datasetProvided: boolean;
+	baselineProvided: boolean;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -219,6 +236,8 @@ function parseRawArgs(argv: string[]): RawArgs {
 		pinAiRoots: undefined,
 		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
 		source: 'disk',
+		datasetProvided: false,
+		baselineProvided: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -289,6 +308,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--dataset':
 				result.dataset = nextArg(argv, i, '--dataset');
+				result.datasetProvided = true;
 				i++;
 				break;
 
@@ -319,6 +339,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--baseline-prefix':
 				result.baselinePrefix = nextArg(argv, i, '--baseline-prefix');
+				result.baselineProvided = true;
 				i++;
 				break;
 
