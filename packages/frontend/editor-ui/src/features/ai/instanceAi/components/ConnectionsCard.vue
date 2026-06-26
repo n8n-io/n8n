@@ -40,14 +40,15 @@ const props = defineProps<{
 }>();
 
 const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
-const singletonConnections = computed(() =>
-	const filderedValues = [];
-  if (!isBrowserUseEnabled.value) filderedValues.push('browser-use');
-  if (!isComputerUseEnabled.value) filderedValues.push('computer-use');
-	return !filderedValues.length
+const singletonConnections = computed(() => {
+	const filteredTypes: string[] = [];
+	if (!isBrowserUseEnabled.value) filteredTypes.push('browser-use');
+	if (!isComputerUseEnabled.value) filteredTypes.push('computer-use');
+	return !filteredTypes.length
 		? store.connections
-		: store.connections.filter(({ type }) => !filderedValues.includes(type)),
-);
+		: store.connections.filter(({ type }) => !filteredTypes.includes(type));
+});
+
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
 const isVisible = computed(() => {
 	const anyChannelEnabled =
