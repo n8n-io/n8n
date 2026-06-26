@@ -3,6 +3,8 @@ import { computed } from 'vue';
 import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type AgentCardChip, MAX_INLINE_AGENT_CHIPS } from './canvasNodeAgentChips.utils';
 
 const props = withDefaults(
@@ -14,8 +16,18 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+const nodeTypesStore = useNodeTypesStore();
 
-const inlineChips = computed(() => props.chips.slice(0, props.maxInline));
+// Node-tool chips render the node's own icon; resolve the description up front
+// (null when the node type isn't loaded → fall back to the chip's icon name).
+const inlineChips = computed(() =>
+	props.chips.slice(0, props.maxInline).map((chip) => ({
+		...chip,
+		nodeTypeDescription: chip.nodeType
+			? nodeTypesStore.getNodeType(chip.nodeType, chip.nodeTypeVersion)
+			: null,
+	})),
+);
 const overflowChips = computed(() => props.chips.slice(props.maxInline));
 const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	overflowChips.value.map((chip) => ({ id: chip.key, label: chip.label, icon: chip.icon })),
@@ -30,7 +42,13 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			:class="$style.chip"
 			data-test-id="canvas-node-agent-chip"
 		>
-			<N8nIcon :icon="chip.icon" :size="16" :class="$style.chipIcon" />
+			<NodeIcon
+				v-if="chip.nodeTypeDescription"
+				:node-type="chip.nodeTypeDescription"
+				:size="16"
+				:class="$style.nodeIcon"
+			/>
+			<N8nIcon v-else :icon="chip.icon" :size="16" :class="$style.chipIcon" />
 			<N8nText size="small" :class="$style.chipLabel">{{ chip.label }}</N8nText>
 		</span>
 		<N8nActionDropdown
@@ -81,6 +99,11 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 .chipIcon {
 	flex-shrink: 0;
 	color: var(--text-color--subtle);
+}
+
+.nodeIcon {
+	// No color override — the node icon keeps its own brand colours.
+	flex-shrink: 0;
 }
 
 .chipLabel {
