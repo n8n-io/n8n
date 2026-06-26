@@ -4,7 +4,6 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { UserError } from 'n8n-workflow';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
