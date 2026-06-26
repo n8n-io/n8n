@@ -13,6 +13,7 @@ import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
 import { N8nObjectValidationRule } from './n8n-object-validation.js';
+import { NoAsteriskInOptionNamesRule } from './no-asterisk-in-option-names.js';
 import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDangerousFunctionsRule } from './no-dangerous-functions.js';
@@ -55,6 +56,7 @@ export const rules = {
 	'credential-password-field': CredentialPasswordFieldRule,
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'no-emoji-in-options': NoEmojiInOptionsRule,
+	'no-asterisk-in-option-names': NoAsteriskInOptionNamesRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'options-sorted-alphabetically': OptionsSortedAlphabeticallyRule,
 	'package-name-convention': PackageNameConventionRule,
