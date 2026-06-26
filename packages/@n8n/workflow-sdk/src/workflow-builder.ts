@@ -11,7 +11,6 @@ import type {
 	IDataObject,
 	NodeChain,
 	GeneratePinDataOptions,
-	WorkflowBuilderOptions,
 	ToJSONOptions,
 } from './types/base';
 import { isNodeChain } from './types/base';
@@ -23,6 +22,11 @@ import {
 	isOutputSelector,
 	cloneNodeWithId,
 } from './workflow-builder/node-builders/node-builder';
+import {
+	normalizeArgs,
+	convertRawToNodeInstance,
+	applyConnections,
+} from './workflow-builder/normalize-args';
 import { shouldGeneratePinData } from './workflow-builder/pin-data-utils';
 import { registerDefaultPlugins } from './workflow-builder/plugins/defaults';
 import { pluginRegistry, type PluginRegistry } from './workflow-builder/plugins/registry';
@@ -1282,69 +1286,44 @@ function assertNotOutputSelector(value: unknown, method: 'add' | 'to'): void {
 }
 
 /**
- * Helper to check if options is a WorkflowBuilderOptions object
- */
-function isWorkflowBuilderOptions(
-	options: WorkflowSettings | WorkflowBuilderOptions | undefined,
-): options is WorkflowBuilderOptions {
-	if (!options) return false;
-	// WorkflowBuilderOptions has 'settings' or 'registry' as keys
-	// WorkflowSettings has keys like 'timezone', 'executionOrder', etc.
-	return 'settings' in options || 'registry' in options;
-}
-
-/**
  * Create a new workflow builder
  */
-function createWorkflow(
-	id: string,
-	name: string,
-	options?: WorkflowSettings | WorkflowBuilderOptions,
-): WorkflowBuilder {
-	if (typeof id !== 'string') {
-		const receivedId = Array.isArray(id) ? 'an array' : typeof id;
-		throw new TypeError(
-			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			'workflow() requires (id: string, name: string). ' +
-				`workflow() requires a string id as first argument, but received ${receivedId}. ` +
-				"Example: workflow('my-workflow-id', 'My Workflow Name')",
-		);
+function createWorkflow(...args: unknown[]): WorkflowBuilder {
+	// 1. Normalization
+	const normalized = normalizeArgs(args);
+
+	// 2. Conversion
+	const nodes: Array<NodeInstance<string, string, unknown>> = [];
+	const nameToInstance = new Map<string, NodeInstance<string, string, unknown>>();
+
+	for (let i = 0; i < normalized.nodes.length; i++) {
+		const rawNode = normalized.nodes[i];
+		const instance = convertRawToNodeInstance(rawNode, i);
+		nodes.push(instance);
+		nameToInstance.set(instance.name, instance);
 	}
-	if (typeof name !== 'string') {
-		const receivedName = Array.isArray(name) ? 'an array' : typeof name;
-		throw new TypeError(
-			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			'workflow() requires (id: string, name: string). ' +
-				`workflow() requires a string name as second argument, but received ${receivedName}. ` +
-				"Example: workflow('my-workflow-id', 'My Workflow Name')",
-		);
+
+	// 3. Assembly
+	const builder = new WorkflowBuilderImpl(
+		normalized.id,
+		normalized.name,
+		normalized.settings,
+		undefined, // nodes Map
+		null, // currentNode
+		normalized.pinData,
+		undefined, // meta
+		normalized.registry,
+	);
+
+	for (const nodeInstance of nodes) {
+		builder.add(nodeInstance);
 	}
-	if (
-		options !== undefined &&
-		(Array.isArray(options) ||
-			(typeof options === 'object' &&
-				options !== null &&
-				('nodes' in options || 'connections' in options)))
-	) {
-		throw new TypeError(
-			'workflow() third argument is settings, not workflow structure. ' +
-				'Do not pass nodes or connections here — use .add() and .to() to build the workflow. ' +
-				"Example: workflow('id', 'Name').add(trigger({...})).to(node({...}))",
-		);
+
+	if (normalized.connections) {
+		applyConnections(builder, normalized.connections, nameToInstance);
 	}
-	if (isWorkflowBuilderOptions(options)) {
-		return new WorkflowBuilderImpl(
-			id,
-			name,
-			options.settings,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			options.registry,
-		);
-	}
-	return new WorkflowBuilderImpl(id, name, options);
+
+	return builder;
 }
 
 /**

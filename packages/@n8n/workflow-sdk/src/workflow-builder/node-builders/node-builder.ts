@@ -176,7 +176,7 @@ export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
 /**
  * Internal node instance implementation
  */
-class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
+export class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
 	implements NodeInstance<TType, TVersion, TOutput>
 {
 	readonly type: TType;
@@ -378,7 +378,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 /**
  * Internal trigger instance implementation
  */
-class TriggerInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
+export class TriggerInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
 	extends NodeInstanceImpl<TType, TVersion, TOutput>
 	implements TriggerInstance<TType, TVersion, TOutput>
 {

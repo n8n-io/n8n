@@ -8,6 +8,7 @@ import {
 	tool,
 	outputParser,
 } from './workflow-builder/node-builders/subnode-builders';
+import { findStructureArg } from './workflow-builder/normalize-args';
 import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 describe('Workflow Builder', () => {
@@ -32,14 +33,13 @@ describe('Workflow Builder', () => {
 			expect(() => {
 				// @ts-expect-error intentional misuse
 				workflow({ id: 'test-id' }, 'Test Workflow');
-			}).toThrow(/workflow\(\) requires a string id as first argument/);
+			}).toThrow(/received arguments it could not interpret/);
 		});
 
 		it('should throw a clear TypeError when name is not a string', () => {
 			expect(() => {
-				// @ts-expect-error intentional misuse
 				workflow('test-id', { name: 'Test Workflow' });
-			}).toThrow(/workflow\(\) requires a string name as second argument/);
+			}).toThrow(/received arguments it could not interpret/);
 		});
 	});
 
@@ -3161,40 +3161,252 @@ describe('Workflow Builder', () => {
 		});
 	});
 
-	describe('invalid input handling', () => {
-		it('should throw descriptive TypeError when name is an array', () => {
-			expect(() => {
-				// @ts-expect-error intentional misuse
-				workflow('Test', [trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} })]);
-			}).toThrow(/workflow\(\) requires \(id: string, name: string\)/);
+	describe('AI and loose arguments', () => {
+		/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
+		it('should support null id + nodes array', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow(null, 'My Workflow Name', [t, n]);
+			expect(wf.name).toBe('My Workflow Name');
+			expect(wf.id).toBeTypeOf('string');
+			expect(wf.id).not.toBe('');
+			expect(wf.toJSON().nodes).toHaveLength(2);
 		});
 
-		it('should throw descriptive TypeError when id is not a string', () => {
+		it('should support null id + structure object with connections', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const connections = {
+				[t.name]: {
+					main: [[{ node: n.name, type: 'main', index: 0 }]],
+				},
+			};
+			const wf = workflow(null, 'My Workflow Name', { nodes: [t, n], connections });
+			expect(wf.name).toBe('My Workflow Name');
+			const json = wf.toJSON();
+			expect(json.nodes).toHaveLength(2);
+			expect(json.connections?.[t.name]?.main?.[0]?.[0]?.node).toBe(n.name);
+		});
+
+		it('should support positional name + array', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const wf = workflow('My AI Workflow', [t]);
+			expect(wf.name).toBe('My AI Workflow');
+			expect(wf.toJSON().nodes).toHaveLength(1);
+		});
+
+		it('should support array only (no name)', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow([t, n]);
+			expect(wf.name).toBe('AI Generated Workflow');
+			expect(wf.toJSON().nodes).toHaveLength(2);
+		});
+
+		it('should support legacy id + name + structure object with settings', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow('custom-id', 'custom-name', {
+				nodes: [t, n],
+				connections: {
+					[t.name]: {
+						main: [[{ node: n.name, type: 'main', index: 0 }]],
+					},
+				},
+				settings: { executionOrder: 'v1' },
+			});
+			expect(wf.id).toBe('custom-id');
+			expect(wf.name).toBe('custom-name');
+			expect(wf.toJSON().settings?.executionOrder).toBe('v1');
+			expect(wf.toJSON().nodes).toHaveLength(2);
+		});
+
+		it('should support trigger + steps', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow('id', 'name', { trigger: t, steps: [n] });
+			expect(wf.toJSON().nodes).toHaveLength(2);
+		});
+
+		it('should support empty array', () => {
+			const wf = workflow('Empty Workflow', []);
+			expect(wf.name).toBe('Empty Workflow');
+			expect(wf.toJSON().nodes).toHaveLength(0);
+		});
+
+		it('should support empty nodes with settings preserved', () => {
+			const wf = workflow('id', 'name', { nodes: [], settings: { timezone: 'America/New_York' } });
+			expect(wf.toJSON().nodes).toHaveLength(0);
+			expect(wf.toJSON().settings?.timezone).toBe('America/New_York');
+		});
+
+		it('should support raw object conversion (top-level parameters)', () => {
+			const raw = {
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				parameters: { jsCode: 'return 1;' },
+			};
+			const wf = workflow('Test', [raw as any]);
+			const json = wf.toJSON();
+			expect(json.nodes).toHaveLength(1);
+			expect(json.nodes[0].parameters?.jsCode).toBe('return 1;');
+		});
+
+		it('should support typeVersion alias', () => {
+			const raw = {
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				parameters: { jsCode: 'return 1;' },
+			};
+			const wf = workflow('Test', [raw as any]);
+			const json = wf.toJSON();
+			expect(json.nodes).toHaveLength(1);
+			expect(json.nodes[0].type).toBe('n8n-nodes-base.code');
+		});
+
+		it('should reject non-array nodes', () => {
+			expect(() => {
+				workflow('Name', { nodes: 'not-an-array' } as any);
+			}).toThrow(/options\.nodes must be an array/);
+		});
+
+		it('should reject node without type', () => {
+			expect(() => {
+				workflow([{ version: 1, config: {} }] as any);
+			}).toThrow(/missing a 'type' property/);
+		});
+
+		it('should reject node without version', () => {
+			expect(() => {
+				workflow([{ type: 'n8n-nodes-base.webhook', config: {} }] as any);
+			}).toThrow(/missing 'version'/);
+		});
+
+		it('should reject invalid steps', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			expect(() => {
+				workflow('id', 'name', { trigger: t, steps: 'not array' } as any);
+			}).toThrow(/options\.steps must be an array/);
+		});
+
+		it('should flatten nested settings without leaking wrapper key', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const wf = workflow('id', 'name', {
+				nodes: [t],
+				settings: { executionOrder: 'v1' },
+			});
+			const json = wf.toJSON();
+			expect(json.settings?.executionOrder).toBe('v1');
+			expect(json.settings?.settings).toBeUndefined();
+		});
+
+		it('findStructureArg locates the first structure object in args', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const args = [null, 'Name', { nodes: [t, n] }];
+			const result = findStructureArg(args);
+			expect(result).not.toBeNull();
+			expect(result!.index).toBe(2);
+			expect(result!.value.nodes).toEqual([t, n]);
+		});
+
+		it('should support null id, no name, structure as second arg', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow(null, { nodes: [t, n] });
+			expect(wf.name).toBe('AI Generated Workflow');
+			expect(wf.toJSON().nodes).toHaveLength(2);
+		});
+
+		it('should create a TriggerInstance from a raw trigger object in { trigger, steps }', () => {
+			const rawTrigger = {
+				type: 'n8n-nodes-base.webhook',
+				version: 2,
+				config: {},
+			};
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow('id', 'name', { trigger: rawTrigger, steps: [n] });
+			const json = wf.toJSON();
+			expect(json.nodes).toHaveLength(2);
+			// The trigger node should be present in the workflow
+			const triggerNode = json.nodes.find(
+				(nd: { type?: string }) => nd.type === 'n8n-nodes-base.webhook',
+			);
+			expect(triggerNode).toBeDefined();
+		});
+	});
+
+	describe('invalid input handling', () => {
+		it('should throw TypeError when id and name are null/undefined', () => {
+			expect(() => {
+				workflow(null, null);
+			}).toThrow(/received arguments it could not interpret/);
+		});
+
+		it('should throw TypeError when first argument is completely invalid type', () => {
 			expect(() => {
 				// @ts-expect-error intentional misuse
 				workflow(123, 'Test');
-			}).toThrow(/workflow\(\) requires \(id: string, name: string\)/);
+			}).toThrow(/received arguments it could not interpret/);
 		});
 
-		it('should throw when nodes are passed in the options argument', () => {
-			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+		it('should throw TypeError when options.nodes is not an array', () => {
 			expect(() => {
-				workflow('id', 'Test', { nodes: [t] });
-			}).toThrow(/Do not pass nodes or connections here/);
+				workflow('Name', { nodes: 'not an array' } as any);
+			}).toThrow(/options\.nodes must be an array/);
 		});
 
-		it('should throw when connections are passed in the options argument', () => {
+		it('should throw TypeError when a node lacks type', () => {
 			expect(() => {
-				workflow('id', 'Test', { connections: { 'Node 1': { main: [[]] } } });
-			}).toThrow(/use \.add\(\) and \.to\(\)/);
+				workflow([{ version: 1, config: {} }] as any);
+			}).toThrow(/missing a 'type' property/);
 		});
 
-		it('should throw when an array of nodes is passed as the options argument', () => {
-			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+		it('should throw TypeError when a node lacks version', () => {
 			expect(() => {
-				// @ts-expect-error intentional misuse
-				workflow('id', 'Test', [t]);
-			}).toThrow(/Do not pass nodes or connections here/);
+				workflow([{ type: 'some' }] as any);
+			}).toThrow(/missing 'version'/);
 		});
+
+		it('should throw TypeError when options.steps is not an array with trigger', () => {
+			expect(() => {
+				const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+				workflow('id', 'name', { trigger: t, steps: 'not array' } as any);
+			}).toThrow(/options\.steps must be an array/);
+		});
+
+		// Coverage gap/edge case tests:
+		it('should throw when connection source node does not exist in nodes list', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			expect(() => {
+				workflow(null, 'Name', {
+					nodes: [t],
+					connections: {
+						NonExistent: { main: [[]] },
+					},
+				});
+			}).toThrow(/connection source node "NonExistent" not found/);
+		});
+
+		it('should throw when connection target node does not exist in nodes list', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			expect(() => {
+				workflow(null, 'Name', {
+					nodes: [t],
+					connections: {
+						[t.name]: {
+							main: [[{ node: 'NonExistent', type: 'main', index: 0 }]],
+						},
+					},
+				});
+			}).toThrow(/connection target node "NonExistent" not found/);
+		});
+
+		it('should throw when raw node has invalid type version', () => {
+			expect(() => {
+				workflow([{ type: 'n8n-nodes-base.webhook', version: {} }] as any);
+			}).toThrow(/has invalid 'version'/);
+		});
+		/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 	});
 });
