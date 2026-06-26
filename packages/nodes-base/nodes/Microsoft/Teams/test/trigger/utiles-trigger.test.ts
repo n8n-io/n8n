@@ -97,6 +97,17 @@ describe('Microsoft Teams Helpers Functions', () => {
 				'Failed to fetch channels',
 			);
 		});
+
+		it('rejects a crafted teamId under SP via buildTeamsPath (non-bypassable defense-in-depth)', async () => {
+			mockHookFunctions.getNodeParameter.mockImplementation((name: string) =>
+				name === 'authentication' ? SERVICE_PRINCIPAL_AUTH : undefined,
+			);
+
+			await expect(fetchAllChannels.call(mockHookFunctions, 'x/../../groups/abc')).rejects.toThrow(
+				'The ID is not valid',
+			);
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('createSubscription', () => {

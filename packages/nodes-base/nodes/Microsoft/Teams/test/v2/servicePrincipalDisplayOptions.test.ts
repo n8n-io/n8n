@@ -139,6 +139,65 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
+	describe('task:create — By-ID plan/bucket under SP, group hidden', () => {
+		const fields = actionProps.filter(
+			(p) =>
+				p.displayOptions?.show?.resource?.includes('task') &&
+				p.displayOptions?.show?.operation?.includes('create'),
+		);
+
+		it('the OAuth2 group picker is hidden under SP', () => {
+			const group = byName(fields, 'groupId').find((p) => isSpHidden(p));
+			expect(group).toBeDefined();
+		});
+
+		it.each(['planId', 'bucketId'])(
+			'an SP-shown By-ID %s picker exists (no list, no deps)',
+			(name) => {
+				const spCopy = byName(fields, name).find((p) => isSpShown(p));
+				expect(spCopy).toBeDefined();
+				expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+				expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+				expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+			},
+		);
+
+		it.each(['planId', 'bucketId'])('the OAuth2 list-mode %s picker is hidden under SP', (name) => {
+			const oauthCopy = byName(fields, name).find((p) => isSpHidden(p));
+			expect(oauthCopy).toBeDefined();
+		});
+	});
+
+	describe('task:update — By-ID plan/bucket under SP inside updateFields, group hidden', () => {
+		const updateFields = actionProps.find(
+			(p) =>
+				p.name === 'updateFields' &&
+				p.displayOptions?.show?.resource?.includes('task') &&
+				p.displayOptions?.show?.operation?.includes('update'),
+		);
+		const options = (updateFields?.options ?? []) as INodeProperties[];
+		const byOptName = (name: string) => options.filter((o) => o.name === name);
+
+		it('the OAuth2 group picker is hidden under SP', () => {
+			expect(byOptName('groupId').some((p) => isSpHidden(p))).toBe(true);
+		});
+
+		it.each(['planId', 'bucketId'])(
+			'an SP-shown By-ID %s picker exists (no list, no deps)',
+			(name) => {
+				const spCopy = byOptName(name).find((p) => isSpShown(p));
+				expect(spCopy).toBeDefined();
+				expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+				expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+				expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+			},
+		);
+
+		it.each(['planId', 'bucketId'])('the OAuth2 list-mode %s picker is hidden under SP', (name) => {
+			expect(byOptName(name).some((p) => isSpHidden(p))).toBe(true);
+		});
+	});
+
 	describe('trigger — watch-all and chat fields hidden under SP', () => {
 		it.each(['watchAllTeams', 'watchAllChannels'])('%s carries hide["/authentication"]', (name) => {
 			const field = triggerProps.find((p) => p.name === name);

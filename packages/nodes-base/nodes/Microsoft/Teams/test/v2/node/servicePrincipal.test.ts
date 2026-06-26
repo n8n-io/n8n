@@ -235,4 +235,81 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			},
 		);
 	});
+
+	describe('task body-ID validation under SP (defense-in-depth)', () => {
+		it.each([
+			['planId', { resource: 'task', operation: 'create', planId: 'p/../x', bucketId: 'b1' }],
+			['bucketId', { resource: 'task', operation: 'create', planId: 'p1', bucketId: 'b/../x' }],
+		])('task:create rejects a crafted %s before any request', async (_label, params) => {
+			selectSp({ ...params, title: 'x', options: {} });
+
+			await expect(node.execute.call(ctx)).rejects.toThrow('The ID is not valid');
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('task:update rejects a crafted planId in the update body before any request', async () => {
+			// task:update reads updateFields, then per-key reads updateFields.<key>; the body
+			// validation runs before the GET/PATCH.
+			ctx.getNodeParameter.mockImplementation(
+				(name: string, _i?: number, fallback?: unknown): NodeParameterValueType => {
+					if (name === 'authentication') return SERVICE_PRINCIPAL_AUTH;
+					if (name === 'resource') return 'task';
+					if (name === 'operation') return 'update';
+					if (name === 'taskId') return 'valid-task-id';
+					if (name === 'updateFields') return { planId: 'p/../x' };
+					if (name === 'updateFields.planId') return 'p/../x';
+					return fallback as NodeParameterValueType;
+				},
+			);
+
+			await expect(node.execute.call(ctx)).rejects.toThrow('The ID is not valid');
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('empty-ID validation under SP', () => {
+		it('channel:get with an empty channelId throws "A required ID is empty" before any request', async () => {
+			selectSp({
+				resource: 'channel',
+				operation: 'get',
+				teamId: '1111-2222-3333',
+				channelId: '',
+			});
+
+			await expect(node.execute.call(ctx)).rejects.toThrow('A required ID is empty');
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('channelMessage:getAll under SP with returnAll:false', () => {
+		it('hits the same /beta/.../messages endpoint (limit path)', async () => {
+			(transport.microsoftApiRequestAllItems as Mock).mockResolvedValue([
+				{ id: 'm1' },
+				{ id: 'm2' },
+			]);
+			ctx.helpers.returnJsonArray = vi.fn((data) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+			) as unknown as IExecuteFunctions['helpers']['returnJsonArray'];
+			ctx.helpers.constructExecutionMetaData = vi.fn(
+				(data) => data,
+			) as unknown as IExecuteFunctions['helpers']['constructExecutionMetaData'];
+			selectSp({
+				resource: 'channelMessage',
+				operation: 'getAll',
+				teamId: '1111-2222-3333',
+				channelId: '19:abc@thread.tacv2',
+				returnAll: false,
+				limit: 1,
+			});
+
+			await node.execute.call(ctx);
+
+			expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
+				'value',
+				'GET',
+				'/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages',
+				{},
+			);
+		});
+	});
 });
