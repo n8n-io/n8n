@@ -115,6 +115,24 @@ describe('ClientOAuth2', () => {
 			});
 		});
 
+		it('should parse JSON token response even when content type is text/plain', async () => {
+			mockTokenResponse({
+				status: 200,
+				headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+				body: JSON.stringify({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				}),
+			});
+
+			const response = await makeTokenCall();
+
+			expect(response).toEqual({
+				access_token: config.accessToken,
+				refresh_token: config.refreshToken,
+			});
+		});
+
 		test.each([
 			{
 				contentType: 'text/html',

@@ -130,8 +130,12 @@ export class ClientOAuth2 {
 	private parseResponseBody<T extends object>(response: AxiosResponse<unknown>): T {
 		const contentType = (response.headers['content-type'] as string) ?? '';
 		const body = response.data as string;
+		const trimmedBody = body.trimStart();
 
-		if (contentType.startsWith('application/json')) {
+		if (
+			contentType.startsWith('application/json') ||
+			(contentType.startsWith('text/plain') && /^[{[]/.test(trimmedBody))
+		) {
 			try {
 				return JSON.parse(body) as T;
 			} catch {
