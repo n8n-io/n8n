@@ -345,4 +345,47 @@ describe('system-credentials-sdk', () => {
 			});
 		});
 	});
+
+	// Guards the SDK path against value-level drift from the legacy path. The
+	// `environment` source is the only one resolvable purely from process.env with
+	// no network I/O, so the SDK (`all`) and legacy (`none`) flows can be compared
+	// byte-for-byte. This locks in the trim contract that regressed once already:
+	// resolving via `fromEnv()` (which returns process.env verbatim) instead of
+	// trimming would make these assertions fail.
+	describe('SDK/legacy parity (environment source)', () => {
+		it.each([
+			['clean values', 'AKIAIOSFODNN7EXAMPLE', 'wJalrXUtnFEMI/K7MDENG', 'session-token'],
+			['trailing newlines', 'AKIAIOSFODNN7EXAMPLE\n', 'wJalrXUtnFEMI/K7MDENG\n', 'session-token\n'],
+			[
+				'surrounding whitespace',
+				'  AKIAIOSFODNN7EXAMPLE  ',
+				'\twJalrXUtnFEMI/K7MDENG\t',
+				' session-token ',
+			],
+		])(
+			'resolves identically via SDK and legacy (%s)',
+			async (_label, rawAccessKeyId, rawSecretAccessKey, rawSessionToken) => {
+				mockEnvGetter.mockImplementation((key: string) => {
+					if (key === 'AWS_ACCESS_KEY_ID') return rawAccessKeyId;
+					if (key === 'AWS_SECRET_ACCESS_KEY') return rawSecretAccessKey;
+					if (key === 'AWS_SESSION_TOKEN') return rawSessionToken;
+					return undefined;
+				});
+
+				mockSecurityConfigInstance.awsSystemCredentialsSdkSources = 'all';
+				const viaSdk = await getSystemCredentials('us-east-1');
+
+				mockSecurityConfigInstance.awsSystemCredentialsSdkSources = 'none';
+				const viaLegacy = await getSystemCredentials('us-east-1');
+
+				expect(viaSdk).toEqual(viaLegacy);
+				expect(viaSdk).toEqual({
+					accessKeyId: rawAccessKeyId.trim(),
+					secretAccessKey: rawSecretAccessKey.trim(),
+					sessionToken: rawSessionToken.trim(),
+					source: 'environment',
+				});
+			},
+		);
+	});
 });
