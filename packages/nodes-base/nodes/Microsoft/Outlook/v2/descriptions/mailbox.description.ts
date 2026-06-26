@@ -3,7 +3,9 @@ import type { INodeProperties } from 'n8n-workflow';
 /**
  * Mailbox target for the app-only Service Principal credential. Self-contained
  * (no import from any other Microsoft node) and spread into both the Outlook node
- * and the trigger so the two stay in lockstep.
+ * and the trigger. Only this mailbox field is shared; the auth option, the
+ * `credentials[]` entry, and the `servicePrincipalNotice` are declared by hand in
+ * each node/trigger file.
  *
  * Shown (and required) only when the Service Principal credential is selected.
  * Uses ID mode only (no `searchListMethod`) so rendering needs no Directory read

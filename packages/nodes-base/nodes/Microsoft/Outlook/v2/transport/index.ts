@@ -56,6 +56,8 @@ export function resolveMailbox(
 	// extractValue regex, so .value is already the bare mailbox id).
 	const raw = this.getNodeParameter('mailbox', 0);
 	const value = isResourceLocatorValue(raw) ? raw.value : raw;
+	// A non-string or whitespace-only value collapses to '', which validateMailbox
+	// reports as the "mailbox required" error (not "not valid").
 	const mailbox = (typeof value === 'string' ? value : '').trim();
 	validateMailbox(mailbox, this.getNode());
 	return mailbox;

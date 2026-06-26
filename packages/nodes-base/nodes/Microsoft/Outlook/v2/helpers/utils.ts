@@ -332,12 +332,9 @@ export function prepareApiError(
 }
 
 /**
- * Validates an app-only mailbox id before it is encoded and interpolated into a
- * Graph URL path. Throws a `NodeOperationError` with a fully static message (never
- * echoing the id) on a bad shape. Two throw sites: empty/whitespace-only, and any
- * shape that is not a user GUID or UPN. Validate BEFORE encoding —
- * `encodeURIComponent` leaves `..` intact, so the shape check is what makes the
- * value safe.
+ * Throws a `NodeOperationError` (fully static message, never echoing the id) unless
+ * the mailbox is a valid GUID or UPN. See the `MAILBOX_*` const block above for the
+ * accepted-shape and validate-before-encode rationale.
  */
 export function validateMailbox(id: string, node: INode): void {
 	if (id === '') {
