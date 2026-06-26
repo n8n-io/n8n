@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { targetDescription } from './descriptions/TargetDescription';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
 import { listFields, listOperations } from './ListDescription';
@@ -50,6 +51,15 @@ export class MicrosoftToDo implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -68,9 +78,16 @@ export class MicrosoftToDo implements INodeType {
 						description:
 							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Tasks.ReadWrite) on the credential.',
 					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only access via a Microsoft Entra app registration. Choose which user to act on.',
+					},
 				],
 				default: 'microsoftToDoOAuth2Api',
 			},
+			...targetDescription,
 			{
 				displayName: 'Resource',
 				name: 'resource',

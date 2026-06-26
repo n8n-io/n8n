@@ -1,0 +1,57 @@
+{
+	"name": "microsoft to do - list getAll (service principal)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "1a000000-0000-4000-8000-000000000001",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"userTarget": {
+					"__rl": true,
+					"value": "jane@contoso.com",
+					"mode": "id"
+				},
+				"resource": "list",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 50
+			},
+			"id": "1a000000-0000-4000-8000-000000000002",
+			"name": "Microsoft To Do",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 0],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "1",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft To Do": [
+			{
+				"json": {
+					"id": "AAMkAExampleListId=",
+					"displayName": "Tasks",
+					"wellknownListName": "defaultList"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [[{ "node": "Microsoft To Do", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"tags": []
+}
