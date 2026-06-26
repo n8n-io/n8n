@@ -1,6 +1,6 @@
-import { reRankSearchResults } from './reRankSearchResults';
+import { reRankSearchResults } from './re-rank-search-results';
 import topLevel from './snapshots/toplevel.snapshot.json';
-import { sublimeSearch } from './sublimeSearch';
+import { sublimeSearch } from './sublime-search';
 
 describe('reRankSearchResults', () => {
 	describe('should re-rank search results based on additional factors', () => {

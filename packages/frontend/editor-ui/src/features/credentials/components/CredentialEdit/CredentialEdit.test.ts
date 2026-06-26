@@ -1380,7 +1380,7 @@ describe('CredentialEdit', () => {
 					connectedUserCount: 0,
 				});
 
-				const { getByRole } = renderComponent({
+				const { getByTestId } = renderComponent({
 					props: {
 						activeId: 'cred-banner',
 						modalName: CREDENTIAL_EDIT_MODAL_KEY,
@@ -1391,7 +1391,7 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByRole('switch'));
+				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
 				await retry(() => expect(confirmMock).toHaveBeenCalled());
 				expect(confirmMock.mock.calls[0][0]).toContain('1 user(s)');
@@ -1406,7 +1406,7 @@ describe('CredentialEdit', () => {
 					connectedUserCount: 0,
 				});
 
-				const { getByRole } = renderComponent({
+				const { getByTestId } = renderComponent({
 					props: {
 						activeId: 'cred-banner',
 						modalName: CREDENTIAL_EDIT_MODAL_KEY,
@@ -1417,7 +1417,7 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByRole('switch'));
+				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
 				expect(confirmMock).not.toHaveBeenCalled();
 			});
@@ -1446,9 +1446,9 @@ describe('CredentialEdit', () => {
 				});
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-				await retry(() => expect(getByTestId('dynamic-credentials-toggle')).toBeVisible());
+				await retry(() => expect(getByTestId('credential-type-card-end-user')).toBeVisible());
 
-				await userEvent.click(getByTestId('dynamic-credentials-toggle'));
+				await userEvent.click(getByTestId('credential-type-card-end-user'));
 
 				await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();

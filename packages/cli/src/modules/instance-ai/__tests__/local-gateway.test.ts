@@ -253,6 +253,70 @@ describe('LocalGateway', () => {
 		});
 	});
 
+	describe('setExcludedToolCategories', () => {
+		const FS_TOOL: McpTool = {
+			name: 'read_file',
+			description: 'Read a file',
+			inputSchema: { type: 'object', properties: {} },
+			annotations: { category: 'filesystem' },
+		};
+		const BROWSER_TOOL: McpTool = {
+			name: 'browser_open',
+			description: 'Open a page',
+			inputSchema: { type: 'object', properties: {} },
+			annotations: { category: 'browser' },
+		};
+
+		beforeEach(() => {
+			gateway.init({
+				rootPath: 'p',
+				tools: [FS_TOOL, BROWSER_TOOL],
+				toolCategories: [
+					{ name: 'filesystem', enabled: true },
+					{ name: 'browser', enabled: true },
+				],
+			});
+		});
+
+		it('hides excluded-category tools from getAvailableTools', () => {
+			gateway.setExcludedToolCategories(['browser']);
+
+			expect(gateway.getAvailableTools()).toEqual([FS_TOOL]);
+		});
+
+		it('returns no tools for an excluded category', () => {
+			gateway.setExcludedToolCategories(['browser']);
+
+			expect(gateway.getToolsByCategory('browser')).toEqual([]);
+			expect(gateway.getToolsByCategory('filesystem')).toEqual([FS_TOOL]);
+		});
+
+		it('drops excluded categories from getStatus', () => {
+			gateway.setExcludedToolCategories(['browser']);
+
+			expect(gateway.getStatus().toolCategories).toEqual([{ name: 'filesystem', enabled: true }]);
+		});
+
+		it('blocks callTool for excluded tools without dispatching to the daemon', async () => {
+			gateway.setExcludedToolCategories(['browser']);
+			const events: LocalGatewayRequestEvent[] = [];
+			gateway.onRequest((event) => events.push(event));
+
+			const result = await gateway.callTool({ name: 'browser_open', arguments: {} });
+
+			expect(result.isError).toBe(true);
+			expect(events).toHaveLength(0);
+		});
+
+		it('exposes everything when no categories are excluded', () => {
+			expect(gateway.getAvailableTools()).toEqual([FS_TOOL, BROWSER_TOOL]);
+			expect(gateway.getStatus().toolCategories).toEqual([
+				{ name: 'filesystem', enabled: true },
+				{ name: 'browser', enabled: true },
+			]);
+		});
+	});
+
 	describe('onRequest', () => {
 		it('should return unsubscribe function that stops event delivery', async () => {
 			gateway.init(EMPTY_CAPABILITIES);

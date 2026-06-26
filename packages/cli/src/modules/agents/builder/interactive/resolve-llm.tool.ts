@@ -94,8 +94,9 @@ async function resolveModelAgainstLookup(
 export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.description(
-			'Resolve the agent main LLM without showing a picker. Use this when the user ' +
-				'explicitly requests a provider/model, or when a fresh agent needs its main LLM set. ' +
+			'Resolve the agent main LLM without showing a picker. ' +
+				'Only call this when the user explicitly names a provider or model — do NOT call it ' +
+				'at the start of a conversation or proactively for fresh agents. ' +
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
 				'provider default model. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +

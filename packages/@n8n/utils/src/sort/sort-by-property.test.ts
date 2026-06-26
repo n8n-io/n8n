@@ -1,4 +1,4 @@
-import { sortByProperty } from './sortByProperty';
+import { sortByProperty } from './sort-by-property';
 
 const arrayOfObjects = [
 	{ name: 'Álvaro', age: 30 },

@@ -347,6 +347,7 @@ type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai'
 const defaultModuleSettings: InstanceAiModuleSettings = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
