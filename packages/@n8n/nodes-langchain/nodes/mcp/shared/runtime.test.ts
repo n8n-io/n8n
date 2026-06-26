@@ -401,6 +401,48 @@ describe('runtime', () => {
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow('network');
 			expect(closeSpy).toHaveBeenCalled();
 		});
+
+		// A tool result flagged `isError` must throw rather than be returned as node
+		// output. Only a thrown error reaches the execution engine's node-failure
+		// handling, which is what routes the error back to the calling agent.
+		it('throws with the tool error text when the tool result is flagged isError (v1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'MCP error -32602: bad arguments' }],
+			});
+
+			const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'search') } }], {
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.3, name: 'MCP', type: 'mcp' })),
+			});
+
+			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow(
+				'MCP error -32602: bad arguments',
+			);
+		});
+
+		// Throwing on isError only applies to typeVersion >= 1.3; older nodes
+		// pass the flagged result through as normal output.
+		it('returns the flagged result without throwing for nodes before v1.3', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'some error' }],
+			});
+			jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'search') } }], {
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.2, name: 'MCP', type: 'mcp' })),
+			});
+
+			const result = await executeMcpTool(ctx, () => baseConfig);
+
+			expect(result[0][0].json).toEqual({
+				response: [{ type: 'text', text: 'some error' }],
+			});
+		});
 	});
 
 	describe('executeMcpTool session cache', () => {
