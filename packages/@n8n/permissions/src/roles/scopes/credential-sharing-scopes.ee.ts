@@ -10,4 +10,4 @@ export const CREDENTIALS_SHARING_OWNER_SCOPES: Scope[] = [
 	'credential:connect',
 ];
 
-export const CREDENTIALS_SHARING_USER_SCOPES: Scope[] = ['credential:read'];
+export const CREDENTIALS_SHARING_USER_SCOPES: Scope[] = ['credential:read', 'credential:connect'];

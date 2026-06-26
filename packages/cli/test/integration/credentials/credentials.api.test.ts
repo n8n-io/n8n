@@ -204,7 +204,7 @@ describe('GET /credentials', () => {
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
-			expect(cred2.scopes).toEqual(['credential:read']);
+			expect(cred2.scopes).toEqual(['credential:connect', 'credential:read'].sort());
 		}
 
 		{
