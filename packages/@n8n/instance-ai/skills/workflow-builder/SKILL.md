@@ -149,6 +149,14 @@ When mapping downstream fields from an OpenAI node, read
 7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
    selectively edit the existing `.workflow.ts` file for workflow changes. Do
    not put secrets in the source file.
+   Before building, decide whether verification needs branch fixtures. When a
+   live or nondeterministic upstream node (such as HTTP Request, search/list
+   lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and
+   alternate branches need verification, declare representative `output`
+   fixtures on that upstream node now so `verify-built-workflow` can simulate it
+   and later `fixtureOverrides` can exercise those scenarios. Do not simulate
+   every external read by default; use this when branch coverage or deterministic
+   proof depends on controlling the upstream data.
 8. Call `build-workflow` with `filePath`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -212,9 +220,18 @@ save. The job is done when one of these is true:
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
+Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
+be called again with `workflowId` if the original `workItemId` is no longer in
+context. For alternate deterministic scenarios, pass `fixtureOverrides` for
+nodes already classified as simulated. Use raw `executions(action="run")` only
+for ad hoc non-build verification or when the user explicitly wants a live run.
+If live connectivity also matters for a branch-controlled workflow, verify the
+fixture-backed branch coverage first and run a separate live smoke check, or
+state exactly which branch remains unverified.
+
 Trigger input shapes:
 
-- Manual or Schedule: use `executions(action="run")` when appropriate. Schedule
+- Manual or Schedule: use `verify-built-workflow` when appropriate. Schedule
   usually needs no `inputData`.
 - Form Trigger: pass a flat field map, for example
   `{ "name": "Alice", "email": "a@b.c" }`. Do not wrap in `formFields`.
@@ -275,6 +292,14 @@ resource:
 
 For resources that cannot be created via n8n, explain clearly what the user
 needs to create manually and what ID or value belongs in setup.
+
+If part of the requested workflow is infeasible (no node or API for it, a source
+that blocks automated access, an action that cannot be performed
+programmatically, or a third-party API whose region/use-case coverage you have
+not verified), do not quietly substitute a stand-in and present it as the
+requested capability. Flag the substitution as an approximation that may not
+work — and any unverified region/country support — and name that gap in the
+one-line completion summary so the result is not mistaken for the original ask.
 
 ## Compositional Workflows
 
@@ -388,13 +413,15 @@ column names.
   explicitly expects an object and the placeholder is the direct value of one
   field.
 - For unresolved resource-locator fields (values shaped like `{ __rl: true,
-  mode, value }`, such as Slack channel selectors), use the resource-locator
-  object shape instead of a raw `placeholder()` string. Pick the mode per the
-  resource-locator rule in Node Configuration Safety Rules: a `name`/`url`
-  mode with the known value when the locator offers one and you know the
-  resource by name; otherwise id mode with an empty value and a cached result
-  name, for example `{ __rl: true, mode: 'id', value: '',
-  cachedResultName: 'Select support channel to monitor' }`.
+  mode, value }`, such as Slack channel or Google Sheets document selectors),
+  use the resource-locator object shape instead of a raw `placeholder()`
+  string. Prefer the locator's picker (`list`) mode when it offers one, since
+  it gives the user a searchable picker at setup, with an empty value and a
+  `cachedResultName` hint, for example `{ __rl: true, mode: 'list', value: '',
+  cachedResultName: 'Select support channel to monitor' }`. Not every locator
+  has a `list` mode; when it doesn't, use a `name`/`url` mode with the known
+  value, or `id` mode only when you have a concrete ID. Never use `id` with an
+  empty or placeholder value.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field

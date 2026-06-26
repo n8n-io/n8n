@@ -6,7 +6,7 @@ import {
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import {
 	Project,
@@ -32,6 +32,7 @@ import {
 	Query,
 	Post,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
@@ -68,7 +69,14 @@ export class UsersController {
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly provisioningService: ProvisioningService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
+
+	private get dataTableService() {
+		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
+			Container.get(DataTableService),
+		);
+	}
 
 	static ERROR_MESSAGES = {
 		CHANGE_ROLE: {
@@ -258,9 +266,10 @@ export class UsersController {
 		}
 
 		let transfereeId;
+		let transfereeProject: Project | null = null;
 
 		if (transferId) {
-			const transfereeProject = await this.projectRepository.findOneBy({ id: transferId });
+			transfereeProject = await this.projectRepository.findOneBy({ id: transferId });
 
 			if (!transfereeProject) {
 				throw new NotFoundError(
@@ -268,9 +277,11 @@ export class UsersController {
 				);
 			}
 
+			const transfereeProjectId = transfereeProject.id;
+
 			const transferee = await this.userRepository.findOneByOrFail({
 				projectRelations: {
-					projectId: transfereeProject.id,
+					projectId: transfereeProjectId,
 				},
 			});
 
@@ -279,18 +290,18 @@ export class UsersController {
 			await this.userService.getManager().transaction(async (trx) => {
 				await this.workflowService.transferAll(
 					personalProjectToDelete.id,
-					transfereeProject.id,
+					transfereeProjectId,
 					trx,
 				);
 				await this.credentialsService.transferAll(
 					personalProjectToDelete.id,
-					transfereeProject.id,
+					transfereeProjectId,
 					trx,
 				);
 
 				await this.folderService.transferAllFoldersToProject(
 					personalProjectToDelete.id,
-					transfereeProject.id,
+					transfereeProjectId,
 					trx,
 				);
 			});
@@ -315,6 +326,20 @@ export class UsersController {
 
 		for (const credential of ownedCredentials) {
 			await this.credentialsService.delete(userToDelete, credential.id);
+		}
+
+		// Transfer or hard-delete data tables before the project is removed, so the physical
+		// data_table_user_<id> tables are dropped instead of orphaned by the FK cascade.
+		if (this.moduleRegistry.isActive('data-table')) {
+			const dataTableService = await this.dataTableService;
+			if (transfereeProject) {
+				await dataTableService.transferDataTablesByProjectId(
+					personalProjectToDelete.id,
+					transfereeProject.id,
+				);
+			} else {
+				await dataTableService.deleteDataTableByProjectId(personalProjectToDelete.id);
+			}
 		}
 
 		await this.userService.getManager().transaction(async (trx) => {

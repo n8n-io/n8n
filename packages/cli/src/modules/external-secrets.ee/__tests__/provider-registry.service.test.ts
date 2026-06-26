@@ -13,9 +13,9 @@ describe('ProviderRegistry', () => {
 		anotherProvider = new AnotherDummyProvider();
 	});
 
-	describe('add', () => {
-		it('should add a provider to the registry', () => {
-			registry.add('dummy', dummyProvider);
+	describe('set', () => {
+		it('should set a provider in the registry', () => {
+			registry.set('dummy', dummyProvider);
 
 			expect(registry.has('dummy')).toBe(true);
 			expect(registry.get('dummy')).toBe(dummyProvider);
@@ -25,8 +25,8 @@ describe('ProviderRegistry', () => {
 			const provider1 = new DummyProvider();
 			const provider2 = new DummyProvider();
 
-			registry.add('dummy', provider1);
-			registry.add('dummy', provider2);
+			registry.set('dummy', provider1);
+			registry.set('dummy', provider2);
 
 			expect(registry.get('dummy')).toBe(provider2);
 		});
@@ -34,7 +34,7 @@ describe('ProviderRegistry', () => {
 
 	describe('remove', () => {
 		it('should remove a provider from the registry', () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			expect(registry.has('dummy')).toBe(true);
 
 			registry.remove('dummy');
@@ -49,7 +49,7 @@ describe('ProviderRegistry', () => {
 
 	describe('get', () => {
 		it('should return provider by name', () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 
 			const result = registry.get('dummy');
 
@@ -65,7 +65,7 @@ describe('ProviderRegistry', () => {
 
 	describe('has', () => {
 		it('should return true when provider exists', () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 
 			expect(registry.has('dummy')).toBe(true);
 		});
@@ -77,8 +77,8 @@ describe('ProviderRegistry', () => {
 
 	describe('getAll', () => {
 		it('should return all providers as a Map', () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const result = registry.getAll();
 
@@ -89,7 +89,7 @@ describe('ProviderRegistry', () => {
 		});
 
 		it('should return a copy of the providers map', () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 
 			const result = registry.getAll();
 			result.set('modified', anotherProvider);
@@ -114,8 +114,8 @@ describe('ProviderRegistry', () => {
 			await anotherProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
 			anotherProvider.setState('error', new Error('Test error'));
 
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const result = registry.getConnected();
 
@@ -124,8 +124,8 @@ describe('ProviderRegistry', () => {
 		});
 
 		it('should return empty array when no providers are connected', () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const result = registry.getConnected();
 
@@ -141,8 +141,8 @@ describe('ProviderRegistry', () => {
 			await anotherProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
 			anotherProvider.setState('error', new Error('Test error'));
 
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const result = registry.getConnectedNames();
 
@@ -150,8 +150,8 @@ describe('ProviderRegistry', () => {
 		});
 
 		it('should return empty array when no providers are connected', () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const result = registry.getConnectedNames();
 
@@ -161,8 +161,8 @@ describe('ProviderRegistry', () => {
 
 	describe('getNames', () => {
 		it('should return all provider names', () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const result = registry.getNames();
 
@@ -179,8 +179,8 @@ describe('ProviderRegistry', () => {
 
 	describe('clear', () => {
 		it('should remove all providers', () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 			expect(registry.getNames()).toHaveLength(2);
 
 			registry.clear();
@@ -200,8 +200,8 @@ describe('ProviderRegistry', () => {
 			const disconnectSpy1 = jest.spyOn(dummyProvider, 'disconnect');
 			const disconnectSpy2 = jest.spyOn(anotherProvider, 'disconnect');
 
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			await registry.disconnectAll();
 
@@ -213,7 +213,7 @@ describe('ProviderRegistry', () => {
 			const errorProvider = new DummyProvider();
 			jest.spyOn(errorProvider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
 
-			registry.add('error', errorProvider);
+			registry.set('error', errorProvider);
 
 			await expect(registry.disconnectAll()).resolves.not.toThrow();
 		});
@@ -224,8 +224,8 @@ describe('ProviderRegistry', () => {
 
 			const disconnectSpy = jest.spyOn(dummyProvider, 'disconnect');
 
-			registry.add('error', errorProvider);
-			registry.add('dummy', dummyProvider);
+			registry.set('error', errorProvider);
+			registry.set('dummy', dummyProvider);
 
 			await registry.disconnectAll();
 
