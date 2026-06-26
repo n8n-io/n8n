@@ -530,24 +530,4 @@ describe('LiveWebhooks', () => {
 			).resolves.toBeDefined();
 		});
 	});
-
-	describe('path normalization', () => {
-		// Exercises the lookup-side normalization in `findWebhook` via the public
-		// `findAccessControlOptions`, which is a lighter seam than `executeWebhook`.
-		test.each([
-			['trailing slash', `${WEBHOOK_PATH}/`],
-			['leading whitespace', ` ${WEBHOOK_PATH}`],
-			['trailing whitespace', `${WEBHOOK_PATH} `],
-			['surrounding whitespace and slash', ` ${WEBHOOK_PATH}/ `],
-		])('looks up the normalized path when the request has %s', async (_label, rawPath) => {
-			webhookService.findWebhook.mockResolvedValue(
-				mock<WebhookEntity>({ workflowId: WORKFLOW_ID }),
-			);
-			workflowRepository.findOne.mockResolvedValue(null);
-
-			await liveWebhooks.findAccessControlOptions(rawPath, 'GET');
-
-			expect(webhookService.findWebhook).toHaveBeenCalledWith('GET', WEBHOOK_PATH);
-		});
-	});
 });

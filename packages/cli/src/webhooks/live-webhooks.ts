@@ -230,8 +230,6 @@ export class LiveWebhooks implements IWebhookManager {
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
-		// Trim whitespace so a padded stored path (e.g. " jarvis") stays reachable
-		path = path.trim();
 		// Remove trailing slash
 		if (path.endsWith('/')) {
 			path = path.slice(0, -1);

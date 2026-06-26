@@ -475,7 +475,7 @@ describe('WebhookService', () => {
 						{
 							name: 'default',
 							httpMethod: 'GET',
-							path: ' /jarvis/ ',
+							path: ' /path/ ',
 							isFullPath: false,
 							restartWebhook: false,
 						},
@@ -489,7 +489,7 @@ describe('WebhookService', () => {
 
 			expect(webhooks).toHaveLength(1);
 			expect(webhooks[0].path).not.toMatch(/\s/);
-			expect(webhooks[0].path).toMatch(/\/jarvis$/);
+			expect(webhooks[0].path).toMatch(/\/path$/);
 		});
 	});
 
