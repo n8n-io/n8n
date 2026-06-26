@@ -4,7 +4,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
-import { microsoftApiRequest } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -141,17 +141,13 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const body: IDataObject = {};
 	Object.assign(body, updateFields);
 
-	const task = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
+	const taskPath = buildTeamsPath.call(this, ['/v1.0/planner/tasks/', { id: taskId }]);
 
-	await microsoftApiRequest.call(
-		this,
-		'PATCH',
-		`/v1.0/planner/tasks/${taskId}`,
-		body,
-		{},
-		undefined,
-		{ 'If-Match': task['@odata.etag'] },
-	);
+	const task = await microsoftApiRequest.call(this, 'GET', taskPath);
+
+	await microsoftApiRequest.call(this, 'PATCH', taskPath, body, {}, undefined, {
+		'If-Match': task['@odata.etag'],
+	});
 
 	return { success: true };
 }

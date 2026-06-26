@@ -3,7 +3,7 @@ import { type INodeProperties, type IExecuteFunctions, NodeOperationError } from
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { channelRLC, teamRLC } from '../../descriptions';
-import { microsoftApiRequest } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [teamRLC, channelRLC];
 
@@ -26,7 +26,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		return await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/v1.0/teams/${teamId}/channels/${channelId}`,
+			buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels/', { id: channelId }]),
 		);
 	} catch (error) {
 		throw new NodeOperationError(

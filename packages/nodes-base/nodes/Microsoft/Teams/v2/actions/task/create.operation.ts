@@ -4,7 +4,12 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
-import { microsoftApiRequest } from '../../transport';
+import {
+	getTeamsCredentialType,
+	microsoftApiRequest,
+	SERVICE_PRINCIPAL_AUTH,
+	validateTeamsId,
+} from '../../transport';
 
 const properties: INodeProperties[] = [
 	groupRLC,
@@ -75,6 +80,16 @@ export async function execute(this: IExecuteFunctions, i: number) {
 
 	const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
 	const bucketId = this.getNodeParameter('bucketId', i, '', { extractValue: true }) as string;
+
+	// `planId`/`bucketId` go into the JSON body (not a path), so JSON encoding handles
+	// escaping. Under the app-only credential, still shape-validate them as
+	// defense-in-depth (a malformed id is a bad request) — this is NOT the
+	// path-injection fix (that is `buildTeamsPath` on path-interpolated ids).
+	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
+		const node = this.getNode();
+		validateTeamsId(planId, node);
+		validateTeamsId(bucketId, node);
+	}
 
 	const title = this.getNodeParameter('title', i) as string;
 	const options = this.getNodeParameter('options', i);
