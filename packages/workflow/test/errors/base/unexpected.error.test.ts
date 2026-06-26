@@ -23,4 +23,10 @@ describe('UnexpectedError', () => {
 		expect(error.level).toBe('fatal');
 		expect(error.shouldReport).toBe(false);
 	});
+
+	it('should derive shouldReport from a fatal level when not overridden', () => {
+		const error = new UnexpectedError('test', { level: 'fatal' });
+		expect(error.level).toBe('fatal');
+		expect(error.shouldReport).toBe(true);
+	});
 });

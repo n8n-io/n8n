@@ -15,11 +15,19 @@ export abstract class BaseError extends Error {
 	 */
 	level: ErrorLevel;
 
+	/** Explicit `shouldReport` override passed at construction, if any. */
+	private readonly shouldReportOverride?: boolean;
+
 	/**
-	 * Whether the error should be reported to Sentry.
+	 * Whether the error should be reported to Sentry. Derived from `level`
+	 * unless explicitly overridden at construction. Read lazily so subclasses
+	 * (e.g. `NodeApiError`) that assign `level` after `super()` stay consistent
+	 * with their final level instead of the constructor default.
 	 * @default true
 	 */
-	readonly shouldReport: boolean;
+	get shouldReport(): boolean {
+		return this.shouldReportOverride ?? (this.level === 'error' || this.level === 'fatal');
+	}
 
 	readonly description: string | null | undefined;
 
@@ -43,7 +51,7 @@ export abstract class BaseError extends Error {
 		super(message, rest);
 
 		this.level = level;
-		this.shouldReport = shouldReport ?? (level === 'error' || level === 'fatal');
+		this.shouldReportOverride = shouldReport;
 		this.description = description;
 		this.tags = tags;
 		this.extra = extra;

@@ -21,4 +21,30 @@ describe('NodeError', () => {
 
 		vi.useRealTimers();
 	});
+
+	describe('shouldReport', () => {
+		it('should keep shouldReport consistent with the default warning level for NodeApiError', () => {
+			// A 404 (and other API errors) default to `level: 'warning'`, so they
+			// must not be flagged for reporting. These subclasses set `level` after
+			// `super()`, so `shouldReport` must reflect that final level.
+			const apiError = new NodeApiError(node, { message: 'not found', code: 404 });
+
+			expect(apiError.level).toBe('warning');
+			expect(apiError.shouldReport).toBe(false);
+		});
+
+		it('should keep shouldReport consistent with the default warning level for NodeOperationError', () => {
+			const opsError = new NodeOperationError(node, 'boom');
+
+			expect(opsError.level).toBe('warning');
+			expect(opsError.shouldReport).toBe(false);
+		});
+
+		it('should flag error-level node errors for reporting', () => {
+			const opsError = new NodeOperationError(node, 'boom', { level: 'error' });
+
+			expect(opsError.level).toBe('error');
+			expect(opsError.shouldReport).toBe(true);
+		});
+	});
 });
