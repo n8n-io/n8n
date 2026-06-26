@@ -603,6 +603,15 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
+			const runData = fullRunData.data?.resultData?.runData ?? {};
+			fullExecutionData.usedPrivateCredentials = Object.values(runData).some((taskDataList) =>
+				taskDataList.some(
+					(taskData) =>
+						taskData.usedDynamicCredentials === true ||
+						taskData.attemptedDynamicCredentials === true,
+				),
+			);
+
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
@@ -684,6 +693,15 @@ function hookFunctionsSaveWorker(
 			if (fullRunData.waitTill && isManualMode) {
 				fullExecutionData.data.pushRef = pushRef;
 			}
+
+			const runData = fullRunData.data?.resultData?.runData ?? {};
+			fullExecutionData.usedPrivateCredentials = Object.values(runData).some((taskDataList) =>
+				taskDataList.some(
+					(taskData) =>
+						taskData.usedDynamicCredentials === true ||
+						taskData.attemptedDynamicCredentials === true,
+				),
+			);
 
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations

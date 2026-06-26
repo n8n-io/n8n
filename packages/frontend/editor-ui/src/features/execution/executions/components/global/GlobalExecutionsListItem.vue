@@ -23,6 +23,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -274,7 +275,12 @@ async function handleActionItemClick(commandData: Command) {
 				</small>
 			</span>
 		</td>
-		<td>
+		<td :class="$style.modeCell">
+			<PrivateCredentialIcon
+				v-if="execution.usedPrivateCredentials"
+				data-test-id="global-execution-private-credential"
+				:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+			/>
 			<N8nTooltip v-if="execution.mode === 'manual'" content="Manual Execution" placement="top">
 				<N8nIcon icon="flask-conical" />
 			</N8nTooltip>
@@ -338,6 +344,12 @@ async function handleActionItemClick(commandData: Command) {
 </template>
 
 <style lang="scss" module>
+.modeCell {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 tr.dangerBg {
 	background-color: rgba(215, 56, 58, 0.1);
 }
