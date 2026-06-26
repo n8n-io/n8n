@@ -2,8 +2,6 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
-import { N8N_VERSION } from '@/constants';
-
 import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
@@ -16,6 +14,8 @@ import type {
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import { packageManifestSchema } from './spec/manifest.schema';
+
+import { N8N_VERSION } from '@/constants';
 
 @Service()
 export class N8nPackagesService {
