@@ -139,7 +139,8 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
 | `--timeout-ms` | `900000` | Per-test-case timeout |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
-| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
+| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
+| `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
@@ -518,6 +519,8 @@ No tools, services, or workflow imports are mocked. The `eval:subagent` command 
 ## LangSmith integration
 
 When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment against the `instance-ai-workflow-evals` dataset (synced from the JSON files before each run). Experiments against the same dataset can be compared side-by-side to spot regressions.
+
+To record an isolated cohort without touching the shared dataset or baseline — e.g. MCP-built workflows scored via `--prebuilt-workflows` — pass a dedicated `--dataset` and `--baseline-prefix`. The sync then only writes that cohort's cases (filtered by `--tier`) into its own dataset, and regression comparison only looks for baselines under the given prefix. See the [MCP workflow evaluations README](../../../cli/src/modules/mcp/evaluations/README.md#record-runs-in-langsmith).
 
 ## Adding test cases
 

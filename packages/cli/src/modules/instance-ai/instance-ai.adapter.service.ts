@@ -978,7 +978,10 @@ export class InstanceAiAdapterService {
 					mockDataSources: pinDataPlan.mockDataSources,
 				};
 
-				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+				const trackBuilderExecutedWorkflow = (
+					status: ExecutionResult['status'],
+					error?: string,
+				) => {
 					if (!threadId) return;
 
 					telemetry.track('Builder executed workflow', {
@@ -988,72 +991,84 @@ export class InstanceAiAdapterService {
 						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
 						exec_type: runData.executionMode,
 						status,
+						...(error ? { error } : {}),
 					});
 				};
 
-				const executionId = await workflowRunner.run(runData);
-				const pruneVerificationPins = async (executedNodeNames?: string[]) => {
-					try {
-						await pruneUnreachedVerificationPinData({
-							executionId,
-							verificationPinData: pinDataPlan.verificationPinData,
-							nonVerificationPinData: pinDataPlan.nonVerificationPinData,
-							executedNodeNames,
-						});
-					} catch (error) {
-						logger.warn('Failed to prune verification pin data from execution', {
-							executionId,
-							error: error instanceof Error ? error.message : String(error),
-						});
-					}
-				};
-
-				// Wait for completion with timeout protection
-				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
-
-				if (activeExecutions.has(executionId)) {
-					let timeoutId: NodeJS.Timeout | undefined;
-					const timeoutPromise = new Promise<never>((_, reject) => {
-						timeoutId = setTimeout(() => {
-							reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-						}, timeoutMs);
-					});
-
-					try {
-						await Promise.race([
-							activeExecutions.getPostExecutePromise(executionId),
-							timeoutPromise,
-						]);
-						clearTimeout(timeoutId);
-					} catch (error) {
-						clearTimeout(timeoutId);
-						// On timeout, cancel the execution
-						if (error instanceof Error && error.message.includes('timed out')) {
-							try {
-								activeExecutions.stopExecution(
-									executionId,
-									new TimeoutExecutionCancelledError(executionId),
-								);
-							} catch {
-								// Execution may have completed between timeout and cancel
-							}
-							const result = {
+				try {
+					const executionId = await workflowRunner.run(runData);
+					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
+						try {
+							await pruneUnreachedVerificationPinData({
 								executionId,
-								status: 'error',
-								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-							} satisfies ExecutionResult;
-							await pruneVerificationPins();
-							trackBuilderExecutedWorkflow(result.status);
-							return result;
+								verificationPinData: pinDataPlan.verificationPinData,
+								nonVerificationPinData: pinDataPlan.nonVerificationPinData,
+								executedNodeNames,
+							});
+						} catch (error) {
+							logger.warn('Failed to prune verification pin data from execution', {
+								executionId,
+								error: error instanceof Error ? error.message : String(error),
+							});
 						}
-						throw error;
-					}
-				}
+					};
 
-				const result = await extractExecutionResult(executionId, allowSendingParameterValues);
-				await pruneVerificationPins(result.executedNodeNames);
-				trackBuilderExecutedWorkflow(result.status);
-				return result;
+					// Wait for completion with timeout protection
+					const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+
+					if (activeExecutions.has(executionId)) {
+						let timeoutId: NodeJS.Timeout | undefined;
+						const timeoutPromise = new Promise<never>((_, reject) => {
+							timeoutId = setTimeout(() => {
+								reject(new Error(`Execution timed out after ${timeoutMs}ms`));
+							}, timeoutMs);
+						});
+
+						try {
+							await Promise.race([
+								activeExecutions.getPostExecutePromise(executionId),
+								timeoutPromise,
+							]);
+							clearTimeout(timeoutId);
+						} catch (error) {
+							clearTimeout(timeoutId);
+							// On timeout, cancel the execution
+							if (error instanceof Error && error.message.includes('timed out')) {
+								try {
+									activeExecutions.stopExecution(
+										executionId,
+										new TimeoutExecutionCancelledError(executionId),
+									);
+								} catch {
+									// Execution may have completed between timeout and cancel
+								}
+								const result = {
+									executionId,
+									status: 'error',
+									error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+								} satisfies ExecutionResult;
+								await pruneVerificationPins();
+								trackBuilderExecutedWorkflow(result.status, result.error);
+								return result;
+							}
+							throw error;
+						}
+					}
+
+					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
+					await pruneVerificationPins(result.executedNodeNames);
+					trackBuilderExecutedWorkflow(result.status, result.error);
+					return result;
+				} catch (error) {
+					// A failure to launch (or any other unsettled error) is still an
+					// errored builder run — track it before rethrowing so it isn't
+					// silently dropped from telemetry.
+					trackBuilderExecutedWorkflow(
+						'error',
+						error instanceof Error ? error.message : String(error),
+					);
+					throw error;
+				}
 			},
 
 			async getStatus(executionId: string) {

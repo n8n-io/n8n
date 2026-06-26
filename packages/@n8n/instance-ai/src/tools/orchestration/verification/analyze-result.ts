@@ -115,6 +115,17 @@ export function countProducedOutputRows(
 	return count;
 }
 
+function maxEmittedItemCount(resultData: Record<string, unknown> | undefined): number {
+	if (!resultData) return 0;
+
+	let max = 0;
+	for (const nodeOutput of Object.values(resultData)) {
+		const count = countOutputItems(nodeOutput) ?? 0;
+		if (count > max) max = count;
+	}
+	return max;
+}
+
 function messageMatchesAny(normalized: string, keywords: readonly string[]): boolean {
 	return keywords.some((keyword) => normalized.includes(keyword));
 }
@@ -215,8 +226,11 @@ function buildCoverageNote(
 	const ending = result.lastNodeExecuted
 		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
 		: '.';
+	const collapsedFromCollection = success && maxEmittedItemCount(result.data) >= 2;
 	const guidance = success
-		? ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
+		? collapsedFromCollection
+			? ' An upstream node emitted multiple items but the chain collapsed to zero before reaching them. The usual cause is a Code node reading `$input.first().json` (a single split item) instead of `$input.all().map(i => i.json)` — an HTTP Request node splits a top-level array (including a bare array of IDs) into one item per element. Fix the node that dropped the items to read every item, then re-run verification. Do NOT report the workflow as fully verified.'
+			: ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
 		: '';
 	return (
 		`Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
