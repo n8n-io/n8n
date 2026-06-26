@@ -1,0 +1,13 @@
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/workflow-executor.ts
+  ai_agent 297-298
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows.test.ts
+  ai_agent 166-168
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/binary-checks/checks/no-code-imports.ts
+  ai_agent 9-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4aab35e53cdf73b92a6e4e9098e5132ef337ff95",
+  "prompts": {}
+}
