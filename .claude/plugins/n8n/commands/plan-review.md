@@ -26,7 +26,7 @@ Dispatch these sub-agents **in a single message** so they run concurrently. Give
 - **`n8n:autodev-security-reviewer`** (fallback `security-auditor`) — security implications of the planned approach: input handling, authn/authz, secrets, injection / SSRF / path-traversal surface, dependency risk, data exposure.
 - **`n8n:autodev-test-reviewer`** (fallback `expert-test-developer`) — is the test strategy adequate? Name the high-value cases it must cover; flag any plan to under-test risky logic or to lean on meaningless tests.
 - **`n8n:autodev-vue-reviewer`** *(frontend plans only)* (fallback `expert-vue3-developer` + the `n8n:design-system` skill) — Vue 3 + Pinia approach, design-system & i18n conventions, a11y. Skip on backend-only plans and note it.
-- **Simplicity / YAGNI (ponytail)** — judge whether the planned approach is over-engineered: speculative abstractions, needless configurability/flexibility, layers or patterns the ticket doesn't require, error handling for impossible cases. The simplest approach that satisfies the ticket and every AC wins — recommend cutting anything beyond that, tagged `[MINOR]`–`[MAJOR]`. (No `/ponytail-review` here — there's no code yet; this is a judgment on the plan.)
+- **Simplicity / YAGNI** — judge whether the planned approach is over-engineered: speculative abstractions, needless configurability/flexibility, layers or patterns the ticket doesn't require, error handling for impossible cases. The simplest approach that satisfies the ticket and every AC wins — recommend cutting anything beyond that, tagged `[MINOR]`–`[MAJOR]`.
 
 (The conventions reviewer is diff-only — not run against a plan.)
 
