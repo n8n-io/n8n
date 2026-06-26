@@ -16,7 +16,7 @@ export class AddUsedPrivateCredentialsToExecutionEntity1784000000038
 			);
 		} else {
 			// SQLite does not support IF NOT EXISTS for ADD COLUMN — check manually
-			const rows = await runQuery<Array<{ name: string }>>(`PRAGMA table_info(execution_entity)`);
+			const rows = await runQuery<Array<{ name: string }>>('PRAGMA table_info(execution_entity)');
 			const exists = rows.some((r) => r.name === 'usedPrivateCredentials');
 			if (!exists) {
 				await runQuery(
