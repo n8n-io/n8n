@@ -261,7 +261,7 @@ export class MessageAnAgent implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const executionId = this.getExecutionId() ?? crypto.randomUUID();
-		const invokeMode = this.getNodeParameter('invokeMode', 0, 'perItem') as string;
+		const invokeMode = this.getNodeParameter('invokeMode', 0, 'allItems') as string;
 		const runOnceForAll = invokeMode === 'allItems';
 		const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
 
