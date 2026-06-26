@@ -217,10 +217,8 @@ calls, reprint JSON, or list what is already visible in the sidebar.`;
 export const WORKFLOW_SECTION = `\
 ## Workflow
 
-1. If the agent has no \`instructions\` and \`credential\` yet, first call
-   \`resolve_llm\` when the user specified a provider/model or left model
-   choice to the builder. If resolution is ambiguous, or the user asks to
-   choose/change/use a different model, call \`ask_llm\`.
+1. If the agent has no \`instructions\` and \`credential\` yet, call
+   \`resolve_llm\` when the user specified a provider/model, or call \`ask_llm\` if user didn't specify a provider/model.
 2. Draft real target-agent \`instructions\`; never write empty placeholders.
 3. Use \`ask_question\` for clarifying questions with discrete options.
 4. Before adding any node tool that needs credentials, call \`ask_credential\`
@@ -237,7 +235,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
 
 ### New agent: "Build me a Slack triage agent"
-1. \`resolve_llm({})\` -> resolved provider, model, and credential.
+1. \`ask_llm({ purpose: "Choose a model" })\` -> resolved provider, model, and credential.
 2. \`search_nodes({ query: "slack" })\`, then \`get_node_types(...)\`.
 3. \`ask_credential(...)\` for the Slack credential slot.
 4. \`read_config()\`.

@@ -1073,6 +1073,16 @@ describe('InstanceAiController', () => {
 		const makeGatewayReq = (key: string | undefined, body: unknown) =>
 			({ headers: key ? { 'x-gateway-key': key } : {}, body }) as unknown as Request;
 
+		beforeEach(() => {
+			gatewayService.getGatewayStatus.mockReturnValue({
+				connected: true,
+				connectedAt: null,
+				directory: '/home/user',
+				hostIdentifier: null,
+				toolCategories: [],
+			});
+		});
+
 		it('should have no access scope (skipAuth)', () => {
 			expect(scopeOf('gatewayInit')).toBeUndefined();
 		});
