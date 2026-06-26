@@ -9,18 +9,18 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 
-// A mailbox is always a user, addressed as `/users/{id}`. The accepted shapes are
-// deliberately narrow (GUID | UPN | bare host/domain) and validation runs BEFORE
-// encoding — `encodeURIComponent` leaves `..` intact, so shape validation (not
-// encoding) is what keeps the value safe to interpolate into a Graph URL path.
-// A drive-style `!`-bearing id is intentionally not accepted. The UPN local part is
-// a deliberately safe subset that excludes URL-unsafe characters (`/ \ : ? # %`,
-// whitespace, control) — so `%`-encoded traversal like `..%2f..%2fx@y.com` stays
-// rejected — while allowing the common apostrophe (e.g. `o'connor@contoso.com`),
-// which is URL-path-safe.
+// A mailbox is always a user, addressed as `/users/{id}`. The only valid Graph
+// identifiers are a user object ID (GUID) or a UPN (has `@`) — there is no bare
+// host/domain mailbox form, so those two shapes are exactly what we accept.
+// Validation runs BEFORE encoding — `encodeURIComponent` leaves `..` intact, so
+// shape validation (not encoding) is what keeps the value safe to interpolate into
+// a Graph URL path. A drive-style `!`-bearing id is intentionally not accepted. The
+// UPN local part is a deliberately safe subset that excludes URL-unsafe characters
+// (`/ \ : ? # %`, whitespace, control) — so `%`-encoded traversal like
+// `..%2f..%2fx@y.com` stays rejected — while allowing the common apostrophe
+// (e.g. `o'connor@contoso.com`), which is URL-path-safe.
 const MAILBOX_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 const MAILBOX_UPN = /^[A-Za-z0-9._+'-]+@[A-Za-z0-9.-]+$/;
-const MAILBOX_HOST = /^[A-Za-z0-9.-]+$/;
 
 export const messageFields = [
 	'bccRecipients',
@@ -335,7 +335,7 @@ export function prepareApiError(
  * Validates an app-only mailbox id before it is encoded and interpolated into a
  * Graph URL path. Throws a `NodeOperationError` with a fully static message (never
  * echoing the id) on a bad shape. Two throw sites: empty/whitespace-only, and any
- * shape that is not a user GUID / UPN / bare host. Validate BEFORE encoding —
+ * shape that is not a user GUID or UPN. Validate BEFORE encoding —
  * `encodeURIComponent` leaves `..` intact, so the shape check is what makes the
  * value safe.
  */
@@ -347,10 +347,10 @@ export function validateMailbox(id: string, node: INode): void {
 		});
 	}
 
-	// Dots-only (`.`, `..`, …) matches the host shape but is a path-traversal token,
-	// so reject it explicitly before the shape check.
-	const valid =
-		!/^\.+$/.test(id) && (MAILBOX_GUID.test(id) || MAILBOX_UPN.test(id) || MAILBOX_HOST.test(id));
+	// Only a user object ID (GUID) or a UPN (has `@`) is a valid mailbox; there is no
+	// bare host/domain form. Path-traversal tokens like `..` match neither, so they
+	// are rejected here too.
+	const valid = MAILBOX_GUID.test(id) || MAILBOX_UPN.test(id);
 	if (!valid) {
 		throw new NodeOperationError(node, 'The mailbox is not valid', {
 			description:

@@ -274,8 +274,11 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 		expect(() => validateMailbox("o'connor@contoso.com", node)).not.toThrow();
 	});
 
-	it('should accept a bare host/domain', () => {
-		expect(() => validateMailbox('contoso.onmicrosoft.com', node)).not.toThrow();
+	it('should reject a bare host/domain (not a valid mailbox identifier)', () => {
+		expect(() => validateMailbox('contoso.onmicrosoft.com', node)).toThrow(
+			'The mailbox is not valid',
+		);
+		expect(() => validateMailbox('contoso', node)).toThrow('The mailbox is not valid');
 	});
 
 	it('should throw the static "required" error for empty/whitespace', () => {
@@ -296,6 +299,8 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 		expect(() => validateMailbox('a/b', node)).toThrow('The mailbox is not valid');
 		expect(() => validateMailbox('a\\b', node)).toThrow('The mailbox is not valid');
 		expect(() => validateMailbox('../evil', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('%2e%2e', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('https://evil.com', node)).toThrow('The mailbox is not valid');
 	});
 
 	it('should reject other URL-unsafe characters (?, #, space)', () => {
