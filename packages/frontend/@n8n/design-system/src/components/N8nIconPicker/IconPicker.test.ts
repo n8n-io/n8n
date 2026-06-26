@@ -32,36 +32,37 @@ vi.mock('./lucideIconData', () => ({
 	lucideCategories: ['design', 'development', 'emoji', 'shapes'],
 }));
 
+// Mock data uses the lean shape: keywords exclude label words (the search matches
+// the label directly), and skin-tone-capable emojis carry `t: 1` (variants derived
+// at runtime) rather than an explicit `s` array.
 vi.mock('./emojiData', () => ({
 	emojiSections: [
 		{
 			key: 'people',
 			labelKey: 'iconPicker.emojiSection.people',
 			emojis: [
-				{ u: '😀', l: 'Grinning Face', k: ['grinning', 'face', 'smile', 'happy'] },
-				{ u: '😎', l: 'Smiling Face With Sunglasses', k: ['sunglasses', 'cool', 'face'] },
-				{
-					u: '👋',
-					l: 'Waving Hand',
-					k: ['wave', 'hand'],
-					s: ['👋🏻', '👋🏼', '👋🏽', '👋🏾', '👋🏿'],
-				},
+				{ u: '😀', l: 'Grinning Face', k: ['smile', 'happy'] },
+				{ u: '😎', l: 'Smiling Face With Sunglasses', k: ['cool'] },
+				{ u: '👋', l: 'Waving Hand', k: ['wave'], t: 1 },
 			],
 		},
 		{
 			key: 'animalsNature',
 			labelKey: 'iconPicker.emojiSection.animalsNature',
 			emojis: [
-				{ u: '🐶', l: 'Dog Face', k: ['dog', 'pet', 'animal'] },
-				{ u: '🐱', l: 'Cat Face', k: ['cat', 'pet', 'animal'] },
+				{ u: '🐶', l: 'Dog Face', k: ['pet', 'animal'] },
+				{ u: '🐱', l: 'Cat Face', k: ['pet', 'animal'] },
 			],
 		},
 	],
 }));
 
-// Mock is-emoji-supported to always return true in tests
+// Mock is-emoji-supported; defaults to "all supported" but can be overridden per test.
+const { isEmojiSupportedMock } = vi.hoisted(() => ({
+	isEmojiSupportedMock: vi.fn((_unicode: string) => true),
+}));
 vi.mock('is-emoji-supported', () => ({
-	isEmojiSupported: () => true,
+	isEmojiSupported: isEmojiSupportedMock,
 }));
 
 const router = createRouter({
@@ -101,6 +102,7 @@ function getTabElement(tabContainer: Element): Element | null {
 describe('IconPicker', () => {
 	beforeEach(() => {
 		localStorage.clear();
+		isEmojiSupportedMock.mockImplementation(() => true);
 		vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
 			this: HTMLElement,
 		) {
@@ -224,6 +226,41 @@ describe('IconPicker', () => {
 		// Should show emojis from both sections
 		const emojis = await findAllByTestId('icon-picker-emoji');
 		expect(emojis).toHaveLength(5); // 3 from people + 2 from animals
+	});
+
+	it('filters out unsupported emojis after the idle pass', async () => {
+		// 🐶 is unsupported in this browser; every other emoji renders fine.
+		isEmojiSupportedMock.mockImplementation((unicode: string) => unicode !== '🐶');
+
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Switch to emojis tab
+		const emojiTabContainer = getByTestId('tab-emojis');
+		const emojiTabElement = getTabElement(emojiTabContainer);
+		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await findAllByTestId('icon-picker-emoji');
+
+		// The deferred support pass drops the unsupported 🐶 while the rest remain.
+		await waitFor(() => {
+			const rendered = Array.from(
+				document.querySelectorAll('[data-test-id="icon-picker-emoji"]'),
+			).map((el) => el.textContent?.trim());
+			expect(rendered).toHaveLength(4);
+			expect(rendered).not.toContain('🐶');
+			expect(rendered).toContain('🐱');
+		});
 	});
 
 	it('is able to select an emoji', async () => {
