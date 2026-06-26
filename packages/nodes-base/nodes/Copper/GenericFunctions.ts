@@ -137,6 +137,8 @@ export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
 
 /**
  * Make an authenticated API request to Copper and return all items.
+ * Copper uses page_number (1-indexed) in the request body to paginate.
+ * Without incrementing it, every iteration fetches the same first page.
  */
 export async function copperApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
@@ -148,15 +150,25 @@ export async function copperApiRequestAllItems(
 	option: IDataObject = {},
 ) {
 	let responseData;
-	qs.page_size = 200;
-	let totalItems = 0;
+	const pageSize = 200;
+	let pageNumber = 1;
 	const returnData: IDataObject[] = [];
 
 	do {
-		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
-		totalItems = responseData.headers['x-pw-total'];
-		returnData.push(...(responseData.body as IDataObject[]));
-	} while (totalItems > returnData.length);
+		responseData = await copperApiRequest.call(
+			this,
+			method,
+			resource,
+			{ ...body, page_size: pageSize, page_number: pageNumber },
+			qs,
+			uri,
+			option,
+		);
+		const pageItems = responseData.body as IDataObject[];
+		returnData.push(...pageItems);
+		pageNumber++;
+		// Stop when the API returns fewer records than the page size — that is the last page.
+	} while ((responseData.body as IDataObject[]).length === pageSize);
 
 	return returnData;
 }
