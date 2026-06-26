@@ -50,13 +50,12 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { mcpConnectionsExperimentMock, browserUseExperimentMock } = vi.hoisted(() => ({
-	mcpConnectionsExperimentMock: vi.fn(),
-	browserUseExperimentMock: vi.fn(),
-const { mcpConnectionsExperimentMock, computerUseExperimentMock } = vi.hoisted(() => ({
-	mcpConnectionsExperimentMock: vi.fn(),
-	computerUseExperimentMock: vi.fn(),
-}));
+const { mcpConnectionsExperimentMock, computerUseExperimentMock, browserUseExperimentMock } =
+	vi.hoisted(() => ({
+		mcpConnectionsExperimentMock: vi.fn(),
+		browserUseExperimentMock: vi.fn(),
+		computerUseExperimentMock: vi.fn(),
+	}));
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
@@ -294,7 +293,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId('n8n-agent-browser-use-toggle')).toBeNull();
 		});
 	});
-      
+
 	describe('Computer use settings', () => {
 		it('shows the computer use toggle when the experiment is enabled', () => {
 			const { getByTestId } = renderComponent();
