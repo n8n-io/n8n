@@ -38,18 +38,14 @@ export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 	};
 }
 
-export async function channelSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const guildId = this.getNodeParameter('guildId', undefined, { extractValue: true }) as string;
+export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const guildId = this.getNodeParameter('guildId', '', { extractValue: true }) as string;
+	if (!guildId) return [];
+
 	const channels = await discordBotApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
-	return {
-		results: channels
-			.filter((channel) => channel.type !== 4) // skip categories
-			.map((channel) => ({
-				name: channel.name as string,
-				value: channel.id as string,
-				url: `https://discord.com/channels/${guildId}/${channel.id as string}`,
-			})),
-	};
+	return channels
+		.filter((channel) => channel.type !== 4) // skip categories
+		.map((channel) => ({ name: channel.name as string, value: channel.id as string }));
 }
 
 export async function getRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

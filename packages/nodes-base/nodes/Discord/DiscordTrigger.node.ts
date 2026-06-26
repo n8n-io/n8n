@@ -15,9 +15,9 @@ import {
 	parseContentTypeFilter,
 	type EventFilters,
 } from './DiscordTrigger.helpers';
-import { channelSearch, getRoles, guildSearch } from './DiscordTrigger.methods';
+import { getChannels, getRoles, guildSearch } from './DiscordTrigger.methods';
 import { GatewayClient } from './GatewayClient';
-import { channelRLC, guildRLC } from './v2/actions/common.description';
+import { guildRLC } from './v2/actions/common.description';
 
 export class DiscordTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -110,11 +110,25 @@ export class DiscordTrigger implements INodeType {
 				description: 'The server (guild) to listen to. The bot must be a member of this server.',
 			},
 			{
-				...channelRLC,
-				required: false,
-				default: { mode: 'list', value: '' },
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Channels',
+				name: 'channelIds',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+					loadOptionsDependsOn: ['guildId.value'],
+				},
+				default: [],
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 				description:
-					'Only trigger on events in this channel. Leave empty to listen to all channels. Applies to message and reaction events.',
+					'Which channels to trigger on. Leave empty to listen to all channels. Applies to message and reaction events.',
+			},
+			{
+				displayName:
+					'Leave the channels selection empty to listen to <b>all</b> channels in the server — useful when you want every channel and would rather not pick them one by one.',
+				name: 'allChannelsNotice',
+				type: 'notice',
+				default: '',
 			},
 			{
 				displayName: 'Options',
@@ -185,10 +199,10 @@ export class DiscordTrigger implements INodeType {
 	methods = {
 		listSearch: {
 			guildSearch,
-			channelSearch,
 		},
 		loadOptions: {
 			getRoles,
+			getChannels,
 		},
 	};
 
@@ -199,7 +213,7 @@ export class DiscordTrigger implements INodeType {
 		}
 
 		const guildId = this.getNodeParameter('guildId', '', { extractValue: true }) as string;
-		const channelId = this.getNodeParameter('channelId', '', { extractValue: true }) as string;
+		const channelIds = this.getNodeParameter('channelIds', []) as string[];
 		const options = this.getNodeParameter('options', {}) as {
 			ignoreBots?: boolean;
 			excludeSelf?: boolean;
@@ -213,7 +227,7 @@ export class DiscordTrigger implements INodeType {
 		const filters: EventFilters = {
 			selectedEvents: events,
 			guildId,
-			channelId,
+			channelIds,
 			ignoreBots: options.ignoreBots ?? false,
 			excludeSelf: options.excludeSelf ?? false,
 			includeRoles: options.includeRoles ?? [],

@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { channelSearch, getRoles, guildSearch } from '../DiscordTrigger.methods';
+import { getChannels, getRoles, guildSearch } from '../DiscordTrigger.methods';
 
 function buildContext() {
 	const requestWithAuthentication = vi.fn();
@@ -31,7 +31,7 @@ describe('DiscordTrigger listSearch methods', () => {
 		]);
 	});
 
-	it('channelSearch scopes to the selected guild and skips categories', async () => {
+	it('getChannels scopes to the selected guild and skips categories', async () => {
 		const { ctx, requestWithAuthentication } = buildContext();
 		ctx.getNodeParameter.mockReturnValue('111');
 		requestWithAuthentication.mockResolvedValue([
@@ -39,15 +39,23 @@ describe('DiscordTrigger listSearch methods', () => {
 			{ id: 'cat', name: 'A Category', type: 4 }, // filtered out
 		]);
 
-		const result = await channelSearch.call(ctx);
+		const result = await getChannels.call(ctx);
 
 		expect(requestWithAuthentication).toHaveBeenCalledWith(
 			'discordBotApi',
 			expect.objectContaining({ url: expect.stringContaining('/guilds/111/channels') }),
 		);
-		expect(result.results).toEqual([
-			{ name: 'General', value: 'c1', url: 'https://discord.com/channels/111/c1' },
-		]);
+		expect(result).toEqual([{ name: 'General', value: 'c1' }]);
+	});
+
+	it('getChannels returns [] when no guild is selected', async () => {
+		const { ctx, requestWithAuthentication } = buildContext();
+		ctx.getNodeParameter.mockReturnValue('');
+
+		const result = await getChannels.call(ctx);
+
+		expect(result).toEqual([]);
+		expect(requestWithAuthentication).not.toHaveBeenCalled();
 	});
 
 	it('getRoles drops @everyone and sorts by position descending', async () => {
