@@ -47,11 +47,11 @@ describe('Instance AI run pin-data planning', () => {
 		expect(plan.runPinData).toEqual({
 			'User Pinned Node': [{ json: { source: 'workflow' } }],
 			'Simulated Node': [{ json: { source: 'verification' } }],
-			Webhook: [{ json: { headers: {}, query: {}, body: { event: 'signup' } } }],
+			Webhook: [{ json: { headers: {}, query: {}, params: {}, body: { event: 'signup' } } }],
 		});
 		expect(plan.nonVerificationPinData).toEqual({
 			'User Pinned Node': [{ json: { source: 'workflow' } }],
-			Webhook: [{ json: { headers: {}, query: {}, body: { event: 'signup' } } }],
+			Webhook: [{ json: { headers: {}, query: {}, params: {}, body: { event: 'signup' } } }],
 		});
 		expect(plan.verificationPinData).toEqual({
 			'Simulated Node': [{ json: { source: 'verification' } }],
@@ -63,10 +63,36 @@ describe('Instance AI run pin-data planning', () => {
 		]);
 		expect(plan.startNodeName).toBe('Webhook');
 		expect(plan.triggerItems).toEqual([
-			{ json: { headers: {}, query: {}, body: { event: 'signup' } } },
+			{ json: { headers: {}, query: {}, params: {}, body: { event: 'signup' } } },
 		]);
 		expect(plan.triggerExecutionData?.resultData.pinData).toEqual(plan.runPinData);
 		expect(plan.triggerExecutionData?.executionData?.nodeExecutionStack[0]?.node).toBe(triggerNode);
+	});
+
+	it('preserves webhook envelope params and primitive body payloads', () => {
+		const triggerNode = makeTriggerNode(WEBHOOK_NODE_TYPE, 'Webhook');
+
+		const plan = buildInstanceAiRunPinDataPlan({
+			workflowPinData: {},
+			inputData: {
+				headers: { 'x-request-id': 'req-1' },
+				query: { search: 'rain' },
+				params: { city: 'berlin' },
+				body: 'raw-payload',
+			},
+			triggerNode,
+		});
+
+		expect(plan.triggerItems).toEqual([
+			{
+				json: {
+					headers: { 'x-request-id': 'req-1' },
+					query: { search: 'rain' },
+					params: { city: 'berlin' },
+					body: 'raw-payload',
+				},
+			},
+		]);
 	});
 
 	it('rejects wrapped form trigger input', () => {

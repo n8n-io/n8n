@@ -431,6 +431,36 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
+	it('rejects mixed valid and unknown setup node keys', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: JSON.stringify({
+				'Send Rain Alert': { channelId: '#berlin-weather-rain' },
+				UnknownNode: { channelId: '#other-channel' },
+			}),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'post rain alerts to #berlin-weather-rain' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw', [
+				{
+					nodeId: 'slack-rain',
+					nodeName: 'Send Rain Alert',
+					editableParameters: [{ name: 'channelId' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeParameters).toEqual({});
+		}
+	});
+
 	it('rejects setup parameters that do not match the setup card', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({

@@ -169,6 +169,8 @@ function isEmptyResourceLocator(value: WorkflowParameterValue): boolean {
 function hasUnresolvedSetupValue(value: WorkflowParameterValue): boolean {
 	if (findPlaceholderDetails(value).length > 0) return true;
 	if (isEmptyResourceLocator(value)) return true;
+	if (isWorkflowParameterArray(value)) return value.some(hasUnresolvedSetupValue);
+	if (isDataObject(value)) return Object.values(value).some(hasUnresolvedSetupValue);
 	return false;
 }
 

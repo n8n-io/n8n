@@ -283,6 +283,95 @@ describe('preserveExistingSetupValues', () => {
 		});
 	});
 
+	it('preserves setup-applied values for nested empty resource locators', async () => {
+		const workflow = workflowWithNodes([
+			{
+				id: 'new-node',
+				name: 'Send Message',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.3,
+				position: [0, 0],
+				parameters: {
+					targets: [
+						{
+							channelId: {
+								__rl: true,
+								mode: 'id',
+								value: '',
+								cachedResultName: 'Select channel',
+							},
+						},
+					],
+					options: {
+						fallbackChannel: {
+							__rl: true,
+							mode: 'id',
+							value: '',
+							cachedResultName: 'Select fallback channel',
+						},
+					},
+				},
+			},
+		]);
+
+		await preserveExistingSetupValues(
+			workflow,
+			'wf-1',
+			contextWithExisting(
+				workflowWithNodes([
+					{
+						id: 'old-node',
+						name: 'Send Message',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.3,
+						position: [0, 0],
+						parameters: {
+							targets: [
+								{
+									channelId: {
+										__rl: true,
+										mode: 'name',
+										value: '#alerts',
+										cachedResultName: '#alerts',
+									},
+								},
+							],
+							options: {
+								fallbackChannel: {
+									__rl: true,
+									mode: 'name',
+									value: '#fallback',
+									cachedResultName: '#fallback',
+								},
+							},
+						},
+					},
+				]),
+			),
+		);
+
+		expect(workflow.nodes[0]?.parameters).toEqual({
+			targets: [
+				{
+					channelId: {
+						__rl: true,
+						mode: 'name',
+						value: '#alerts',
+						cachedResultName: '#alerts',
+					},
+				},
+			],
+			options: {
+				fallbackChannel: {
+					__rl: true,
+					mode: 'name',
+					value: '#fallback',
+					cachedResultName: '#fallback',
+				},
+			},
+		});
+	});
+
 	it('does not preserve when the existing resource locator is also empty', async () => {
 		const workflow = workflowWithNodes([
 			{

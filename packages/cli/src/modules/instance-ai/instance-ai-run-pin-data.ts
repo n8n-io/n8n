@@ -176,6 +176,20 @@ function validateInputDataShape(node: INode, inputData: Record<string, unknown>)
 	}
 }
 
+function toWorkflowJsonValue(value: unknown): IDataObject[string] {
+	if (value === null || value === undefined) return value;
+
+	switch (typeof value) {
+		case 'string':
+		case 'number':
+		case 'boolean':
+		case 'object':
+			return value;
+		default:
+			return String(value);
+	}
+}
+
 /** Construct proper pin data per trigger type. */
 function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): IPinData {
 	validateInputDataShape(node, inputData);
@@ -211,14 +225,15 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 			};
 
 		case WEBHOOK_NODE_TYPE: {
-			const envelopeKeys = new Set(['body', 'headers', 'query']);
+			const envelopeKeys = new Set(['body', 'headers', 'query', 'params']);
 			const inputKeys = Object.keys(inputData);
 			const looksLikeEnvelope =
-				inputKeys.length > 0 &&
-				inputKeys.every((k) => envelopeKeys.has(k)) &&
-				typeof inputData.body === 'object' &&
-				inputData.body !== null;
-			const body = looksLikeEnvelope ? (inputData.body as Record<string, unknown>) : inputData;
+				inputKeys.length > 0 && inputKeys.every((key) => envelopeKeys.has(key));
+			const body = looksLikeEnvelope
+				? Object.hasOwn(inputData, 'body')
+					? toWorkflowJsonValue(inputData.body)
+					: {}
+				: inputData;
 			const headers =
 				looksLikeEnvelope && typeof inputData.headers === 'object' && inputData.headers !== null
 					? (inputData.headers as Record<string, unknown>)
@@ -227,10 +242,14 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 				looksLikeEnvelope && typeof inputData.query === 'object' && inputData.query !== null
 					? (inputData.query as Record<string, unknown>)
 					: {};
+			const params =
+				looksLikeEnvelope && typeof inputData.params === 'object' && inputData.params !== null
+					? (inputData.params as Record<string, unknown>)
+					: {};
 			return {
 				[node.name]: [
 					{
-						json: { headers, query, body },
+						json: { headers, query, params, body },
 					},
 				],
 			};

@@ -192,6 +192,7 @@ function normalizeNodeParameters(
 				rawJson,
 				new Error(`setup parameters included unknown node keys: ${unknownKeys.join(', ')}`),
 			);
+			return {};
 		}
 		return normalized;
 	}
