@@ -205,6 +205,7 @@ describe('CodeFlow', () => {
 		describe('with certificate (private_key_jwt) client authentication', () => {
 			const certAuth = new ClientOAuth2({
 				clientId: config.clientId,
+				clientCredentialType: 'certificate',
 				clientCertificate: { privateKey: config.privateKey, certificate: config.certificate },
 				accessTokenUri: config.accessTokenUri,
 				authorizationUri: config.authorizationUri,
@@ -256,6 +257,21 @@ describe('CodeFlow', () => {
 				expect(body.get('client_secret')).toBeNull();
 				expect(refreshed).toBeInstanceOf(ClientOAuth2Token);
 				expect(refreshed.accessToken).toBe(config.accessToken);
+			});
+
+			it('throws when certificate authentication is selected without a certificate', async () => {
+				const misconfigured = new ClientOAuth2({
+					clientId: config.clientId,
+					clientCredentialType: 'certificate',
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: config.authorizationUri,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+				});
+
+				await expect(misconfigured.code.getToken(uri, { state: config.state })).rejects.toThrow(
+					'Expected "clientCertificate" to exist',
+				);
 			});
 		});
 	});

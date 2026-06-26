@@ -120,6 +120,7 @@ describe('CredentialsFlow', () => {
 		describe('with certificate (private_key_jwt) client authentication', () => {
 			const certAuthClient = new ClientOAuth2({
 				clientId: config.clientId,
+				clientCredentialType: 'certificate',
 				clientCertificate: { privateKey: config.privateKey, certificate: config.certificate },
 				accessTokenUri: config.accessTokenUri,
 				authorizationGrants: ['credentials'],
@@ -151,6 +152,19 @@ describe('CredentialsFlow', () => {
 				expect(headers.authorization).toBeUndefined();
 				expect(token).toBeInstanceOf(ClientOAuth2Token);
 				expect(token.accessToken).toBe(config.accessToken);
+			});
+
+			it('throws when certificate authentication is selected without a certificate', async () => {
+				const misconfigured = new ClientOAuth2({
+					clientId: config.clientId,
+					clientCredentialType: 'certificate',
+					accessTokenUri: config.accessTokenUri,
+					authorizationGrants: ['credentials'],
+				});
+
+				await expect(misconfigured.credentials.getToken()).rejects.toThrow(
+					'Expected "clientCertificate" to exist',
+				);
 			});
 		});
 

@@ -41,7 +41,8 @@ export class CredentialsFlow {
 
 		const { clientId } = options;
 
-		if (options.clientCertificate) {
+		if (options.clientCredentialType === 'certificate') {
+			expects(options, 'clientCertificate');
 			body.client_id = clientId;
 			body.client_assertion_type = CLIENT_ASSERTION_TYPE;
 			body.client_assertion = buildClientAssertion({

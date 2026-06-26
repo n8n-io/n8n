@@ -104,7 +104,8 @@ export class CodeFlow {
 			...(options.resource ? { resource: options.resource } : {}),
 		};
 
-		if (options.clientCertificate) {
+		if (options.clientCredentialType === 'certificate') {
+			expects(options, 'clientCertificate');
 			body.client_id = options.clientId;
 			body.client_assertion_type = CLIENT_ASSERTION_TYPE;
 			body.client_assertion = buildClientAssertion({
