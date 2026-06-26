@@ -77,6 +77,18 @@ test.describe(
 			await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).toBeHidden();
 		});
 
+		test('should show the actions menu when the overflow button is clicked', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupRequirements({ workflow: 'Workflow_if.json' });
+
+			await n8n.canvas.logsPanel.open();
+			await n8n.canvas.logsPanel.openActions();
+
+			await expect(n8n.canvas.logsPanel.getSyncSelectionMenuItem()).toBeVisible();
+		});
+
 		test('should allow to trigger partial execution', async ({ n8n, setupRequirements }) => {
 			await setupRequirements({ workflow: 'Workflow_if.json' });
 
