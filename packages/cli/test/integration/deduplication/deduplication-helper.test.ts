@@ -1,4 +1,7 @@
 import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { ProcessedDataRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { createHash } from 'crypto';
 import { DataDeduplicationService } from 'n8n-core';
 import type {
 	ICheckProcessedContextData,
@@ -502,5 +505,90 @@ describe('Deduplication.DeduplicationHelper', () => {
 		);
 
 		expect(latestCount).toBe(0);
+	});
+
+	describe('MD5 to SHA-256 migration', () => {
+		function md5Hash(value: string): string {
+			return createHash('md5').update(value).digest('base64');
+		}
+
+		function sha256Hash(value: string): string {
+			return createHash('sha256').update(value).digest('base64');
+		}
+
+		test('should recognize items stored with legacy MD5 hashes as processed', async () => {
+			const contextData: ICheckProcessedContextData = { workflow, node };
+
+			await Container.get(ProcessedDataRepository).insert({
+				workflowId: workflow.id,
+				context: `n:${node.id}`,
+				value: {
+					mode: 'entries',
+					data: [md5Hash('a'), md5Hash('b')],
+				},
+			});
+
+			const result = await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+				['a', 'b', 'c'],
+				'node',
+				contextData,
+				{ mode: 'entries' },
+			);
+
+			expect(result).toEqual({ new: ['c'], processed: ['a', 'b'] });
+		});
+
+		test('should upgrade legacy MD5 hashes to SHA-256 in the database', async () => {
+			const contextData: ICheckProcessedContextData = { workflow, node };
+
+			await Container.get(ProcessedDataRepository).insert({
+				workflowId: workflow.id,
+				context: `n:${node.id}`,
+				value: {
+					mode: 'entries',
+					data: [md5Hash('a'), md5Hash('b')],
+				},
+			});
+
+			await DataDeduplicationService.getInstance().checkProcessedAndRecord(
+				['a', 'b'],
+				'node',
+				contextData,
+				{ mode: 'entries' },
+			);
+
+			const stored = await Container.get(ProcessedDataRepository).findOne({
+				where: { workflowId: workflow.id, context: `n:${node.id}` },
+			});
+
+			expect(stored!.value.data).toContain(sha256Hash('a'));
+			expect(stored!.value.data).toContain(sha256Hash('b'));
+			expect(stored!.value.data).not.toContain(md5Hash('a'));
+			expect(stored!.value.data).not.toContain(md5Hash('b'));
+		});
+
+		test('should remove items stored with legacy MD5 hashes', async () => {
+			const contextData: ICheckProcessedContextData = { workflow, node };
+
+			await Container.get(ProcessedDataRepository).insert({
+				workflowId: workflow.id,
+				context: `n:${node.id}`,
+				value: {
+					mode: 'entries',
+					data: [md5Hash('a'), md5Hash('b'), md5Hash('c')],
+				},
+			});
+
+			await DataDeduplicationService.getInstance().removeProcessed(['b'], 'node', contextData, {
+				mode: 'entries',
+			});
+
+			const stored = await Container.get(ProcessedDataRepository).findOne({
+				where: { workflowId: workflow.id, context: `n:${node.id}` },
+			});
+
+			expect(stored!.value.data).toHaveLength(2);
+			expect(stored!.value.data).not.toContain(md5Hash('b'));
+		});
 	});
 });
