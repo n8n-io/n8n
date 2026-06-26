@@ -17,6 +17,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
+import { InstancePullConfig } from '@/modules/instance-pull.ee/instance-pull.config';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -412,6 +413,10 @@ export class FrontendService {
 			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
+			},
+			instancePull: {
+				enabled: Container.get(InstancePullConfig).enabled,
+				role: Container.get(InstancePullConfig).role,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,

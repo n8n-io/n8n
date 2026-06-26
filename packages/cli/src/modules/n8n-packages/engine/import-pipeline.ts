@@ -23,6 +23,7 @@ import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
+import type { PackageReader } from '../io/package-reader';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { PackageImportConfig } from '../n8n-packages.config';
 
@@ -53,7 +54,21 @@ export class ImportPipeline {
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
 		const context = await this.resolveTarget(request.user, request.projectId, request.folderId);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		return await this.runFromReader(reader, context, request);
+	}
 
+	/**
+	 * Full apply from an explicit {@link PackageReader} + pre-resolved
+	 * {@link ImportContext}. `run` is the buffer-based entry point that resolves
+	 * the target then delegates here. The instance-pull deploy path reuses this
+	 * to apply a package whose bytes come from the public-API upload.
+	 */
+	async runFromReader(
+		reader: PackageReader,
+		context: ImportContext,
+		request: ImportPackageRequest,
+	): Promise<ImportResult> {
 		// PublishAll requires publish scope up front; other policies are checked per workflow
 		await this.workflowPublisher.assertCanPublish(
 			context.user,
@@ -61,7 +76,6 @@ export class ImportPipeline {
 			request.workflowPublishingPolicy,
 		);
 
-		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 
@@ -139,6 +153,50 @@ export class ImportPipeline {
 		});
 	}
 
+	/**
+	 * Side-effect-free dry run: runs ONLY the importers' `plan()` stages and
+	 * folds their blocking conditions, returning them without ever calling any
+	 * `apply()`. The instance-pull deploy `--dry-run` uses this to validate a
+	 * PR's package against the prd database without writing to it.
+	 *
+	 * Takes an explicit {@link PackageReader} and a pre-resolved
+	 * {@link ImportContext}; `request` supplies only the credential/workflow
+	 * policy knobs (its `packageBuffer` is ignored).
+	 */
+	async validate(
+		reader: PackageReader,
+		context: ImportContext,
+		request: ImportPackageRequest,
+	): Promise<BlockingIssue[]> {
+		const manifest = await this.packageParser.getManifest(reader);
+		const workflowsForImport = await this.packageParser.getWorkflows(reader);
+
+		const credentialRequest: CredentialBindingRequest = {
+			requirements: manifest.requirements?.credentials,
+			matchingMode: request.credentialMatchingMode,
+			missingMode: request.credentialMissingMode,
+			credentialBindings: request.credentialBindings,
+		};
+
+		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
+		const workflowPlan = await this.workflowImporter.plan(context, workflowsForImport, request);
+
+		return this.collectBlockingIssues(workflowPlan, credentialPlan, credentialRequest);
+	}
+
+	/**
+	 * Public wrapper over {@link resolveTarget} so callers outside the pipeline
+	 * (the deploy validate/import service path) can obtain a scoped
+	 * {@link ImportContext} before invoking {@link validate}/{@link runFromReader}.
+	 */
+	async resolveContext(
+		user: User,
+		projectId: string | undefined,
+		folderId: string | undefined,
+	): Promise<ImportContext> {
+		return await this.resolveTarget(user, projectId, folderId);
+	}
+
 	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */
 	private collectBlockingIssues(
 		workflowPlan: WorkflowImportPlan,
@@ -164,15 +222,31 @@ export class ImportPipeline {
 
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialRequest, credentialResolution)
-			.map(({ kind, sourceId, targetId, expectedType, actualType, usedByWorkflows }) => ({
-				type: 'credential-unresolved',
-				kind,
-				sourceId,
-				...(targetId ? { targetId } : {}),
-				...(expectedType ? { expectedType } : {}),
-				...(actualType ? { actualType } : {}),
-				usedByWorkflows,
-			}));
+			.map(
+				({
+					kind,
+					sourceId,
+					targetId,
+					type: requiredType,
+					expectedType,
+					actualType,
+					usedByWorkflows,
+				}) => {
+					// `expectedType` is only set for type_mismatch; for not_found/unknown_type fall back to
+					// the reference's own type so consumers (e.g. the credential-binding page) always know
+					// which credential type is required.
+					const knownType = expectedType ?? requiredType;
+					return {
+						type: 'credential-unresolved',
+						kind,
+						sourceId,
+						...(targetId ? { targetId } : {}),
+						...(knownType ? { expectedType: knownType } : {}),
+						...(actualType ? { actualType } : {}),
+						usedByWorkflows,
+					};
+				},
+			);
 
 		return [
 			...workflowConflicts,

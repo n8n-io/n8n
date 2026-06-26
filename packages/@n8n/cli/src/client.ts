@@ -16,6 +16,12 @@ export interface ImportPackageFields {
 	credentialMissingMode?: string;
 	workflowConflictPolicy: string;
 	workflowIdPolicy?: string;
+	workflowPublishingPolicy?: string;
+}
+
+export interface ValidatePackageResult {
+	issues: unknown[];
+	bindingUrl: string;
 }
 
 export class ApiError extends Error {
@@ -431,6 +437,7 @@ export class N8nClient {
 	async importPackage(
 		file: { buffer: Buffer; filename: string },
 		fields: ImportPackageFields,
+		pr?: string,
 	): Promise<Record<string, unknown>> {
 		const form = new FormData();
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
@@ -439,6 +446,24 @@ export class N8nClient {
 		}
 		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
 			formData: form,
+			...(pr ? { query: { pr } } : {}),
+		});
+	}
+
+	/** Dry-run validate a package against a target instance (no writes). */
+	async validatePackage(
+		file: { buffer: Buffer; filename: string },
+		pr: string,
+		fields: ImportPackageFields,
+	): Promise<ValidatePackageResult> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		for (const [key, value] of Object.entries(fields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		return await this.request<ValidatePackageResult>('POST', '/n8n-packages/validate', {
+			formData: form,
+			query: { pr },
 		});
 	}
 

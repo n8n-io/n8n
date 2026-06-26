@@ -10,4 +10,9 @@ export class CreateCredentialDto extends Z.class({
 	uiContext: z.string().optional(),
 	isGlobal: z.boolean().optional(),
 	isResolvable: z.boolean().optional(),
+	/**
+	 * Preset credential id. Honoured ONLY when the instance-pull demo flag is on
+	 * (lets prd create a credential whose id matches the dev source id). Ignored otherwise.
+	 */
+	id: z.string().max(36).optional(),
 }) {}

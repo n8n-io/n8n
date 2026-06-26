@@ -35,6 +35,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { raiseReview } from '@/app/api/workflows';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
@@ -194,6 +195,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				!sourceControlStore.isEnterpriseSourceControlEnabled ||
 				onExecutionsTab.value ||
 				sourceControlStore.preferences.branchReadOnly,
+		});
+	}
+
+	if (settingsStore.settings.instancePull?.role === 'dev') {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.RAISE_REVIEW,
+			label: locale.baseText('menuActions.raiseReview'),
+			disabled: props.isNewWorkflow || onExecutionsTab.value,
 		});
 	}
 
@@ -400,6 +409,24 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				},
 				moveWorkflowEventBus,
 			);
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.RAISE_REVIEW: {
+			const workflowId = getWorkflowId(props.id, route.params.workflowId);
+			if (!workflowId) return;
+			try {
+				const response = await raiseReview(rootStore.restApiContext, {
+					workflowIds: [workflowId],
+				});
+				toast.showToast({
+					title: locale.baseText('menuActions.raiseReview.success.title'),
+					message: `<a href="${response.prUrl}" target="_blank" rel="noopener">${locale.baseText('menuActions.raiseReview.success.message')}</a>`,
+					type: 'success',
+					duration: 0,
+				});
+			} catch (error) {
+				toast.showError(error, locale.baseText('menuActions.raiseReview.error.title'));
+			}
 			break;
 		}
 		default:

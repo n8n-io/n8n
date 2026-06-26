@@ -1,0 +1,36 @@
+# Copy this into the PRODUCTION-WORKFLOWS repo at .github/workflows/deploy-apply.yml
+# On merge to main it imports + publishes the package into the prd n8n instance.
+# Triggered on PR close (merged) so the PR number is available for binding resolution.
+#
+# Repo secrets required: PRD_URL, PRD_API_KEY (see deploy-dry-run.yml).
+
+name: Deploy apply (publish)
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    # Only on a real merge into main.
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: n8n deploy (apply + publish)
+        env:
+          N8N_URL: ${{ secrets.PRD_URL }}
+          N8N_API_KEY: ${{ secrets.PRD_API_KEY }}
+        # No --dry-run: imports + publishes. --pr lets prd merge any bind-existing
+        # resolutions recorded for this PR. The server re-gates and fails on any blocker.
+        run: node scripts/n8n-deploy.mjs --pr "${{ github.event.pull_request.number }}" .

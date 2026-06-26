@@ -1165,6 +1165,16 @@ async function createCredential(
 	let credential;
 
 	try {
+		// instance-pull demo: create the credential with the preset id (so it matches the
+		// dev source id). Honoured server-side only when N8N_INSTANCE_PULL_DEMO=true.
+		const newCredentialModalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+		const presetId = isCredentialModalState(newCredentialModalState)
+			? newCredentialModalState.presetId
+			: undefined;
+		if (presetId) {
+			credentialDetails.id = presetId;
+		}
+
 		credential = await credentialsStore.createNewCredential(
 			credentialDetails,
 			project?.id,

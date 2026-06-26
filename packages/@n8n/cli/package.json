@@ -75,7 +75,8 @@
     }
   },
   "dependencies": {
-    "@oclif/core": "^4.5.2"
+    "@oclif/core": "^4.5.2",
+    "tar": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

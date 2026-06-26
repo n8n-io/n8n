@@ -110,6 +110,9 @@ const SettingsAiGatewayView = async () =>
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 
+const CredentialBindingView = async () =>
+	await import('@/features/credential-binding/views/CredentialBindingView.vue');
+
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
 
@@ -546,6 +549,17 @@ export const routes: RouteRecordRaw[] = [
 		component: OAuthConsentView,
 		meta: {
 			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/credential-binding/:pr',
+		name: VIEWS.CREDENTIAL_BINDING,
+		component: CredentialBindingView,
+		meta: { middleware: ['authenticated'] },
+		beforeEnter: (_to, _from, next) => {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.settings.instancePull?.role === 'prd') next();
+			else next({ name: VIEWS.HOMEPAGE });
 		},
 	},
 	{

@@ -6,6 +6,8 @@ import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BindingSessionService } from '@/modules/instance-pull.ee/binding-session.service';
+import { DeployService } from '@/modules/instance-pull.ee/deploy.service';
 import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 
@@ -22,6 +24,7 @@ type ImportPackageRequest = PackageRequest.Import & {
 type N8nPackagesHandlers = {
 	exportWorkflows: PublicAPIEndpoint<ExportWorkflowsRequest>;
 	importPackage: PublicAPIEndpoint<ImportPackageRequest>;
+	validatePackage: PublicAPIEndpoint<ImportPackageRequest>;
 };
 
 const n8nPackagesHandlers: N8nPackagesHandlers = {
@@ -70,18 +73,66 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
 			}
 
+			const credentialBindings = new Map(Object.entries(payload.data.credentialBindings));
+			// Merge the operator's per-PR resolutions (bind-existing) recorded on the binding page.
+			const pr = typeof req.query.pr === 'string' ? req.query.pr : undefined;
+			if (pr) {
+				for (const [sourceId, targetId] of Container.get(BindingSessionService).bindingsFor(pr)) {
+					credentialBindings.set(sourceId, targetId);
+				}
+			}
+
 			const result = await Container.get(N8nPackagesService).importPackage({
 				user: req.user,
 				projectId: payload.data.projectId,
 				folderId: payload.data.folderId,
 				credentialMatchingMode: payload.data.credentialMatchingMode,
 				credentialMissingMode: payload.data.credentialMissingMode,
-				credentialBindings: new Map(Object.entries(payload.data.credentialBindings)),
+				credentialBindings,
 				workflowConflictPolicy: payload.data.workflowConflictPolicy,
 				workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 				workflowIdPolicy: payload.data.workflowIdPolicy,
 				packageBuffer: packageFile.buffer,
 			});
+			return res.status(200).json(result);
+		},
+	],
+	validatePackage: [
+		publicApiScope('workflow:import'),
+		async (req, res) => {
+			if (!Container.get(GlobalConfig).publicApi.packagesEnabled) {
+				throw new NotFoundError('Not Found');
+			}
+
+			const packageFile = resolveImportPackageUpload(req);
+
+			const payload = ImportPackageRequestDto.safeParse(req.body ?? {});
+			if (!payload.success) {
+				throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
+			}
+
+			const pr = typeof req.query.pr === 'string' ? req.query.pr : undefined;
+			if (!pr) {
+				throw new BadRequestError('Query parameter "pr" is required');
+			}
+
+			const result = await Container.get(DeployService).validate(
+				{
+					user: req.user,
+					projectId: payload.data.projectId,
+					folderId: payload.data.folderId,
+					credentialMatchingMode: payload.data.credentialMatchingMode,
+					// The dry-run is a deploy GATE: always evaluate under must-preexist so a missing
+					// credential is reported as blocking (create-stub would silently defeat the gate).
+					credentialMissingMode: 'must-preexist',
+					credentialBindings: new Map(Object.entries(payload.data.credentialBindings)),
+					workflowConflictPolicy: payload.data.workflowConflictPolicy,
+					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
+					workflowIdPolicy: payload.data.workflowIdPolicy,
+					packageBuffer: packageFile.buffer,
+				},
+				pr,
+			);
 			return res.status(200).json(result);
 		},
 	],

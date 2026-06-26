@@ -27,6 +27,16 @@ post:
     Credential references are resolved before any workflow is written. Only credentials owned by the
     target project (with `credential:read`) or global credentials (with `credential:read`)
     match. Credentials shared into the project as `credential:user` are not matched.
+  parameters:
+    - name: pr
+      in: query
+      required: false
+      description: >
+        Optional GitHub PR number. When set, credential bindings the operator
+        recorded on this instance's credential-binding page for that PR are merged
+        into `credentialBindings` before import.
+      schema:
+        type: string
   requestBody:
     required: true
     content:

@@ -44,3 +44,20 @@ export function toPackagesError(error: unknown): unknown {
 	}
 	return error;
 }
+
+/** Summarise a `/n8n-packages/validate` dry-run result for the deploy gate. */
+export function summarizeValidation(result: { issues?: unknown[] }): {
+	issues: unknown[];
+	hasIssues: boolean;
+	summary: string;
+} {
+	const issues = Array.isArray(result.issues) ? result.issues : [];
+	const hasIssues = issues.length > 0;
+	const summary = hasIssues
+		? [
+				'Validation found blocking issues:',
+				...issues.map((issue) => `  - ${formatIssue(issue)}`),
+			].join('\n')
+		: 'Validation passed: the package can be safely imported.';
+	return { issues, hasIssues, summary };
+}
