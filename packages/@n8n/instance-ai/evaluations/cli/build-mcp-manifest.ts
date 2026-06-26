@@ -605,29 +605,16 @@ async function main(): Promise<void> {
 		throw new Error('claude not on PATH');
 	}
 
-	// `--workflow-dir` lets the script run from outside the n8n repo. When
-	// not provided, we derive both the workflow dir and the repo root from
-	// `git rev-parse` (the script must then be invoked inside the n8n repo).
-	let workflowDir: string;
+	// Repo root scopes the staged MCP config (cwd fallback). Best-effort: the disk
+	// source resolves/validates its own test-case dir below; langtracer pulls cases
+	// over MCP, so it needs no repo at all and can run outside the n8n checkout.
 	let repoRoot: string | undefined;
-	if (args.workflowDir) {
-		workflowDir = args.workflowDir;
-		try {
-			repoRoot = execSync('git rev-parse --show-toplevel', { stdio: ['ignore', 'pipe', 'ignore'] })
-				.toString()
-				.trim();
-		} catch {
-			repoRoot = undefined;
-		}
-	} else {
-		try {
-			repoRoot = execSync('git rev-parse --show-toplevel').toString().trim();
-		} catch {
-			throw new Error(
-				'Could not determine repo root via git. Run from inside the n8n repo, or pass --workflow-dir to point at a test-case directory directly.',
-			);
-		}
-		workflowDir = join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows');
+	try {
+		repoRoot = execSync('git rev-parse --show-toplevel', { stdio: ['ignore', 'pipe', 'ignore'] })
+			.toString()
+			.trim();
+	} catch {
+		repoRoot = undefined;
 	}
 
 	if (args.buildCwd && !existsSync(args.buildCwd)) {
@@ -655,6 +642,16 @@ async function main(): Promise<void> {
 			}
 		}
 	} else {
+		const workflowDir =
+			args.workflowDir ??
+			(repoRoot
+				? join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows')
+				: undefined);
+		if (!workflowDir) {
+			throw new Error(
+				'Disk source needs the n8n repo (run from inside it) or --workflow-dir; or use --source langtracer.',
+			);
+		}
 		let slugs = args.slugs.length > 0 ? args.slugs : discoverSlugs(workflowDir);
 		if (args.tier) slugs = filterSlugsByTier(workflowDir, slugs, args.tier);
 		for (const slug of slugs) {
