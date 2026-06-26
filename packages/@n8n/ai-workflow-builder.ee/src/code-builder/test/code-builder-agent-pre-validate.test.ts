@@ -22,6 +22,7 @@ const mockFromJSON = vi.fn();
 vi.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: vi.fn(),
 	validateWorkflow: vi.fn(),
+	detectStickyLayoutWarnings: vi.fn(() => []),
 	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	workflow: { fromJSON: (...args: unknown[]) => mockFromJSON(...args) },

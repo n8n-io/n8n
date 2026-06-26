@@ -25,8 +25,10 @@ import {
 // The `Record<keyof NodeConfig, true>` annotation makes TypeScript the source
 // of truth: if a field is added to `NodeConfig`, the literal errors with
 // "Property '<new field>' is missing"; if a field is removed, the literal
-// errors because the listed key is no longer assignable.
-const KNOWN_CONFIG_KEY_MAP: Record<keyof NodeConfig, true> = {
+// errors because the listed key is no longer assignable. Internal `_`-prefixed
+// markers (e.g. `_originalName`) are excluded — they're filtered out at runtime
+// below and are not part of the public NodeConfig contract.
+const KNOWN_CONFIG_KEY_MAP: Record<Exclude<keyof NodeConfig, `_${string}`>, true> = {
 	parameters: true,
 	credentials: true,
 	name: true,
