@@ -28,13 +28,15 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 
 	// Builds a getNodeParameter implementation honoring both execute signature
 	// (name, itemIndex, fallback, options) and the resolveDriveScopeRoot reads.
+	// Move exposes a flat `destinationFolderId` string (no Drive ID — cross-drive
+	// moves aren't supported); the scope drive id is injected automatically.
 	const buildParams = (overrides: Record<string, unknown>) => {
 		const base: Record<string, unknown> = {
 			resource: 'file',
 			operation: 'move',
 			fileId: 'item-1',
 			folderId: 'item-1',
-			parentReference: {},
+			destinationFolderId: '',
 			additionalFields: {},
 			resourceTarget: 'user',
 			userTarget: 'jane@contoso.com',
@@ -65,7 +67,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
 				authentication: 'microsoftOneDriveOAuth2Api',
-				parentReference: { id: 'dest-folder' },
+				destinationFolderId: 'dest-folder',
 			}),
 		);
 
@@ -80,41 +82,18 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(scopeRoot).toBeUndefined();
 	});
 
-	it('SP with an explicit destination driveId: single PATCH, no resolution GET', async () => {
-		mockExecuteFunctions.getNodeParameter.mockImplementation(
-			buildParams({
-				authentication: 'microsoftEntraServicePrincipalApi',
-				resourceTarget: 'user',
-				parentReference: { id: 'dest-folder', driveId: 'b!explicit' },
-			}),
-		);
-
-		await microsoftOneDrive.execute.call(mockExecuteFunctions);
-
-		expect(mockApiRequest).toHaveBeenCalledTimes(1);
-		const [method, resource, body, , , , , scopeRoot] = mockApiRequest.mock.calls[0];
-		expect(method).toBe('PATCH');
-		expect(resource).toBe('/drive/items/item-1');
-		expect((body as IDataObject).parentReference).toEqual({
-			id: 'dest-folder',
-			driveId: 'b!explicit',
-		});
-		// scoped under the chosen user
-		expect(scopeRoot).toBe('/users/jane%40contoso.com');
-	});
-
-	it('SP with Access As: Drive and omitted driveId: uses the target drive id, no GET', async () => {
+	it('SP with Access As: Drive: injects the target drive id as the scope drive, no GET', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
 				authentication: 'microsoftEntraServicePrincipalApi',
 				resourceTarget: 'drive',
-				parentReference: { id: 'dest-folder' },
+				destinationFolderId: 'dest-folder',
 			}),
 		);
 
 		await microsoftOneDrive.execute.call(mockExecuteFunctions);
 
-		// no GET /drive?$select=id — the target id IS the destination drive id
+		// no GET /drive?$select=id — the target id IS the scope drive id
 		expect(mockApiRequest).toHaveBeenCalledTimes(1);
 		const [method, resource, body, , , , , scopeRoot] = mockApiRequest.mock.calls[0];
 		expect(method).toBe('PATCH');
@@ -126,13 +105,13 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(scopeRoot).toBe('/drives/b!targetdrive');
 	});
 
-	it('SP with Access As: User and omitted driveId: resolves once via GET then PATCH, cached across items', async () => {
+	it('SP with Access As: User: resolves the scope drive once via GET then PATCH, cached across items', async () => {
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { n: 1 } }, { json: { n: 2 } }]);
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
 				authentication: 'microsoftEntraServicePrincipalApi',
 				resourceTarget: 'user',
-				parentReference: { id: 'dest-folder' },
+				destinationFolderId: 'dest-folder',
 			}),
 		);
 		// first call resolves the default drive id; subsequent are PATCHes
@@ -152,7 +131,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(getCalls[0][0]).toBe('GET');
 		expect(getCalls[0][3]).toEqual({ $select: 'id' });
 		expect(getCalls[0][7]).toBe('/users/jane%40contoso.com');
-		// both PATCHes carry the resolved driveId
+		// both PATCHes carry the resolved scope drive id
 		const patchCalls = mockApiRequest.mock.calls.filter((c) => c[0] === 'PATCH');
 		expect(patchCalls).toHaveLength(2);
 		for (const call of patchCalls) {
@@ -163,12 +142,12 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		}
 	});
 
-	it('SP unresolvable destination drive: throws a friendly error and issues no mutating PATCH', async () => {
+	it('SP unresolvable scope drive: throws a friendly error and issues no mutating PATCH', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
 				authentication: 'microsoftEntraServicePrincipalApi',
 				resourceTarget: 'user',
-				parentReference: { id: 'dest-folder' },
+				destinationFolderId: 'dest-folder',
 			}),
 		);
 		// resolution GET returns no id
@@ -190,7 +169,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 			buildParams({
 				authentication: 'microsoftOneDriveOAuth2Api',
 				fileId: '../secret',
-				parentReference: { id: 'dest-folder' },
+				destinationFolderId: 'dest-folder',
 			}),
 		);
 
@@ -204,7 +183,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
 				authentication: 'microsoftOneDriveOAuth2Api',
-				parentReference: { id: 'dest-folder' },
+				destinationFolderId: 'dest-folder',
 				additionalFields: { name: 'renamed.txt' },
 			}),
 		);
@@ -221,7 +200,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 				resource: 'folder',
 				authentication: 'microsoftOneDriveOAuth2Api',
 				folderId: 'folder-9',
-				parentReference: { id: 'dest-folder' },
+				destinationFolderId: 'dest-folder',
 			}),
 		);
 
@@ -240,7 +219,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 				const base: Record<string, unknown> = {
 					resource: 'file',
 					operation: 'move',
-					parentReference: { id: 'dest-folder' },
+					destinationFolderId: 'dest-folder',
 					additionalFields: {},
 					authentication: 'microsoftOneDriveOAuth2Api',
 				};
@@ -265,15 +244,15 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		['file', 'fileId'],
 		['folder', 'folderId'],
 	] as const)(
-		'%s: rejects a no-op move (driveId only, no destination folder and no name) before any request',
+		'%s: rejects a no-op move (no destination folder and no name) before any request',
 		async (resource, idParam) => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				buildParams({
 					resource,
 					authentication: 'microsoftOneDriveOAuth2Api',
 					[idParam]: 'item-1',
-					// only a driveId, no destination folder id, no rename name → silent no-op
-					parentReference: { driveId: 'b!explicit' },
+					// no destination folder id, no rename name → silent no-op
+					destinationFolderId: '',
 					additionalFields: {},
 				}),
 			);
@@ -290,7 +269,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
 				authentication: 'microsoftOneDriveOAuth2Api',
-				parentReference: {},
+				destinationFolderId: '',
 				additionalFields: { name: 'renamed.txt' },
 			}),
 		);

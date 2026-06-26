@@ -15,9 +15,7 @@
 				"resource": "file",
 				"operation": "move",
 				"fileId": "FILE123",
-				"parentReference": {
-					"id": "DESTFOLDER"
-				}
+				"destinationFolderId": "DESTFOLDER"
 			},
 			"id": "22222222-2222-2222-2222-222222222222",
 			"name": "Microsoft OneDrive",

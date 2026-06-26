@@ -584,17 +584,15 @@ export class MicrosoftOneDrive implements INodeType {
 						// resource-appropriate name to match the sibling operations.
 						const itemIdParam = resource === 'file' ? 'fileId' : 'folderId';
 						const itemId = this.getNodeParameter(itemIdParam, i) as string;
-						const parentReference = this.getNodeParameter('parentReference', i) as IDataObject;
+						const destinationFolderId = this.getNodeParameter('destinationFolderId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						const destinationFolderId =
-							typeof parentReference?.id === 'string' ? parentReference.id : '';
 						const renameName =
 							typeof additionalFields.name === 'string' ? additionalFields.name : '';
 
-						// A move only relocates the item via the destination folder; a Drive ID
-						// alone (no folder) is a silent Graph no-op. Require either a destination
-						// folder id or a rename name so the operation always does something.
+						// A move only relocates the item via the destination folder; with no
+						// destination folder and no rename it is a silent Graph no-op. Require
+						// one of them so the operation always does something.
 						if (!destinationFolderId && !renameName) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -610,9 +608,11 @@ export class MicrosoftOneDrive implements INodeType {
 							moveParentReference.id = destinationFolderId;
 						}
 
-						const providedDriveId =
-							typeof parentReference?.driveId === 'string' ? parentReference.driveId : '';
-						const destinationDriveId = await resolveDestinationDriveId(providedDriveId, i);
+						// Cross-drive moves aren't supported (Graph requires an async op), so the
+						// user can't pick a destination drive. For app-only we still inject the
+						// scope drive id so a same-drive move resolves to the right drive; OAuth2
+						// resolves to `undefined` (same `/me` drive) — unchanged behaviour.
+						const destinationDriveId = await resolveDestinationDriveId('', i);
 						if (destinationDriveId) {
 							moveParentReference.driveId = destinationDriveId;
 						}
