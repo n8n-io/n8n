@@ -7,7 +7,7 @@ import {
 	ASK_QUESTION_TOOL_NAME,
 	type InteractiveToolName,
 } from '@n8n/api-types';
-import type { ChatMessage } from '../composables/agentChatMessages';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 
 const sendMessageMock = vi.fn();

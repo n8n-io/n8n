@@ -36,6 +36,7 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
@@ -72,6 +73,8 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -99,6 +102,7 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		aiService,
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
