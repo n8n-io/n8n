@@ -103,7 +103,7 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
+import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
@@ -1759,6 +1759,7 @@ export class InstanceAiService {
 
 		const adminSettings = this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
+		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -1780,11 +1781,15 @@ export class InstanceAiService {
 		// Perhaps a better solution would be to have multiple local MCP
 		// servers? But that requires more changes where `localMcpServer`
 		// is currently used
+
+		// When Browser Use is disabled instance-wide, hide the gateway's browser tools
+		// too so they are neither advertised to nor callable by the agent.
+		this.gatewayService.applyToolPolicy(user.id);
 		const gatewayMcpServer =
 			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
-		const browserMcpServer = localGatewayDisabledGlobally
-			? undefined
-			: this.browserSessionService.findMcpServer(user.id);
+		const browserMcpServer = browserUseEnabledGlobally
+			? this.browserSessionService.findMcpServer(user.id)
+			: undefined;
 		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
@@ -1830,11 +1835,10 @@ export class InstanceAiService {
 
 		// Compute gateway status for the system prompt. The direct browser
 		// session contributes a `browser` capability even without the daemon.
-		if (localGatewayDisabledGlobally) {
-			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else if (gatewayMcpServer || browserMcpServer) {
+		if (gatewayMcpServer || browserMcpServer) {
 			const capabilities = new Set<string>();
 			if (gatewayMcpServer) {
+				// getStatus() already drops excluded categories (e.g. browser when disabled).
 				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
 					if (enabled) {
 						capabilities.add(name);
@@ -1843,13 +1847,15 @@ export class InstanceAiService {
 			}
 
 			if (browserMcpServer) {
-				capabilities.add('browser');
+				capabilities.add(BROWSER_TOOL_CATEGORY);
 			}
 
 			context.localGatewayStatus = {
 				status: 'connected',
 				capabilities: [...capabilities],
 			};
+		} else if (localGatewayDisabledGlobally && !browserUseEnabledGlobally) {
+			context.localGatewayStatus = { status: 'disabledGlobally' };
 		} else {
 			context.localGatewayStatus = {
 				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',
