@@ -193,7 +193,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						const document = { fields: {} };
 						columnList.map((column) => {
 							// @ts-ignore
-							if (item.json[column]) {
+							if (Object.prototype.hasOwnProperty.call(item.json, column)) {
 								// @ts-ignore
 								document.fields[column] = jsonToDocument(item.json[column] as IDataObject);
 							} else {
@@ -315,7 +315,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					const document = {};
 					columnList.map((column) => {
 						// @ts-ignore
-						if (item.json.hasOwnProperty(column)) {
+						if (Object.prototype.hasOwnProperty.call(item.json, column)) {
 							// @ts-ignore
 							document[column] = jsonToDocument(item.json[column] as IDataObject);
 						} else {
