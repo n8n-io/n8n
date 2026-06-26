@@ -260,4 +260,49 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(patchCalls).toHaveLength(1);
 		expect(result[0][1]).toEqual({ error: 'Graph 404' });
 	});
+
+	it.each([
+		['file', 'fileId'],
+		['folder', 'folderId'],
+	] as const)(
+		'%s: rejects a no-op move (driveId only, no destination folder and no name) before any request',
+		async (resource, idParam) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				buildParams({
+					resource,
+					authentication: 'microsoftOneDriveOAuth2Api',
+					[idParam]: 'item-1',
+					// only a driveId, no destination folder id, no rename name → silent no-op
+					parentReference: { driveId: 'b!explicit' },
+					additionalFields: {},
+				}),
+			);
+
+			const error = await microsoftOneDrive.execute.call(mockExecuteFunctions).catch((e) => e);
+
+			expect(error.constructor.name).toBe('NodeOperationError');
+			expect(error.message).toContain('Set a Destination Folder ID');
+			expect(mockApiRequest).not.toHaveBeenCalled();
+		},
+	);
+
+	it('allows a rename-in-place move with no destination folder id', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation(
+			buildParams({
+				authentication: 'microsoftOneDriveOAuth2Api',
+				parentReference: {},
+				additionalFields: { name: 'renamed.txt' },
+			}),
+		);
+
+		await microsoftOneDrive.execute.call(mockExecuteFunctions);
+
+		expect(mockApiRequest).toHaveBeenCalledTimes(1);
+		const [method, resource, body] = mockApiRequest.mock.calls[0];
+		expect(method).toBe('PATCH');
+		expect(resource).toBe('/drive/items/item-1');
+		// rename-only: a name, no parentReference
+		expect((body as IDataObject).name).toBe('renamed.txt');
+		expect((body as IDataObject).parentReference).toBeUndefined();
+	});
 });

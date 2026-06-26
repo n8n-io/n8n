@@ -589,6 +589,20 @@ export class MicrosoftOneDrive implements INodeType {
 
 						const destinationFolderId =
 							typeof parentReference?.id === 'string' ? parentReference.id : '';
+						const renameName =
+							typeof additionalFields.name === 'string' ? additionalFields.name : '';
+
+						// A move only relocates the item via the destination folder; a Drive ID
+						// alone (no folder) is a silent Graph no-op. Require either a destination
+						// folder id or a rename name so the operation always does something.
+						if (!destinationFolderId && !renameName) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Set a Destination Folder ID to move the item (use `root` for the drive root), or a Name to rename it in place.',
+								{ itemIndex: i },
+							);
+						}
+
 						// `parentReference.id` (destination folder) and `driveId` are body-only
 						// JSON, so they are never path-interpolated and need no encoding.
 						const moveParentReference: IDataObject = {};
@@ -607,8 +621,8 @@ export class MicrosoftOneDrive implements INodeType {
 						if (Object.keys(moveParentReference).length > 0) {
 							body.parentReference = moveParentReference;
 						}
-						if (additionalFields.name) {
-							body.name = additionalFields.name as string;
+						if (renameName) {
+							body.name = renameName;
 						}
 
 						// Encode the path-interpolated item id (same as upload/copy): it keeps

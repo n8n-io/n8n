@@ -154,7 +154,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'ID of the destination folder to move the item into',
+				description:
+					"ID of the destination folder to move the item into. Use `root` for the drive's top-level folder.",
 			},
 			{
 				displayName: 'Drive ID',
@@ -162,7 +163,7 @@ export const folderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Identifier of the destination drive. Required for app-only (Service Principal) moves to another user drive; leave empty to move within the same drive.',
+					"Destination drive for app-only (Service Principal) access. Leave empty to move within the current drive. Moving to a different drive (another user's OneDrive or a SharePoint drive) is not supported — Microsoft Graph requires an async operation. To move across drives, use the Copy operation to the target drive, then Delete the original.",
 			},
 		],
 	},
