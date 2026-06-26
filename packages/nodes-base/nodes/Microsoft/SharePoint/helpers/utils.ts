@@ -10,7 +10,7 @@ import type {
 import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { IErrorResponse } from './interfaces';
-import { microsoftSharePointApiRequest } from '../transport';
+import { getSharePointCredentialType, microsoftSharePointApiRequest } from '../transport';
 
 export const escapeFilterValue = (value: string) => value.replaceAll("'", "''");
 
@@ -127,6 +127,7 @@ export async function itemColumnsPreSend(
 		if (!mapperValue.matchingColumns.includes('id')) {
 			const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 			const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
+			const credentialType = getSharePointCredentialType.call(this);
 
 			const response = await microsoftSharePointApiRequest.call(
 				this,
@@ -141,6 +142,8 @@ export async function itemColumnsPreSend(
 				{
 					Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
 				},
+				undefined,
+				credentialType,
 			);
 			if (response.value?.length === 1) {
 				mapperValue.matchingColumns.push('id');

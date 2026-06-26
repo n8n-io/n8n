@@ -27,12 +27,45 @@ export class MicrosoftSharePoint implements INodeType {
 			{
 				name: 'microsoftSharePointOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftSharePointOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
-			baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com/_api/v2.0/',
+			baseURL:
+				'={{ $credentials.graphApiBaseUrl ? ($credentials.graphApiBaseUrl + "/v1.0") : ("https://" + $credentials.subdomain + ".sharepoint.com/_api/v2.0") }}',
 		},
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'SharePoint OAuth2',
+						value: 'microsoftSharePointOAuth2Api',
+					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description: 'App-only access via a Microsoft Entra app registration',
+					},
+				],
+				default: 'microsoftSharePointOAuth2Api',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

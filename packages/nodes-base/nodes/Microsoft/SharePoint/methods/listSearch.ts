@@ -7,7 +7,7 @@ import type {
 
 import type { IDriveItem, IList, IListItem, ISite } from '../helpers/interfaces';
 import { escapeFilterValue } from '../helpers/utils';
-import { microsoftSharePointApiRequest } from '../transport';
+import { getSharePointCredentialType, microsoftSharePointApiRequest } from '../transport';
 
 export async function getFiles(
 	this: ILoadOptionsFunctions,
@@ -16,6 +16,7 @@ export async function getFiles(
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 	const folder = this.getNodeParameter('folder', undefined, { extractValue: true }) as string;
+	const credentialType = getSharePointCredentialType.call(this);
 
 	let response: any;
 	if (paginationToken) {
@@ -27,6 +28,7 @@ export async function getFiles(
 			undefined,
 			undefined,
 			paginationToken,
+			credentialType,
 		);
 	} else {
 		// File filter not supported
@@ -43,6 +45,9 @@ export async function getFiles(
 			`/sites/${site}/drive/items/${folder}/children`,
 			{},
 			qs,
+			undefined,
+			undefined,
+			credentialType,
 		);
 	}
 
@@ -67,6 +72,7 @@ export async function getFolders(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const credentialType = getSharePointCredentialType.call(this);
 
 	let response: any;
 	if (paginationToken) {
@@ -78,6 +84,7 @@ export async function getFolders(
 			undefined,
 			undefined,
 			paginationToken,
+			credentialType,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -92,6 +99,9 @@ export async function getFolders(
 			`/sites/${site}/drive/items`,
 			{},
 			qs,
+			undefined,
+			undefined,
+			credentialType,
 		);
 	}
 
@@ -117,6 +127,7 @@ export async function getItems(
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 	const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
+	const credentialType = getSharePointCredentialType.call(this);
 
 	let response: any;
 	if (paginationToken) {
@@ -128,6 +139,7 @@ export async function getItems(
 			undefined,
 			undefined,
 			paginationToken,
+			credentialType,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -143,6 +155,9 @@ export async function getItems(
 			`/sites/${site}/lists/${list}/items`,
 			{},
 			qs,
+			undefined,
+			undefined,
+			credentialType,
 		);
 	}
 
@@ -166,6 +181,7 @@ export async function getLists(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const credentialType = getSharePointCredentialType.call(this);
 
 	let response: any;
 	if (paginationToken) {
@@ -177,6 +193,7 @@ export async function getLists(
 			undefined,
 			undefined,
 			paginationToken,
+			credentialType,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -191,6 +208,9 @@ export async function getLists(
 			`/sites/${site}/lists`,
 			{},
 			qs,
+			undefined,
+			undefined,
+			credentialType,
 		);
 	}
 
@@ -213,6 +233,8 @@ export async function getSites(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	const credentialType = getSharePointCredentialType.call(this);
+
 	let response: any;
 	if (paginationToken) {
 		response = await microsoftSharePointApiRequest.call(
@@ -223,6 +245,7 @@ export async function getSites(
 			undefined,
 			undefined,
 			paginationToken,
+			credentialType,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -232,7 +255,16 @@ export async function getSites(
 		if (filter) {
 			qs.$search = filter;
 		}
-		response = await microsoftSharePointApiRequest.call(this, 'GET', '/sites', {}, qs);
+		response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			'/sites',
+			{},
+			qs,
+			undefined,
+			undefined,
+			credentialType,
+		);
 	}
 
 	const sites: ISite[] = response.value;

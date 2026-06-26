@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { IListColumnType } from '../helpers/interfaces';
-import { microsoftSharePointApiRequest } from '../transport';
+import { getSharePointCredentialType, microsoftSharePointApiRequest } from '../transport';
 
 const unsupportedFields = ['geoLocation', 'location', 'term', 'url'];
 const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
@@ -39,6 +39,7 @@ export async function getMappingColumns(
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 	const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 	const operation = this.getNodeParameter('operation') as string;
+	const credentialType = getSharePointCredentialType.call(this);
 
 	const response = await microsoftSharePointApiRequest.call(
 		this,
@@ -46,6 +47,9 @@ export async function getMappingColumns(
 		`/sites/${site}/lists/${list}/contentTypes`,
 		{},
 		{ expand: 'columns' },
+		undefined,
+		undefined,
+		credentialType,
 	);
 
 	const columns: IListColumnType[] = response.value[0].columns;
