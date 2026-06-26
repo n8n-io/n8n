@@ -678,6 +678,24 @@ describe('WorkflowValidationService', () => {
 				trigger: async () => ({ closeFunction: async () => {} }),
 			}) as unknown as INodeType;
 
+		const SYSTEM_RESOLVER = 'system-resolver';
+		const CUSTOM_RESOLVER = 'custom-resolver';
+
+		// The effective resolver is decided at the workflow level (settings override or
+		// the seeded system resolver); the credential's own resolverId is not consulted.
+		const useSystemResolver = () => {
+			mockDynamicCredentialsProxy.getSystemResolverId.mockReturnValue(SYSTEM_RESOLVER);
+			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue(SYSTEM_RESOLVER);
+		};
+		const useCustomResolver = () => {
+			mockDynamicCredentialsProxy.getSystemResolverId.mockReturnValue(SYSTEM_RESOLVER);
+			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue(CUSTOM_RESOLVER);
+		};
+		const useNoResolver = () => {
+			mockDynamicCredentialsProxy.getSystemResolverId.mockReturnValue(null);
+			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue(null);
+		};
+
 		beforeEach(() => {
 			mockNodeTypes = mock<NodeTypes>();
 		});
@@ -706,7 +724,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return invalid when a dynamic credential has no resolver configured', async () => {
+		it('should return invalid when no resolver is configured', async () => {
 			const nodes: INode[] = [
 				createNode('Webhook', 'n8n-nodes-base.webhook', {
 					parameters: hooksParameters,
@@ -717,8 +735,9 @@ describe('WorkflowValidationService', () => {
 			];
 
 			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'My OAuth2', resolverId: null } as any,
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
 			]);
+			useNoResolver();
 
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
@@ -728,33 +747,30 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('resolver');
 		});
 
-		it('should return valid when credential has no resolver but the proxy provides a system resolver', async () => {
+		it('should return valid when the proxy provides a system resolver and the trigger is compatible', async () => {
 			const nodes: INode[] = [
-				createNode('Webhook', 'n8n-nodes-base.webhook', {
-					parameters: hooksParameters,
-				}),
+				createNode('Manual', 'n8n-nodes-base.manualTrigger'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
 					credentials: { oAuth2Api: { id: 'cred-1' } },
 				}),
 			];
 
 			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'My OAuth2', resolverId: null } as any,
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
 			]);
+			useSystemResolver();
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
-				if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
+				if (type === 'n8n-nodes-base.manualTrigger') return createTriggerNodeType();
 				return {} as INodeType;
 			}) as any);
-
-			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue('system-resolver');
 
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return valid when credential has no resolver but workflow settings provide one', async () => {
+		it('should return valid when workflow settings provide a custom resolver and a trigger has extractor hooks', async () => {
 			const nodes: INode[] = [
 				createNode('Webhook', 'n8n-nodes-base.webhook', {
 					parameters: hooksParameters,
@@ -765,34 +781,9 @@ describe('WorkflowValidationService', () => {
 			];
 
 			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'My OAuth2', resolverId: null } as any,
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
 			]);
-
-			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
-				if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
-				return {} as INodeType;
-			}) as any);
-
-			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes, {
-				credentialResolverId: 'workflow-resolver-1',
-			});
-
-			expect(result.isValid).toBe(true);
-		});
-
-		it('should return valid when resolvable credentials are used with a trigger that has extractor hooks', async () => {
-			const nodes: INode[] = [
-				createNode('Webhook', 'n8n-nodes-base.webhook', {
-					parameters: hooksParameters,
-				}),
-				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
-					credentials: { oAuth2Api: { id: 'cred-1' } },
-				}),
-			];
-
-			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'My OAuth2', resolverId: 'resolver-1' } as any,
-			]);
+			useCustomResolver();
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 				if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
@@ -804,7 +795,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return invalid when resolvable credentials are used with a trigger without extractor hooks', async () => {
+		it('should return invalid when a custom resolver is used with a trigger without extractor hooks', async () => {
 			const nodes: INode[] = [
 				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
@@ -813,8 +804,9 @@ describe('WorkflowValidationService', () => {
 			];
 
 			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'My OAuth2', resolverId: 'resolver-1' } as any,
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
 			]);
+			useCustomResolver();
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 				if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
@@ -829,7 +821,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('identity extractor');
 		});
 
-		it('should return invalid when webhook trigger has no hooks configured', async () => {
+		it('should return invalid when a custom resolver is used with a webhook trigger without hooks', async () => {
 			const nodes: INode[] = [
 				createNode('Webhook', 'n8n-nodes-base.webhook'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
@@ -838,8 +830,9 @@ describe('WorkflowValidationService', () => {
 			];
 
 			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'My OAuth2', resolverId: 'resolver-1' } as any,
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
 			]);
+			useCustomResolver();
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 				if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
@@ -853,6 +846,101 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('identity extractor');
 		});
 
+		it('should return invalid when a system-resolved credential is used under a schedule trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('private credentials');
+			expect(result.error).toContain('"My OAuth2"');
+			expect(result.error).toContain('manually');
+		});
+
+		it('should return valid when a system-resolved credential is used under a manual trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Manual', 'n8n-nodes-base.manualTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.manualTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return valid when a system-resolved credential is used under an Execute Workflow Trigger', async () => {
+			const nodes: INode[] = [
+				createNode('When Executed by Another Workflow', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.executeWorkflowTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return valid when the trigger is an Execute Workflow Trigger (sub-workflow inherits identity context)', async () => {
+			const nodes: INode[] = [
+				createNode('When Executed by Another Workflow', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Google Drive', 'n8n-nodes-base.googleDrive', {
+					credentials: { googleDriveOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Drive account 45' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.executeWorkflowTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
 		it('should return valid when Chat Trigger with availableInChat is the trigger', async () => {
 			const nodes: INode[] = [
 				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger', {
@@ -864,8 +952,9 @@ describe('WorkflowValidationService', () => {
 			];
 
 			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'Google Calendar account 56', resolverId: 'resolver-1' } as any,
+				{ id: 'cred-1', name: 'Google Calendar account 56' } as any,
 			]);
+			useCustomResolver();
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
@@ -877,7 +966,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return invalid when Chat Trigger does not have availableInChat set', async () => {
+		it('should return invalid when a custom resolver is used with a Chat Trigger without availableInChat', async () => {
 			const nodes: INode[] = [
 				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger'),
 				createNode('Google Calendar', 'n8n-nodes-base.googleCalendar', {
@@ -886,8 +975,9 @@ describe('WorkflowValidationService', () => {
 			];
 
 			mockCredentialsRepository.find.mockResolvedValue([
-				{ id: 'cred-1', name: 'Google Calendar account 56', resolverId: 'resolver-1' } as any,
+				{ id: 'cred-1', name: 'Google Calendar account 56' } as any,
 			]);
+			useCustomResolver();
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();

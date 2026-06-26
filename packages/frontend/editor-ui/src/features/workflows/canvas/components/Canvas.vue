@@ -17,12 +17,14 @@ import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
+	CanvasGroupNodeData,
 	CanvasNode,
 	CanvasNodeData,
 	CanvasNodeMoveEvent,
+	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import { CanvasNodeRenderType } from '../canvas.types';
+import { CanvasNodeRenderType, createCanvasGroupNodeId, isCanvasGroupNode } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -51,6 +53,7 @@ import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -67,9 +70,15 @@ import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
 import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
-import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
+import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
+import {
+	useCanvasNodeGroupTelemetry,
+	type CanvasNodeGroupEventSource,
+} from '../composables/useCanvasNodeGroupTelemetry';
+import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -143,11 +152,12 @@ const emit = defineEmits<{
 const props = withDefaults(
 	defineProps<{
 		id?: string;
-		nodes: CanvasNode[];
+		nodes: CanvasNodeOrGroup[];
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		renderData: CanvasRenderData;
+		nodeDisplaySizeById?: Record<string, { width: number; height: number }>;
 		readOnly?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
@@ -155,6 +165,7 @@ const props = withDefaults(
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		stripedBackground?: boolean;
 		showNodeGroups?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
@@ -164,6 +175,7 @@ const props = withDefaults(
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
+		nodeDisplaySizeById: () => ({}),
 		readOnly: false,
 		canExecute: false,
 		executing: false,
@@ -171,6 +183,7 @@ const props = withDefaults(
 		loading: false,
 		suppressInteraction: false,
 		hideControls: false,
+		stripedBackground: true,
 		showNodeGroups: true,
 	},
 );
@@ -193,9 +206,15 @@ const isCanvasNodeGroupingEnabled = computed(() =>
 	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 );
 
+const vueFlowNodes = computed(() =>
+	props.showNodeGroups && isCanvasNodeGroupingEnabled.value
+		? props.nodes
+		: props.nodes.filter((node) => !isCanvasGroupNode(node)),
+);
+
 const vueFlow = useVueFlow(props.id);
 const {
-	getSelectedNodes: selectedNodes,
+	getSelectedNodes: selectedNodesAndGroups,
 	addSelectedNodes,
 	removeSelectedNodes,
 	viewportRef,
@@ -232,8 +251,16 @@ const {
 } = useCanvasTraversal(vueFlow);
 const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
+const selectedNodes = computed(() =>
+	selectedNodesAndGroups.value.filter((node) => !isCanvasGroupNode(node)),
+);
+const selectableNodesAndGroups = computed(() =>
+	graphNodes.value.filter((node) => !isCanvasGroupNode(node) || node.selectable),
+);
+
 const isPaneReady = ref(false);
-const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
+const autofocusGroupTitleId = ref<string | null>(null);
+const injectedNodeGroupView = inject(NodeGroupViewKey, null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -356,12 +383,16 @@ function onToggleZoomMode() {
 }
 
 function onNodeGroupCreated(groupId: string) {
-	nodeGroupIdToAutofocusTitle.value = groupId;
+	autofocusGroupTitleId.value = groupId;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		groupTelemetry.trackGrouped(group, 'group-toolbar');
+	}
 }
 
 function onNodeGroupTitleFocused(groupId: string) {
-	if (nodeGroupIdToAutofocusTitle.value === groupId) {
-		nodeGroupIdToAutofocusTitle.value = null;
+	if (autofocusGroupTitleId.value === groupId) {
+		autofocusGroupTitleId.value = null;
 	}
 }
 
@@ -369,14 +400,21 @@ const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
 	groupSelection,
-	ungroupSelection,
-} = useCanvasNodeGroupActions(selectedNodes, {
+	renameGroup,
+	ungroup,
+	selectedGroupIds,
+} = useCanvasNodeGroupActions(selectedNodesAndGroups, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
+const groupTelemetry = useCanvasNodeGroupTelemetry();
+
 function onKeyboardGroup() {
 	const group = groupSelection();
-	if (group) nodeGroupIdToAutofocusTitle.value = group.id;
+	if (group) {
+		autofocusGroupTitleId.value = group.id;
+		groupTelemetry.trackGrouped(group, 'keyboard-shortcut');
+	}
 }
 
 const keyMap = computed(() => {
@@ -387,7 +425,7 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
-		ctrl_a: () => addSelectedNodes(graphNodes.value),
+		ctrl_a: onSelectAllNodes,
 		// Support both key and code for zooming in and out
 		'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
 		'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
@@ -413,7 +451,7 @@ const keyMap = computed(() => {
 	const fullKeymap: KeyMap = {
 		...readOnlyKeymap,
 		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
-		'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+		'delete|backspace': onDeleteSelection,
 		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
@@ -449,7 +487,11 @@ const keyMap = computed(() => {
 		fullKeymap.ctrl_shift_g = {
 			disabled: () => !canUngroupSelection.value,
 			run: () => {
-				ungroupSelection();
+				// Through the same path as the title-bar button so push effects
+				// are committed before each group is removed.
+				for (const groupId of selectedGroupIds.value) {
+					onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
+				}
 			},
 		};
 	}
@@ -463,15 +505,30 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * Nodes
  */
 
-const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
+// Selected node ids, with each selected collapsed group expanded to its members
+// so bulk operations (copy, duplicate, …) reach the nodes its title bar stands for.
+const selectedNodeIdsWithGroupMembers = computed(() => {
+	const ids = new Set(selectedNodeIds.value);
+	for (const node of selectedNodesAndGroups.value) {
+		if (!isCanvasGroupNode(node)) continue;
+		for (const memberId of (node.data as CanvasGroupNodeData).group.nodeIds) {
+			ids.add(memberId);
+		}
+	}
+	return [...ids];
+});
+
 const lastSelectedNode = ref<GraphNode>();
-const triggerNodes = computed(() =>
-	props.nodes.filter(
-		(node) =>
-			node.data?.render.type === CanvasNodeRenderType.Default && node.data.render.options.trigger,
-	),
+const triggerNodes = computed<CanvasNode[]>(() =>
+	props.nodes.filter((node): node is CanvasNode => {
+		if (isCanvasGroupNode(node)) return false;
+		return (
+			node.data?.render.type === CanvasNodeRenderType.Default &&
+			node.data.render.options.trigger === true
+		);
+	}),
 );
 
 const hoveredTriggerNode = useCanvasNodeHover(triggerNodes, vueFlow, (nodeRect) => ({
@@ -506,19 +563,142 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
-	emit('update:nodes:position', events);
+function getStoredNodePositionById(nodeId: string) {
+	return workflowDocumentStore.value.getNodeById(nodeId)?.position;
 }
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
-	emit('update:node:position', id, position);
+	commitManualNodePositions([{ id, position }]);
+}
+
+function commitManualNodePositions(events: CanvasNodeMoveEvent[]) {
+	emit(
+		'update:nodes:position',
+		injectedNodeGroupView?.settleManualNodePositions(events, getStoredNodePositionById) ?? events,
+	);
+}
+
+// Bake the positions of nodes that `sourceGroupIds` were visually pushing into
+// the document, so those targets stay put instead of snapping back when the
+// source stops pushing — whether it was moved or removed via ungroup.
+function commitPushedPositionsForSourceGroups(sourceGroupIds: string[]) {
+	if (!injectedNodeGroupView || sourceGroupIds.length === 0) return;
+
+	const pushedNodeMoves = injectedNodeGroupView.commitMovedPushSourceEffects(
+		sourceGroupIds,
+		(nodeId) => workflowDocumentStore.value.getNodeById(nodeId)?.position,
+	);
+
+	if (pushedNodeMoves.length > 0) {
+		emit('update:nodes:position', pushedNodeMoves);
+	}
+}
+
+const groupDrag = useCanvasNodeGroupDrag({
+	canvasId: props.id,
+	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
+	isNodeInGroup: (id) => workflowDocumentStore.value.nodeIdToGroupId.has(id),
+	getNodeVisualOffset: (id) => injectedNodeGroupView?.getVisualOffsetForNode(id) ?? { x: 0, y: 0 },
+	getNodeDisplaySize: (id) => props.nodeDisplaySizeById?.[id],
+	onMovedExpandedGroups: commitPushedPositionsForSourceGroups,
+});
+
+function onNodeDragStart(event: NodeDragEvent) {
+	groupDrag.onNodeDragStart(event);
+}
+
+function onNodeDrag(event: NodeDragEvent) {
+	groupDrag.onNodeDrag(event);
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
-	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+	const moves = groupDrag.processNodeDragStop(event);
+	if (moves.length > 0) commitManualNodePositions(moves);
+}
+
+function onSelectionDragStart(event: NodeDragEvent) {
+	groupDrag.onSelectionDragStart(event);
+}
+
+function onSelectionDrag(event: NodeDragEvent) {
+	groupDrag.onSelectionDrag(event);
+}
+
+function onCanvasGroupToggle(groupId: string) {
+	injectedNodeGroupView?.toggleCollapsed(groupId);
+
+	if (!injectedNodeGroupView) return;
+
+	const isCollapsed = injectedNodeGroupView.isGroupCollapsed(groupId);
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		if (isCollapsed) {
+			groupTelemetry.trackCollapsed(group, 'group-toolbar');
+		} else {
+			groupTelemetry.trackExpanded(group, 'group-toolbar');
+		}
+	}
+
+	if (isCollapsed) {
+		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
+		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+		const selectedMembers = memberNodeIds
+			.map((nodeId) => findNode(nodeId))
+			.filter((node): node is NonNullable<typeof node> => node?.selected ?? false);
+		if (selectedMembers.length > 0) {
+			removeSelectedNodes(selectedMembers);
+		}
+	} else {
+		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
+		const groupNode = findNode(createCanvasGroupNodeId(groupId));
+		if (groupNode) {
+			removeSelectedNodes([groupNode]);
+		}
+	}
+}
+
+function onCanvasGroupNameUpdate(groupId: string, name: string) {
+	renameGroup(groupId, name);
+}
+
+function onCanvasGroupUngroup(
+	groupId: string,
+	source: CanvasNodeGroupEventSource = 'group-toolbar',
+) {
+	// Capture before deletion — the group is gone by the time we track.
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	// Ungrouping a collapsed group makes its hidden members reappear, so expand
+	// it first: the expansion pushes overlapping nodes aside, and the commit
+	// below persists that displacement (the group is gone after, so the push
+	// can't stay live).
+	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+		injectedNodeGroupView.toggleCollapsed(groupId);
+	}
+	// Removing the group also removes its push, so commit anything it was
+	// pushing first — same principle as a newly created group not pushing.
+	commitPushedPositionsForSourceGroups([groupId]);
+	ungroup(groupId);
+
+	if (group) {
+		groupTelemetry.trackUngrouped(group, source);
+	}
+}
+
+/**
+ * Delete both regular nodes and collapsed group members.
+ */
+function onDeleteSelection() {
+	const ids = selectedNodeIdsWithGroupMembers.value;
+	// Removing the last group member also deletes the group via the document store
+	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	// Title bars have their own click handlers
+	if (isCanvasGroupNode(node)) return;
+
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
 	}
@@ -533,7 +713,8 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 }
 
 function onSelectionDragStop(event: NodeDragEvent) {
-	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+	const moves = groupDrag.processSelectionDragStop(event);
+	if (moves.length > 0) commitManualNodePositions(moves);
 }
 
 function onSelectionEnd(event: MouseEvent) {
@@ -554,7 +735,11 @@ function onSetNodeDeactivated(id: string) {
 }
 
 function clearSelectedNodes() {
-	removeSelectedNodes(selectedNodes.value);
+	removeSelectedNodes(selectedNodesAndGroups.value);
+}
+
+function onSelectAllNodes() {
+	addSelectedNodes(selectableNodesAndGroups.value);
 }
 
 function onSelectNode() {
@@ -742,8 +927,8 @@ function onRunNode(id: string) {
 
 function emitWithSelectedNodes(emitFn: (ids: string[]) => void) {
 	return () => {
-		if (hasSelection.value) {
-			emitFn(selectedNodeIds.value);
+		if (selectedNodeIdsWithGroupMembers.value.length > 0) {
+			emitFn(selectedNodeIdsWithGroupMembers.value);
 		}
 	};
 }
@@ -826,12 +1011,23 @@ function onViewportChange() {
 
 // #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
 // resulting in outdated data. We use this computed property as a workaround to get the latest node data.
-const nodeDataById = computed(() => {
-	return props.nodes.reduce<Record<string, CanvasNodeData>>((acc, node) => {
-		acc[node.id] = node.data as CanvasNodeData;
+const nodeDataById = computed(() =>
+	props.nodes.reduce<Record<string, CanvasNodeData>>((acc, node) => {
+		if (!isCanvasGroupNode(node) && node.data) {
+			acc[node.id] = node.data;
+		}
 		return acc;
-	}, {});
-});
+	}, {}),
+);
+
+const groupNodeFallbackDataById = computed(() =>
+	props.nodes.reduce<Record<string, CanvasGroupNodeData>>((acc, node) => {
+		if (isCanvasGroupNode(node) && node.data) {
+			acc[node.id] = node.data;
+		}
+		return acc;
+	}, {}),
+);
 
 /**
  * Context menu
@@ -877,7 +1073,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
 		case 'select_all':
-			return addSelectedNodes(graphNodes.value);
+			return onSelectAllNodes();
 		case 'deselect_all':
 			return clearSelectedNodes();
 		case 'duplicate':
@@ -964,7 +1160,8 @@ const minimapVisibilityDelay = 1000;
 const minimapHideTimeout = ref<NodeJS.Timeout | null>(null);
 const isMinimapVisible = ref(false);
 
-function minimapNodeClassnameFn(node: CanvasNode) {
+function minimapNodeClassnameFn(node: CanvasNodeOrGroup) {
+	if (isCanvasGroupNode(node)) return 'minimap-node-group';
 	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
 }
 
@@ -1050,7 +1247,7 @@ onMounted(() => {
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
-	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
+	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
@@ -1061,6 +1258,7 @@ onUnmounted(() => {
 	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
+	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -1147,7 +1345,7 @@ defineExpose({
 <template>
 	<VueFlow
 		:id="id"
-		:nodes="nodes"
+		:nodes="vueFlowNodes"
 		:edges="connections"
 		:class="classes"
 		:apply-changes="false"
@@ -1172,8 +1370,12 @@ defineExpose({
 		@pane-context-menu="onOpenContextMenu"
 		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
+		@node-drag-start="onNodeDragStart"
+		@node-drag="onNodeDrag"
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
+		@selection-drag-start="onSelectionDragStart"
+		@selection-drag="onSelectionDrag"
 		@selection-drag-stop="onSelectionDragStop"
 		@selection-end="onSelectionEnd"
 		@selection-context-menu="onOpenSelectionContextMenu"
@@ -1181,6 +1383,19 @@ defineExpose({
 		@drop="onDrop"
 		@viewport-change="onViewportChange"
 	>
+		<template #node-canvas-node-group="nodeProps">
+			<CanvasNodeGroupTitleBar
+				v-bind="nodeProps"
+				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
+				:autofocus-group-id="autofocusGroupTitleId"
+				:read-only="readOnly || suppressInteraction"
+				@toggle="onCanvasGroupToggle"
+				@update:name="onCanvasGroupNameUpdate"
+				@title:focused="onNodeGroupTitleFocused"
+				@ungroup="onCanvasGroupUngroup"
+			/>
+		</template>
+
 		<template #node-canvas-node="nodeProps">
 			<slot name="node" v-bind="{ nodeProps }">
 				<Node
@@ -1237,16 +1452,8 @@ defineExpose({
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
 		<slot name="canvas-background" v-bind="{ viewport }">
-			<CanvasBackground :viewport="viewport" :striped="readOnly" />
+			<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
 		</slot>
-
-		<CanvasNodeGroupsLayer
-			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
-			:read-only="readOnly || suppressInteraction"
-			:autofocus-group-id="nodeGroupIdToAutofocusTitle"
-			@title:focused="onNodeGroupTitleFocused"
-			@move-members="onUpdateNodesPosition"
-		/>
 
 		<CanvasSelectionToolbar
 			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"

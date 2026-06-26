@@ -236,7 +236,7 @@ export async function validateWebhookAuthentication(
 	ctx: IWebhookFunctions,
 	authPropertyName: string,
 ): Promise<IDataObject | undefined> {
-	const authentication = ctx.getNodeParameter(authPropertyName) as string;
+	const authentication = ctx.getNodeParameter(authPropertyName, 'none') as string;
 	if (authentication === 'none') return;
 
 	const req = ctx.getRequestObject();
@@ -426,7 +426,7 @@ export async function generateFormPostBasicAuthToken(
 ) {
 	const node = context.getNode();
 
-	const authentication = context.getNodeParameter(authPropertyName);
+	const authentication = context.getNodeParameter(authPropertyName, 'none');
 	if (authentication === 'none') return;
 
 	let credentials: ICredentialDataDecryptedObject | undefined;

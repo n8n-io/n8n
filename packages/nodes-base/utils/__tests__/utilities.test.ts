@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE } from 'n8n-workflow';
 
@@ -460,7 +460,7 @@ describe('addExecutionHints', () => {
 				return 'INSERT INTO my_test_table VALUES (`{{ $json.name }}`)';
 			}
 		},
-		addExecutionHints: jest.fn(),
+		addExecutionHints: vi.fn(),
 	} as unknown as IExecuteFunctions;
 
 	const insertHint = {
@@ -503,7 +503,7 @@ describe('addExecutionHints', () => {
 
 	it('should add run per item hint to Postgres select operation ', () => {
 		const context = {
-			addExecutionHints: jest.fn(),
+			addExecutionHints: vi.fn(),
 		} as unknown as IExecuteFunctions;
 
 		addExecutionHints(
@@ -520,7 +520,7 @@ describe('addExecutionHints', () => {
 
 	it('should add run per item hint to MySQL select operation', () => {
 		const context = {
-			addExecutionHints: jest.fn(),
+			addExecutionHints: vi.fn(),
 		} as unknown as IExecuteFunctions;
 
 		addExecutionHints(

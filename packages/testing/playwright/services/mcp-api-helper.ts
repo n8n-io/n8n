@@ -91,6 +91,7 @@ export interface SearchWorkflowsResult {
 		scopes: string[];
 		canExecute: boolean;
 		availableInMCP: boolean;
+		tags: Array<{ id: string; name: string }>;
 	}>;
 	count: number;
 }
@@ -554,6 +555,7 @@ export class McpApiHelper {
 		session: McpSession,
 		path: string,
 		message: unknown,
+		options?: { headers?: Record<string, string> },
 	): Promise<APIResponse> {
 		if (session.transport !== 'streamableHttp') {
 			throw new Error('Invalid Streamable HTTP session');
@@ -565,6 +567,7 @@ export class McpApiHelper {
 				'Content-Type': 'application/json',
 				Accept: 'application/json, text/event-stream',
 				'mcp-session-id': session.sessionId,
+				...options?.headers,
 			},
 			data: message,
 		});
@@ -627,6 +630,7 @@ export class McpApiHelper {
 		path: string,
 		toolName: string,
 		args: Record<string, unknown>,
+		options?: { headers?: Record<string, string> },
 	): Promise<McpToolCallResponse> {
 		const message = this.createMessage('tools/call', {
 			name: toolName,
@@ -637,7 +641,7 @@ export class McpApiHelper {
 			// For SSE, response comes via the stream
 			return await this.sseSendAndWait<McpToolCallResponse>(session, message);
 		} else {
-			const response = await this.streamableHttpSendMessage(session, path, message);
+			const response = await this.streamableHttpSendMessage(session, path, message, options);
 			return await this.parseResponse<McpToolCallResponse>(response);
 		}
 	}

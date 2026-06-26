@@ -26,7 +26,11 @@ const extractFunctions: {
 		}
 		return convert(html, options);
 	},
-	value: ($: Cheerio, _valueData: IValueData): string | undefined => $.val(),
+	value: ($: Cheerio, _valueData: IValueData): string | undefined => {
+		const val = $.val();
+		if (val === undefined) return undefined;
+		return Array.isArray(val) ? val.join(',') : val;
+	},
 };
 
 /**

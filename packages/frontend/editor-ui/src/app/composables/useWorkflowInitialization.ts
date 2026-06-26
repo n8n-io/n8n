@@ -26,7 +26,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	useWorkflowDocumentStore,
@@ -38,7 +37,7 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
-export function useWorkflowInitialization(workflowState: WorkflowState) {
+export function useWorkflowInitialization() {
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
@@ -72,9 +71,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
 	} = useCanvasOperations();
-	// Pass workflowState to useExecutionDebugging since we're in the same component
-	// that provides WorkflowStateKey (WorkflowLayout), so inject won't work
-	const { applyExecutionData } = useExecutionDebugging(workflowState);
+	const { applyExecutionData } = useExecutionDebugging();
 
 	const isLoading = ref(true);
 	const initializedWorkflowId = ref<string | undefined>();
@@ -174,7 +171,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		// Create document store for template workflow (empty tags initially)
 		// The workflow ID was set during the template import
-		const currentWorkflowId = workflowsStore.workflowId;
+		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
@@ -194,7 +191,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
 		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;
@@ -257,8 +254,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			);
 		}
 
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 
 		if (builderStore.streaming) {
 			documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
@@ -296,8 +296,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function initializeWorkspaceForNewWorkflow() {
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
@@ -464,8 +467,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	function cleanup() {
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 		uiStore.nodeViewInitialized = false;
 	}
 

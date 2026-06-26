@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+import type * as SharedSandboxMod from '@n8n/agents/sandbox';
+
 import './source-map-filter';
 
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
+import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
@@ -35,6 +38,7 @@ import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 import type * as LazyRuntimeWorkspaceMod from './workspace/lazy-runtime-workspace';
 import type * as SandboxSetupMod from './workspace/sandbox-setup';
+import type * as ScopedWorkspaceMod from './workspace/scoped-workspace';
 import type * as SnapshotManagerMod from './workspace/snapshot-manager';
 
 type LazyFunction = (...args: never[]) => unknown;
@@ -91,6 +95,9 @@ const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof D
 const loadSubAgentFactory = lazyModule(
 	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
 );
+const loadSystemPrompt = lazyModule(
+	() => require('./agent/system-prompt') as typeof SystemPromptMod,
+);
 const loadSanitizeWebContent = lazyModule(
 	() => require('./tools/web-research/sanitize-web-content') as typeof SanitizeWebContentMod,
 );
@@ -124,11 +131,17 @@ const loadBuilderTemplatesService = lazyModule(
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
 );
+const loadSharedSandbox = lazyModule(
+	() => require('@n8n/agents/sandbox') as typeof SharedSandboxMod,
+);
 const loadLazyRuntimeWorkspace = lazyModule(
 	() => require('./workspace/lazy-runtime-workspace') as typeof LazyRuntimeWorkspaceMod,
 );
 const loadSandboxSetup = lazyModule(
 	() => require('./workspace/sandbox-setup') as typeof SandboxSetupMod,
+);
+const loadScopedWorkspace = lazyModule(
+	() => require('./workspace/scoped-workspace') as typeof ScopedWorkspaceMod,
 );
 const loadSnapshotManager = lazyModule(
 	() => require('./workspace/snapshot-manager') as typeof SnapshotManagerMod,
@@ -276,6 +289,9 @@ export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = 
 export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunction(
 	() => loadSubAgentFactory().createSubAgent,
 );
+export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
+	() => loadSystemPrompt().getDateTimeSection,
+);
 export const createAllTools: typeof ToolsMod.createAllTools = lazyFunction(
 	() => loadTools().createAllTools,
 );
@@ -325,6 +341,7 @@ export type {
 	PatchableThreadMemory,
 	ThreadPatch,
 	TerminalOutcome,
+	WorkflowSetupRoutingClaim,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
 export const truncateToTitle: typeof TitleUtilsMod.truncateToTitle = lazyFunction(
@@ -339,9 +356,6 @@ export const McpClientManager: typeof McpClientManagerMod.McpClientManager = laz
 );
 export const mapAgentChunkToEvent: typeof MapChunkMod.mapAgentChunkToEvent = lazyFunction(
 	() => loadMapChunk().mapAgentChunkToEvent,
-);
-export const isRecord: typeof StreamHelpersMod.isRecord = lazyFunction(
-	() => loadStreamHelpers().isRecord,
 );
 export const parseSuspension: typeof StreamHelpersMod.parseSuspension = lazyFunction(
 	() => loadStreamHelpers().parseSuspension,
@@ -395,6 +409,10 @@ defineLazyExport(
 	() => loadLivenessPolicy().INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
 );
 defineLazyExport('workflowBuildOutcomeSchema', () => loadWorkflowLoop().workflowBuildOutcomeSchema);
+defineLazyExport(
+	'workflowVerificationEvidenceSchema',
+	() => loadWorkflowLoop().workflowVerificationEvidenceSchema,
+);
 defineLazyExport('attemptRecordSchema', () => loadWorkflowLoop().attemptRecordSchema);
 defineLazyExport('workflowLoopStateSchema', () => loadWorkflowLoop().workflowLoopStateSchema);
 defineLazyExport('verificationResultSchema', () => loadWorkflowLoop().verificationResultSchema);
@@ -413,15 +431,19 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
-export const getWorkspaceRoot: typeof SandboxSetupMod.getWorkspaceRoot = lazyFunction(
-	() => loadSandboxSetup().getWorkspaceRoot,
+export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFunction(
+	() => loadSharedSandbox().getWorkspaceRoot,
+);
+export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
+	() => loadSharedSandbox().getPromptWorkspaceRoot,
 );
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
 export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
-export { createScopedWorkspace } from './workspace/scoped-workspace';
-export { getPromptWorkspaceRoot } from './workspace/sandbox-setup';
+export const createScopedWorkspace: typeof ScopedWorkspaceMod.createScopedWorkspace = lazyFunction(
+	() => loadScopedWorkspace().createScopedWorkspace,
+);
 export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
 	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
 export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
@@ -453,10 +475,18 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
-export type RunStateRegistry = RunStateRegistryMod.RunStateRegistry;
+export { MemoryTaskRegistry } from './runtime/memory-task-registry';
+export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegistry<TUser>;
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
+export { orchestratorAgentId } from './runtime/orchestrator-identity';
+export type { RunDebugRecord } from './debug/run-debug-buffer';
+export {
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
+} from './debug/run-debug-buffer';
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,
@@ -485,8 +515,10 @@ export type {
 	ResumableStreamContext,
 	ResumableStreamControl,
 	ResumableStreamSource,
+	TraceStatus,
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
+export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );
@@ -528,16 +560,33 @@ export type WorkflowTaskCoordinator = WorkflowLoopMod.WorkflowTaskCoordinator;
 export const WorkflowTaskCoordinator: typeof WorkflowLoopMod.WorkflowTaskCoordinator = lazyClass(
 	() => loadWorkflowLoop().WorkflowTaskCoordinator,
 );
+export const deriveWorkflowVerificationObligation: typeof WorkflowLoopMod.deriveWorkflowVerificationObligation =
+	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligation);
+export const deriveWorkflowVerificationObligationFromOutcome: typeof WorkflowLoopMod.deriveWorkflowVerificationObligationFromOutcome =
+	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligationFromOutcome);
+export const isWorkflowVerificationObligationUnsettled: typeof WorkflowLoopMod.isWorkflowVerificationObligationUnsettled =
+	lazyFunction(() => loadWorkflowLoop().isWorkflowVerificationObligationUnsettled);
+export const resolveWorkflowBuildOwner: typeof WorkflowLoopMod.resolveWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().resolveWorkflowBuildOwner);
+export const plannedTaskIdFromWorkflowBuildOwner: typeof WorkflowLoopMod.plannedTaskIdFromWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().plannedTaskIdFromWorkflowBuildOwner);
+export const isPlannedWorkflowBuildOwner: typeof WorkflowLoopMod.isPlannedWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().isPlannedWorkflowBuildOwner);
 export declare const workflowBuildOutcomeSchema: typeof WorkflowLoopMod.workflowBuildOutcomeSchema;
+export declare const workflowVerificationEvidenceSchema: typeof WorkflowLoopMod.workflowVerificationEvidenceSchema;
 export declare const attemptRecordSchema: typeof WorkflowLoopMod.attemptRecordSchema;
 export declare const workflowLoopStateSchema: typeof WorkflowLoopMod.workflowLoopStateSchema;
 export declare const verificationResultSchema: typeof WorkflowLoopMod.verificationResultSchema;
 export type {
 	WorkflowLoopState,
 	WorkflowLoopAction,
+	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
 	VerificationResult,
 	AttemptRecord,
+	WorkflowVerificationEvidence,
+	WorkflowVerificationObligation,
+	WorkflowVerificationObligationSource,
 } from './workflow-loop';
 export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
@@ -571,6 +620,7 @@ export type {
 	PlannedTaskRecord,
 	PlannedTaskGraph,
 	PlannedTaskGraphStatus,
+	PlannedWorkflowVerification,
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,

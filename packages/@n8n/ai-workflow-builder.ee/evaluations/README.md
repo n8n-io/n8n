@@ -372,7 +372,6 @@ Notes:
 --donts <text>      # Pairwise: things the workflow should not do
 --checks <names>    # Comma-separated binary check names (binary-checks suite only)
 --output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
---template-examples # Enable template examples feature flag
 --webhook-url <url> # Send results to webhook URL on completion (HTTPS only)
 --webhook-secret <s> # HMAC-SHA256 secret for webhook authentication (min 16 chars)
 ```

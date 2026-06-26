@@ -7,7 +7,8 @@ import type { Chat } from '@n8n/chat/types';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
@@ -30,7 +31,6 @@ const props = defineProps<{
 const i18n = useI18n();
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = useWorkflowState();
 const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
@@ -153,11 +153,15 @@ const selectedError = computed((): NodeErrorViewError | null => {
 
 // Snapshot of the workflowsStore's execution data before we hijack it on mount.
 // We restore it on unmount so navigating back to the editor doesn't surprise the user.
-let previousWorkflowExecutionData: typeof workflowsStore.workflowExecutionData | null = null;
+let previousWorkflowExecutionData: ReturnType<
+	typeof useWorkflowExecutionStateStore
+>['activeExecution'] = null;
 let unmounted = false;
 
 onMounted(async () => {
-	previousWorkflowExecutionData = workflowsStore.workflowExecutionData;
+	previousWorkflowExecutionData = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).activeExecution;
 	try {
 		// RunData / NodeErrorView need node-type metadata to render properly — load
 		// before fetching the execution so the panes are ready when data arrives.
@@ -176,7 +180,9 @@ onMounted(async () => {
 			// pairedItemMappings, and various NodeErrorView code paths read from the
 			// store rather than the prop, so the prop alone isn't enough to make the
 			// table/JSON views render correctly for non-trivial nodes.
-			workflowState.setWorkflowExecutionData(result);
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData(result);
 			// Default-select the first entry (the trigger) so the user sees data immediately.
 			const first = flatEntries.value[0];
 			if (first) selected.value = first;
@@ -192,7 +198,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	unmounted = true;
 	// Restore whatever execution data was in the store before we hijacked it.
-	workflowState.setWorkflowExecutionData(previousWorkflowExecutionData);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).setWorkflowExecutionData(previousWorkflowExecutionData);
 });
 </script>
 

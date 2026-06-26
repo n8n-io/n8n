@@ -6,16 +6,21 @@ import { Container } from '@n8n/di';
 /**
  * Handles instance-level MCP access.
  * Runs MCP server and exposes endpoints for MCP clients to connect to.
- * Requires MCP access to be enabled in settings and a valid API key.
+ * Requires MCP access to be enabled in settings and a valid API key or an
+ * OAuth token issued by the shared `oauth-server` module.
  */
 @BackendModule({ name: 'mcp', instanceTypes: ['main'] })
 export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller');
 		await import('./mcp.settings.controller');
-		await import('./mcp.oauth.controller');
-		await import('./mcp.auth.consent.controller');
-		await import('./mcp.oauth-clients.controller');
+
+		// Register the instance MCP server as a protected resource of the shared
+		// OAuth server, so its tokens are minted and verified with the right
+		// audiences and its discovery metadata is served.
+		const { ProtectedResourceRegistry } = await import('@/services/protected-resource.registry');
+		const { McpProtectedResource } = await import('./mcp-protected-resource');
+		Container.get(ProtectedResourceRegistry).register(Container.get(McpProtectedResource));
 	}
 
 	/**
@@ -28,18 +33,6 @@ export class McpModule implements ModuleInterface {
 		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
 		return { mcpAccessEnabled, mcpManagedByEnv };
-	}
-
-	async entities() {
-		const { OAuthClient } = await import('./database/entities/oauth-client.entity');
-		const { AuthorizationCode } = await import(
-			'./database/entities/oauth-authorization-code.entity'
-		);
-		const { AccessToken } = await import('./database/entities/oauth-access-token.entity');
-		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
-		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
-
-		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
 	}
 
 	@OnShutdown()

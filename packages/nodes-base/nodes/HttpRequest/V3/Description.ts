@@ -357,7 +357,7 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 		},
 		options: [
 			{
-				name: 'Form Urlencoded',
+				name: 'Form URL Encoded',
 				value: 'form-urlencoded',
 			},
 			{

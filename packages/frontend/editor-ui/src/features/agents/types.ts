@@ -26,7 +26,6 @@ export interface AgentSchema {
 	model: { provider: string | null; name: string | null; raw?: string };
 	credential: string | null;
 	instructions: string | null;
-	description: string | null;
 	tools: ToolSchema[];
 	providerTools: ProviderToolSchema[];
 	memory: MemorySchema | null;
@@ -39,7 +38,6 @@ export interface AgentSchema {
 		structuredOutput: { enabled: boolean; schemaSource: string | null };
 		thinking: ThinkingSchema | null;
 		toolCallConcurrency: number | null;
-		requireToolApproval: boolean;
 	};
 }
 

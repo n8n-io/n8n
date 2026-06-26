@@ -22,18 +22,20 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 const pinnedDataByNodeName: IPinData = {};
+const executionSimulationByNodeName: Record<string, { reason: string }> = {};
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			pinnedDataByNodeName,
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({
+			value: actual.createEmptyCanvasRenderData({
+				pinnedDataByNodeName,
+				executionSimulationByNodeName,
+			}),
+		})),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
@@ -49,6 +51,9 @@ describe('CanvasNodeStatusIcons', () => {
 		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 		for (const key of Object.keys(pinnedDataByNodeName)) {
 			delete pinnedDataByNodeName[key];
+		}
+		for (const key of Object.keys(executionSimulationByNodeName)) {
+			delete executionSimulationByNodeName[key];
 		}
 	});
 
@@ -82,6 +87,66 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
+	});
+
+	it('should render the simulated icon for a node whose output was simulated', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Sends a message' };
+
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							execution: { status: 'success', running: false },
+							runData: { outputMap: {}, iterations: 1, visible: true },
+						},
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
+	});
+
+	it('should prefer the simulated icon over the pinned icon', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Sends a message' };
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
+		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
+	});
+
+	it('should prefer the simulated icon over validation issues', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Source declares verification output' };
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							issues: {
+								validation: ['Parameter "Project" is required.'],
+								visible: true,
+							},
+						},
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
+		expect(queryByTestId('node-issues')).not.toBeInTheDocument();
 	});
 
 	it('should render correctly for a node that ran successfully', () => {

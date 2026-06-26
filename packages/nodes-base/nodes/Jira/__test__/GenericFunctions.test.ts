@@ -1,4 +1,4 @@
-import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
+import { type DeepMockProxy, mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import {
@@ -37,7 +37,7 @@ describe('Jira -> GenericFunctions', () => {
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should get all items and not pass the body when the method is GET', async () => {
@@ -64,7 +64,7 @@ describe('Jira -> GenericFunctions', () => {
 		let jiraSoftwareCloudApiRequest: JiraSoftwareCloudApiRequest;
 
 		beforeEach(async () => {
-			jest.resetModules();
+			vi.resetModules();
 			({ jiraSoftwareCloudApiRequest } = await import('../GenericFunctions'));
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({});
@@ -74,7 +74,7 @@ describe('Jira -> GenericFunctions', () => {
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should use jiraSoftwareCloudApi credential for jiraVersion "cloud"', async () => {
