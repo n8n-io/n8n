@@ -213,6 +213,7 @@ export class DbConnectionMonitor {
 			client = await this.raceTimeout(connectPromise);
 		} catch (error) {
 			bailed = true;
+			void connectPromise.catch(() => {});
 			throw error;
 		}
 

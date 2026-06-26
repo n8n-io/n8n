@@ -216,6 +216,31 @@ describe('DbConnectionMonitor', () => {
 			expect(poolClient.release).toHaveBeenCalledWith(expect.any(Error));
 		});
 
+		it('should suppress a late connect rejection when the connect timeout fires first', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+
+			let rejectConnect!: (error: Error) => void;
+			pool.connect.mockReturnValue(
+				new Promise<typeof poolClient>((_, reject) => (rejectConnect = reject)),
+			);
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined);
+			const unhandledRejection = vi.fn();
+			process.on('unhandledRejection', unhandledRejection);
+
+			try {
+				// @ts-expect-error private property
+				await monitor.ping();
+
+				rejectConnect(new Error('late connect failure'));
+				await flushMicrotasks();
+
+				expect(unhandledRejection).not.toHaveBeenCalled();
+			} finally {
+				process.off('unhandledRejection', unhandledRejection);
+			}
+		});
+
 		it('should fall back to dataSource.query when driver.master.connect is unavailable', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
