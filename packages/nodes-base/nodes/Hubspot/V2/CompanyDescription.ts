@@ -264,6 +264,13 @@ export const companyFields: INodeProperties[] = [
 				description: 'The URL of the LinkedIn company page for the company or organization',
 			},
 			{
+				displayName: 'Facebook Company Page',
+				name: 'facebookCompanyPage',
+				type: 'string',
+				default: '',
+				description: 'The URL of the Facebook company page for the company or organization',
+			},
+			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
 				type: 'number',
@@ -649,6 +656,13 @@ export const companyFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The URL of the LinkedIn company page for the company or organization',
+			},
+			{
+				displayName: 'Facebook Company Page',
+				name: 'facebookCompanyPage',
+				type: 'string',
+				default: '',
+				description: 'The URL of the Facebook company page for the company or organization',
 			},
 			{
 				displayName: 'Name',
