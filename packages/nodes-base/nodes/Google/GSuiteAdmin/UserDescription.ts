@@ -58,6 +58,680 @@ const rolesOptions = [
 	},
 ];
 
+const customTypeField = (typeFieldName: string): INodeProperties => ({
+	displayName: 'Custom Type',
+	name: 'customType',
+	type: 'string',
+	default: '',
+	displayOptions: {
+		show: {
+			[typeFieldName]: ['custom'],
+		},
+	},
+	description: 'Free-form value used when Type is set to Custom',
+});
+
+const primaryField: INodeProperties = {
+	displayName: 'Primary',
+	name: 'primary',
+	type: 'boolean',
+	default: false,
+	description: 'Whether this is the primary entry for the user',
+};
+
+// Writable User attributes shared between the create and update operations.
+// See https://developers.google.com/workspace/admin/directory/reference/rest/v1/users
+export const userExtraFields: INodeProperties[] = [
+	{
+		displayName: 'Org Unit Path Name or ID',
+		name: 'orgUnitPath',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrgUnits',
+		},
+		default: '',
+		description:
+			'The full path of the organizational unit the user belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Recovery Email',
+		name: 'recoveryEmail',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. recovery@example.com',
+		description: "The user's recovery email address",
+	},
+	{
+		displayName: 'Recovery Phone',
+		name: 'recoveryPhone',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. +12025550123',
+		description:
+			'The recovery phone of the user. Must be in E.164 format, starting with the plus sign (+).',
+	},
+	{
+		displayName: 'Include in Global Address List',
+		name: 'includeInGlobalAddressList',
+		type: 'boolean',
+		default: true,
+		description: 'Whether the user is included in the global address list',
+	},
+	{
+		displayName: 'IP Whitelisted',
+		name: 'ipWhitelisted',
+		type: 'boolean',
+		default: false,
+		description: 'Whether the user is exempt from login challenges from untrusted IP addresses',
+	},
+	{
+		displayName: 'Gender',
+		name: 'genderUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Gender',
+		default: {},
+		options: [
+			{
+				name: 'genderValues',
+				displayName: 'Gender',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Female', value: 'female' },
+							{ name: 'Male', value: 'male' },
+							{ name: 'Other', value: 'other' },
+							{ name: 'Unknown', value: 'unknown' },
+						],
+						default: 'unknown',
+					},
+					{
+						displayName: 'Custom Gender',
+						name: 'customGender',
+						type: 'string',
+						default: '',
+						description: 'A free-form gender value (can be set regardless of Type)',
+					},
+					{
+						displayName: 'Address Me As',
+						name: 'addressMeAs',
+						type: 'string',
+						default: '',
+						description:
+							'A human-readable string describing how to refer to the user, for example "he/him/his" or "they/them/their"',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Notes',
+		name: 'notesUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Notes',
+		default: {},
+		options: [
+			{
+				name: 'notesValues',
+				displayName: 'Notes',
+				values: [
+					{
+						displayName: 'Content Type',
+						name: 'contentType',
+						type: 'options',
+						options: [
+							{ name: 'HTML', value: 'text_html' },
+							{ name: 'Plain Text', value: 'text_plain' },
+						],
+						default: 'text_plain',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						typeOptions: {
+							rows: 2,
+						},
+						default: '',
+						description: 'Contents of the notes',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Organizations',
+		name: 'organizationUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Organization',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'organizationValues',
+				displayName: 'Organization',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the organization',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description:
+							"The user's title within the organization, for example 'member' or 'engineer'",
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Domain Only', value: 'domain_only' },
+							{ name: 'Other', value: 'other' },
+							{ name: 'School', value: 'school' },
+							{ name: 'Work', value: 'work' },
+						],
+						default: 'work',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Department',
+						name: 'department',
+						type: 'string',
+						default: '',
+						description: 'Specifies the department within the organization',
+					},
+					{
+						displayName: 'Cost Center',
+						name: 'costCenter',
+						type: 'string',
+						default: '',
+						description: "The cost center of the user's organization",
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The description of the organization',
+					},
+					{
+						displayName: 'Domain',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						description: 'The domain the organization belongs to',
+					},
+					{
+						displayName: 'Location',
+						name: 'location',
+						type: 'string',
+						default: '',
+						description: 'The physical location of the organization',
+					},
+					{
+						displayName: 'Symbol',
+						name: 'symbol',
+						type: 'string',
+						default: '',
+						description: 'Text string symbol of the organization',
+					},
+					primaryField,
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Addresses',
+		name: 'addressesUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Address',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'addressesValues',
+				displayName: 'Address',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Home', value: 'home' },
+							{ name: 'Other', value: 'other' },
+							{ name: 'Work', value: 'work' },
+						],
+						default: 'home',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Street Address',
+						name: 'streetAddress',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'PO Box',
+						name: 'poBox',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Extended Address',
+						name: 'extendedAddress',
+						type: 'string',
+						default: '',
+						description: 'For example, the apartment or suite number',
+					},
+					{
+						displayName: 'Locality',
+						name: 'locality',
+						type: 'string',
+						default: '',
+						description: 'The town or city of the address',
+					},
+					{
+						displayName: 'Region',
+						name: 'region',
+						type: 'string',
+						default: '',
+						description: 'The abbreviated province or state',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country',
+						name: 'country',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Code',
+						name: 'countryCode',
+						type: 'string',
+						default: '',
+						description: 'The ISO 3166-1 country code of the address',
+					},
+					primaryField,
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Relations',
+		name: 'relationsUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Relation',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'relationsValues',
+				displayName: 'Relation',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Admin Assistant', value: 'admin_assistant' },
+							{ name: 'Assistant', value: 'assistant' },
+							{ name: 'Brother', value: 'brother' },
+							{ name: 'Child', value: 'child' },
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Domestic Partner', value: 'domestic_partner' },
+							{ name: 'Dotted Line Manager', value: 'dotted_line_manager' },
+							{ name: 'Exec Assistant', value: 'exec_assistant' },
+							{ name: 'Father', value: 'father' },
+							{ name: 'Friend', value: 'friend' },
+							{ name: 'Manager', value: 'manager' },
+							{ name: 'Mother', value: 'mother' },
+							{ name: 'Parent', value: 'parent' },
+							{ name: 'Partner', value: 'partner' },
+							{ name: 'Referred By', value: 'referred_by' },
+							{ name: 'Relative', value: 'relative' },
+							{ name: 'Sister', value: 'sister' },
+							{ name: 'Spouse', value: 'spouse' },
+						],
+						default: 'manager',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'The email address or name of the related person',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'External IDs',
+		name: 'externalIdsUi',
+		type: 'fixedCollection',
+		placeholder: 'Add External ID',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'externalIdsValues',
+				displayName: 'External ID',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Account', value: 'account' },
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Customer', value: 'customer' },
+							{ name: 'Login ID', value: 'login_id' },
+							{ name: 'Network', value: 'network' },
+							{ name: 'Organization', value: 'organization' },
+						],
+						default: 'account',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'The value of the external ID',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Languages',
+		name: 'languagesUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Language',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'languagesValues',
+				displayName: 'Language',
+				values: [
+					{
+						displayName: 'Language Code',
+						name: 'languageCode',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. en-US',
+						description:
+							'The language code, following the BCP 47 standard. Leave empty and use Custom Language for unsupported languages.',
+					},
+					{
+						displayName: 'Custom Language',
+						name: 'customLanguage',
+						type: 'string',
+						default: '',
+						description: 'A free-form name for a language not supported by a language code',
+					},
+					{
+						displayName: 'Preference',
+						name: 'preference',
+						type: 'options',
+						options: [
+							{ name: 'Not Preferred', value: 'not_preferred' },
+							{ name: 'Preferred', value: 'preferred' },
+						],
+						default: 'preferred',
+						description:
+							'Whether this language is preferred. Only applies when Language Code is set.',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Websites',
+		name: 'websitesUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Website',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'websitesValues',
+				displayName: 'Website',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'App Install Page', value: 'app_install_page' },
+							{ name: 'Blog', value: 'blog' },
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'FTP', value: 'ftp' },
+							{ name: 'Home', value: 'home' },
+							{ name: 'Home Page', value: 'home_page' },
+							{ name: 'Other', value: 'other' },
+							{ name: 'Profile', value: 'profile' },
+							{ name: 'Reservations', value: 'reservations' },
+							{ name: 'Resume', value: 'resume' },
+							{ name: 'Work', value: 'work' },
+						],
+						default: 'home',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. https://example.com',
+						description: 'The URL of the website',
+					},
+					primaryField,
+				],
+			},
+		],
+	},
+	{
+		displayName: 'IMs',
+		name: 'imsUi',
+		type: 'fixedCollection',
+		placeholder: 'Add IM',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'imsValues',
+				displayName: 'IM',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Home', value: 'home' },
+							{ name: 'Other', value: 'other' },
+							{ name: 'Work', value: 'work' },
+						],
+						default: 'home',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Protocol',
+						name: 'protocol',
+						type: 'options',
+						options: [
+							{ name: 'AIM', value: 'aim' },
+							{ name: 'Custom Protocol', value: 'custom_protocol' },
+							{ name: 'Google Talk', value: 'gtalk' },
+							{ name: 'ICQ', value: 'icq' },
+							{ name: 'Jabber', value: 'jabber' },
+							{ name: 'MSN', value: 'msn' },
+							{ name: 'Net Meeting', value: 'net_meeting' },
+							{ name: 'QQ', value: 'qq' },
+							{ name: 'Skype', value: 'skype' },
+							{ name: 'Yahoo', value: 'yahoo' },
+						],
+						default: 'gtalk',
+					},
+					{
+						displayName: 'Custom Protocol',
+						name: 'customProtocol',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								protocol: ['custom_protocol'],
+							},
+						},
+						description: 'Free-form protocol value used when Protocol is set to Custom Protocol',
+					},
+					{
+						displayName: 'IM',
+						name: 'im',
+						type: 'string',
+						default: '',
+						description: "The user's IM network ID",
+					},
+					primaryField,
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Keywords',
+		name: 'keywordsUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Keyword',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'keywordsValues',
+				displayName: 'Keyword',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Mission', value: 'mission' },
+							{ name: 'Occupation', value: 'occupation' },
+							{ name: 'Outlook', value: 'outlook' },
+						],
+						default: 'occupation',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Keyword value',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Locations',
+		name: 'locationsUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Location',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'locationsValues',
+				displayName: 'Location',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Default', value: 'default' },
+							{ name: 'Desk', value: 'desk' },
+						],
+						default: 'desk',
+					},
+					customTypeField('type'),
+					{
+						displayName: 'Area',
+						name: 'area',
+						type: 'string',
+						default: '',
+						description: 'Textual location, for example "Mountain View, CA" or "Near Seattle"',
+					},
+					{
+						displayName: 'Building ID',
+						name: 'buildingId',
+						type: 'string',
+						default: '',
+						description: 'Building identifier',
+					},
+					{
+						displayName: 'Floor Name',
+						name: 'floorName',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Floor Section',
+						name: 'floorSection',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Desk Code',
+						name: 'deskCode',
+						type: 'string',
+						default: '',
+						description: 'Most specific textual code of individual desk location',
+					},
+				],
+			},
+		],
+	},
+];
+
 export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -534,6 +1208,7 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 			},
+			...userExtraFields,
 		],
 	},
 
@@ -1228,6 +1903,7 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 			},
+			...userExtraFields,
 		],
 	},
 ];

@@ -1,7 +1,7 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems, mapUserExtraFields } from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
 describe('Google GSuiteAdmin Node', () => {
@@ -170,5 +170,76 @@ describe('Google GSuiteAdmin Node', () => {
 
 		expect(mockContext.getNode).toHaveBeenCalled();
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
+
+	describe('mapUserExtraFields', () => {
+		it('should map scalar attributes onto the body', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					orgUnitPath: '/Sales',
+					recoveryEmail: 'recovery@example.com',
+					recoveryPhone: '+12025550123',
+					includeInGlobalAddressList: false,
+					ipWhitelisted: true,
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				orgUnitPath: '/Sales',
+				recoveryEmail: 'recovery@example.com',
+				recoveryPhone: '+12025550123',
+				includeInGlobalAddressList: false,
+				ipWhitelisted: true,
+			});
+		});
+
+		it('should unwrap single-object fixedCollections (gender, notes)', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					genderUi: { genderValues: { type: 'unknown', customGender: 'non-binary' } },
+					notesUi: { notesValues: { contentType: 'text_plain', value: 'A note' } },
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				gender: { type: 'unknown', customGender: 'non-binary' },
+				notes: { contentType: 'text_plain', value: 'A note' },
+			});
+		});
+
+		it('should unwrap array fixedCollections into API arrays', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					organizationUi: {
+						organizationValues: [{ name: 'Acme', title: 'Engineer', type: 'work' }],
+					},
+					relationsUi: { relationsValues: [{ type: 'manager', value: 'boss@example.com' }] },
+					addressesUi: { addressesValues: [{ type: 'home', locality: 'Berlin' }] },
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				organizations: [{ name: 'Acme', title: 'Engineer', type: 'work' }],
+				relations: [{ type: 'manager', value: 'boss@example.com' }],
+				addresses: [{ type: 'home', locality: 'Berlin' }],
+			});
+		});
+
+		it('should not set keys for omitted fields', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields({}, body);
+
+			expect(body).toEqual({});
+		});
 	});
 });
