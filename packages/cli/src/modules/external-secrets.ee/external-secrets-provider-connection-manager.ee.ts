@@ -10,8 +10,6 @@ import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import { ExternalSecretsRetryManager } from './retry-manager.service';
 import type { SecretsProvider, SecretsProviderSettings } from './types';
 
-type ProviderConnectionOperationResult = { success: boolean; error?: Error };
-
 @Service()
 export class ExternalSecretsProviderConnectionManager {
 	constructor(
@@ -29,7 +27,7 @@ export class ExternalSecretsProviderConnectionManager {
 		config: SecretsProviderSettings,
 	): Promise<void> {
 		if (this.providerRegistry.has(providerKey)) {
-			// When there is already a provider registered we want to prepare the replacement before swappin the registry.
+			// When there is already a provider registered we want to prepare the replacement before swapping the registry.
 			// We tolerate a small time window where we keep the old provider while the new one is being prepared.
 			// This is important because this avoids executions failing intermittently during the reload phase.
 			await this.replaceProviderConnection(providerKey, providerType, config);
@@ -41,7 +39,7 @@ export class ExternalSecretsProviderConnectionManager {
 
 	async removeProviderConnection(providerKey: string): Promise<void> {
 		// cancelling retries is needed because we can have previous connections for the same provider key
-		// This is espicially common during the setup phase when initial configurations might be wrong
+		// This is especially common during the setup phase when initial configurations might be wrong
 		// and there will be several changes to the configuration before settling for a valid one.
 		this.retryManager.cancelRetry(providerKey);
 
@@ -152,7 +150,7 @@ export class ExternalSecretsProviderConnectionManager {
 		providerKey: string,
 		providerType: string,
 		replacementProvider: SecretsProvider,
-	): Promise<ProviderConnectionOperationResult> {
+	): Promise<ProviderConnectResult> {
 		const connectResult = await this.providerLifecycle.connect(replacementProvider);
 		if (!connectResult.success) {
 			this.logger.error('Failed to connect replacement external secrets provider connection', {
@@ -170,7 +168,7 @@ export class ExternalSecretsProviderConnectionManager {
 		providerKey: string,
 		providerType: string,
 		replacementProvider: SecretsProvider,
-	): Promise<ProviderConnectionOperationResult> {
+	): Promise<ProviderConnectResult> {
 		const existingProvider = this.providerRegistry.get(providerKey);
 
 		if (existingProvider && existingProvider !== replacementProvider) {
