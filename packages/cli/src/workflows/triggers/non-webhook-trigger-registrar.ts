@@ -133,9 +133,16 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				const node = workflow.getNode(nodeId);
+				const node = Object.values(workflow.nodes).find((n) => n.id === nodeId);
+				console.log('registering non-webhook trigger', {
+					workflowId: workflow.id,
+					nodeId,
+					activationMode,
+					executionMode,
+					node,
+				});
 				if (node && (await this.distributedScheduleTriggerService.register(workflow, node))) {
-					this.logger.debug(
+					console.log(
 						`Added distributed schedule trigger "${nodeId}" for workflow "${workflow.name}" (${workflow.id})`,
 					);
 					span.setStatus({ code: SpanStatus.ok });

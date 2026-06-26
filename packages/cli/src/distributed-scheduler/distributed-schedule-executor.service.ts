@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { ScheduledTaskRepository, WorkflowRepository } from '@n8n/db';
+import type { ScheduledTask } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
@@ -19,11 +20,15 @@ import { InstanceSettings } from 'n8n-core';
 import { DistributedScheduleTriggerService } from './distributed-schedule-trigger.service';
 
 const claimIntervalMs = 5_000;
+const claimLookaheadMs = claimIntervalMs * 2;
+const claimBatchSize = 1_000;
 const leaseMs = 60_000;
 
 @Service()
 export class DistributedScheduleExecutorService {
 	private timeout: NodeJS.Timeout | undefined;
+
+	private taskTimeouts = new Set<NodeJS.Timeout>();
 
 	private running = false;
 
@@ -48,7 +53,7 @@ export class DistributedScheduleExecutorService {
 
 		this.running = true;
 		this.scheduleNextClaim(0);
-		this.logger.debug('Started distributed schedule executor loop');
+		this.logger.info('Started distributed schedule executor loop');
 	}
 
 	@OnShutdown()
@@ -57,6 +62,10 @@ export class DistributedScheduleExecutorService {
 		this.running = false;
 		clearTimeout(this.timeout);
 		this.timeout = undefined;
+		for (const timeout of this.taskTimeouts) {
+			clearTimeout(timeout);
+		}
+		this.taskTimeouts.clear();
 	}
 
 	private scheduleNextClaim(delayMs = claimIntervalMs) {
@@ -75,21 +84,32 @@ export class DistributedScheduleExecutorService {
 	}
 
 	async claimAndExecute() {
-		const now = new Date();
-		const leaseExpiresAt = new Date(now.getTime() + leaseMs);
 		const claimedBy = this.instanceSettings.hostId;
 		const tasks = await this.scheduledTaskRepository.claimDueTasks(
-			now,
-			100,
+			claimBatchSize,
 			claimedBy,
-			leaseExpiresAt,
+			leaseMs,
+			claimLookaheadMs,
 		);
 		this.metrics.observeClaimed(tasks.length);
-		for (const task of tasks) {
-			this.metrics.observeSchedulingLag(task.scheduledFor, now);
-		}
+		for (const task of tasks) this.scheduleTaskExecution(task);
+	}
 
-		await Promise.all(tasks.map(async (task) => await this.executeTask(task.id)));
+	private scheduleTaskExecution(task: ScheduledTask) {
+		const delayMs = Math.max(0, task.scheduledFor.getTime() - Date.now());
+		const timeout = setTimeout(async () => {
+			this.taskTimeouts.delete(timeout);
+			if (this.shuttingDown) return;
+
+			try {
+				this.metrics.observeSchedulingLag(task.scheduledFor, new Date());
+				await this.executeTask(task.id);
+			} catch (error) {
+				this.logger.error('Distributed schedule task execution failed', { error, taskId: task.id });
+			}
+		}, delayMs);
+
+		this.taskTimeouts.add(timeout);
 	}
 
 	async executeTask(taskId: number) {

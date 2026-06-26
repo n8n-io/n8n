@@ -7,6 +7,8 @@ import { ScheduledJob } from '../entities/scheduled-job';
 import type { ScheduledJobRecurrence } from '../entities/scheduled-job';
 import { ScheduledTask, ScheduledTaskStatus } from '../entities/scheduled-task';
 
+const materializeBatchSize = 250;
+
 export interface UpsertScheduledJobInput {
 	workflowId: string;
 	nodeId: string;
@@ -189,13 +191,18 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			maxAttempts: 1,
 		}));
 
-		const result = await tx
-			.createQueryBuilder()
-			.insert()
-			.into(ScheduledTask)
-			.values(values)
-			.orIgnore()
-			.execute();
+		let insertedCount = 0;
+		for (let offset = 0; offset < values.length; offset += materializeBatchSize) {
+			const result = await tx
+				.createQueryBuilder()
+				.insert()
+				.into(ScheduledTask)
+				.values(values.slice(offset, offset + materializeBatchSize))
+				.orIgnore()
+				.execute();
+
+			insertedCount += result.identifiers.length;
+		}
 
 		await tx.update(
 			ScheduledJob,
@@ -208,7 +215,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			},
 		);
 
-		return result.identifiers.length;
+		return insertedCount;
 	}
 
 	private getTableName(name: string): string {

@@ -37,7 +37,7 @@ export class DistributedSchedulerService {
 
 		this.running = true;
 		this.scheduleNextSweep(0);
-		this.logger.debug('Started distributed scheduler sweep loop');
+		this.logger.info('Started distributed scheduler sweep loop');
 	}
 
 	@OnShutdown()

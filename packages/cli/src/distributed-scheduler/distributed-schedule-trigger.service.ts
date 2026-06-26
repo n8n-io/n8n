@@ -30,6 +30,12 @@ export class DistributedScheduleTriggerService {
 	}
 
 	async register(workflow: Workflow, node: INode) {
+		console.log('registering distributed schedule trigger jobs', {
+			workflowId: workflow.id,
+			node,
+			isEnabled: this.enabled,
+		});
+
 		if (!this.enabled || !this.isScheduleTrigger(node)) return false;
 
 		const rule = node.parameters?.rule as Rule | undefined;
@@ -55,7 +61,7 @@ export class DistributedScheduleTriggerService {
 
 		await this.scheduledJobRepository.replaceJobsForNode(workflow.id, node.id, jobs);
 
-		this.logger.debug('Registered distributed schedule trigger jobs', {
+		this.logger.info('Registered distributed schedule trigger jobs', {
 			workflowId: workflow.id,
 			nodeId: node.id,
 			jobCount: jobs.length,
@@ -70,7 +76,7 @@ export class DistributedScheduleTriggerService {
 		if (!hasDistributedJobs) return false;
 
 		await this.scheduledJobRepository.disableJobsForNode(workflowId, nodeId);
-		this.logger.debug('Deregistered distributed schedule trigger jobs', { workflowId, nodeId });
+		this.logger.info('Deregistered distributed schedule trigger jobs', { workflowId, nodeId });
 		return true;
 	}
 
@@ -78,7 +84,7 @@ export class DistributedScheduleTriggerService {
 		if (!this.enabled) return false;
 
 		await this.scheduledJobRepository.disableJobsForWorkflow(workflowId);
-		this.logger.debug('Deregistered distributed schedule trigger jobs for workflow', {
+		this.logger.info('Deregistered distributed schedule trigger jobs for workflow', {
 			workflowId,
 		});
 		return true;
