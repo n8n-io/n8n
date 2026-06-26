@@ -168,41 +168,51 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
+		if (isServicePrincipal) {
+			// App-only runs under a tenant-wide token: a raw Graph error body can carry
+			// correlation IDs and reflected input. For ANY status, never pass the raw
+			// body to NodeApiError (it would land in `messages`/context); throw a
+			// sanitized error whose only content is a static message + the status code.
+			const httpCode: number | undefined = error?.error?.error?.statusCode ?? error?.statusCode;
+			const graphCode: string | undefined = error?.error?.error?.code;
+			const graphMessage: unknown = error?.error?.error?.message;
+
+			let message: string;
+			if (graphCode === 'NotFound' && graphMessage === 'Resource not found') {
+				const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
+				message = `${nodeResource} not found`;
+			} else if (httpCode === 401) {
+				message =
+					"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.";
+			} else if (httpCode === 402) {
+				message =
+					'This operation requires a metered Microsoft Teams API to be enabled on the tenant.';
+			} else if (httpCode === 403) {
+				message =
+					'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
+			} else {
+				message = `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}). Check the operation's inputs and the app registration's permissions.`;
+			}
+
+			const sanitizedError: JsonObject = { message };
+			const errorOptions: IDataObject = { message };
+			if (httpCode !== undefined) {
+				sanitizedError.httpStatusCode = httpCode;
+				errorOptions.httpCode = `${httpCode}`;
+			}
+			throw new NodeApiError(this.getNode(), sanitizedError, errorOptions);
+		}
+
 		const errorOptions: IDataObject = {};
 		if (error.error?.error) {
 			const httpCode = error.statusCode;
 			error = error.error.error;
 			error.statusCode = httpCode;
+			errorOptions.message = error.message;
 
-			if (isServicePrincipal) {
-				// App-only runs under a tenant-wide token: a raw Graph error body can
-				// carry correlation IDs and reflected input, so NEVER assign
-				// `error.message` to the surfaced message for ANY status. Map to a
-				// static string instead. 401/402/403 get specific guidance; everything
-				// else (incl. 400 reflected input and 429 throttling) gets a catch-all
-				// that interpolates only the numeric status code.
-				if (error.code === 'NotFound' && error.message === 'Resource not found') {
-					const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
-					errorOptions.message = `${nodeResource} not found`;
-				} else if (httpCode === 401) {
-					errorOptions.message =
-						"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.";
-				} else if (httpCode === 402) {
-					errorOptions.message =
-						'This operation requires a metered Microsoft Teams API to be enabled on the tenant.';
-				} else if (httpCode === 403) {
-					errorOptions.message =
-						'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
-				} else {
-					errorOptions.message = `Microsoft Graph rejected the request (HTTP ${httpCode}). Check the operation's inputs and the app registration's permissions.`;
-				}
-			} else {
-				errorOptions.message = error.message;
-
-				if (error.code === 'NotFound' && error.message === 'Resource not found') {
-					const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
-					errorOptions.message = `${nodeResource} not found`;
-				}
+			if (error.code === 'NotFound' && error.message === 'Resource not found') {
+				const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
+				errorOptions.message = `${nodeResource} not found`;
 			}
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);

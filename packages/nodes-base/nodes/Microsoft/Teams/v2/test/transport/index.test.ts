@@ -400,16 +400,28 @@ describe('Microsoft Teams Transport', () => {
 					async (statusCode, code, expectedMessage) => {
 						mockRequestWithAuthentication.mockRejectedValue(rawBody(statusCode, code));
 
-						const error = await microsoftApiRequest
+						const error = (await microsoftApiRequest
 							.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
-							.catch((e: Error) => e);
+							.catch((e: Error) => e)) as Error & { messages?: string[] };
 
 						expect(error.constructor.name).toBe('NodeApiError');
 						expect(error.message).toBe(expectedMessage);
+						// The raw body must not leak through the surfaced message…
 						expect(error.message).not.toContain('request-id');
-						expect(error.message).not.toContain('client-request-id');
 						expect(error.message).not.toContain('token=');
 						expect(error.message).not.toContain('injected');
+						// …nor through the error's `messages` array…
+						for (const m of error.messages ?? []) {
+							expect(m).not.toContain('request-id');
+							expect(m).not.toContain('token=');
+							expect(m).not.toContain('injected');
+						}
+						// …nor anywhere in the serialized error object.
+						const serialized = JSON.stringify(error);
+						expect(serialized).not.toContain('request-id');
+						expect(serialized).not.toContain('client-request-id');
+						expect(serialized).not.toContain('token=');
+						expect(serialized).not.toContain('injected');
 					},
 				);
 
