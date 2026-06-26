@@ -29,6 +29,9 @@ export class ExternalSecretsProviderConnectionManager {
 		config: SecretsProviderSettings,
 	): Promise<void> {
 		if (this.providerRegistry.has(providerKey)) {
+			// When there is already a provider registered we want to prepare the replacement before swappin the registry.
+			// We tolerate a small time window where we keep the old provider while the new one is being prepared.
+			// This is important because this avoids executions failing intermittently during the reload phase.
 			await this.replaceProviderConnection(providerKey, providerType, config);
 			return;
 		}
@@ -37,7 +40,11 @@ export class ExternalSecretsProviderConnectionManager {
 	}
 
 	async removeProviderConnection(providerKey: string): Promise<void> {
+		// cancelling retries is needed because we can have previous connections for the same provider key
+		// This is espicially common during the setup phase when initial configurations might be wrong
+		// and there will be several changes to the configuration before settling for a valid one.
 		this.retryManager.cancelRetry(providerKey);
+
 		this.logger.debug('Removing external secrets provider connection', {
 			providerKey,
 		});
@@ -119,10 +126,9 @@ export class ExternalSecretsProviderConnectionManager {
 		}
 
 		const replacementProvider = initResult.provider;
-		let replacementResult: ProviderConnectionOperationResult;
 		if (config.connected) {
 			// Only connection is retried. A successful retry must also perform the registry swap.
-			replacementResult = await this.retryManager.runWithRetry(
+			const replacementResult = await this.retryManager.runWithRetry(
 				providerKey,
 				async () =>
 					await this.connectAndSwapProviderConnection(
@@ -131,17 +137,13 @@ export class ExternalSecretsProviderConnectionManager {
 						replacementProvider,
 					),
 			);
-		} else {
-			replacementResult = await this.swapProviderConnection(
-				providerKey,
-				providerType,
-				replacementProvider,
-			);
-		}
 
-		if (!replacementResult.success) {
-			// The replacement reflects the latest config, even if connection failed. Register it
-			// in its error state so executions fail visibly instead of using stale secrets.
+			if (!replacementResult.success) {
+				// The replacement reflects the latest config, even if connection failed. Register it
+				// in its error state so executions fail visibly instead of using stale secrets.
+				await this.swapProviderConnection(providerKey, providerType, replacementProvider);
+			}
+		} else {
 			await this.swapProviderConnection(providerKey, providerType, replacementProvider);
 		}
 	}
