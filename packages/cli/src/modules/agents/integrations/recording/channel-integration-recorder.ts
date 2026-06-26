@@ -158,11 +158,7 @@ function sanitizeSessionId(value: string): string {
 }
 
 function defaultSessionId(): string {
-	const ref =
-		process.env.N8N_AGENT_INTEGRATION_RECORDING_REF ??
-		process.env.VERCEL_GIT_COMMIT_REF ??
-		process.env.GITHUB_REF_NAME ??
-		'local';
+	const ref = process.env.N8N_AGENT_INTEGRATION_RECORDING_REF ?? 'local';
 	return `session-${sanitizeSessionId(ref)}-${Date.now()}`;
 }
 
