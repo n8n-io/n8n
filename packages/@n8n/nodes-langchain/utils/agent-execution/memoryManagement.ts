@@ -76,22 +76,23 @@ export function extractToolCallId(
  */
 export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 	const messages: BaseMessage[] = [];
+	const seenAIMessages = new Set<BaseMessage>();
 
 	for (let i = 0; i < steps.length; i++) {
 		const step = steps[i];
 
-		// Try to extract existing AIMessage and its tool_call ID
+		// Try to extract existing AIMessage
 		const existingAIMessage = step.action.messageLog?.[0];
-		const existingToolCallId = existingAIMessage?.tool_calls?.[0]?.id;
 
-		// Use existing ID if available, otherwise extract from step data
-		const toolCallId =
-			existingToolCallId ?? extractToolCallId(step.action.toolCallId, step.action.tool);
+		// Extract toolCallId from step data (more reliable than taking the first id from AIMessage)
+		const toolCallId = extractToolCallId(step.action.toolCallId, step.action.tool);
 
 		// Use existing AIMessage or create a synthetic one
-		const aiMessage =
-			existingAIMessage ??
-			new AIMessage({
+		if (existingAIMessage && !seenAIMessages.has(existingAIMessage)) {
+			messages.push(existingAIMessage);
+			seenAIMessages.add(existingAIMessage);
+		} else if (!existingAIMessage) {
+			const aiMessage = new AIMessage({
 				content: `Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
 				tool_calls: [
 					{
@@ -102,6 +103,8 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 					},
 				],
 			});
+			messages.push(aiMessage);
+		}
 
 		// Create ToolMessage with the observation result
 		const toolMessage = new ToolMessage({
@@ -110,8 +113,7 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 			name: step.action.tool,
 		});
 
-		// Add both messages
-		messages.push(aiMessage);
+		// Add tool message
 		messages.push(toolMessage);
 	}
 
