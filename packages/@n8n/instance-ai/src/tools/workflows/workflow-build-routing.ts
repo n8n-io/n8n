@@ -22,10 +22,7 @@ function hasSetupCredentials(
 }
 
 function determineVerificationReadiness(
-	outcome: Pick<
-		WorkflowBuildRoutingInput,
-		'submitted' | 'workflowId' | 'triggerNodes' | 'workflowNeedsSetup'
-	>,
+	outcome: Pick<WorkflowBuildRoutingInput, 'submitted' | 'workflowId' | 'triggerNodes'>,
 ): WorkflowVerificationReadiness {
 	if (!outcome.submitted) {
 		return {
@@ -40,14 +37,6 @@ function determineVerificationReadiness(
 			status: 'not_verifiable',
 			reason: 'missing-workflow-id',
 			guidance: 'The build outcome does not include a workflow ID.',
-		};
-	}
-
-	if (outcome.workflowNeedsSetup) {
-		return {
-			status: 'needs_setup',
-			reason: 'workflow-needs-setup',
-			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
 		};
 	}
 

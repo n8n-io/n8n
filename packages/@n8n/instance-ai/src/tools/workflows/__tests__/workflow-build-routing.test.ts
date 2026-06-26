@@ -54,17 +54,13 @@ describe('withDeterministicRouting', () => {
 		});
 	});
 
-	it('routes workflows with pending setup requests to setup before verification', () => {
+	it('keeps workflows with pending setup requests ready for verification', () => {
 		const outcome = withDeterministicRouting({
 			...makeOutcome(),
 			workflowNeedsSetup: true,
 		});
 
-		expect(outcome.verificationReadiness).toEqual({
-			status: 'needs_setup',
-			reason: 'workflow-needs-setup',
-			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
-		});
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
 		expect(outcome.setupRequirement).toEqual({
 			status: 'required',
 			reason: 'workflow-needs-setup',

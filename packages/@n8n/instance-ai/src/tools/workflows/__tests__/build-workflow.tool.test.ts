@@ -198,7 +198,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
-	it('routes pending workflow setup before verification', async () => {
+	it('keeps pending workflow setup ready for verification', async () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
 			{
 				node: {
@@ -229,8 +229,7 @@ describe('createBuildWorkflowTool', () => {
 			success: true,
 			workflowId: 'wf-1',
 			verificationReadiness: {
-				status: 'needs_setup',
-				reason: 'workflow-needs-setup',
+				status: 'ready',
 			},
 			setupRequirement: {
 				status: 'required',

@@ -5,7 +5,7 @@
 			"role": "user",
 			"text": [
 				"Build a workflow named \"Berlin weather Slack setup preservation\". Every day at 8am, check the weather in Berlin. Only if rain is forecast, send a concise rain alert to Slack.",
-				"I don't know the Slack channel yet. Please verify it after saving."
+				"I don't know the Slack channel yet."
 			]
 		},
 		{
