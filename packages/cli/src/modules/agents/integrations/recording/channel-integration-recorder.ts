@@ -240,6 +240,8 @@ export class ChannelIntegrationRecorder {
 
 	private fetchUrlPatterns = DEFAULT_FETCH_URL_PATTERNS;
 
+	private readonly pendingRecords = new Set<Promise<void>>();
+
 	constructor(options: { enabled?: boolean; sessionId?: string; recordingDir?: string } = {}) {
 		this.enabled =
 			options.enabled ?? process.env.N8N_AGENT_INTEGRATION_RECORDING_ENABLED === 'true';
@@ -361,7 +363,7 @@ export class ChannelIntegrationRecorder {
 					responseBody,
 					...(error ? { error: error.message } : {}),
 				};
-				void this.appendRecord(record).catch(() => {});
+				this.trackPendingRecord(this.appendRecord(record).catch(() => {}));
 			}
 		};
 	}
@@ -391,6 +393,7 @@ export class ChannelIntegrationRecorder {
 	}
 
 	async getRecords(sessionId = this.sessionId): Promise<ChannelIntegrationRecord[]> {
+		await this.flush();
 		const filePath = join(this.recordingDir, `${sanitizeSessionId(sessionId)}.jsonl`);
 		const contents = await readFile(filePath, 'utf8');
 		return contents
@@ -407,6 +410,10 @@ export class ChannelIntegrationRecorder {
 		await rm(join(this.recordingDir, `${sanitizeSessionId(sessionId)}.jsonl`), { force: true });
 	}
 
+	async flush(): Promise<void> {
+		await Promise.all([...this.pendingRecords]);
+	}
+
 	private async appendRecord(record: ChannelIntegrationRecord): Promise<void> {
 		await mkdir(this.recordingDir, { recursive: true });
 		const { appendFile } = await import('fs/promises');
@@ -419,6 +426,11 @@ export class ChannelIntegrationRecorder {
 
 	private async recordBestEffort(record: () => Promise<void>): Promise<void> {
 		await record().catch(() => {});
+	}
+
+	private trackPendingRecord(record: Promise<void>): void {
+		this.pendingRecords.add(record);
+		void record.finally(() => this.pendingRecords.delete(record));
 	}
 }
 

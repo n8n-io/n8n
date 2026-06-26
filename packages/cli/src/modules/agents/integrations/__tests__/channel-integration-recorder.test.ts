@@ -78,7 +78,6 @@ describe('ChannelIntegrationRecorder', () => {
 				headers: requestHeaders,
 				body: '{}',
 			});
-			await new Promise((resolve) => setTimeout(resolve, 0));
 			recorder.stopFetchRecording();
 
 			const [record] = await recorder.getRecords('fetch-session');
@@ -118,7 +117,6 @@ describe('ChannelIntegrationRecorder', () => {
 					body: '{"text":"hello"}',
 				}),
 			);
-			await new Promise((resolve) => setTimeout(resolve, 0));
 			recorder.stopFetchRecording();
 
 			const [record] = await recorder.getRecords('request-fetch-session');
