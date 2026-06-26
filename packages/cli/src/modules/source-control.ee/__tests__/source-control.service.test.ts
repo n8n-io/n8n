@@ -4,7 +4,7 @@ import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import type { PushResult } from 'simple-git';
+import type { CommitResult, PullResult, PushResult } from 'simple-git';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
@@ -15,7 +15,11 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
-import { SOURCE_CONTROL_DEFAULT_BRANCH_COLOR } from '../constants';
+import {
+	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
+} from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
 
@@ -1151,6 +1155,241 @@ describe('SourceControlService', () => {
 
 			// ACT & ASSERT
 			await expect(sourceControlService.sanityCheck()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('work folder serialization', () => {
+		const user = Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE });
+		const now = new Date().toISOString();
+
+		const workflowFile: SourceControlledFile = {
+			file: 'workflow-1.json',
+			id: 'wf-1',
+			name: 'Workflow 1',
+			type: 'workflow',
+			status: 'modified',
+			location: 'local',
+			conflict: false,
+			updatedAt: now,
+		};
+
+		const pushOptions = {
+			fileNames: [
+				{
+					file: workflowFile.file,
+					id: workflowFile.id,
+					name: workflowFile.name,
+					type: workflowFile.type,
+					status: workflowFile.status,
+					location: workflowFile.location,
+					conflict: workflowFile.conflict,
+					updatedAt: workflowFile.updatedAt,
+				},
+			],
+			commitMessage: 'Test commit',
+		};
+
+		// Parks an in-flight push inside its export step. `exportStarted` resolves once the push
+		// has reached the export call; `releaseExport` lets it continue from there. This keeps the
+		// race tests deterministic instead of relying on a fixed number of microtask ticks.
+		const installExportGate = () => {
+			let releaseExport!: () => void;
+			let signalExportStarted!: () => void;
+			const exportGate = new Promise<void>((resolve) => {
+				releaseExport = resolve;
+			});
+			const exportStarted = new Promise<void>((resolve) => {
+				signalExportStarted = resolve;
+			});
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockImplementation(async () => {
+				signalExportStarted();
+				await exportGate;
+				return mock<ExportResult>();
+			});
+			return { exportStarted, releaseExport };
+		};
+
+		const arrangeSuccessfulPushMocks = () => {
+			(isContainedWithin as jest.Mock).mockReturnValue(true);
+			gitService.git = {} as any;
+			gitService.push.mockResolvedValue(mock<PushResult>());
+			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValue(new Set());
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValue({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValue(mock<ExportResult>());
+		};
+
+		it('queues a reset behind an in-flight push and never resets the work tree mid-push', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+
+			const callOrder: string[] = [];
+			gitService.commit.mockImplementation(async () => {
+				callOrder.push('commit');
+				return await Promise.resolve(mock<CommitResult>());
+			});
+			gitService.resetBranch.mockImplementation(async () => {
+				callOrder.push('reset');
+				return await Promise.resolve('');
+			});
+			gitService.pull.mockResolvedValue(mock<PullResult>());
+
+			const { exportStarted, releaseExport } = installExportGate();
+
+			// ACT: start the push and wait until it is parked inside the export step.
+			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
+			await exportStarted;
+
+			// A concurrent reset arrives while the push holds the lock.
+			const resetPromise = sourceControlService.resetWorkfolder();
+
+			// ASSERT: the reset is queued behind the mutex, so no `git reset --hard` runs yet.
+			expect(gitService.resetBranch).not.toHaveBeenCalled();
+
+			releaseExport();
+			await pushPromise;
+			await resetPromise;
+
+			// Once the push releases the lock, the queued reset runs - but only after the commit.
+			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(callOrder).toEqual(['commit', 'reset']);
+		});
+
+		it('queues getStatus behind an in-flight push', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+
+			const { exportStarted, releaseExport } = installExportGate();
+
+			// ACT
+			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
+			await exportStarted;
+
+			// The push has already read status once before parking at the export gate.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			const statusPromise = sourceControlService.getStatus(user, {} as any);
+
+			// ASSERT: the queued getStatus has not run its own status read yet.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			releaseExport();
+			await pushPromise;
+			await statusPromise;
+
+			// Once the push releases the lock, the queued getStatus runs.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(2);
+		});
+
+		it('queues a pull behind an in-flight push', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			const { exportStarted, releaseExport } = installExportGate();
+
+			// ACT
+			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
+			await exportStarted;
+
+			// The push has already read status once before parking at the export gate.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			const pullPromise = sourceControlService.pullWorkfolder(user, { force: true } as any);
+
+			// ASSERT: the queued pull has not run its own status read yet.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			releaseExport();
+			await pushPromise;
+			await pullPromise;
+
+			// Once the push releases the lock, the queued pull runs its status read.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(2);
+		});
+
+		it('sets the git author inside the locked push, before the commit it applies to', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+
+			const callOrder: string[] = [];
+			gitService.setGitUserDetails.mockImplementation(async () => {
+				callOrder.push('setAuthor');
+				await Promise.resolve();
+			});
+			gitService.commit.mockImplementation(async () => {
+				callOrder.push('commit');
+				return await Promise.resolve(mock<CommitResult>());
+			});
+
+			const author = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				email: 'ada@example.com',
+			});
+
+			// ACT
+			await sourceControlService.pushWorkfolder(author, pushOptions);
+
+			// ASSERT: the author is set from the pushing user, immediately before the commit,
+			// both inside the serialized section.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith('Ada Lovelace', 'ada@example.com');
+			expect(callOrder).toEqual(['setAuthor', 'commit']);
+		});
+
+		it('falls back to default author details when the pushing user has no full profile', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+
+			const userWithoutProfile = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+				firstName: '',
+				lastName: '',
+				email: '',
+			});
+
+			// ACT
+			await sourceControlService.pushWorkfolder(userWithoutProfile, pushOptions);
+
+			// ASSERT: an empty profile must not produce an invalid git identity for the commit.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith(
+				SOURCE_CONTROL_DEFAULT_NAME,
+				SOURCE_CONTROL_DEFAULT_EMAIL,
+			);
+		});
+
+		it('releases the lock when an operation fails so the next operation can proceed', async () => {
+			// ARRANGE
+			gitService.git = {} as any;
+			gitService.resetBranch.mockRejectedValueOnce(new Error('reset failed'));
+
+			// ACT & ASSERT: a failing reset rejects but must not hold the lock.
+			await expect(sourceControlService.resetWorkfolder()).rejects.toThrow();
+
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			await expect(sourceControlService.getStatus(user, {} as any)).resolves.toEqual([]);
 		});
 	});
 });

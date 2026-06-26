@@ -39,14 +39,12 @@ import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import {
 	N8nButton,
 	N8nCallout,
-	N8nIcon,
 	N8nInfoTip,
 	N8nInlineAskAssistantButton,
 	N8nLink,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
-import { ElSwitch } from 'element-plus';
+import CredentialTypeSelector from './CredentialTypeSelector.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
@@ -471,47 +469,23 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					@click="$emit('retest')"
 				/>
 
-				<div
+				<CredentialTypeSelector
 					v-if="
 						isPrivateCredentialsEnabled &&
 						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 						isOAuthType &&
 						canWrite
 					"
-					:class="$style.dynamicCredentials"
-					data-test-id="dynamic-credentials-section"
-				>
-					<div :class="$style.dynamicCredentialsRow">
-						<N8nTooltip placement="top" :disabled="!isDynamicToggleDisabled">
-							<template #content>
-								<div>
-									{{
-										i18n.baseText(
-											'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
-										)
-									}}
-								</div>
-							</template>
-							<ElSwitch
-								:model-value="isResolvable"
-								:disabled="isDynamicToggleDisabled"
-								data-test-id="dynamic-credentials-toggle"
-								@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
-							/>
-						</N8nTooltip>
-						<N8nText size="small">
-							{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
-						</N8nText>
-						<N8nTooltip placement="top">
-							<template #content>
-								<div>
-									{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip') }}
-								</div>
-							</template>
-							<N8nIcon icon="circle-help" size="small" color="text-light" />
-						</N8nTooltip>
-					</div>
-				</div>
+					:model-value="Boolean(isResolvable)"
+					:end-user-disabled="isDynamicToggleDisabled"
+					:end-user-disabled-tooltip="
+						i18n.baseText(
+							'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
+						)
+					"
+					:info-tip="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')"
+					@update:model-value="(val) => $emit('update:isResolvable', val)"
+				/>
 
 				<Banner
 					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
@@ -663,25 +637,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		margin-left: var(--spacing--3xs);
 		font-size: var(--font-size--sm);
 	}
-}
-
-.dynamicCredentials {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius);
-}
-
-.dynamicCredentialsRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.dynamicCredentialsNotice {
-	margin-top: var(--spacing--xs);
 }
 
 .docsCallout {

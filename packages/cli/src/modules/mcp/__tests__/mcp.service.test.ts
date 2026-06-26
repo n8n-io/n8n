@@ -51,6 +51,7 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('McpService', () => {
@@ -104,6 +105,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
+			mockInstance(SubworkflowPolicyChecker),
 		);
 	});
 
@@ -151,6 +153,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -351,6 +354,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -459,6 +463,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			const server = await service.getServer(user, false);
@@ -508,6 +513,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			const server = await service.getServer(user, false);
@@ -581,6 +587,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowHistoryService),
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
+					mockInstance(SubworkflowPolicyChecker),
 				);
 			};
 

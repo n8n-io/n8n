@@ -41,7 +41,6 @@ describe('SourceControlController', () => {
 			pushWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
 			pullWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
 			getStatus: jest.fn().mockResolvedValue([]),
-			setGitUserDetails: jest.fn(),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
@@ -71,10 +70,6 @@ describe('SourceControlController', () => {
 			const payload = { force: true } as PushWorkFolderRequestDto;
 
 			await controller.pushWorkfolder(req, res, payload);
-			expect(sourceControlService.setGitUserDetails).toHaveBeenCalledWith(
-				'John Doe',
-				'john.doe@example.com',
-			);
 			expect(sourceControlService.pushWorkfolder).toHaveBeenCalledWith(req.user, payload);
 		});
 

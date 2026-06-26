@@ -140,7 +140,7 @@ test.describe(
 
 			await n8n.canvas.clickManualChatButton();
 			await n8n.canvas.logsPanel.sendManualChatMessage('Send welcome email to john@gmail.com');
-			const approveButton = n8n.page.getByTestId('canvas-chat').getByText('Approve');
+			const approveButton = n8n.canvas.manualChat.getApproveButton();
 			await expect(approveButton).toBeVisible({ timeout: 15000 });
 			await approveButton.click({ button: 'middle' });
 			await waitForWorkflowSuccess(n8n);

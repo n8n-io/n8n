@@ -2,14 +2,16 @@ import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
-import { RoleRepository, UserRepository } from '@n8n/db';
+import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
+import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';
 
 import {
@@ -1370,6 +1372,68 @@ describe('RoleService', () => {
 			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(
 				'Cannot delete role assigned to users',
 			);
+		});
+
+		describe('when referenced by an SSO role mapping rule', () => {
+			let roleMappingRuleRepository: RoleMappingRuleRepository;
+
+			beforeAll(() => {
+				roleMappingRuleRepository = Container.get(RoleMappingRuleRepository);
+				// Mirror how the provisioning module registers its checker on init,
+				// so the core guard can see mapping-rule references.
+				Container.get(RoleDeletionCheckProxy).registerProvider(
+					Container.get(ProvisioningRoleDeletionChecker),
+				);
+			});
+
+			afterEach(async () => {
+				await roleMappingRuleRepository.delete({});
+			});
+
+			it('should block deletion of a role still targeted by a mapping rule', async () => {
+				//
+				// ARRANGE
+				//
+				const role = await createRole({
+					displayName: 'Mapped Role',
+					roleType: 'global',
+					systemRole: false,
+				});
+				await roleMappingRuleRepository.save(
+					roleMappingRuleRepository.create({
+						expression: "{{ $claims.department === 'audit' }}",
+						role,
+						type: 'instance',
+						order: 0,
+					}),
+				);
+
+				//
+				// ACT & ASSERT
+				//
+				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(BadRequestError);
+				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(
+					'Cannot delete role: referenced by 1 role mapping rule',
+				);
+
+				// Role is preserved, not silently orphaned.
+				const stillExists = await roleRepository.findBySlug(role.slug);
+				expect(stillExists).not.toBeNull();
+			});
+
+			it('should allow deletion once no mapping rule references the role', async () => {
+				const role = await createRole({
+					displayName: 'Unmapped Role',
+					roleType: 'global',
+					systemRole: false,
+				});
+
+				const result = await roleService.removeCustomRole(role.slug);
+
+				expect(result.slug).toEqual(role.slug);
+				const deletedRole = await roleRepository.findBySlug(role.slug);
+				expect(deletedRole).toBeNull();
+			});
 		});
 	});
 
