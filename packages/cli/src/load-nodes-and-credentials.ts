@@ -245,8 +245,14 @@ export class LoadNodesAndCredentials {
 
 		const pathPrefix = `/icons/${packageName}/`;
 		const urlFilePath = url.substring(pathPrefix.length);
-		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
+		if (isCustom && !isWindowsFilePath(urlFilePath)) {
+			const relativeFilePath = resolvePath(urlFilePath);
+			if (isContainedWithin(loader.directory, relativeFilePath)) {
+				return relativeFilePath;
+			}
+		}
 
+		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
 

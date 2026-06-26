@@ -1,8 +1,8 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentChatMessagesResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
-	AgentPersistedMessageDto,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -13,19 +13,68 @@ import type {
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
 } from '@n8n/api-types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig } from '../types';
+
+export type ListAgentsSortBy =
+	| 'name:asc'
+	| 'name:desc'
+	| 'createdAt:asc'
+	| 'createdAt:desc'
+	| 'updatedAt:asc'
+	| 'updatedAt:desc';
+
+export type ListAgentsOptions = {
+	skip?: number;
+	take?: number;
+	sortBy?: ListAgentsSortBy;
+	filter?: {
+		query?: string;
+	};
+};
+
+const AGENTS_LIST_PAGE_SIZE = 250;
+
+export const listAgentsPage = async (
+	context: IRestApiContext,
+	projectId: string,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2`,
+		options,
+	);
+};
+
+export const listAgentsPageGlobal = async (
+	context: IRestApiContext,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
+};
 
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
 ): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2`,
-	);
+	const agents: AgentResource[] = [];
+	let total = 0;
+
+	do {
+		const { count, data } = await listAgentsPage(context, projectId, {
+			skip: agents.length,
+			take: AGENTS_LIST_PAGE_SIZE,
+		});
+		agents.push(...data);
+		total = count;
+
+		if (data.length === 0) break;
+	} while (agents.length < total);
+
+	return agents;
 };
 
 export const getAgent = async (
@@ -50,20 +99,6 @@ export const createAgent = async (
 		'POST',
 		`/projects/${projectId}/agents/v2`,
 		{ name },
-	);
-};
-
-export const updateAgent = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	data: { code?: string; name?: string },
-): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}`,
-		data,
 	);
 };
 
@@ -116,6 +151,18 @@ export const deleteAgentFile = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
+	);
+};
+
+export const warmAgentKnowledgeSandbox = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ accepted: true }> => {
+	return await makeRestApiRequest<{ accepted: true }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
 	);
 };
 
@@ -269,17 +316,6 @@ export const getSlackAgentAppManifest = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
-	);
-};
-
-export const listAllAgents = async (
-	context: IRestApiContext,
-	projectId: string,
-): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2?all=true`,
 	);
 };
 
@@ -460,8 +496,8 @@ export const getChatMessages = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
@@ -472,8 +508,8 @@ export const getTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,

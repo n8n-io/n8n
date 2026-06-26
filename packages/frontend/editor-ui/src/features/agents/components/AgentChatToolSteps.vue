@@ -1,124 +1,186 @@
 <script setup lang="ts">
-import AnimatedCollapsibleContent from '@/features/ai/instanceAi/components/AnimatedCollapsibleContent.vue';
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nMarkdownEditor, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { reactive, toRef } from 'vue';
 import type { ToolCall } from '../composables/agentChatMessages';
+import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
+import {
+	getDelegateDifficultySummary,
+	isDelegateSubAgentTool,
+	resolveSubAgentName,
+} from '../utils/delegate-tool';
+import { getToolCallDetails } from '../utils/tool-call-details';
+import {
+	countIncompleteTodos,
+	isWriteTodosTool,
+	parseWriteTodosOutput,
+	writeTodosLabel,
+	writeTodosSummaryLabel,
+} from '../utils/write-todos-tool';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
+	projectId?: string;
 }>();
 
 const i18n = useI18n();
+
+function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
+	return toolCalls.some((tc) => {
+		if (isDelegateSubAgentTool(tc.tool)) return true;
+		if (!isWriteTodosTool(tc.tool)) return false;
+		const parsed = parseWriteTodosOutput(tc.output);
+		return parsed?.todos.some((todo) => Boolean(todo.delegateHint?.subAgentId)) ?? false;
+	});
+}
+
+// Resolve sub-agent ids → friendly names for delegate labels and write_todos hints.
+const projectIdRef = toRef(() => props.projectId ?? '');
+const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
+	toolCallsNeedSubAgentNames(props.toolCalls),
+);
+
+// Track which tool steps are expanded (by tool-call id).
+const expandedIds = reactive(new Set<string>());
+
+interface ToolStepDisplay {
+	label: string;
+	metadata: string[];
+	details: string;
+	expandable: boolean;
+	expanded: boolean;
+}
 
 function getToolDisplayName(toolName: string): string {
 	const translationKey = getToolNameTranslationKey(toolName);
 	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
 }
 
-function hasToolData(tc: ToolCall): boolean {
-	return tc.input !== undefined || tc.output !== undefined;
+function toolStepLabel(tc: ToolCall): string {
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return i18n.baseText('agents.chat.delegate.labelFallback');
+	}
+	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
+	return getToolDisplayName(tc.tool);
 }
 
-function formatToolData(value: unknown): string {
-	if (typeof value === 'string') return value;
-	const json = JSON.stringify(value, null, 2);
-	return json ?? String(value);
+function toolStepMetadata(tc: ToolCall): string[] {
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return [
+			resolveSubAgentName(tc.input, subAgentNameById.value),
+			getDelegateDifficultySummary(tc.input, i18n),
+		].filter((part): part is string => Boolean(part));
+	}
+	if (isWriteTodosTool(tc.tool)) {
+		const parsed = parseWriteTodosOutput(tc.output);
+		if (parsed) return [writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos))];
+	}
+	if (tc.displaySummary) return [tc.displaySummary];
+	return [];
+}
+
+function toolStepView(tc: ToolCall): ToolStepDisplay {
+	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	return {
+		label: toolStepLabel(tc),
+		metadata: toolStepMetadata(tc),
+		details,
+		expandable: details.length > 0,
+		expanded: expandedIds.has(tc.toolCallId),
+	};
+}
+
+function toggle(tc: ToolCall, view: ToolStepDisplay): void {
+	if (!view.expandable) return;
+	if (expandedIds.has(tc.toolCallId)) expandedIds.delete(tc.toolCallId);
+	else expandedIds.add(tc.toolCallId);
 }
 </script>
 
 <template>
 	<ol :class="$style.toolSteps">
-		<li
-			v-for="(tc, index) in props.toolCalls"
-			:key="tc.toolCallId || `${tc.tool}-${index}`"
-			:class="$style.toolStep"
-		>
-			<CollapsibleRoot v-slot="{ open: isOpen }" :default-open="false" :disabled="!hasToolData(tc)">
-				<div :class="$style.toolStepRow">
-					<div :class="$style.toolStepIndicator">
+		<li v-for="(tc, i) in toolCalls" :key="i" :class="$style.toolStep">
+			<template v-for="view in [toolStepView(tc)]" :key="view.label">
+				<!-- Rail: the status icon plus a line that grows to fill the step's
+				     height, so consecutive steps stay visually connected even when one
+				     expands its answer. -->
+				<div :class="$style.rail">
+					<div :class="$style.indicator">
 						<N8nIcon
 							v-if="tc.state === 'done'"
 							icon="circle-check"
 							size="large"
-							:class="$style.toolStepDone"
+							:class="$style.indicatorDone"
 						/>
 						<N8nIcon
 							v-else-if="tc.state === 'error'"
 							icon="circle-x"
 							size="large"
-							:class="$style.toolStepError"
+							:class="$style.indicatorError"
+						/>
+						<N8nIcon
+							v-else-if="tc.state === 'cancelled'"
+							icon="circle-x"
+							size="large"
+							:class="$style.indicatorCancelled"
 						/>
 						<N8nTooltip
 							v-else-if="tc.state === 'suspended'"
 							placement="top"
-							:content="i18n.baseText('instanceAi.statusBar.waitingForInput')"
+							:content="i18n.baseText('agents.chat.toolStep.waitingForInput')"
 						>
-							<N8nIcon icon="clock" size="large" :class="$style.toolStepSuspended" />
+							<N8nIcon icon="clock" size="large" :class="$style.indicatorSuspended" />
 						</N8nTooltip>
 						<N8nIcon
 							v-else
 							icon="spinner"
 							size="large"
 							:spin="true"
-							:class="$style.toolStepLoading"
+							:class="$style.indicatorLoading"
 						/>
 					</div>
-
-					<CollapsibleTrigger v-if="hasToolData(tc)" as-child>
-						<button type="button" :class="$style.toolStepTrigger">
-							<span :class="$style.toolStepText">
-								<span :class="[$style.toolStepLabel, { [$style.shimmer]: tc.state === 'running' }]">
-									{{ getToolDisplayName(tc.tool) }}
-								</span>
-								<span
-									v-if="tc.displaySummary"
-									:class="$style.toolStepSummary"
-									data-testid="tool-step-summary"
-								>
-									· {{ tc.displaySummary }}
-								</span>
-							</span>
-							<N8nIcon
-								icon="chevron-right"
-								size="small"
-								:class="[$style.toolStepChevron, { [$style.toolStepChevronOpen]: isOpen }]"
-							/>
-						</button>
-					</CollapsibleTrigger>
-
-					<template v-else>
-						<span :class="[$style.toolStepLabel, { [$style.shimmer]: tc.state === 'running' }]">
-							{{ getToolDisplayName(tc.tool) }}
-						</span>
-						<span
-							v-if="tc.displaySummary"
-							:class="$style.toolStepSummary"
-							data-testid="tool-step-summary"
-						>
-							· {{ tc.displaySummary }}
-						</span>
-					</template>
+					<div :class="$style.railLine" />
 				</div>
 
-				<AnimatedCollapsibleContent v-if="hasToolData(tc)">
-					<div :class="$style.toolStepDataList">
-						<div v-if="tc.input !== undefined" :class="$style.toolStepDataSection">
-							<span :class="$style.toolStepDataLabel">
-								{{ i18n.baseText('agentSessions.timeline.input') }}
+				<div :class="$style.stepBody">
+					<component
+						:is="view.expandable ? 'button' : 'div'"
+						:type="view.expandable ? 'button' : undefined"
+						:aria-expanded="view.expandable ? view.expanded : undefined"
+						:class="[$style.stepRow, { [$style.stepRowButton]: view.expandable }]"
+						@click="toggle(tc, view)"
+					>
+						<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
+							{{ view.label }}
+						</span>
+						<template
+							v-for="(metadataPart, metadataIndex) in view.metadata"
+							:key="`${metadataIndex}:${metadataPart}`"
+						>
+							<span :class="$style.separator" aria-hidden="true">·</span>
+							<span :class="$style.summary" data-testid="tool-step-summary">
+								{{ metadataPart }}
 							</span>
-							<pre :class="$style.toolStepDataContent">{{ formatToolData(tc.input) }}</pre>
-						</div>
-						<div v-if="tc.output !== undefined" :class="$style.toolStepDataSection">
-							<span :class="$style.toolStepDataLabel">
-								{{ i18n.baseText('agentSessions.timeline.output') }}
-							</span>
-							<pre :class="$style.toolStepDataContent">{{ formatToolData(tc.output) }}</pre>
-						</div>
+						</template>
+						<N8nIcon
+							v-if="view.expandable"
+							:icon="view.expanded ? 'chevron-down' : 'chevron-right'"
+							size="small"
+							:class="$style.chevron"
+						/>
+					</component>
+					<div v-if="view.expandable && view.expanded" :class="$style.answer">
+						<N8nMarkdownEditor
+							:model-value="view.details"
+							readonly
+							variant="ghost"
+							show-toolbar="never"
+							max-height="240px"
+						/>
 					</div>
-				</AnimatedCollapsibleContent>
-			</CollapsibleRoot>
+				</div>
+			</template>
 		</li>
 	</ol>
 </template>
@@ -130,99 +192,113 @@ function formatToolData(value: unknown): string {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
 }
 
 .toolStep {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
 	align-items: stretch;
-	gap: var(--spacing--4xs);
-	position: relative;
+	gap: var(--spacing--2xs);
 	user-select: none;
 }
 
-.toolStepRow {
+.rail {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	width: 14px;
 }
 
-.toolStepIndicator {
-	position: relative;
+.indicator {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	width: 14px;
-	height: 14px;
+	/* Match the label's line box so the icon centers on the first text line. */
+	height: calc(var(--font-size--sm) * var(--line-height--sm));
 	flex-shrink: 0;
 	color: var(--text-color--subtler);
 }
 
-.toolStep:not(:last-child) .toolStepIndicator::after {
-	content: '';
-	position: absolute;
-	top: calc(100% + 1px);
-	left: 50%;
+/**
+ * The connecting line. `flex: 1` makes it grow to fill the rail's remaining
+ * height — which equals the step's height (rail is stretched) — so it always
+ * reaches the next step's icon, regardless of an expanded answer. The
+ * min-height provides the spacing between adjacent steps. Hidden on the last
+ * step so there's no dangling tail.
+ */
+.railLine {
+	flex: 1 1 auto;
 	width: 1px;
-	height: var(--spacing--2xs);
-	transform: translateX(-50%);
+	min-height: var(--spacing--2xs);
+	margin: 2px 0;
 	background-color: var(--border-color);
 }
 
-.toolStepDone {
+.toolStep:last-child .railLine {
+	display: none;
+}
+
+.indicatorDone {
 	color: var(--text-color--success);
 }
 
-.toolStepError {
+.indicatorError {
 	color: var(--text-color--danger);
 }
 
-.toolStepLoading {
+.indicatorCancelled {
+	color: var(--text-color--subtler);
+}
+
+.indicatorLoading {
 	color: var(--text-color);
 }
 
-.toolStepSuspended {
+.indicatorSuspended {
 	color: var(--text-color--warning);
 }
 
-.toolStepLabel {
+.stepBody {
+	flex: 1 1 0;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.stepRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.stepRowButton {
+	width: 100%;
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.label {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	color: var(--text-color--subtler);
 	line-height: var(--line-height--sm);
 }
 
-.toolStepText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	overflow: hidden;
-	min-width: 0;
-}
-
-.toolStepTrigger {
-	border: 0;
-	background: transparent;
-	padding: 0;
-	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-	color: inherit;
-}
-
-.toolStepChevron {
+.separator {
 	color: var(--text-color--subtler);
-	transition: transform var(--duration--snappy) var(--easing--ease-out);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--sm);
 }
 
-.toolStepChevronOpen {
-	transform: rotate(90deg);
-}
-
-.toolStepSummary {
+.summary {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--sm);
@@ -232,37 +308,22 @@ function formatToolData(value: unknown): string {
 	min-width: 0;
 }
 
-.toolStepDataList {
-	margin-left: calc(14px + var(--spacing--2xs));
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	max-width: min(520px, calc(100vw - var(--spacing--4xl)));
+.chevron {
+	color: var(--text-color--subtler);
+	flex-shrink: 0;
 }
 
-.toolStepDataSection {
-	border: var(--border-width) var(--border-style) var(--border-color);
-	border-radius: var(--radius--xs);
-	background-color: var(--background--base);
-	padding: var(--spacing--2xs);
-}
-
-.toolStepDataLabel {
-	display: block;
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--sm);
+.answer {
+	margin-bottom: var(--spacing--xs);
+	border-radius: var(--radius--sm);
+	background-color: var(--background--subtle);
+	overflow: hidden;
 	color: var(--text-color--subtle);
-	margin-bottom: var(--spacing--5xs);
-}
-
-.toolStepDataContent {
-	margin: 0;
-	font-family: monospace;
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--sm);
-	color: var(--text-color);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
+	font-size: var(--font-size--2xs);
+	/* N8nMarkdownEditor sizes its content from --input--font-size (falling back
+	   to inherit when unset). Pin it a step below the step label so the
+	   sub-agent answer reads as secondary, compact detail. */
+	--input--font-size: var(--font-size--2xs);
 }
 
 .shimmer {
@@ -286,12 +347,6 @@ function formatToolData(value: unknown): string {
 
 	100% {
 		background-position: -200% 0;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.toolStepChevron {
-		transition: none;
 	}
 }
 </style>

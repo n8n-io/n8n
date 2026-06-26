@@ -1,6 +1,8 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-explicit-any -- test-only */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { inject } from 'vue';
+import { ChatHubToolContextKey } from '@/app/constants/injectionKeys';
 
 const credentialsById: Record<string, { id: string; name: string }> = {};
 const getCredentialById = vi.fn((id: string) => credentialsById[id]);
@@ -40,6 +42,11 @@ const NodeCredentialsStub = {
 		skipAutoSelect: { type: Boolean, default: false },
 		readonly: { type: Boolean, default: false },
 	},
+	setup() {
+		return {
+			isToolContext: inject(ChatHubToolContextKey, false),
+		};
+	},
 	emits: ['credentialSelected'],
 	template: `
 		<div
@@ -48,6 +55,7 @@ const NodeCredentialsStub = {
 			:data-project-id="projectId"
 			:data-standalone="String(standalone)"
 			:data-hide-issues="String(hideIssues)"
+			:data-tool-context="String(isToolContext)"
 			:data-skip-auto-select="String(skipAutoSelect)"
 			:data-readonly="String(readonly)"
 			:data-node-type="node?.type"
@@ -115,6 +123,7 @@ describe('AskCredentialCard', () => {
 		expect(stub.attributes('data-project-id')).toBe('p1');
 		expect(stub.attributes('data-standalone')).toBe('true');
 		expect(stub.attributes('data-hide-issues')).toBe('true');
+		expect(stub.attributes('data-tool-context')).toBe('true');
 		expect(stub.attributes('data-skip-auto-select')).toBe('true');
 		expect(stub.attributes('data-readonly')).toBe('false');
 	});

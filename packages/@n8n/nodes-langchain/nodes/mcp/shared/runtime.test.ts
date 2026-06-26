@@ -1,4 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
@@ -10,6 +11,7 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
+import { McpClientsManager } from './McpClientsManager';
 import { buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
 import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
 import { buildMcpToolName } from '../McpClientTool/utils';
@@ -17,10 +19,13 @@ import { buildMcpToolName } from '../McpClientTool/utils';
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
-jest.mock('@n8n/ai-utilities', () => ({
-	...jest.requireActual('@n8n/ai-utilities'),
-	proxyFetch: jest.fn(),
-}));
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...(actual as Record<string, unknown>),
+		proxyFetch: vi.fn(),
+	};
+});
 
 const baseConfig: ResolvedMcpConfig = {
 	authentication: 'none',
@@ -74,6 +79,93 @@ describe('runtime', () => {
 	});
 
 	describe('buildMcpToolkit', () => {
+		it('passes the execution cancel signal to connectMcpClient while connecting', async () => {
+			const abort = new AbortController();
+			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
+				ok: true,
+				result: {
+					close: vi.fn(),
+				},
+			});
+			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
+
+			vi.resetModules();
+			vi.doMock('./utils', async () => {
+				const actual = await vi.importActual('./utils');
+				return {
+					...(actual as Record<string, unknown>),
+					connectMcpClientForCredential,
+					getAllTools,
+					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
+				};
+			});
+			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
+			const ctx = createSupplyDataCtx({
+				getExecutionCancelSignal: jest.fn(() => abort.signal),
+			});
+
+			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
+
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ signal: abort.signal }),
+			);
+			vi.doUnmock('./utils');
+		});
+
+		it('passes undefined as signal when getExecutionCancelSignal returns no signal', async () => {
+			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
+				ok: true,
+				result: {
+					close: vi.fn(),
+				},
+			});
+			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
+
+			vi.resetModules();
+			vi.doMock('./utils', async () => {
+				const actual = await vi.importActual('./utils');
+				return {
+					...(actual as Record<string, unknown>),
+					connectMcpClientForCredential,
+					getAllTools,
+					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
+				};
+			});
+			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
+			const ctx = createSupplyDataCtx({
+				getExecutionCancelSignal: jest.fn(() => undefined),
+			});
+
+			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
+
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ signal: undefined }),
+			);
+			vi.doUnmock('./utils');
+		});
+
+		it('surfaces a cancelled connection result without listing tools', async () => {
+			const abortError = new Error('aborted');
+			abortError.name = 'AbortError';
+			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(abortError);
+			const listTools = jest.spyOn(Client.prototype, 'listTools');
+			const abort = new AbortController();
+			const ctx = createSupplyDataCtx({
+				getExecutionCancelSignal: jest.fn(() => abort.signal),
+			});
+
+			await expect(buildMcpToolkit(ctx, 0, baseConfig)).rejects.toThrow('Execution was cancelled');
+
+			expect(listTools).not.toHaveBeenCalled();
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
 		it('throws when execution is already cancelled', async () => {
 			const abort = new AbortController();
 			abort.abort();
@@ -308,6 +400,117 @@ describe('runtime', () => {
 
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow('network');
 			expect(closeSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('executeMcpTool session cache', () => {
+		let manager: McpClientsManager;
+
+		function createCachedCtx(executionId: string, overrides: Record<string, unknown> = {}) {
+			return mock<IExecuteFunctions>({
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.4, name: 'MCP', type: 'mcp' })),
+				logger: { debug: jest.fn(), error: jest.fn(), info: jest.fn(), warn: jest.fn() },
+				getInputData: jest.fn(() => [{ json: { tool: buildMcpToolName('MCP', 'search') } }]),
+				getExecutionId: jest.fn(() => executionId),
+				getExecutionCancelSignal: jest.fn(() => undefined),
+				onExecutionCancellation: jest.fn(),
+				...overrides,
+			} as Partial<IExecuteFunctions>);
+		}
+
+		beforeEach(() => {
+			manager = new McpClientsManager({
+				cacheTtl: 300_000,
+				cacheMaxSize: 500,
+			} as never);
+			vi.mocked(Container.get).mockReturnValue(manager as never);
+		});
+
+		afterEach(() => {
+			manager.shutdown();
+		});
+
+		it('reuses one client across execute calls within the same execution', async () => {
+			const connect = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedCtx('exec-1');
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+
+			expect(connect).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.callTool).toHaveBeenCalledTimes(2);
+			expect(close).not.toHaveBeenCalled();
+			expect(manager.size).toBe(1);
+		});
+
+		it('opens a fresh client per call when the cache is disabled', async () => {
+			const connect = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedCtx('exec-1');
+			await executeMcpTool(ctx, () => baseConfig);
+			await executeMcpTool(ctx, () => baseConfig);
+
+			expect(connect).toHaveBeenCalledTimes(2);
+			expect(close).toHaveBeenCalledTimes(2);
+		});
+
+		it('bypasses the cache when there is no execution id', async () => {
+			const connect = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedCtx('');
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+
+			expect(connect).toHaveBeenCalledTimes(2);
+			expect(close).toHaveBeenCalledTimes(2);
+			expect(manager.size).toBe(0);
+		});
+
+		it('does not share the cache across different executions', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await executeMcpTool(createCachedCtx('exec-1'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+			await executeMcpTool(createCachedCtx('exec-2'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+
+			expect(Client.prototype.connect).toHaveBeenCalledTimes(2);
+			expect(manager.size).toBe(2);
+		});
+
+		it('closes and evicts the cached client on execution cancellation', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			let cancel: () => void = () => {};
+			const ctx = createCachedCtx('exec-1', {
+				onExecutionCancellation: jest.fn((handler: () => void) => {
+					cancel = handler;
+				}),
+			});
+
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+			expect(manager.size).toBe(1);
+
+			cancel();
+			expect(close).toHaveBeenCalledTimes(1);
+			expect(manager.size).toBe(0);
 		});
 	});
 

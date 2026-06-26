@@ -384,6 +384,29 @@ export default wf.add(start);
 			expect(jsonAfter.nodes[0].id).toBe(expectedId);
 			expect(jsonAfter.nodes[0].id).not.toBe(originalId);
 		});
+
+		it('should preserve existing node IDs matched by name and only generate IDs for new nodes', () => {
+			const wf = workflow('test-workflow-id', 'Test Workflow').add(
+				trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+					.to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Set A' } }))
+					.to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Set B' } })),
+			);
+
+			// Start and Set A already exist with hand-built IDs; Set B is new.
+			const existingIdsByName = new Map([
+				['Start', 'manual-start'],
+				['Set A', 'manual-set-a'],
+			]);
+			wf.regenerateNodeIds(existingIdsByName);
+			const json = wf.toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Start')?.id).toBe('manual-start');
+			expect(json.nodes.find((n) => n.name === 'Set A')?.id).toBe('manual-set-a');
+			// The new node falls back to a deterministic ID.
+			expect(json.nodes.find((n) => n.name === 'Set B')?.id).toBe(
+				generateDeterministicNodeId('test-workflow-id', 'n8n-nodes-base.set', 'Set B'),
+			);
+		});
 	});
 
 	describe('Roundtrip with deterministic IDs', () => {

@@ -11,16 +11,16 @@ describe('WindowedChatMemory', () => {
 	const createMockHistory = (messages: Message[] = []): ChatHistory => {
 		const storage = [...messages];
 		return {
-			getMessages: jest.fn().mockImplementation(async () => await Promise.resolve([...storage])),
-			addMessage: jest.fn().mockImplementation(async (msg: Message) => {
+			getMessages: vi.fn().mockImplementation(async () => await Promise.resolve([...storage])),
+			addMessage: vi.fn().mockImplementation(async (msg: Message) => {
 				storage.push(msg);
 				return;
 			}),
-			addMessages: jest.fn().mockImplementation(async (msgs: Message[]) => {
+			addMessages: vi.fn().mockImplementation(async (msgs: Message[]) => {
 				storage.push(...msgs);
 				return;
 			}),
-			clear: jest.fn().mockImplementation(async () => {
+			clear: vi.fn().mockImplementation(async () => {
 				storage.length = 0;
 				return;
 			}),

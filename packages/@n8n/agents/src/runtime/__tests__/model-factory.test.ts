@@ -1,6 +1,6 @@
 import type { LanguageModel } from 'ai';
 
-import { createEmbeddingModel, createModel } from '../model-factory';
+import { createEmbeddingModel, createModel } from '../model/model-factory';
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -138,6 +138,18 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
+		specificationVersion: 'v3',
+	}),
+}));
+
+vi.mock('@ai-sdk/openai-compatible', () => ({
+	createOpenAICompatible: (opts: ProviderOpts & { name: string }) => (model: string) => ({
+		provider: opts.name,
+		modelId: model,
+		apiKey: opts.apiKey,
+		baseURL: opts.baseURL,
+		headers: opts.headers,
+		fetch: opts.fetch,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -287,6 +299,18 @@ describe('createModel', () => {
 			expect(model.provider).toBe('openrouter');
 			expect(model.modelId).toBe('openai/gpt-4o');
 			expect(model.apiKey).toBe('or-test');
+		});
+
+		it('should create model for nvidia', () => {
+			const model = createModel({
+				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',
+				apiKey: 'nv-test',
+				baseURL: 'https://integrate.api.nvidia.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('nvidia');
+			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
+			expect(model.apiKey).toBe('nv-test');
+			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
 		});
 	});
 

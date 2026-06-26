@@ -434,6 +434,14 @@ export class LmChatAnthropic implements INodeType {
 							},
 						},
 					},
+					{
+						displayName: 'Stream Responses',
+						name: 'streaming',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
+					},
 				],
 			},
 		],
@@ -469,6 +477,7 @@ export class LmChatAnthropic implements INodeType {
 			thinkingBudget?: number;
 			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+			streaming?: boolean;
 		};
 
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
@@ -577,6 +586,7 @@ export class LmChatAnthropic implements INodeType {
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, gatewayErrorHandler),
 			invocationKwargs,
 			clientOptions,
+			streaming: options.streaming ?? false,
 		};
 
 		// Opus 4.7 rejects temperature/topK/topP at the SDK layer regardless of thinking mode

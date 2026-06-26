@@ -7,7 +7,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { UnexpectedError, createDeferredPromise } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -17,15 +17,15 @@ import { getSchedulingFunctions } from './utils/scheduling-helper-functions';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 const throwOnEmit = () => {
-	throw new ApplicationError('Overwrite TriggerContext.emit function');
+	throw new UnexpectedError('Overwrite TriggerContext.emit function');
 };
 
 const throwOnEmitError = () => {
-	throw new ApplicationError('Overwrite TriggerContext.emitError function');
+	throw new UnexpectedError('Overwrite TriggerContext.emitError function');
 };
 
 const throwOnSaveFailedExecution = () => {
-	throw new ApplicationError('Overwrite TriggerContext.saveFailedExecution function');
+	throw new UnexpectedError('Overwrite TriggerContext.saveFailedExecution function');
 };
 
 export class TriggerContext extends NodeExecutionContext implements ITriggerFunctions {

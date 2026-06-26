@@ -1,4 +1,5 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { Mock } from 'vitest';
 
 import type { InstanceAiContext } from '../../../types';
 import {
@@ -16,19 +17,20 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 	return {
 		userId: 'test-user',
 		workflowService: {
-			getAsWorkflowJSON: jest
+			getAsWorkflowJSON: vi
 				.fn()
 				.mockResolvedValue(existingWorkflow ?? { name: 'existing', nodes: [], connections: {} }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
 		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 }
 
@@ -77,9 +79,6 @@ describe('resolveCredentials', () => {
 			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
 			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
 			expect(json.nodes[0].credentials).toEqual({});
-			expect(result.verificationPinData).toEqual({
-				Slack: [{ _mockedCredential: 'slackApi' }],
-			});
 		});
 
 		it('mocks null credentials', async () => {
@@ -142,8 +141,8 @@ describe('resolveCredentials', () => {
 		});
 	});
 
-	describe('credential mocking with sidecar verification data', () => {
-		it('mocks unresolved credentials and marks existing pinData as verification-ready', async () => {
+	describe('credential mocking', () => {
+		it('mocks unresolved credentials and preserves existing pinData', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -171,12 +170,9 @@ describe('resolveCredentials', () => {
 			expect(json.pinData).toEqual({
 				Slack: [{ ok: true, channel: 'C123', message: { text: 'Hello' } }],
 			});
-			// No sidecar pin data needed — existing workflow pinData suffices
-			expect(result.verificationPinData).toEqual({});
-			expect(result.usesWorkflowPinDataForVerification).toBe(true);
 		});
 
-		it('produces sidecar verification pinData when no existing pinData', async () => {
+		it('mocks unresolved credentials without touching json.pinData', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -198,10 +194,6 @@ describe('resolveCredentials', () => {
 			expect(json.nodes[0].credentials).toEqual({});
 			// json.pinData must NOT be mutated
 			expect(json.pinData).toBeUndefined();
-			// Verification pin data in sidecar
-			expect(result.verificationPinData).toEqual({
-				Gmail: [{ _mockedCredential: 'gmailOAuth2Api' }],
-			});
 		});
 
 		it('does not mock credentials that are already resolved (non-null value)', async () => {
@@ -223,7 +215,6 @@ describe('resolveCredentials', () => {
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(result.mockedCredentialTypes).toEqual([]);
 			expect(result.mockedCredentialsByNode).toEqual({});
-			expect(result.verificationPinData).toEqual({});
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'real-id', name: 'Real Slack' },
 			});
@@ -261,11 +252,6 @@ describe('resolveCredentials', () => {
 			});
 			// json.pinData must NOT be mutated
 			expect(json.pinData).toBeUndefined();
-			// Sidecar verification data for both nodes
-			expect(result.verificationPinData).toEqual({
-				'Slack 1': [{ _mockedCredential: 'slackApi' }],
-				'Slack 2': [{ _mockedCredential: 'slackApi' }],
-			});
 		});
 	});
 
@@ -305,7 +291,7 @@ describe('resolveCredentials', () => {
 
 		it('keeps a raw credential id from a type with multiple available credentials', async () => {
 			const ctx = createMockContext();
-			(ctx.credentialService.list as jest.Mock).mockResolvedValueOnce([
+			(ctx.credentialService.list as Mock).mockResolvedValueOnce([
 				{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
 				{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
 			]);
@@ -356,9 +342,6 @@ describe('resolveCredentials', () => {
 			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
 			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
 			expect(json.nodes[0].credentials).toEqual({});
-			expect(result.verificationPinData).toEqual({
-				Slack: [{ _mockedCredential: 'slackApi' }],
-			});
 		});
 
 		it('mocks a mock-* raw credential id that is absent from the snapshot', async () => {
@@ -518,8 +501,6 @@ describe('resolveCredentials', () => {
 			expect(json.pinData).toEqual({
 				Slack: [{ ok: true }],
 			});
-			expect(result.verificationPinData).toEqual({});
-			expect(result.usesWorkflowPinDataForVerification).toBe(true);
 		});
 	});
 

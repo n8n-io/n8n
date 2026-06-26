@@ -600,7 +600,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-2',
-							toolName: 'build-workflow-with-agent',
+							toolName: 'build-workflow',
 							input: {},
 							state: 'resolved',
 							output: 'ok',
@@ -608,7 +608,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-3',
-							toolName: 'plan',
+							toolName: 'create-tasks',
 							input: {},
 							state: 'resolved',
 							output: 'ok',
@@ -750,7 +750,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'toolu_plan',
-							toolName: 'plan',
+							toolName: 'create-tasks',
 							input: {},
 							state: 'resolved',
 							output: { result: 'Plan approved and 2 tasks dispatched.' },
@@ -983,7 +983,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-parts',
-							toolName: 'plan',
+							toolName: 'create-tasks',
 							input: { goal: 'x' },
 							state: 'resolved',
 							output: 'done',
@@ -1019,7 +1019,7 @@ describe('confirmation expiration helpers', () => {
 				reasoning: '',
 				toolCalls: requestIds.map((requestId, idx) => ({
 					toolCallId: `tc-${idx}`,
-					toolName: 'plan',
+					toolName: 'create-tasks',
 					args: {},
 					isLoading: true,
 					confirmation: {
@@ -1031,15 +1031,15 @@ describe('confirmation expiration helpers', () => {
 				})),
 				children: [
 					{
-						agentId: 'agent-planner',
-						role: 'planner',
+						agentId: 'agent-delegate',
+						role: 'delegate',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
 						toolCalls: [
 							{
 								toolCallId: 'tc-sub',
-								toolName: 'submit-plan',
+								toolName: 'ask-user',
 								args: {},
 								isLoading: true,
 								confirmation: {
@@ -1110,7 +1110,7 @@ describe('confirmation expiration helpers', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-0',
-						toolName: 'plan',
+						toolName: 'create-tasks',
 						args: {},
 						isLoading: overrides.isLoading ?? true,
 						...(overrides.confirmationStatus

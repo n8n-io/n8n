@@ -368,6 +368,13 @@ export function getExecutionErrorToastConfiguration({
 }) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
 
+	if (error.name === 'WorkflowHasIssuesError') {
+		return {
+			title: i18n.baseText('pushConnection.workflowHasIssues.title'),
+			message: h('div', { style: 'white-space: pre-line' }, error.message),
+		};
+	}
+
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };
 	}

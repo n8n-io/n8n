@@ -31,11 +31,35 @@ export type PatchRoleMappingRuleInput = {
 	projectIds?: string[];
 };
 
+type RoleMappingRuleListResponse =
+	| { count: number; items: RoleMappingRuleResponse[] }
+	| RoleMappingRuleResponse[];
+
+// The list endpoint paginates with a small default page size, so a single
+// request silently drops every rule past the first page. The settings UI needs
+// the complete set to render and save correctly, so walk every page here.
 export const listRoleMappingRules = async (
 	context: IRestApiContext,
 ): Promise<RoleMappingRuleResponse[]> => {
-	const response = await makeRestApiRequest(context, 'GET', '/role-mapping-rule');
-	return (response as { items: RoleMappingRuleResponse[] }).items ?? response;
+	const pageSize = 250;
+	const rules: RoleMappingRuleResponse[] = [];
+
+	for (let skip = 0; ; skip += pageSize) {
+		const response = await makeRestApiRequest<RoleMappingRuleListResponse>(
+			context,
+			'GET',
+			'/role-mapping-rule',
+			{ skip, take: pageSize },
+		);
+
+		if (Array.isArray(response)) return response;
+
+		rules.push(...response.items);
+
+		if (rules.length >= response.count || response.items.length === 0) break;
+	}
+
+	return rules;
 };
 
 export const createRoleMappingRule = async (

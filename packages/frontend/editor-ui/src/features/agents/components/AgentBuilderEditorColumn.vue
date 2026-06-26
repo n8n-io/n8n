@@ -16,6 +16,7 @@ import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
+import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -44,10 +45,8 @@ const emit = defineEmits<{
 	'update:config': [updates: Partial<AgentJsonConfig>];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
-	'open-trigger': [triggerType: string];
 	'add-tool': [];
 	'add-skill': [];
-	'add-trigger': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
 	'upload-files': [files: File[]];
@@ -56,6 +55,7 @@ const emit = defineEmits<{
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -112,33 +112,34 @@ const i18n = useI18n();
 							:reload-key="tasksReloadKey"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
-							@open-trigger="emit('open-trigger', $event)"
 							@add-tool="emit('add-tool')"
 							@add-skill="emit('add-skill')"
-							@add-trigger="emit('add-trigger')"
+							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
+							@agent-changed="emit('agent-changed')"
 						/>
 					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentInfoPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
+							:project-id="projectId"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
 
 					<N8nCard variant="outlined" :class="$style.card">
-						<AgentMemoryPanel
+						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
-							embedded
-							data-testid="agent-memory-panel"
+							:project-id="projectId"
+							:agent-id="agentId"
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
@@ -153,6 +154,16 @@ const i18n = useI18n();
 							data-testid="agent-files-card"
 							@upload-files="emit('upload-files', $event)"
 							@delete-file="emit('delete-file', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard variant="outlined" :class="$style.card">
+						<AgentMemoryPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							embedded
+							data-testid="agent-memory-panel"
+							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
 
@@ -190,7 +201,7 @@ const i18n = useI18n();
 	flex-direction: column;
 	background-color: var(--background--surface);
 	min-height: 0;
-	min-width: 0;
+	min-width: var(--agent-builder-editor-min-width, 35rem);
 }
 
 .panelArea {

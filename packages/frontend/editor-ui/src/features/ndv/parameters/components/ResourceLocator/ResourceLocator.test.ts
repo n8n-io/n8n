@@ -131,7 +131,7 @@ describe('ResourceLocator', () => {
 		];
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: TEST_ITEMS,
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		const { getByTestId, getByText, getAllByTestId } = renderComponent();
 
@@ -155,7 +155,7 @@ describe('ResourceLocator', () => {
 	it('renders add resource button', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		const { getByTestId } = renderComponent({
 			props: {
@@ -178,7 +178,7 @@ describe('ResourceLocator', () => {
 	it('creates new resource passing search filter as name', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
 
@@ -224,7 +224,7 @@ describe('ResourceLocator', () => {
 					url: 'https://test.com/test-resource',
 				},
 			],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test Node',
@@ -269,7 +269,7 @@ describe('ResourceLocator', () => {
 		];
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: TEST_ITEMS,
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test Node',
@@ -457,7 +457,7 @@ describe('ResourceLocator', () => {
 		const windowOpenSpy = vi.spyOn(window, 'open');
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 
 		const { getByTestId } = renderComponent({
@@ -488,10 +488,11 @@ describe('ResourceLocator', () => {
 		projectsStore.currentProjectId = undefined as unknown as string;
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
-			paginationToken: null,
+			paginationToken: undefined,
 		});
 
 		const mockWorkflowDocumentStore = shallowRef({
+			documentId: 'test-workflow@latest',
 			homeProject: { id: 'home-project-456', name: 'Test Project', type: 'team' },
 		});
 
@@ -528,8 +529,8 @@ describe('ResourceLocator', () => {
 		];
 
 		nodeTypesStore.getResourceLocatorResults
-			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: null })
-			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: null });
+			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: undefined })
+			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: undefined });
 
 		const { getByTestId, getByText } = renderComponent({
 			props: {
@@ -611,7 +612,7 @@ describe('ResourceLocator', () => {
 			expect(queryByText('This is taking longer than expected')).toBeInTheDocument();
 
 			if (resolvePromise) {
-				resolvePromise({ results: [], paginationToken: null });
+				resolvePromise({ results: [], paginationToken: undefined });
 			}
 			vi.useRealTimers();
 		}, 10000);
@@ -638,7 +639,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { queryByText } = renderComponent({
@@ -679,7 +680,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [{ name: 'Test Item', value: 'test-item' }],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId, queryByText } = renderComponent({
@@ -736,7 +737,7 @@ describe('ResourceLocator', () => {
 			expect(noticeContainer).not.toBeInTheDocument();
 
 			if (resolvePromise) {
-				resolvePromise({ results: [], paginationToken: null });
+				resolvePromise({ results: [], paginationToken: undefined });
 			}
 			vi.useRealTimers();
 		});
@@ -936,7 +937,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId } = renderComponent({
@@ -963,7 +964,7 @@ describe('ResourceLocator', () => {
 		it('passes empty object when no context is injected', async () => {
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 
 			const { getByTestId } = renderComponent();
@@ -986,7 +987,7 @@ describe('ResourceLocator', () => {
 
 			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 				results: [],
-				paginationToken: null,
+				paginationToken: undefined,
 			});
 			nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
 
