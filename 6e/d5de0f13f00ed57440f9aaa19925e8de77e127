@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/trigger/MicrosoftOutlookTrigger.transport.test.ts
+  s_51def3912d3fc1::t_ffd9c699e743a1 117-133
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_51def3912d3fc1::t_1c258213f65369 335-344
+  s_51def3912d3fc1::t_d38b825c845998 285-297
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/getAll.test.ts
+  s_51def3912d3fc1::t_e96354d5823d80 69-71,75-84
+  s_51def3912d3fc1::t_b64c5a48f35304 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "6ed5de0f13f00ed57440f9aaa19925e8de77e127",
+  "prompts": {},
+  "sessions": {
+    "s_51def3912d3fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31afa3d2-fd0e-4f42-93c3-95839cb0136c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
