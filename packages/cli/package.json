@@ -92,6 +92,8 @@
     "@vvo/tzdb": "^6.141.0",
     "concurrently": "^8.2.0",
     "esbuild": "^0.25.0",
+    "file-type": "catalog:",
+    "form-data": "catalog:",
     "ioredis-mock": "^8.8.1",
     "mjml": "^4.15.3",
     "n8n-containers": "workspace:*",
