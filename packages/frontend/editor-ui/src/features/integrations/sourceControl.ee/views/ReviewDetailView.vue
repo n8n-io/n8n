@@ -34,6 +34,10 @@ const toast = useToast();
 const router = useRouter();
 const sourceControlStore = useSourceControlStore();
 
+const isDeploying = ref(false);
+
+const canDeploy = computed(() => canComment.value && pullRequest.value?.isApproved === true);
+
 const isLoading = ref(true);
 const pullRequest = ref<SourceControlReviewSummary>();
 const workflows = ref<ReviewWorkflowFile[]>([]);
@@ -129,6 +133,24 @@ const onReviewSubmitted = (event: SourceControlReviewSubmissionEvent) => {
 	}
 };
 
+const deploy = async () => {
+	if (!canDeploy.value || isDeploying.value) return;
+
+	isDeploying.value = true;
+	try {
+		await sourceControlStore.deployReview(Number(props.prNumber));
+		toast.showMessage({
+			title: i18n.baseText('sourceControl.reviews.deploy.success.title'),
+			type: 'success',
+		});
+		void router.push({ name: VIEWS.REVIEWS });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('sourceControl.reviews.deploy.error'));
+	} finally {
+		isDeploying.value = false;
+	}
+};
+
 watch(selectedPath, (path) => {
 	void loadComments(path);
 });
@@ -175,7 +197,22 @@ onMounted(loadReview);
 					/></N8nText>
 				</N8nLink>
 			</div>
-			<div v-if="canComment && pullRequest" :class="$style.headerActions">
+			<div v-if="pullRequest && (canComment || canDeploy)" :class="$style.headerActions">
+				<N8nTooltip v-if="canDeploy" placement="bottom">
+					<template #content>
+						{{ i18n.baseText('sourceControl.reviews.deploy.tooltip') }}
+					</template>
+					<N8nButton
+						v-if="canComment"
+						size="small"
+						:loading="isDeploying"
+						:disabled="isDeploying"
+						data-test-id="review-deploy-button"
+						@click="deploy"
+					>
+						{{ i18n.baseText('sourceControl.reviews.deploy.action') }}
+					</N8nButton>
+				</N8nTooltip>
 				<ReviewSubmitReviewPopover
 					:pr-number="pullRequest.prNumber"
 					@submitted="onReviewSubmitted"
@@ -289,6 +326,9 @@ onMounted(loadReview);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 	line-height: 0;
 }

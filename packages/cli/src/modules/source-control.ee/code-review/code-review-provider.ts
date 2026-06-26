@@ -91,6 +91,12 @@ export interface CreatePullRequest {
 	baseBranch: string;
 }
 
+export interface PullRequestMergeResult {
+	merged: boolean;
+	sha?: string;
+	message: string;
+}
+
 /**
  * Platform-agnostic access to a git host's code-review API
  * (GitHub PRs, GitLab MRs, ...). Implementations translate provider responses
@@ -129,4 +135,6 @@ export interface CodeReviewProvider {
 	listPullRequestReviews(prNumber: number): Promise<PullRequestReviewStateEntry[]>;
 
 	createPullRequest(request: CreatePullRequest): Promise<PullRequestSummary>;
+
+	mergePullRequest(prNumber: number): Promise<PullRequestMergeResult>;
 }

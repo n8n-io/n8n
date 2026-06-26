@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock, type MockProxy } from 'jest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import type { CodeReviewProvider, PullRequestSummary } from '../code-review-provider';
@@ -26,7 +26,7 @@ describe('PullRequestReviewService', () => {
 	const workflowJson = (id: string, name: string) =>
 		JSON.stringify({ id, name, nodes: [{ name: 'A' }], connections: {} });
 
-	const setup = (provider: CodeReviewProvider | null) => {
+	const setup = (provider: MockProxy<CodeReviewProvider> | null) => {
 		const factory = mock<CodeReviewProviderFactory>();
 		factory.getProvider.mockResolvedValue(provider);
 		const preferences = mock<SourceControlPreferencesService>();

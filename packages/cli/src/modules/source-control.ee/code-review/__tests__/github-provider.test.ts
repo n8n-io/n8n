@@ -1,5 +1,3 @@
-import { UserError } from 'n8n-workflow';
-
 import { GitHubProvider } from '../providers/github-provider';
 
 describe('GitHubProvider', () => {
@@ -15,6 +13,18 @@ describe('GitHubProvider', () => {
 			status,
 			json: async () => body,
 		} as Response);
+		global.fetch = fetchMock as unknown as typeof fetch;
+		return fetchMock;
+	};
+
+	const mockFetchSequence = (responses: Array<{ status: number; body: unknown }>) => {
+		const fetchMock = jest.fn();
+		for (const response of responses) {
+			fetchMock.mockResolvedValueOnce({
+				status: response.status,
+				json: async () => response.body,
+			} as Response);
+		}
 		global.fetch = fetchMock as unknown as typeof fetch;
 		return fetchMock;
 	};
@@ -104,11 +114,43 @@ describe('GitHubProvider', () => {
 		expect(result).toBeNull();
 	});
 
-	it('throws a UserError when the token is rejected', async () => {
+	it('throws a UserError naming an invalid/expired credential on 401', async () => {
 		mockFetch(401, { message: 'Bad credentials' });
 
 		const provider = new GitHubProvider(baseOptions);
-		await expect(provider.listOpenPullRequests('main')).rejects.toThrow(UserError);
+		await expect(provider.listOpenPullRequests('main')).rejects.toThrow(/invalid or has expired/);
+	});
+
+	it('names the Contents permission when reading file content is forbidden (403)', async () => {
+		mockFetch(403, { message: 'Resource not accessible by integration' });
+
+		const provider = new GitHubProvider(baseOptions);
+		await expect(provider.getFileAtRef('workflows/a.json', 'basesha')).rejects.toThrow(
+			/Contents: Read/,
+		);
+	});
+
+	it('names the Pull requests permission when listing is forbidden (403)', async () => {
+		mockFetch(403, { message: 'Resource not accessible by integration' });
+
+		const provider = new GitHubProvider(baseOptions);
+		await expect(provider.listOpenPullRequests('main')).rejects.toThrow(/Pull requests: Read/);
+	});
+
+	it('names write permission when adding a review comment is forbidden (403)', async () => {
+		mockFetch(403, { message: 'Resource not accessible by integration' });
+
+		const provider = new GitHubProvider(baseOptions);
+		await expect(
+			provider.createReviewComment(7, {
+				body: 'x',
+				path: 'workflows/a.json',
+				line: 1,
+				side: 'RIGHT',
+				subjectType: 'line',
+				commitId: 'headsha',
+			}),
+		).rejects.toThrow(/Read and write/);
 	});
 
 	it('deletes a pull request review comment', async () => {
@@ -123,14 +165,21 @@ describe('GitHubProvider', () => {
 	});
 
 	it('submits a pull request review', async () => {
-		const fetchMock = mockFetch(200, {
-			id: 99,
-			body: 'Looks good',
-			html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-99',
-			state: 'APPROVED',
-			submitted_at: '2026-06-03T00:00:00Z',
-			user: { login: 'alice' },
-		});
+		const fetchMock = mockFetchSequence([
+			{ status: 200, body: { login: 'alice' } },
+			{ status: 200, body: [] },
+			{
+				status: 200,
+				body: {
+					id: 99,
+					body: 'Looks good',
+					html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-99',
+					state: 'APPROVED',
+					submitted_at: '2026-06-03T00:00:00Z',
+					user: { login: 'alice' },
+				},
+			},
+		]);
 
 		const provider = new GitHubProvider(baseOptions);
 		const review = await provider.submitPullRequestReview(7, {
@@ -148,7 +197,8 @@ describe('GitHubProvider', () => {
 			submittedAt: '2026-06-03T00:00:00Z',
 		});
 
-		const [url, init] = fetchMock.mock.calls[0];
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		const [url, init] = fetchMock.mock.calls[2];
 		expect(url).toBe('https://api.github.com/repos/acme/flows/pulls/7/reviews');
 		expect((init as RequestInit).method).toBe('POST');
 		expect(JSON.parse(String((init as RequestInit).body))).toEqual({
@@ -156,6 +206,126 @@ describe('GitHubProvider', () => {
 			body: 'Looks good',
 			event: 'APPROVE',
 		});
+	});
+
+	it('submits a pending pull request review after inline comments', async () => {
+		const fetchMock = mockFetchSequence([
+			{ status: 200, body: { login: 'alice' } },
+			{
+				status: 200,
+				body: [
+					{
+						id: 88,
+						body: '',
+						html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-88',
+						state: 'PENDING',
+						submitted_at: '2026-06-03T00:00:00Z',
+						user: { login: 'alice' },
+					},
+				],
+			},
+			{
+				status: 200,
+				body: {
+					id: 88,
+					body: 'Looks good',
+					html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-88',
+					state: 'APPROVED',
+					submitted_at: '2026-06-03T00:00:00Z',
+					user: { login: 'alice' },
+				},
+			},
+		]);
+
+		const provider = new GitHubProvider(baseOptions);
+		const review = await provider.submitPullRequestReview(7, {
+			body: 'Looks good',
+			event: 'APPROVE',
+			commitId: 'headsha',
+		});
+
+		expect(review.state).toBe('APPROVED');
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		const [url, init] = fetchMock.mock.calls[2];
+		expect(url).toBe('https://api.github.com/repos/acme/flows/pulls/7/reviews/88/events');
+		expect((init as RequestInit).method).toBe('POST');
+		expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+			body: 'Looks good',
+			event: 'APPROVE',
+		});
+	});
+
+	it('submits a pending review when GET /user is forbidden for GitHub App tokens', async () => {
+		const fetchMock = mockFetchSequence([
+			{ status: 403, body: { message: 'Resource not accessible by integration' } },
+			{
+				status: 200,
+				body: [
+					{
+						id: 88,
+						body: '',
+						html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-88',
+						state: 'PENDING',
+						submitted_at: '2026-06-03T00:00:00Z',
+						user: { login: 'n8n-app[bot]' },
+					},
+				],
+			},
+			{
+				status: 200,
+				body: {
+					id: 88,
+					body: 'Looks good',
+					html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-88',
+					state: 'APPROVED',
+					submitted_at: '2026-06-03T00:00:00Z',
+					user: { login: 'n8n-app[bot]' },
+				},
+			},
+		]);
+
+		const provider = new GitHubProvider(baseOptions);
+		const review = await provider.submitPullRequestReview(7, {
+			body: 'Looks good',
+			event: 'APPROVE',
+			commitId: 'headsha',
+		});
+
+		expect(review.state).toBe('APPROVED');
+		expect(fetchMock.mock.calls[0][0]).toBe('https://api.github.com/user');
+		expect(fetchMock.mock.calls[2][0]).toBe(
+			'https://api.github.com/repos/acme/flows/pulls/7/reviews/88/events',
+		);
+	});
+
+	it('creates a review when GET /user is forbidden and no pending review exists', async () => {
+		const fetchMock = mockFetchSequence([
+			{ status: 403, body: { message: 'Resource not accessible by integration' } },
+			{ status: 200, body: [] },
+			{
+				status: 200,
+				body: {
+					id: 99,
+					body: 'Looks good',
+					html_url: 'https://github.com/acme/flows/pull/7#pullrequestreview-99',
+					state: 'APPROVED',
+					submitted_at: '2026-06-03T00:00:00Z',
+					user: { login: 'n8n-app[bot]' },
+				},
+			},
+		]);
+
+		const provider = new GitHubProvider(baseOptions);
+		const review = await provider.submitPullRequestReview(7, {
+			body: 'Looks good',
+			event: 'APPROVE',
+			commitId: 'headsha',
+		});
+
+		expect(review.state).toBe('APPROVED');
+		expect(fetchMock.mock.calls[2][0]).toBe(
+			'https://api.github.com/repos/acme/flows/pulls/7/reviews',
+		);
 	});
 
 	it('lists pull request reviews for approval status', async () => {
@@ -300,5 +470,26 @@ describe('GitHubProvider', () => {
 			head: 'n8n-review/123',
 			base: 'main',
 		});
+	});
+
+	it('merges a pull request', async () => {
+		const fetchMock = mockFetch(200, {
+			sha: 'mergedsha',
+			merged: true,
+			message: 'Pull Request successfully merged',
+		});
+
+		const provider = new GitHubProvider(baseOptions);
+		const result = await provider.mergePullRequest(7);
+
+		expect(result).toEqual({
+			sha: 'mergedsha',
+			merged: true,
+			message: 'Pull Request successfully merged',
+		});
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('https://api.github.com/repos/acme/flows/pulls/7/merge');
+		expect((init as RequestInit).method).toBe('PUT');
 	});
 });

@@ -6,6 +6,7 @@ import type {
 	ReviewWorkflowSnapshot,
 	SourceControlReviewComment,
 	SourceControlReviewDetail,
+	SourceControlReviewDeployResult,
 	SourceControlReviewSubmission,
 	SourceControlReviewSummary,
 	SourceControlledFile,
@@ -370,6 +371,25 @@ export class PullRequestReviewService {
 			state: created.state,
 			author: created.author,
 			submittedAt: created.submittedAt,
+		};
+	}
+
+	async deployReview(prNumber: number): Promise<SourceControlReviewDeployResult> {
+		const provider = await this.getProviderOrThrow();
+		const isApproved = await this.resolveIsApproved(provider, prNumber);
+		if (!isApproved) {
+			throw new UserError('This pull request must be approved before it can be deployed.');
+		}
+
+		const result = await provider.mergePullRequest(prNumber);
+		if (!result.merged) {
+			throw new UserError(result.message || 'The pull request could not be merged.');
+		}
+
+		return {
+			merged: result.merged,
+			sha: result.sha,
+			message: result.message,
 		};
 	}
 }

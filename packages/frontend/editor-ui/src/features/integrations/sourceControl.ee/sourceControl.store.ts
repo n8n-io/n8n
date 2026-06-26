@@ -163,6 +163,10 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.submitReview(rootStore.restApiContext, prNumber, payload);
 	};
 
+	const deployReview = async (prNumber: number) => {
+		return await vcApi.deployReview(rootStore.restApiContext, prNumber);
+	};
+
 	return {
 		isEnterpriseSourceControlEnabled,
 		state,
@@ -187,6 +191,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		createReviewComment,
 		deleteReviewComment,
 		submitReview,
+		deployReview,
 		sshKeyTypesWithLabel,
 	};
 });

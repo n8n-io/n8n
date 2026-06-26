@@ -6,6 +6,7 @@ import type {
 	CreatePullRequest,
 	CreatePullRequestReviewComment,
 	PullRequestFile,
+	PullRequestMergeResult,
 	PullRequestReviewComment,
 	PullRequestReviewStateEntry,
 	PullRequestReviewSubmission,
@@ -19,6 +20,20 @@ interface GitHubProviderOptions {
 	owner: string;
 	repo: string;
 }
+
+/** Describes what a request is doing, so a 401/403 can name the action + needed permission. */
+interface RequestContext {
+	action: string;
+	permission?: string;
+	/** When true, 401/403 are returned instead of throwing (e.g. GET /user with app tokens). */
+	allowForbidden?: boolean;
+}
+
+const PR_READ = 'Pull requests: Read';
+const PR_WRITE = 'Pull requests: Read and write';
+const CONTENTS_READ = 'Contents: Read';
+
+const READ_PRS: RequestContext = { action: 'read pull requests', permission: PR_READ };
 
 interface GitHubPullRequest {
 	// eslint-disable-next-line id-denylist -- mirrors the GitHub API response field
@@ -66,6 +81,16 @@ interface GitHubPullRequestReview {
 	user?: { login: string };
 }
 
+interface GitHubPullRequestMergeResult {
+	sha?: string;
+	merged: boolean;
+	message: string;
+}
+
+interface GitHubUser {
+	login?: string;
+}
+
 const NORMALIZED_STATUS: Record<string, ReviewFileStatus> = {
 	added: 'added',
 	copied: 'added',
@@ -100,6 +125,7 @@ export class GitHubProvider implements CodeReviewProvider {
 	private async request<T>(
 		pathAndQuery: string,
 		init?: RequestInit,
+		ctx?: RequestContext,
 	): Promise<{ status: number; body: T }> {
 		const url = `${this.apiBaseUrl}/${pathAndQuery}`;
 		let response: Response;
@@ -121,9 +147,24 @@ export class GitHubProvider implements CodeReviewProvider {
 			throw new OperationalError('Failed to reach GitHub API', { cause: error });
 		}
 
-		if (response.status === 401 || response.status === 403) {
+		const action = ctx?.action ?? 'access GitHub';
+		// 401 = the credential itself is invalid/expired; 403 = authenticated but lacking the
+		// permission for this specific action (the common "reads work, writes 403" case).
+		if ((response.status === 401 || response.status === 403) && ctx?.allowForbidden) {
+			const body = (await response.json().catch(() => ({}))) as T;
+			return { status: response.status, body };
+		}
+		if (response.status === 401) {
 			throw new UserError(
-				'GitHub rejected the access token. Check the token has pull request read/write access and has not expired.',
+				`GitHub rejected the credentials while trying to ${action} (401). The access token or GitHub App key is invalid or has expired.`,
+			);
+		}
+		if (response.status === 403) {
+			const permissionHint = ctx?.permission
+				? ` This requires the "${ctx.permission}" permission — update your token or GitHub App and, for a GitHub App, accept the permission change on the installation.`
+				: '';
+			throw new UserError(
+				`GitHub denied permission while trying to ${action} (403).${permissionHint}`,
 			);
 		}
 		if (response.status >= 500) {
@@ -183,6 +224,8 @@ export class GitHubProvider implements CodeReviewProvider {
 		const base = encodeURIComponent(targetBranch);
 		const { body } = await this.request<GitHubPullRequest[]>(
 			`${this.repoPath}/pulls?state=open&base=${base}&per_page=100`,
+			undefined,
+			READ_PRS,
 		);
 		if (!Array.isArray(body)) return [];
 		return body.map((pr) => this.toSummary(pr));
@@ -191,6 +234,8 @@ export class GitHubProvider implements CodeReviewProvider {
 	async getPullRequest(prNumber: number): Promise<PullRequestSummary> {
 		const { status, body } = await this.request<GitHubPullRequest>(
 			`${this.repoPath}/pulls/${prNumber}`,
+			undefined,
+			READ_PRS,
 		);
 		if (status === 404) {
 			throw new UserError(`Pull request #${prNumber} was not found`);
@@ -201,6 +246,8 @@ export class GitHubProvider implements CodeReviewProvider {
 	async listFiles(prNumber: number): Promise<PullRequestFile[]> {
 		const { body } = await this.request<GitHubPullRequestFile[]>(
 			`${this.repoPath}/pulls/${prNumber}/files?per_page=100`,
+			undefined,
+			READ_PRS,
 		);
 		if (!Array.isArray(body)) return [];
 		return body.map((file) => ({
@@ -213,6 +260,8 @@ export class GitHubProvider implements CodeReviewProvider {
 		const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
 		const { status, body } = await this.request<GitHubContent>(
 			`${this.repoPath}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
+			undefined,
+			{ action: 'read repository contents', permission: CONTENTS_READ },
 		);
 		// File absent at this ref (e.g. added/removed in the PR).
 		if (status === 404) return null;
@@ -225,6 +274,8 @@ export class GitHubProvider implements CodeReviewProvider {
 	async listReviewComments(prNumber: number): Promise<PullRequestReviewComment[]> {
 		const { body } = await this.request<GitHubReviewComment[]>(
 			`${this.repoPath}/pulls/${prNumber}/comments?per_page=100`,
+			undefined,
+			READ_PRS,
 		);
 		if (!Array.isArray(body)) return [];
 		return body.map((comment) => this.toReviewComment(comment));
@@ -257,6 +308,7 @@ export class GitHubProvider implements CodeReviewProvider {
 				method: 'POST',
 				body: JSON.stringify(payload),
 			},
+			{ action: 'add a review comment', permission: PR_WRITE },
 		);
 		if (status === 422) {
 			throw new UserError(
@@ -275,6 +327,7 @@ export class GitHubProvider implements CodeReviewProvider {
 		const { status } = await this.request<Record<string, never>>(
 			`${this.repoPath}/pulls/comments/${commentId}`,
 			{ method: 'DELETE' },
+			{ action: 'delete a review comment', permission: PR_WRITE },
 		);
 		if (status === 404) {
 			throw new UserError('Pull request review comment was not found.');
@@ -284,10 +337,99 @@ export class GitHubProvider implements CodeReviewProvider {
 		}
 	}
 
-	async submitPullRequestReview(
+	private formatReviewErrorMessage(responseBody: unknown, fallback: string): string {
+		if (
+			typeof responseBody === 'object' &&
+			responseBody !== null &&
+			'message' in responseBody &&
+			typeof responseBody.message === 'string'
+		) {
+			const message = responseBody.message.trim();
+			if (message.length > 0) return message;
+		}
+		return fallback;
+	}
+
+	private async tryGetAuthenticatedLogin(): Promise<string | undefined> {
+		// Installation tokens cannot call GET /user — callers must fall back to other signals.
+		const { status, body } = await this.request<GitHubUser>('user', undefined, {
+			action: 'resolve the authenticated GitHub user',
+			allowForbidden: true,
+		});
+		if (status >= 400) return undefined;
+		return body.login;
+	}
+
+	private async inferActingLoginFromRecentComments(prNumber: number): Promise<string | undefined> {
+		const comments = await this.listReviewComments(prNumber);
+		if (comments.length === 0) return undefined;
+
+		const mostRecent = [...comments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+		return mostRecent.author;
+	}
+
+	private async findPendingReviewId(prNumber: number, login?: string): Promise<number | null> {
+		const { body } = await this.request<GitHubPullRequestReview[]>(
+			`${this.repoPath}/pulls/${prNumber}/reviews?per_page=100`,
+			undefined,
+			READ_PRS,
+		);
+		if (!Array.isArray(body)) return null;
+
+		const pendingReviews = body.filter((review) => review.state === 'PENDING');
+		if (pendingReviews.length === 0) return null;
+
+		const matchLogin = (candidate?: string) =>
+			candidate
+				? (pendingReviews.find((review) => review.user?.login === candidate)?.id ?? null)
+				: null;
+
+		const byKnownLogin = matchLogin(login);
+		if (byKnownLogin) return byKnownLogin;
+
+		// GitHub App installation tokens cannot resolve GET /user — use the sole pending review.
+		if (pendingReviews.length === 1) {
+			return pendingReviews[0].id;
+		}
+
+		const inferredLogin = await this.inferActingLoginFromRecentComments(prNumber);
+		return matchLogin(inferredLogin);
+	}
+
+	private async submitPendingPullRequestReview(
 		prNumber: number,
+		reviewId: number,
 		review: SubmitPullRequestReview,
 	): Promise<PullRequestReviewSubmission> {
+		const { status, body } = await this.request<GitHubPullRequestReview>(
+			`${this.repoPath}/pulls/${prNumber}/reviews/${reviewId}/events`,
+			{
+				method: 'POST',
+				body: JSON.stringify({
+					body: review.body ?? '',
+					event: review.event,
+				}),
+			},
+			{ action: 'submit a review', permission: PR_WRITE },
+		);
+		if (status === 422) {
+			throw new UserError(
+				this.formatReviewErrorMessage(
+					body,
+					'GitHub could not submit the pull request review. You may already have submitted a review on this pull request.',
+				),
+			);
+		}
+		if (status >= 400) {
+			throw new UserError('Failed to submit pull request review on GitHub.');
+		}
+		return this.toReviewSubmission(body);
+	}
+
+	private async createPullRequestReview(
+		prNumber: number,
+		review: SubmitPullRequestReview,
+	): Promise<{ status: number; body: GitHubPullRequestReview }> {
 		const { status, body } = await this.request<GitHubPullRequestReview>(
 			`${this.repoPath}/pulls/${prNumber}/reviews`,
 			{
@@ -298,19 +440,48 @@ export class GitHubProvider implements CodeReviewProvider {
 					event: review.event,
 				}),
 			},
+			{ action: 'submit a review', permission: PR_WRITE },
 		);
-		if (status === 422) {
-			throw new UserError('GitHub could not submit the pull request review.');
+		return { status, body };
+	}
+
+	async submitPullRequestReview(
+		prNumber: number,
+		review: SubmitPullRequestReview,
+	): Promise<PullRequestReviewSubmission> {
+		const login = await this.tryGetAuthenticatedLogin();
+		const pendingReviewId = await this.findPendingReviewId(prNumber, login);
+
+		if (pendingReviewId) {
+			return await this.submitPendingPullRequestReview(prNumber, pendingReviewId, review);
 		}
-		if (status >= 400) {
-			throw new UserError('Failed to submit pull request review on GitHub.');
+
+		const created = await this.createPullRequestReview(prNumber, review);
+		if (created.status < 400) {
+			return this.toReviewSubmission(created.body);
 		}
-		return this.toReviewSubmission(body);
+
+		if (created.status === 422) {
+			const retryPendingReviewId = await this.findPendingReviewId(prNumber, login);
+			if (retryPendingReviewId) {
+				return await this.submitPendingPullRequestReview(prNumber, retryPendingReviewId, review);
+			}
+			throw new UserError(
+				this.formatReviewErrorMessage(
+					created.body,
+					'GitHub could not submit the pull request review.',
+				),
+			);
+		}
+
+		throw new UserError('Failed to submit pull request review on GitHub.');
 	}
 
 	async listPullRequestReviews(prNumber: number): Promise<PullRequestReviewStateEntry[]> {
 		const { body } = await this.request<GitHubPullRequestReview[]>(
 			`${this.repoPath}/pulls/${prNumber}/reviews?per_page=100`,
+			undefined,
+			READ_PRS,
 		);
 		if (!Array.isArray(body)) return [];
 		return body.map((review) => ({
@@ -321,15 +492,19 @@ export class GitHubProvider implements CodeReviewProvider {
 	}
 
 	async createPullRequest(request: CreatePullRequest): Promise<PullRequestSummary> {
-		const { status, body } = await this.request<GitHubPullRequest>(`${this.repoPath}/pulls`, {
-			method: 'POST',
-			body: JSON.stringify({
-				title: request.title,
-				body: request.body ?? '',
-				head: request.headBranch,
-				base: request.baseBranch,
-			}),
-		});
+		const { status, body } = await this.request<GitHubPullRequest>(
+			`${this.repoPath}/pulls`,
+			{
+				method: 'POST',
+				body: JSON.stringify({
+					title: request.title,
+					body: request.body ?? '',
+					head: request.headBranch,
+					base: request.baseBranch,
+				}),
+			},
+			{ action: 'create a pull request', permission: PR_WRITE },
+		);
 		if (status === 422) {
 			throw new UserError(
 				'GitHub could not create the pull request. The branch may already have an open pull request.',
@@ -339,5 +514,36 @@ export class GitHubProvider implements CodeReviewProvider {
 			throw new UserError('Failed to create pull request on GitHub.');
 		}
 		return this.toSummary(body);
+	}
+
+	async mergePullRequest(prNumber: number): Promise<PullRequestMergeResult> {
+		const { status, body } = await this.request<GitHubPullRequestMergeResult>(
+			`${this.repoPath}/pulls/${prNumber}/merge`,
+			{
+				method: 'PUT',
+				body: JSON.stringify({}),
+			},
+			{ action: 'merge a pull request', permission: PR_WRITE },
+		);
+		if (status === 405) {
+			throw new UserError('This pull request is not mergeable.');
+		}
+		if (status === 409) {
+			throw new UserError('This pull request cannot be merged due to a conflict.');
+		}
+		if (status === 422) {
+			throw new UserError(
+				body.message ||
+					'GitHub could not merge this pull request. It may require additional approvals or checks.',
+			);
+		}
+		if (status >= 400) {
+			throw new UserError('Failed to merge pull request on GitHub.');
+		}
+		return {
+			merged: body.merged,
+			sha: body.sha,
+			message: body.message,
+		};
 	}
 }

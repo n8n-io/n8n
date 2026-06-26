@@ -52,6 +52,13 @@ export interface SourceControlReviewSummary {
 	isApproved?: boolean;
 }
 
+/** Result of merging an approved pull request into the target branch. */
+export interface SourceControlReviewDeployResult {
+	merged: boolean;
+	sha?: string;
+	message: string;
+}
+
 /** A pull/merge request plus the visual diffs of its changed workflows. */
 export interface SourceControlReviewDetail {
 	pullRequest: SourceControlReviewSummary;

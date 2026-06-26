@@ -9,6 +9,7 @@ import {
 	type SourceControlledFile,
 	type SourceControlReviewComment,
 	type SourceControlReviewDetail,
+	type SourceControlReviewDeployResult,
 	type SourceControlReviewSubmission,
 	type SourceControlReviewSummary,
 } from '@n8n/api-types';
@@ -489,6 +490,22 @@ export class SourceControlController {
 		}
 		try {
 			return await this.pullRequestReviewService.submitReview(prNumber, payload);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Post('/reviews/:prNumber/deploy', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:push')
+	async deployReview(
+		req: AuthenticatedRequest & { params: { prNumber: string } },
+	): Promise<SourceControlReviewDeployResult> {
+		const prNumber = Number(req.params.prNumber);
+		if (!Number.isInteger(prNumber) || prNumber <= 0) {
+			throw new BadRequestError('Invalid pull request number');
+		}
+		try {
+			return await this.pullRequestReviewService.deployReview(prNumber);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

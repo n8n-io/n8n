@@ -7,6 +7,7 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 	SourceControlReviewComment,
+	SourceControlReviewDeployResult,
 	SourceControlReviewDetail,
 	SourceControlReviewSubmission,
 	SourceControlReviewSummary,
@@ -143,6 +144,17 @@ export const submitReview = async (
 		'POST',
 		`${sourceControlApiRoot}/reviews/${prNumber}/submit`,
 		payload,
+	);
+};
+
+export const deployReview = async (
+	context: IRestApiContext,
+	prNumber: number,
+): Promise<SourceControlReviewDeployResult> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${sourceControlApiRoot}/reviews/${prNumber}/deploy`,
 	);
 };
 

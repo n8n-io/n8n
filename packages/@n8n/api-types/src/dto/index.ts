@@ -96,6 +96,7 @@ export {
 	type ReviewWorkflowFile,
 	type SourceControlReviewSummary,
 	type SourceControlReviewDetail,
+	type SourceControlReviewDeployResult,
 } from './source-control/review-response.dto';
 export {
 	type ReviewCommentAnchor,
