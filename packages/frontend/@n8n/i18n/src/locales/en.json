@@ -1152,7 +1152,7 @@
 	"credentials.item.needsSetup": "Needs first setup",
 	"credentials.item.connect": "Connect",
 	"credentials.item.connect.tooltip": "Connect your own account to use this credential in workflows. Only you can use your private credential.",
-	"credentials.private.tooltip": "This credential uses a resolver to pick the right account at runtime based on who runs the workflow.",
+	"credentials.private.tooltip": "This execution ran using end-user credentials",
 	"credentials.private.tooltipTitle": "Private credentials",
 	"credentials.private.badge": "Private",
 	"credentials.private.callout.title": "This node is set up to use end user accounts",

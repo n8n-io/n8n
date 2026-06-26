@@ -100,6 +100,7 @@ describe('ExecutionService', () => {
 				workflowVersionId: null,
 				jsonSizeBytes: 0,
 				binaryDataSizeBytes: 0,
+				usedPrivateCredentials: false,
 				annotation: {
 					tags: expect.arrayContaining([]),
 					vote: null,
@@ -966,6 +967,7 @@ describe('ExecutionService', () => {
 			workflowVersionId: null,
 			jsonSizeBytes: 0,
 			binaryDataSizeBytes: 0,
+			usedPrivateCredentials: false,
 		};
 
 		afterEach(async () => {
