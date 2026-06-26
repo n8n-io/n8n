@@ -1,23 +1,36 @@
-import FormData from 'form-data';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/audio/transcribe.operation';
 
-jest.mock('../../../../helpers/binary-data');
-jest.mock('../../../../transport');
-jest.mock('form-data', () => jest.fn());
+vi.mock('../../../../helpers/binary-data');
+vi.mock('../../../../transport');
 
-const mockFormData = jest.mocked(FormData);
+const { mockFormDataAppend, mockFormDataGetHeaders, lastFormDataInstance } = vi.hoisted(() => ({
+	mockFormDataAppend: vi.fn(),
+	mockFormDataGetHeaders: vi.fn(),
+	lastFormDataInstance: { current: null as unknown },
+}));
+
+vi.mock('form-data', () => {
+	class MockFormData {
+		constructor() {
+			lastFormDataInstance.current = this;
+		}
+		append = mockFormDataAppend;
+		getHeaders = mockFormDataGetHeaders;
+	}
+	return { default: MockFormData };
+});
 
 describe('Audio Transcribe Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockFormDataInstance: jest.Mocked<FormData>;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
-	const getBinaryDataFileSpy = jest.spyOn(binaryDataHelpers, 'getBinaryDataFile');
+	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
+	const getBinaryDataFileSpy = vi.spyOn(binaryDataHelpers, 'getBinaryDataFile');
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -31,26 +44,21 @@ describe('Audio Transcribe Operation', () => {
 		});
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		mockExecuteFunctions.helpers.binaryToBuffer = jest.fn();
-
-		mockFormDataInstance = {
-			append: jest.fn(),
-			getHeaders: jest.fn().mockReturnValue({ 'content-type': 'multipart/form-data' }),
-		} as unknown as jest.Mocked<FormData>;
-		mockFormData.mockImplementation(() => mockFormDataInstance);
+		mockExecuteFunctions.helpers.binaryToBuffer = vi.fn();
+		mockFormDataGetHeaders.mockReturnValue({ 'content-type': 'multipart/form-data' });
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should convert binary file content to buffer before appending to FormData', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-			const params: Record<string, unknown> = {
+			const params = {
 				binaryPropertyName: 'data',
 				options: {},
 			};
-			return params[paramName];
+			return params[paramName as keyof typeof params];
 		});
 
 		const mockBinaryFile = {
@@ -59,11 +67,10 @@ describe('Audio Transcribe Operation', () => {
 			filename: 'audio.mp3',
 		};
 		const mockBuffer = Buffer.from('mock-audio-data');
-
 		const mockApiResponse = { text: 'Hello world' };
 
 		getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-		(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(mockBuffer);
+		(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(mockBuffer);
 		apiRequestSpy.mockResolvedValue(mockApiResponse);
 
 		await execute.call(mockExecuteFunctions, 0);
@@ -71,7 +78,7 @@ describe('Audio Transcribe Operation', () => {
 		expect(mockExecuteFunctions.helpers.binaryToBuffer).toHaveBeenCalledWith(
 			mockBinaryFile.fileContent,
 		);
-		expect(mockFormDataInstance.append).toHaveBeenCalledWith('file', mockBuffer, {
+		expect(mockFormDataAppend).toHaveBeenCalledWith('file', mockBuffer, {
 			filename: 'audio.mp3',
 			contentType: 'audio/mpeg',
 		});
@@ -79,11 +86,11 @@ describe('Audio Transcribe Operation', () => {
 
 	it('should transcribe audio with basic parameters', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-			const params: Record<string, unknown> = {
+			const params = {
 				binaryPropertyName: 'data',
 				options: {},
 			};
-			return params[paramName];
+			return params[paramName as keyof typeof params];
 		});
 
 		const mockBinaryFile = {
@@ -91,23 +98,22 @@ describe('Audio Transcribe Operation', () => {
 			contentType: 'audio/mpeg',
 			filename: 'audio.mp3',
 		};
-
 		const mockApiResponse = { text: 'Hello world' };
 
 		getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-		(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+		(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 			mockBinaryFile.fileContent,
 		);
 		apiRequestSpy.mockResolvedValue(mockApiResponse);
 
 		const result = await execute.call(mockExecuteFunctions, 0);
+		const mockFormDataInstance = lastFormDataInstance.current;
 
-		expect(mockFormDataInstance.append).toHaveBeenCalledWith('model', 'whisper-1');
+		expect(mockFormDataAppend).toHaveBeenCalledWith('model', 'whisper-1');
 		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/audio/transcriptions', {
 			option: { formData: mockFormDataInstance },
 			headers: { 'content-type': 'multipart/form-data' },
 		});
-
 		expect(result).toEqual([
 			{
 				json: mockApiResponse,
@@ -118,14 +124,14 @@ describe('Audio Transcribe Operation', () => {
 
 	it('should include language and temperature options when provided', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-			const params: Record<string, unknown> = {
+			const params = {
 				binaryPropertyName: 'data',
 				options: {
 					language: 'en',
 					temperature: 0.5,
 				},
 			};
-			return params[paramName];
+			return params[paramName as keyof typeof params];
 		});
 
 		const mockBinaryFile = {
@@ -135,14 +141,14 @@ describe('Audio Transcribe Operation', () => {
 		};
 
 		getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-		(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+		(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 			mockBinaryFile.fileContent,
 		);
 		apiRequestSpy.mockResolvedValue({ text: 'Transcribed text' });
 
 		await execute.call(mockExecuteFunctions, 0);
 
-		expect(mockFormDataInstance.append).toHaveBeenCalledWith('language', 'en');
-		expect(mockFormDataInstance.append).toHaveBeenCalledWith('temperature', '0.5');
+		expect(mockFormDataAppend).toHaveBeenCalledWith('language', 'en');
+		expect(mockFormDataAppend).toHaveBeenCalledWith('temperature', '0.5');
 	});
 });
