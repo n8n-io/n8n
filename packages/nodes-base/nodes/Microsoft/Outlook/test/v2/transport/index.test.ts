@@ -230,7 +230,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 	});
 
 	describe('Service Principal (app-only)', () => {
-		const setupSP = (overrides: { mailbox?: string; graphApiBaseUrl?: string } = {}) => {
+		const setupSP = (
+			overrides: {
+				mailbox?: string | { __rl: true; mode: string; value: string };
+				graphApiBaseUrl?: string;
+			} = {},
+		) => {
 			const { mailbox = 'user@example.com', graphApiBaseUrl = '' } = overrides;
 			mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
 			mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
@@ -257,6 +262,21 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				expect.objectContaining({
 					method: 'GET',
 					// @ is encoded exactly once: user@example.com -> user%40example.com
+					uri: 'https://graph.microsoft.com/v1.0/users/user%40example.com/messages',
+				}),
+			);
+		});
+
+		it('should extract the id from an id-mode resource locator object and encode it', async () => {
+			// Production reads the raw RLC object (not a bare string) and takes .value;
+			// this covers the isResourceLocatorValue(raw) ? raw.value branch directly.
+			setupSP({ mailbox: { __rl: true, mode: 'id', value: 'user@example.com' } });
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
 					uri: 'https://graph.microsoft.com/v1.0/users/user%40example.com/messages',
 				}),
 			);
