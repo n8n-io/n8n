@@ -29,6 +29,16 @@ on:
         required: false
         type: string
         default: ''
+      slugs:
+        description: 'Phase 2 shard slice: exact slugs to build + eval (comma-separated). Takes precedence over filter; empty = whole tier / filter.'
+        required: false
+        type: string
+        default: ''
+      shard-id:
+        description: 'Phase 2 shard identifier. Suffixes the uploaded artifact name so matrix shards do not collide; empty = single (non-sharded) run.'
+        required: false
+        type: string
+        default: ''
       iterations:
         description: 'Builds per test case (-n) and verifier iterations'
         required: false
@@ -82,6 +92,14 @@ on:
         default: 'mcp'
       filter:
         description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
+        required: false
+        default: ''
+      slugs:
+        description: 'Phase 2 shard slice: exact slugs to build + eval (comma-separated). Takes precedence over filter; empty = whole tier / filter.'
+        required: false
+        default: ''
+      shard-id:
+        description: 'Phase 2 shard identifier. Suffixes the uploaded artifact name so matrix shards do not collide; empty = single (non-sharded) run.'
         required: false
         default: ''
       iterations:
@@ -253,12 +271,16 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
           TIER: ${{ inputs.tier }}
           FILTER: ${{ inputs.filter }}
+          SLUGS: ${{ inputs.slugs }}
           ITERATIONS: ${{ inputs.iterations }}
           BUILD_CONCURRENCY: ${{ inputs.build-concurrency }}
           MODEL: ${{ inputs.model }}
         run: |
           # build-mcp-manifest narrows by positional slugs (space-separated),
           # not --filter; translate a comma/space list into positional args.
+          # Phase 2 passes this shard's `slugs`; they take precedence over the
+          # single-case `filter`. Empty = whole tier. --tier still intersects, so
+          # passing slugs + --tier mcp is safe.
           ARGS=(
             --tier "${TIER:-mcp}"
             -n "${ITERATIONS:-3}"
@@ -267,9 +289,10 @@ jobs:
             --model "$MODEL"
             --output-dir "$COHORT_DIR"
           )
-          if [ -n "$FILTER" ]; then
-            read -ra SLUGS <<< "${FILTER//,/ }"
-            ARGS+=("${SLUGS[@]}")
+          POSITIONAL="${SLUGS:-$FILTER}"
+          if [ -n "$POSITIONAL" ]; then
+            read -ra SLUG_ARGS <<< "${POSITIONAL//,/ }"
+            ARGS+=("${SLUG_ARGS[@]}")
           fi
           pnpm eval:build-mcp-manifest "${ARGS[@]}"
 
@@ -337,9 +360,11 @@ jobs:
           if [ -f eval-pr-comment.md ]; then
             cat eval-pr-comment.md >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### MCP Workflow Eval" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "No eval results produced (build or eval failed before writing results). Check the job logs and the uploaded build logs." >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "### MCP Workflow Eval"
+              echo ""
+              echo "No eval results produced (build or eval failed before writing results). Check the job logs and the uploaded build logs."
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       # Runs even on failure for post-mortem. Two layers of secret-leak defense:
@@ -381,7 +406,9 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: mcp-workflow-eval-results
+          # Suffix per shard so matrix shards don't collide on one artifact name
+          # (upload-artifact v4+ errors on duplicates). The merge job globs these.
+          name: ${{ inputs.shard-id != '' && format('mcp-workflow-eval-results-{0}', inputs.shard-id) || 'mcp-workflow-eval-results' }}
           path: |
             packages/@n8n/instance-ai/eval-results.json
             packages/@n8n/instance-ai/eval-pr-comment.md

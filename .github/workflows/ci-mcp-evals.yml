@@ -2,9 +2,17 @@ name: 'CI: MCP Workflow Evals'
 
 # MCP workflow evals are manual only (workflow_dispatch). The build phase drives
 # the `claude` CLI (Anthropic cost + rate limits), so there is no per-PR or
-# scheduled run in this first version. Dispatch from the Actions tab (or `gh
-# workflow run ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh
-# the LangSmith baseline, or filter=<slug> to run a single case.
+# scheduled run. Dispatch from the Actions tab (or `gh workflow run
+# ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh the LangSmith
+# baseline, or filter=<slug> to run a single case.
+#
+# Phase 2 (parallelism): a `plan-shards` job splits the tier into `shards` slug
+# groups; a matrix fans out the whole build+eval pipeline per group on its own
+# n8n instance (so the single-instance prebuilt guard is never violated); a
+# `merge` job combines the per-shard results into one summary and re-uploads a
+# single unified LangSmith experiment per run (so run-over-run comparison stays
+# one experiment). Shards do NOT record to LangSmith — the merge is the sole
+# writer, keeping exactly one experiment per run.
 on:
   workflow_dispatch:
     inputs:
@@ -20,16 +28,20 @@ on:
         description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
         required: false
         default: ''
+      shards:
+        description: 'Number of parallel shards to split the tier across (matrix width)'
+        required: false
+        default: '4'
       iterations:
         description: 'Builds per test case (-n) and verifier iterations (use 10 for a baseline)'
         required: false
         default: '3'
       build-concurrency:
-        description: 'Parallel claude build processes (-j)'
+        description: 'Parallel claude build processes (-j) per shard'
         required: false
         default: '3'
       eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier'
+        description: 'Concurrent scenario executions in the verifier, per shard'
         required: false
         default: '6'
       model:
@@ -37,7 +49,7 @@ on:
         required: false
         default: 'claude-sonnet-4-6'
       experiment-name:
-        description: 'LangSmith experiment name (set to mcp-baseline to refresh the baseline)'
+        description: 'LangSmith experiment name for the unified merged experiment (set to mcp-baseline to refresh the baseline)'
         required: false
         default: ''
 
@@ -50,24 +62,123 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run-evals:
-    name: MCP Workflow Evals
+  # Cheap fan-out gate: a zero-dependency node script reads the tier's test-case
+  # files and emits a balanced shard matrix. No install/build, so it doesn't
+  # delay the matrix.
+  plan-shards:
+    name: Plan shards
     if: github.repository == 'n8n-io/n8n'
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.branch || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Plan shard matrix
+        id: plan
+        env:
+          TIER: ${{ inputs.tier || 'mcp' }}
+          SHARDS: ${{ inputs.shards || '4' }}
+          FILTER: ${{ inputs.filter || '' }}
+        run: |
+          ARGS=(--tier "$TIER" --shards "$SHARDS")
+          [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
+          node .github/scripts/plan-mcp-shards.mjs "${ARGS[@]}"
+
+  run-evals:
+    name: 'Shard ${{ matrix.shard }}'
+    needs: plan-shards
+    if: github.repository == 'n8n-io/n8n'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan-shards.outputs.matrix) }}
     uses: ./.github/workflows/test-evals-mcp.yml
     with:
       branch: ${{ inputs.branch || github.sha }}
       tier: ${{ inputs.tier || 'mcp' }}
-      filter: ${{ inputs.filter || '' }}
+      slugs: ${{ matrix.slugs }}
+      shard-id: ${{ matrix.shard }}
+      filter: ''
       iterations: ${{ inputs.iterations || '3' }}
       build-concurrency: ${{ inputs.build-concurrency || '3' }}
       eval-concurrency: ${{ inputs.eval-concurrency || '6' }}
       model: ${{ inputs.model || 'claude-sonnet-4-6' }}
-      experiment-name: ${{ inputs.experiment-name || '' }}
-    # Pass only the secrets the reusable workflow needs (not `secrets: inherit`).
+      # Shards auto-name and (see secrets below) don't record to LangSmith.
+      experiment-name: ''
+    # Pass only what a shard needs. LangSmith secrets are intentionally omitted
+    # so each shard runs the direct loop (no per-shard experiments) — the merge
+    # job is the single LangSmith writer.
     secrets:
       EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
       N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
       N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
       N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
-      EVALS_LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
-      EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+
+  # Combine the per-shard results into one summary and re-upload a single unified
+  # LangSmith experiment for the whole tier (option b). Runs even when some
+  # shards failed, as long as planning succeeded and at least one shard reported.
+  merge:
+    name: Merge shard results
+    needs: [plan-shards, run-evals]
+    if: ${{ always() && github.repository == 'n8n-io/n8n' && needs.plan-shards.result == 'success' }}
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.branch || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      # The merge runs the eval CLI's TS via tsx, which imports built workspace
+      # packages (n8n-workflow, @n8n/utils). Build just instance-ai + its deps.
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm turbo run build --filter=@n8n/instance-ai'
+
+      - name: Download shard results
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: mcp-workflow-eval-results-*
+          path: shard-artifacts
+
+      - name: Merge results + record unified experiment
+        working-directory: packages/@n8n/instance-ai
+        env:
+          LANGSMITH_TRACING: 'true'
+          LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+          LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+          LANGSMITH_REVISION_ID: ${{ github.sha }}
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
+          EXPERIMENT_NAME: ${{ inputs.experiment-name || '' }}
+        run: |
+          ARGS=(
+            --input-dir "$GITHUB_WORKSPACE/shard-artifacts"
+            --output-dir merged
+            --upload-experiment
+            --dataset mcp-workflow-evals
+            --baseline-prefix mcp-baseline-
+          )
+          [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
+          pnpm eval:merge-results "${ARGS[@]}"
+
+      - name: Upload merged results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: mcp-workflow-eval-results-merged
+          path: |
+            packages/@n8n/instance-ai/merged/eval-results.json
+            packages/@n8n/instance-ai/merged/eval-pr-comment.md
+          if-no-files-found: ignore
+          retention-days: 14

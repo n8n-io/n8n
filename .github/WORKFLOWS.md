@@ -202,15 +202,25 @@ override `tier` to `full` for broader coverage on a specific PR. The lighter
 `test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
 
 **MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
-never per-PR or scheduled in this first version.** They reuse the Instance AI
-verifier but build each workflow through the instance MCP server by driving the
-`claude` CLI, which adds Anthropic build cost on top of the verifier — too
-expensive to run automatically. The job boots one n8n container, generates an MCP
-cohort (`eval:build-mcp-manifest`), then scores it with
-`eval:instance-ai --prebuilt-workflows`, recording to the isolated
-`mcp-workflow-evals` LangSmith dataset. Dispatch from the Actions tab (set
-`experiment-name=mcp-baseline` to refresh the baseline, or `filter=<slug>` to run
-a single case). See `packages/cli/src/modules/mcp/evaluations/README.md`.
+never per-PR or scheduled.** They reuse the Instance AI verifier but build each
+workflow through the instance MCP server by driving the `claude` CLI, which adds
+Anthropic build cost on top of the verifier — too expensive to run automatically.
+
+The run is **sharded** for speed. A `plan-shards` job
+(`.github/scripts/plan-mcp-shards.mjs`, zero-dependency so it doesn't gate on a
+build) splits the tier into `shards` slug groups; a matrix fans out the reusable
+`test-evals-mcp.yml` per group (each shard boots one n8n container, runs
+`eval:build-mcp-manifest` for its slugs, then scores them with
+`eval:instance-ai --prebuilt-workflows` — self-contained, so the prebuilt
+single-instance guard is never violated); a `merge` job combines the per-shard
+`eval-results.json` (`eval:merge-results`) into one summary. The matrix shards run
+the direct loop (no LangSmith), so the merge job is the **sole LangSmith writer**:
+it re-uploads ONE unified experiment per run to the isolated `mcp-workflow-evals`
+dataset and compares it to the latest `mcp-baseline-*`, keeping run-over-run
+history as a single experiment. Dispatch from the Actions tab (set
+`experiment-name=mcp-baseline` to refresh the baseline, `shards=<n>` to tune the
+matrix width, or `filter=<slug>` to run a single case). See
+`packages/cli/src/modules/mcp/evaluations/README.md`.
 
 ### On PR Close/Merge
 
