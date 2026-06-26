@@ -1,13 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import axios from 'axios';
+
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
-import { mock } from 'vitest-mock-extended';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -28,12 +29,8 @@ import { InstalledPackagesRepository } from '../installed-packages.repository';
 import { executeNpmCommand } from '../npm-utils';
 
 vi.mock('node:fs/promises');
-// Use a bare `vi.fn()` rather than the auto-mock: the auto-mock keeps
-// execFile's `util.promisify.custom` symbol, so `promisify(execFile)` in the
-// service resolves to that custom impl and never calls `execFile` itself.
-vi.mock('node:child_process', () => ({ execFile: vi.fn() }));
-vi.mock('axios');
-vi.mock('../community-node-types-utils', async () => ({
+vi.mock('node:child_process');
+vi.mock('../community-node-types-utils', () => ({
 	getCommunityNodeTypes: vi.fn().mockResolvedValue([]),
 }));
 vi.mock('../npm-utils', async () => ({
@@ -71,6 +68,10 @@ describe('CommunityPackagesService', () => {
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
 
+	const request = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const outboundHttp = mock<OutboundHttp>({ requests });
+
 	const communityPackagesService = new CommunityPackagesService(
 		instanceSettings,
 		logger,
@@ -79,6 +80,7 @@ describe('CommunityPackagesService', () => {
 		publisher,
 		license,
 		config,
+		outboundHttp,
 	);
 
 	beforeEach(() => {
@@ -270,14 +272,20 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('checkNpmPackageStatus()', () => {
-		test('should call axios.post', async () => {
-			await communityPackagesService.checkNpmPackageStatus(mockPackageName());
+		test('should POST the package name to the n8n backend', async () => {
+			const packageName = mockPackageName();
+			await communityPackagesService.checkNpmPackageStatus(packageName);
 
-			expect(axios.post).toHaveBeenCalled();
+			expect(request).toHaveBeenCalledWith({
+				url: 'https://api.n8n.io/api/package',
+				method: 'POST',
+				body: { name: packageName },
+				json: true,
+			});
 		});
 
 		test('should not fail if request fails', async () => {
-			vi.mocked(axios.post).mockImplementation(() => {
+			request.mockImplementation(() => {
 				throw new Error('Something went wrong');
 			});
 
@@ -287,7 +295,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should warn if package is banned', async () => {
-			vi.mocked(axios.post).mockResolvedValue({ data: { status: 'Banned', reason: 'Not good' } });
+			request.mockResolvedValue({ status: 'Banned', reason: 'Not good' });
 
 			const result = (await communityPackagesService.checkNpmPackageStatus(
 				mockPackageName(),
@@ -562,9 +570,9 @@ describe('CommunityPackagesService', () => {
 		});
 
 		beforeEach(() => {
-			vi.spyOn(communityPackagesService, 'installPackage').mockResolvedValue(
-				{} as InstalledPackages,
-			);
+			vi
+				.spyOn(communityPackagesService, 'installPackage')
+				.mockResolvedValue({} as InstalledPackages);
 			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
 		});
 

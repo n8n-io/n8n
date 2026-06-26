@@ -82,6 +82,7 @@ describe('Dynamic Credentials API', () => {
 	let savedCredential: CredentialsEntity;
 	let resolver: DynamicCredentialResolver;
 	let owner: User;
+	let unrelatedMember: User;
 
 	beforeAll(async () => {
 		// Mock OAuth metadata endpoint for resolver validation
@@ -111,6 +112,10 @@ describe('Dynamic Credentials API', () => {
 		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
 
 		({ savedCredential, resolver, owner } = await setupWorkflow());
+
+		// A second regular member with no relationship to the owner's credential:
+		// not the owner, no project membership, no sharing.
+		unrelatedMember = await createUser();
 	});
 
 	afterAll(async () => {
@@ -263,6 +268,29 @@ describe('Dynamic Credentials API', () => {
 						.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
 						.expect(204);
 				});
+			});
+		});
+
+		describe("when an unrelated authenticated member targets another user's credential", () => {
+			it('should not return an authorization URL for a credential the member cannot access', async () => {
+				const response = await testServer
+					.authAgentFor(unrelatedMember)
+					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token');
+
+				expect([403, 404]).toContain(response.status);
+				expect(response.body?.data).toBeUndefined();
+			});
+
+			it('should not revoke a credential the member cannot access', async () => {
+				const response = await testServer
+					.authAgentFor(unrelatedMember)
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token');
+
+				expect([403, 404]).toContain(response.status);
 			});
 		});
 	});

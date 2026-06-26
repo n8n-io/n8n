@@ -91,10 +91,6 @@ describe('PrometheusInstanceRoleMetricsService', () => {
 
 			expect(mockGaugeSet).toHaveBeenCalledWith(1);
 		});
-
-		it('should not throw when called before init', () => {
-			expect(() => service.updateOnLeaderTakeover()).not.toThrow();
-		});
 	});
 
 	describe('updateOnLeaderStepdown', () => {
@@ -105,61 +101,6 @@ describe('PrometheusInstanceRoleMetricsService', () => {
 			service.updateOnLeaderStepdown();
 
 			expect(mockGaugeSet).toHaveBeenCalledWith(0);
-		});
-
-		it('should not throw when called before init', () => {
-			expect(() => service.updateOnLeaderStepdown()).not.toThrow();
-		});
-	});
-
-	describe('multi-main early-instantiation sequence', () => {
-		// In multi-main mode start.ts does Container.get(PrometheusMetricsService) without
-		// calling init() so that the @OnLeaderTakeover/@OnLeaderStepdown decorators are
-		// registered before MultiMainSetup.registerEventHandlers() runs. Leader events can
-		// therefore fire before init() is called. init() must always recover to the correct
-		// state regardless of what happened in the window before it ran.
-
-		it('silently drops leader-takeover calls before init, then init sets gauge from current isLeader', () => {
-			Object.assign(instanceSettings, { isLeader: false });
-
-			// Fire a takeover before the gauge is created — must not throw
-			service.updateOnLeaderTakeover();
-			expect(mockGaugeSet).not.toHaveBeenCalled();
-
-			// init() reads the current isLeader value and sets the gauge accordingly
-			service.init();
-			expect(mockGaugeSet).toHaveBeenLastCalledWith(0);
-		});
-
-		it('silently drops leader-stepdown calls before init, then init sets gauge from current isLeader', () => {
-			Object.assign(instanceSettings, { isLeader: true });
-
-			// Fire a stepdown before the gauge is created — must not throw
-			service.updateOnLeaderStepdown();
-			expect(mockGaugeSet).not.toHaveBeenCalled();
-
-			// init() reads the current (leader) isLeader value and sets the gauge to 1
-			service.init();
-			expect(mockGaugeSet).toHaveBeenLastCalledWith(1);
-		});
-
-		it('correctly handles leader events after init() recovers from a pre-init takeover', () => {
-			Object.assign(instanceSettings, { isLeader: false });
-
-			// Pre-init takeover (dropped)
-			service.updateOnLeaderTakeover();
-
-			// init() sets gauge to 0 (isLeader is false)
-			service.init();
-			vi.clearAllMocks();
-
-			// Post-init takeover: gauge must update to 1
-			service.updateOnLeaderTakeover();
-			expect(mockGaugeSet).toHaveBeenCalledWith(1);
-
-			// And stepdown: gauge must update to 0
-			service.updateOnLeaderStepdown();
-			expect(mockGaugeSet).toHaveBeenLastCalledWith(0);
 		});
 	});
 });

@@ -1,14 +1,15 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { IPollFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
 import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
+import type { Mock } from 'vitest';
 
-jest.mock('rss-parser');
+vi.mock('rss-parser');
 
 const now = new Date('2024-02-01T01:23:45.678Z');
-jest.useFakeTimers({ now });
+vi.useFakeTimers({ now });
 
 describe('RssFeedReadTrigger', () => {
 	describe('poll', () => {
@@ -21,7 +22,7 @@ describe('RssFeedReadTrigger', () => {
 		const pollFunctions = mock<IPollFunctions>({ helpers });
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should throw an error if the feed URL is empty', async () => {
@@ -39,7 +40,7 @@ describe('RssFeedReadTrigger', () => {
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
 			helpers.httpRequest.mockResolvedValue('<rss />');
-			(Parser.prototype.parseString as jest.Mock).mockResolvedValue({
+			(Parser.prototype.parseString as Mock).mockResolvedValue({
 				items: [{ isoDate: lastItemDate }, { isoDate: newItemDate }],
 			});
 
@@ -60,7 +61,7 @@ describe('RssFeedReadTrigger', () => {
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
 			helpers.httpRequest.mockResolvedValue('<rss />');
-			(Parser.prototype.parseString as jest.Mock).mockResolvedValue({ items: [{}, {}] });
+			(Parser.prototype.parseString as Mock).mockResolvedValue({ items: [{}, {}] });
 
 			const result = await node.poll.call(pollFunctions);
 
@@ -78,7 +79,7 @@ describe('RssFeedReadTrigger', () => {
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
 			helpers.httpRequest.mockResolvedValue('<rss />');
-			(Parser.prototype.parseString as jest.Mock).mockResolvedValue({ items: [] });
+			(Parser.prototype.parseString as Mock).mockResolvedValue({ items: [] });
 
 			const result = await node.poll.call(pollFunctions);
 

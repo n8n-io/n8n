@@ -1,3 +1,4 @@
+import { setupRemediationBlocksVerification } from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	WorkflowBuildOwner,
@@ -33,10 +34,20 @@ const UNSETTLED_OBLIGATION_STATUSES = new Set<WorkflowVerificationObligationStat
 ]);
 
 function hasSuccessfulEvidence(outcome: WorkflowBuildOutcome): boolean {
+	const nodesNotReached = outcome.verification?.evidence?.nodesNotReached;
 	return (
 		outcome.verification?.attempted === true &&
 		outcome.verification.success &&
-		!!outcome.verification.executionId
+		!!outcome.verification.executionId &&
+		(nodesNotReached === undefined || nodesNotReached.length === 0)
+	);
+}
+
+function hasPartialSuccessfulCoverageEvidence(outcome: WorkflowBuildOutcome): boolean {
+	return (
+		outcome.verification?.attempted === true &&
+		outcome.verification.success &&
+		(outcome.verification.evidence?.nodesNotReached?.length ?? 0) > 0
 	);
 }
 
@@ -44,17 +55,13 @@ function hasFailedEvidence(outcome: WorkflowBuildOutcome): boolean {
 	return outcome.verification?.attempted === true && !outcome.verification.success;
 }
 
-function isNeedsSetupRemediation(remediation: WorkflowBuildOutcome['remediation']): boolean {
-	return remediation?.category === 'needs_setup' && !remediation.shouldEdit;
-}
-
 function hasSetupBlockingEvidence(
 	state: WorkflowLoopState,
 	outcome: WorkflowBuildOutcome,
 ): boolean {
 	if (outcome.verificationReadiness?.status === 'needs_setup') return true;
-	if (isNeedsSetupRemediation(outcome.remediation)) return true;
-	if (isNeedsSetupRemediation(state.lastRemediation)) return true;
+	if (setupRemediationBlocksVerification(outcome.remediation, outcome)) return true;
+	if (setupRemediationBlocksVerification(state.lastRemediation, outcome)) return true;
 
 	return outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome);
 }
@@ -68,6 +75,7 @@ function deriveStatus(
 	if (!outcome.submitted) return 'blocked';
 	if (hasSuccessfulEvidence(outcome)) return 'verified';
 	if (hasSetupBlockingEvidence(state, outcome)) return 'needs_setup';
+	if (hasPartialSuccessfulCoverageEvidence(outcome)) return 'not_verifiable';
 
 	switch (outcome.verificationReadiness?.status) {
 		case 'already_verified':
@@ -110,12 +118,16 @@ function deriveBlockingReason(
 	if (outcome.verificationReadiness?.status === 'needs_setup') {
 		return outcome.verificationReadiness.guidance;
 	}
+	if (hasPartialSuccessfulCoverageEvidence(outcome)) {
+		const nodesNotReached = outcome.verification?.evidence?.nodesNotReached ?? [];
+		return `Automatic verification only covered part of the workflow. Unreached nodes need manual testing: ${nodesNotReached.join(', ')}.`;
+	}
 	const outcomeRemediation = outcome.remediation;
-	if (outcomeRemediation?.category === 'needs_setup' && !outcomeRemediation.shouldEdit) {
+	if (outcomeRemediation && setupRemediationBlocksVerification(outcomeRemediation, outcome)) {
 		return outcomeRemediation.guidance;
 	}
 	const lastRemediation = state.lastRemediation;
-	if (lastRemediation?.category === 'needs_setup' && !lastRemediation.shouldEdit) {
+	if (lastRemediation && setupRemediationBlocksVerification(lastRemediation, outcome)) {
 		return lastRemediation.guidance;
 	}
 	if (outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome)) {

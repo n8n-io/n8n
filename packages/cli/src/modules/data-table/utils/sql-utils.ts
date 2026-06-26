@@ -200,13 +200,33 @@ function normalizeBoolean<T>(value: T): T | boolean {
 	return value;
 }
 
+function dateStringHasExplicitTimezone(dateString: string) {
+	const separatorIndex = dateString.includes('T')
+		? dateString.indexOf('T')
+		: dateString.search(/\s/);
+	if (separatorIndex === -1) return false;
+
+	const timePart = dateString.slice(separatorIndex + 1);
+	if (!timePart.includes(':')) return false;
+
+	return (
+		timePart.endsWith('Z') ||
+		timePart.endsWith('z') ||
+		timePart.includes('+') ||
+		timePart.includes('-')
+	);
+}
+
 // Convert date objects or strings to dates in UTC
 export function normalizeDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
 
 	if (typeof value === 'string') {
+		const dateString = value.trim();
 		// sqlite returns date strings without timezone information, but we store them as UTC
-		const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+		const parsed = new Date(
+			dateStringHasExplicitTimezone(dateString) ? dateString : `${dateString}Z`,
+		);
 		if (!isNaN(parsed.getTime())) return parsed;
 	}
 

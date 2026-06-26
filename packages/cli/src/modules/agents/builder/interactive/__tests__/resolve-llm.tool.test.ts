@@ -20,7 +20,7 @@ function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock
 describe('resolve_llm tool', () => {
 	it('auto-resolves when exactly one LLM-provider credential exists', async () => {
 		const credentialProvider = makeProvider([
-			{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
+			{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
 			{ id: 'c2', name: 'My Slack', type: 'slackApi' },
 		]);
 		const modelLookup = makeModelLookup();
@@ -29,10 +29,10 @@ describe('resolve_llm tool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			provider: 'anthropic',
-			model: 'claude-sonnet-4-6',
+			provider: 'openai',
+			model: 'gpt-5-mini',
 			credentialId: 'c1',
-			credentialName: 'My Anthropic',
+			credentialName: 'My OpenAI',
 		});
 		expect(modelLookup.list).not.toHaveBeenCalled();
 	});

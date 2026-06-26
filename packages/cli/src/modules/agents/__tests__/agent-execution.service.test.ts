@@ -1,6 +1,8 @@
-import { mockLogger } from '@n8n/backend-test-utils';
 import type { Mocked } from 'vitest';
+import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
+
+import type { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -55,6 +57,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionThreadRepository: Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: Mocked<N8nMemory>;
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -64,12 +67,14 @@ describe('AgentExecutionService', () => {
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
+		telemetry = mock<Telemetry>();
 
 		service = new AgentExecutionService(
 			mockLogger(),
 			agentExecutionRepository,
 			agentExecutionThreadRepository,
 			n8nMemory,
+			telemetry,
 		);
 	});
 
@@ -200,6 +205,181 @@ describe('AgentExecutionService', () => {
 			expect(memoryBackend.getThread).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
 		});
+
+		it('tracks succeeded turn telemetry after recording the execution', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+					totalCost: 25,
+					toolCalls: [{ name: 'lookup', input: {}, output: {} }],
+					duration: 123,
+				}),
+				telemetry: {
+					runType: 'test',
+					configuration: {
+						model: 'anthropic/claude-sonnet-4-5',
+						channels: [],
+						tool_types: ['custom'],
+						tool_count: 1,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration: {
+					model: 'anthropic/claude-sonnet-4-5',
+					channels: [],
+					tool_types: ['custom'],
+					tool_count: 1,
+					num_skills: 0,
+					memory_type: 'none',
+				},
+				latency_ms: 123,
+				cost: 25,
+				tool_call_count: 1,
+			});
+		});
+
+		it('tracks failed turn telemetry and does not reject when telemetry throws', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			telemetry.trackAgentTurnFinished.mockImplementation(() => {
+				throw new Error('telemetry failed');
+			});
+
+			await expect(
+				service.recordMessage({
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record: makeMessageRecord({ error: 'model failed', totalCost: null, duration: 456 }),
+					telemetry: {
+						runType: 'production',
+						configuration: {
+							model: null,
+							channels: [],
+							tool_types: [],
+							tool_count: 0,
+							num_skills: 0,
+							memory_type: 'none',
+						},
+					},
+				}),
+			).resolves.toBe('execution-1');
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent_id: 'agent-1',
+					thread_id: 'thread-1',
+					run_type: 'production',
+					turn_status: 'failed',
+					latency_ms: 456,
+					cost: 0,
+					tool_call_count: 0,
+				}),
+			);
+		});
+
+		it('tracks finishReason error as a failed turn even without a recorded error', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({ finishReason: 'error', error: null }),
+				telemetry: {
+					runType: 'production',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					turn_status: 'failed',
+				}),
+			);
+		});
+
+		it.each([
+			{ name: 'suspended turn', record: makeMessageRecord(), hitlStatus: 'suspended' as const },
+			{
+				name: 'max-iterations turn',
+				record: makeMessageRecord({ finishReason: 'max-iterations' }),
+			},
+		])('tracks $name without an error as succeeded', async ({ record, hitlStatus }) => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+				...(hitlStatus ? { hitlStatus } : {}),
+				telemetry: {
+					runType: 'test',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					turn_status: 'succeeded',
+				}),
+			);
+		});
 	});
 
 	describe('getThreadDetail', () => {
@@ -214,10 +394,11 @@ describe('AgentExecutionService', () => {
 			expect(result).toEqual({ thread, executions });
 		});
 
-		it('does not read executions for a thread outside the requested scope', async () => {
-			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
-				makeThread({ projectId: 'other-project' }),
-			);
+		it.each([
+			{ name: 'project', thread: makeThread({ projectId: 'other-project' }) },
+			{ name: 'agent', thread: makeThread({ agentId: 'other-agent' }) },
+		])('does not read executions for a thread outside the requested $name', async ({ thread }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
@@ -234,9 +415,14 @@ describe('AgentExecutionService', () => {
 				projectId: 'project-1',
 			} as AgentExecutionThread);
 
-			const result = await service.deleteThread('project-1', 'thread-1');
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 
 			expect(result).toBe(true);
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'thread-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
@@ -245,9 +431,14 @@ describe('AgentExecutionService', () => {
 		it('does not clean SDK memory when the execution thread is not found', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
 
-			const result = await service.deleteThread('project-1', 'thread-1');
+			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 
 			expect(result).toBe(false);
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'thread-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();

@@ -1,9 +1,10 @@
+import type { Mock, Mocked } from 'vitest';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
-import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 type ProxyResponse = { headers: Record<string, string> };
@@ -20,15 +21,13 @@ type ProxyOptions = {
 	};
 };
 
-const { mockProxy, mockFixRequestBody, proxyState } = vi.hoisted(() => ({
-	mockProxy: vi.fn(),
-	mockFixRequestBody: vi.fn(),
-	proxyState: { options: undefined as ProxyOptions | undefined },
-}));
+const mockProxy = vi.fn();
+const { mockFixRequestBody } = vi.hoisted(() => ({ mockFixRequestBody: vi.fn() }));
+let mockProxyOptions: ProxyOptions | undefined;
 
 vi.mock('http-proxy-middleware', () => ({
 	createProxyMiddleware: vi.fn((options: ProxyOptions) => {
-		proxyState.options = options;
+		mockProxyOptions = options;
 		return mockProxy;
 	}),
 	fixRequestBody: mockFixRequestBody,
@@ -44,13 +43,14 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 	route,
 }));
 
-function createController() {
+function createController(outboundHttp: OutboundHttp = mock<OutboundHttp>()) {
 	return new TelemetryController(
 		mock<GlobalConfig>({
 			diagnostics: {
 				frontendConfig: 'test-key;https://telemetry.n8n.io',
 			},
 		}),
+		outboundHttp,
 	);
 }
 
@@ -71,8 +71,8 @@ function createRequest(headers: Record<string, string> = {}) {
 }
 
 function getProxyOptions() {
-	if (!proxyState.options) throw new Error('Proxy options were not captured');
-	return proxyState.options;
+	if (!mockProxyOptions) throw new Error('Proxy options were not captured');
+	return mockProxyOptions;
 }
 
 describe('TelemetryController route access', () => {
@@ -83,16 +83,10 @@ describe('TelemetryController route access', () => {
 });
 
 describe('TelemetryController', () => {
-	const originalFetch = global.fetch;
-
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockProxy.mockResolvedValue(undefined);
-		proxyState.options = undefined;
-	});
-
-	afterEach(() => {
-		global.fetch = originalFetch;
+		mockProxyOptions = undefined;
 	});
 
 	it('responds to proxy preflight requests with permissive reflected CORS headers', () => {
@@ -181,22 +175,29 @@ describe('TelemetryController', () => {
 	});
 
 	it('applies CORS while serving RudderStack source config', async () => {
-		const controller = createController();
+		const httpClient = mock<HttpRequestClient>();
+		const requestMock = httpClient.request as Mock;
+		requestMock.mockResolvedValue({ statusCode: 200, body: { source: 'config' } });
+		const outboundHttp = mock<OutboundHttp>();
+		outboundHttp.requests.mockReturnValue(httpClient);
+
+		const controller = createController(outboundHttp);
 		const req = createRequest();
 		const res = createResponse();
-		global.fetch = vi.fn().mockResolvedValue({
-			ok: true,
-			json: vi.fn().mockResolvedValue({ source: 'config' }),
-		}) as unknown as typeof fetch;
 
 		await controller.sourceConfig(req, res);
 
 		expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
-		expect(global.fetch).toHaveBeenCalledWith('https://api-rs.n8n.io/sourceConfig', {
-			headers: {
-				authorization: `Basic ${btoa('test-key:')}`,
-			},
-		});
+		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(requestMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				method: 'GET',
+				url: 'https://api-rs.n8n.io/sourceConfig',
+				headers: {
+					authorization: `Basic ${btoa('test-key:')}`,
+				},
+			}),
+		);
 		expect(res.json).toHaveBeenCalledWith({ source: 'config' });
 	});
 });

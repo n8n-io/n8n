@@ -1007,7 +1007,7 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -1031,9 +1031,9 @@ export class CredentialsService {
 
 			if (
 				prop.typeOptions?.password &&
-				(!data[dataKey].toString().startsWith('={{') || prop.noDataExpression)
+				(!String(data[dataKey] ?? '').startsWith('={{') || prop.noDataExpression)
 			) {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -1322,6 +1322,31 @@ export class CredentialsService {
 	 */
 	async createUnmanagedCredential(dto: CreateCredentialDto, user: User) {
 		return await this.createCredential({ ...dto, isManaged: false }, user);
+	}
+
+	/**
+	 * Creates an empty credential placeholder for package import. Skips field
+	 * validation so every known type can be stubbed; {@link save} still enforces
+	 * `credential:create` on the target project.
+	 */
+	async createStubCredential(
+		opts: { name: string; type: string; projectId: string },
+		user: User,
+	): Promise<CredentialsEntity> {
+		const encryptedCredential = await this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: {},
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+		});
+
+		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, {});
 	}
 
 	/**

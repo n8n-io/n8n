@@ -7,13 +7,15 @@
 // unit-testable on its own (index.ts runs main() at import time).
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
 import type { Run } from 'langsmith/schemas';
 import { z } from 'zod';
 
 import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
+import type { WorkflowResponse } from '../clients/n8n-client';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type {
+	BuildTrace,
 	BuildExpectationResult,
 	ExecutionScenarioResult,
 	TranscriptTurn,
@@ -46,10 +48,17 @@ const targetOutputSchema = z.object({
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId: z.string().optional(),
 	workflowChecks: z.array(checkOutcomeSchema).optional(),
+	workflowJson: z.unknown().optional(),
+	buildTrace: z.unknown().optional(),
 });
 
-export type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
+export type TargetOutput = Omit<
+	z.infer<typeof targetOutputSchema>,
+	'evalResult' | 'workflowJson' | 'buildTrace'
+> & {
 	evalResult?: InstanceAiEvalExecutionResult;
+	workflowJson?: WorkflowResponse;
+	buildTrace?: BuildTrace;
 };
 
 export function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -67,6 +76,27 @@ function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
 	);
 }
 
+function isWorkflowResponse(v: unknown): v is WorkflowResponse {
+	if (!isPlainObject(v)) return false;
+	return (
+		typeof v.id === 'string' &&
+		typeof v.name === 'string' &&
+		typeof v.active === 'boolean' &&
+		typeof v.versionId === 'string' &&
+		Array.isArray(v.nodes) &&
+		isPlainObject(v.connections)
+	);
+}
+
+function isBuildTrace(v: unknown): v is BuildTrace {
+	if (!isPlainObject(v)) return false;
+	return (
+		typeof v.finalText === 'string' &&
+		Array.isArray(v.toolCalls) &&
+		Array.isArray(v.agentActivities)
+	);
+}
+
 /** Safe-parse a run's outputs. Returns `undefined` if the row is malformed
  *  or missing, so callers can skip it instead of treating it as a genuine
  *  failed evaluation. Every field in the schema has a default, so an empty
@@ -80,6 +110,10 @@ export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 	return {
 		...parsed.data,
 		evalResult: isEvalResult(parsed.data.evalResult) ? parsed.data.evalResult : undefined,
+		workflowJson: isWorkflowResponse(parsed.data.workflowJson)
+			? parsed.data.workflowJson
+			: undefined,
+		buildTrace: isBuildTrace(parsed.data.buildTrace) ? parsed.data.buildTrace : undefined,
 	};
 }
 
@@ -103,8 +137,11 @@ export function reshapeLangSmithRuns(
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
-	buildExpectationsByThreadId: Map<string, BuildExpectationResult[]>,
+	/** Keyed by the build-cache key (`iteration:fileSlug`), not threadId, so prebuilt
+	 *  builds (no threadId) still attach their outcome-expectation verdicts. */
+	buildExpectationsByKey: Map<string, BuildExpectationResult[]>,
 	n8nBaseUrl: string | undefined,
+	runDebugByThreadId: Map<string, InstanceAiRunDebugResponse[]> = new Map(),
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -126,6 +163,8 @@ export function reshapeLangSmithRuns(
 			let buildError: string | undefined;
 			let threadId: string | undefined;
 			let workflowChecks: CheckOutcome[] | undefined;
+			let workflowJson: WorkflowResponse | undefined;
+			let buildTrace: BuildTrace | undefined;
 
 			for (const scenario of testCase.executionScenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -144,6 +183,8 @@ export function reshapeLangSmithRuns(
 				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
 				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
+				if (output.workflowJson && !workflowJson) workflowJson = output.workflowJson;
+				if (output.buildTrace && !buildTrace) buildTrace = output.buildTrace;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -156,11 +197,10 @@ export function reshapeLangSmithRuns(
 			}
 
 			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
-			const buildExpectationResults = threadId
-				? buildExpectationsByThreadId.get(threadId)
-				: undefined;
+			const buildExpectationResults = buildExpectationsByKey.get(`${String(iter)}:${fileSlug}`);
 			runResults.push({
 				testCase,
+				fileSlug,
 				workflowBuildSuccess,
 				workflowId,
 				executionScenarioResults,
@@ -169,7 +209,10 @@ export function reshapeLangSmithRuns(
 				transcript,
 				buildExpectationResults,
 				workflowChecks,
+				workflowJson,
+				buildTrace,
 				n8nBaseUrl,
+				runDebug: threadId ? runDebugByThreadId.get(threadId) : undefined,
 			});
 		}
 		allRunResults.push(runResults);

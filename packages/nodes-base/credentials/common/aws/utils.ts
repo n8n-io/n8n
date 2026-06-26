@@ -1,5 +1,5 @@
+import { createDispatcherTransport } from '@n8n/backend-network/transport';
 import {
-	ApplicationError,
 	type IHttpRequestMethods,
 	isObjectEmpty,
 	sanitizeXmlName,
@@ -7,23 +7,20 @@ import {
 	type IDataObject,
 	type IHttpRequestOptions,
 	type IRequestOptions,
+	OperationalError,
 	UserError,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
-import type { Request } from 'aws4';
-import {
-	AWS_GLOBAL_DOMAIN,
-	type AwsCredentialsTypeBase,
-	regions,
-	type AWSRegion,
-	type AwsAssumeRoleCredentialsType,
-	type AwsSecurityHeaders,
-} from './types';
-import { sign } from 'aws4';
-import { getProxyForUrl } from 'proxy-from-env';
-import { ProxyAgent } from 'undici';
 
+import { getAwsDomain, regions, type AWSRegion } from './regions';
 import { getSystemCredentials } from './system-credentials-utils';
+import type {
+	AwsCredentialsTypeBase,
+	AwsAssumeRoleCredentialsType,
+	AwsSecurityHeaders,
+} from './types';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
 /**
  * Checks if a request body value should be JSON stringified for AWS requests.
@@ -52,18 +49,8 @@ const SUPPORTED_AWS_REGIONS: ReadonlySet<string> = new Set(regions.map((r) => r.
  */
 export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
 	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
-		throw new ApplicationError('Unsupported AWS region');
+		throw new UserError('Unsupported AWS region');
 	}
-}
-
-/**
- * Gets the AWS domain for a specific region.
- *
- * @param region - The AWS region to get the domain for
- * @returns The AWS domain for the region, or the global domain if region not found
- */
-export function getAwsDomain(region: AWSRegion): string {
-	return regions.find((r) => r.name === region)?.domain ?? AWS_GLOBAL_DOMAIN;
 }
 
 /**
@@ -281,7 +268,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
  * @param credentials - The assume role credentials configuration
  * @param region - AWS region for the STS endpoint
  * @returns Promise resolving to temporary credentials for the assumed role
- * @throws {ApplicationError} When credentials are invalid or STS call fails
+ * @throws {UserError | OperationalError} When credentials are invalid or STS call fails
  *
  * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html STS AssumeRole API}
  */
@@ -310,9 +297,9 @@ export async function assumeRole(
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
 
 	if (useSystemCredentialsForRole) {
-		const systemCredentials = await getSystemCredentials();
+		const systemCredentials = await getSystemCredentials(region);
 		if (!systemCredentials) {
-			throw new ApplicationError(
+			throw new UserError(
 				'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
 			);
 		}
@@ -320,14 +307,10 @@ export async function assumeRole(
 		stsCallCredentials = systemCredentials;
 	} else {
 		if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {
-			throw new ApplicationError(
-				'STS Access Key ID is required when not using system credentials.',
-			);
+			throw new UserError('STS Access Key ID is required when not using system credentials.');
 		}
 		if (!credentials.stsSecretAccessKey || credentials.stsSecretAccessKey.trim() === '') {
-			throw new ApplicationError(
-				'STS Secret Access Key is required when not using system credentials.',
-			);
+			throw new UserError('STS Secret Access Key is required when not using system credentials.');
 		}
 
 		const sessionToken = credentials.stsSessionToken?.trim() || undefined;
@@ -351,7 +334,7 @@ export async function assumeRole(
 	const params = new URLSearchParams({
 		Action: 'AssumeRole',
 		Version: '2011-06-15',
-		RoleArn: assumeRoleBody.RoleArn!,
+		RoleArn: assumeRoleBody.RoleArn,
 		RoleSessionName: assumeRoleBody.RoleSessionName,
 	});
 	if (assumeRoleBody.ExternalId) {
@@ -376,22 +359,18 @@ export async function assumeRole(
 		sign(signOpts, stsCallCredentials);
 	} catch (err) {
 		console.error('Failed to sign STS request:', err);
-		throw new ApplicationError('Failed to sign STS request');
+		throw new OperationalError('Failed to sign STS request');
 	}
 
-	const proxyUrl = getProxyForUrl(stsEndpoint);
-	const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
-	const requestInit: RequestInit & { dispatcher?: unknown } = {
+	const response = await createDispatcherTransport({ proxy: 'env' }).asCustomFetch()(stsEndpoint, {
 		method: 'POST',
 		headers: signOpts.headers as Record<string, string>,
 		body: bodyContent,
-		...(dispatcher ? { dispatcher } : {}),
-	};
-	const response = await fetch(stsEndpoint, requestInit);
+	});
 
 	if (!response.ok) {
 		const errorText = await response.text();
-		throw new ApplicationError(
+		throw new UserError(
 			`STS AssumeRole failed: ${response.status} ${response.statusText} - ${errorText}`,
 		);
 	}
@@ -418,7 +397,7 @@ export async function assumeRole(
 	const assumeRoleResult = (responseData.AssumeRoleResponse as IDataObject)
 		?.AssumeRoleResult as IDataObject;
 	if (!assumeRoleResult?.Credentials) {
-		throw new ApplicationError('Invalid response from STS AssumeRole');
+		throw new OperationalError('Invalid response from STS AssumeRole');
 	}
 
 	const assumedCredentials = assumeRoleResult.Credentials as IDataObject;

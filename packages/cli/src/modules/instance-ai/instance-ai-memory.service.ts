@@ -16,6 +16,9 @@ import {
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
@@ -25,7 +28,6 @@ import {
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
 function isAgentMessageLike(value: unknown): value is AgentDbMessage {
@@ -35,6 +37,29 @@ function isAgentMessageLike(value: unknown): value is AgentDbMessage {
 		typeof (value as { id?: unknown }).id === 'string' &&
 		'role' in value
 	);
+}
+
+function isRestorableMessage(
+	value: Record<string, unknown> & { createdAt: Date },
+): value is AgentDbMessage & Record<string, unknown> {
+	if (typeof value.id !== 'string' || value.id.length === 0) return false;
+	if (value.type === 'custom') return typeof value.data === 'object' && value.data !== null;
+	return typeof value.role === 'string' && Array.isArray(value.content);
+}
+
+/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
+ *  AgentDbMessage, or undefined if it fails the structural contract. */
+function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
+	const rawCreatedAt = value.createdAt;
+	const createdAt =
+		rawCreatedAt instanceof Date
+			? rawCreatedAt
+			: typeof rawCreatedAt === 'string'
+				? new Date(rawCreatedAt)
+				: undefined;
+	if (!createdAt || Number.isNaN(createdAt.getTime())) return undefined;
+	const candidate = { ...value, createdAt };
+	return isRestorableMessage(candidate) ? candidate : undefined;
 }
 
 function messageCreatedAtMs(message: AgentDbMessage): number {
@@ -118,6 +143,34 @@ export class InstanceAiMemoryService {
 		};
 	}
 
+	/** Eval-only: seed a thread with a native message log (id/role/content/createdAt
+	 *  preserved verbatim) so the runtime continues as if it really happened. The
+	 *  thread must exist; referenced artifacts are recreated by the caller. */
+	async restoreThreadMessages(
+		userId: string,
+		threadId: string,
+		messages: Array<Record<string, unknown>>,
+	): Promise<{ restored: number }> {
+		const restorable: AgentDbMessage[] = [];
+		for (const [index, raw] of messages.entries()) {
+			const message = toRestorableMessage(raw);
+			if (!message) {
+				throw new BadRequestError(
+					`Seed message at index ${index} is not a valid agent message (id, createdAt, and role+content or type:custom+data are required)`,
+				);
+			}
+			restorable.push(message);
+		}
+
+		await this.agentMemory.saveMessages({ threadId, resourceId: userId, messages: restorable });
+		return { restored: restorable.length };
+	}
+
+	/** Project a thread is bound to (undefined for legacy unbound threads). */
+	async getThreadProjectId(threadId: string): Promise<string | undefined> {
+		return (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined;
+	}
+
 	async getThreadMessages(
 		_userId: string,
 		threadId: string,
@@ -162,11 +215,12 @@ export class InstanceAiMemoryService {
 		}
 
 		// Surface the in-flight messages from any suspended checkpoint. The
-		// SDK only commits messages to memory after a successful turn, so
-		// during HITL suspension the user's prompt and intermediate assistant
-		// responses live only inside the checkpoint blob. Without merging
-		// them in, a thread that's waiting on a confirmation renders without
-		// the original user message after a page reload.
+		// user's prompt is persisted to memory on receipt, but the intermediate
+		// assistant responses and pending tool-call from a turn suspended at HITL
+		// are only committed after the turn completes, so until then they live
+		// only inside the checkpoint blob. Without merging them in, a thread
+		// waiting on a confirmation renders without those in-flight artifacts
+		// after a page reload.
 		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 

@@ -175,11 +175,13 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
 };
 
 function makePlanReviewMessage(): InstanceAiMessage {
@@ -501,8 +503,7 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 	});
 
-	// Re-enable when IS_FIX_WITH_AI_OFFER_ENABLED is true (INS-407).
-	describe.skip('Fix with AI card', () => {
+	describe('Fix with AI card', () => {
 		const failureReport: WorkflowFailuresReport = {
 			workflowId: 'wf-1',
 			executionId: 'exec-1',

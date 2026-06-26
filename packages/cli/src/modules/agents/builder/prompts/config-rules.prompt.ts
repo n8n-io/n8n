@@ -51,8 +51,6 @@ export function getConfigRulesSection(): string {
 
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
-- Fresh agents must include a brief \`description\` explaining what the agent
-  does. Keep it specific and user-facing; never write placeholder copy.
 - Fresh agents must include
   \`memory: { "enabled": true, "storage": "n8n" }\`
   unless the user explicitly asks to disable memory.
@@ -74,7 +72,7 @@ export function getConfigRulesSection(): string {
 - Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
   the user explicitly asks to change web-search method.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
-- Fresh agents need a real model, credential, description, and instructions
+- Fresh agents need a real model, credential, and instructions
   before config is written.`;
 }
 

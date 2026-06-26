@@ -70,6 +70,26 @@ describe('UserRepository', () => {
 				execution1.id,
 			]);
 		});
+
+		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{ jsonSizeBytes: 4096, binaryDataSizeBytes: 2048, workflowVersionId: 'v-123' },
+				workflow,
+			);
+
+			const [summary] = await executionRepository.findManyByRangeQuery({
+				workflowId: workflow.id,
+				user: owner,
+				kind: 'range',
+				range: { limit: 10 },
+			});
+
+			expect(summary.id).toBe(execution.id);
+			expect(summary.jsonSizeBytes).toBe(4096);
+			expect(summary.binaryDataSizeBytes).toBe(2048);
+			expect(summary.workflowVersionId).toBe('v-123');
+		});
 	});
 
 	describe('setRunning', () => {

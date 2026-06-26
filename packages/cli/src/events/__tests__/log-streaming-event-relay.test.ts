@@ -54,6 +54,65 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflows-imported` event', () => {
+			const event: RelayEventMap['workflows-imported'] = {
+				user: {
+					id: 'user-import',
+					email: 'importer@example.com',
+					firstName: 'Import',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				projectId: 'proj-brie',
+				folderId: 'folder-cheese',
+				workflowIds: ['wf-cheddar', 'wf-brie'],
+				options: {
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'new',
+					credentialMatchingMode: 'id-only',
+					credentialMissingMode: 'must-preexist',
+					workflowPublishingPolicy: 'preserve-published-state',
+				},
+				packageSourceId: 'source-instance-1',
+				packageVersion: '1',
+				credentialIds: {
+					matched: ['cred-1'],
+					created: [],
+					updated: [],
+				},
+			};
+
+			eventService.emit('workflows-imported', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.imported',
+				payload: {
+					userId: 'user-import',
+					_email: 'importer@example.com',
+					_firstName: 'Import',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					projectId: 'proj-brie',
+					folderId: 'folder-cheese',
+					workflowIds: ['wf-cheddar', 'wf-brie'],
+					options: {
+						workflowConflictPolicy: 'new-version',
+						workflowIdPolicy: 'new',
+						credentialMatchingMode: 'id-only',
+						credentialMissingMode: 'must-preexist',
+						workflowPublishingPolicy: 'preserve-published-state',
+					},
+					packageSourceId: 'source-instance-1',
+					packageVersion: '1',
+					credentialIds: {
+						matched: ['cred-1'],
+						created: [],
+						updated: [],
+					},
+				},
+			});
+		});
+
 		it('should log on `workflow-archived` event', () => {
 			const event: RelayEventMap['workflow-archived'] = {
 				user: {
@@ -1665,7 +1724,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `public-api-key-deleted` event', () => {
+		it('should log on `public-api-key-deleted` event when the user deletes their own key', () => {
 			const event: RelayEventMap['public-api-key-deleted'] = {
 				user: {
 					id: 'user606',
@@ -1675,6 +1734,7 @@ describe('LogStreamingEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
+				isOwn: true,
 			};
 
 			eventService.emit('public-api-key-deleted', event);
@@ -1687,6 +1747,35 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'API',
 					_lastName: 'User',
 					globalRole: 'global:owner',
+					is_own: true,
+				},
+			});
+		});
+
+		it('should log `is_own: false` on `public-api-key-deleted` event when an admin revokes another user’s key', () => {
+			const event: RelayEventMap['public-api-key-deleted'] = {
+				user: {
+					id: 'admin-1',
+					email: 'admin@example.com',
+					firstName: 'Admin',
+					lastName: 'User',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				publicApi: false,
+				isOwn: false,
+			};
+
+			eventService.emit('public-api-key-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.api.deleted',
+				payload: {
+					userId: 'admin-1',
+					_email: 'admin@example.com',
+					_firstName: 'Admin',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+					is_own: false,
 				},
 			});
 		});

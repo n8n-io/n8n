@@ -1,5 +1,5 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
@@ -75,6 +75,7 @@ export class ProjectService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
 	) {}
 
 	private get workflowService() {
@@ -234,7 +235,15 @@ export class ProjectService {
 			]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
-				await agentKnowledgeService.deleteAllFilesForAgent(agent.id);
+				try {
+					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id, user.id);
+				} catch (error) {
+					this.logger.warn('Failed to delete knowledge files on project delete', {
+						agentId: agent.id,
+						projectId: project.id,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
 			}
 		}
 

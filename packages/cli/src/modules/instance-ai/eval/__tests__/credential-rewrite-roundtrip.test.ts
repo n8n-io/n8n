@@ -10,6 +10,13 @@ import type {
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { LlmWireServer } from '../llm-wire-server';
 
+const mockLogger = {
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
+} as never;
+
 // End-to-end: boot wire server, rewrite openAiApi.url to /eval/<root>/v1,
 // POST to the rewritten URL, verify root-token attribution + envelope shape.
 describe('Credential rewrite + wire server round-trip with root token', () => {
@@ -25,6 +32,7 @@ describe('Credential rewrite + wire server round-trip with root token', () => {
 
 	beforeEach(async () => {
 		server = new LlmWireServer({
+			logger: mockLogger,
 			rootToSubNode: new Map([['LLM Chain', subNode]]),
 		});
 		await server.start();
@@ -58,7 +66,7 @@ describe('Credential rewrite + wire server round-trip with root token', () => {
 		const helper = new EvalMockedCredentialsHelper(
 			makeInner(realCreds),
 			server.url,
-			undefined,
+			mockLogger,
 			subNodeToRoot,
 		);
 		const nodeCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI' };
@@ -92,7 +100,7 @@ describe('Credential rewrite + wire server round-trip with root token', () => {
 		const helper = new EvalMockedCredentialsHelper(
 			makeInner(realCreds),
 			server.url,
-			undefined,
+			mockLogger,
 			subNodeToRoot,
 		);
 		const nodeCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI' };
@@ -137,7 +145,7 @@ describe('Credential rewrite + wire server round-trip with root token', () => {
 		const helper = new EvalMockedCredentialsHelper(
 			makeInner(realCreds),
 			server.url,
-			undefined,
+			mockLogger,
 			subNodeToRoot,
 		);
 

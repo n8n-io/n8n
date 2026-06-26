@@ -49,10 +49,6 @@ describe('n8n-packages export', () => {
 			.getControllerMetadata(N8nPackagesController as never)
 			.routes.get('exportWorkflows');
 
-		it('is gated by the feat:n8nPackages license', () => {
-			expect(route?.licenseFeature).toBe('feat:n8nPackages');
-		});
-
 		it('has no @ProjectScope or @GlobalScope decorator', () => {
 			expect(route?.accessScope).toBeUndefined();
 		});

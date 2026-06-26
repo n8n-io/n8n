@@ -227,7 +227,6 @@ describe('DynamicCredentialStorageService', () => {
 					expect.objectContaining({
 						credentialId: 'cred-123',
 						resolverId: 'resolver-456',
-						identity: 'user-123',
 					}),
 				);
 			});

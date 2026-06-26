@@ -102,7 +102,6 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				credentialId: credentialStoreMetadata.id,
 				resolverId,
 				resolverSource: credentialStoreMetadata.resolverId ? 'credential' : 'workflow',
-				identity: credentialContext.identity,
 			});
 		} catch (error) {
 			throw new CredentialStorageError(

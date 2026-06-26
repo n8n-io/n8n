@@ -1,37 +1,41 @@
+import type { Mock } from 'vitest';
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
 import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
-import { existsSync } from 'fs';
 import { readdir, readFile } from 'fs/promises';
-import type { Cipher } from 'n8n-core';
-import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { Cipher } from 'n8n-core';
 
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { decompressFolder } from '@/utils/compression.util';
-
 import { ImportService } from '../import.service';
 
 // Mock fs/promises
 vi.mock('fs/promises');
-vi.mock('fs');
 
 vi.mock('@/utils/compression.util');
+// Partial fs mock: override only existsSync (used by decompressEntitiesZip via a
+// dynamic import), keeping the rest of fs real for other tests in this file.
+vi.mock('fs', async (importOriginal) => ({
+	...(await importOriginal<typeof import('fs')>()),
+	existsSync: vi.fn(),
+}));
 
 vi.mock('@n8n/backend-common', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/backend-common')>()),
 	safeJoinPath: vi.fn(),
 }));
 
-// Use the real `@n8n/db` exports (entities/repositories are referenced as DI
-// tokens and type metadata throughout the transitive import graph); the test
-// injects mock repositories via the constructor, so the real classes are never
-// instantiated.
+// Mock @n8n/db
+// Spread the real module so transitively-imported exports resolve (Vitest throws
+// on undeclared mock exports, unlike Jest), overriding only the repos under test.
 vi.mock('@n8n/db', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/db')>()),
+	CredentialsRepository: mock<CredentialsRepository>(),
+	TagRepository: mock<TagRepository>(),
+	DataSource: mock<DataSource>(),
 }));
 
 describe('ImportService', () => {
@@ -260,7 +264,8 @@ describe('ImportService', () => {
 			const mockFiles = ['user.jsonl', 'workflowentity.jsonl', 'migrations.jsonl'];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath)
+			vi
+				.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/workflowentity.jsonl');
 
@@ -280,7 +285,8 @@ describe('ImportService', () => {
 			const mockFiles = ['user.jsonl', 'user.2.jsonl', 'user.3.jsonl'];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath)
+			vi
+				.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/user.2.jsonl')
 				.mockReturnValueOnce('/test/input/user.3.jsonl');
@@ -363,7 +369,8 @@ describe('ImportService', () => {
 			];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath)
+			vi
+				.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/data_table_user_abc.jsonl')
 				.mockReturnValueOnce('/test/input/data_table_user_abc.2.jsonl')
@@ -683,7 +690,9 @@ describe('ImportService', () => {
 
 	describe('validateMigrations', () => {
 		beforeEach(() => {
-			vi.mocked(readFile).mockResolvedValue('{"id":"1","timestamp":"123","name":"TestMigration"}');
+			vi
+				.mocked(readFile)
+				.mockResolvedValue('{"id":"1","timestamp":"123","name":"TestMigration"}');
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.options = { type: 'sqlite' };
 		});
@@ -991,9 +1000,11 @@ describe('ImportService', () => {
 			const inputDir = '/test/input';
 			const entitiesZipPath = '/test/input/entities.zip';
 
+			// Override the partial fs mock's existsSync for this test.
+			const { existsSync } = await import('fs');
 			vi.mocked(existsSync).mockReturnValue(true);
-			vi.mocked(decompressFolder).mockResolvedValue(undefined);
 
+			// decompressFolder is auto-mocked at the top of the file (resolves undefined).
 			vi.mocked(safeJoinPath).mockReturnValue(entitiesZipPath);
 
 			// @ts-expect-error For testing purposes
@@ -1094,7 +1105,8 @@ describe('ImportService', () => {
 
 			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
 
-			const dropCallOrder = (mockDataTableDDLService.dropTable as Mock).mock.invocationCallOrder[0];
+			const dropCallOrder = (mockDataTableDDLService.dropTable as Mock).mock
+				.invocationCallOrder[0];
 			const createCallOrder = (mockDataTableDDLService.createTableWithColumns as Mock).mock
 				.invocationCallOrder[0];
 			expect(dropCallOrder).toBeLessThan(createCallOrder);

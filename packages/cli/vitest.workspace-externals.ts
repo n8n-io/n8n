@@ -31,6 +31,10 @@ export function workspaceDistExternals(): Plugin {
 		// Vite-inlined `zod` and the dist `zod` produce distinct `ZodError`
 		// classes and `instanceof` checks fail across the boundary.
 		if (source === 'zod' || source.startsWith('zod/')) return true;
+		// `ws` is a CJS module whose `Server`/`WebSocket` constructors are lost when
+		// Vitest inlines it through ESM interop (`new Server()` -> "not a constructor").
+		// Externalizing loads it via Node's require, preserving the constructors.
+		if (source === 'ws') return true;
 		return N8N_PREFIXES.some((name) => source === name || source.startsWith(`${name}/`));
 	};
 

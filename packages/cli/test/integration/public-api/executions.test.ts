@@ -2,6 +2,7 @@ import {
 	createManyWorkflows,
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	shareWorkflowWithUsers,
 	testDb,
@@ -180,6 +181,47 @@ describe('GET /executions/:id', () => {
 		});
 	});
 
+	test('should return execution without data when it exceeds the display size limit', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				// recorded size over the 100 MB default; the guard skips loading the data column
+				jsonSizeBytes: 200 * 1024 * 1024,
+				data: '[]',
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(`/executions/${execution.id}?includeData=true`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.dataTooLargeToDisplay).toBe(true);
+		expect(response.body.data?.resultData?.runData).toEqual({});
+	});
+
+	test('should return full data when ignoreDataSizeLimit is set, despite the size limit', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				jsonSizeBytes: 200 * 1024 * 1024,
+				data: '[]',
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(
+			`/executions/${execution.id}?includeData=true&ignoreDataSizeLimit=true`,
+		);
+
+		expect(response.statusCode).toBe(200);
+		// guard bypassed: data is loaded normally, no "too large" flag
+		expect(response.body.dataTooLargeToDisplay).toBeUndefined();
+	});
+
 	test('member should not get an execution of another user without the workflow being shared', async () => {
 		const workflow = await createWorkflow({}, owner);
 
@@ -316,6 +358,48 @@ describe('POST /executions/:id/retry', () => {
 		expect(response.body.message).toBe(
 			'The execution was aborted before starting, so it cannot be retried',
 		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when user only has read access to the workflow via project viewer role', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const executionServiceSpy = vi.spyOn(Container.get(ExecutionService), 'retry');
+
+		const project = await createTeamProject('project with viewer', owner);
+		await linkUserToProject(user1, project, 'project:viewer');
+
+		const workflow = await createWorkflow({}, project);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+		expect(executionServiceSpy).not.toHaveBeenCalled();
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should retry an execution when user has execute access via project editor role', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const mockedExecutionResponse = { status: 'waiting' } as any;
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(mockedExecutionResponse);
+
+		const project = await createTeamProject('project with editor', owner);
+		await linkUserToProject(user1, project, 'project:editor');
+
+		const workflow = await createWorkflow({}, project);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(mockedExecutionResponse);
 
 		executionServiceSpy.mockRestore();
 	});

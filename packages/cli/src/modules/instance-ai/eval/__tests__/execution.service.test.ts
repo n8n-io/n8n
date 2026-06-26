@@ -1,6 +1,8 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
 	INode,
@@ -10,7 +12,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { NodeTypes } from '@/node-types';
@@ -22,17 +23,17 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 // Mocks — must be before the import of the class under test
 // ---------------------------------------------------------------------------
 
-vi.mock('@n8n/instance-ai', async () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(),
 	extractText: vi.fn(),
 }));
-vi.mock('../pin-data-generator', async () => ({
+vi.mock('../pin-data-generator', () => ({
 	generatePinData: vi.fn(),
 }));
-vi.mock('../mock-handler', async () => ({
+vi.mock('../mock-handler', () => ({
 	createLlmMockHandler: vi.fn(),
 }));
-vi.mock('../workflow-analysis', async () => ({
+vi.mock('../workflow-analysis', () => ({
 	partitionAiRoots: vi.fn(),
 	buildVendorLlmRouting: vi.fn().mockReturnValue({
 		subNodeToRoot: new Map(),
@@ -48,7 +49,7 @@ vi.mock('../workflow-analysis', async () => ({
 const mockWireServerStart = vi.fn();
 const mockWireServerStop = vi.fn();
 const capturedWireServerOptions: { last: unknown } = { last: undefined };
-vi.mock('../llm-wire-server', async () => {
+vi.mock('../llm-wire-server', () => {
 	class MockLlmWireServer {
 		start = mockWireServerStart;
 		stop = mockWireServerStop;
@@ -61,10 +62,10 @@ vi.mock('../llm-wire-server', async () => {
 });
 
 const mockRestoreNoProxy = vi.fn();
-vi.mock('../proxy-loopback', async () => ({
-	patchNoProxyForLoopback: vi.fn(() => mockRestoreNoProxy),
+vi.mock('@n8n/backend-network/proxy', () => ({
+	ensureHostsBypassProxy: vi.fn(() => mockRestoreNoProxy),
 }));
-vi.mock('@n8n/workflow-sdk', async () => ({
+vi.mock('@n8n/workflow-sdk', () => ({
 	normalizePinData: vi.fn((pd: unknown) => pd),
 }));
 
@@ -93,8 +94,8 @@ vi.mock('n8n-workflow', async () => {
 
 import { EvalExecutionService } from '../execution.service';
 import { createLlmMockHandler } from '../mock-handler';
-import { patchNoProxyForLoopback } from '../proxy-loopback';
 import {
+	detectBinaryDependencies,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
@@ -107,6 +108,7 @@ import type { MockHints } from '../workflow-analysis';
 // ---------------------------------------------------------------------------
 
 const generateMockHintsMock = vi.mocked(generateMockHints);
+const detectBinaryDependenciesMock = vi.mocked(detectBinaryDependencies);
 const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
 const partitionAiRootsMock = vi.mocked(partitionAiRoots);
@@ -220,7 +222,7 @@ describe('EvalExecutionService', () => {
 		};
 	}
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
 		lastConfigureAdditionalData = undefined;
 
@@ -250,7 +252,10 @@ describe('EvalExecutionService', () => {
 		// Default: kill-switch enabled. Tests that need it off flip this.
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 
-		vi.mocked(patchNoProxyForLoopback).mockImplementation(() => mockRestoreNoProxy);
+		const proxyModule = (await import('@n8n/backend-network/proxy')) as unknown as {
+			ensureHostsBypassProxy: Mock;
+		};
+		proxyModule.ensureHostsBypassProxy.mockImplementation(() => mockRestoreNoProxy);
 
 		// Mirror runMainProcess: capture + invoke the closure on a stub additionalData.
 		workflowRunner.run.mockImplementation(async (data) => {
@@ -565,7 +570,10 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('tears down the wire server when NO_PROXY patching throws after boot', async () => {
-				vi.mocked(patchNoProxyForLoopback).mockImplementationOnce(() => {
+				const proxyModule = (await import('@n8n/backend-network/proxy')) as unknown as {
+					ensureHostsBypassProxy: Mock;
+				};
+				proxyModule.ensureHostsBypassProxy.mockImplementationOnce(() => {
 					throw new Error('env mutation blocked');
 				});
 
@@ -1167,6 +1175,104 @@ describe('EvalExecutionService', () => {
 
 			expect(result.nodeResults['Webhook']).toBeDefined();
 			expect(result.nodeResults['Webhook'].executionMode).toBe('pinned');
+		});
+
+		it('mirrors an LLM-embedded binary map as real item.binary while keeping json intact', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: { subject: 'invoice' },
+				binary: { image: { mimeType: 'image/png', fileName: 'chart.png', data: 'bm90LWEtcG5n' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			// json stays untouched so $json.binary.* references keep resolving
+			expect(item?.json).toEqual(hints.triggerContent);
+			expect(item?.binary?.image).toMatchObject({
+				mimeType: 'image/png',
+				fileName: 'chart.png',
+			});
+			// Real synthesized bytes back the item-level binary, not the LLM's fake base64
+			expect(item?.binary?.image.data).not.toBe('bm90LWEtcG5n');
+			expect(Buffer.from(item?.binary?.image.data ?? '', 'base64').length).toBeGreaterThan(0);
+		});
+
+		it('does not treat name-only object maps under a binary json key as file metadata', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { probe: { name: 'Temp Sensor', value: 23 } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.json).toEqual(hints.triggerContent);
+			expect(item?.binary).toBeUndefined();
+		});
+
+		it('prefers richer embedded metadata when the consumer requirement is the generic fallback', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { Document: { mimeType: 'application/pdf', fileName: 'contract.pdf' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+			detectBinaryDependenciesMock.mockReturnValueOnce({
+				propertyName: 'Document',
+				contentType: 'application/octet-stream',
+				filename: 'input.bin',
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.binary?.Document).toMatchObject({
+				mimeType: 'application/pdf',
+				fileName: 'contract.pdf',
+			});
+		});
+
+		it('keeps a non-binary-shaped "binary" json field untouched', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = { binary: true, body: { mode: 'fast' } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.json).toEqual({ binary: true, body: { mode: 'fast' } });
+			expect(item?.binary).toBeUndefined();
+		});
+
+		it('lets a consumer-derived binary requirement override an embedded entry with the same key', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { upload: { mimeType: 'image/png', fileName: 'wrong.png' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+			detectBinaryDependenciesMock.mockReturnValueOnce({
+				propertyName: 'upload',
+				contentType: 'application/pdf',
+				filename: 'input.pdf',
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.binary?.upload).toMatchObject({
+				mimeType: 'application/pdf',
+				fileName: 'input.pdf',
+			});
 		});
 
 		it('does not create pin data when triggerContent is empty', async () => {

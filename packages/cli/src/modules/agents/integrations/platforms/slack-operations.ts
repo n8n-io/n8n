@@ -1,10 +1,10 @@
 import { z } from 'zod';
+import { isRecord } from '@n8n/utils';
 
 import type { ChatInstance } from '../chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
 import {
 	integrationError,
-	isRecord,
 	stringValue,
 	unsupportedAction,
 	unsupportedQuery,

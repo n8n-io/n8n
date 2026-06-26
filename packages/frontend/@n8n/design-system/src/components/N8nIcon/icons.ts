@@ -165,6 +165,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideListPlus from '~icons/lucide/list-plus';
 import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
@@ -238,6 +239,7 @@ import IconLucideStrikethrough from '~icons/lucide/strikethrough';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
 import IconLucideTags from '~icons/lucide/tags';
+import IconLucideTelescope from '~icons/lucide/telescope';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
@@ -258,6 +260,7 @@ import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
 import IconLucideUserPen from '~icons/lucide/user-pen';
 import IconLucideUserRound from '~icons/lucide/user-round';
+import IconLucideUserRoundKey from '~icons/lucide/user-round-key';
 import IconLucideUsers from '~icons/lucide/users';
 import IconLucideVariable from '~icons/lucide/variable';
 import IconLucideVault from '~icons/lucide/vault';
@@ -658,6 +661,7 @@ export const updatedIconSet = {
 	link: IconLucideLink,
 	list: IconLucideList,
 	'list-checks': IconLucideListChecks,
+	'list-plus': IconLucideListPlus,
 	'list-tree': IconLucideListTree,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
@@ -729,6 +733,7 @@ export const updatedIconSet = {
 	sun: IconLucideSun,
 	table: IconLucideTable,
 	tags: IconLucideTags,
+	telescope: IconLucideTelescope,
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
@@ -748,6 +753,7 @@ export const updatedIconSet = {
 	'user-lock': IconLucideUserLock,
 	'user-pen': IconLucideUserPen,
 	'user-round': IconLucideUserRound,
+	'user-round-key': IconLucideUserRoundKey,
 	users: IconLucideUsers,
 	vault: IconLucideVault,
 	video: IconLucideVideo,

@@ -70,6 +70,7 @@ const {
 		confirm: vi.fn(),
 	},
 	mockWorkflowDocumentStore: {
+		workflowId: '123',
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
 		getStartNode: vi.fn(),
@@ -102,6 +103,18 @@ vi.mock('@/app/stores/workflows.store', () => ({
 
 vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn().mockReturnValue(mockWorkflowExecutionStateStore),
+	injectWorkflowExecutionStateStore: vi.fn(() => ({
+		// Plain accessor so per-test reassignment of the mock fields is always
+		// picked up.
+		get value() {
+			return {
+				...mockWorkflowExecutionStateStore,
+				get activeExecutionExecutedNode() {
+					return mockWorkflowsStore.executedNode;
+				},
+			};
+		},
+	})),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({

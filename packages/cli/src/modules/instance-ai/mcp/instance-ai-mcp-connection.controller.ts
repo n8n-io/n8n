@@ -93,26 +93,15 @@ export class InstanceAiMcpConnectionController {
 		);
 	}
 
-	/**
-	 * Settings persistence is intentionally deferred: the entity has no settings
-	 * columns yet. The endpoint validates ownership, accepts the payload, and
-	 * returns the existing connection unchanged so the UI can submit changes
-	 * forward-compatibly. Replace this no-op with a real update once the
-	 * settings columns land.
-	 */
 	@Patch('/:id')
 	@GlobalScope('instanceAi:message')
 	async update(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
-		@Body _payload: InstanceAiMcpUpdateConnectionRequestDto,
+		@Body payload: InstanceAiMcpUpdateConnectionRequestDto,
 	): Promise<InstanceAiMcpConnectionResponse> {
-		const connections = await this.service.listConnectionsForUser(req.user);
-		const connection = connections.find((c) => c.id === id);
-		if (!connection) {
-			throw new NotFoundError('MCP registry connection not found');
-		}
+		const connection = await this.service.updateConnection(req.user, id, payload);
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			connection.credentialId,
 			req.user,

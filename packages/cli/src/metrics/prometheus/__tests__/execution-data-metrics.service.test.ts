@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { DURATION_BUCKETS_SECONDS } from '../constant';
+import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from '../constant';
 import { PrometheusExecutionDataMetricsService } from '../execution-data-metrics.service';
 
 import type { EventService } from '@/events/event.service';
@@ -109,6 +109,17 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			});
 		});
 
+		it('should create execution_data_write_size_bytes histogram with SIZE_BUCKETS_BYTES', () => {
+			service.init();
+
+			expect(promClient.Histogram).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_write_size_bytes',
+				help: 'Logical byte size of the JSON execution data bundle written (excludes binary data).',
+				labelNames: ['mode'],
+				buckets: SIZE_BUCKETS_BYTES,
+			});
+		});
+
 		it('should create execution_data_storage_mode gauge', () => {
 			service.init();
 
@@ -126,6 +137,8 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db', result: 'failure' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'success' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'failure' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3', result: 'success' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3', result: 'failure' }, 0);
 		});
 
 		it('should seed unreadable bundles counter for each mode at 0', () => {
@@ -133,14 +146,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3' }, 0);
 		});
 
-		it('should set storage mode gauge with db=0, fs=0, and configured modeTag=1', () => {
+		it('should set storage mode gauge with db=0, fs=0, s3=0, and configured modeTag=1', () => {
 			Object.assign(storageConfig, { modeTag: 'db' });
 			service.init();
 
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 1);
 		});
 
@@ -151,6 +166,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 1);
+		});
+
+		it('should set storage mode gauge with s3=1 when modeTag is s3', () => {
+			Object.assign(storageConfig, { modeTag: 's3' });
+			service.init();
+
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 1);
 		});
 	});
 
@@ -244,7 +269,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 100, success: true });
+			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db', result: 'success' }, 1);
 		});
@@ -255,9 +280,20 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 100, success: true });
+			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
 
 			expect(mockHistogramObserve).toHaveBeenCalledWith({ mode: 'db' }, 0.1);
+		});
+
+		it('should observe write size histogram with jsonSizeBytes on success', () => {
+			service.init();
+			const handler = getEventHandler('execution-data-write');
+
+			expect(handler).toBeDefined();
+
+			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
+
+			expect(mockHistogramObserve).toHaveBeenCalledWith({ mode: 'db' }, 2048);
 		});
 
 		it('should increment writes counter with result:failure on failure', () => {
@@ -266,7 +302,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'fs', durationMs: 10, success: false });
+			handler!({ mode: 'fs', durationMs: 10, success: false, jsonSizeBytes: 0 });
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'failure' }, 1);
 		});
@@ -277,7 +313,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 10, success: false });
+			handler!({ mode: 'db', durationMs: 10, success: false, jsonSizeBytes: 0 });
 
 			expect(mockHistogramObserve).not.toHaveBeenCalled();
 		});

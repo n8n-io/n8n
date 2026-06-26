@@ -24,6 +24,7 @@ const additionalData = mock<PartialAdditionalData>({
 	currentNodeParameters: undefined,
 	executionTimeoutTimestamp: undefined,
 	restartExecutionId: undefined,
+	evaluationRunId: 'test-run-id-123',
 });
 
 const node = mock<INode>();
@@ -108,6 +109,7 @@ describe('DataRequestResponseBuilder', () => {
 			currentNodeParameters: undefined,
 			executionTimeoutTimestamp: undefined,
 			restartExecutionId: undefined,
+			evaluationRunId: 'test-run-id-123',
 		});
 	});
 

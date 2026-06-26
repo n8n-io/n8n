@@ -1,44 +1,69 @@
-import type { Mock } from 'vitest';
 interface MockResponseSpec {
-	type: 'json' | 'binary' | 'error';
+	type: 'json' | 'text' | 'binary' | 'error';
 	body?: unknown;
+	textBody?: string;
 	statusCode?: number;
 	contentType?: string;
 	filename?: string;
 	sizeHint?: 'small' | 'medium' | 'large';
 }
 
-const submitQueue: MockResponseSpec[] = [];
-const generateOverride: { fn?: () => Promise<unknown> } = {};
-const submitCapture: { handler?: (input: MockResponseSpec) => Promise<unknown> } = {};
-const quirksCapture: { handler?: () => Promise<string> } = {};
-
-const mockGenerate = vi.fn(async (_prompt: string) => {
-	if (generateOverride.fn) return await generateOverride.fn();
-	const next = submitQueue.shift();
-	if (next && submitCapture.handler) {
-		await submitCapture.handler(next);
-	}
-	return { messages: [], finishReason: 'tool-calls' };
-});
-
 interface MockAgent {
 	tool: Mock;
 	generate: Mock;
 }
 
-const mockAgent: MockAgent = {
-	tool: vi.fn(function (this: MockAgent, builtTool: { _name?: string; _handler?: unknown }) {
-		if (builtTool._name === 'submit_response') {
-			submitCapture.handler = builtTool._handler as (input: MockResponseSpec) => Promise<unknown>;
-		} else if (builtTool._name === 'get_endpoint_quirks') {
-			quirksCapture.handler = builtTool._handler as () => Promise<string>;
+// Hoisted so the `vi.mock('@n8n/instance-ai')` factory below (which references
+// mockAgent/mockExtractText) can resolve them — vi.mock factories are hoisted
+// above all module-level statements.
+const {
+	submitQueue,
+	generateOverride,
+	submitCapture,
+	quirksCapture,
+	mockGenerate,
+	mockAgent,
+	mockExtractText,
+} = vi.hoisted(() => {
+	const submitQueue: MockResponseSpec[] = [];
+	const generateOverride: { fn?: () => Promise<unknown> } = {};
+	const submitCapture: { handler?: (input: MockResponseSpec) => Promise<unknown> } = {};
+	const quirksCapture: { handler?: () => Promise<string> } = {};
+
+	const mockGenerate = vi.fn(async (_prompt: string) => {
+		if (generateOverride.fn) return await generateOverride.fn();
+		const next = submitQueue.shift();
+		if (next && submitCapture.handler) {
+			await submitCapture.handler(next);
 		}
-		return this;
-	}),
-	generate: mockGenerate,
-};
-const mockExtractText = vi.hoisted(() => vi.fn((result: { _text?: string }) => result._text ?? ''));
+		return { messages: [], finishReason: 'tool-calls' };
+	});
+
+	const mockAgent: MockAgent = {
+		tool: vi.fn(function (this: MockAgent, builtTool: { _name?: string; _handler?: unknown }) {
+			if (builtTool._name === 'submit_response') {
+				submitCapture.handler = builtTool._handler as (input: MockResponseSpec) => Promise<unknown>;
+			} else if (builtTool._name === 'get_endpoint_quirks') {
+				quirksCapture.handler = builtTool._handler as () => Promise<string>;
+			}
+			return this;
+		}),
+		generate: mockGenerate,
+	};
+
+	const mockExtractText = vi.fn((result: { _text?: string }) => result._text ?? '');
+
+	return {
+		submitQueue,
+		generateOverride,
+		submitCapture,
+		quirksCapture,
+		mockGenerate,
+		mockAgent,
+		mockExtractText,
+	};
+});
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => mockAgent),
@@ -78,6 +103,7 @@ vi.mock('@n8n/di', () => ({
 	Service: () => (target: unknown) => target,
 }));
 
+import type { Mock } from 'vitest';
 import { Container } from '@n8n/di';
 import { createEvalAgent, Tool } from '@n8n/instance-ai';
 import FileType from 'file-type';
@@ -92,16 +118,11 @@ import { extractNodeConfig } from '../node-config';
 // inside vi.mock factories before every test, so re-apply the mocks that
 // matter for tests to pass. Keep in sync with the factory bodies above.
 function reapplyMockImplementations() {
-	vi.mocked(Container.get).mockReturnValue({
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-		debug: vi.fn(),
-	});
+	vi.mocked(Container.get).mockReturnValue(mockLogger);
 	vi.mocked(fetchApiDocs).mockResolvedValue('');
 	vi.mocked(extractNodeConfig).mockReturnValue('{}');
 	vi.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
-	vi.mocked(Tool).mockImplementation(function (name: string) {
+	vi.mocked(Tool).mockImplementation((function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
 			description: vi.fn().mockReturnThis(),
@@ -113,7 +134,7 @@ function reapplyMockImplementations() {
 			build: vi.fn(() => built),
 		};
 		return builder;
-	} as never);
+	}) as never);
 	mockAgent.tool.mockImplementation(function (
 		this: MockAgent,
 		builtTool: { _name?: string; _handler?: unknown },
@@ -125,7 +146,7 @@ function reapplyMockImplementations() {
 		}
 		return this;
 	});
-	mockGenerate.mockImplementation(async (_prompt: string) => {
+	mockGenerate.mockImplementation(async function (_prompt: string) {
 		if (generateOverride.fn) return await generateOverride.fn();
 		const next = submitQueue.shift();
 		if (next && submitCapture.handler) {
@@ -133,7 +154,7 @@ function reapplyMockImplementations() {
 		}
 		return { messages: [], finishReason: 'tool-calls' };
 	});
-	mockExtractText.mockImplementation((result: { _text?: string }) => result._text ?? '');
+	mockExtractText.mockImplementation(function (result: { _text?: string }) { return result._text ?? ''; });
 }
 
 // ---------------------------------------------------------------------------
@@ -296,6 +317,137 @@ describe('createLlmMockHandler', () => {
 		});
 	});
 
+	it('should materialize text spec as a raw string body with the given content type', async () => {
+		const soap =
+			'<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><GetQuoteResponse><Price>42.5</Price></GetQuoteResponse></soap:Body></soap:Envelope>';
+		llmSubmits({ type: 'text', textBody: soap, contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: soap,
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 200,
+		});
+		expect(typeof result.body).toBe('string');
+	});
+
+	it('should default text content type to text/plain when omitted', async () => {
+		llmSubmits({ type: 'text', textBody: 'id,name\n1,Jane' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: 'id,name\n1,Jane',
+			headers: { 'content-type': 'text/plain' },
+			statusCode: 200,
+		});
+	});
+
+	it('should materialize error spec with a text document body when textBody is provided', async () => {
+		const fault =
+			'<?xml version="1.0"?><soap:Fault><faultcode>soap:Client</faultcode></soap:Fault>';
+		llmSubmits({ type: 'error', statusCode: 500, textBody: fault, contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: fault,
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 500,
+		});
+	});
+
+	it('should not capture a text spec missing textBody and succeed on the retry submission', async () => {
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		llmSubmits({ type: 'text', textBody: '<ok/>', contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: '<ok/>',
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 200,
+		});
+	});
+
+	it('should return corrective messages from the submit handler for invalid cross-field specs', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const submitHandler = submitCapture.handler;
+		if (!submitHandler) throw new Error('submit_response handler was not captured');
+
+		await expect(submitHandler({ type: 'text', contentType: 'text/xml' })).resolves.toContain(
+			'requires textBody',
+		);
+		await expect(submitHandler({ type: 'json', textBody: '<oops/>' })).resolves.toContain(
+			'not allowed with type="json"',
+		);
+		await expect(
+			submitHandler({ type: 'text', textBody: '<html>503</html>', statusCode: 503 }),
+		).resolves.toContain('resubmit with type="error"');
+		await expect(
+			submitHandler({ type: 'text', textBody: '{"items": [1, 2]}', contentType: 'text/plain' }),
+		).resolves.toContain('looks like a JSON response');
+		await expect(
+			submitHandler({ type: 'text', textBody: '<ok/>', contentType: 'application/json' }),
+		).resolves.toContain('looks like a JSON response');
+		await expect(
+			submitHandler({
+				type: 'error',
+				statusCode: 429,
+				body: { error: 'rate limited' },
+				textBody: 'Too Many Requests',
+			}),
+		).resolves.toContain('not both');
+	});
+
+	it('should fall back to a soft-captured json body when the model never resubmits after a json+textBody rejection', async () => {
+		llmSubmits({ type: 'json', body: { id: 7 }, textBody: '<stray/>' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: { id: 7 },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		});
+		// The fallback is observable: serving a rejected, never-resubmitted spec warns.
+		expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
+	});
+
+	it('should not warn when an accepted submission is served', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		expect(mockLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
+	});
+
+	it('should surface the rejection reason when a rejected spec is never resubmitted', async () => {
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.body).toEqual(
+			expect.objectContaining({
+				_evalMockError: true,
+				message: expect.stringContaining('rejected'),
+			}),
+		);
+	});
+
+	it('should default text content type to text/plain when contentType is an empty string', async () => {
+		llmSubmits({ type: 'text', textBody: '<rss/>', contentType: '' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.headers['content-type']).toBe('text/plain');
+	});
+
 	it('should return _evalMockError when agent does not call submit_response', async () => {
 		llmDoesNotSubmit('I cannot generate this response');
 		const handler = createLlmMockHandler();
@@ -324,7 +476,10 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		vi.mocked(extractNodeConfig).mockReturnValue('{"resource":"message"}');
+		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+			extractNodeConfig: Mock;
+		};
+		extractNodeConfig.mockReturnValue('{"resource":"message"}');
 
 		llmSubmits({ type: 'json', body: { ok: true } });
 		llmSubmits({ type: 'json', body: { ok: true } });
@@ -337,7 +492,10 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		vi.mocked(extractNodeConfig).mockReturnValue('{}');
+		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+			extractNodeConfig: Mock;
+		};
+		extractNodeConfig.mockReturnValue('{}');
 
 		llmSubmits({ type: 'json', body: {} });
 		llmSubmits({ type: 'json', body: {} });

@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/require-await -- async mock stubs and unbound-method references are acceptable test idioms */
-import { mockLogger } from '@n8n/backend-test-utils';
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
 import type { Mocked } from 'vitest';
+import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentSkillsService } from '../agent-skills.service';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
@@ -28,6 +29,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
 	let agentRepository: Mocked<AgentRepository>;
+	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -39,8 +41,9 @@ describe('AgentSkillsService', () => {
 		vi.clearAllMocks();
 
 		agentRepository = mock<AgentRepository>();
+		runtimeCacheService = mock<AgentRuntimeCacheService>();
 		agentRepository.save.mockImplementation(async (a) => a as Agent);
-		service = new AgentSkillsService(mockLogger(), agentRepository);
+		service = new AgentSkillsService(mockLogger(), agentRepository, runtimeCacheService);
 	});
 
 	it('creates a skill without attaching it to the config', async () => {
@@ -65,6 +68,7 @@ describe('AgentSkillsService', () => {
 			[result.id]: skill,
 		});
 		expect(agent.schema?.skills).toEqual([]);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
 	it('creates and attaches a skill on the agent when requested', async () => {
@@ -84,6 +88,7 @@ describe('AgentSkillsService', () => {
 			[result.id]: skill,
 		});
 		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: result.id }]);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
 	it('loads one skill from the agent', async () => {
@@ -92,6 +97,7 @@ describe('AgentSkillsService', () => {
 		);
 
 		await expect(service.getSkill(agentId, projectId, 'summarize_notes')).resolves.toEqual(skill);
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
 	it('updates an existing skill on the agent', async () => {
@@ -113,6 +119,21 @@ describe('AgentSkillsService', () => {
 		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
 			summarize_notes: result.skill,
 		});
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+	});
+
+	it('rejects skill snapshots when configured skill bodies are missing', () => {
+		expect(() =>
+			service.snapshotConfiguredSkills(
+				{
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					skills: [{ type: 'skill', id: 'missing_skill' }],
+				},
+				{},
+			),
+		).toThrow('Cannot publish agent with missing skill bodies: missing_skill');
 	});
 
 	it('deletes a skill and removes its config ref', async () => {
@@ -133,5 +154,6 @@ describe('AgentSkillsService', () => {
 		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({});
 		expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(agent.schema?.skills).toEqual([]);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 });

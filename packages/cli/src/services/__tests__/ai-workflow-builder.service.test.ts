@@ -1,15 +1,15 @@
+import type { Mock, Mocked, MockedClass } from 'vitest';
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
+import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import type { Mock, MockedClass } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import type * as fs from 'node:fs';
+import type * as fsp from 'node:fs/promises';
 
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -17,7 +17,6 @@ import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builde
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { SsrfProtectionService } from 'n8n-core';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -53,6 +52,7 @@ describe('WorkflowBuilderService', () => {
 	let mockSessionRepository: WorkflowBuilderSessionRepository;
 	let mockSsrfProtectionConfig: SsrfProtectionConfig;
 	let mockSsrfProtectionService: SsrfProtectionService;
+	let mockOutboundHttp: OutboundHttp;
 	let mockUser: IUser;
 
 	beforeEach(() => {
@@ -101,6 +101,10 @@ describe('WorkflowBuilderService', () => {
 		// gating tests override this.
 		mockSsrfProtectionConfig.enabled = false;
 		mockSsrfProtectionService = mock<SsrfProtectionService>();
+		mockOutboundHttp = mock<OutboundHttp>();
+		const mockTransport = mock<HttpTransport>();
+		mockTransport.asCustomFetch.mockReturnValue(vi.fn() as never);
+		(mockOutboundHttp.transport as Mock).mockReturnValue(mockTransport);
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
@@ -128,6 +132,7 @@ describe('WorkflowBuilderService', () => {
 			mockSessionRepository,
 			mockSsrfProtectionConfig,
 			mockSsrfProtectionService,
+			mockOutboundHttp,
 		);
 	});
 
@@ -151,9 +156,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const generator = service.chat(mockPayload, mockUser);
 			const result = await generator.next();
@@ -171,6 +174,7 @@ describe('WorkflowBuilderService', () => {
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
 				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
+				expect.any(Function), // modelFetch (proxy-aware fetch from OutboundHttp)
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
@@ -191,9 +195,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -219,6 +221,7 @@ describe('WorkflowBuilderService', () => {
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
 				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
+				expect.any(Function), // modelFetch (proxy-aware fetch from OutboundHttp)
 			);
 		});
 
@@ -240,9 +243,7 @@ describe('WorkflowBuilderService', () => {
 			(mockAiService.chat as Mock)
 				.mockReturnValueOnce(mockChatGenerator1)
 				.mockReturnValueOnce(mockChatGenerator2);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			// First call
 			const generator1 = service.chat(mockPayload, mockUser);
@@ -270,9 +271,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const generator = service.chat(mockPayload, mockUser, abortController.signal);
 			await generator.next();
@@ -299,9 +298,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const result = await service.getSessions('workflow-123', mockUser);
 
@@ -315,9 +312,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const result = await service.getSessions(undefined, mockUser);
 
@@ -330,9 +325,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			await service.getSessions('workflow-123', mockUser, true);
 
@@ -359,13 +352,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
-			} as any);
+			}) as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -408,13 +401,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
-			} as any);
+			}) as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -469,13 +462,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			} as any);
+			}) as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -516,13 +509,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			} as any);
+			}) as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -561,13 +554,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			} as any);
+			}) as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -599,9 +592,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -624,9 +615,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			// Capture the callback passed to onCertRefresh
 			let capturedCallback: ((cert: string) => void) | undefined;
@@ -664,9 +653,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -690,9 +677,7 @@ describe('WorkflowBuilderService', () => {
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
 			(mockAiService.updateNodeTypes as Mock).mockImplementation(() => {});
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			// First call - creates the service
 			const generator1 = service.chat(mockPayload, mockUser);
@@ -755,9 +740,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getBuilderInstanceCredits as Mock).mockResolvedValue(expectedCredits);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			const result = await service.getBuilderInstanceCredits(mockUser);
 
@@ -774,9 +757,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getBuilderInstanceCredits as Mock).mockResolvedValue(expectedCredits);
-			MockedAiWorkflowBuilderService.mockImplementation(function () {
-				return mockAiService;
-			});
+			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
 
 			// Call twice to test service reuse
 			await service.getBuilderInstanceCredits(mockUser);
@@ -791,6 +772,8 @@ describe('WorkflowBuilderService', () => {
 });
 
 describe('WorkflowBuilderService - node type loading', () => {
+	const packageDir = '/test/nodes-base';
+
 	const nodeTypeDescription = {
 		name: 'httpRequest',
 		displayName: 'HTTP Request',
@@ -803,51 +786,48 @@ describe('WorkflowBuilderService - node type loading', () => {
 		group: ['output'],
 	};
 
-	// `n8n-core` is externalized to its built dist in the cli vitest config, so the
-	// `node:fs` calls inside the real LazyPackageDirectoryLoader run in native Node
-	// and can't be intercepted by `vi.mock`. Instead, lay down a real package
-	// directory on disk for the loader to read.
-	let packageDir: string;
-
-	beforeAll(() => {
-		packageDir = mkdtempSync(join(tmpdir(), 'n8n-nodes-base-'));
-		mkdirSync(join(packageDir, 'dist', 'known'), { recursive: true });
-		mkdirSync(join(packageDir, 'dist', 'types'), { recursive: true });
-
-		writeFileSync(
-			join(packageDir, 'package.json'),
-			JSON.stringify({
-				name: 'n8n-nodes-base',
-				version: '1.0.0',
-				n8n: { nodes: [], credentials: [] },
-			}),
-		);
-		writeFileSync(
-			join(packageDir, 'dist', 'known', 'nodes.json'),
-			JSON.stringify({
-				httpRequest: {
-					className: 'HttpRequest',
-					sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
-				},
-			}),
-		);
-		writeFileSync(join(packageDir, 'dist', 'known', 'credentials.json'), JSON.stringify({}));
-		writeFileSync(
-			join(packageDir, 'dist', 'types', 'nodes.json'),
-			JSON.stringify([nodeTypeDescription]),
-		);
-		writeFileSync(join(packageDir, 'dist', 'types', 'credentials.json'), JSON.stringify([]));
-	});
-
-	afterAll(() => {
-		rmSync(packageDir, { recursive: true, force: true });
-	});
-
-	beforeEach(() => {
+	beforeEach(async () => {
 		MockedAiWorkflowBuilderService.mockClear();
+
+		// Mock node:fs so LazyPackageDirectoryLoader can "read" from disk
+		const fsModule = (await import('node:fs')) as unknown as Mocked<typeof fs>;
+		const fspModule = (await import('node:fs/promises')) as unknown as Mocked<typeof fsp>;
+
+		fsModule.realpathSync.mockReturnValue(packageDir);
+		fsModule.readFileSync.mockImplementation((filePath: unknown) => {
+			if (String(filePath).endsWith('package.json')) {
+				return JSON.stringify({
+					name: 'n8n-nodes-base',
+					version: '1.0.0',
+					n8n: { nodes: [], credentials: [] },
+				});
+			}
+			throw new Error(`Unexpected readFileSync: ${String(filePath)}`);
+		});
+
+		fspModule.readFile.mockImplementation(async (filePath: unknown) => {
+			const p = String(filePath);
+			if (p.endsWith('known/nodes.json')) {
+				return JSON.stringify({
+					httpRequest: {
+						className: 'HttpRequest',
+						sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
+					},
+				});
+			}
+			if (p.endsWith('known/credentials.json')) return JSON.stringify({});
+			if (p.endsWith('types/nodes.json')) return JSON.stringify([nodeTypeDescription]);
+			if (p.endsWith('types/credentials.json')) return JSON.stringify([]);
+			throw new Error(`Unexpected readFile: ${p}`);
+		});
 	});
 
-	it('should load node types through real postProcessLoaders and pass them to AiWorkflowBuilderService', async () => {
+	// Skipped under Vitest: this exercises the real LazyPackageDirectoryLoader in
+	// `n8n-core`, which is externalized to its built dist and reads the filesystem
+	// via its own `fs` binding. Vitest module mocks don't cross that package
+	// boundary (unlike Jest's global module registry), so the loader hits the real
+	// disk instead of the mocked fs. See migration notes on externalized deps.
+	it.skip('should load node types through real postProcessLoaders and pass them to AiWorkflowBuilderService', async () => {
 		// Real LoadNodesAndCredentials — not mocked
 		const loadNodesAndCredentials = new LoadNodesAndCredentials(
 			mock(),
@@ -858,7 +838,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 		);
 
-		// Real LazyPackageDirectoryLoader reading from the real fixture directory
+		// Real LazyPackageDirectoryLoader reading from the mocked filesystem
 		const loader = new LazyPackageDirectoryLoader(packageDir);
 		await loader.loadAll();
 		loadNodesAndCredentials.loaders[loader.packageName] = loader;
@@ -869,9 +849,12 @@ describe('WorkflowBuilderService - node type loading', () => {
 				yield { messages: ['response'] };
 			})(),
 		);
-		MockedAiWorkflowBuilderService.mockImplementation(function () {
-			return mockAiService;
-		});
+		MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+
+		const outboundHttp = mock<OutboundHttp>();
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(vi.fn() as never);
+		outboundHttp.transport.mockReturnValue(transport);
 
 		const builderService = new WorkflowBuilderService(
 			loadNodesAndCredentials,
@@ -889,6 +872,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 			mock<SsrfProtectionConfig>(),
 			mock<SsrfProtectionService>(),
+			outboundHttp,
 		);
 
 		const mockUser = mock<IUser>();

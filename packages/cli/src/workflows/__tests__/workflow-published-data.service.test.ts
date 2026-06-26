@@ -1,17 +1,15 @@
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
-import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 describe('WorkflowPublishedDataService', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
-	const errorReporter = mock<ErrorReporter>();
 	let service: WorkflowPublishedDataService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		service = new WorkflowPublishedDataService(errorReporter, workflowPublishedVersionRepository);
+		service = new WorkflowPublishedDataService(workflowPublishedVersionRepository);
 	});
 
 	// Verifies that we hit the repository and return the data it provides.

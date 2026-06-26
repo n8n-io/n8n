@@ -59,6 +59,12 @@ describe('integration tools', () => {
 			'cred-a',
 			'cred-b',
 		]);
+		expect(descriptors[0].contextToolDefinitions.map((definition) => definition.name)).toEqual(
+			descriptors[0].contextQueries,
+		);
+		expect(descriptors[0].actionToolDefinitions.map((definition) => definition.name)).toEqual(
+			descriptors[0].actions,
+		);
 	});
 
 	it('context tool returns the latest message context for its integration connection', async () => {

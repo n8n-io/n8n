@@ -18,6 +18,61 @@ import { UrlService } from '@/services/url.service';
 
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
+// Renders `x-required-scope` as a badge on each operation. swagger-ui-express
+// serializes this function's source into the page, so it must be self-contained:
+// no closures, no imports.
+type ImmutableLike = { get(key: string): unknown };
+type ImmutableListLike = { toJS(): string[] };
+type SwaggerUiSystem = {
+	React: {
+		createElement(component: unknown, props: unknown): unknown;
+		useEffect(effect: () => undefined | (() => void), deps: unknown[]): void;
+	};
+	specSelectors?: {
+		specJson(): { getIn(path: string[]): ImmutableLike | null | undefined };
+	};
+};
+type OperationSummaryProps = { specPath?: ImmutableListLike };
+
+function scopeBadgePlugin() {
+	const wrapOperationSummary =
+		(originalComponent: unknown, system: SwaggerUiSystem) => (props: OperationSummaryProps) => {
+			const pathArr = props.specPath?.toJS ? props.specPath.toJS() : null;
+			const op = pathArr ? (system.specSelectors?.specJson().getIn(pathArr) ?? null) : null;
+			const rawScope = op?.get ? op.get('x-required-scope') : null;
+			const scope = typeof rawScope === 'string' ? rawScope : null;
+			const method = pathArr ? pathArr[2] : null;
+			const pathStr = pathArr ? pathArr[1] : null;
+			system.React.useEffect(() => {
+				if (!scope || scope === 'none' || !method || !pathStr) return;
+				const candidates = document.querySelectorAll('.opblock-summary-' + method);
+				let target: Element | null = null;
+				for (const c of candidates) {
+					const pathEl = c.querySelector('.opblock-summary-path');
+					if (pathEl && pathEl.getAttribute('data-path') === pathStr) {
+						target =
+							c.querySelector('.opblock-summary-path-description-wrapper') ??
+							c.querySelector('.opblock-summary-description');
+						break;
+					}
+				}
+				if (!target) return;
+				const existing = target.querySelector(':scope > .x-scope-badge');
+				if (existing) existing.remove();
+				const badge = document.createElement('span');
+				badge.className = 'x-scope-badge';
+				badge.textContent = scope;
+				target.appendChild(badge);
+				return () => {
+					badge.remove();
+				};
+			}, [scope, method, pathStr]);
+			return system.React.createElement(originalComponent, props);
+		};
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- Swagger UI plugin keys are PascalCase
+	return { wrapComponents: { OperationSummary: wrapOperationSummary } };
+}
+
 function createLazySwaggerMiddleware(
 	openApiSpecPath: string,
 	publicApiEndpoint: string,
@@ -45,14 +100,18 @@ function createLazySwaggerMiddleware(
 			const swaggerThemePath = path.join(__dirname, 'swagger-theme.css');
 			const swaggerThemeCss = await fs.readFile(swaggerThemePath, { encoding: 'utf-8' });
 
+			const swaggerSetupOpts = {
+				customCss: swaggerThemeCss,
+				customSiteTitle: 'n8n Public API UI',
+				customfavIcon: `${n8nPath}favicon.ico`,
+				swaggerOptions: {
+					plugins: [scopeBadgePlugin],
+				},
+			};
 			cachedRouter = express.Router();
 			cachedRouter.use(
-				serveFiles(swaggerDocument),
-				setup(swaggerDocument, {
-					customCss: swaggerThemeCss,
-					customSiteTitle: 'n8n Public API UI',
-					customfavIcon: `${n8nPath}favicon.ico`,
-				}),
+				serveFiles(swaggerDocument, swaggerSetupOpts),
+				setup(swaggerDocument, swaggerSetupOpts),
 			);
 		}
 
@@ -75,18 +134,19 @@ function createLazyValidatorMiddleware(
 					'express-openapi-validator'
 				);
 
+				const authStrategyRegistry = Container.get(AuthStrategyRegistry);
+				const eventService = Container.get(EventService);
+				const lastActiveAtService = Container.get(LastActiveAtService);
+				const logger = Container.get(Logger);
+
 				const authenticate = async (req: AuthenticatedRequest) => {
-					const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
+					const authenticated = await authStrategyRegistry.authenticate(req);
 
 					if (authenticated) {
-						Container.get(LastActiveAtService)
-							.updateLastActiveIfStale(req.user.id)
-							.catch((error: unknown) => {
-								Container.get(Logger).error('Failed to update last active timestamp', {
-									error,
-								});
-							});
-						Container.get(EventService).emit('public-api-invoked', {
+						lastActiveAtService.updateLastActiveIfStale(req.user.id).catch((error: unknown) => {
+							logger.error('Failed to update last active timestamp', { error });
+						});
+						eventService.emit('public-api-invoked', {
 							userId: req.user.id,
 							path: req.path,
 							method: req.method,

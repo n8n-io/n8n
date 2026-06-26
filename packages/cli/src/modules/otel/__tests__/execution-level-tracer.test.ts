@@ -3,7 +3,8 @@ import { SpanStatusCode } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
-import { OtelConfig } from '../otel.config';
+import type { OtelSettingsService } from '../otel-settings.service';
+import type { OtelConfig } from '../otel.config';
 import { OtelTestProvider } from './support/otel-test-provider';
 
 describe('ExecutionLevelTracer', () => {
@@ -11,8 +12,12 @@ describe('ExecutionLevelTracer', () => {
 	let tracer: ExecutionLevelTracer;
 	const logger = mock<Logger>();
 
-	const makeConfig = (overrides: Partial<OtelConfig> = {}): OtelConfig =>
-		Object.assign(new OtelConfig(), { includeNodeSpans: true, injectOutbound: true }, overrides);
+	const makeOtelSettingsService = (overrides: Partial<OtelConfig> = {}): OtelSettingsService => {
+		const _settings = { injectOutbound: true, ...overrides } as OtelConfig;
+		return {
+			getSettings: () => ({ ..._settings, envManagedFields: [] }),
+		} as unknown as OtelSettingsService;
+	};
 
 	beforeAll(() => {
 		otel = OtelTestProvider.create();
@@ -24,7 +29,7 @@ describe('ExecutionLevelTracer', () => {
 
 	beforeEach(() => {
 		otel.reset();
-		tracer = new ExecutionLevelTracer(makeConfig(), logger);
+		tracer = new ExecutionLevelTracer(makeOtelSettingsService(), logger);
 	});
 
 	const inboundTracingContext = {
@@ -679,7 +684,7 @@ describe('ExecutionLevelTracer', () => {
 
 		it('should no-op when injectOutbound is false', () => {
 			const noInjectTracer = new ExecutionLevelTracer(
-				makeConfig({ injectOutbound: false }),
+				makeOtelSettingsService({ injectOutbound: false }),
 				logger,
 			);
 

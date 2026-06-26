@@ -26,6 +26,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 /**
@@ -70,16 +71,23 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: Mock };
 			backgroundTasks: { cancelThread: Mock };
-			creditedThreads: Map<string, unknown>;
 			schedulerLocks: Map<string, unknown>;
 			liveness: { clearThreadState: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			eventBus: { clearThread: Mock };
-			finalizeRemainingMessageTraceRoots: Mock;
-			deleteTraceContextsForThread: Mock;
-			destroySandbox: Mock;
-			reapAiTemporaryForThreadCleanup: Mock;
-			dropPendingConfirmationsForThread: Mock;
+			tracing: {
+				finalizeRunTracing: Mock;
+				finalizeBackgroundTaskTracing: Mock;
+				finalizeRemainingMessageTraceRoots: Mock;
+				deleteTraceContextsForThread: Mock;
+				getTrackedThreadIds: Mock;
+				clear: Mock;
+			};
+			memoryTaskRegistry: { clearThread: Mock };
+			sandboxService: { destroySandbox: Mock };
+			temporaryWorkflowService: { reapForThreadCleanup: Mock };
+			suspendedThreads: { dropPendingConfirmationsForThread: Mock };
 			clearThreadState: (threadId: string) => Promise<void>;
 		};
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
@@ -90,21 +98,30 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
 		};
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
-		service.creditedThreads = new Map();
 		service.schedulerLocks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.evalCredentialAllowlists.set('thread-a', ['cred-1']);
 		service.eventBus = { clearThread: vi.fn() };
-		service.finalizeRemainingMessageTraceRoots = vi.fn(async () => {});
-		service.deleteTraceContextsForThread = vi.fn();
-		service.destroySandbox = vi.fn(async () => {});
-		service.reapAiTemporaryForThreadCleanup = vi.fn(async () => {});
-		service.dropPendingConfirmationsForThread = vi.fn(async () => {});
+		service.tracing = {
+			finalizeRunTracing: vi.fn(async () => {}),
+			finalizeBackgroundTaskTracing: vi.fn(async () => {}),
+			finalizeRemainingMessageTraceRoots: vi.fn(async () => {}),
+			deleteTraceContextsForThread: vi.fn(),
+			getTrackedThreadIds: vi.fn(() => []),
+			clear: vi.fn(),
+		};
+		service.memoryTaskRegistry = { clearThread: vi.fn() };
+		service.sandboxService = { destroySandbox: vi.fn(async () => {}) };
+		service.temporaryWorkflowService = { reapForThreadCleanup: vi.fn(async () => {}) };
+		service.suspendedThreads = { dropPendingConfirmationsForThread: vi.fn(async () => {}) };
 
 		await service.clearThreadState('thread-a');
 
 		expect(service.threadPushRef.has('thread-a')).toBe(false);
 		expect(service.planRequestsByThread.has('thread-a')).toBe(false);
+		expect(service.evalCredentialAllowlists.get('thread-a')).toBeUndefined();
 	});
 
 	it('startRun overwrites the threadPushRef entry on each new run', () => {

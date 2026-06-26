@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -24,6 +25,7 @@ describe('LogStreamingDestinationService', () => {
 		confirmMessageDelivered: vi.fn(),
 	} as unknown as MessageEventBus;
 	const publisher = mock<Publisher>();
+	const outboundHttp = mock<OutboundHttp>();
 
 	let service: LogStreamingDestinationService;
 
@@ -34,6 +36,7 @@ describe('LogStreamingDestinationService', () => {
 			eventDestinationsRepository,
 			eventBus,
 			publisher,
+			outboundHttp,
 		);
 	});
 
@@ -98,6 +101,7 @@ describe('LogStreamingDestinationService', () => {
 			expect(messageEventBusDestinationFromDb).toHaveBeenCalledWith(
 				eventBus,
 				createDbEntity('webhook-1'),
+				outboundHttp,
 			);
 		});
 

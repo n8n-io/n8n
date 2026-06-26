@@ -1,60 +1,41 @@
+import type { Mock } from 'vitest';
 import { Logger } from '@n8n/backend-common';
-import { type AuthenticatedRequest } from '@n8n/db';
+import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
-import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 // eslint-disable-next-line import-x/order
-import { Telemetry } from '@/telemetry';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
-const mockAuthMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => {
+const mockAuthMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
 	next();
 });
 const mcpServerMiddlewareService = mockDeep<McpServerMiddlewareService>();
 mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware);
 
-// We need to mock the service before importing the controller, because its
-// route decorators evaluate `getAuthMiddleware()` (→ Container.get) at class
-// definition time. A static import is hoisted above this `Container.set`, so
-// the controller must be loaded dynamically afterwards.
+// The controller's route decorator resolves McpServerMiddlewareService via DI at
+// module-evaluation time, so it must be registered before the controller module
+// loads. ES import hoisting would run a static `import` of the controller before
+// this set, so the controller is imported dynamically in `beforeEach` instead.
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
-import type { FlushableResponse, McpController as McpControllerType } from '../mcp.controller';
+import { McpConfig } from '../mcp.config';
+import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-
-let McpController: typeof import('../mcp.controller').McpController;
-
-beforeAll(async () => {
-	({ McpController } = await import('../mcp.controller'));
-});
+import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
-	const StreamableHTTPServerTransport = vi.fn().mockImplementation((_opts) => ({
+	const StreamableHTTPServerTransport = vi.fn().mockImplementation(function (_opts) { return ({
 		handleRequest: mockHandleRequest,
 		close: vi.fn().mockResolvedValue(undefined),
-	}));
+	}); });
 	return { StreamableHTTPServerTransport };
 });
-
-// eslint-disable-next-line import-x/order
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-
-// `restoreMocks: true` wipes the factory `mockImplementation` before each test,
-// so re-apply it (and the request handler) per test.
-function applyTransportMock() {
-	mockHandleRequest.mockResolvedValue(undefined);
-	vi.mocked(StreamableHTTPServerTransport).mockImplementation(function () {
-		return {
-			handleRequest: mockHandleRequest,
-			close: vi.fn().mockResolvedValue(undefined),
-		} as never;
-	} as never);
-}
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
@@ -71,6 +52,7 @@ const createRes = (): FlushableResponse => {
 };
 
 describe('McpController', () => {
+	let McpController: typeof McpControllerType;
 	let controller: McpControllerType;
 	const logger = mock<Logger>();
 	const telemetry = { track: vi.fn() } as unknown as Telemetry;
@@ -80,9 +62,8 @@ describe('McpController', () => {
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
-		applyTransportMock();
 
 		// Default mock — the controller now resolves the MCP Apps variant for
 		// every request, so tests that don't care about the variant still need
@@ -97,7 +78,11 @@ describe('McpController', () => {
 		Container.set(Telemetry, telemetry);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
+		// Real repositories can't be auto-constructed by DI without a DataSource.
+		Container.set(ApiKeyRepository, mock<ApiKeyRepository>());
 
+		// Imported here (not statically) so the Container.set above runs first.
+		({ McpController } = await import('../mcp.controller'));
 		controller = Container.get(McpController);
 	});
 
@@ -294,6 +279,26 @@ describe('McpController', () => {
 		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.end).toHaveBeenCalled();
+	});
+
+	// The route decorators read `McpConfig.rateLimitServer` at import time, so
+	// these assertions prove the configured limit is wired into the routes
+	// without booting the full server.
+	describe('IP rate limit configuration', () => {
+		const getRouteIpRateLimit = (handlerName: string) =>
+			Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				McpController as unknown as Controller,
+				handlerName,
+			).ipRateLimit;
+
+		test.each(['handleGet', 'build'])(
+			'applies the configured server limit to %s',
+			(handlerName) => {
+				const limit = Container.get(McpConfig).rateLimitServer;
+
+				expect(getRouteIpRateLimit(handlerName)).toEqual({ limit });
+			},
+		);
 	});
 
 	describe('GET /http', () => {

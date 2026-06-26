@@ -1,10 +1,11 @@
+import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -17,7 +18,6 @@ import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
-
 import type { OwnershipService } from '../ownership.service';
 
 // Mock the workflow history helper functions to avoid DI container issues in tests
@@ -35,6 +35,7 @@ describe('FrontendService', () => {
 		templates: { enabled: false, host: '' },
 		nodes: {},
 		tags: { disabled: false },
+		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
@@ -43,6 +44,10 @@ describe('FrontendService', () => {
 			whatsNewEnabled: false,
 			whatsNewEndpoint: '',
 			infoUrl: '',
+		},
+		dynamicBanners: {
+			endpoint: 'https://api.n8n.io/api/banners',
+			enabled: true,
 		},
 		personalization: { enabled: false },
 		defaultLocale: 'en',
@@ -144,7 +149,9 @@ describe('FrontendService', () => {
 	const urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
 		getWebhookBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
-		getInstanceJwksUri: vi.fn().mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
+		getInstanceJwksUri: vi
+			.fn()
+			.mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
 	});
 
 	const securityConfig = mock<SecurityConfig>({
@@ -178,6 +185,10 @@ describe('FrontendService', () => {
 		getAiUsageSettings: vi.fn().mockResolvedValue(true),
 	});
 
+	const workflowRepository = mock<WorkflowRepository>({
+		getPublishedCount: vi.fn().mockResolvedValue(7),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -205,6 +216,7 @@ describe('FrontendService', () => {
 				mfaService,
 				ownershipService,
 				aiUsageService,
+				workflowRepository,
 			),
 			license,
 		};
@@ -213,9 +225,11 @@ describe('FrontendService', () => {
 	beforeEach(() => {
 		originalEnv = process.env;
 		vi.clearAllMocks();
+		globalConfig.diagnostics.enabled = false;
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		process.env = originalEnv;
 	});
 
@@ -228,6 +242,78 @@ describe('FrontendService', () => {
 				expect.objectContaining({
 					settingsMode: 'authenticated',
 				}),
+			);
+		});
+
+		it('should cache dynamic banner filters for 30 seconds', async () => {
+			vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockResolvedValueOnce(7).mockResolvedValueOnce(8);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(29_999);
+			const cachedSettings = await service.getSettings();
+
+			expect(cachedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(1);
+			const refreshedSettings = await service.getSettings();
+
+			expect(refreshedSettings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 8,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
+		});
+
+		it('should fall back when dynamic banner filters cannot be loaded', async () => {
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 0,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('should fall back to the last published workflow count when refresh fails', async () => {
+			vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			globalConfig.diagnostics.enabled = true;
+			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
+			workflowRepository.getPublishedCount
+				.mockResolvedValueOnce(7)
+				.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const { service } = createMockService();
+			await service.getSettings();
+			vi.advanceTimersByTime(30_000);
+
+			const settings = await service.getSettings();
+
+			expect(settings.dynamicBanners.filters).toEqual({
+				publishedWorkflowCount: 7,
+			});
+			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(2);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch published workflow count for dynamic banners',
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
 		});
 
@@ -563,6 +649,25 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('collaboration setting', () => {
+		afterEach(() => {
+			globalConfig.collaboration.crdt = 'off';
+		});
+
+		it('should default collaboration.crdt to off', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('off');
+		});
+
+		it('should reflect the collaboration.crdt mode from config', async () => {
+			globalConfig.collaboration.crdt = 'local';
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.collaboration.crdt).toBe('local');
 		});
 	});
 

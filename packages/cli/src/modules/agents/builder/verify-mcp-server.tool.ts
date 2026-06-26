@@ -1,6 +1,7 @@
 import type { BuiltTool, CredentialProvider, McpClient } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
+import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
 
 import type { OauthService } from '@/oauth/oauth.service';
@@ -12,6 +13,7 @@ export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;
 	oauthService: OauthService;
 	projectId: string;
+	proxyFetch: CustomFetch;
 }
 
 /**

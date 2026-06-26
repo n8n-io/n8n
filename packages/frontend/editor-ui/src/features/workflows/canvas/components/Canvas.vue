@@ -24,7 +24,7 @@ import type {
 	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import { CanvasNodeRenderType, isCanvasGroupNode } from '../canvas.types';
+import { CanvasNodeRenderType, createCanvasGroupNodeId, isCanvasGroupNode } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -53,6 +53,7 @@ import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -73,6 +74,11 @@ import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.v
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
+import {
+	useCanvasNodeGroupTelemetry,
+	type CanvasNodeGroupEventSource,
+} from '../composables/useCanvasNodeGroupTelemetry';
+import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -248,12 +254,13 @@ const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(prop
 const selectedNodes = computed(() =>
 	selectedNodesAndGroups.value.filter((node) => !isCanvasGroupNode(node)),
 );
-const workflowGraphNodes = computed(() =>
-	graphNodes.value.filter((node) => !isCanvasGroupNode(node)),
+const selectableNodesAndGroups = computed(() =>
+	graphNodes.value.filter((node) => !isCanvasGroupNode(node) || node.selectable),
 );
 
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
+const injectedNodeGroupView = inject(NodeGroupViewKey, null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -377,6 +384,10 @@ function onToggleZoomMode() {
 
 function onNodeGroupCreated(groupId: string) {
 	autofocusGroupTitleId.value = groupId;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		groupTelemetry.trackGrouped(group, 'group-toolbar');
+	}
 }
 
 function onNodeGroupTitleFocused(groupId: string) {
@@ -389,14 +400,21 @@ const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
 	groupSelection,
-	ungroupSelection,
-} = useCanvasNodeGroupActions(selectedNodes, {
+	renameGroup,
+	ungroup,
+	selectedGroupIds,
+} = useCanvasNodeGroupActions(selectedNodesAndGroups, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
+const groupTelemetry = useCanvasNodeGroupTelemetry();
+
 function onKeyboardGroup() {
 	const group = groupSelection();
-	if (group) autofocusGroupTitleId.value = group.id;
+	if (group) {
+		autofocusGroupTitleId.value = group.id;
+		groupTelemetry.trackGrouped(group, 'keyboard-shortcut');
+	}
 }
 
 const keyMap = computed(() => {
@@ -407,7 +425,7 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
-		ctrl_a: () => addSelectedNodes(workflowGraphNodes.value),
+		ctrl_a: onSelectAllNodes,
 		// Support both key and code for zooming in and out
 		'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
 		'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
@@ -433,7 +451,7 @@ const keyMap = computed(() => {
 	const fullKeymap: KeyMap = {
 		...readOnlyKeymap,
 		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
-		'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+		'delete|backspace': onDeleteSelection,
 		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
@@ -469,7 +487,11 @@ const keyMap = computed(() => {
 		fullKeymap.ctrl_shift_g = {
 			disabled: () => !canUngroupSelection.value,
 			run: () => {
-				ungroupSelection();
+				// Through the same path as the title-bar button so push effects
+				// are committed before each group is removed.
+				for (const groupId of selectedGroupIds.value) {
+					onCanvasGroupUngroup(groupId, 'keyboard-shortcut');
+				}
 			},
 		};
 	}
@@ -483,8 +505,20 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * Nodes
  */
 
-const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
+
+// Selected node ids, with each selected collapsed group expanded to its members
+// so bulk operations (copy, duplicate, …) reach the nodes its title bar stands for.
+const selectedNodeIdsWithGroupMembers = computed(() => {
+	const ids = new Set(selectedNodeIds.value);
+	for (const node of selectedNodesAndGroups.value) {
+		if (!isCanvasGroupNode(node)) continue;
+		for (const memberId of (node.data as CanvasGroupNodeData).group.nodeIds) {
+			ids.add(memberId);
+		}
+	}
+	return [...ids];
+});
 
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed<CanvasNode[]>(() =>
@@ -529,12 +563,35 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
-	emit('update:nodes:position', events);
+function getStoredNodePositionById(nodeId: string) {
+	return workflowDocumentStore.value.getNodeById(nodeId)?.position;
 }
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
-	emit('update:node:position', id, position);
+	commitManualNodePositions([{ id, position }]);
+}
+
+function commitManualNodePositions(events: CanvasNodeMoveEvent[]) {
+	emit(
+		'update:nodes:position',
+		injectedNodeGroupView?.settleManualNodePositions(events, getStoredNodePositionById) ?? events,
+	);
+}
+
+// Bake the positions of nodes that `sourceGroupIds` were visually pushing into
+// the document, so those targets stay put instead of snapping back when the
+// source stops pushing — whether it was moved or removed via ungroup.
+function commitPushedPositionsForSourceGroups(sourceGroupIds: string[]) {
+	if (!injectedNodeGroupView || sourceGroupIds.length === 0) return;
+
+	const pushedNodeMoves = injectedNodeGroupView.commitMovedPushSourceEffects(
+		sourceGroupIds,
+		(nodeId) => workflowDocumentStore.value.getNodeById(nodeId)?.position,
+	);
+
+	if (pushedNodeMoves.length > 0) {
+		emit('update:nodes:position', pushedNodeMoves);
+	}
 }
 
 const groupDrag = useCanvasNodeGroupDrag({
@@ -543,7 +600,9 @@ const groupDrag = useCanvasNodeGroupDrag({
 	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
 	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
 	isNodeInGroup: (id) => workflowDocumentStore.value.nodeIdToGroupId.has(id),
+	getNodeVisualOffset: (id) => injectedNodeGroupView?.getVisualOffsetForNode(id) ?? { x: 0, y: 0 },
 	getNodeDisplaySize: (id) => props.nodeDisplaySizeById?.[id],
+	onMovedExpandedGroups: commitPushedPositionsForSourceGroups,
 });
 
 function onNodeDragStart(event: NodeDragEvent) {
@@ -556,7 +615,7 @@ function onNodeDrag(event: NodeDragEvent) {
 
 function onNodeDragStop(event: NodeDragEvent) {
 	const moves = groupDrag.processNodeDragStop(event);
-	if (moves.length > 0) onUpdateNodesPosition(moves);
+	if (moves.length > 0) commitManualNodePositions(moves);
 }
 
 function onSelectionDragStart(event: NodeDragEvent) {
@@ -567,12 +626,73 @@ function onSelectionDrag(event: NodeDragEvent) {
 	groupDrag.onSelectionDrag(event);
 }
 
-function onCanvasGroupNameUpdate(groupId: string, name: string) {
-	workflowDocumentStore.value.updateName(groupId, name);
+function onCanvasGroupToggle(groupId: string) {
+	injectedNodeGroupView?.toggleCollapsed(groupId);
+
+	if (!injectedNodeGroupView) return;
+
+	const isCollapsed = injectedNodeGroupView.isGroupCollapsed(groupId);
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (group) {
+		if (isCollapsed) {
+			groupTelemetry.trackCollapsed(group, 'group-toolbar');
+		} else {
+			groupTelemetry.trackExpanded(group, 'group-toolbar');
+		}
+	}
+
+	if (isCollapsed) {
+		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
+		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+		const selectedMembers = memberNodeIds
+			.map((nodeId) => findNode(nodeId))
+			.filter((node): node is NonNullable<typeof node> => node?.selected ?? false);
+		if (selectedMembers.length > 0) {
+			removeSelectedNodes(selectedMembers);
+		}
+	} else {
+		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
+		const groupNode = findNode(createCanvasGroupNodeId(groupId));
+		if (groupNode) {
+			removeSelectedNodes([groupNode]);
+		}
+	}
 }
 
-function onCanvasGroupUngroup(groupId: string) {
-	workflowDocumentStore.value.deleteGroup(groupId);
+function onCanvasGroupNameUpdate(groupId: string, name: string) {
+	renameGroup(groupId, name);
+}
+
+function onCanvasGroupUngroup(
+	groupId: string,
+	source: CanvasNodeGroupEventSource = 'group-toolbar',
+) {
+	// Capture before deletion — the group is gone by the time we track.
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	// Ungrouping a collapsed group makes its hidden members reappear, so expand
+	// it first: the expansion pushes overlapping nodes aside, and the commit
+	// below persists that displacement (the group is gone after, so the push
+	// can't stay live).
+	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+		injectedNodeGroupView.toggleCollapsed(groupId);
+	}
+	// Removing the group also removes its push, so commit anything it was
+	// pushing first — same principle as a newly created group not pushing.
+	commitPushedPositionsForSourceGroups([groupId]);
+	ungroup(groupId);
+
+	if (group) {
+		groupTelemetry.trackUngrouped(group, source);
+	}
+}
+
+/**
+ * Delete both regular nodes and collapsed group members.
+ */
+function onDeleteSelection() {
+	const ids = selectedNodeIdsWithGroupMembers.value;
+	// Removing the last group member also deletes the group via the document store
+	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
@@ -594,7 +714,7 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 function onSelectionDragStop(event: NodeDragEvent) {
 	const moves = groupDrag.processSelectionDragStop(event);
-	if (moves.length > 0) onUpdateNodesPosition(moves);
+	if (moves.length > 0) commitManualNodePositions(moves);
 }
 
 function onSelectionEnd(event: MouseEvent) {
@@ -616,6 +736,10 @@ function onSetNodeDeactivated(id: string) {
 
 function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
+}
+
+function onSelectAllNodes() {
+	addSelectedNodes(selectableNodesAndGroups.value);
 }
 
 function onSelectNode() {
@@ -803,8 +927,8 @@ function onRunNode(id: string) {
 
 function emitWithSelectedNodes(emitFn: (ids: string[]) => void) {
 	return () => {
-		if (hasSelection.value) {
-			emitFn(selectedNodeIds.value);
+		if (selectedNodeIdsWithGroupMembers.value.length > 0) {
+			emitFn(selectedNodeIdsWithGroupMembers.value);
 		}
 	};
 }
@@ -949,7 +1073,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
 		case 'select_all':
-			return addSelectedNodes(workflowGraphNodes.value);
+			return onSelectAllNodes();
 		case 'deselect_all':
 			return clearSelectedNodes();
 		case 'duplicate':
@@ -1123,7 +1247,7 @@ onMounted(() => {
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
-	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(workflowGraphNodes.value));
+	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
@@ -1134,6 +1258,7 @@ onUnmounted(() => {
 	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
+	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -1264,6 +1389,7 @@ defineExpose({
 				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
+				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"

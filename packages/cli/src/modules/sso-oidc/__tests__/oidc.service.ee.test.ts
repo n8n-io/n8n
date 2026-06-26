@@ -1,14 +1,26 @@
+import type { Mock, Mocked } from 'vitest';
 import type { OidcConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { HttpTransport, SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
+import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentityRepository, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import * as client from 'openid-client';
-import { EnvHttpProxyAgent } from 'undici';
-import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+
+vi.mock('openid-client', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('openid-client')>();
+	return {
+		...actual,
+		discovery: vi.fn(),
+		authorizationCodeGrant: vi.fn(),
+		fetchUserInfo: vi.fn(),
+	};
+});
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -21,19 +33,6 @@ import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
 import { OidcService } from '../oidc.service.ee';
 
-vi.mock('undici', () => ({
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	EnvHttpProxyAgent: vi.fn().mockImplementation(function () {
-		return {};
-	}),
-}));
-
-// `openid-client` is ESM with a frozen namespace, so `vi.mocked(client.x)` fails.
-// `{ spy: true }` replaces each export with a spy that calls through to the real
-// implementation (matching the previous spyOn behaviour) while staying overridable
-// via `vi.mocked(client.x)`.
-vi.mock('openid-client', { spy: true });
-
 describe('OidcService', () => {
 	let oidcService: OidcService;
 	let settingsRepository: SettingsRepository;
@@ -45,6 +44,8 @@ describe('OidcService', () => {
 	let provisioningService: ProvisioningService;
 	let userRepository: UserRepository;
 	let authIdentityRepository: AuthIdentityRepository;
+	let outboundHttp: Mocked<OutboundHttp>;
+	let customFetch: Mock;
 
 	const mockOidcConfig = {
 		clientId: 'test-client-id',
@@ -79,9 +80,14 @@ describe('OidcService', () => {
 		provisioningService = mock<ProvisioningService>();
 		userRepository = mock<UserRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
-		vi.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod').mockImplementation(
-			async () => await Promise.resolve(),
+		customFetch = vi.fn();
+		outboundHttp = mock<OutboundHttp>();
+		outboundHttp.transport.mockReturnValue(
+			mock<HttpTransport>({ asCustomFetch: () => customFetch }),
 		);
+		vi
+			.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod')
+			.mockImplementation(async () => await Promise.resolve());
 
 		oidcService = new OidcService(
 			settingsRepository,
@@ -94,6 +100,7 @@ describe('OidcService', () => {
 			jwtService,
 			instanceSettings,
 			provisioningService,
+			outboundHttp,
 		);
 
 		await oidcService.init();
@@ -360,9 +367,9 @@ describe('OidcService', () => {
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
 			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
-			vi.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(
-				new Error('Authorization code grant failed'),
-			);
+			vi
+				.spyOn(client, 'authorizationCodeGrant')
+				.mockRejectedValue(new Error('Authorization code grant failed'));
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -387,7 +394,7 @@ describe('OidcService', () => {
 					code: 'OAUTH_INVALID_RESPONSE_BODY',
 				},
 			);
-			vi.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(tokenError);
+			vi.mocked(client.authorizationCodeGrant).mockRejectedValue(tokenError);
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -506,10 +513,9 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
-				email_verified: true,
-				email: 'invalid-email',
-			} as any);
+			vi
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'invalid-email' } as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -537,10 +543,9 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
-				email_verified: true,
-				email: 'john.doe@test.com',
-			} as any);
+			vi
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -575,10 +580,9 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
-				email_verified: true,
-				email: 'john.doe@test.com',
-			} as any);
+			vi
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -615,10 +619,9 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
-				email_verified: true,
-				email: 'john.doe@test.com',
-			} as any);
+			vi
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -689,346 +692,119 @@ describe('OidcService', () => {
 		});
 	});
 
-	describe('proxy configuration', () => {
-		const originalEnv = process.env;
+	describe('createProxyAwareConfiguration', () => {
+		const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+		const clientId = 'test-client';
+		const clientSecret = 'test-secret';
 
-		// Helper function to create a proper mock Response
-		const createMockResponse = () => {
-			const mockData = {
-				issuer: 'https://example.com',
-				authorization_endpoint: 'https://example.com/auth',
-				token_endpoint: 'https://example.com/token',
-				userinfo_endpoint: 'https://example.com/userinfo',
-				jwks_uri: 'https://example.com/jwks',
-			};
-			return new Response(JSON.stringify(mockData), {
-				status: 200,
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				headers: { 'content-type': 'application/json' },
+		const createConfiguration = async () =>
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+			(await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			)) as client.Configuration;
+
+		it("obtains the custom fetch from the factory transport with SSRF 'disabled'", async () => {
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
+
+			await createConfiguration();
+
+			// The discovery / token / userinfo endpoints are admin-configured and may
+			// legitimately point at an internal IdP, so SSRF protection is disabled.
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		});
+
+		it('always calls discovery with the factory customFetch (no proxy/no-proxy branch)', async () => {
+			const discoverySpy = vi
+				.spyOn(client, 'discovery')
+				.mockResolvedValue({} as client.Configuration);
+
+			await createConfiguration();
+
+			expect(discoverySpy).toHaveBeenCalledWith(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+				undefined,
+				expect.objectContaining({
+					[client.customFetch]: customFetch,
+				}),
+			);
+		});
+
+		it('sets the factory customFetch on the returned configuration', async () => {
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
+
+			const result = await createConfiguration();
+
+			expect(result[client.customFetch]).toBe(customFetch);
+		});
+	});
+
+	// Exercises the customFetch produced by a real OutboundHttp against a real
+	// loopback server. openid-client drives discovery / token / userinfo through
+	// this fetch, so proving it performs a genuine HTTP round-trip (the same job
+	// the old hand-rolled proxyFetch did) validates the migrated behavior.
+	describe('factory customFetch (real HTTP round-trip)', () => {
+		let idpServer: LocalServer;
+		let realOidcService: OidcService;
+
+		beforeAll(async () => {
+			idpServer = await startServer((req, res) => {
+				res.writeHead(200, { 'content-type': 'application/json' });
+				res.end(JSON.stringify({ ok: true, path: req.url }));
 			});
-		};
+		});
+
+		afterAll(async () => await idpServer.close());
 
 		beforeEach(() => {
-			// Reset environment before each test
-			process.env = { ...originalEnv };
-			// Reset the mock between tests
-			(EnvHttpProxyAgent as unknown as Mock).mockClear();
-		});
-
-		afterEach(() => {
-			// Restore original environment after each test
-			process.env = originalEnv;
-		});
-
-		it.each([
-			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
-			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
-			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
-		])('should instantiate EnvHttpProxyAgent when $envVar is set', async ({ envVar, value }) => {
-			// Set proxy environment variable
-			process.env[envVar] = value;
-
-			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-			const clientId = 'test-client';
-			const clientSecret = 'test-secret';
-
-			const discoverySpy = vi.mocked(client.discovery).mockResolvedValue({
-				serverMetadata: () => ({ issuer: 'https://example.com' }),
-			} as unknown as client.Configuration);
-
-			// Call the private method directly using type assertion
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-			await (oidcService as any).createProxyAwareConfiguration(
-				discoveryUrl,
-				clientId,
-				clientSecret,
+			idpServer.clear();
+			const realOutboundHttp = new OutboundHttp(mock<SsrfProtectionService>(), logger);
+			realOidcService = new OidcService(
+				settingsRepository,
+				authIdentityRepository,
+				mock<UrlService>(),
+				globalConfig,
+				userRepository,
+				cipher,
+				logger,
+				jwtService,
+				instanceSettings,
+				provisioningService,
+				realOutboundHttp,
 			);
-
-			// Verify EnvHttpProxyAgent was instantiated
-			expect(EnvHttpProxyAgent).toHaveBeenCalled();
-			discoverySpy.mockRestore();
 		});
 
-		it('should not instantiate EnvHttpProxyAgent when no proxy env vars are set', async () => {
-			// Ensure no proxy env vars are set
-			delete process.env.HTTP_PROXY;
-			delete process.env.HTTPS_PROXY;
-			delete process.env.ALL_PROXY;
-
-			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-			const clientId = 'test-client';
-			const clientSecret = 'test-secret';
-
-			const discoverySpy = vi.mocked(client.discovery).mockResolvedValue({
-				serverMetadata: () => ({ issuer: 'https://example.com' }),
-			} as unknown as client.Configuration);
-
-			// Call the private method directly
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-			await (oidcService as any).createProxyAwareConfiguration(
-				discoveryUrl,
-				clientId,
-				clientSecret,
-			);
-
-			// Should not instantiate EnvHttpProxyAgent when no proxy is configured
-			expect(EnvHttpProxyAgent).not.toHaveBeenCalled();
-			discoverySpy.mockRestore();
-		});
-
-		it.each([
-			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
-			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
-			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
-		])(
-			'should call discovery with customFetch option when $envVar is configured',
-			async ({ envVar, value }) => {
-				process.env[envVar] = value;
-
-				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-				const clientId = 'test-client';
-				const clientSecret = 'test-secret';
-
-				global.fetch = vi.fn().mockResolvedValue(createMockResponse());
-
-				const discoverySpy = vi.mocked(client.discovery).mockResolvedValue({
-					serverMetadata: () => ({ issuer: 'https://example.com' }),
-				} as unknown as client.Configuration);
-
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-				await (oidcService as any).createProxyAwareConfiguration(
-					discoveryUrl,
-					clientId,
-					clientSecret,
-				);
-
-				expect(discoverySpy).toHaveBeenCalledWith(
-					discoveryUrl,
-					clientId,
-					clientSecret,
-					undefined,
-					expect.objectContaining({
-						[client.customFetch]: expect.any(Function),
-					}),
-				);
-
-				discoverySpy.mockRestore();
-			},
-		);
-
-		it('should call discovery without customFetch option when no proxy is configured', async () => {
-			delete process.env.HTTP_PROXY;
-			delete process.env.HTTPS_PROXY;
-			delete process.env.ALL_PROXY;
-
-			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-			const clientId = 'test-client';
-			const clientSecret = 'test-secret';
-
-			global.fetch = vi.fn().mockResolvedValue(createMockResponse());
-
-			const discoverySpy = vi.mocked(client.discovery).mockResolvedValue({
-				serverMetadata: () => ({ issuer: 'https://example.com' }),
-			} as unknown as client.Configuration);
-
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-			await (oidcService as any).createProxyAwareConfiguration(
-				discoveryUrl,
-				clientId,
-				clientSecret,
-			);
-
-			// Should be called with only 3 arguments (no options object)
-			expect(discoverySpy).toHaveBeenCalledWith(discoveryUrl, clientId, clientSecret);
-
-			discoverySpy.mockRestore();
-		});
-
-		it.each([
-			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
-			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
-			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
-		])(
-			'should set customFetch on returned configuration when $envVar is configured',
-			async ({ envVar, value }) => {
-				process.env[envVar] = value;
-
-				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-				const clientId = 'test-client';
-				const clientSecret = 'test-secret';
-
-				global.fetch = vi.fn().mockResolvedValue(createMockResponse());
-
-				const mockConfiguration = {
-					serverMetadata: () => ({ issuer: 'https://example.com' }),
-				} as unknown as client.Configuration;
-
-				vi.mocked(client.discovery).mockResolvedValue(mockConfiguration);
-
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-				const result = await (oidcService as any).createProxyAwareConfiguration(
-					discoveryUrl,
-					clientId,
-					clientSecret,
-				);
-
-				// Verify customFetch was set on the configuration
-				expect(result[client.customFetch]).toBeDefined();
-				expect(typeof result[client.customFetch]).toBe('function');
-			},
-		);
-
-		it('should not set customFetch on returned configuration when no proxy is configured', async () => {
-			delete process.env.HTTP_PROXY;
-			delete process.env.HTTPS_PROXY;
-			delete process.env.ALL_PROXY;
-
-			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-			const clientId = 'test-client';
-			const clientSecret = 'test-secret';
-
-			global.fetch = vi.fn().mockResolvedValue(createMockResponse());
-
-			const mockConfiguration = {
-				serverMetadata: () => ({ issuer: 'https://example.com' }),
-			} as unknown as client.Configuration;
-
-			vi.mocked(client.discovery).mockResolvedValue(mockConfiguration);
-
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-			const result = await (oidcService as any).createProxyAwareConfiguration(
-				discoveryUrl,
-				clientId,
-				clientSecret,
-			);
-
-			// customFetch should not have been set on the configuration
-			expect(result[client.customFetch]).toBeUndefined();
-		});
-
-		it.each([
-			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
-			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
-			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
-		])(
-			'should use proxy agent dispatcher in customFetch when $envVar is configured',
-			async ({ envVar, value }) => {
-				process.env[envVar] = value;
-
-				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-				const clientId = 'test-client';
-				const clientSecret = 'test-secret';
-
-				const mockProxyAgent = { type: 'proxy-agent' };
-				(EnvHttpProxyAgent as unknown as Mock).mockImplementation(function () {
-					return mockProxyAgent;
+		it('routes openid-client fetches through a real HTTP socket', async () => {
+			let factoryFetch: client.CustomFetch | undefined;
+			vi
+				.spyOn(client, 'discovery')
+				.mockImplementation(async (_server, _clientId, _metadata, _auth, options) => {
+					factoryFetch = options?.[client.customFetch];
+					return {} as client.Configuration;
 				});
 
-				const fetchSpy = vi.fn().mockResolvedValue(createMockResponse());
-				global.fetch = fetchSpy;
-
-				const mockConfiguration = {
-					serverMetadata: () => ({ issuer: 'https://example.com' }),
-				} as unknown as client.Configuration;
-
-				vi.mocked(client.discovery).mockResolvedValue(mockConfiguration);
-
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-				const result = await (oidcService as any).createProxyAwareConfiguration(
-					discoveryUrl,
-					clientId,
-					clientSecret,
-				);
-
-				// Get the customFetch function and call it
-				const customFetch = result[client.customFetch];
-				const testUrl = 'https://example.com/test';
-				const testOptions = { method: 'GET' };
-
-				await customFetch(testUrl, testOptions);
-
-				// Verify fetch was called with dispatcher option
-				expect(fetchSpy).toHaveBeenCalledWith(testUrl, {
-					...testOptions,
-					dispatcher: mockProxyAgent,
-				});
-			},
-		);
-
-		it('should handle multiple proxy env vars with priority (first match)', async () => {
-			// Set multiple proxy variables - any of them should trigger proxy mode
-			process.env.HTTP_PROXY = 'http://http-proxy.example.com:8080';
-			process.env.HTTPS_PROXY = 'https://https-proxy.example.com:8443';
-
-			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-			const clientId = 'test-client';
-			const clientSecret = 'test-secret';
-
-			const discoverySpy = vi.mocked(client.discovery).mockResolvedValue({
-				serverMetadata: () => ({ issuer: 'https://example.com' }),
-			} as unknown as client.Configuration);
-
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-			await (oidcService as any).createProxyAwareConfiguration(
-				discoveryUrl,
-				clientId,
-				clientSecret,
+			await (realOidcService as any).createProxyAwareConfiguration(
+				new URL('https://issuer.example.com/.well-known/openid-configuration'),
+				'real-client',
+				'real-secret',
 			);
 
-			// EnvHttpProxyAgent should be instantiated once regardless of how many proxy vars are set
-			expect(EnvHttpProxyAgent).toHaveBeenCalledTimes(1);
-			discoverySpy.mockRestore();
+			expect(factoryFetch).toBeDefined();
+
+			const response = await factoryFetch!(`${idpServer.url}/userinfo`, {
+				method: 'GET',
+				headers: {},
+				body: null,
+				redirect: 'manual',
+			});
+			const body = (await response.json()) as { ok: boolean; path: string };
+
+			expect(idpServer.captured).toEqual(['/userinfo']);
+			expect(body).toEqual({ ok: true, path: '/userinfo' });
 		});
-
-		it.each([
-			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
-			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
-			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
-		])(
-			'should pass through fetch options correctly when $envVar is configured',
-			async ({ envVar, value }) => {
-				process.env[envVar] = value;
-
-				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
-				const clientId = 'test-client';
-				const clientSecret = 'test-secret';
-
-				const mockProxyAgent = { type: 'proxy-agent' };
-				(EnvHttpProxyAgent as unknown as Mock).mockImplementation(function () {
-					return mockProxyAgent;
-				});
-
-				const fetchSpy = vi.fn().mockResolvedValue(createMockResponse());
-				global.fetch = fetchSpy;
-
-				const mockConfiguration = {} as client.Configuration;
-				vi.mocked(client.discovery).mockResolvedValue(mockConfiguration);
-
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-				const result = await (oidcService as any).createProxyAwareConfiguration(
-					discoveryUrl,
-					clientId,
-					clientSecret,
-				);
-
-				const customFetch = result[client.customFetch];
-				const testUrl = 'https://example.com/token';
-				const testOptions = {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-					body: 'grant_type=authorization_code&code=test',
-				};
-
-				await customFetch(testUrl, testOptions);
-
-				// Verify all original options are preserved and dispatcher is added
-				expect(fetchSpy).toHaveBeenCalledWith(testUrl, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-					body: 'grant_type=authorization_code&code=test',
-					dispatcher: mockProxyAgent,
-				});
-			},
-		);
 	});
 });

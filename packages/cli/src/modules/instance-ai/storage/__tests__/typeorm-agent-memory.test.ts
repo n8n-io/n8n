@@ -153,6 +153,32 @@ describe('TypeORMAgentMemory', () => {
 		});
 	});
 
+	it('persists rows keyed by message id so re-saving the same id upserts (no duplicate)', async () => {
+		// The runtime saves a turn's input eagerly and again at end of turn, so the same
+		// message id is written twice. The store must key each row on the message id (the
+		// primary key) so TypeORM's save() updates the existing row instead of duplicating.
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		messageRepo.create.mockImplementation((entity) => entity as InstanceAiMessage);
+		const { memory } = createMemory({ messageRepo });
+
+		const message: AgentDbMessage = {
+			id: 'message-1',
+			createdAt: new Date('2026-06-04T09:00:00.000Z'),
+			role: 'user',
+			content: [{ type: 'text', text: 'hello' }],
+		};
+
+		await memory.saveMessages({ threadId: 'thread-1', resourceId: 'user-1', messages: [message] });
+		await memory.saveMessages({ threadId: 'thread-1', resourceId: 'user-1', messages: [message] });
+
+		const savedIds = messageRepo.save.mock.calls.map(([entities]) => {
+			const [entity] = entities as Array<{ id: string }>;
+			return entity.id;
+		});
+		// Both writes target the same primary key, so the DB upserts a single row.
+		expect(savedIds).toEqual(['message-1', 'message-1']);
+	});
+
 	it('deletes hidden sub-agent threads and associated working-memory resources by resource prefix', async () => {
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		const resourceRepo = mock<InstanceAiResourceRepository>();

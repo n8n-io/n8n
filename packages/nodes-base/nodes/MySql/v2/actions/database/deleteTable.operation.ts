@@ -4,7 +4,12 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
-import { addWhereClauses, escapeSqlIdentifier, getWhereClauses } from '../../helpers/utils';
+import {
+	addWhereClauses,
+	escapeSqlIdentifier,
+	getWhereClauses,
+	prepareErrorItem,
+} from '../../helpers/utils';
 import {
 	optionsCollection,
 	selectRowsFixedCollection,
@@ -77,52 +82,63 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < inputItems.length; i++) {
-		const table = this.getNodeParameter('table', i, undefined, {
-			extractValue: true,
-		}) as string;
+		try {
+			const table = this.getNodeParameter('table', i, undefined, {
+				extractValue: true,
+			}) as string;
 
-		const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
+			const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
 
-		let query = '';
-		let values: QueryValues = [];
+			let query = '';
+			let values: QueryValues = [];
 
-		if (deleteCommand === 'drop') {
-			query = `DROP TABLE IF EXISTS ${escapeSqlIdentifier(table)}`;
+			if (deleteCommand === 'drop') {
+				query = `DROP TABLE IF EXISTS ${escapeSqlIdentifier(table)}`;
+			}
+
+			if (deleteCommand === 'truncate') {
+				query = `TRUNCATE TABLE ${escapeSqlIdentifier(table)}`;
+			}
+
+			if (deleteCommand === 'delete') {
+				const whereClauses = getWhereClauses(this, i);
+
+				const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
+
+				[query, values] = addWhereClauses(
+					this.getNode(),
+					i,
+					`DELETE FROM ${escapeSqlIdentifier(table)}`,
+					whereClauses,
+					values,
+					combineConditions,
+				);
+			}
+
+			if (query === '') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Invalid delete command, only drop, delete and truncate are supported ',
+					{ itemIndex: i },
+				);
+			}
+
+			queries.push({ query, values, itemIndex: i });
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+
+			const nodeError =
+				error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+
+			returnData.push(prepareErrorItem(inputItems[i].json, nodeError, i));
 		}
-
-		if (deleteCommand === 'truncate') {
-			query = `TRUNCATE TABLE ${escapeSqlIdentifier(table)}`;
-		}
-
-		if (deleteCommand === 'delete') {
-			const whereClauses = getWhereClauses(this, i);
-
-			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
-
-			[query, values] = addWhereClauses(
-				this.getNode(),
-				i,
-				`DELETE FROM ${escapeSqlIdentifier(table)}`,
-				whereClauses,
-				values,
-				combineConditions,
-			);
-		}
-
-		if (query === '') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Invalid delete command, only drop, delete and truncate are supported ',
-				{ itemIndex: i },
-			);
-		}
-
-		const queryWithValues = { query, values };
-
-		queries.push(queryWithValues);
 	}
 
-	returnData = await runQueries(queries);
+	if (queries.length > 0) {
+		returnData = returnData.concat(await runQueries(queries));
+	}
 
 	return returnData;
 }

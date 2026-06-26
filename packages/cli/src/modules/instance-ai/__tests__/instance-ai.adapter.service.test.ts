@@ -1,4 +1,3 @@
-import type { Mock, Mocked } from 'vitest';
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
@@ -19,6 +18,7 @@ vi.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
+import type { Mock, Mocked } from 'vitest';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type {
@@ -31,14 +31,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { License } from '@/license';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import type { RoleService } from '@/services/role.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	extractExecutionResult,
@@ -48,7 +41,6 @@ import {
 	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
-	InstanceAiAdapterService,
 } from '../instance-ai.adapter.service';
 
 // ---------------------------------------------------------------------------
@@ -60,7 +52,8 @@ function createMockExecutionRepository(
 ): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
 	const executionPersistence = mock<ExecutionPersistence>();
 	executionPersistence.findSingleExecution.mockResolvedValue(execution as never);
-	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence as never);
+	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
+
 	return {
 		findSingleExecution: vi.fn().mockResolvedValue(execution),
 	};
@@ -1115,7 +1108,18 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { WorkflowService } from '@/workflows/workflow.service';
+import type { License } from '@/license';
+import type { RoleService } from '@/services/role.service';
+
+import type { OutboundHttp } from '@n8n/backend-network';
+
+import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 
@@ -1147,6 +1151,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
@@ -1165,6 +1170,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	(
@@ -1283,6 +1289,7 @@ function createDataTableAdapterForTests(overrides?: {
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
@@ -1297,6 +1304,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1517,7 +1525,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		update: vi.fn().mockResolvedValue(undefined),
 		manager: {
 			transaction: vi.fn(
-				async (fn: (transactionManager: { save: Mock }) => Promise<unknown>): Promise<unknown> => {
+				async (
+					fn: (transactionManager: { save: Mock }) => Promise<unknown>,
+				): Promise<unknown> => {
 					return await fn({
 						save: vi.fn().mockResolvedValue(savedWorkflow),
 					});
@@ -1587,6 +1597,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
@@ -1614,6 +1625,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const boundProjectId =
@@ -1923,6 +1935,47 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
+		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
+		// update path must treat that as "no groups" and send [] so a removed group is
+		// dropped — not silently preserved and then rejected by group validation.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ nodeGroups: [] }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('writes the node groups the SDK workflow declares', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			nodeGroups,
+		} as unknown as WorkflowJSON;
+
+		await adapter.updateFromWorkflowJSON('wf-new', workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodeGroups: unknown };
+		expect(updateData.nodeGroups).toEqual(nodeGroups);
+	});
+
 	it('strips id-less credential references before creating a workflow', async () => {
 		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
 		const workflow = {
@@ -2214,6 +2267,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
@@ -2230,6 +2284,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2453,7 +2508,7 @@ function createRunAdapterForTests(
 	};
 	const mockExecutionPersistence = mock<ExecutionPersistence>();
 	mockExecutionPersistence.findSingleExecution.mockResolvedValue(options?.execution as never);
-	vi.spyOn(Container, 'get').mockReturnValue(mockExecutionPersistence as never);
+	vi.spyOn(Container, 'get').mockReturnValue(mockExecutionPersistence);
 	const mockTelemetry = { track: vi.fn() };
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -2483,6 +2538,7 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
@@ -2501,6 +2557,7 @@ function createRunAdapterForTests(
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -2632,6 +2689,7 @@ describe('createExecutionAdapter run()', () => {
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
+				error: 'boom',
 			}),
 		);
 	});
@@ -2659,7 +2717,61 @@ describe('createExecutionAdapter run()', () => {
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
+				error: expect.stringContaining('timed out'),
 			}),
 		);
+	});
+
+	it('tracks error status when an execution fails to launch', async () => {
+		const { adapter, mockTelemetry, mockWorkflowRunner } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				threadId: 'thread-1',
+			},
+		);
+
+		const launchError = new Error('Failed to run workflow due to missing execution data');
+		mockWorkflowRunner.run.mockRejectedValueOnce(launchError);
+
+		await expect(adapter.run('wf-1')).rejects.toThrow(launchError);
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+				error: 'Failed to run workflow due to missing execution data',
+			}),
+		);
+	});
+
+	it('populates runnable executionData for a trigger run with no input', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.executionMode).toBe('trigger');
+		// The execution must be serializable for queue mode and directly runnable
+		// in regular mode, where WorkflowRunner uses this stack immediately.
+		expect(runData.executionData).toBeDefined();
+		const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
+		expect(firstStackItem?.node.name).toBe('Schedule Trigger');
+		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
 	});
 });

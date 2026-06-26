@@ -8,6 +8,7 @@ import { setTimeout as setTimeoutP } from 'timers/promises';
 import type { Mock, MockedFunction } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 
 // The monitor uses `setTimeout` from `timers/promises` for recovery backoff.
@@ -25,8 +26,15 @@ describe('DbConnectionMonitor', () => {
 	let monitor: DbConnectionMonitor;
 	let onConnectedChange: MockedFunction<(connected: boolean) => void>;
 	const errorReporter = mock<ErrorReporter>();
-	const databaseConfig = mock<DatabaseConfig>({ pingTimeoutMs: 5_000 });
+	const databaseConfig = mock<DatabaseConfig>({
+		pingTimeoutMs: 5_000,
+		pingMaxFailuresBeforeRecovery: 3,
+		minRecoveryBackoffMs: 1_000,
+		maxRecoveryBackoffMs: 30_000,
+		connectionAcquisitionTimeoutMs: 30_000,
+	});
 	const logger = mock<Logger>();
+	const dbConnectionMetrics = mock<DbConnectionMetrics>();
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
 
 	beforeEach(() => {
@@ -41,6 +49,7 @@ describe('DbConnectionMonitor', () => {
 			databaseConfig,
 			logger,
 			errorReporter,
+			dbConnectionMetrics,
 		);
 	});
 
@@ -132,7 +141,7 @@ describe('DbConnectionMonitor', () => {
 		it('should not query if monitor is stopped', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			monitor.stop();
+			void monitor.stop();
 
 			// @ts-expect-error private property
 			await monitor.ping();
@@ -243,6 +252,7 @@ describe('DbConnectionMonitor', () => {
 					mock<DatabaseConfig>({ pingIntervalSeconds: 1, pingTimeoutMs: 5_000 }),
 					logger,
 					errorReporter,
+					dbConnectionMetrics,
 				);
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
@@ -266,11 +276,12 @@ describe('DbConnectionMonitor', () => {
 					mock<DatabaseConfig>({ pingIntervalSeconds: 1, pingTimeoutMs: 5_000 }),
 					logger,
 					errorReporter,
+					dbConnectionMetrics,
 				);
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
 
-				scheduledMonitor.stop();
+				void scheduledMonitor.stop();
 				// @ts-expect-error private property
 				scheduledMonitor.scheduleNextPing();
 				vi.advanceTimersByTime(1000);
@@ -315,7 +326,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should be a no-op when monitor is stopped', async () => {
-			monitor.stop();
+			void monitor.stop();
 
 			// @ts-expect-error private property
 			await monitor.recoverDataSource();
@@ -414,6 +425,51 @@ describe('DbConnectionMonitor', () => {
 			);
 		});
 
+		it('should not drop below the floor when max backoff is misconfigured below min', async () => {
+			// A misconfiguration (max < min) must degrade to a constant `min` delay rather
+			// than collapsing every retry onto the smaller max value, which would defeat the floor.
+			const misconfigured = mock<DatabaseConfig>({
+				pingTimeoutMs: 5_000,
+				pingMaxFailuresBeforeRecovery: 3,
+				minRecoveryBackoffMs: 1_000,
+				maxRecoveryBackoffMs: 100,
+			});
+			const misconfiguredMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				misconfigured,
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.destroy.mockResolvedValue();
+			dataSource.initialize
+				.mockRejectedValueOnce(new Error('down'))
+				.mockRejectedValueOnce(new Error('down'))
+				.mockResolvedValueOnce(dataSource);
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await misconfiguredMonitor.recoverDataSource();
+
+			// Both backoffs clamp to the floor (1s) instead of the bogus 100ms max.
+			expect(mockedSetTimeoutP).toHaveBeenNthCalledWith(
+				1,
+				1_000,
+				undefined,
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
+			);
+			expect(mockedSetTimeoutP).toHaveBeenNthCalledWith(
+				2,
+				1_000,
+				undefined,
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
+			);
+		});
+
 		it('should exit the recovery loop when stop() is called during backoff', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
@@ -433,7 +489,7 @@ describe('DbConnectionMonitor', () => {
 			await flushMicrotasks();
 			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
 
-			monitor.stop();
+			void monitor.stop();
 			resolveBackoff();
 			await recoveryPromise;
 
@@ -471,7 +527,7 @@ describe('DbConnectionMonitor', () => {
 				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			);
 
-			monitor.stop();
+			void monitor.stop();
 			await recoveryPromise;
 
 			// AbortError is swallowed; the loop exits on the next iteration without retrying.
@@ -489,8 +545,14 @@ describe('DbConnectionMonitor', () => {
 			dataSource.destroy.mockResolvedValue();
 			dataSource.initialize.mockResolvedValue(dataSource);
 			const on = vi.fn();
-			(dataSource as unknown as { driver: { master: { on: Mock } } }).driver = {
+			(
+				dataSource as unknown as {
+					driver: { master: { on: Mock }; obtainMasterConnection: () => Promise<unknown> };
+				}
+			).driver = {
 				master: { on },
+				// start()/recoverDataSource() wrap obtainMasterConnection unconditionally.
+				obtainMasterConnection: vi.fn().mockResolvedValue(undefined),
 			};
 
 			// @ts-expect-error private property
@@ -511,12 +573,90 @@ describe('DbConnectionMonitor', () => {
 			const recoveryPromise = monitor.recoverDataSource();
 
 			// Stop while destroy is still pending.
-			monitor.stop();
+			void monitor.stop();
 
 			await recoveryPromise;
 
 			expect(dataSource.destroy).toHaveBeenCalled();
 			expect(dataSource.initialize).not.toHaveBeenCalled();
+		});
+
+		it('should await the in-flight recovery so teardown is ordered after it', async () => {
+			// stop() must not resolve until the fire-and-forget recovery launched by ping()
+			// has unwound, so the owner can destroy the DataSource without racing the loop.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			let resolveDestroy: () => void = () => {};
+			let destroyResolved = false;
+			dataSource.destroy.mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						resolveDestroy = () => {
+							destroyResolved = true;
+							resolve();
+						};
+					}),
+			);
+
+			// Launch recovery exactly as a failed ping() does (`this.recoveryPromise =
+			// this.recoverDataSource()`), without driving the ping loop itself: the mock
+			// config has no pingIntervalSeconds, so scheduleNextPing() would spin a
+			// runaway ~1ms setTimeout while recovery is parked, which starves the event
+			// loop and times the test out under CI load.
+			// @ts-expect-error private property
+			monitor.recoveryPromise = monitor.recoverDataSource();
+			await flushMicrotasks();
+			// Recovery is parked inside the slow destroy().
+			expect(dataSource.destroy).toHaveBeenCalled();
+
+			const stopPromise = monitor.stop();
+			let stopResolved = false;
+			void stopPromise.then(() => (stopResolved = true));
+
+			// stop() cannot resolve while recovery is still draining destroy().
+			await flushMicrotasks();
+			expect(stopResolved).toBe(false);
+
+			resolveDestroy();
+			await stopPromise;
+
+			expect(destroyResolved).toBe(true);
+			expect(stopResolved).toBe(true);
+			// The post-destroy `if (this.stopped) break;` prevents reinitialization.
+			expect(dataSource.initialize).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('start', () => {
+		it('should warn once when max recovery backoff is configured below min', () => {
+			const misconfigured = mock<DatabaseConfig>({
+				pingTimeoutMs: 5_000,
+				pingMaxFailuresBeforeRecovery: 3,
+				minRecoveryBackoffMs: 1_000,
+				maxRecoveryBackoffMs: 100,
+			});
+			const misconfiguredMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				misconfigured,
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+
+			misconfiguredMonitor.start();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('DB_RECOVERY_BACKOFF_MAX_MS'),
+			);
+		});
+
+		it('should not warn when backoff bounds are valid', () => {
+			monitor.start();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('DB_RECOVERY_BACKOFF_MAX_MS'),
+			);
 		});
 	});
 
@@ -526,9 +666,15 @@ describe('DbConnectionMonitor', () => {
 		// and matches the unsafe cast the production code uses to reach driver.master.
 		type DriverShape = {
 			master?: { on?: (event: string, handler: (cause: unknown) => void) => void };
+			obtainMasterConnection?: () => Promise<unknown>;
 		};
+		// start() wraps obtainMasterConnection unconditionally, so every driver needs it present
+		// or wrapConnectionAcquisition throws. Default it; tests override what they assert on.
 		const setDriver = (driver: DriverShape) => {
-			(dataSource as unknown as { driver: DriverShape }).driver = driver;
+			(dataSource as unknown as { driver: DriverShape }).driver = {
+				obtainMasterConnection: vi.fn().mockResolvedValue(undefined),
+				...driver,
+			};
 		};
 
 		it('should attach an error listener to the Postgres driver pool', () => {
@@ -560,6 +706,35 @@ describe('DbConnectionMonitor', () => {
 			);
 		});
 
+		it('should ignore errors from a pool that recovery has since replaced', () => {
+			// Recovery swaps in a fresh driver+pool but the old pool can still emit a late
+			// 'error' while tearing down. Acting on it would mark the just-recovered instance
+			// unhealthy, so the stale pool's handler must be inert.
+			let staleHandler: ((cause: unknown) => void) | undefined;
+			const on = vi.fn((_event: string, h: (cause: unknown) => void) => {
+				staleHandler = h;
+			});
+			const stalePool = { on };
+			setDriver({ master: stalePool });
+			// @ts-expect-error private property
+			monitor.connected = true;
+
+			monitor.start();
+			expect(staleHandler).toBeDefined();
+
+			// A recovery replaced the driver's master with a brand-new pool.
+			(dataSource as unknown as { driver: DriverShape }).driver.master = {
+				on: vi.fn(),
+			};
+
+			staleHandler?.(new Error('terminating connection due to administrator command'));
+
+			expect(onConnectedChange).not.toHaveBeenCalledWith(false);
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('Ignoring Postgres pool error'),
+			);
+		});
+
 		it('should skip attaching when the driver is not Postgres', () => {
 			const sqliteDataSource = mockDeep<DataSource>({ options: { type: 'sqlite-pooled' } });
 			const sqliteMonitor = new DbConnectionMonitor(
@@ -568,6 +743,7 @@ describe('DbConnectionMonitor', () => {
 				databaseConfig,
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 
 			sqliteMonitor.start();
@@ -589,13 +765,241 @@ describe('DbConnectionMonitor', () => {
 		});
 	});
 
+	describe('connection acquisition during recovery', () => {
+		// Minimal driver shape, same rationale as the attachPoolErrorHandler block:
+		// avoids TS2590 on the full driver union and mirrors the production cast.
+		type AcquisitionDriverShape = {
+			master?: { on?: (event: string, handler: (cause: unknown) => void) => void };
+			obtainMasterConnection?: () => Promise<unknown>;
+		};
+		const setDriver = (driver: AcquisitionDriverShape) => {
+			(dataSource as unknown as { driver: AcquisitionDriverShape }).driver = driver;
+		};
+		// The private recovery helpers, reached the same way the rest of this file
+		// pokes at internals.
+		const internals = () =>
+			monitor as unknown as {
+				acquireConnection: (original: () => Promise<unknown>) => Promise<unknown>;
+				markRecoveryPending: () => void;
+				clearPendingRecovery: () => void;
+				recovering: boolean;
+				liveObtainMasterConnection: (() => Promise<unknown>) | undefined;
+			};
+
+		const POOL_ENDED = 'Cannot use a pool after calling end on the pool';
+
+		it('should wrap driver.obtainMasterConnection on start for Postgres', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+			setDriver({ obtainMasterConnection: original });
+
+			monitor.start();
+
+			const driver = (dataSource as unknown as { driver: AcquisitionDriverShape }).driver;
+			// The instance method is now a wrapper, not the original.
+			expect(driver.obtainMasterConnection).not.toBe(original);
+			await expect(driver.obtainMasterConnection?.()).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should pass connection acquisition straight through when idle', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+
+			await expect(internals().acquireConnection(original)).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should hold connection acquisition while a recovery is in progress', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+
+			let settled = false;
+			const pending = internals()
+				.acquireConnection(original)
+				.then((result) => {
+					settled = true;
+					return result;
+				});
+
+			await flushMicrotasks();
+			// Recovery is pending: acquisition must not have run yet.
+			expect(settled).toBe(false);
+			expect(original).not.toHaveBeenCalled();
+
+			internals().clearPendingRecovery();
+
+			await expect(pending).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry against the live driver when acquisition loses the destroy race', async () => {
+			// A query holding the previous (destroyed) driver hits the ended pool; once
+			// recovery has swapped in a new driver, the retry must reach the live pool.
+			const stale = vi.fn().mockRejectedValue(new Error(POOL_ENDED));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = true;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(stale)).resolves.toBe('fresh-connection');
+			expect(stale).toHaveBeenCalledTimes(1);
+			expect(live).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry stale acquisition errors after recovery has completed', async () => {
+			const stale = vi.fn().mockRejectedValue(new Error(POOL_ENDED));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = false;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(stale)).resolves.toBe('fresh-connection');
+			expect(stale).toHaveBeenCalledTimes(1);
+			expect(live).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry on a "Driver not Connected" error during recovery', async () => {
+			const stale = vi.fn().mockRejectedValue(new Error('Driver not Connected'));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = true;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(stale)).resolves.toBe('fresh-connection');
+			expect(live).toHaveBeenCalledTimes(1);
+		});
+
+		it('should surface a pool error when no recovery is in progress', async () => {
+			// Outside a recovery window the pool is genuinely unavailable; masking it
+			// with a retry would hide a real outage.
+			const original = vi.fn().mockRejectedValue(new Error(POOL_ENDED));
+			internals().recovering = false;
+			internals().liveObtainMasterConnection = original;
+
+			await expect(internals().acquireConnection(original)).rejects.toThrow(POOL_ENDED);
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not retry an unrelated error even during recovery', async () => {
+			const original = vi.fn().mockRejectedValue(new Error('syntax error at or near "FROM"'));
+			const live = vi.fn().mockResolvedValue('fresh-connection');
+			internals().recovering = true;
+			internals().liveObtainMasterConnection = live;
+
+			await expect(internals().acquireConnection(original)).rejects.toThrow('syntax error');
+			expect(live).not.toHaveBeenCalled();
+		});
+
+		it('should fail fast with an OperationalError when recovery exceeds the acquisition timeout', async () => {
+			// A long outage parks every query here; without the bound they would pile up for
+			// the whole outage. Once the timeout elapses the query must reject instead.
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+			// Fire the timeout side of the race immediately.
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined);
+
+			await expect(internals().acquireConnection(original)).rejects.toThrow(
+				'Timed out after 30000ms waiting for database connection recovery',
+			);
+			// The query never reached the pool.
+			expect(original).not.toHaveBeenCalled();
+		});
+
+		it('should acquire normally when recovery completes before the acquisition timeout', async () => {
+			// The timeout must not fire when recovery wins the race.
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+
+			const pending = internals().acquireConnection(original);
+			await flushMicrotasks();
+			expect(original).not.toHaveBeenCalled();
+
+			// Recovery completes before the (never-resolving) timeout.
+			internals().clearPendingRecovery();
+
+			await expect(pending).resolves.toBe('connection');
+			expect(original).toHaveBeenCalledTimes(1);
+		});
+
+		it('should wait indefinitely when the acquisition timeout is 0', async () => {
+			const noTimeoutMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				mock<DatabaseConfig>({
+					pingTimeoutMs: 5_000,
+					pingMaxFailuresBeforeRecovery: 3,
+					minRecoveryBackoffMs: 1_000,
+					maxRecoveryBackoffMs: 30_000,
+					connectionAcquisitionTimeoutMs: 0,
+				}),
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+			const noTimeoutInternals = noTimeoutMonitor as unknown as {
+				acquireConnection: (original: () => Promise<unknown>) => Promise<unknown>;
+				markRecoveryPending: () => void;
+				clearPendingRecovery: () => void;
+			};
+			const original = vi.fn().mockResolvedValue('connection');
+			noTimeoutInternals.markRecoveryPending();
+			// Behavioural proof that no timeout is armed: if `awaitRecovery` ever raced a timeout here it would reject.
+			// Asserting on the shared `setTimeoutP` call count is unreliable because other tests leave a fire-and-forget ping loop calling it.
+			mockedSetTimeoutP.mockImplementation(async () => {
+				await Promise.resolve();
+				throw new Error('timeout should not be armed when the acquisition timeout is 0');
+			});
+
+			let settled = false;
+			const pending = noTimeoutInternals.acquireConnection(original).then((result) => {
+				settled = true;
+				return result;
+			});
+
+			await flushMicrotasks();
+			// The acquisition stays parked on recovery rather than failing fast.
+			expect(settled).toBe(false);
+
+			noTimeoutInternals.clearPendingRecovery();
+
+			// Resolves cleanly once recovery completes; never rejects on a timeout.
+			await expect(pending).resolves.toBe('connection');
+		});
+
+		it('should release queued acquisitions when stop() is called', async () => {
+			const original = vi.fn().mockResolvedValue('connection');
+			internals().markRecoveryPending();
+
+			const pending = internals().acquireConnection(original);
+			await flushMicrotasks();
+			expect(original).not.toHaveBeenCalled();
+
+			void monitor.stop();
+
+			await expect(pending).resolves.toBe('connection');
+		});
+
+		it('should re-wrap obtainMasterConnection after a successful recovery', async () => {
+			// initialize() builds a fresh driver instance, so the wrapper installed at
+			// start() is gone; without re-wrapping, the new pool would not wait during recovery.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.destroy.mockResolvedValue();
+			dataSource.initialize.mockResolvedValue(dataSource);
+			const original = vi.fn().mockResolvedValue('connection');
+			setDriver({ obtainMasterConnection: original });
+
+			// @ts-expect-error private property
+			await monitor.recoverDataSource();
+
+			const driver = (dataSource as unknown as { driver: AcquisitionDriverShape }).driver;
+			expect(driver.obtainMasterConnection).not.toBe(original);
+		});
+	});
+
 	describe('stop', () => {
 		it('should clear the ping timer', () => {
 			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 			// @ts-expect-error private property
 			monitor.pingTimer = setTimeout(() => {}, 1000);
 
-			monitor.stop();
+			void monitor.stop();
 
 			expect(clearTimeoutSpy).toHaveBeenCalled();
 			// @ts-expect-error private property
@@ -603,7 +1007,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should latch `stopped` so future scheduling is skipped', () => {
-			monitor.stop();
+			void monitor.stop();
 
 			// @ts-expect-error private property
 			expect(monitor.stopped).toBe(true);
@@ -623,6 +1027,7 @@ describe('DbConnectionMonitor', () => {
 				databaseConfig,
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
@@ -651,6 +1056,49 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error private property
 			monitor.setConnected(false);
 			expect(onConnectedChange).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('acquire latency', () => {
+		const buildPostgresMonitor = (metrics: DbConnectionMetrics, obtain: () => Promise<unknown>) => {
+			const driver = { obtainMasterConnection: vi.fn(obtain), master: { on: vi.fn() } };
+			const ds = {
+				options: { type: 'postgres' },
+				isInitialized: true,
+				driver,
+			} as unknown as DataSource;
+			const freshMonitor = new DbConnectionMonitor(
+				ds,
+				vi.fn(),
+				databaseConfig,
+				logger,
+				errorReporter,
+				metrics,
+			);
+			// start() installs the obtainMasterConnection wrapper on the live driver.
+			freshMonitor.start();
+			return { driver };
+		};
+
+		it('records the acquisition duration through the observer', async () => {
+			const metrics = new DbConnectionMetrics();
+			const observed: number[] = [];
+			metrics.acquireDurationObserver = (seconds) => observed.push(seconds);
+
+			const { driver } = buildPostgresMonitor(metrics, async () => 'connection');
+
+			const result = await driver.obtainMasterConnection();
+
+			expect(result).toBe('connection');
+			expect(observed).toHaveLength(1);
+			expect(observed[0]).toBeGreaterThanOrEqual(0);
+		});
+
+		it('acquires without timing when no observer is registered', async () => {
+			const metrics = new DbConnectionMetrics(); // observer left undefined
+			const { driver } = buildPostgresMonitor(metrics, async () => 'connection');
+
+			await expect(driver.obtainMasterConnection()).resolves.toBe('connection');
 		});
 	});
 });

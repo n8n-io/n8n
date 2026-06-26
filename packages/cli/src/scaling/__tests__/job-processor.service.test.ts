@@ -72,7 +72,38 @@ const executionsConfig = mock<ExecutionsConfig>({
 	maxTimeout: 3600,
 });
 
+const successRun = (): IRun =>
+	mock<IRun>({
+		status: 'success',
+		stoppedAt: new Date(),
+		data: mock<IRunExecutionData>({
+			resultData: { runData: {}, error: undefined },
+			executionData: undefined,
+		}),
+	});
+
+const errorRun = (error: ExecutionError): IRun =>
+	mock<IRun>({
+		status: 'error',
+		stoppedAt: new Date(),
+		data: mock<IRunExecutionData>({
+			resultData: { runData: {}, error },
+			executionData: undefined,
+		}),
+	});
+
+const createManualExecutionServiceMock = (run: IRun = successRun()): ManualExecutionService => {
+	const svc = mock<ManualExecutionService>();
+	svc.runManually.mockReturnValue(Promise.resolve(run) as ReturnType<typeof svc.runManually>);
+	return svc;
+};
+
 describe('JobProcessor', () => {
+	beforeEach(() => {
+		processRunExecutionDataMock.mockReset();
+		processRunExecutionDataMock.mockResolvedValue(successRun());
+	});
+
 	it('should refrain from processing a crashed execution', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const executionPersistence = mock<ExecutionPersistence>();
@@ -96,6 +127,37 @@ describe('JobProcessor', () => {
 		expect(result).toEqual({ success: false });
 	});
 
+	it('should throw a descriptive error when the execution has no run data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				id: 'execution-id',
+				mode: 'trigger',
+				workflowData: { nodes: [] },
+				data: undefined,
+			}),
+		);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+		);
+
+		const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+		await expect(jobProcessor.processJob(job)).rejects.toThrow(/without run data/);
+		expect(manualExecutionService.runManually).not.toHaveBeenCalled();
+	});
+
 	it.each(['manual', 'evaluation'] satisfies WorkflowExecuteMode[])(
 		'should use manualExecutionService to process a job in %p mode',
 		async (mode) => {
@@ -111,7 +173,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
@@ -142,7 +204,6 @@ describe('JobProcessor', () => {
 	it('should send job-finished with success=false when execution has errors', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const executionPersistence = mock<ExecutionPersistence>();
-		// First call: initial execution fetch (no error yet)
 		executionPersistence.findSingleExecution.mockResolvedValueOnce(
 			mock<IExecutionResponse>({
 				mode: 'manual',
@@ -152,19 +213,10 @@ describe('JobProcessor', () => {
 				}),
 			}),
 		);
-		// Second call: after execution completes, fetch again to check for errors
-		executionPersistence.findSingleExecution.mockResolvedValueOnce(
-			mock<IExecutionResponse>({
-				status: 'error',
-				data: {
-					resultData: {
-						error: mock<ExecutionError>(),
-					},
-				},
-			}),
-		);
 
-		const manualExecutionService = mock<ManualExecutionService>();
+		const manualExecutionService = createManualExecutionServiceMock(
+			errorRun(mock<ExecutionError>()),
+		);
 		const jobProcessor = new JobProcessor(
 			logger,
 			executionRepository,
@@ -212,7 +264,7 @@ describe('JobProcessor', () => {
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
-		const manualExecutionService = mock<ManualExecutionService>();
+		const manualExecutionService = createManualExecutionServiceMock();
 		const jobProcessor = new JobProcessor(
 			logger,
 			executionRepository,
@@ -261,7 +313,7 @@ describe('JobProcessor', () => {
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
-		const manualExecutionService = mock<ManualExecutionService>();
+		const manualExecutionService = createManualExecutionServiceMock();
 		const jobProcessor = new JobProcessor(
 			logger,
 			executionRepository,
@@ -314,7 +366,7 @@ describe('JobProcessor', () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
@@ -357,7 +409,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const mcpInstanceSettings = {
 				hostId: 'worker-host-123',
 			} as unknown as InstanceSettings;
@@ -420,7 +472,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
@@ -463,21 +515,10 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
-			// Second call shows error
-			executionPersistence.findSingleExecution.mockResolvedValueOnce(
-				mock<IExecutionResponse>({
-					status: 'error',
-					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
-					data: mock<IRunExecutionData>({
-						resultData: {
-							runData: {},
-							error: { message: 'Test error' } as ExecutionError,
-						},
-					}),
-				}),
-			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock(
+				errorRun({ message: 'Test error' } as ExecutionError),
+			);
 			const mcpInstanceSettings = {
 				hostId: 'worker-host-123',
 			} as unknown as InstanceSettings;
@@ -538,7 +579,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const mcpInstanceSettings = {
 				hostId: 'worker-host-123',
 			} as unknown as InstanceSettings;
@@ -608,7 +649,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const mcpInstanceSettings = {
 				hostId: 'worker-host-123',
 			} as unknown as InstanceSettings;
@@ -699,7 +740,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const mcpInstanceSettings = {
 				hostId: 'worker-host-123',
 			} as unknown as InstanceSettings;
@@ -787,7 +828,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const mcpInstanceSettings = {
 				hostId: 'worker-host-123',
 			} as unknown as InstanceSettings;
@@ -888,7 +929,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const mcpInstanceSettings = {
 				hostId: 'worker-host-123',
 			} as unknown as InstanceSettings;
@@ -951,6 +992,102 @@ describe('JobProcessor', () => {
 			};
 			expect(lastResponse.response).toBe('supply data tool result');
 		});
+
+		it('should expose the established execution context to the tool node', async () => {
+			// Regression: in queue mode the tool runs on the worker, where dynamic
+			// (private) credentials resolve from the node's execution context. The
+			// context established on the main travels with the loaded execution and
+			// must be threaded into the tool node, or resolution fails with
+			// MissingExecutionContextError.
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			const toolNode = {
+				name: 'Tool HTTP Request',
+				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const runtimeContext = {
+				version: 1,
+				establishedAt: 0,
+				source: 'webhook',
+				credentials: 'encrypted-identity-blob',
+			};
+
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({
+						executionData: { runtimeData: runtimeContext } as never,
+					}),
+				}),
+			);
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = createManualExecutionServiceMock();
+			const mcpInstanceSettings = { hostId: 'worker-host-123' } as unknown as InstanceSettings;
+
+			let capturedContext: unknown;
+			const mockTool = { invoke: vi.fn().mockResolvedValue('ok') };
+			const mockSupplyData = vi.fn().mockImplementation(function (this: {
+				getExecutionContext: () => unknown;
+			}) {
+				capturedContext = this.getExecutionContext();
+				return { response: mockTool };
+			});
+
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'toolHttpRequest',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				supplyData: mockSupplyData,
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-ctx',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-ctx',
+				mcpMessageId: 'msg-ctx',
+				mcpToolCall: {
+					toolName: 'Tool HTTP Request',
+					arguments: { query: 'x' },
+					sourceNodeName: 'Tool HTTP Request',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			expect(mockSupplyData).toHaveBeenCalled();
+			expect(capturedContext).toEqual(runtimeContext);
+		});
 	});
 
 	describe('waitTill propagation', () => {
@@ -984,45 +1121,11 @@ describe('JobProcessor', () => {
 			expect(props.status).toBe('waiting');
 		});
 
-		it('carries waitTill on JobFinishedProps from the persisted execution (DB-fetch path)', async () => {
-			const waitTill = new Date(Date.now() + 60_000);
-			const executionRepository = mock<ExecutionRepository>();
-			const executionPersistence = mock<ExecutionPersistence>();
-			const persisted = mock<IExecutionResponse>({
-				status: 'waiting',
-				stoppedAt: new Date(),
-				data: mock<IRunExecutionData>({
-					resultData: { runData: {}, error: undefined },
-					executionData: undefined,
-				}),
-			});
-			persisted.waitTill = waitTill;
-			executionPersistence.findSingleExecution.mockResolvedValueOnce(persisted);
+		it('defaults waitTill to null on JobFinishedProps when the run is not waiting', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
-				executionRepository,
-				executionPersistence,
+				mock<ExecutionRepository>(),
 				mock(),
-				mock(),
-				mock(),
-				mock(),
-				executionsConfig,
-				mock(),
-			);
-
-			const props = await jobProcessor['fetchJobFinishedResult']('exec-1');
-
-			expect(props.waitTill).toBe(waitTill);
-			expect(props.status).toBe('waiting');
-		});
-
-		it('defaults waitTill to null on JobFinishedProps when the run is not waiting', async () => {
-			const executionRepository = mock<ExecutionRepository>();
-			const executionPersistence = mock<ExecutionPersistence>();
-			const jobProcessor = new JobProcessor(
-				logger,
-				executionRepository,
-				executionPersistence,
 				mock(),
 				mock(),
 				mock(),
@@ -1040,18 +1143,6 @@ describe('JobProcessor', () => {
 			});
 			run.waitTill = undefined;
 			expect(jobProcessor['deriveJobFinishedProps'](run, new Date()).waitTill).toBeNull();
-
-			const persisted = mock<IExecutionResponse>({
-				status: 'success',
-				stoppedAt: new Date(),
-				data: mock<IRunExecutionData>({
-					resultData: { runData: {}, error: undefined },
-					executionData: undefined,
-				}),
-			});
-			persisted.waitTill = null;
-			executionPersistence.findSingleExecution.mockResolvedValueOnce(persisted);
-			expect((await jobProcessor['fetchJobFinishedResult']('exec-1')).waitTill).toBeNull();
 		});
 	});
 
@@ -1079,7 +1170,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
@@ -1145,7 +1236,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 
-			const manualExecutionService = mock<ManualExecutionService>();
+			const manualExecutionService = createManualExecutionServiceMock();
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,

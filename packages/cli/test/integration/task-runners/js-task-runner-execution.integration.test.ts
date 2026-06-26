@@ -212,6 +212,27 @@ describe('JS TaskRunner execution on internal mode', () => {
 				result: { hello: 'world' },
 			});
 		});
+
+		// CAT-3208 / GH #24307: secure-mode task runners disable code generation
+		// (--disallow-code-generation-from-strings) and freeze Object.prototype, so
+		// expressions can't be evaluated inside the Code node. $evaluateExpression
+		// must surface a clear, actionable error instead of crashing with
+		// "Cannot assign to read only property '__lookupGetter__'" or silently
+		// returning null.
+		it('should throw a clear error for $evaluateExpression in the Code node', async () => {
+			// Act
+			const result = await runTaskWithCode("return { val: $evaluateExpression('{{ 1 + 1 }}') }");
+
+			// Assert
+			expect(result).toEqual({
+				ok: false,
+				error: expect.objectContaining({
+					message: expect.stringContaining(
+						'in the Code node while task runners run in secure mode',
+					),
+				}),
+			});
+		});
 	});
 
 	describe('Internal and external libs', () => {

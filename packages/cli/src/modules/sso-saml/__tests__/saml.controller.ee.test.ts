@@ -1,5 +1,7 @@
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { type Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -404,5 +406,17 @@ describe('SAML env-managed write protection', () => {
 		await expect(
 			envManagedController.toggleEnabledPost(req, res, { loginEnabled: true }),
 		).rejects.toThrow('cannot be modified through the API');
+	});
+
+	describe('route access scopes', () => {
+		test('configGet (read) is gated by saml:manage, matching the write endpoints', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				SamlController as Controller,
+			);
+			expect(metadata.routes.get('configGet')?.accessScope).toEqual({
+				scope: 'saml:manage',
+				globalOnly: true,
+			});
+		});
 	});
 });

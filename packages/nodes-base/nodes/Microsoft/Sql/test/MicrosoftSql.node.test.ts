@@ -1,15 +1,17 @@
-import { mock } from 'jest-mock-extended';
-import * as mssql from 'mssql';
+import { mock } from 'vitest-mock-extended';
+import mssqlDefault from 'mssql';
+import type * as mssql from 'mssql';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { MicrosoftSql } from '../MicrosoftSql.node';
+import type { MockedClass } from 'vitest';
 
-jest.mock('mssql');
+vi.mock('mssql');
 
 function getMockedExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}) {
 	return mock<IExecuteFunctions>({
-		getCredentials: jest.fn().mockResolvedValue({
+		getCredentials: vi.fn().mockResolvedValue({
 			server: 'localhost',
 			database: 'testdb',
 			user: 'testuser',
@@ -21,33 +23,33 @@ function getMockedExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}) {
 			connectTimeout: 1000,
 			requestTimeout: 10000,
 		}),
-		getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-		getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
-		continueOnFail: jest.fn().mockReturnValue(true),
+		getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+		getNode: vi.fn().mockReturnValue({ typeVersion: 1.1 }),
+		continueOnFail: vi.fn().mockReturnValue(true),
 		helpers: {
 			constructExecutionMetaData,
 			returnJsonArray,
 		},
-		evaluateExpression: jest.fn((_val) => _val),
+		evaluateExpression: vi.fn((_val) => _val),
 		...overrides,
 	});
 }
 
 describe('MicrosoftSql Node', () => {
-	let mockedConnectionPool: jest.MockedClass<typeof mssql.ConnectionPool>;
+	let mockedConnectionPool: MockedClass<typeof mssql.ConnectionPool>;
 
 	beforeEach(() => {
-		mockedConnectionPool = mssql.ConnectionPool as jest.MockedClass<typeof mssql.ConnectionPool>;
+		mockedConnectionPool = mssqlDefault.ConnectionPool as MockedClass<typeof mssql.ConnectionPool>;
 	});
 
 	test('handles connection error with continueOnFail', async () => {
 		const fakeError = new Error('Connection failed');
-		mockedConnectionPool.mockReturnValue(
-			mock<mssql.ConnectionPool>({
-				connect: jest.fn().mockRejectedValue(fakeError),
-				close: jest.fn(),
-			}),
-		);
+		mockedConnectionPool.mockImplementation(function () {
+			return mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockRejectedValue(fakeError),
+				close: vi.fn(),
+			});
+		});
 
 		const node = new MicrosoftSql();
 		const context = getMockedExecuteFunctions();
@@ -58,18 +60,20 @@ describe('MicrosoftSql Node', () => {
 
 	test('executes query on happy path', async () => {
 		const queryResult = { recordsets: [[{ value: 1 }]] };
-		const mockRequest = { query: jest.fn().mockResolvedValue(queryResult) };
+		const mockRequest = { query: vi.fn().mockResolvedValue(queryResult) };
 		const mockPool = mock<mssql.ConnectionPool>({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn(),
-			request: jest.fn().mockReturnValue(mockRequest),
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn(),
+			request: vi.fn().mockReturnValue(mockRequest),
 		});
 
-		mockedConnectionPool.mockReturnValue(mockPool);
+		mockedConnectionPool.mockImplementation(function () {
+			return mockPool;
+		});
 
 		const node = new MicrosoftSql();
 		const context = getMockedExecuteFunctions({
-			getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'operation') return 'executeQuery';
 				if (paramName === 'query') return 'SELECT 1 AS value';
 				if (paramName === 'options.queryReplacement') return '';
@@ -85,18 +89,20 @@ describe('MicrosoftSql Node', () => {
 
 	test('correctly resolves expressions (does not remove $ characters)', async () => {
 		const queryResult = { recordsets: [[{ value: 1 }]] };
-		const mockRequest = { query: jest.fn().mockResolvedValue(queryResult) };
+		const mockRequest = { query: vi.fn().mockResolvedValue(queryResult) };
 		const mockPool = mock<mssql.ConnectionPool>({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn(),
-			request: jest.fn().mockReturnValue(mockRequest),
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn(),
+			request: vi.fn().mockReturnValue(mockRequest),
 		});
 
-		mockedConnectionPool.mockReturnValue(mockPool);
+		mockedConnectionPool.mockImplementation(function () {
+			return mockPool;
+		});
 
 		const node = new MicrosoftSql();
 		const context = getMockedExecuteFunctions({
-			getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'operation') return 'executeQuery';
 				if (paramName === 'query') return "SELECT '{{ '$$$' }}'";
 				if (paramName === 'options.queryReplacement') return '';
@@ -150,20 +156,22 @@ describe('MicrosoftSql Node', () => {
 		async ({ query, queryReplacement, expectedQuery, expectedInputs }) => {
 			const queryResult = { recordsets: [[{ id: 1 }]] };
 			const mockRequest = {
-				query: jest.fn().mockResolvedValue(queryResult),
-				input: jest.fn(),
+				query: vi.fn().mockResolvedValue(queryResult),
+				input: vi.fn(),
 			};
 			const mockPool = mock<mssql.ConnectionPool>({
-				connect: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn(),
-				request: jest.fn().mockReturnValue(mockRequest),
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
 			});
 
-			mockedConnectionPool.mockReturnValue(mockPool);
+			mockedConnectionPool.mockImplementation(function () {
+				return mockPool;
+			});
 
 			const node = new MicrosoftSql();
 			const context = getMockedExecuteFunctions({
-				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'operation') return 'executeQuery';
 					if (paramName === 'query') return query;
 					if (paramName === 'options.queryReplacement') return queryReplacement;
@@ -182,13 +190,13 @@ describe('MicrosoftSql Node', () => {
 	describe('delete operation parameter validation', () => {
 		const buildPoolMock = () => {
 			const mockRequest = {
-				query: jest.fn().mockResolvedValue({ rowsAffected: [1] }),
-				input: jest.fn(),
+				query: vi.fn().mockResolvedValue({ rowsAffected: [1] }),
+				input: vi.fn(),
 			};
 			const mockPool = mock<mssql.ConnectionPool>({
-				connect: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn(),
-				request: jest.fn().mockReturnValue(mockRequest),
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
 			});
 			return mockPool;
 		};
@@ -196,19 +204,21 @@ describe('MicrosoftSql Node', () => {
 		it('should not alter shared object state when delete parameters contain reserved tokens', async () => {
 			const protoKeysBefore = Object.getOwnPropertyNames(Object.prototype);
 
-			mockedConnectionPool.mockReturnValue(buildPoolMock());
+			mockedConnectionPool.mockImplementation(function () {
+				return buildPoolMock();
+			});
 			const node = new MicrosoftSql();
 
 			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
 				const context = getMockedExecuteFunctions({
-					getInputData: jest.fn().mockReturnValue([{ json: { id: 1 }, pairedItem: { item: 0 } }]),
-					getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+					getInputData: vi.fn().mockReturnValue([{ json: { id: 1 }, pairedItem: { item: 0 } }]),
+					getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 						if (paramName === 'operation') return 'delete';
 						if (paramName === 'table') return reserved;
 						if (paramName === 'deleteKey') return 'id';
 						return undefined;
 					}),
-					continueOnFail: jest.fn().mockReturnValue(false),
+					continueOnFail: vi.fn().mockReturnValue(false),
 				});
 				await node.execute.call(context);
 			}

@@ -1,18 +1,19 @@
 import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
 import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
+import { validate, type Schema } from 'jsonschema';
 import { Cipher, CipherAes256GCM, CipherAes256CBC, EncryptionKeyProxy } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+
+import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { IDependency } from '@/public-api/types';
-
-import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
 
 // Set up real Cipher with mocked InstanceSettings for encryption
 const cipher = new Cipher(
@@ -120,6 +121,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'secret',
 					type: 'string',
+					required: true,
 					displayName: 'Secret',
 					default: '',
 					displayOptions: {
@@ -131,6 +133,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'privateKey',
 					type: 'string',
+					required: true,
 					displayName: 'Private Key',
 					default: '',
 					displayOptions: {
@@ -142,6 +145,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'publicKey',
 					type: 'string',
+					required: true,
 					displayName: 'Public Key',
 					default: '',
 					displayOptions: {
@@ -235,6 +239,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'username',
 					type: 'string',
+					required: true,
 					displayName: 'Username',
 					default: '',
 					displayOptions: {
@@ -246,6 +251,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'password',
 					type: 'string',
+					required: true,
 					displayName: 'Password',
 					default: '',
 					displayOptions: {
@@ -257,6 +263,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'clientId',
 					type: 'string',
+					required: true,
 					displayName: 'Client ID',
 					default: '',
 					displayOptions: {
@@ -297,6 +304,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'createField',
 					type: 'string',
+					required: true,
 					displayName: 'Create Field',
 					default: '',
 					displayOptions: {
@@ -308,6 +316,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'updateField',
 					type: 'string',
+					required: true,
 					displayName: 'Update Field',
 					default: '',
 					displayOptions: {
@@ -319,6 +328,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'deleteField',
 					type: 'string',
+					required: true,
 					displayName: 'Delete Field',
 					default: '',
 					displayOptions: {
@@ -369,6 +379,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'field3',
 					type: 'string',
+					required: true,
 					displayName: 'Field 3',
 					default: '',
 					displayOptions: {
@@ -408,10 +419,68 @@ describe('CredentialsService', () => {
 
 			// then block requires field3 when field2 === false
 			expect(condition.then?.allOf.some((req: any) => req.required?.includes('field3'))).toBe(true);
-			// else block forbids field3 when field2 !== false
-			expect(
-				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
-			).toBe(true);
+			// no else block: hidden fields are optional, not forbidden
+			expect((condition as any).else).toBeUndefined();
+		});
+
+		it('should not forbid conditional fields belonging to inactive conditions', () => {
+			// Mirrors the mongoDb scenario: two fields depend on the same options field
+			// but with different values. A payload that includes both the active
+			// and the inactive conditional field must validate.
+			const properties: INodeProperties[] = [
+				{
+					name: 'configurationType',
+					type: 'options',
+					options: [
+						{ value: 'connectionString', name: 'Connection String' },
+						{ value: 'values', name: 'Values' },
+					],
+					displayName: 'Configuration Type',
+					default: 'values',
+				},
+				{
+					name: 'connectionString',
+					type: 'string',
+					required: true,
+					displayName: 'Connection String',
+					default: '',
+					displayOptions: { show: { configurationType: ['connectionString'] } },
+				},
+				{
+					name: 'host',
+					type: 'string',
+					required: true,
+					displayName: 'Host',
+					default: '',
+					displayOptions: { show: { configurationType: ['values'] } },
+				},
+			];
+
+			const schema = toJsonSchema(properties);
+
+			// No `not: { required }` anywhere in the generated schema
+			expect(JSON.stringify(schema)).not.toContain('"not"');
+
+			// A payload using connectionString but also carrying the inactive `host` field
+			// must be accepted.
+			const connectionStringPayload = {
+				configurationType: 'connectionString',
+				connectionString: 'mongodb://localhost:27017/mydb',
+				host: 'localhost',
+			};
+			expect(validate(connectionStringPayload, schema as unknown as Schema).valid).toBe(true);
+
+			// And the reverse direction.
+			const valuesPayload = {
+				configurationType: 'values',
+				host: 'localhost',
+				connectionString: 'mongodb://localhost:27017/mydb',
+			};
+			expect(validate(valuesPayload, schema as unknown as Schema).valid).toBe(true);
+
+			// Required fields are still enforced via the `then` block.
+			const missingRequired = { configurationType: 'values' };
+			expect(validate(missingRequired, schema as unknown as Schema).valid).toBe(false);
 		});
 	});
 
@@ -518,9 +587,9 @@ describe('CredentialsService', () => {
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
 				// Mock credential that already has secret expression
-				vi.mocked(credentialsService.decrypt).mockResolvedValue({
-					apiKey: '{{ $secrets.vault.oldKey }}',
-				});
+				vi
+					.mocked(credentialsService.decrypt)
+					.mockResolvedValue({ apiKey: '{{ $secrets.vault.oldKey }}' });
 
 				await expect(
 					updateCredential(existingCredential, memberUser, {
@@ -546,9 +615,9 @@ describe('CredentialsService', () => {
 				vi.mocked(credentialsService.decrypt).mockResolvedValue({
 					apiKey: 'currentPlainTextValue',
 				});
-				vi.mocked(
-					mockSecretsProviderAccessCheckService.isProviderAvailableInProject,
-				).mockResolvedValue(false);
+				vi
+					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
+					.mockResolvedValue(false);
 				mockExternalSecretsConfig.externalSecretsForProjects = true;
 
 				await expect(
@@ -573,9 +642,9 @@ describe('CredentialsService', () => {
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
 				// Mock credential that has existing secret expression
-				vi.mocked(credentialsService.decrypt).mockResolvedValue({
-					apiKey: '{{ $secrets.vault.myKey }}',
-				});
+				vi
+					.mocked(credentialsService.decrypt)
+					.mockResolvedValue({ apiKey: '{{ $secrets.vault.myKey }}' });
 
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
@@ -618,9 +687,9 @@ describe('CredentialsService', () => {
 				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 				vi.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
-				vi.mocked(
-					mockSecretsProviderAccessCheckService.isProviderAvailableInProject,
-				).mockResolvedValue(true);
+				vi
+					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
+					.mockResolvedValue(true);
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
 				await updateCredential(existingCredential, ownerUser, {

@@ -1,3 +1,4 @@
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
@@ -17,13 +18,19 @@ describe('EventBusController', () => {
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 		logStreamingManagedByEnv: false,
 	});
+	const outboundHttp = mock<OutboundHttp>();
 
 	let controller: EventBusController;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.logStreamingManagedByEnv = false;
-		controller = new EventBusController(eventBus, destinationService, instanceSettingsLoaderConfig);
+		controller = new EventBusController(
+			eventBus,
+			destinationService,
+			instanceSettingsLoaderConfig,
+			outboundHttp,
+		);
 	});
 
 	describe('getDestination', () => {

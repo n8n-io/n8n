@@ -1,23 +1,29 @@
-/* eslint-disable @typescript-eslint/unbound-method -- vitest mocks */
+/* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
+import type { Mock, Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type express from 'express';
-import promClient from 'prom-client';
-import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import promClient from 'prom-client';
 
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
+import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
+import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
+import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
 import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
 import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.service';
 import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
+import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
+import type { PrometheusWebhookAndFormMetricsService } from '../prometheus/webhook-and-form-metrics.service';
 import type { PrometheusWorkflowExecutionDurationMetricsService } from '../prometheus/workflow-execution-duration-metrics.service';
+import type { PrometheusWorkflowInfoMetricsService } from '../prometheus/workflow-info-metrics.service';
 import type { PrometheusWorkflowStatisticsMetricsService } from '../prometheus/workflow-statistics-metrics.service';
 
 vi.mock('prom-client');
@@ -39,6 +45,12 @@ describe('PrometheusMetricsService', () => {
 	let version: Mocked<PrometheusVersionMetricsService>;
 	let defaultMetrics: Mocked<PrometheusDefaultMetricsService>;
 	let tokenExchange: Mocked<PrometheusTokenExchangeMetricsService>;
+	let ssrf: Mocked<PrometheusSsrfMetricsService>;
+	let dnsCache: Mocked<PrometheusDnsCacheMetricsService>;
+	let webhook: Mocked<PrometheusWebhookAndFormMetricsService>;
+	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
+	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
+	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -58,6 +70,12 @@ describe('PrometheusMetricsService', () => {
 			version,
 			defaultMetrics,
 			tokenExchange,
+			ssrf,
+			dnsCache,
+			webhook,
+			workflowInfo,
+			instanceAi,
+			dbPool,
 		);
 
 	beforeEach(() => {
@@ -84,6 +102,12 @@ describe('PrometheusMetricsService', () => {
 		version = mock<PrometheusVersionMetricsService>({ enabled: true });
 		defaultMetrics = mock<PrometheusDefaultMetricsService>({ enabled: true });
 		tokenExchange = mock<PrometheusTokenExchangeMetricsService>({ enabled: true });
+		ssrf = mock<PrometheusSsrfMetricsService>({ enabled: true });
+		dnsCache = mock<PrometheusDnsCacheMetricsService>({ enabled: true });
+		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
+		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
+		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
+		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -109,13 +133,18 @@ describe('PrometheusMetricsService', () => {
 			expect(version.init).toHaveBeenCalledWith(app);
 			expect(defaultMetrics.init).toHaveBeenCalledWith(app);
 			expect(tokenExchange.init).toHaveBeenCalledWith(app);
+			expect(ssrf.init).toHaveBeenCalledWith(app);
+			expect(dnsCache.init).toHaveBeenCalledWith(app);
+			expect(webhook.init).toHaveBeenCalledWith(app);
+			expect(workflowInfo.init).toHaveBeenCalledWith(app);
+			expect(instanceAi.init).toHaveBeenCalledWith(app);
+			expect(dbPool.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {
-			cache = mock<PrometheusCacheMetricsService>({ enabled: false });
-			queue = mock<PrometheusQueueMetricsService>({ enabled: false });
-			pss = mock<PrometheusPssMetricsService>({ enabled: false });
-			service = buildService();
+			vi.spyOn(cache, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(queue, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(pss, 'enabled', 'get').mockReturnValue(false);
 
 			service.init(app);
 
@@ -179,12 +208,11 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should handle a mix of enabled and disabled collectors correctly', () => {
-			cache = mock<PrometheusCacheMetricsService>({ enabled: false });
-			queue = mock<PrometheusQueueMetricsService>({ enabled: false });
-			defaultMetrics = mock<PrometheusDefaultMetricsService>({ enabled: false });
-			pss = mock<PrometheusPssMetricsService>({ enabled: false });
-			eventBus = mock<PrometheusEventBusMetricsService>({ enabled: false });
-			service = buildService();
+			vi.spyOn(cache, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(queue, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(defaultMetrics, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(pss, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(eventBus, 'enabled', 'get').mockReturnValue(false);
 
 			service.init(app);
 

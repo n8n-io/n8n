@@ -5,10 +5,14 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
+import { orchestratorAgentId } from '@n8n/instance-ai';
 import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
 import { z } from 'zod';
 
-import { cleanStoredUserMessage } from './internal-messages';
+import {
+	cleanStoredUserMessage,
+	extractEditorContextWorkflowAttachments,
+} from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
 
@@ -209,13 +213,14 @@ function buildTimeline(
  * Used when no snapshot is available for a given run.
  */
 function buildFlatAgentTree(
+	runId: string,
 	textContent: string,
 	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
 ): InstanceAiAgentNode {
 	return {
-		agentId: 'agent-001',
+		agentId: orchestratorAgentId(runId),
 		role: 'orchestrator',
 		status: 'completed',
 		textContent,
@@ -351,6 +356,10 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
+			// Rebuild the editor hand-off's workflow attachments so the UI can
+			// re-surface them (chip + artifact) after a reload.
+			const attachments = extractEditorContextWorkflowAttachments(text);
+
 			messages.push({
 				id: msg.id,
 				role: 'user',
@@ -358,6 +367,7 @@ export function parseStoredMessages(
 				content,
 				reasoning: '',
 				isStreaming: false,
+				...(attachments.length > 0 ? { attachments } : {}),
 			});
 			continue;
 		}
@@ -376,7 +386,7 @@ export function parseStoredMessages(
 			const agentTree =
 				snapshot?.tree ??
 				(toolCalls.length > 0 || text
-					? buildFlatAgentTree(text, reasoning, toolCalls, parts)
+					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts)
 					: undefined);
 
 			const assistantMessage: InstanceAiMessage = {

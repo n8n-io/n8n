@@ -10,6 +10,18 @@ import { computed, ref } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
+export type WorkflowListFilters = {
+	query?: string;
+	tags?: string[];
+	active?: boolean;
+	isArchived?: boolean;
+	parentFolderId?: string;
+	availableInMCP?: boolean;
+	triggerNodeTypes?: string[];
+	includeCallableSubworkflows?: boolean;
+	parentWorkflowId?: string;
+};
+
 export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	const rootStore = useRootStore();
 
@@ -95,15 +107,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: {
-			query?: string;
-			tags?: string[];
-			active?: boolean;
-			isArchived?: boolean;
-			parentFolderId?: string;
-			availableInMCP?: boolean;
-			triggerNodeTypes?: string[];
-		} = {},
+		filters: WorkflowListFilters = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
 	): Promise<{ data: WorkflowListResource[]; count: number }> {
@@ -143,15 +147,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: {
-			query?: string;
-			tags?: string[];
-			active?: boolean;
-			isArchived?: boolean;
-			parentFolderId?: string;
-			availableInMCP?: boolean;
-			triggerNodeTypes?: string[];
-		} = {},
+		filters: WorkflowListFilters = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
 	): Promise<WorkflowListResource[]> {

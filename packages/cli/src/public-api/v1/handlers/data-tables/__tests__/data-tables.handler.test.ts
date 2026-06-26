@@ -12,6 +12,7 @@ import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-n
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 import { ProjectService } from '@/services/project.service.ee';
+import { GLOBAL_MEMBER_SCOPES, type Scope } from '@n8n/permissions';
 
 // Mock middleware before requiring handler
 const mockMiddleware = vi.fn(async (_req, _res, next) => next()) as any;
@@ -41,7 +42,10 @@ describe('DataTable Handler', () => {
 	const dataTableId = 'test-data-table-id';
 	const userId = 'test-user-id';
 
-	const makeUser = (role = 'global:member') => ({ id: userId, role: { slug: role } });
+	const makeUser = (scopeSlugs: Scope[] = GLOBAL_MEMBER_SCOPES) => ({
+		id: userId,
+		role: { slug: 'global:member', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
 
 	beforeEach(() => {
 		mockDataTableService = mockInstance(DataTableService);
@@ -122,6 +126,20 @@ describe('DataTable Handler', () => {
 
 			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
 			expect(callArgs.filter?.projectId).toContain(projectId);
+		});
+
+		it('should list across all projects for user with dataTable:listProject', async () => {
+			const req = {
+				query: {},
+				user: makeUser(['dataTable:listProject']),
+			} as unknown as DataTableRequest.List;
+			mockDataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
+
+			await mainHandler.listDataTables[2](req, mockResponse as Response);
+
+			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
+			expect(callArgs.filter?.projectId).toBeUndefined();
+			expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
 		});
 	});
 

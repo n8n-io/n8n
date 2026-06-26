@@ -1,9 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- mocks the ESM-only Chat SDK card factories */
-import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
-import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
-
+type MockFn = Mock<(...args: any[]) => any>;
 const {
 	mockButton,
 	mockCard,
@@ -17,17 +13,17 @@ const {
 	mockFields,
 	mockField,
 } = vi.hoisted(() => ({
-	mockButton: vi.fn((opts: any) => ({ type: 'button', ...opts })),
-	mockCard: vi.fn((opts: any) => ({ type: 'card', ...opts })),
-	mockActions: vi.fn((children: any) => ({ type: 'actions', children })),
-	mockCardText: vi.fn((content: any) => ({ type: 'text', content })),
-	mockSection: vi.fn((children: any) => ({ type: 'section', children })),
-	mockDivider: vi.fn(() => ({ type: 'divider' })),
-	mockImage: vi.fn((opts: any) => ({ type: 'image', ...opts })),
-	mockSelect: vi.fn((opts: any) => ({ type: 'select', ...opts })),
-	mockRadioSelect: vi.fn((opts: any) => ({ type: 'radio_select', ...opts })),
-	mockFields: vi.fn((children: any) => ({ type: 'fields', children })),
-	mockField: vi.fn((opts: any) => ({ type: 'field', ...opts })),
+	mockButton: vi.fn((opts) => ({ type: 'button', ...opts })) as MockFn,
+	mockCard: vi.fn((opts) => ({ type: 'card', ...opts })) as MockFn,
+	mockActions: vi.fn((children) => ({ type: 'actions', children })) as MockFn,
+	mockCardText: vi.fn((content) => ({ type: 'text', content })) as MockFn,
+	mockSection: vi.fn((children) => ({ type: 'section', children })) as MockFn,
+	mockDivider: vi.fn(() => ({ type: 'divider' })) as MockFn,
+	mockImage: vi.fn((opts) => ({ type: 'image', ...opts })) as MockFn,
+	mockSelect: vi.fn((opts) => ({ type: 'select', ...opts })) as MockFn,
+	mockRadioSelect: vi.fn((opts) => ({ type: 'radio_select', ...opts })) as MockFn,
+	mockFields: vi.fn((children) => ({ type: 'fields', children })) as MockFn,
+	mockField: vi.fn((opts) => ({ type: 'field', ...opts })) as MockFn,
 }));
 
 vi.mock('../esm-loader', () => ({
@@ -46,6 +42,12 @@ vi.mock('../esm-loader', () => ({
 	}),
 }));
 
+import type { Mock } from 'vitest';
+import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
+
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -53,9 +55,11 @@ import {
 } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
-import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack-integration';
+import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -81,7 +85,12 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'telegram';
 
-	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'divider',
+		'fields',
+	];
 
 	readonly needsShortCallbackData = true;
 
@@ -93,7 +102,7 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(new SlackIntegration());
-	registry.register(new LinearIntegration(mock<Logger>()));
+	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }
 

@@ -373,7 +373,7 @@ describe('InsightsService (Integration)', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 				await createCompactedInsightsEvent(workflow, {
 					type: 'success',
@@ -581,7 +581,7 @@ describe('InsightsService (Integration)', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -744,7 +744,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -902,7 +902,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)

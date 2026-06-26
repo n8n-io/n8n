@@ -289,6 +289,7 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
+			evaluationRunId: metadata.testRunId,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -304,6 +305,7 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
+					evaluationRunId: metadata.testRunId,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -634,14 +636,13 @@ export class TestRunnerService {
 			return { testRun, finished: Promise.resolve() };
 		}
 
+		const runType = configToCompile ? 'config' : 'direct';
+
 		if (configToCompile) {
-			// Compiler injects its own __eval_trigger — strip any user-added one.
-			const stripped = {
-				...workflow,
-				nodes: workflow.nodes.filter((n) => n.type !== EVALUATION_TRIGGER_NODE_TYPE),
-			} as typeof workflow;
+			// `compile` injects its own __eval_trigger + metric nodes and neutralises
+			// any pre-existing evaluation nodes the saved workflow already had.
 			try {
-				workflow = this.workflowCompiler.compile(stripped, configToCompile) as typeof workflow;
+				workflow = this.workflowCompiler.compile(workflow, configToCompile) as typeof workflow;
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				await this.testRunRepository.markAsError(testRun.id, TestRunErrorCode.COMPILATION_FAILED, {
@@ -662,6 +663,7 @@ export class TestRunnerService {
 			testRun,
 			effectiveConcurrency,
 			concurrencyLimitedByConfig,
+			runType,
 		});
 
 		return { testRun, finished };
@@ -674,6 +676,7 @@ export class TestRunnerService {
 		testRun,
 		effectiveConcurrency,
 		concurrencyLimitedByConfig,
+		runType,
 	}: {
 		user: User;
 		workflowId: string;
@@ -681,12 +684,14 @@ export class TestRunnerService {
 		testRun: TestRun;
 		effectiveConcurrency: number;
 		concurrencyLimitedByConfig: boolean;
+		runType: 'config' | 'direct';
 	}): Promise<void> {
 		// Initialize telemetry metadata
 		const telemetryMeta = {
 			workflow_id: workflowId,
 			test_type: 'evaluation',
 			run_id: testRun.id,
+			run_type: runType,
 			start: Date.now(),
 			status: 'success' as 'success' | 'fail' | 'cancelled',
 			test_case_count: 0,
@@ -732,6 +737,7 @@ export class TestRunnerService {
 				user_id: user.id,
 				run_id: testRun.id,
 				workflow_id: workflowId,
+				run_type: runType,
 			});
 
 			///
@@ -920,6 +926,10 @@ export class TestRunnerService {
 							const runAt = new Date();
 
 							try {
+								// Hoisted so the catch below can still link the failed case to
+								// its execution: errors thrown during metric extraction (e.g.
+								// INVALID_METRICS) happen after the execution already ran.
+								let testCaseExecutionId: string | undefined;
 								try {
 									const testCaseMetadata = { ...testRunMetadata };
 
@@ -944,8 +954,8 @@ export class TestRunnerService {
 										return [];
 									}
 
-									const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
-										testCaseResult;
+									const { executionData: testCaseExecution } = testCaseResult;
+									testCaseExecutionId = testCaseResult.executionId;
 
 									assert(testCaseExecution);
 									assert(testCaseExecutionId);
@@ -1027,8 +1037,11 @@ export class TestRunnerService {
 
 									telemetryMeta.errored_test_case_count++;
 
+									// `executionId` is left undefined when the failure happened before
+									// an execution was created; TypeORM skips undefined fields on update.
 									if (e instanceof TestCaseExecutionError) {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
+											executionId: testCaseExecutionId,
 											runAt,
 											completedAt,
 											status: 'error',
@@ -1037,6 +1050,7 @@ export class TestRunnerService {
 										});
 									} else {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
+											executionId: testCaseExecutionId,
 											runAt,
 											completedAt,
 											status: 'error',

@@ -839,6 +839,30 @@ describe('detectBinaryDependencies', () => {
 		expect(result?.contentType).toBe('application/pdf');
 	});
 
+	it('detects nested inputDataFieldName on HTTP Request multipart formBinaryData', () => {
+		const nodes = [
+			makeNode({ name: 'Submission Form', type: 'n8n-nodes-base.formTrigger' }),
+			makeNode({
+				name: 'Upload Document',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					method: 'POST',
+					url: 'https://api.example.com/v1/documents',
+					sendBody: true,
+					contentType: 'multipart-form-data',
+					bodyParameters: {
+						parameters: [
+							{ parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'Document' },
+							{ name: 'title', value: 'Uploaded from form' },
+						],
+					},
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('Document');
+	});
+
 	it('detects literal binaryPropertyName parameters on upload nodes (Slack files.upload)', () => {
 		const nodes = [
 			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),

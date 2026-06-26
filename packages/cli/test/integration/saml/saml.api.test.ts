@@ -4,6 +4,7 @@
 vi.unmock('node:fs');
 
 import type { SamlPreferences } from '@n8n/api-types';
+import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import {
 	createTeamProject,
 	getProjectRoleForUser,
@@ -42,7 +43,7 @@ import {
 } from '@/sso.ee/sso-helpers';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
-import { sampleConfig } from './sample-metadata';
+import { sampleConfig, sampleMetadata } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -311,8 +312,8 @@ describe('Check endpoint permissions', () => {
 			await authMemberAgent.get('/sso/saml/metadata').expect(200);
 		});
 
-		test('should be able to access GET /sso/saml/config', async () => {
-			await authMemberAgent.get('/sso/saml/config').expect(200);
+		test('should NOT be able to access GET /sso/saml/config', async () => {
+			await authMemberAgent.get('/sso/saml/config').expect(403);
 		});
 
 		test('should NOT be able to access POST /sso/saml/config', async () => {
@@ -455,6 +456,68 @@ describe('POST /sso/saml/config/test round-trip', () => {
 		// the token is single-use.
 		const consumed = await Container.get(SamlService).consumePendingTestConfig(testId);
 		expect(consumed).toBeUndefined();
+	});
+});
+
+// A real loopback HTTP server stands in for the IdP's metadata endpoint
+describe('SAML metadata URL fetch (real HTTP round-trip)', () => {
+	let metadataServer: LocalServer;
+	let metadataServerUrl: string;
+	let statusToServe: number;
+	let bodyToServe: string;
+
+	beforeAll(async () => {
+		metadataServer = await startServer((_req, res) => {
+			res.writeHead(statusToServe, { 'content-type': 'application/xml' });
+			res.end(bodyToServe);
+		});
+		metadataServerUrl = `${metadataServer.url}/idp/metadata`;
+	});
+
+	afterAll(async () => await metadataServer.close());
+
+	beforeEach(async () => {
+		metadataServer.clear();
+		statusToServe = 200;
+		bodyToServe = sampleMetadata;
+		await enableSaml(false);
+		await Container.get(SamlService).reset();
+	});
+
+	test('fetchMetadataFromUrl returns the XML served over a real socket', async () => {
+		const samlService = Container.get(SamlService);
+
+		const xml = await samlService.fetchMetadataFromUrl(metadataServerUrl);
+
+		expect(metadataServer.captured).toEqual(['/idp/metadata']);
+		expect(xml).toBe(sampleMetadata);
+	});
+
+	test('POST /sso/saml/config with metadataUrl fetches and persists the metadata', async () => {
+		await authOwnerAgent
+			.post('/sso/saml/config')
+			.send({
+				...sampleConfig,
+				metadata: '',
+				metadataUrl: metadataServerUrl,
+				loginEnabled: true,
+			})
+			.expect(200);
+
+		expect(metadataServer.captured.length).toBeGreaterThanOrEqual(1);
+
+		const samlService = Container.get(SamlService);
+		expect(samlService.samlPreferences.metadataUrl).toBe(metadataServerUrl);
+		expect(samlService.samlPreferences.metadata).toBe(sampleMetadata);
+	});
+
+	test('fetchMetadataFromUrl throws when the endpoint serves invalid metadata', async () => {
+		bodyToServe = 'this is not SAML metadata';
+
+		await expect(
+			Container.get(SamlService).fetchMetadataFromUrl(metadataServerUrl),
+		).rejects.toThrowError(BadRequestError);
+		expect(metadataServer.captured).toEqual(['/idp/metadata']);
 	});
 });
 

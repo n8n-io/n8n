@@ -1,7 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { mock, type MockProxy } from 'vitest-mock-extended';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	getHtmlSandboxCSP,
+	isWebhookHtmlSandboxingDisabled,
+} from 'n8n-core';
+
+vi.mock('n8n-core', async () => ({
+	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
+	isWebhookHtmlSandboxingDisabled: vi.fn(),
+	getHtmlSandboxCSP: vi.fn(),
+}));
 import type {
 	Workflow,
 	INode,
@@ -24,7 +36,6 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
-import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import {
 	autoDetectResponseMode,
@@ -218,6 +229,9 @@ describe('setupResponseNodePromise', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+		vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-forms allow-scripts');
+
 		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
 
 		res.header.mockReturnValue(res);
@@ -271,9 +285,34 @@ describe('setupResponseNodePromise', () => {
 
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
 		expect(finished).toHaveBeenCalledWith(mockStream);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle buffer response', async () => {
@@ -295,8 +334,31 @@ describe('setupResponseNodePromise', () => {
 		await new Promise(process.nextTick);
 
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'text/plain']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on buffer responses when sandboxing is disabled', async () => {
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('<html></html>'),
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle errors properly', async () => {
@@ -329,7 +391,7 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const responseMode = 'hostedChat';
-		const didSendResponse = false;
+		let didSendResponse = false;
 		const executionId = '123';
 		const resumeToken = 'a'.repeat(64);
 
@@ -353,7 +415,7 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		const didSendResponse = false;
+		let didSendResponse = false;
 		const responseMode = 'responseNode';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
@@ -369,7 +431,7 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		const didSendResponse = true;
+		let didSendResponse = true;
 		const responseMode = 'hostedChat';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
