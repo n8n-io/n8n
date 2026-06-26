@@ -286,26 +286,45 @@ jobs:
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           TIER: ${{ inputs.tier }}
-          FILTER: ${{ inputs.filter }}
           ITERATIONS: ${{ inputs.iterations }}
           EVAL_CONCURRENCY: ${{ inputs.eval-concurrency }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
         run: |
+          # build-mcp-manifest exits 0 even on partial failures (a failed build is
+          # recorded as workflowId: null and omitted), so a partial manifest can
+          # reach this step. Narrow the eval to exactly the slugs that DID build —
+          # deriving --filter from the manifest keys, NOT $FILTER. Otherwise a
+          # tier case missing from the manifest gets no prebuilt id and falls
+          # through to the orchestrator build path (runner.ts → buildWorkflow),
+          # which isn't configured in this job. This keeps the run set == built
+          # cohort even on a full-tier run (empty $FILTER). NB: --filter is a
+          # substring match; the mcp-tier slugs have no substring overlaps, so the
+          # keys map 1:1 to cases.
+          MANIFEST="${COHORT_DIR}/manifest.json"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "::error::Manifest not found at $MANIFEST — the build step produced no cohort"
+            exit 1
+          fi
+          BUILT_SLUGS=$(jq -r 'keys | join(",")' "$MANIFEST")
+          if [ -z "$BUILT_SLUGS" ]; then
+            echo "::error::Manifest contains no successfully-built workflows"
+            exit 1
+          fi
+          echo "Evaluating built slugs: $BUILT_SLUGS"
+
           # --dataset + --baseline-prefix keep the MCP cohort isolated from the
           # Instance AI dataset/baseline in LangSmith (both halves required).
           ARGS=(
             --base-url "http://localhost:${MCP_PORT}"
             --tier "${TIER:-mcp}"
-            --prebuilt-workflows "${COHORT_DIR}/manifest.json"
+            --filter "$BUILT_SLUGS"
+            --prebuilt-workflows "$MANIFEST"
             --iterations "${ITERATIONS:-3}"
             --concurrency "${EVAL_CONCURRENCY:-6}"
             --dataset mcp-workflow-evals
             --baseline-prefix mcp-baseline-
             --verbose
           )
-          # Match the build narrowing so unmatched cases don't fall back to the
-          # orchestrator build path (which isn't configured in this job).
-          [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
           pnpm eval:instance-ai "${ARGS[@]}"
 
