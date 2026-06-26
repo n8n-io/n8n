@@ -391,6 +391,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator('.el-select-dropdown:visible');
 	}
 
+	getTagDropdownItems(): Locator {
+		return this.getVisibleDropdown().locator('li');
+	}
+
 	getTagItemsInDropdown(): Locator {
 		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag');
 	}

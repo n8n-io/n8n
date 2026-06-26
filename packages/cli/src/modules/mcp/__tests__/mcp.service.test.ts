@@ -50,6 +50,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('McpService', () => {
@@ -102,6 +103,7 @@ describe('McpService', () => {
 			mockInstance(PostHogClient),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
+			mockInstance(SubworkflowPolicyChecker),
 		);
 	});
 
@@ -148,6 +150,7 @@ describe('McpService', () => {
 				mockInstance(PostHogClient),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -347,6 +350,7 @@ describe('McpService', () => {
 				opts.postHogClient,
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -454,6 +458,7 @@ describe('McpService', () => {
 				mockInstance(PostHogClient),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			const server = await service.getServer(user, false);
@@ -502,6 +507,7 @@ describe('McpService', () => {
 				mockInstance(PostHogClient),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			const server = await service.getServer(user, false);
@@ -574,6 +580,7 @@ describe('McpService', () => {
 					postHogClient,
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
+					mockInstance(SubworkflowPolicyChecker),
 				);
 			};
 

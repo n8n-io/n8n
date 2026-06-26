@@ -14,6 +14,7 @@ import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
 type VerifyBuiltWorkflowOutput = {
 	success: boolean;
+	resolvedWorkItemId?: string;
 	error?: string;
 	executionId?: string;
 	status?: string;
@@ -36,19 +37,21 @@ type VerifyBuiltWorkflowOutput = {
 };
 
 function createContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
+	const defaultBuildOutcome = {
+		workItemId: 'wi_1',
+		taskId: 'task_1',
+		workflowId: 'wf_1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		nodeSimulationPlan: [],
+		needsUserInput: false,
+		summary: 'Built',
+	};
 	const workflowTaskService = {
 		reportBuildOutcome: vi.fn(),
 		reportVerificationVerdict: vi.fn(),
-		getBuildOutcome: vi.fn().mockResolvedValue({
-			workItemId: 'wi_1',
-			taskId: 'task_1',
-			workflowId: 'wf_1',
-			submitted: true,
-			triggerType: 'manual_or_testable',
-			nodeSimulationPlan: [],
-			needsUserInput: false,
-			summary: 'Built',
-		}),
+		getBuildOutcome: vi.fn().mockResolvedValue(defaultBuildOutcome),
+		getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue(defaultBuildOutcome),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
 	};
@@ -444,7 +447,7 @@ interface VerifyToolContext {
 					...args: [
 						string,
 						Record<string, unknown> | undefined,
-						{ timeout?: number; pinData?: unknown },
+						{ timeout?: number; verificationPinData?: unknown },
 					]
 				) => Promise<ExecutionRunResult>
 			>;
@@ -490,7 +493,7 @@ function makeContext(
 		async (
 			_workflowId: string,
 			_inputData: Record<string, unknown> | undefined,
-			_options: { timeout?: number; pinData?: unknown },
+			_options: { timeout?: number; verificationPinData?: unknown },
 		): Promise<ExecutionRunResult> => {
 			await Promise.resolve();
 			return runResult;
@@ -550,6 +553,10 @@ function makeContext(
 				await Promise.resolve();
 				return outcome;
 			}),
+			getLatestBuildOutcomeForWorkflow: vi.fn(async () => {
+				await Promise.resolve();
+				return outcome;
+			}),
 			getWorkflowLoopState: vi.fn(),
 			updateBuildOutcome,
 		} as unknown as WorkflowTaskService,
@@ -566,11 +573,12 @@ function makeContext(
 async function runTool(
 	ctx: VerifyToolContext,
 	input: {
-		workItemId: string;
+		workItemId?: string;
 		workflowId: string;
 		inputData?: Record<string, unknown>;
 		includeData?: boolean;
 		maxDataChars?: number;
+		fixtureOverrides?: Record<string, Array<Record<string, unknown>>>;
 	},
 ) {
 	const tool = createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext);
@@ -697,6 +705,44 @@ describe('verify-built-workflow tool', () => {
 		expect(result.success).toBe(false);
 		expect(result.error).toMatch(/No build outcome found/);
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
+	});
+
+	it('resolves the latest build outcome by workflow ID when work item ID is omitted', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ workItemId: 'wi-latest', workflowId: 'wf-1' }),
+			{
+				executionId: 'exec-latest',
+				status: 'success',
+				data: { 'Manual Trigger': [{ ok: true }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.resolvedWorkItemId).toBe('wi-latest');
+		expect(ctx.workflowTaskService.getBuildOutcome).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.getLatestBuildOutcomeForWorkflow).toHaveBeenCalledWith('wf-1');
+		expect(updateBuildOutcome.mock.calls[0][0]).toBe('wi-latest');
+	});
+
+	it('falls back to the workflow build outcome when the supplied work item ID is stale', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ workItemId: 'wi-latest', workflowId: 'wf-1' }),
+			{
+				executionId: 'exec-fallback',
+				status: 'success',
+				data: { 'Manual Trigger': [{ ok: true }] },
+			},
+		);
+		vi.mocked(ctx.workflowTaskService.getBuildOutcome).mockResolvedValueOnce(undefined);
+
+		const result = await runTool(ctx, { workItemId: 'wi-guessed', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.resolvedWorkItemId).toBe('wi-latest');
+		expect(ctx.workflowTaskService.getLatestBuildOutcomeForWorkflow).toHaveBeenCalledWith('wf-1');
+		expect(updateBuildOutcome.mock.calls[0][0]).toBe('wi-latest');
 	});
 
 	it('rejects verification when the requested workflow does not match the build outcome', async () => {
@@ -911,7 +957,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(run).toHaveBeenCalledTimes(1);
 		// Fixture items are passed unwrapped — the adapter wraps each in {json}.
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: {
+			verificationPinData: {
 				Gmail: [{ _mockedCredential: 'gmailOAuth2' }],
 				'Send Slack': [{ ok: true, ts: '1718000000.1' }],
 			},
@@ -930,11 +976,11 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: { 'Send Slack': [{}] },
+			verificationPinData: { 'Send Slack': [{}] },
 		});
 	});
 
-	it('passes source-declared read-node fixtures through the simulation channel', async () => {
+	it('passes source-declared read-node fixtures through verification pin data', async () => {
 		const reason = 'Source declares verification output for this node';
 		const weatherOutput = [{ daily: { precipitation_sum: [6.4] } }];
 		const { ctx } = makeContext(
@@ -949,9 +995,57 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({
-			pinData: { 'Get Berlin Weather': weatherOutput },
-			simulation: { 'Get Berlin Weather': { reason } },
+			verificationPinData: { 'Get Berlin Weather': weatherOutput },
 		});
+	});
+
+	it('applies fixture overrides to simulated nodes for alternate verification scenarios', async () => {
+		const reason = 'Source declares verification output for this node';
+		const rainyOutput = [{ weather: [{ main: 'Rain' }] }];
+		const clearOutput = [{ weather: [{ main: 'Clear' }] }];
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Get Berlin Forecast', reason)],
+				simulationFixtures: { 'Get Berlin Forecast': rainyOutput },
+			}),
+			{ executionId: 'exec-clear', status: 'success', data: {} },
+		);
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			fixtureOverrides: { 'Get Berlin Forecast': clearOutput },
+		});
+
+		expect(result.success).toBe(true);
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { 'Get Berlin Forecast': clearOutput },
+		});
+	});
+
+	it('rejects fixture overrides for nodes that are not simulated', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [executeVerdict('Transform Rows')],
+			}),
+			{ executionId: 'exec-invalid-override', status: 'success', data: {} },
+		);
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			fixtureOverrides: { 'Transform Rows': [{ value: 1 }] },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.resolvedWorkItemId).toBe('wi-1');
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'invalid_fixture_override',
+		});
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
 	});
 
 	it('does not pin execute-verdict nodes', async () => {
@@ -965,7 +1059,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
-		expect(run.mock.calls[0][2]).toMatchObject({ pinData: undefined });
+		expect(run.mock.calls[0][2]).toMatchObject({ verificationPinData: undefined });
 	});
 
 	it('marks simulated nodes in previews and reports them with reasons', async () => {
