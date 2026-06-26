@@ -1622,11 +1622,14 @@ export class WorkflowExecute {
 				} catch (error) {
 					const e = error as unknown as ExecutionBaseError;
 
-					// Set the error that it can be saved correctly
+					// Set the error that it can be saved correctly.
+					// `shouldReport` is a getter on `BaseError`, so it is not an own
+					// property and would be dropped by the spread - copy it explicitly.
 					executionError = {
 						...e,
 						message: e.message,
 						stack: e.stack,
+						shouldReport: e.shouldReport,
 					};
 
 					// Set the incoming data of the node that it can be saved correctly
@@ -1997,7 +2000,14 @@ export class WorkflowExecute {
 
 							const e = error as unknown as ExecutionBaseError;
 
-							executionError = { ...e, message: e.message, stack: e.stack };
+							// `shouldReport` is a getter on `BaseError` (not an own property),
+							// so copy it explicitly to survive the spread.
+							executionError = {
+								...e,
+								message: e.message,
+								stack: e.stack,
+								shouldReport: e.shouldReport,
+							};
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,
@@ -2663,6 +2673,7 @@ export class WorkflowExecute {
 				...executionError,
 				message: executionError.message,
 				stack: executionError.stack,
+				shouldReport: executionError.shouldReport,
 			} satisfies ExecutionBaseError;
 		} else if (this.runExecutionData.waitTill) {
 			fullRunData.waitTill = this.runExecutionData.waitTill;
