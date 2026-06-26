@@ -23,6 +23,41 @@ const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	'submit-workflow',
 ]);
 
+// Workspace tools (@n8n/agents) whose ops mutate file content we replay. The names
+// live here only; a contract test pins them — and the arg keys below — against the
+// live tool set + Zod schema, so a rename in @n8n/agents fails CI loudly instead of
+// silently no-op'ing a mutation (the same drift class #32545 caused).
+const WORKSPACE_TOOL = {
+	WRITE: 'workspace_write_file',
+	APPEND: 'workspace_append_file',
+	STR_REPLACE: 'workspace_str_replace_file',
+	BATCH_STR_REPLACE: 'workspace_batch_str_replace_file',
+	MOVE: 'workspace_move_file',
+	COPY: 'workspace_copy_file',
+	DELETE: 'workspace_delete_file',
+} as const;
+
+/** Input keys the replay reads per tool — pinned against the live Zod schema. */
+export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
+	[WORKSPACE_TOOL.WRITE]: ['path', 'content'],
+	[WORKSPACE_TOOL.APPEND]: ['path', 'content'],
+	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'old_str', 'new_str'],
+	[WORKSPACE_TOOL.BATCH_STR_REPLACE]: ['path', 'replacements'],
+	[WORKSPACE_TOOL.MOVE]: ['src', 'dest'],
+	[WORKSPACE_TOOL.COPY]: ['src', 'dest'],
+	[WORKSPACE_TOOL.DELETE]: ['path'],
+};
+
+/** Live filesystem tools we deliberately don't replay (reads + dir ops) — listed so
+ *  the contract test can prove every live filesystem tool is classified. */
+export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
+	'workspace_read_file',
+	'workspace_list_files',
+	'workspace_file_stat',
+	'workspace_mkdir',
+	'workspace_rmdir',
+];
+
 // The source thread may live in a different workspace than the eval writes to
 // (e.g. seed from prod, trace to staging). A PAT spans workspaces, so we
 // enumerate them and find the one holding the thread; reads are read-only.
@@ -360,18 +395,18 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 	const input = isRecord(tool.inputs) ? tool.inputs : {};
 	// A failed edit left the real file unchanged — treat as a no-op (no divergence).
 	if (isRecord(tool.outputs) && tool.outputs.success === false) return true;
-	if (tool.name === 'workspace_write_file') {
+	if (tool.name === WORKSPACE_TOOL.WRITE) {
 		const path = asString(input.path);
 		const content = asString(input.content);
 		if (path && content !== undefined) files.set(path, content);
 		return true;
 	}
-	if (tool.name === 'workspace_append_file') {
+	if (tool.name === WORKSPACE_TOOL.APPEND) {
 		const path = asString(input.path);
 		if (path) files.set(path, (files.get(path) ?? '') + (asString(input.content) ?? ''));
 		return true;
 	}
-	if (tool.name === 'workspace_str_replace_file') {
+	if (tool.name === WORKSPACE_TOOL.STR_REPLACE) {
 		// The tool requires one exact, unique match; mirror it (first occurrence).
 		const path = asString(input.path);
 		const current = path !== undefined ? files.get(path) : undefined;
@@ -382,37 +417,37 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 		files.set(path, current.replace(oldStr, newStr));
 		return true;
 	}
-	if (tool.name === 'workspace_batch_str_replace_file') {
+	if (tool.name === WORKSPACE_TOOL.BATCH_STR_REPLACE) {
+		// The real tool is atomic — it validates every anchor up front and applies
+		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch). Mirror
+		// that, like single str-replace: any missing anchor → file untouched, diverged.
 		const path = asString(input.path);
-		let current = path !== undefined ? files.get(path) : undefined;
+		const current = path !== undefined ? files.get(path) : undefined;
 		if (path === undefined || current === undefined) return true;
-		let applied = true;
 		const replacements = Array.isArray(input.replacements) ? input.replacements : [];
+		let next = current;
 		for (const replacement of replacements) {
 			if (!isRecord(replacement)) continue;
 			const oldStr = asString(replacement.old_str);
 			const newStr = asString(replacement.new_str);
 			if (!oldStr || newStr === undefined) continue;
-			if (!current.includes(oldStr)) {
-				applied = false;
-				continue;
-			}
-			current = current.replace(oldStr, newStr);
+			if (!next.includes(oldStr)) return false;
+			next = next.replace(oldStr, newStr);
 		}
-		files.set(path, current);
-		return applied;
+		files.set(path, next);
+		return true;
 	}
-	if (tool.name === 'workspace_move_file' || tool.name === 'workspace_copy_file') {
+	if (tool.name === WORKSPACE_TOOL.MOVE || tool.name === WORKSPACE_TOOL.COPY) {
 		const src = asString(input.src);
 		const dest = asString(input.dest);
 		const content = src !== undefined ? files.get(src) : undefined;
 		if (src !== undefined && dest !== undefined && content !== undefined) {
 			files.set(dest, content);
-			if (tool.name === 'workspace_move_file') files.delete(src);
+			if (tool.name === WORKSPACE_TOOL.MOVE) files.delete(src);
 		}
 		return true;
 	}
-	if (tool.name === 'workspace_delete_file') {
+	if (tool.name === WORKSPACE_TOOL.DELETE) {
 		const path = asString(input.path);
 		if (path) files.delete(path);
 		return true;
@@ -446,7 +481,7 @@ function buildSeedWorkflows(
 			const path = asString((isRecord(tool.inputs) ? tool.inputs : {}).path);
 			const applied = applyFileMutation(files, tool);
 			// A full write replaces the file, healing any earlier divergence.
-			if (tool.name === 'workspace_write_file') {
+			if (tool.name === WORKSPACE_TOOL.WRITE) {
 				if (path !== undefined) divergedPaths.delete(path);
 			} else if (!applied && path !== undefined) {
 				divergedPaths.add(path);

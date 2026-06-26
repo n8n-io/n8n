@@ -522,6 +522,26 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		expect(result.seed.workflows).toHaveLength(1);
 		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'REAL' });
 	});
+
+	it('applies a batch str-replace atomically: any missing anchor leaves the file untouched', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			// One anchor matches, one is absent. The real tool is atomic (all-or-nothing),
+			// so the file must stay CODE_V1 — never a half-applied 'GOOD'.
+			tool('e1', 3, 'workspace_batch_str_replace_file', {
+				path: FILE,
+				replacements: [
+					{ old_str: 'CODE_V1', new_str: 'GOOD' },
+					{ old_str: 'NOT_PRESENT', new_str: 'Y' },
+				],
+			}),
+			tool('b1', 4, 'build-workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V1' });
+	});
 });
 
 describe('reconstructSeedFromThread — workspace auto-discovery', () => {
