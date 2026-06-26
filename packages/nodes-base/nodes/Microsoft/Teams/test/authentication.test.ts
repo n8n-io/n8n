@@ -67,7 +67,9 @@ describe.each(cases)('$name authentication selector', ({ properties, credentials
 	});
 
 	it('should gate the Service Principal credential behind its authentication value', () => {
-		const spCredential = credentials.find((credential) => credential.name === SERVICE_PRINCIPAL_AUTH);
+		const spCredential = credentials.find(
+			(credential) => credential.name === SERVICE_PRINCIPAL_AUTH,
+		);
 
 		expect(spCredential?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
 		expect(spCredential?.required).toBe(true);

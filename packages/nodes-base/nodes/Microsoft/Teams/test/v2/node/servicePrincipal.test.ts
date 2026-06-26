@@ -146,7 +146,10 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			ctx.helpers.constructExecutionMetaData = vi.fn(
 				(data) => data,
 			) as unknown as IExecuteFunctions['helpers']['constructExecutionMetaData'];
-			selectSp({ resource: 'task', operation: 'getAll', planId: 'plan-123', returnAll: true }, true);
+			selectSp(
+				{ resource: 'task', operation: 'getAll', planId: 'plan-123', returnAll: true },
+				true,
+			);
 
 			await node.execute.call(ctx);
 

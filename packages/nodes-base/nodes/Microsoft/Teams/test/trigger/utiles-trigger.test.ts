@@ -302,9 +302,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 		// Resolve getNodeParameter by NAME so a leading authentication read (the SP
 		// resolver) doesn't shift the assertion. `authentication` defaults to OAuth2.
 		const setParams = (params: Record<string, unknown>) => {
-			mockHookFunctions.getNodeParameter.mockImplementation(
-				(name: string, fallback?: unknown) =>
-					name in params ? params[name] : fallback,
+			mockHookFunctions.getNodeParameter.mockImplementation((name: string, fallback?: unknown) =>
+				name in params ? params[name] : fallback,
 			);
 		};
 
@@ -348,7 +347,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		it('should return the correct resource path for newChannelMessage event with a specific team and channel', async () => {
-			setParams({ watchAllTeams: false, teamId: 'team123', watchAllChannels: false, channelId: 'channel123' });
+			setParams({
+				watchAllTeams: false,
+				teamId: 'team123',
+				watchAllChannels: false,
+				channelId: 'channel123',
+			});
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
 			expect(result).toBe('/teams/team123/channels/channel123/messages');

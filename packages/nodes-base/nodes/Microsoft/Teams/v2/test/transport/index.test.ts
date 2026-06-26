@@ -512,9 +512,7 @@ describe('Microsoft Teams Transport', () => {
 
 	describe('validateTeamsId', () => {
 		it('accepts a GUID and a Planner-style id', () => {
-			expect(() =>
-				validateTeamsId('1111-2222-3333-4444-555566667777', mockNode),
-			).not.toThrow();
+			expect(() => validateTeamsId('1111-2222-3333-4444-555566667777', mockNode)).not.toThrow();
 			expect(() => validateTeamsId('rl1HYb0cUEiHPc7zgB_KWWUAA7Of', mockNode)).not.toThrow();
 		});
 
@@ -717,7 +715,10 @@ describe('Microsoft Teams Transport', () => {
 
 		it('getTeams pages through @odata.nextLink under SP (all org teams, not just page 1)', async () => {
 			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
-			mockLoadOptions.getCredentials.mockResolvedValue({ accessToken: 'token', graphApiBaseUrl: '' });
+			mockLoadOptions.getCredentials.mockResolvedValue({
+				accessToken: 'token',
+				graphApiBaseUrl: '',
+			});
 			// page 1 carries @odata.nextLink → the paginator must follow it to page 2.
 			loadOptionsRequestWithAuthentication
 				.mockResolvedValueOnce({
