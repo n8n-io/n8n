@@ -100,7 +100,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						name: 'Service Principal (App-Only)',
 						value: SERVICE_PRINCIPAL_AUTH,
 						description:
-							'App-only access via a Microsoft Entra app registration. App-only Graph cannot subscribe to a signed-in user’s chats, so chat triggers are unavailable. Grant the relevant application permissions (e.g. ChannelMessage.Read.All) and admin consent on the credential.',
+							'App-only access via a Microsoft Entra app registration. App-only Graph cannot subscribe to the chats of a signed-in user, so chat triggers are unavailable. Grant the relevant application permissions (e.g. ChannelMessage.Read.All) and admin consent on the credential.',
 					},
 				],
 				default: 'microsoftTeamsOAuth2Api',
@@ -141,7 +141,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'Chat triggers (New Chat, New Chat Message) are not available with the Service Principal credential. App-only Microsoft Graph cannot subscribe to a signed-in user’s chats; use an OAuth2 credential for chat triggers.',
+					'Chat triggers (New Chat, New Chat Message) are not available with the Service Principal credential. App-only Microsoft Graph cannot subscribe to the chats of a signed-in user; use an OAuth2 credential for chat triggers.',
 				name: 'chatTriggerServicePrincipalNotice',
 				type: 'notice',
 				default: '',

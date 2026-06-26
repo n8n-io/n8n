@@ -1,4 +1,11 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -351,18 +358,27 @@ describe('Microsoft Teams Transport', () => {
 			});
 
 			describe('error suppression (no raw Graph body leaks at any status)', () => {
-				// A raw Graph error body carrying a correlation id + reflected input. Under
-				// SP NONE of this may reach the surfaced message at ANY status.
-				const rawBody = (statusCode: number, code: string) => ({
-					statusCode,
-					error: {
-						error: {
-							code,
-							message:
-								'request-id: 11111111-2222-3333-4444-555555555555; client-request-id: aaaa; token=eyJ0eParrotedSecret; resource /teams/19:injected@thread.tacv2',
+				// The REAL error shape: `requestWithAuthentication` wraps the underlying
+				// request error in a `NodeApiError`. The underlying (legacy-request) error
+				// carries `statusCode` + an `error` body + a `message` of the form
+				// `"<status> - <json>"`, and NodeApiError surfaces the status on `httpCode`
+				// (string) and copies that raw message into `messages`. A correlation id +
+				// reflected input ride the raw body — none of it may reach the surfaced
+				// message at ANY status.
+				const rawLeak =
+					'request-id: 11111111-2222-3333-4444-555555555555; client-request-id: aaaa; token=eyJ0eParrotedSecret; resource /teams/19:injected@thread.tacv2';
+				const realError = (statusCode: number, code: string) => {
+					const underlying = Object.assign(
+						new Error(`${statusCode} - {"error":{"code":"${code}","message":"${rawLeak}"}}`),
+						{
+							statusCode,
+							status: statusCode,
+							error: { error: { code, message: rawLeak } },
+							response: { status: statusCode, statusText: code, headers: {} },
 						},
-					},
-				});
+					);
+					return new NodeApiError(mockNode, underlying as unknown as JsonObject);
+				};
 
 				it.each([
 					[
@@ -398,13 +414,15 @@ describe('Microsoft Teams Transport', () => {
 				])(
 					'maps HTTP %i to a static message and never leaks the raw body',
 					async (statusCode, code, expectedMessage) => {
-						mockRequestWithAuthentication.mockRejectedValue(rawBody(statusCode, code));
+						mockRequestWithAuthentication.mockRejectedValue(realError(statusCode, code));
 
 						const error = (await microsoftApiRequest
 							.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
 							.catch((e: Error) => e)) as Error & { messages?: string[] };
 
 						expect(error.constructor.name).toBe('NodeApiError');
+						// proves the SPECIFIC 401/402/403 messages fire in production (the status
+						// is read from NodeApiError.httpCode, not the absent statusCode/error.error)
 						expect(error.message).toBe(expectedMessage);
 						// The raw body must not leak through the surfaced message…
 						expect(error.message).not.toContain('request-id');
@@ -425,16 +443,13 @@ describe('Microsoft Teams Transport', () => {
 					},
 				);
 
-				it('rewrites a NotFound body to the static "{Resource} not found" message', async () => {
+				it('rewrites a 404 to the static "{Resource} not found" message', async () => {
 					mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
 						if (name === 'authentication') return SERVICE_PRINCIPAL_AUTH;
 						if (name === 'resource') return 'channel';
 						return undefined;
 					});
-					mockRequestWithAuthentication.mockRejectedValue({
-						statusCode: 404,
-						error: { error: { code: 'NotFound', message: 'Resource not found' } },
-					});
+					mockRequestWithAuthentication.mockRejectedValue(realError(404, 'NotFound'));
 
 					const error = await microsoftApiRequest
 						.call(mockExecuteFunctions, 'GET', '/v1.0/teams/x/channels/y')
@@ -449,6 +464,15 @@ describe('Microsoft Teams Transport', () => {
 	describe('getTeamsCredentialType', () => {
 		it('should default to microsoftTeamsOAuth2Api when authentication is undefined', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
+		});
+
+		it('should default to microsoftTeamsOAuth2Api when the fallback value 0 is returned (load-options/hook legacy node)', () => {
+			// In load-options/hook contexts getNodeParameter treats the 2nd arg as the
+			// FALLBACK, so a legacy node with no stored authentication returns the literal
+			// `0`. The allow-list must map it to Teams (a `?? default` would keep `0`).
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(0);
 
 			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
 		});
@@ -656,6 +680,22 @@ describe('Microsoft Teams Transport', () => {
 			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
+		it('should resolve a legacy node to Teams when getNodeParameter returns the fallback 0 (never getCredentials(0))', async () => {
+			// load-options getNodeParameter('authentication', 0) returns the literal fallback
+			// `0` for a legacy node — must resolve to Teams, never reach getCredentials(0).
+			mockLoadOptions.getNodeParameter.mockReturnValue(0);
+
+			await getTeams.call(mockLoadOptions);
+
+			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
+			expect(mockLoadOptions.getCredentials).not.toHaveBeenCalledWith(0);
+			expect(loadOptionsRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftTeamsOAuth2Api',
+				expect.anything(),
+			);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
 		it('getTeams hits /v1.0/teams (not /me/joinedTeams) through requestWithAuthentication under SP', async () => {
 			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 			mockLoadOptions.getCredentials.mockResolvedValue({
@@ -673,6 +713,31 @@ describe('Microsoft Teams Transport', () => {
 			const calledUri = loadOptionsRequestWithAuthentication.mock.calls[0][1].uri as string;
 			expect(calledUri).not.toContain('/me/joinedTeams');
 			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('getTeams pages through @odata.nextLink under SP (all org teams, not just page 1)', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			mockLoadOptions.getCredentials.mockResolvedValue({ accessToken: 'token', graphApiBaseUrl: '' });
+			// page 1 carries @odata.nextLink → the paginator must follow it to page 2.
+			loadOptionsRequestWithAuthentication
+				.mockResolvedValueOnce({
+					value: [{ id: 't1', displayName: 'Team 1' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/teams?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({ value: [{ id: 't2', displayName: 'Team 2' }] });
+
+			const { results } = await getTeams.call(mockLoadOptions);
+
+			expect(loadOptionsRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			// page 2 fetched via the absolute nextLink uri
+			expect(loadOptionsRequestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				SERVICE_PRINCIPAL_AUTH,
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/teams?$skiptoken=p2',
+				}),
+			);
+			expect(results.map((r) => r.value)).toEqual(['t1', 't2']);
 		});
 
 		it('getChats throws a static error under SP and never issues a request', async () => {

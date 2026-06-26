@@ -403,7 +403,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			},
 		);
 
-		it('encodes the teamId for newChannel (no decode round-trip, fetchAllTeams not called)', async () => {
+		it('interpolates the teamId RAW for newChannel (no decode round-trip, fetchAllTeams not called)', async () => {
 			setSpParams({ watchAllTeams: false, teamId: 'team_id-123' });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newChannel');
@@ -411,7 +411,20 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 		});
 
-		it('encodes teamId + channelId for newChannelMessage and rejects a crafted channelId', async () => {
+		it('passes a colon channelId RAW for newChannelMessage (same shape as OAuth2, not encoded)', async () => {
+			setSpParams({
+				watchAllTeams: false,
+				teamId: '1111-2222',
+				watchAllChannels: false,
+				channelId: '19:abc@thread.tacv2',
+			});
+
+			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
+			expect(result).toBe('/teams/1111-2222/channels/19:abc@thread.tacv2/messages');
+			expect(result).not.toContain('%3A');
+		});
+
+		it('rejects a crafted (separator) channelId for newChannelMessage', async () => {
 			setSpParams({
 				watchAllTeams: false,
 				teamId: 'team123',
@@ -424,11 +437,39 @@ describe('Microsoft Teams Helpers Functions', () => {
 			);
 		});
 
-		it('encodes the teamId for newTeamMember', async () => {
+		it('interpolates the teamId RAW for newTeamMember', async () => {
 			setSpParams({ watchAllTeams: false, teamId: 'team123' });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newTeamMember');
 			expect(result).toBe('/teams/team123/members');
+		});
+
+		// Watch-all is UI-hidden under SP, but a hand-edited workflow can still set it.
+		// The runtime guard must fire before any fan-out (fetchAllTeams/fetchAllChannels),
+		// which would otherwise send a crafted teamId raw under the org-wide token.
+		it.each(['newChannel', 'newChannelMessage', 'newTeamMember'])(
+			'blocks watchAllTeams under SP for %s before any request (crafted teamId)',
+			async (event) => {
+				setSpParams({ watchAllTeams: true, teamId: 'x/../../groups/abc' });
+
+				await expect(getResourcePath.call(mockHookFunctions, event)).rejects.toThrow(
+					'Watching all teams/channels is not available with the Service Principal credential',
+				);
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			},
+		);
+
+		it('blocks watchAllChannels under SP for newChannelMessage before any request (crafted teamId)', async () => {
+			setSpParams({
+				watchAllTeams: false,
+				teamId: 'x/../../groups/abc',
+				watchAllChannels: true,
+			});
+
+			await expect(getResourcePath.call(mockHookFunctions, 'newChannelMessage')).rejects.toThrow(
+				'Watching all teams/channels is not available with the Service Principal credential',
+			);
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 		});
 	});
 });

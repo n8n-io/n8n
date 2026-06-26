@@ -48,10 +48,17 @@ export type TeamsCredentialType =
 export function getTeamsCredentialType(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 ): TeamsCredentialType {
-	// `0` is the execute item index; in load-options getNodeParameter has no itemIndex
-	// arg, so don't switch this to the 3-arg `(name, itemIndex, default)` form.
+	// `0` is the execute item index; in load-options/hook contexts getNodeParameter
+	// treats the 2nd arg as the FALLBACK value, so don't switch this to the 3-arg form.
+	// Use an explicit allow-list (not `selected ?? default`): in load-options/hooks a
+	// legacy node with no stored `authentication` returns the literal fallback `0`,
+	// which is not nullish — so `?? default` would resolve to `0` and break
+	// `getCredentials(0)`. Anything other than the two known non-default values
+	// (incl. `0`, `undefined`, legacy nodes) resolves to the Teams credential.
 	const selected = this.getNodeParameter('authentication', 0) as TeamsCredentialType | undefined;
-	return selected ?? 'microsoftTeamsOAuth2Api';
+	return selected === 'microsoftOAuth2Api' || selected === SERVICE_PRINCIPAL_AUTH
+		? selected
+		: 'microsoftTeamsOAuth2Api';
 }
 
 /**
@@ -178,12 +185,19 @@ export async function microsoftApiRequest(
 			// correlation IDs and reflected input. For ANY status, never pass the raw
 			// body to NodeApiError (it would land in `messages`/context); throw a
 			// sanitized error whose only content is a static message + the status code.
-			const httpCode: number | undefined = error?.error?.error?.statusCode ?? error?.statusCode;
-			const graphCode: string | undefined = error?.error?.error?.code;
-			const graphMessage: unknown = error?.error?.error?.message;
+			//
+			// `requestWithAuthentication` wraps the underlying request error in a
+			// `NodeApiError`, which exposes the HTTP status on `httpCode` (a string) — NOT
+			// on `statusCode` / `error.error.statusCode`. Read `httpCode` first; fall back
+			// to `statusCode` for the rare raw-error case. The Graph body/code is not
+			// reliably accessible on the wrapped error, so key the NotFound rewrite off the
+			// numeric 404 rather than the Graph `code`.
+			const rawCode = error?.httpCode ?? error?.statusCode;
+			const httpCode: number | undefined =
+				rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
 
 			let message: string;
-			if (graphCode === 'NotFound' && graphMessage === 'Resource not found') {
+			if (httpCode === 404) {
 				const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
 				message = `${nodeResource} not found`;
 			} else if (httpCode === 401) {
@@ -201,7 +215,7 @@ export async function microsoftApiRequest(
 
 			const sanitizedError: JsonObject = { message };
 			const errorOptions: IDataObject = { message };
-			if (httpCode !== undefined) {
+			if (httpCode !== undefined && !Number.isNaN(httpCode)) {
 				sanitizedError.httpStatusCode = httpCode;
 				errorOptions.httpCode = `${httpCode}`;
 			}

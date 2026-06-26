@@ -29,10 +29,12 @@ export async function fetchAllChannels(
 	this: IHookFunctions,
 	teamId: string,
 ): Promise<ChannelResponse[]> {
+	// Route through buildTeamsPath so `teamId` is validated under SP (non-bypassable
+	// defense-in-depth — watch-all is also guarded in getResourcePath); verbatim under OAuth2.
 	const { value: channels } = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/teams/${teamId}/channels`,
+		buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels']),
 	)) as { value: ChannelResponse[] };
 	return channels;
 }
@@ -98,9 +100,11 @@ export async function getResourcePath(
 	event: string,
 ): Promise<string | string[]> {
 	// App-only Graph has no signed-in user. On the SP-reachable branches the
-	// path-interpolated teamId/channelId are validated + encoded via buildTeamsPath
-	// (which also drops the OAuth2-only decodeURIComponent on the SP path). The OAuth2
-	// branches below are byte-for-byte unchanged (incl. the pre-existing decode).
+	// path-interpolated teamId/channelId are validated and interpolated RAW via
+	// buildTeamsPath (which also drops the OAuth2-only decodeURIComponent on the SP
+	// path). Watch-all is disabled under SP (UI-hidden + the runtime guards below, since
+	// fetchAllTeams/fetchAllChannels fan out an org-wide-token request). The OAuth2
+	// branches are byte-for-byte unchanged (incl. the pre-existing decode).
 	const isServicePrincipal = getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 
 	switch (event) {
@@ -129,6 +133,8 @@ export async function getResourcePath(
 				extractValue: true,
 			}) as boolean;
 
+			if (isServicePrincipal && watchAllTeams) throwWatchAllUnsupported.call(this);
+
 			if (watchAllTeams) {
 				const teams = await fetchAllTeams.call(this);
 				return teams.map((team) => `/teams/${team.id}/channels`);
@@ -146,6 +152,8 @@ export async function getResourcePath(
 				extractValue: true,
 			}) as boolean;
 
+			if (isServicePrincipal && watchAllTeams) throwWatchAllUnsupported.call(this);
+
 			if (watchAllTeams) {
 				const teams = await fetchAllTeams.call(this);
 				const teamChannels = await Promise.all(
@@ -160,6 +168,8 @@ export async function getResourcePath(
 				const watchAllChannels = this.getNodeParameter('watchAllChannels', false, {
 					extractValue: true,
 				}) as boolean;
+
+				if (isServicePrincipal && watchAllChannels) throwWatchAllUnsupported.call(this);
 
 				if (watchAllChannels) {
 					const channels = await fetchAllChannels.call(this, teamId);
@@ -187,6 +197,8 @@ export async function getResourcePath(
 			const watchAllTeams = this.getNodeParameter('watchAllTeams', false, {
 				extractValue: true,
 			}) as boolean;
+
+			if (isServicePrincipal && watchAllTeams) throwWatchAllUnsupported.call(this);
 
 			if (watchAllTeams) {
 				const teams = await fetchAllTeams.call(this);
@@ -220,7 +232,24 @@ function throwChatTriggerUnsupported(this: IHookFunctions): never {
 		'Chat triggers are not available with the Service Principal credential',
 		{
 			description:
-				'App-only Microsoft Graph cannot subscribe to a signed-in user’s chats. Use an OAuth2 credential for chat triggers.',
+				'App-only Microsoft Graph cannot subscribe to the chats of a signed-in user. Use an OAuth2 credential for chat triggers.',
+		},
+	);
+}
+
+/**
+ * Watch-all fans out one subscription per team/channel via fetchAllTeams/
+ * fetchAllChannels under the org-wide app token, which the plan disables under SP
+ * (option b). The UI hides the toggles; this guard backs that at runtime for
+ * hand-edited workflows, throwing a static error before any fan-out request.
+ */
+function throwWatchAllUnsupported(this: IHookFunctions): never {
+	throw new NodeOperationError(
+		this.getNode(),
+		'Watching all teams/channels is not available with the Service Principal credential',
+		{
+			description:
+				'Select a specific team and channel. App-only fan-out across all teams/channels is disabled for the Service Principal credential.',
 		},
 	);
 }
