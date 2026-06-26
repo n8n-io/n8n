@@ -149,6 +149,14 @@ When mapping downstream fields from an OpenAI node, read
 7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
    selectively edit the existing `.workflow.ts` file for workflow changes. Do
    not put secrets in the source file.
+   Before building, decide whether verification needs branch fixtures. When a
+   live or nondeterministic upstream node (such as HTTP Request, search/list
+   lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and
+   alternate branches need verification, declare representative `output`
+   fixtures on that upstream node now so `verify-built-workflow` can simulate it
+   and later `fixtureOverrides` can exercise those scenarios. Do not simulate
+   every external read by default; use this when branch coverage or deterministic
+   proof depends on controlling the upstream data.
 8. Call `build-workflow` with `filePath`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -212,9 +220,18 @@ save. The job is done when one of these is true:
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
+Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
+be called again with `workflowId` if the original `workItemId` is no longer in
+context. For alternate deterministic scenarios, pass `fixtureOverrides` for
+nodes already classified as simulated. Use raw `executions(action="run")` only
+for ad hoc non-build verification or when the user explicitly wants a live run.
+If live connectivity also matters for a branch-controlled workflow, verify the
+fixture-backed branch coverage first and run a separate live smoke check, or
+state exactly which branch remains unverified.
+
 Trigger input shapes:
 
-- Manual or Schedule: use `executions(action="run")` when appropriate. Schedule
+- Manual or Schedule: use `verify-built-workflow` when appropriate. Schedule
   usually needs no `inputData`.
 - Form Trigger: pass a flat field map, for example
   `{ "name": "Alice", "email": "a@b.c" }`. Do not wrap in `formFields`.
