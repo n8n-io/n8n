@@ -1,0 +1,39 @@
+{
+	"description": "The user states one thing, then explicitly changes their mind mid-conversation. The corrected channel and story count must win over the originals — testing whether the proxy carries a self-correction through and the agent revises the build.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day, fetch the top story from Hacker News and post its title and URL to Slack #news (C04NEWS0001)."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Once the agent has shown its plan or built the workflow, change your mind in a single follow-up: tell it you reconsidered and now want the post to go to #engineering (C04ENGINEER1) instead of #news (C04NEWS0001), and the top 3 stories instead of just the top one.",
+				"Phrase it as a natural retraction — \"actually, on second thought…\" — and describe both changes in that one message. Once the agent acknowledges or applies the change, you're satisfied: finish the conversation. Don't ask it to rebuild from scratch, don't repeat the request, and don't fall back to the original #news / single-story values.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "slack", "http", "schedule", "behaviour", "self-correction"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"outcomeExpectations": [
+		"The user changed their mind during the conversation, and the agent applied the correction rather than the original request — the final workflow targets #engineering (C04ENGINEER1), not #news (C04NEWS0001).",
+		"The corrected story count won: the workflow posts the top 3 stories, not just the single top story from the user's first message."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "API returns several stories, the top 3 are posted to the corrected channel",
+			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns a list of at least 5 stories, each with a title and url. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The stories are posted to #engineering (C04ENGINEER1) — the corrected channel — and NOT to #news (C04NEWS0001). Exactly the top 3 stories are included (the corrected count), not a single story. Each posted entry includes a title and a URL."
+		},
+		{
+			"name": "fewer-than-three-stories",
+			"description": "The API returns exactly 2 stories",
+			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns exactly 2 stories, each with a title and url. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow handles having fewer than 3 stories gracefully — it posts the 2 available stories to #engineering (C04ENGINEER1) without erroring on the missing third."
+		}
+	]
+}

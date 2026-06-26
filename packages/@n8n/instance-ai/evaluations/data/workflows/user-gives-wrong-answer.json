@@ -1,0 +1,36 @@
+{
+	"description": "The user's first answer is wrong — they name an email address where a Slack channel belongs. The agent (or its plan) should surface the implausible value, and the user corrects it to a real channel. The wrong value must not survive into the build.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a daily standup reminder on Slack — post it to standups@company.com every weekday morning."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[The destination you gave — standups@company.com — is wrong: it's an email address, not a Slack channel. The channel you actually meant is #standups (C04STANDUP01).",
+				"Don't volunteer this up front. When the agent shows its plan, asks where to post, or surfaces the destination in a setup card, correct yourself then: say that was a mistake and the channel is #standups (C04STANDUP01). If the agent already built using the email (or some other channel) without surfacing it, send a follow-up to fix the destination to #standups (C04STANDUP01).",
+				"Hold firm on #standups (C04STANDUP01) if it asks again, and never accept the email as the destination.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["build", "slack", "schedule", "behaviour", "user-error"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent did not silently build with standups@company.com as the Slack destination — it surfaced the implausible value (in its plan, a question, or a setup card) or took the user's correction, so the wrong value was caught rather than carried through."
+	],
+	"outcomeExpectations": [
+		"After the user's correction, the workflow posts to #standups (C04STANDUP01) and contains no email-sending node — the wrong first value did not survive into the final build."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Schedule fires on a weekday morning and the reminder posts to the corrected channel",
+			"dataSetup": "The schedule trigger fires on a weekday morning. The Slack post-message node returns a success response with the posted message metadata.",
+			"successCriteria": "The workflow executes without errors. The reminder is posted to the #standups channel (C04STANDUP01). It is NOT sent to standups@company.com and there is no email-sending node — the implausible first value must not survive into the build."
+		}
+	]
+}
