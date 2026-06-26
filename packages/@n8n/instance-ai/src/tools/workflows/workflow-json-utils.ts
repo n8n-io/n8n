@@ -184,17 +184,17 @@ function preserveSetupValue(
 	}
 
 	if (isResourceLocator(nextValue)) {
-		return cloneWorkflowValue(existingValue);
+		return isResourceLocator(existingValue) ? cloneWorkflowValue(existingValue) : nextValue;
 	}
 
 	if (isWorkflowParameterArray(nextValue)) {
-		if (!isWorkflowParameterArray(existingValue)) return cloneWorkflowValue(existingValue);
+		if (!isWorkflowParameterArray(existingValue)) return nextValue;
 
 		return nextValue.map((item, index) => preserveSetupValue(item, existingValue[index]));
 	}
 
 	if (isDataObject(nextValue)) {
-		if (!isDataObject(existingValue)) return cloneWorkflowValue(existingValue);
+		if (!isDataObject(existingValue)) return nextValue;
 
 		const preserved: IDataObject = {};
 		for (const key of Object.keys(nextValue)) {
@@ -203,7 +203,7 @@ function preserveSetupValue(
 		return preserved;
 	}
 
-	return cloneWorkflowValue(existingValue);
+	return nextValue;
 }
 
 function preserveParameterValues(

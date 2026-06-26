@@ -334,6 +334,140 @@ describe('preserveExistingSetupValues', () => {
 		});
 	});
 
+	it('does not preserve resource locators from incompatible existing values', async () => {
+		const workflow = workflowWithNodes([
+			{
+				id: 'new-slack',
+				name: 'Send Rain Alert',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.3,
+				position: [0, 0],
+				parameters: {
+					channelId: {
+						__rl: true,
+						mode: 'id',
+						value: '',
+						cachedResultName: 'Select channel',
+					},
+				},
+			},
+		]);
+
+		await preserveExistingSetupValues(
+			workflow,
+			'wf-1',
+			contextWithExisting(
+				workflowWithNodes([
+					{
+						id: 'old-slack',
+						name: 'Send Rain Alert',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.3,
+						position: [0, 0],
+						parameters: {
+							channelId: '#old-channel',
+						},
+					},
+				]),
+			),
+		);
+
+		expect(workflow.nodes[0]?.parameters?.channelId).toEqual({
+			__rl: true,
+			mode: 'id',
+			value: '',
+			cachedResultName: 'Select channel',
+		});
+	});
+
+	it('does not replace rebuilt objects with incompatible existing scalar values', async () => {
+		const workflow = workflowWithNodes([
+			{
+				id: 'new-http',
+				name: 'Custom API Call',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.4,
+				position: [0, 0],
+				parameters: {
+					options: {
+						url: '<__PLACEHOLDER_VALUE__API URL__>',
+						method: 'POST',
+					},
+				},
+			},
+		]);
+
+		await preserveExistingSetupValues(
+			workflow,
+			'wf-1',
+			contextWithExisting(
+				workflowWithNodes([
+					{
+						id: 'old-http',
+						name: 'Custom API Call',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.4,
+						position: [0, 0],
+						parameters: {
+							options: 'https://old.example.com',
+						},
+					},
+				]),
+			),
+		);
+
+		expect(workflow.nodes[0]?.parameters?.options).toEqual({
+			url: '<__PLACEHOLDER_VALUE__API URL__>',
+			method: 'POST',
+		});
+	});
+
+	it('does not replace rebuilt arrays with incompatible existing scalar values', async () => {
+		const workflow = workflowWithNodes([
+			{
+				id: 'new-http',
+				name: 'Custom API Call',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.4,
+				position: [0, 0],
+				parameters: {
+					headers: [
+						{
+							name: 'Authorization',
+							value: '<__PLACEHOLDER_VALUE__API token__>',
+						},
+					],
+				},
+			},
+		]);
+
+		await preserveExistingSetupValues(
+			workflow,
+			'wf-1',
+			contextWithExisting(
+				workflowWithNodes([
+					{
+						id: 'old-http',
+						name: 'Custom API Call',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.4,
+						position: [0, 0],
+						parameters: {
+							headers: 'Bearer old-token',
+						},
+					},
+				]),
+			),
+		);
+
+		expect(workflow.nodes[0]?.parameters?.headers).toEqual([
+			{
+				name: 'Authorization',
+				value: '<__PLACEHOLDER_VALUE__API token__>',
+			},
+		]);
+	});
+
 	it('does not override concrete values from the rebuilt source', async () => {
 		const workflow = workflowWithNodes([
 			{
