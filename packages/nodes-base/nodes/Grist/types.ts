@@ -64,7 +64,15 @@ export type SendingOptions = 'defineInNode' | 'autoMapInputs';
 export type FieldsToSend = { properties: GristDefinedFields };
 
 export type GristWebhookList = {
-	webhooks: Array<{ id: string; fields?: { url?: string } }>;
+	webhooks: Array<{
+		id: string;
+		fields?: {
+			url?: string;
+			tableId?: string;
+			eventTypes?: string[];
+			isReadyColumn?: string | null;
+		};
+	}>;
 };
 
 export type GristWebhookCreated = {

@@ -49,16 +49,73 @@ describe('GristTrigger', () => {
 			expect(staticData.webhookId).toBeUndefined();
 		});
 
-		it('returns true and stores the id when a matching webhook exists', async () => {
+		it('returns true and stores the id when a webhook matches URL and config', async () => {
 			const { hookFns, staticData, request } = setup();
 			request.mockResolvedValue({
-				webhooks: [{ id: 'wh_1', fields: { url: webhookUrl } }],
+				webhooks: [
+					{
+						id: 'wh_1',
+						// Event order intentionally reversed — the match is order-insensitive.
+						fields: { url: webhookUrl, tableId: 'Table1', eventTypes: ['update', 'add'] },
+					},
+				],
 			});
 
 			const exists = await new GristTrigger().webhookMethods.default.checkExists.call(hookFns);
 
 			expect(exists).toBe(true);
 			expect(staticData.webhookId).toBe('wh_1');
+		});
+
+		it('returns false when a same-URL webhook targets a different table', async () => {
+			const { hookFns, staticData, request } = setup();
+			request.mockResolvedValue({
+				webhooks: [
+					{
+						id: 'wh_1',
+						fields: { url: webhookUrl, tableId: 'Other', eventTypes: ['add', 'update'] },
+					},
+				],
+			});
+
+			const exists = await new GristTrigger().webhookMethods.default.checkExists.call(hookFns);
+
+			expect(exists).toBe(false);
+			expect(staticData.webhookId).toBeUndefined();
+		});
+
+		it('returns false when a same-URL webhook watches a different event set', async () => {
+			const { hookFns, request } = setup();
+			request.mockResolvedValue({
+				webhooks: [
+					{ id: 'wh_1', fields: { url: webhookUrl, tableId: 'Table1', eventTypes: ['add'] } },
+				],
+			});
+
+			const exists = await new GristTrigger().webhookMethods.default.checkExists.call(hookFns);
+
+			expect(exists).toBe(false);
+		});
+
+		it('returns false when a same-URL webhook has a different ready column', async () => {
+			const { hookFns, request } = setup({ 'options.isReadyColumn': 'IsReady' });
+			request.mockResolvedValue({
+				webhooks: [
+					{
+						id: 'wh_1',
+						fields: {
+							url: webhookUrl,
+							tableId: 'Table1',
+							eventTypes: ['add', 'update'],
+							isReadyColumn: null,
+						},
+					},
+				],
+			});
+
+			const exists = await new GristTrigger().webhookMethods.default.checkExists.call(hookFns);
+
+			expect(exists).toBe(false);
 		});
 
 		it('uses OAuth2 against api.getgrist.com for hosted Grist', async () => {

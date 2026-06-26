@@ -17,6 +17,39 @@ import {
 } from './GenericFunctions';
 import type { GristWebhookCreated, GristWebhookList } from './types';
 
+// Order-insensitive comparison of the trigger's event list against a registered webhook's.
+function sameEventTypes(existing: string[] | undefined, wanted: string[]): boolean {
+	if (!existing || existing.length !== wanted.length) {
+		return false;
+	}
+	const set = new Set(existing);
+	return wanted.every((event) => set.has(event));
+}
+
+// The webhook configuration this node wants registered. `checkExists` and `create` both derive from
+// this single source, so the match criteria can't drift from what actually gets created.
+function desiredWebhookFields(this: IHookFunctions) {
+	return {
+		url: this.getNodeWebhookUrl('default'),
+		tableId: getResourceId.call(this, 'tableId'),
+		eventTypes: this.getNodeParameter('events') as string[],
+		isReadyColumn: (this.getNodeParameter('options.isReadyColumn', '') as string) || null,
+	};
+}
+
+// Whether an already-registered webhook matches the desired config (event order doesn't matter).
+function webhookMatches(
+	fields: GristWebhookList['webhooks'][number]['fields'],
+	desired: ReturnType<typeof desiredWebhookFields>,
+): boolean {
+	return (
+		fields?.url === desired.url &&
+		fields?.tableId === desired.tableId &&
+		(fields?.isReadyColumn || null) === desired.isReadyColumn &&
+		sameEventTypes(fields?.eventTypes, desired.eventTypes)
+	);
+}
+
 const authentication: INodeProperties = {
 	displayName: 'Authentication',
 	name: 'authentication',
@@ -190,9 +223,9 @@ export class GristTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const docId = getResourceId.call(this, 'docId');
+				const desired = desiredWebhookFields.call(this);
 
 				const { webhooks } = (await gristApiRequest.call(
 					this,
@@ -200,7 +233,9 @@ export class GristTrigger implements INodeType {
 					`/docs/${docId}/webhooks`,
 				)) as GristWebhookList;
 
-				const existing = webhooks.find((webhook) => webhook.fields?.url === webhookUrl);
+				// Match on the full configuration, not just the URL: a webhook left over with a different
+				// table, event set, or ready column must not be reused, or it would fire with stale config.
+				const existing = webhooks.find((webhook) => webhookMatches(webhook.fields, desired));
 				if (!existing) {
 					return false;
 				}
@@ -210,25 +245,10 @@ export class GristTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const docId = getResourceId.call(this, 'docId');
-				const tableId = getResourceId.call(this, 'tableId');
-				const eventTypes = this.getNodeParameter('events') as string[];
-				const isReadyColumn = this.getNodeParameter('options.isReadyColumn', '') as string;
 
-				const body = {
-					webhooks: [
-						{
-							fields: {
-								url: webhookUrl,
-								eventTypes,
-								tableId,
-								isReadyColumn: isReadyColumn || null,
-							},
-						},
-					],
-				};
+				const body = { webhooks: [{ fields: desiredWebhookFields.call(this) }] };
 
 				const { webhooks } = (await gristApiRequest.call(
 					this,
