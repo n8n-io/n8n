@@ -694,6 +694,28 @@ export interface ApplyResult {
 	failed: Array<{ nodeName: string; error: string }>;
 }
 
+function addUnknownNodeFailures(
+	result: ApplyResult,
+	workflowJson: WorkflowJSON,
+	nodeCredentials?: Record<string, Record<string, string>>,
+	nodeParameters?: Record<string, Record<string, unknown>>,
+): void {
+	const nodeNames = new Set(workflowJson.nodes.map((node) => node.name).filter(Boolean));
+	const submittedNodeNames = new Set([
+		...Object.keys(nodeCredentials ?? {}),
+		...Object.keys(nodeParameters ?? {}),
+	]);
+
+	for (const nodeName of submittedNodeNames) {
+		if (!nodeNames.has(nodeName)) {
+			result.failed.push({
+				nodeName,
+				error: `Node "${nodeName}" was not found in the workflow`,
+			});
+		}
+	}
+}
+
 /** Apply per-node credentials from resume data to a workflow. */
 export async function applyNodeCredentials(
 	context: InstanceAiContext,
@@ -702,6 +724,7 @@ export async function applyNodeCredentials(
 ): Promise<ApplyResult> {
 	const result: ApplyResult = { applied: [], failed: [] };
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+	addUnknownNodeFailures(result, workflowJson, nodeCredentials);
 
 	for (const node of workflowJson.nodes) {
 		if (!node.name) continue;
@@ -759,6 +782,7 @@ export async function applyNodeParameters(
 ): Promise<ApplyResult> {
 	const result: ApplyResult = { applied: [], failed: [] };
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+	addUnknownNodeFailures(result, workflowJson, undefined, nodeParameters);
 
 	for (const node of workflowJson.nodes) {
 		if (!node.name) continue;
@@ -862,6 +886,7 @@ export async function applyNodeChanges(
 	const result: ApplyResult = { applied: [], failed: [] };
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
 	const appliedNodes = new Set<string>();
+	addUnknownNodeFailures(result, workflowJson, nodeCredentials, nodeParameters);
 
 	for (const node of workflowJson.nodes) {
 		if (!node.name) continue;
@@ -905,11 +930,14 @@ export async function applyNodeChanges(
 export function buildCompletedReport(
 	appliedCredentials?: Record<string, Record<string, string>>,
 	appliedParameters?: Record<string, Record<string, unknown>>,
+	appliedNodeNames?: string[],
 ): Array<{ nodeName: string; credentialType?: string; parametersSet?: string[] }> {
 	const byNode = new Map<string, { credentialTypes: string[]; parameterNames: string[] }>();
+	const appliedNodeNameSet = appliedNodeNames ? new Set(appliedNodeNames) : undefined;
 
 	if (appliedCredentials) {
 		for (const [nodeName, credMap] of Object.entries(appliedCredentials)) {
+			if (appliedNodeNameSet && !appliedNodeNameSet.has(nodeName)) continue;
 			for (const credType of Object.keys(credMap)) {
 				let entry = byNode.get(nodeName);
 				if (!entry) {
@@ -923,6 +951,7 @@ export function buildCompletedReport(
 
 	if (appliedParameters) {
 		for (const [nodeName, params] of Object.entries(appliedParameters)) {
+			if (appliedNodeNameSet && !appliedNodeNameSet.has(nodeName)) continue;
 			let entry = byNode.get(nodeName);
 			if (!entry) {
 				entry = { credentialTypes: [], parameterNames: [] };

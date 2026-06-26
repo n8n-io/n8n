@@ -618,7 +618,11 @@ async function handleSetupApply(
 		// "this still requires user intervention".
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
 		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
-		const completedNodes = buildCompletedReport(resumeData.credentials, resumeData.nodeParameters);
+		const completedNodes = buildCompletedReport(
+			resumeData.credentials,
+			resumeData.nodeParameters,
+			applyResult.applied,
+		);
 
 		// Detect credentials that were applied but failed testing.
 		const credTestFailures = collectCredentialTestFailures(
