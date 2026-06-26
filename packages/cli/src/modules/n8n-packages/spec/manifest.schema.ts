@@ -11,39 +11,21 @@ export const manifestEntrySchema = z.object({
 
 type ManifestEntryInput = z.infer<typeof manifestEntrySchema>;
 
-function assertNoDuplicateWorkflowIds(
-	workflows: ManifestEntryInput[] | undefined,
+function assertNoDuplicateIds(
+	items: Array<Pick<ManifestEntryInput, 'id'>> | undefined,
 	ctx: z.RefinementCtx,
 ): void {
-	if (!workflows) return;
+	if (!items) return;
 
-	const seenWorkflowIds = new Set<string>();
-	for (const entry of workflows) {
-		if (seenWorkflowIds.has(entry.id)) {
+	const seenIds = new Set<string>();
+	for (const item of items) {
+		if (seenIds.has(item.id)) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: `Duplicate workflow id in manifest: ${entry.id}`,
+				message: `Duplicate id in manifest: ${item.id}`,
 			});
 		}
-		seenWorkflowIds.add(entry.id);
-	}
-}
-
-function assertNoDuplicateProjectIds(
-	projects: ManifestEntryInput[] | undefined,
-	ctx: z.RefinementCtx,
-): void {
-	if (!projects) return;
-
-	const seenProjectIds = new Set<string>();
-	for (const entry of projects) {
-		if (seenProjectIds.has(entry.id)) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Duplicate project id in manifest: ${entry.id}`,
-			});
-		}
-		seenProjectIds.add(entry.id);
+		seenIds.add(item.id);
 	}
 }
 
@@ -59,8 +41,9 @@ export const packageManifestSchema = z
 		requirements: packageRequirementsSchema.optional(),
 	})
 	.superRefine((manifest, ctx) => {
-		assertNoDuplicateWorkflowIds(manifest.workflows, ctx);
-		assertNoDuplicateProjectIds(manifest.projects, ctx);
+		assertNoDuplicateIds(manifest.workflows, ctx);
+		assertNoDuplicateIds(manifest.projects, ctx);
+		assertNoDuplicateIds(manifest.credentials, ctx);
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;
