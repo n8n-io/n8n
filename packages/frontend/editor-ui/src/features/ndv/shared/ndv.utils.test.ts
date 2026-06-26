@@ -416,6 +416,32 @@ describe('parseFromExpression', () => {
 			'{"msgtype": "markdown", "markdown": {"content": "test"}}',
 		);
 	});
+
+	it('strips only the leading "=" run from a json parameter, leaving inner "=" intact', () => {
+		// Anchored, greedy strip: every leading "=" goes, but an "=" inside the JSON
+		// (e.g. inside a query-string value) must be preserved.
+		expect(parseFromExpression('=={"url": "a=b"}', undefined, 'json', null, [])).toBe(
+			'{"url": "a=b"}',
+		);
+	});
+
+	it('leaves a json parameter with no leading "=" untouched even if it contains "="', () => {
+		// A fixed-mode value that was never an expression must be returned verbatim;
+		// the strip is anchored to the start, so an inner "=" is not touched.
+		expect(parseFromExpression('{"url": "a=b"}', undefined, 'json', null, [])).toBe(
+			'{"url": "a=b"}',
+		);
+	});
+
+	it('returns null for an empty json parameter', () => {
+		expect(parseFromExpression('', undefined, 'json', null, [])).toBeNull();
+	});
+
+	it('does not strip string values for non-json parameter types', () => {
+		// The "=" strip must be gated on the `json` type, so a stray string value on a
+		// number field still falls through to the default rather than being returned raw.
+		expect(parseFromExpression('=5', undefined, 'number', 0, [])).toBe(0);
+	});
 });
 
 describe('shouldSkipParamValidation', () => {
