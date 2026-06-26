@@ -142,6 +142,10 @@ export const orderFields: INodeProperties[] = [
 						value: 'processing',
 					},
 					{
+						name: 'Shipped',
+						value: 'shipped',
+					},
+					{
 						name: 'Refunded',
 						value: 'refunded',
 					},
@@ -804,6 +808,10 @@ export const orderFields: INodeProperties[] = [
 					{
 						name: 'Processing',
 						value: 'processing',
+					},
+					{
+						name: 'Shipped',
+						value: 'shipped',
 					},
 					{
 						name: 'Refunded',
