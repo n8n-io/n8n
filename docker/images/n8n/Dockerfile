@@ -29,7 +29,7 @@ RUN apk add --no-cache python3 make g++ && \
 # manually re-pinned here. Bump the digest together with the tag whenever the base
 # image is intentionally updated.
 # Digest pins to n8nio/base:24.16.0 (Node 24.16.0, Alpine 3.24).
-FROM n8nio/base:24.16.0@sha256:d822b9c6edde370c2fe289be835aa5e64d9851276f1421908c90ef0e2dd73d8b
+FROM n8nio/base:24.16.0@sha256:25e5671a1b3e11cd576bc9a4409ebf962baea993a4bc7414168dfd357e85a7e8
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
