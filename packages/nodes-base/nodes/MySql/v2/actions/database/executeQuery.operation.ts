@@ -94,6 +94,7 @@ export async function execute(
 				preparedQuery.values = parsedNumbers;
 			}
 
+			preparedQuery.itemIndex = i;
 			queries.push(preparedQuery);
 		} catch (error) {
 			if (!this.continueOnFail()) throw error;

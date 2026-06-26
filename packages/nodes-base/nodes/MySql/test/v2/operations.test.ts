@@ -342,7 +342,7 @@ describe('Test MySql V2, operations', () => {
 		};
 
 		const nodeOptions: IDataObject = { nodeVersion: 2.5 };
-		const mockRunQueries = jest.fn(async () => []);
+		const mockRunQueries = vi.fn(async () => []);
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, true);
 
@@ -356,6 +356,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toHaveLength(1);
 		expect(result[0].json).toHaveProperty('message');
 		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(result[0].error).toBeDefined();
+		expect(result[0].error?.message).toContain('$1');
 		expect(mockRunQueries).not.toHaveBeenCalled();
 	});
 
@@ -367,7 +369,7 @@ describe('Test MySql V2, operations', () => {
 		};
 
 		const nodeOptions: IDataObject = { nodeVersion: 2.5 };
-		const mockRunQueries = jest.fn(async () => []);
+		const mockRunQueries = vi.fn(async () => []);
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, false);
 
@@ -402,8 +404,8 @@ describe('Test MySql V2, operations', () => {
 			},
 		} as unknown as IExecuteFunctions;
 
-		const successResult: INodeExecutionData = { json: { success: true }, pairedItem: { item: 0 } };
-		const mockRunQueries = jest.fn(async () => [successResult]);
+		const successResult: INodeExecutionData = { json: { success: true }, pairedItem: { item: 1 } };
+		const mockRunQueries = vi.fn(async () => [successResult]);
 
 		const inputItems: INodeExecutionData[] = [
 			{ json: { a: 1 }, pairedItem: { item: 0, input: undefined } },
@@ -417,12 +419,13 @@ describe('Test MySql V2, operations', () => {
 			nodeOptions,
 		);
 
-		// Item 0 failed preparation → error item with original index 0
+		// Item 0 failed preparation → error item with original index 0 and top-level error
 		expect(result[0].json).toHaveProperty('message');
 		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(result[0].error).toBeDefined();
 
-		// runQueries was called with only the valid query (from item 1)
-		expect(mockRunQueries).toHaveBeenCalledWith([{ query: 'SELECT 1', values: [] }]);
+		// runQueries was called with the valid query carrying its original itemIndex (1)
+		expect(mockRunQueries).toHaveBeenCalledWith([{ query: 'SELECT 1', values: [], itemIndex: 1 }]);
 
 		// Success result from runQueries is appended after error items
 		expect(result[1].json).toEqual({ success: true });
@@ -804,5 +807,50 @@ describe('Test MySql V2, operations', () => {
 		expect(poolQuerySpy).toBeCalledWith(
 			"INSERT INTO `test_table`(`id`, `name`) VALUES(42,'test 4') ON DUPLICATE KEY UPDATE `name` = 'test 4';INSERT INTO `test_table`(`id`, `name`) VALUES(88,'test 88') ON DUPLICATE KEY UPDATE `name` = 'test 88'",
 		);
+	});
+
+	it('executeQuery, should map pairedItem to original item index when a preceding item fails query preparation', async () => {
+		const nodeOptions: IDataObject = { nodeVersion: 2.5, queryBatching: 'independently' };
+
+		const pool = createFakePool(fakeConnection);
+		const fakeExecuteFunction = {
+			getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: IDataObject) {
+				if (parameterName === 'query') {
+					return itemIndex === 0 ? '$1' : 'INSERT INTO t VALUES (1)';
+				}
+				return fallbackValue ?? {};
+			},
+			getNode() {
+				return mySqlMockNode;
+			},
+			continueOnFail() {
+				return true;
+			},
+			helpers: {
+				constructExecutionMetaData: (data: INodeExecutionData[], meta: IDataObject) =>
+					data.map((d) => ({ ...d, ...meta })),
+			},
+		} as unknown as IExecuteFunctions;
+
+		const runQueries = configureQueryRunner.call(fakeExecuteFunction, nodeOptions, pool);
+
+		const inputItems: INodeExecutionData[] = [
+			{ json: { a: 1 }, pairedItem: { item: 0, input: undefined } },
+			{ json: { b: 2 }, pairedItem: { item: 1, input: undefined } },
+		];
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			inputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		// Error from item 0 keeps its original index
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(result[0].error).toBeDefined();
+
+		// Successful query came from item 1 — its pairedItem must reference item 1, not 0
+		expect(result[1].pairedItem).toEqual({ item: 1 });
 	});
 });
