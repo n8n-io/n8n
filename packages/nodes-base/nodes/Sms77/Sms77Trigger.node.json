@@ -1,6 +1,6 @@
 {
-	"node": "n8n-nodes-base.sms77",
-	"nodeVersion": "2.0",
+	"node": "n8n-nodes-base.sms77Trigger",
+	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
 	"resources": {
@@ -11,9 +11,9 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sms77/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.sms77Trigger/"
 			}
 		]
 	},
-	"alias": ["SMS", "Sms77", "Seven", "RCS", "WhatsApp", "Voice"]
+	"alias": ["SMS", "Sms77", "Seven", "Webhook", "RCS", "WhatsApp", "DLR"]
 }
