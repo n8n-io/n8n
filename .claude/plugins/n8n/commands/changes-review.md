@@ -35,6 +35,7 @@ Dispatch **in a single message** so they run concurrently. Give each the diff, t
 - **`n8n:autodev-conventions-reviewer`** (fallback `code-reviewer` + the `n8n:conventions` skill) — n8n coding standards, patterns, conventions, general code-quality and best-practice issues.
 - **`n8n:autodev-test-reviewer`** (fallback `expert-test-developer`) — test coverage of the change, high-value missing tests, quality of new/existing tests. **Critically, flag meaningless or made-up tests** that don't exercise real behavior (assertions on mocks/stubs rather than the code under test; tautologies; "renders / doesn't throw" stand-ins; tests re-implementing production logic; coverage-padding). Treat these as `[BLOCKER]` or `[MAJOR]` — a misleading test is worse than no test.
 - **`n8n:autodev-vue-reviewer`** *(only if frontend files changed)* (fallback `expert-vue3-developer` + the `n8n:design-system` skill) — Vue 3 + Pinia reactivity, design-system & i18n conventions, a11y, component health. Skip if no frontend files changed, and note it.
+- **Simplicity / over-engineering (ponytail)** — the orchestrator runs `/ponytail-review` on the diff itself (a skill, not a sub-agent — agents can't load it). Flag speculative abstractions, needless config/flexibility, error handling for impossible cases, and code that could be inlined or deleted; tag `[MINOR]`–`[MAJOR]` and fold into the synthesis.
 
 Also run an **independent second-opinion pass** over the diff when available (e.g. `codex review`, or a `cubic` / `/run-review` pass) and fold its findings in as another lens.
 
