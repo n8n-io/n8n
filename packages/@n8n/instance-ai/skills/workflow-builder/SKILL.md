@@ -61,10 +61,18 @@ with the same `filePath`. Do not send inline workflow code or string patches to
 
 ## Escalation
 
-If you are stuck or need information only a human can provide, use `ask-user`.
-Do not retry the same failing approach more than twice. Never re-ask a question
-the user has already answered, deferred, or skipped — treat a skip as permission
-to assume a sensible default or leave the detail for setup, and move on. Never
+Before the first successful `build-workflow` call, use `ask-user` only when a
+missing choice changes the workflow's intent or topology, such as which
+destination service to use. Do not ask for setup details after the service is
+known; recipients, accounts, resources, channels, credentials, and timezone
+belong in placeholders or unresolved `newCredential()` calls until post-build
+setup.
+
+After the first build, or when the workflow intent is genuinely ambiguous, use
+`ask-user` if you are stuck or need information only a human can provide. Do not
+retry the same failing approach more than twice. Never re-ask a question the
+user has already answered, deferred, or skipped — treat a skip as permission to
+assume a sensible default or leave the detail for setup, and move on. Never
 solicit API keys, tokens, passwords, or other secrets through `ask-user`; route
 credential collection through workflow setup or credential setup surfaces.
 
@@ -83,6 +91,12 @@ Never hardcode fake values like `user@example.com`, `YOUR_API_KEY`, bearer
 tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
 the build, `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel so the user can fill placeholder values.
+
+Do not ask for missing setup values before the first successful build. Once the
+service or workflow shape is known, missing email recipients, notification
+targets, account labels or IDs, channel IDs, resource IDs, credentials,
+timezone, and similar node configuration belong in placeholders during the
+initial build; route them to setup only after the workflow is saved.
 
 Do not replace concrete user-provided or discoverable values with placeholders.
 If the prompt gives a real URL, channel name, table name, label, folder,
