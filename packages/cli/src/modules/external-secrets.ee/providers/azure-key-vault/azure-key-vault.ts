@@ -75,16 +75,23 @@ export class AzureKeyVault extends SecretsProvider {
 	}
 
 	protected async doConnect(): Promise<void> {
-		const { vaultName, tenantId, clientId, clientSecret } = this.settings;
+		try {
+			const { vaultName, tenantId, clientId, clientSecret } = this.settings;
 
-		const { ClientSecretCredential } = await import('@azure/identity');
-		const { SecretClient } = await import('@azure/keyvault-secrets');
+			const { ClientSecretCredential } = await import('@azure/identity');
+			const { SecretClient } = await import('@azure/keyvault-secrets');
 
-		// TODO: Not routed through OutboundHttp for now. It would require `@azure/core-rest-pipeline`, which is not worth it just to share agents.
-		const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-		this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
+			// TODO: Not routed through OutboundHttp for now. It would require `@azure/core-rest-pipeline`, which is not worth it just to share agents.
+			const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+			this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
 
-		this.logger.debug('Azure Key Vault provider connected');
+			this.logger.debug('Azure Key Vault provider connected');
+		} catch (error) {
+			this.logger.error('Failed to connect Azure Key Vault provider', {
+				error: ensureError(error),
+			});
+			throw error;
+		}
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
@@ -94,6 +101,9 @@ export class AzureKeyVault extends SecretsProvider {
 			await this.client.listPropertiesOfSecrets().next();
 			return [true];
 		} catch (error: unknown) {
+			this.logger.error('Azure Key Vault provider test failed', {
+				error: ensureError(error),
+			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -103,42 +113,49 @@ export class AzureKeyVault extends SecretsProvider {
 	}
 
 	async update() {
-		const secretNames: string[] = [];
-		for await (const secret of this.client.listPropertiesOfSecrets()) {
-			if (secret.enabled === false) continue;
-			secretNames.push(secret.name);
-		}
+		try {
+			const secretNames: string[] = [];
+			for await (const secret of this.client.listPropertiesOfSecrets()) {
+				if (secret.enabled === false) continue;
+				secretNames.push(secret.name);
+			}
 
-		const promises = await Promise.allSettled(
-			secretNames.map(async (name) => {
-				const { value } = await this.client.getSecret(name);
-				return { name, value };
-			}),
-		);
+			const promises = await Promise.allSettled(
+				secretNames.map(async (name) => {
+					const { value } = await this.client.getSecret(name);
+					return { name, value };
+				}),
+			);
 
-		const updated: Record<string, string> = {};
-		const readErrors: Error[] = [];
-		for (const [index, promiseResult] of promises.entries()) {
-			if (promiseResult.status === 'fulfilled') {
-				const { name, value } = promiseResult.value;
-				if (value !== undefined) updated[name] = value;
-			} else {
-				const error = ensureError(promiseResult.reason);
-				readErrors.push(error);
-				this.logger.warn(`Could not read Azure Key Vault secret "${secretNames[index]}"`, {
-					error,
+			const updated: Record<string, string> = {};
+			const readErrors: Error[] = [];
+			for (const [index, promiseResult] of promises.entries()) {
+				if (promiseResult.status === 'fulfilled') {
+					const { name, value } = promiseResult.value;
+					if (value !== undefined) updated[name] = value;
+				} else {
+					const error = ensureError(promiseResult.reason);
+					readErrors.push(error);
+					this.logger.warn(`Could not read Azure Key Vault secret "${secretNames[index]}"`, {
+						error,
+					});
+				}
+			}
+
+			if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
+				throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {
+					cause: readErrors[0],
 				});
 			}
-		}
 
-		if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
-			throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {
-				cause: readErrors[0],
+			this.cachedSecrets = updated;
+			this.logger.debug('Azure Key Vault provider secrets updated');
+		} catch (error) {
+			this.logger.error('Failed to update Azure Key Vault provider secrets', {
+				error: ensureError(error),
 			});
+			throw error;
 		}
-
-		this.cachedSecrets = updated;
-		this.logger.debug('Azure Key Vault provider secrets updated');
 	}
 
 	getSecret(name: string) {
