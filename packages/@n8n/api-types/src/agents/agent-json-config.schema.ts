@@ -1,6 +1,12 @@
 import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+
+/**
+ * Regex for valid custom tool ids. Shared with the backend service layer
+ * so validation stays in sync with the JSON config schema.
+ */
+export const CUSTOM_TOOL_ID_REGEX = /^[A-Za-z0-9_]+$/;
 import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
@@ -240,10 +246,7 @@ export const McpServerConfigSchema = z
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
-		id: z
-			.string()
-			.min(1)
-			.regex(/^[A-Za-z0-9_-]+$/),
+		id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
 		requireApproval: z.boolean().optional(),
 	}),
 	z
@@ -280,13 +283,19 @@ export const AgentJsonConfigSchema = z.object({
 	subAgents: SubAgentsConfigSchema.optional(),
 	tools: z
 		.array(AgentJsonToolConfigSchema)
-		.refine(
-			(tools) => {
-				const customIds = tools.filter((t) => t.type === 'custom').map((t) => t.id);
-				return new Set(customIds).size === customIds.length;
-			},
-			{ message: 'Custom tool ids must be unique within an agent' },
-		)
+		.superRefine((tools, ctx) => {
+			const customIds = tools.filter((t) => t.type === 'custom').map((t) => t.id);
+			const seen = new Set<string>();
+			for (const id of customIds) {
+				if (seen.has(id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate custom tool id: "${id}"`,
+					});
+				}
+				seen.add(id);
+			}
+		})
 		.optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),

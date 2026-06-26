@@ -12,7 +12,6 @@ const routeQuery: Record<string, string | undefined> = {};
 let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
-const showErrorMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const {

@@ -49,7 +49,7 @@ issues/comments.
 - Do not use custom tools for live website crawling, HTTP fetching, API calls, SEO crawlers, or scraping. Use workflow or node tools for those.
 - The returned \`id\` is the tool name from the code (e.g. \`new Tool("my_tool")\` → id \`"my_tool"\`).
 - Register the returned id in config: \`{ "type": "custom", "id": "<tool name>" }\`.
-- Tool names must be unique per agent and use only letters, digits, underscores, and hyphens.
+- Tool names must be unique per agent and use only letters, digits, and underscores.
 - To update an existing custom tool (fix a bug, change logic, or rename it): call \`build_custom_tool\` again with the revised code, then update the config.
 - If the tool name changed since the last build: register the new id AND remove the old \`{ type: "custom", id: "<old name>" }\` entry from config.
 - Custom handlers are pure functions: take validated \`input\`, compute, and return a JSON-serializable value. Do not call \`.build()\`.

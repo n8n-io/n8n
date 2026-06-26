@@ -16,12 +16,20 @@ describe('AgentJsonConfigSchema — tools', () => {
 			expect(result.success).toBe(true);
 		});
 
-		it('accepts an id with hyphens and underscores', () => {
+		it('accepts an id with underscores', () => {
 			const result = AgentJsonConfigSchema.safeParse({
 				...minimalConfig,
-				tools: [{ type: 'custom', id: 'my-tool_v2' }],
+				tools: [{ type: 'custom', id: 'my_tool_v2' }],
 			});
 			expect(result.success).toBe(true);
+		});
+
+		it('rejects an id with hyphens', () => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				tools: [{ type: 'custom', id: 'my-tool' }],
+			});
+			expect(result.success).toBe(false);
 		});
 
 		it('rejects an id with spaces', () => {
@@ -71,9 +79,7 @@ describe('AgentJsonConfigSchema — tools', () => {
 			});
 			expect(result.success).toBe(false);
 			if (!result.success) {
-				expect(result.error.errors[0].message).toBe(
-					'Custom tool ids must be unique within an agent',
-				);
+				expect(result.error.errors[0].message).toBe('Duplicate custom tool id: "duplicate"');
 			}
 		});
 

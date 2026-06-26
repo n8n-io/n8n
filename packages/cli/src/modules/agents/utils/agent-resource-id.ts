@@ -1,12 +1,5 @@
 import { generateNanoId } from '@n8n/utils';
 
-/**
- * Regex that both the JSON config schema (AgentJsonToolConfigSchema `id` field)
- * and the custom-tool storage key must satisfy. Tool names that do not match
- * cannot be used as config ids.
- */
-export const CUSTOM_TOOL_ID_REGEX = /^[A-Za-z0-9_-]+$/;
-
 type AgentResourceIdPrefix = 'skill' | 'task';
 
 export function generateAgentResourceId(
