@@ -44,11 +44,11 @@ describe('ChatHubController', () => {
 			expect(sendErrorResponse).not.toHaveBeenCalled();
 		});
 
-		it('should pass through when no cached setting exists', () => {
+		it('should reject when no cached setting exists (fail closed)', () => {
 			controller.checkChatEnabled(req, res, next);
 
-			expect(next).toHaveBeenCalled();
-			expect(sendErrorResponse).not.toHaveBeenCalled();
+			expect(next).not.toHaveBeenCalled();
+			expect(sendErrorResponse).toHaveBeenCalledWith(res, expect.any(ForbiddenError));
 		});
 	});
 });

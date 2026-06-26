@@ -71,7 +71,11 @@ export class ChatHubController {
 
 	@Middleware()
 	checkChatEnabled(_req: Request, res: Response, next: NextFunction) {
-		if (this.moduleRegistry.settings.get('chat-hub')?.enabled === false) {
+		// Fail closed: block unless Chat Hub is explicitly enabled. Disabled is the
+		// default, and existing installs with usage get an explicit enabled value
+		// via migration, so this only locks out the genuinely-off (or unset) state.
+		// Reads the cached module settings (kept fresh by refreshModuleSettings on toggle).
+		if (this.moduleRegistry.settings.get('chat-hub')?.enabled !== true) {
 			sendErrorResponse(res, new ForbiddenError('Chat Hub is disabled'));
 			return;
 		}
