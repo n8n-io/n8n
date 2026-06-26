@@ -12,17 +12,13 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
-import {
-	ExternalSecretsProviderLifecycle,
-	ProviderConnectResult,
-} from './provider-lifecycle.service';
+import { ExternalSecretsProviderConnectionManager } from './external-secrets-provider-connection-manager.ee';
+import { ExternalSecretsProviderLifecycle } from './provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import { ExternalSecretsRetryManager } from './retry-manager.service';
 import { ExternalSecretsSecretsCache } from './secrets-cache.service';
 import { ExternalSecretsSettingsStore } from './settings-store.service';
 import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
-
-type ProviderConnectionOperationResult = { success: boolean; error?: Error };
 
 /**
  * Orchestrates external secrets management
@@ -46,6 +42,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly providerLifecycle: ExternalSecretsProviderLifecycle,
 		private readonly retryManager: ExternalSecretsRetryManager,
+		private readonly providerConnectionManager: ExternalSecretsProviderConnectionManager,
 		private readonly secretsCache: ExternalSecretsSecretsCache,
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
 		private readonly cipher: Cipher,
@@ -153,19 +150,18 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 				settings,
 			};
 
-			if (this.providerRegistry.has(providerKey)) {
-				await this.replaceProviderConnection(providerKey, connection.type, connectionSettings);
-			} else {
-				await this.addProviderConnection(providerKey, connection.type, connectionSettings);
-			}
+			await this.providerConnectionManager.upsertProviderConnection(
+				providerKey,
+				connection.type,
+				connectionSettings,
+			);
 
 			const provider = this.providerRegistry.get(providerKey);
 			if (provider) {
 				await this.secretsCache.refreshProvider(providerKey, provider);
 			}
 		} else {
-			this.retryManager.cancelRetry(providerKey);
-			await this.removeProviderConnection(providerKey);
+			await this.providerConnectionManager.removeProviderConnection(providerKey);
 		}
 
 		this.broadcastReload();
@@ -230,18 +226,9 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await this.settingsStore.updateProvider(provider, { connected });
 
 		if (connected) {
-			await this.retryManager.runWithRetry(
-				provider,
-				async () => await this.connectProvider(provider),
-			);
+			await this.providerConnectionManager.connectProviderWithRetry(provider);
 		} else {
-			// Cancel any pending retries when disconnecting
-			this.retryManager.cancelRetry(provider);
-
-			const providerInstance = this.providerRegistry.get(provider);
-			if (providerInstance) {
-				await this.providerLifecycle.disconnect(providerInstance);
-			}
+			await this.providerConnectionManager.disconnectProvider(provider);
 		}
 
 		this.broadcastReload();
@@ -324,8 +311,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 		for (const connection of connections) {
 			if (!connection.isEnabled) {
-				this.retryManager.cancelRetry(connection.providerKey);
-				await this.removeProviderConnection(connection.providerKey);
+				await this.providerConnectionManager.removeProviderConnection(connection.providerKey);
 				continue;
 			}
 
@@ -339,19 +325,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 				settings,
 			};
 
-			if (this.providerRegistry.has(connection.providerKey)) {
-				await this.replaceProviderConnection(
-					connection.providerKey,
-					connection.type,
-					connectionSettings,
-				);
-			} else {
-				await this.addProviderConnection(
-					connection.providerKey,
-					connection.type,
-					connectionSettings,
-				);
-			}
+			await this.providerConnectionManager.upsertProviderConnection(
+				connection.providerKey,
+				connection.type,
+				connectionSettings,
+			);
 		}
 
 		await this.secretsCache.refreshAll();
@@ -362,150 +340,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	// Private - Provider Management
 	// ========================================
 
-	private async addProviderConnection(
-		providerKey: string,
-		providerType: string,
-		config: SecretsProviderSettings,
-	): Promise<void> {
-		this.logger.debug('Adding external secrets provider connection', {
-			providerKey,
-			providerType,
-		});
-
-		const result = await this.providerLifecycle.initialize(providerType, config);
-
-		if (!result.success || !result.provider) {
-			this.logger.error('Failed to initialize external secrets provider connection', {
-				providerKey,
-				providerType,
-				error: result.error,
-			});
-			return;
-		}
-
-		this.providerRegistry.add(providerKey, result.provider);
-
-		if (config.connected) {
-			await this.retryManager.runWithRetry(
-				providerKey,
-				async () => await this.connectProvider(providerKey),
-			);
-		}
-	}
-
-	private async replaceProviderConnection(
-		providerKey: string,
-		providerType: string,
-		config: SecretsProviderSettings,
-	): Promise<void> {
-		this.logger.debug('Replacing external secrets provider connection', {
-			providerKey,
-			providerType,
-		});
-
-		// Initialization validates local config, so retrying it would only repeat deterministic failures.
-		const initResult = await this.providerLifecycle.initialize(providerType, config);
-
-		if (!initResult.success || !initResult.provider) {
-			const error =
-				initResult.error ?? new UnexpectedError(`Failed to initialize provider ${providerKey}`);
-			this.logger.error('Failed to initialize replacement external secrets provider connection', {
-				providerKey,
-				providerType,
-				error,
-			});
-			this.retryManager.cancelRetry(providerKey);
-			await this.removeProviderConnection(providerKey);
-			return;
-		}
-
-		const replacementProvider = initResult.provider;
-		let replacementResult: ProviderConnectionOperationResult;
-		if (config.connected) {
-			// Only connection is retried. A successful retry must also perform the registry swap.
-			replacementResult = await this.retryManager.runWithRetry(
-				providerKey,
-				async () =>
-					await this.connectAndSwapProviderConnection(
-						providerKey,
-						providerType,
-						replacementProvider,
-					),
-			);
-		} else {
-			replacementResult = await this.swapProviderConnection(
-				providerKey,
-				providerType,
-				replacementProvider,
-			);
-		}
-
-		if (!replacementResult.success) {
-			// The replacement reflects the latest config, even if connection failed. Register it
-			// in its error state so executions fail visibly instead of using stale secrets.
-			await this.swapProviderConnection(providerKey, providerType, replacementProvider);
-		}
-	}
-
-	private async connectAndSwapProviderConnection(
-		providerKey: string,
-		providerType: string,
-		replacementProvider: SecretsProvider,
-	): Promise<ProviderConnectionOperationResult> {
-		const connectResult = await this.providerLifecycle.connect(replacementProvider);
-		if (!connectResult.success) {
-			this.logger.error('Failed to connect replacement external secrets provider connection', {
-				providerKey,
-				providerType,
-				error: connectResult.error,
-			});
-			return connectResult;
-		}
-
-		return await this.swapProviderConnection(providerKey, providerType, replacementProvider);
-	}
-
-	private async swapProviderConnection(
-		providerKey: string,
-		providerType: string,
-		replacementProvider: SecretsProvider,
-	): Promise<ProviderConnectionOperationResult> {
-		const existingProvider = this.providerRegistry.get(providerKey);
-		this.providerRegistry.add(providerKey, replacementProvider);
-
-		if (existingProvider && existingProvider !== replacementProvider) {
-			this.logger.debug('Disconnecting previous external secrets provider connection', {
-				providerKey,
-				providerType,
-			});
-			await this.providerLifecycle.disconnect(existingProvider);
-		}
-
-		return { success: true };
-	}
-
-	private async removeProviderConnection(providerKey: string): Promise<void> {
-		this.logger.debug('Removing external secrets provider connection', {
-			providerKey,
-		});
-
-		const existingProvider = this.providerRegistry.get(providerKey);
-		if (existingProvider) {
-			await this.providerLifecycle.disconnect(existingProvider);
-			this.providerRegistry.remove(providerKey);
-		}
-	}
-
-	private async connectProvider(name: string): Promise<ProviderConnectResult> {
-		const provider = this.providerRegistry.get(name);
-		if (!provider) {
-			this.logger.warn(`Cannot connect provider ${name}: not found in registry`);
-			throw new Error(`Provider ${name} not found in registry`);
-		}
-
-		return await this.providerLifecycle.connect(provider);
-	}
-
 	private async reloadProvider(name: string): Promise<void> {
 		const config = await this.settingsStore.getProvider(name);
 		if (!config) {
@@ -513,11 +347,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			return;
 		}
 
-		if (this.providerRegistry.has(name)) {
-			await this.replaceProviderConnection(name, name, config);
-		} else {
-			await this.addProviderConnection(name, name, config);
-		}
+		await this.providerConnectionManager.upsertProviderConnection(name, name, config);
 	}
 
 	private async decryptSettings(
