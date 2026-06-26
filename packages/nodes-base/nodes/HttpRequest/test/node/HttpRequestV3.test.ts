@@ -1689,7 +1689,7 @@ describe('HttpRequestV3', () => {
 					'options.pagination.pagination': {
 						paginationMode: 'updateAParameterInEachRequest',
 						parameters: {
-							parameters: [{ type: 'qs', name: 'page', value: '1' }],
+							parameters: [{ type: 'qs', name: 'Page', value: '1' }],
 						},
 						paginationCompleteWhen: 'responseIsEmpty',
 						statusCodesWhenComplete: '',
