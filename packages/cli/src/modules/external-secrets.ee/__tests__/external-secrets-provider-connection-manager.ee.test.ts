@@ -28,7 +28,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		mockProviderRegistry = mock<ExternalSecretsProviderRegistry>();
 		mockProviderRegistry.get.mockImplementation((name) => providersMap.get(name));
 		mockProviderRegistry.has.mockImplementation((name) => providersMap.has(name));
-		mockProviderRegistry.add.mockImplementation((name, provider) => {
+		mockProviderRegistry.set.mockImplementation((name, provider) => {
 			providersMap.set(name, provider);
 		});
 		mockProviderRegistry.remove.mockImplementation((name) => {
@@ -62,15 +62,15 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		await manager.upsertProviderConnection('my-vault', 'dummy', providerSettings);
 
 		expect(mockProviderLifecycle.initialize).toHaveBeenCalledWith('dummy', providerSettings);
-		expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault', provider);
+		expect(mockProviderRegistry.set).toHaveBeenCalledWith('my-vault', provider);
 		expect(mockRetryManager.runWithRetry).toHaveBeenCalledWith('my-vault', expect.any(Function));
 		expect(mockProviderLifecycle.connect).toHaveBeenCalledWith(provider);
 	});
 
 	it('should replace provider without removing the registry key first', async () => {
 		const existingProvider = new DummyProvider();
-		mockProviderRegistry.add('my-vault', existingProvider);
-		mockProviderRegistry.add.mockClear();
+		mockProviderRegistry.set('my-vault', existingProvider);
+		mockProviderRegistry.set.mockClear();
 
 		const replacementProvider = new DummyProvider();
 		mockProviderLifecycle.initialize.mockResolvedValue({
@@ -81,13 +81,13 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		await manager.upsertProviderConnection('my-vault', 'dummy', providerSettings);
 
 		expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
-		expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault', replacementProvider);
+		expect(mockProviderRegistry.set).toHaveBeenCalledWith('my-vault', replacementProvider);
 		expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
 	});
 
 	it('should cancel retry and remove existing provider when replacement initialization fails', async () => {
 		const existingProvider = new DummyProvider();
-		mockProviderRegistry.add('my-vault', existingProvider);
+		mockProviderRegistry.set('my-vault', existingProvider);
 		mockRetryManager.cancelRetry.mockClear();
 
 		mockProviderLifecycle.initialize.mockResolvedValue({
@@ -105,8 +105,8 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 
 	it('should register failed replacement without cancelling scheduled retry when connection fails', async () => {
 		const existingProvider = new DummyProvider();
-		mockProviderRegistry.add('my-vault', existingProvider);
-		mockProviderRegistry.add.mockClear();
+		mockProviderRegistry.set('my-vault', existingProvider);
+		mockProviderRegistry.set.mockClear();
 		mockRetryManager.cancelRetry.mockClear();
 
 		const replacementProvider = new DummyProvider();
@@ -123,14 +123,14 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 
 		expect(mockRetryManager.runWithRetry).toHaveBeenCalledWith('my-vault', expect.any(Function));
 		expect(mockRetryManager.cancelRetry).not.toHaveBeenCalledWith('my-vault');
-		expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault', replacementProvider);
+		expect(mockProviderRegistry.set).toHaveBeenCalledWith('my-vault', replacementProvider);
 		expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
 		expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
 	});
 
 	it('should cancel retry and remove provider', async () => {
 		const existingProvider = new DummyProvider();
-		mockProviderRegistry.add('my-vault', existingProvider);
+		mockProviderRegistry.set('my-vault', existingProvider);
 
 		await manager.removeProviderConnection('my-vault');
 
@@ -141,7 +141,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 
 	it('should disconnect provider without removing it', async () => {
 		const existingProvider = new DummyProvider();
-		mockProviderRegistry.add('my-vault', existingProvider);
+		mockProviderRegistry.set('my-vault', existingProvider);
 
 		await manager.disconnectProvider('my-vault');
 

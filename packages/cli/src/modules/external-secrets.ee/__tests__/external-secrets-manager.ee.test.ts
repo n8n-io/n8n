@@ -74,7 +74,7 @@ describe('ExternalSecretsManager', () => {
 		mockProviderRegistry.get.mockImplementation((name) => providersMap.get(name));
 		mockProviderRegistry.has.mockImplementation((name) => providersMap.has(name));
 		mockProviderRegistry.getAll.mockImplementation(() => new Map(providersMap));
-		mockProviderRegistry.add.mockImplementation((name, provider) => {
+		mockProviderRegistry.set.mockImplementation((name, provider) => {
 			providersMap.set(name, provider);
 		});
 		mockProviderRegistry.remove.mockImplementation((name) => {
@@ -317,7 +317,7 @@ describe('ExternalSecretsManager', () => {
 			await newProvider.init({ connected: true, connectedAt: null, settings: {} });
 			await newProvider.connect();
 			mockProviderConnectionManager.upsertProviderConnection.mockImplementation(async () => {
-				mockProviderRegistry.add('my-vault', newProvider);
+				mockProviderRegistry.set('my-vault', newProvider);
 			});
 
 			await manager.syncProviderConnection('my-vault');
@@ -1106,7 +1106,7 @@ describe('ExternalSecretsManager', () => {
 				await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
 				await existingProvider.connect();
 				existingProvider.secrets = secrets;
-				providerRegistry.add(providerKey, existingProvider);
+				providerRegistry.set(providerKey, existingProvider);
 			};
 
 			it('should keep serving existing secrets while provider connection reload is in progress', async () => {
