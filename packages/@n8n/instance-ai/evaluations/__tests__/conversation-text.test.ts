@@ -1,6 +1,7 @@
 import type { ConversationTurn, TranscriptTurn } from '../types';
 import {
 	conversationUserTurnsAsText,
+	perTurnToolCallCounts,
 	transcriptAsText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
@@ -133,5 +134,30 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('(rejected)');
 		expect(text).toContain('prompt: Here is the plan, approve?');
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
+	});
+});
+
+describe('perTurnToolCallCounts', () => {
+	it('counts each tool per turn and omits turns with no tool calls', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'go', steps: [{ kind: 'agent-text', text: 'ok' }] },
+			{
+				steps: [
+					{ kind: 'tool-call', toolName: 'build-workflow' },
+					{ kind: 'tool-call', toolName: 'build-workflow' },
+					{ kind: 'tool-call', toolName: 'add-nodes' },
+				],
+			},
+			{ steps: [{ kind: 'tool-call', toolName: 'build-workflow' }] },
+		];
+		expect(perTurnToolCallCounts(transcript)).toBe(
+			'Turn 2: build-workflow×2, add-nodes×1\nTurn 3: build-workflow×1',
+		);
+	});
+
+	it('returns a sentinel when no turn called a tool', () => {
+		expect(perTurnToolCallCounts([{ steps: [{ kind: 'agent-text', text: 'hi' }] }])).toBe(
+			'(no tool calls in any turn)',
+		);
 	});
 });

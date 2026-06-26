@@ -1,4 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
@@ -10,6 +11,7 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
+import { McpClientsManager } from './McpClientsManager';
 import { buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
 import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
 import { buildMcpToolName } from '../McpClientTool/utils';
@@ -398,6 +400,159 @@ describe('runtime', () => {
 
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow('network');
 			expect(closeSpy).toHaveBeenCalled();
+		});
+
+		// A tool result flagged `isError` must throw rather than be returned as node
+		// output. Only a thrown error reaches the execution engine's node-failure
+		// handling, which is what routes the error back to the calling agent.
+		it('throws with the tool error text when the tool result is flagged isError (v1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'MCP error -32602: bad arguments' }],
+			});
+
+			const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'search') } }], {
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.3, name: 'MCP', type: 'mcp' })),
+			});
+
+			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow(
+				'MCP error -32602: bad arguments',
+			);
+		});
+
+		// Throwing on isError only applies to typeVersion >= 1.3; older nodes
+		// pass the flagged result through as normal output.
+		it('returns the flagged result without throwing for nodes before v1.3', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'some error' }],
+			});
+			jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'search') } }], {
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.2, name: 'MCP', type: 'mcp' })),
+			});
+
+			const result = await executeMcpTool(ctx, () => baseConfig);
+
+			expect(result[0][0].json).toEqual({
+				response: [{ type: 'text', text: 'some error' }],
+			});
+		});
+	});
+
+	describe('executeMcpTool session cache', () => {
+		let manager: McpClientsManager;
+
+		function createCachedCtx(executionId: string, overrides: Record<string, unknown> = {}) {
+			return mock<IExecuteFunctions>({
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.4, name: 'MCP', type: 'mcp' })),
+				logger: { debug: jest.fn(), error: jest.fn(), info: jest.fn(), warn: jest.fn() },
+				getInputData: jest.fn(() => [{ json: { tool: buildMcpToolName('MCP', 'search') } }]),
+				getExecutionId: jest.fn(() => executionId),
+				getExecutionCancelSignal: jest.fn(() => undefined),
+				onExecutionCancellation: jest.fn(),
+				...overrides,
+			} as Partial<IExecuteFunctions>);
+		}
+
+		beforeEach(() => {
+			manager = new McpClientsManager({
+				cacheTtl: 300_000,
+				cacheMaxSize: 500,
+			} as never);
+			vi.mocked(Container.get).mockReturnValue(manager as never);
+		});
+
+		afterEach(() => {
+			manager.shutdown();
+		});
+
+		it('reuses one client across execute calls within the same execution', async () => {
+			const connect = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedCtx('exec-1');
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+
+			expect(connect).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.callTool).toHaveBeenCalledTimes(2);
+			expect(close).not.toHaveBeenCalled();
+			expect(manager.size).toBe(1);
+		});
+
+		it('opens a fresh client per call when the cache is disabled', async () => {
+			const connect = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedCtx('exec-1');
+			await executeMcpTool(ctx, () => baseConfig);
+			await executeMcpTool(ctx, () => baseConfig);
+
+			expect(connect).toHaveBeenCalledTimes(2);
+			expect(close).toHaveBeenCalledTimes(2);
+		});
+
+		it('bypasses the cache when there is no execution id', async () => {
+			const connect = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedCtx('');
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+
+			expect(connect).toHaveBeenCalledTimes(2);
+			expect(close).toHaveBeenCalledTimes(2);
+			expect(manager.size).toBe(0);
+		});
+
+		it('does not share the cache across different executions', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await executeMcpTool(createCachedCtx('exec-1'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+			await executeMcpTool(createCachedCtx('exec-2'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+
+			expect(Client.prototype.connect).toHaveBeenCalledTimes(2);
+			expect(manager.size).toBe(2);
+		});
+
+		it('closes and evicts the cached client on execution cancellation', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			const close = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			let cancel: () => void = () => {};
+			const ctx = createCachedCtx('exec-1', {
+				onExecutionCancellation: jest.fn((handler: () => void) => {
+					cancel = handler;
+				}),
+			});
+
+			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+			expect(manager.size).toBe(1);
+
+			cancel();
+			expect(close).toHaveBeenCalledTimes(1);
+			expect(manager.size).toBe(0);
 		});
 	});
 
