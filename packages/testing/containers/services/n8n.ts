@@ -58,6 +58,7 @@ const BASE_ENV: Record<string, string> = {
 	N8N_RUNNERS_MODE: 'external',
 	N8N_RUNNERS_AUTH_TOKEN: 'test',
 	N8N_RUNNERS_BROKER_LISTEN_ADDRESS: '0.0.0.0',
+	N8N_EGRESS_PROTECTION_MODE: 'off',
 	// Expose V8 garbage collector for memory profiling in performance tests
 	NODE_OPTIONS: '--expose-gc',
 };

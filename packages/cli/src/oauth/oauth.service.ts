@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -124,7 +124,6 @@ export class OauthService {
 		private readonly cacheService: CacheService,
 		outboundHttp: OutboundHttp,
 		ssrfProtectionService: SsrfProtectionService,
-		ssrfProtectionConfig: SsrfProtectionConfig,
 	) {
 		// Unlike most OutboundHttp callsites, here we opt into SSRF protection (when the environment enables it) because the attack risk is higher:
 		// these URLs can be user-, instance- or remote-server-supplied (discovery / dynamic client registration),
@@ -132,7 +131,7 @@ export class OauthService {
 		// Self-hosted users with an internal OAuth/MCP server are accommodated via the SSRF allowlist config, not by disabling the guard.
 		// In the future, enabling SSRF "per feature" could be refined through configuration.
 		this.http = outboundHttp.requests({
-			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
+			ssrf: ssrfProtectionService.isActive() ? ssrfProtectionService : 'disabled',
 			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 	}

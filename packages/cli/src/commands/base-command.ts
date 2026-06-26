@@ -28,6 +28,8 @@ import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { EgressCalibrationService } from '@/egress/egress-calibration.service';
+import { EgressPolicyService } from '@/egress/egress-policy.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -202,6 +204,13 @@ export abstract class BaseCommand<F = never> {
 			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
 			observability: Container.get(ExpressionObservabilityProvider),
 		});
+
+		// Compose the effective egress protection policy (env baseline ⊕ DB override)
+		// and push it into the in-memory engine, then start aggregating block events
+		// for the admin calibration view. Runs after migrations so the settings and
+		// aggregation tables exist.
+		await Container.get(EgressPolicyService).init();
+		Container.get(EgressCalibrationService).start();
 	}
 
 	protected async stopProcess() {

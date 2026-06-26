@@ -47,6 +47,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [dynamic_credential_entry](dynamic_credential_entry.md) | 6 |  | table |
 | [dynamic_credential_resolver](dynamic_credential_resolver.md) | 6 |  | table |
 | [dynamic_credential_user_entry](dynamic_credential_user_entry.md) | 6 |  | table |
+| [egress_blocked_destination](egress_blocked_destination.md) | 6 |  | table |
 | [evaluation_collection](evaluation_collection.md) | 9 |  | table |
 | [evaluation_config](evaluation_config.md) | 12 |  | table |
 | [event_destinations](event_destinations.md) | 4 |  | table |
@@ -671,6 +672,14 @@ erDiagram
   varchar_16_ resolverId PK
   datetime_3_ updatedAt
   varchar userId PK
+}
+"egress_blocked_destination" {
+  bigint count
+  varchar_16_ decision PK
+  varchar_64_ feature PK
+  varchar_253_ hostname PK
+  datetime_3_ lastSeen
+  varchar_45_ resolvedIp PK
 }
 "evaluation_collection" {
   datetime_3_ createdAt

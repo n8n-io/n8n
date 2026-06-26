@@ -24,7 +24,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import { AgentsConfig } from '@n8n/config';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -136,7 +136,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
-		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
@@ -233,11 +232,7 @@ export class AgentRuntimeReconstructionService {
 		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
 		// Transport for MCP calls
-		const aiMcpFetch = createAiMcpFetch(
-			this.outboundHttp,
-			this.ssrfConfig,
-			this.ssrfProtectionService,
-		);
+		const aiMcpFetch = createAiMcpFetch(this.outboundHttp, this.ssrfProtectionService);
 
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {

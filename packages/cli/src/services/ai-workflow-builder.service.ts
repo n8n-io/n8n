@@ -3,7 +3,7 @@ import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
@@ -51,7 +51,6 @@ export class WorkflowBuilderService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly sessionRepository: WorkflowBuilderSessionRepository,
-		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 	) {
@@ -153,8 +152,8 @@ export class WorkflowBuilderService {
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
-		// web_fetch SSRF protection is gated on the global configuration.
-		const webFetchSsrfGuard = this.ssrfConfig.enabled
+		// web_fetch SSRF protection is gated on the runtime effective mode.
+		const webFetchSsrfGuard = this.ssrfProtectionService.isActive()
 			? this.ssrfProtectionService
 			: createPassthroughSsrfGuard();
 

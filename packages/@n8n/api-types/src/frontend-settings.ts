@@ -246,6 +246,12 @@ export interface FrontendSettings {
 	security: {
 		blockFileAccessToN8nFiles: boolean;
 	};
+	egressProtection: {
+		/** Effective egress protection mode: off (disabled), log (observe), enforce (blocking). */
+		mode: 'off' | 'log' | 'enforce';
+		/** Whether the policy can be edited at runtime by an admin (false e.g. on Cloud). */
+		editable: boolean;
+	};
 	chatTrigger?: {
 		disablePublicChat: boolean;
 	};

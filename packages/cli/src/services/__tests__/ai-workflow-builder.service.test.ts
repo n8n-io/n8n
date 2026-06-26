@@ -1,7 +1,7 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -49,7 +49,6 @@ describe('WorkflowBuilderService', () => {
 	let mockInstanceSettings: InstanceSettings;
 	let mockDynamicNodeParametersService: DynamicNodeParametersService;
 	let mockSessionRepository: WorkflowBuilderSessionRepository;
-	let mockSsrfProtectionConfig: SsrfProtectionConfig;
 	let mockSsrfProtectionService: SsrfProtectionService;
 	let mockOutboundHttp: OutboundHttp;
 	let mockUser: IUser;
@@ -95,11 +94,10 @@ describe('WorkflowBuilderService', () => {
 		mockInstanceSettings = mock<InstanceSettings>();
 		mockDynamicNodeParametersService = mock<DynamicNodeParametersService>();
 		mockSessionRepository = mock<WorkflowBuilderSessionRepository>();
-		mockSsrfProtectionConfig = mock<SsrfProtectionConfig>();
+		mockSsrfProtectionService = mock<SsrfProtectionService>();
 		// Deterministic default: SSRF protection disabled (passthrough guard). Individual
 		// gating tests override this.
-		mockSsrfProtectionConfig.enabled = false;
-		mockSsrfProtectionService = mock<SsrfProtectionService>();
+		jest.mocked(mockSsrfProtectionService.isActive).mockReturnValue(false);
 		mockOutboundHttp = mock<OutboundHttp>();
 		const mockTransport = mock<HttpTransport>();
 		mockTransport.asCustomFetch.mockReturnValue(jest.fn() as never);
@@ -129,7 +127,6 @@ describe('WorkflowBuilderService', () => {
 			mockInstanceSettings,
 			mockDynamicNodeParametersService,
 			mockSessionRepository,
-			mockSsrfProtectionConfig,
 			mockSsrfProtectionService,
 			mockOutboundHttp,
 		);
@@ -864,7 +861,6 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock<InstanceSettings>({ instanceId: 'test' }),
 			mock(),
 			mock(),
-			mock<SsrfProtectionConfig>(),
 			mock<SsrfProtectionService>(),
 			outboundHttp,
 		);

@@ -239,6 +239,20 @@ export {
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
 
+export {
+	UpdateEgressPolicyDto,
+	egressProtectionModeSchema,
+	egressDecisionSchema,
+} from './egress-protection/egress-protection.dto';
+export type {
+	EgressProtectionModeDto,
+	EgressDecision,
+	EgressPolicyListResponse,
+	EgressPolicyStateResponse,
+	EgressBlockedDestinationResponse,
+	EgressCalibrationResponse,
+} from './egress-protection/egress-protection.dto';
+
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
 

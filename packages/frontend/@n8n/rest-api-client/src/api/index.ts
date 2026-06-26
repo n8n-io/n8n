@@ -4,6 +4,7 @@ export * from './cloudPlans';
 export * from './communityNodes';
 export * from './credentialResolvers';
 export * from './ctas';
+export * from './egress-protection';
 export * from './eventbus.ee';
 export * from './instance-registry';
 export * from './instance-version-history';

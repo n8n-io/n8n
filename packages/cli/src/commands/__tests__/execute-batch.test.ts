@@ -24,6 +24,11 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { ExecuteBatch } from '../execute-batch';
+import { EgressPolicyService } from '@/egress/egress-policy.service';
+import { EgressCalibrationService } from '@/egress/egress-calibration.service';
+
+mockInstance(EgressPolicyService);
+mockInstance(EgressCalibrationService);
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 const workflowRepository = mockInstance(WorkflowRepository);

@@ -1,6 +1,6 @@
 import type { SsrfProtectionService } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
+import { PrometheusMetricsConfig } from '@n8n/config';
 import promClient from 'prom-client';
 
 import { PrometheusSsrfMetricsService } from '../ssrf-metrics.service';
@@ -13,13 +13,11 @@ describe('PrometheusSsrfMetricsService', () => {
 		includeSsrfMetrics: true,
 	});
 
-	const ssrfConfig = mockInstance(SsrfProtectionConfig, {
-		enabled: true,
-	});
-
 	const ssrfEvents = { on: jest.fn() };
+	const ssrfIsActive = jest.fn().mockReturnValue(true);
 	const ssrfProtectionService = {
 		events: ssrfEvents,
+		isActive: ssrfIsActive,
 	} as unknown as SsrfProtectionService;
 
 	let service: PrometheusSsrfMetricsService;
@@ -28,8 +26,8 @@ describe('PrometheusSsrfMetricsService', () => {
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_', includeSsrfMetrics: true });
-		Object.assign(ssrfConfig, { enabled: true });
-		service = new PrometheusSsrfMetricsService(ssrfProtectionService, config, ssrfConfig);
+		ssrfIsActive.mockReturnValue(true);
+		service = new PrometheusSsrfMetricsService(ssrfProtectionService, config);
 		mockCounterInc = jest.fn();
 		mockHistogramObserve = jest.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
@@ -48,19 +46,19 @@ describe('PrometheusSsrfMetricsService', () => {
 	describe('enabled', () => {
 		it('should be true when includeSsrfMetrics and SSRF protection are both enabled', () => {
 			config.includeSsrfMetrics = true;
-			ssrfConfig.enabled = true;
+			ssrfIsActive.mockReturnValue(true);
 			expect(service.enabled).toBe(true);
 		});
 
 		it('should be false when includeSsrfMetrics is false', () => {
 			config.includeSsrfMetrics = false;
-			ssrfConfig.enabled = true;
+			ssrfIsActive.mockReturnValue(true);
 			expect(service.enabled).toBe(false);
 		});
 
 		it('should be false when SSRF protection is disabled', () => {
 			config.includeSsrfMetrics = true;
-			ssrfConfig.enabled = false;
+			ssrfIsActive.mockReturnValue(false);
 			expect(service.enabled).toBe(false);
 		});
 	});

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
 import { mock } from 'jest-mock-extended';
@@ -68,15 +67,14 @@ const makeIntegration = (
 	const requestMock = httpClient.request as jest.Mock;
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.requests.mockReturnValue(httpClient);
-	const ssrfConfig = { enabled: opts.ssrfEnabled ?? false } as SsrfProtectionConfig;
 	const ssrfProtectionService = mock<SsrfProtectionService>();
+	ssrfProtectionService.isActive.mockReturnValue(opts.ssrfEnabled ?? false);
 	const integration = new TelegramIntegration(
 		mock<Logger>(),
 		urlService,
 		agentRepository,
 		instanceSettings,
 		outboundHttp,
-		ssrfConfig,
 		ssrfProtectionService,
 	);
 	return {

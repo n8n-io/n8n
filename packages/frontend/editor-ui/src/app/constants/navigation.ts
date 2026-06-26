@@ -37,6 +37,7 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	OPENTELEMETRY_SETTINGS = 'SettingsOpenTelemetryView',
+	EGRESS_PROTECTION_SETTINGS = 'EgressProtectionSettings',
 	SSO_SETTINGS = 'SSoSettings',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',

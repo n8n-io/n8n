@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -90,7 +90,6 @@ describe('OauthService', () => {
 	const cacheService = mockInstance(CacheService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const ssrfProtectionService = mockInstance(SsrfProtectionService);
-	const ssrfProtectionConfig = mockInstance(SsrfProtectionConfig);
 
 	let service: OauthService;
 
@@ -100,6 +99,7 @@ describe('OauthService', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
+		ssrfProtectionService.isActive.mockReturnValue(true);
 		// clearAllMocks() does not reset implementations set via mockResolvedValue, so
 		// pin the per-flow cache to "empty" by default. Tests that exercise the cache
 		// path opt in explicitly; the rest fall back to the legacy URL-encoded state.
@@ -147,7 +147,6 @@ describe('OauthService', () => {
 			cacheService,
 			outboundHttp,
 			ssrfProtectionService,
-			ssrfProtectionConfig,
 		);
 	});
 

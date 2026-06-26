@@ -534,7 +534,9 @@ describe('GlobalConfig', () => {
 			},
 		},
 		ssrfProtection: {
-			enabled: false,
+			mode: 'log',
+			editable: true,
+			enabled: true,
 			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 			allowedIpRanges: [],
 			allowedHostnames: [],

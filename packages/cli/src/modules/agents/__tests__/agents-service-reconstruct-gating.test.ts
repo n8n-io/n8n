@@ -20,7 +20,7 @@ import type {
 	OutboundHttp,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
-import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -118,8 +118,7 @@ function makeReconstructionService(
 		} as unknown as AgentsConfig,
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
+		mock<SsrfProtectionService>({ isActive: () => true }),
 	);
 }
 

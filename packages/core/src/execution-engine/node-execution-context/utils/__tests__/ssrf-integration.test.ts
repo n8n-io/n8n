@@ -20,6 +20,10 @@ import { getRequestHelperFunctions } from '../request-helper-functions';
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
+	// These end-to-end tests verify the engine actually blocks/allows, which only
+	// happens in `enforce` mode. The config default is `log` (observe-only, blocks
+	// nothing), so opt into enforcement here; individual tests can still override.
+	config.mode = 'enforce';
 	Object.assign(config, overrides);
 	return config;
 }

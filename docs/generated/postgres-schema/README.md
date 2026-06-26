@@ -47,6 +47,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.dynamic_credential_entry](public.dynamic_credential_entry.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) | 6 |  | BASE TABLE |
+| [public.egress_blocked_destination](public.egress_blocked_destination.md) | 6 |  | BASE TABLE |
 | [public.evaluation_collection](public.evaluation_collection.md) | 9 |  | BASE TABLE |
 | [public.evaluation_config](public.evaluation_config.md) | 12 |  | BASE TABLE |
 | [public.event_destinations](public.event_destinations.md) | 4 |  | BASE TABLE |
@@ -683,6 +684,14 @@ erDiagram
   varchar_16_ resolverId FK
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.egress_blocked_destination" {
+  bigint count
+  varchar_16_ decision
+  varchar_64_ feature
+  varchar_253_ hostname
+  timestamp_3__with_time_zone lastSeen
+  varchar_45_ resolvedIp
 }
 "public.evaluation_collection" {
   timestamp_3__with_time_zone createdAt

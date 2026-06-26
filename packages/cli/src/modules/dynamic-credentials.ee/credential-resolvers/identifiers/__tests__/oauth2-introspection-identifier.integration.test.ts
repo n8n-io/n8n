@@ -55,13 +55,7 @@ describe('OAuth2TokenIntrospectionIdentifier (integration)', () => {
 		const cache = mock<CacheService>();
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
-		const httpClient = new OAuth2MetadataHttpClient(
-			mockLogger(),
-			cache,
-			outboundHttp,
-			ssrfService,
-			config,
-		);
+		const httpClient = new OAuth2MetadataHttpClient(mockLogger(), cache, outboundHttp, ssrfService);
 		return new OAuth2TokenIntrospectionIdentifier(mockLogger(), cache, httpClient);
 	};
 
@@ -102,7 +96,7 @@ describe('OAuth2TokenIntrospectionIdentifier (integration)', () => {
 	test('resolves the subject over a real socket through the SSRF-guarded client', async () => {
 		// Loopback is blocked by default; an internal target is reached via the
 		// allowlist (mirroring a self-hosted IdP), not by disabling the guard.
-		const identifier = buildIdentifier({ enabled: true, allowedIpRanges: ['127.0.0.0/8'] });
+		const identifier = buildIdentifier({ mode: 'enforce', allowedIpRanges: ['127.0.0.0/8'] });
 
 		const subject = await identifier.resolve(mockContext, validOptions());
 
@@ -123,7 +117,7 @@ describe('OAuth2TokenIntrospectionIdentifier (integration)', () => {
 
 	test('surfaces a blocked metadataUri as the normal "Could not reach metadata URL" path', async () => {
 		// SSRF enabled, loopback NOT allowlisted → the metadata fetch is blocked.
-		const identifier = buildIdentifier({ enabled: true });
+		const identifier = buildIdentifier({ mode: 'enforce' });
 
 		const error = await identifier.validateOptions(validOptions()).catch((e) => e);
 

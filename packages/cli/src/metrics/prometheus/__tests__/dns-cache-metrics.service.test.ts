@@ -1,6 +1,6 @@
-import type { InMemoryDnsCache } from '@n8n/backend-network';
+import type { InMemoryDnsCache, SsrfProtectionService } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
+import { PrometheusMetricsConfig } from '@n8n/config';
 import promClient from 'prom-client';
 
 import { PrometheusDnsCacheMetricsService } from '../dns-cache-metrics.service';
@@ -13,9 +13,10 @@ describe('PrometheusDnsCacheMetricsService', () => {
 		includeDnsCacheMetrics: true,
 	});
 
-	const ssrfConfig = mockInstance(SsrfProtectionConfig, {
-		enabled: true,
-	});
+	const ssrfIsActive = jest.fn().mockReturnValue(true);
+	const ssrfProtectionService = {
+		isActive: ssrfIsActive,
+	} as unknown as SsrfProtectionService;
 
 	const dnsEvents = { on: jest.fn() };
 	let cacheSizeValue = 0;
@@ -32,9 +33,9 @@ describe('PrometheusDnsCacheMetricsService', () => {
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_', includeDnsCacheMetrics: true });
-		Object.assign(ssrfConfig, { enabled: true });
+		ssrfIsActive.mockReturnValue(true);
 		cacheSizeValue = 0;
-		service = new PrometheusDnsCacheMetricsService(dnsCache, config, ssrfConfig);
+		service = new PrometheusDnsCacheMetricsService(dnsCache, config, ssrfProtectionService);
 		mockCounterInc = jest.fn();
 		mockGaugeSet = jest.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
@@ -53,19 +54,19 @@ describe('PrometheusDnsCacheMetricsService', () => {
 	describe('enabled', () => {
 		it('should be true when includeDnsCacheMetrics and SSRF protection are both enabled', () => {
 			config.includeDnsCacheMetrics = true;
-			ssrfConfig.enabled = true;
+			ssrfIsActive.mockReturnValue(true);
 			expect(service.enabled).toBe(true);
 		});
 
 		it('should be false when includeDnsCacheMetrics is false', () => {
 			config.includeDnsCacheMetrics = false;
-			ssrfConfig.enabled = true;
+			ssrfIsActive.mockReturnValue(true);
 			expect(service.enabled).toBe(false);
 		});
 
 		it('should be false when SSRF protection is disabled', () => {
 			config.includeDnsCacheMetrics = true;
-			ssrfConfig.enabled = false;
+			ssrfIsActive.mockReturnValue(false);
 			expect(service.enabled).toBe(false);
 		});
 	});

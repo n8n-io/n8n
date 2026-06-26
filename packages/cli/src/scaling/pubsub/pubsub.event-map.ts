@@ -284,6 +284,16 @@ export type PubSubCommandMap = {
 	 */
 	'redaction-floor-changed': never;
 
+	/**
+	 * Published by the instance that handled an egress-policy update after the new
+	 * override is persisted; every instance (main, worker, webhook) reloads the
+	 * policy from the DB, recompiles it, and atomically swaps its in-memory copy.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the originating instance already
+	 * applies the new policy synchronously when it writes it.
+	 */
+	'egress-policy-changed': never;
+
 	// #endregion
 };
 

@@ -51,6 +51,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			egressProtection: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -179,6 +180,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			egressProtection: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

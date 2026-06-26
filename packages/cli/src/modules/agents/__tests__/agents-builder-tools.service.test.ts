@@ -10,7 +10,6 @@ import type {
 	OutboundHttp,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -102,8 +101,7 @@ function makeService() {
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
+		mock<SsrfProtectionService>({ isActive: () => true }),
 	);
 
 	return {

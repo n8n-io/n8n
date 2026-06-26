@@ -191,6 +191,17 @@ export function useSettingsItems() {
 		});
 
 		menuItems.push({
+			id: 'settings-egress-protection',
+			icon: 'shield',
+			label: i18n.baseText('settings.egressProtection'),
+			position: 'top',
+			available:
+				hasPermission(['rbac'], { rbac: { scope: 'egressProtection:manage' } }) &&
+				canUserAccessRouteByName(VIEWS.EGRESS_PROTECTION_SETTINGS),
+			route: { to: { name: VIEWS.EGRESS_PROTECTION_SETTINGS } },
+		});
+
+		menuItems.push({
 			id: 'settings-community-nodes',
 			icon: 'box',
 			label: i18n.baseText('settings.communityNodes'),
