@@ -1,26 +1,30 @@
-import type { IrreversibleMigration, MigrationContext } from '../migration-types';
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
 
 /**
- * Persists an explicit `chat.access.enabled = 'true'` row for instances that
- * already have Chat Hub usage, so the new default (disabled when no row exists)
- * does not turn the feature off for active users on upgrade.
+ * Turns Chat Hub off by default, keeping it on only for installs that have
+ * already used it.
  *
- * Logic:
- *   - row already present  -> leave untouched (deliberate admin choice, true or false)
- *   - any chat_hub_sessions -> write 'true' to preserve the active install
- *   - otherwise             -> leave absent, so the default-off behaviour applies
+ * Stores an explicit `chat.access.enabled` value for every install, so the
+ * disabled-by-default state is recorded concretely and is auditable rather
+ * than inferred from a missing row.
  *
- * The value is stored as the bare string `'true'` to match how the settings
- * service reads (`row.value === 'true'`) and writes it.
+ *   - row already present   -> leave untouched (deliberate admin choice, true or false)
+ *   - any chat_hub_sessions -> store 'true' (Chat Hub is in use)
+ *   - otherwise             -> store 'false' (disabled)
  *
- * Irreversible: removing the row on `down()` could delete a value an admin set
- * by hand, so there is no faithful reverse.
+ * The settings service treats a missing row as disabled too, so absence is a
+ * safe fallback; this migration just removes the ambiguity for existing
+ * installs.
  *
- * Compatible with SQLite and PostgreSQL.
+ * The value is stored as the bare string `'true'`/`'false'` to match how the
+ * settings service reads (`row.value === 'true'`) and writes it.
+ *
+ * `down()` is intentionally a no-op: the stored value is left in place
+ * and it is picked up again if the instance is upgraded later.
  */
-export class SetChatHubEnabledFromUsage1784000000038 implements IrreversibleMigration {
+export class SetChatHubEnabledFromUsage1784000000038 implements ReversibleMigration {
 	async up({ escape, runQuery, logger, migrationName }: MigrationContext) {
 		const settingsTable = escape.tableName('settings');
 		const sessionsTable = escape.tableName('chat_hub_sessions');
@@ -43,17 +47,16 @@ export class SetChatHubEnabledFromUsage1784000000038 implements IrreversibleMigr
 		const usage: Array<{ used: number }> = await runQuery(
 			`SELECT 1 AS used FROM ${sessionsTable} LIMIT 1;`,
 		);
-
-		if (usage.length === 0) {
-			logger.info(`[${migrationName}] No Chat Hub usage found, leaving it disabled by default`);
-			return;
-		}
+		const enabled = usage.length > 0;
 
 		await runQuery(
 			`INSERT INTO ${settingsTable} (${keyCol}, ${valueCol}, ${loadCol}) VALUES (:key, :value, true);`,
-			{ key: CHAT_ENABLED_KEY, value: 'true' },
+			{ key: CHAT_ENABLED_KEY, value: enabled ? 'true' : 'false' },
 		);
 
-		logger.info(`[${migrationName}] Existing Chat Hub usage found, keeping the feature enabled`);
+		logger.info(`[${migrationName}] Persisted Chat Hub enabled=${enabled} based on existing usage`);
 	}
+
+	// No-op: the stored value is harmless and is reused on a later upgrade.
+	async down() {}
 }

@@ -103,11 +103,11 @@ describe('SetChatHubEnabledFromUsage Migration', () => {
 		expect(await getStoredValue()).toBe('true');
 	});
 
-	it('leaves the setting absent when there is no usage', async () => {
+	it("writes an explicit 'false' when there is no usage", async () => {
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
 
-		expect(await getStoredValue()).toBeUndefined();
+		expect(await getStoredValue()).toBe('false');
 	});
 
 	it("does not overwrite an existing 'false' setting even when usage exists", async () => {
