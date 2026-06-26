@@ -5325,6 +5325,9 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
       autocannon:
         specifier: ^8.0.0
         version: 8.0.0
@@ -5376,6 +5379,12 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      ws:
+        specifier: '>=8.20.1'
+        version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      yjs:
+        specifier: ^13.6.20
+        version: 13.6.29
       zod:
         specifier: 3.25.67
         version: 3.25.67

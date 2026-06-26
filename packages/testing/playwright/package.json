@@ -66,6 +66,7 @@
     "@types/autocannon": "^7.12.7",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
+    "@types/ws": "^8.18.1",
     "autocannon": "^8.0.0",
     "eslint-plugin-playwright": "catalog:e2e",
     "flatted": "catalog:",
@@ -82,6 +83,8 @@
     "otplib": "^12.0.1",
     "ts-morph": "catalog:",
     "tsx": "catalog:",
+    "ws": "8.20.1",
+    "yjs": "^13.6.20",
     "zod": "catalog:",
     "vitest": "catalog:"
   },
