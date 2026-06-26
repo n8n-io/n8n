@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { findOpenInteractive } from '../composables/agentChatMessages';
+import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
