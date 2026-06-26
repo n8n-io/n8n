@@ -52,6 +52,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello agent';
 				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -94,6 +95,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello agent';
 				if (param === 'advanced') return { sessionId: '  thread-42  ' };
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -121,6 +123,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello agent';
 				if (param === 'advanced') return { sessionId: '   ' };
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -148,6 +151,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return '   ';
 				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -164,6 +168,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: `agent-${(itemIndex ?? 0) + 1}` };
 				if (param === 'message') return `Message ${(itemIndex ?? 0) + 1}`;
 				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -220,6 +225,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello';
 				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -251,6 +257,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'list', value: 'agent-1' };
 				if (param === 'message') return 'Structured query';
 				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -282,6 +289,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'useStructuredOutput') return true;
 				if (param === 'outputSchema') return schemaString;
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -363,6 +371,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'useStructuredOutput') return true;
 				if (param === 'outputSchema') return schemaObject;
+				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
