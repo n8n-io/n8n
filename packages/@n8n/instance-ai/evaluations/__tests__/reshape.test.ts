@@ -40,7 +40,7 @@ const turn: TranscriptTurn = { steps: [{ kind: 'agent-text', text: 'building...'
 const verdict: BuildExpectationResult = { expectation: 'asked first', pass: true, reason: 'did' };
 
 describe('reshapeLangSmithRuns', () => {
-	it('reattaches transcript + build-expectation verdicts to the test case by threadId', () => {
+	it('reattaches transcript by threadId and build-expectation verdicts by iteration:fileSlug', () => {
 		const cases = [withFile('airtable', [scenario('s1'), scenario('s2')])];
 		const rows = [
 			row(
@@ -58,7 +58,7 @@ describe('reshapeLangSmithRuns', () => {
 			cases,
 			1,
 			new Map([['tid-1', [turn]]]),
-			new Map([['tid-1', [verdict]]]),
+			new Map([['0:airtable', [verdict]]]),
 			'http://localhost:5678',
 		);
 
@@ -72,24 +72,24 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults.map((r) => r.success)).toEqual([true, true]);
 	});
 
-	it('leaves transcript + verdicts undefined when the run output carries no threadId (regression: dropped threadId)', () => {
-		// Models the exec-error return that omitted threadId: build succeeded, but
-		// with no threadId on the output the join can't find the maps' entries.
+	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {
+		// Prebuilt/MCP builds have no threadId. Transcript stays threadId-gated (so it
+		// remains undefined here), but outcome-expectation verdicts must still attach via
+		// the build-cache key, so LangSmith prebuilt runs match the direct-loop path.
 		const cases = [withFile('airtable', [scenario('s1')])];
 		const rows = [
 			row(
 				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: 0 },
-				{ buildSuccess: true, passed: false, score: 0, reasoning: 'exec error' },
+				{ buildSuccess: true, passed: true, score: 1, reasoning: 'ok' },
 			),
 		];
 
-		// Maps DO hold data under a real threadId — proving we don't misattach it.
 		const result = reshapeLangSmithRuns(
 			rows,
 			cases,
 			1,
 			new Map([['tid-real', [turn]]]),
-			new Map([['tid-real', [verdict]]]),
+			new Map([['0:airtable', [verdict]]]),
 			undefined,
 		);
 
@@ -97,7 +97,7 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.workflowBuildSuccess).toBe(true);
 		expect(tc.threadId).toBeUndefined();
 		expect(tc.transcript).toBeUndefined();
-		expect(tc.buildExpectationResults).toBeUndefined();
+		expect(tc.buildExpectationResults).toEqual([verdict]);
 	});
 
 	it('stubs a build_failure for a scenario with no matching run', () => {

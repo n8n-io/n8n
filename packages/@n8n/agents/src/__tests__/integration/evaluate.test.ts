@@ -9,6 +9,16 @@ import { Agent, Tool, Eval, evaluate, evals } from '../../index';
  * Create a fruit-bowl agent with a tool that generates random fruit coordinates.
  */
 function createFruitBowlAgent(provider: 'anthropic' | 'openai'): Agent {
+	// Simple seedable PRNG (mulberry32)
+	function mulberry32(seed: number) {
+		return function () {
+			let t = (seed += 0x6d2b79f5);
+			t = Math.imul(t ^ (t >>> 15), t | 1);
+			t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+		};
+	}
+
 	const createFruitBowlTool = new Tool('create_fruit_bowl')
 		.description(
 			'Generate a fruit bowl with random 3D coordinates for fruits. Always use this tool when asked to create a fruit bowl.',
@@ -20,11 +30,12 @@ function createFruitBowlAgent(provider: 'anthropic' | 'openai'): Agent {
 		)
 		.handler(async (input) => {
 			const numApples = input.num_apples ?? 3;
+			const rand = mulberry32(42);
 			const fruits = Array.from({ length: numApples }, () => ({
 				type: 'apple',
-				x: Math.round((Math.random() * 20 - 10) * 10) / 10,
-				y: Math.round((Math.random() * 20 - 10) * 10) / 10,
-				z: Math.round((Math.random() * 20 - 10) * 10) / 10,
+				x: Math.round((rand() * 20 - 10) * 10) / 10,
+				y: Math.round((rand() * 20 - 10) * 10) / 10,
+				z: Math.round((rand() * 20 - 10) * 10) / 10,
 			}));
 			return { fruits };
 		});

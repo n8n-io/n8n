@@ -102,20 +102,6 @@ export const createAgent = async (
 	);
 };
 
-export const updateAgent = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	data: { code?: string; name?: string },
-): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}`,
-		data,
-	);
-};
-
 export const deleteAgent = async (
 	context: IRestApiContext,
 	projectId: string,

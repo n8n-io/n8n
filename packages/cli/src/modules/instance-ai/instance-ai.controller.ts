@@ -15,6 +15,7 @@ import {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalRestoreThreadRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -38,8 +39,10 @@ import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -96,10 +99,12 @@ export class InstanceAiController {
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
+		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
+		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -182,6 +187,7 @@ export class InstanceAiController {
 			threadId,
 			payload.message,
 			payload.attachments,
+			payload.context,
 			payload.timeZone,
 			payload.pushRef,
 		);
@@ -700,6 +706,64 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	/**
+	 * Seed an existing (owned) thread with a previously exported conversation:
+	 * recreate the workflow artifacts the history references (node credentials
+	 * stripped — see `EvalThreadRestoreService`), then write the native message
+	 * log verbatim. The thread then continues as if the conversation really
+	 * happened, so an eval can drive the next turn live.
+	 */
+	@Post('/eval/restore-thread')
+	@GlobalScope('instanceAi:eval')
+	async restoreEvalThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalRestoreThreadRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
+		if (!projectId) {
+			throw new BadRequestError('Thread is not bound to a project');
+		}
+
+		const workflows = payload.workflows ?? [];
+		// Data tables first: the workflows reference them, and their ids are
+		// rewritten to the recreated tables' ids during workflow restore.
+		const idMap = await this.evalThreadRestore.restoreDataTables(
+			payload.dataTables ?? [],
+			projectId,
+		);
+		const dataTableIds = [...idMap.values()];
+		// Roll back everything we created if a later step fails, so a partial
+		// restore doesn't leak workflows/tables into the shared eval project.
+		let restored: number;
+		let createdWorkflowIds: string[] = [];
+		try {
+			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
+				workflows,
+				projectId,
+				idMap,
+			);
+			({ restored } = await this.memoryService.restoreThreadMessages(
+				req.user.id,
+				payload.threadId,
+				payload.messages,
+			));
+		} catch (error) {
+			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
+			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
+			throw error;
+		}
+		return {
+			ok: true,
+			threadId: payload.threadId,
+			restored,
+			workflowIds: workflows.map((workflow) => workflow.id),
+			dataTableIds,
+		};
+	}
+
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
@@ -889,7 +953,37 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	@Post('/browser/create-link')
+	@GlobalScope('instanceAi:gateway')
+	async createBrowserLink(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		return await this.browserSessionService.createLink(req.user.id);
+	}
+
+	@Get('/browser/status')
+	@GlobalScope('instanceAi:gateway')
+	browserStatus(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		return this.browserSessionService.getStatus(req.user.id);
+	}
+
+	@Post('/browser/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async browserDisconnectSession(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		await this.browserSessionService.disconnect(req.user.id);
+		return { ok: true };
+	}
+
 	// ── Helpers ──────────────────────────────────────────────────────────────
+
+	private assertBrowserChannelEnabled(): void {
+		if (this.settingsService.getAdminSettings().localGatewayDisabled) {
+			throw new ForbiddenError('Local gateway is disabled');
+		}
+	}
 
 	/**
 	 * Verify thread ownership. Throws ForbiddenError if another user owns it.

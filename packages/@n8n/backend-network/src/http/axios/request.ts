@@ -84,7 +84,7 @@ export function convertN8nRequestToAxios(
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest, 'content-type');
 		if (existingContentTypeHeaderKey === undefined) {
-			axiosRequest.headers = axiosRequest.headers || {};
+			axiosRequest.headers = axiosRequest.headers ?? {};
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
 			if (isFormDataInstance(body)) {
@@ -156,7 +156,7 @@ function isEmpty(value: unknown): boolean {
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
 export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOptions) {
-	const method = requestOptions.method || 'GET';
+	const method = requestOptions.method ?? 'GET';
 	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
 		delete requestOptions.body;
 	}
