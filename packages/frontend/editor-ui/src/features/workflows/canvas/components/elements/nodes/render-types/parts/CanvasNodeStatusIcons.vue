@@ -47,7 +47,9 @@ const hasPinnedData = computed(
 		!!renderData.value.pinnedDataByNodeName[name.value],
 );
 const hasExecutionPinData = computed(
-	() => !!renderData.value.executionPinDataByNodeName[name.value],
+	() =>
+		renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.executionPinDataByNodeName[name.value],
 );
 const hasVisiblePinData = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const route = useRoute();

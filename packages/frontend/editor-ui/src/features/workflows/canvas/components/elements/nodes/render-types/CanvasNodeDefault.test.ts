@@ -343,6 +343,28 @@ describe('CanvasNodeDefault', () => {
 			expect(nodeElement).not.toHaveClass('pinned');
 			expect(nodeElement).toHaveClass('success');
 		});
+
+		it('should ignore execution pin data outside execution preview mode', () => {
+			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).not.toHaveClass('pinned');
+			expect(nodeElement).toHaveClass('success');
+		});
 	});
 
 	describe('configurable', () => {

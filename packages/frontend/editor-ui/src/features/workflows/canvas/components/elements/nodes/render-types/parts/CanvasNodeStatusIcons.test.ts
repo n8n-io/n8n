@@ -113,6 +113,27 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
 	});
 
+	it('should not render the pinned icon for execution pin data outside execution preview mode', () => {
+		executionPinDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
+		const { queryByTestId, getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							execution: { status: 'success', running: false },
+							runData: { outputMap: {}, iterations: 1, visible: true },
+						},
+					}),
+				},
+			},
+		});
+
+		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
+		expect(getByTestId('canvas-node-status-success')).toBeInTheDocument();
+	});
+
 	it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
 		pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
 		isExecutionDataDisplayed = true;

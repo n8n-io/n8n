@@ -60,7 +60,9 @@ const hasPinnedData = computed(
 		!!renderData.value.pinnedDataByNodeName[name.value],
 );
 const hasExecutionPinData = computed(
-	() => !!renderData.value.executionPinDataByNodeName[name.value],
+	() =>
+		renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.executionPinDataByNodeName[name.value],
 );
 const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
