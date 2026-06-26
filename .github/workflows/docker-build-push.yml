@@ -244,9 +244,11 @@ jobs:
 
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+          DOCKER_BASE="$DOCKER_USERNAME"
 
           # Create manifests for each image type
           declare -A images=(
