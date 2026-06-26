@@ -62,7 +62,7 @@ describe('WorkflowStatisticsService', () => {
 		 */
 		const flushStats = async (service: WorkflowStatisticsService) => {
 			if (!isPostgres) return;
-			const { firstOccurrences } = await workflowStatisticsRepository.rollup(
+			const { firstOccurrences } = await workflowStatisticsRepository.rollupIncrements(
 				dataSource.manager,
 				10_000,
 			);
@@ -564,7 +564,7 @@ describe('WorkflowStatisticsService', () => {
 		});
 
 		// The fold is Postgres-only (raw CTE). These exercise its mechanics directly via the repository.
-		describe('foldIncrements (Postgres append path)', () => {
+		describe('rollupIncrements (Postgres append path)', () => {
 			const deltaTable = () =>
 				`${Container.get(GlobalConfig).database.tablePrefix}workflow_statistics_delta`;
 
@@ -591,10 +591,8 @@ describe('WorkflowStatisticsService', () => {
 				await append(false);
 				await append(false);
 
-				const { increments, firstOccurrences } = await workflowStatisticsRepository.rollup(
-					dataSource.manager,
-					10_000,
-				);
+				const { increments, firstOccurrences } =
+					await workflowStatisticsRepository.rollupIncrements(dataSource.manager, 10_000);
 
 				expect(increments).toBe(5);
 				expect(firstOccurrences).toHaveLength(1); // the new production_success counter row
@@ -619,7 +617,7 @@ describe('WorkflowStatisticsService', () => {
 				const counts: number[] = [];
 				let folded: number;
 				do {
-					({ increments: folded } = await workflowStatisticsRepository.rollup(
+					({ increments: folded } = await workflowStatisticsRepository.rollupIncrements(
 						dataSource.manager,
 						2,
 					));
@@ -637,12 +635,18 @@ describe('WorkflowStatisticsService', () => {
 
 				// First occurrence: creates the counter row.
 				await append(true);
-				const first = await workflowStatisticsRepository.rollup(dataSource.manager, 10_000);
+				const first = await workflowStatisticsRepository.rollupIncrements(
+					dataSource.manager,
+					10_000,
+				);
 				expect(first.firstOccurrences).toHaveLength(1);
 
 				// Subsequent fold updates the existing row -> no first-occurrence -> no milestone.
 				await append(true);
-				const second = await workflowStatisticsRepository.rollup(dataSource.manager, 10_000);
+				const second = await workflowStatisticsRepository.rollupIncrements(
+					dataSource.manager,
+					10_000,
+				);
 				expect(second.increments).toBe(1);
 				expect(second.firstOccurrences).toHaveLength(0);
 

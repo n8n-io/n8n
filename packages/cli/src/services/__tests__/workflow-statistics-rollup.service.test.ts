@@ -9,7 +9,7 @@ import { OperationalError } from 'n8n-workflow';
 import type { WorkflowStatisticsService } from '../workflow-statistics.service';
 import { WorkflowStatisticsRollupService } from '../workflow-statistics-rollup.service';
 
-type FoldResult = Awaited<ReturnType<WorkflowStatisticsRepository['foldIncrements']>>;
+type RollupResult = Awaited<ReturnType<WorkflowStatisticsRepository['rollupIncrements']>>;
 
 describe('WorkflowStatisticsRollupService', () => {
 	const dbConnection = mock<DbConnection>({ connectionState: { migrated: true } });
@@ -42,9 +42,9 @@ describe('WorkflowStatisticsRollupService', () => {
 		return { service, dbLockService, repository, statisticsService };
 	};
 
-	/** Invoke the private fold-and-emit tick directly. */
-	const rollup = (service: WorkflowStatisticsRollupService) =>
-		(service as unknown as { rollup: () => Promise<number> }).rollup();
+	/** Invoke the private rollup tick directly. */
+	const rollup = async (service: WorkflowStatisticsRollupService) =>
+		await (service as unknown as { rollup: () => Promise<number> }).rollup();
 
 	describe('isEnabled', () => {
 		it('is true for a leader main on Postgres', () => {
@@ -101,7 +101,7 @@ describe('WorkflowStatisticsRollupService', () => {
 
 		it('fires a milestone for each first-occurrence row and returns the increment count', async () => {
 			const { service, dbLockService, statisticsService } = makeService({});
-			const result: FoldResult = {
+			const result: RollupResult = {
 				increments: 1234,
 				firstOccurrences: [
 					{
@@ -134,7 +134,7 @@ describe('WorkflowStatisticsRollupService', () => {
 
 		it('isolates milestone failures: one throwing row does not stop the others or fail the tick', async () => {
 			const { service, dbLockService, statisticsService } = makeService({});
-			const result: FoldResult = {
+			const result: RollupResult = {
 				increments: 2,
 				firstOccurrences: [
 					{

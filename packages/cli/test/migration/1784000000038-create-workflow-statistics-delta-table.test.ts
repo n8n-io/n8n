@@ -13,6 +13,7 @@ const MIGRATION_NAME = 'CreateWorkflowStatisticsDeltaTable1784000000038';
 
 // The delta table + fold are Postgres-only; the migration is not registered for SQLite.
 const runOnPostgres = (process.env.DB_TYPE ?? 'sqlite') === 'postgresdb';
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Postgres-only migration, skipped on SQLite
 const describePg = runOnPostgres ? describe : describe.skip;
 
 describePg('CreateWorkflowStatisticsDeltaTable migration (Postgres)', () => {
