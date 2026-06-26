@@ -1,5 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
+import type {
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationTriggerStatusRepository,
+} from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
@@ -15,6 +19,7 @@ describe('PublicationStatusReporter', () => {
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const push = mock<Push>();
+	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
 
 	const reporter = new PublicationStatusReporter(
 		logger,
@@ -22,6 +27,7 @@ describe('PublicationStatusReporter', () => {
 		outboxRepository,
 		activationErrorsService,
 		push,
+		triggerStatusRepository,
 	);
 
 	function makeRecord(
@@ -46,11 +52,35 @@ describe('PublicationStatusReporter', () => {
 		outboxRepository.markPartialSuccess.mockResolvedValue(undefined);
 		activationErrorsService.deregister.mockResolvedValue(undefined);
 		activationErrorsService.register.mockResolvedValue(undefined);
+		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
+		triggerStatusRepository.deleteForWorkflow.mockResolvedValue(undefined);
 	});
 
-	test('completed marks the record completed and clears activation errors', async () => {
-		await reporter.report(makeRecord(), { type: 'completed', triggerStatuses: [] });
+	test('completed writes trigger rows, marks the record completed, and clears activation errors', async () => {
+		await reporter.report(makeRecord(), {
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', errorMessage: null },
+				{ nodeId: 'b', nodeName: 'Schedule', status: 'activated', errorMessage: null },
+			],
+		});
 
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
+			{
+				nodeId: 'a',
+				nodeName: 'Webhook',
+				versionId: 'v-2',
+				status: 'activated',
+				errorMessage: null,
+			},
+			{
+				nodeId: 'b',
+				nodeName: 'Schedule',
+				versionId: 'v-2',
+				status: 'activated',
+				errorMessage: null,
+			},
+		]);
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
@@ -60,9 +90,10 @@ describe('PublicationStatusReporter', () => {
 		});
 	});
 
-	test('unpublished marks the record completed, clears errors, and pushes deactivation', async () => {
+	test('unpublished deletes trigger rows, marks the record completed, clears errors, and pushes deactivation', async () => {
 		await reporter.report(makeRecord(), { type: 'unpublished' });
 
+		expect(triggerStatusRepository.deleteForWorkflow).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
@@ -101,6 +132,7 @@ describe('PublicationStatusReporter', () => {
 
 		await reporter.report(makeRecord(), { type: 'failed', error });
 
+		expect(triggerStatusRepository.replaceForWorkflow).not.toHaveBeenCalled();
 		expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed');
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
@@ -110,7 +142,38 @@ describe('PublicationStatusReporter', () => {
 		});
 	});
 
-	test('partial marks partial_success, registers per-node detail, and pushes the failures', async () => {
+	test('failed with triggerStatuses writes rows before marking failed', async () => {
+		const error = new Error('partial registration failed');
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', errorMessage: null },
+				{ nodeId: 'b', nodeName: 'Schedule', status: 'failed', errorMessage: 'cron unavailable' },
+			],
+		});
+
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
+			{
+				nodeId: 'a',
+				nodeName: 'Webhook',
+				versionId: 'v-2',
+				status: 'activated',
+				errorMessage: null,
+			},
+			{
+				nodeId: 'b',
+				nodeName: 'Schedule',
+				versionId: 'v-2',
+				status: 'failed',
+				errorMessage: 'cron unavailable',
+			},
+		]);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'partial registration failed');
+	});
+
+	test('partial marks partial_success, writes all trigger rows, and pushes the failures without registering activation errors', async () => {
 		await reporter.report(makeRecord(), {
 			type: 'partial',
 			triggerStatuses: [
@@ -124,7 +187,31 @@ describe('PublicationStatusReporter', () => {
 			'Some triggers failed to activate: "Schedule": cron unavailable; "Kafka": broker down';
 
 		expect(outboxRepository.markPartialSuccess).toHaveBeenCalledWith(1, expectedMessage);
-		expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', expectedMessage);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
+			{
+				nodeId: 'a',
+				nodeName: 'Webhook',
+				versionId: 'v-2',
+				status: 'activated',
+				errorMessage: null,
+			},
+			{
+				nodeId: 'b',
+				nodeName: 'Schedule',
+				versionId: 'v-2',
+				status: 'failed',
+				errorMessage: 'cron unavailable',
+			},
+			{
+				nodeId: 'c',
+				nodeName: 'Kafka',
+				versionId: 'v-2',
+				status: 'failed',
+				errorMessage: 'broker down',
+			},
+		]);
+		// CAT-3432: partial path must NOT register activation errors
+		expect(activationErrorsService.register).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({
 			type: 'workflowPartiallyActivated',
 			data: {
