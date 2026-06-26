@@ -74,6 +74,12 @@ describe('VaultProvider', () => {
 	// Use preferGet so list requests are plain GETs with `?list=true`.
 	mockInstance(ExternalSecretsConfig, { preferGet: true });
 
+	beforeEach(() => {
+		jest.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		mockInstance(ExternalSecretsConfig, { preferGet: true });
+	});
+
 	function createProvider(routes: Route[], settings = vaultSettings) {
 		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(routes, jest.fn);
 		const provider = new VaultProvider(logger, outboundHttp);
@@ -193,6 +199,40 @@ describe('VaultProvider', () => {
 			expect(provider.state).toBe('connected');
 		});
 
+		it('logs username/password authentication failures while preserving error state', async () => {
+			const settings = {
+				...vaultSettings,
+				settings: {
+					...vaultSettings.settings,
+					authMethod: 'usernameAndPassword',
+					username: 'alice',
+					password: 's3cret',
+				},
+			};
+			const { provider } = await initProvider(
+				[
+					{
+						method: 'POST',
+						pathname: '/v1/auth/userpass/login/alice',
+						status: 401,
+						body: { errors: [] },
+					},
+				],
+				settings,
+			);
+
+			await provider.connect();
+
+			expect(provider.state).toBe('error');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Vault provider username/password authentication failed',
+				expect.objectContaining({
+					authMethod: 'usernameAndPassword',
+					error: expect.any(Error),
+				}),
+			);
+		});
+
 		it('uses the LIST verb when preferGet is disabled', async () => {
 			mockInstance(ExternalSecretsConfig, { preferGet: false });
 
@@ -281,6 +321,28 @@ describe('VaultProvider', () => {
 
 			expect(provider.hasSecret('forbidden')).toBe(false);
 			expect(provider.getSecretNames()).toHaveLength(0);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Vault provider failed to list KV secrets',
+				expect.objectContaining({
+					mountPath: 'forbidden/',
+					kvVersion: '2',
+					path: '',
+					error: expect.any(Error),
+				}),
+			);
+		});
+
+		it('should log and rethrow full update failures', async () => {
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: '/v1/sys/mounts', status: 500, body: { errors: [] } },
+			]);
+
+			await expect(provider.update()).rejects.toThrow('Request failed with status 500');
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to update Vault provider secrets',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
 		});
 	});
 
@@ -429,6 +491,46 @@ describe('VaultProvider', () => {
 			expect(message).toBe(
 				'Connection refused. Please check the host and port of the server are correct.',
 			);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Vault provider test failed',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('logs connect failures with the connection test failure message', async () => {
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: '/v1/auth/token/lookup-self', status: 404, body: {} },
+			]);
+
+			await provider.connect();
+
+			expect(provider.state).toBe('error');
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to connect Vault provider',
+				expect.objectContaining({
+					authMethod: 'token',
+					error: expect.objectContaining({
+						message: 'Could not find auth path. Try adding /v1/ to the end of your base URL.',
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('connection logging', () => {
+		it('logs token refresh failures before attempting to reconnect', async () => {
+			const { provider } = await initProvider([
+				{ method: 'POST', pathname: '/v1/auth/token/renew-self', networkError: 'ECONNREFUSED' },
+			]);
+			const connect = jest.spyOn(provider, 'connect').mockResolvedValue();
+
+			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to renew Vault token. Attempting to reconnect.',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+			expect(connect).toHaveBeenCalled();
 		});
 	});
 

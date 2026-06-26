@@ -5,12 +5,13 @@ import {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import type {
-	IDataObject,
-	IHttpRequestMethods,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	INodeProperties,
+import {
+	ensureError,
+	type IDataObject,
+	type IHttpRequestMethods,
+	type IHttpRequestOptions,
+	type IN8nHttpFullResponse,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
@@ -291,33 +292,41 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	protected async doConnect(): Promise<void> {
-		// Authenticate based on method
-		if (this.settings.authMethod === 'token') {
-			this.#currentToken = this.settings.token;
-		} else if (this.settings.authMethod === 'usernameAndPassword') {
-			this.#currentToken = await this.authUsernameAndPassword(
-				this.settings.username,
-				this.settings.password,
-			);
-			if (!this.#currentToken) {
-				throw new Error('Failed to authenticate with Username and Password');
+		try {
+			// Authenticate based on method
+			if (this.settings.authMethod === 'token') {
+				this.#currentToken = this.settings.token;
+			} else if (this.settings.authMethod === 'usernameAndPassword') {
+				this.#currentToken = await this.authUsernameAndPassword(
+					this.settings.username,
+					this.settings.password,
+				);
+				if (!this.#currentToken) {
+					throw new Error('Failed to authenticate with Username and Password');
+				}
+			} else if (this.settings.authMethod === 'appRole') {
+				this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
+				if (!this.#currentToken) {
+					throw new Error('Failed to authenticate with AppRole');
+				}
 			}
-		} else if (this.settings.authMethod === 'appRole') {
-			this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
-			if (!this.#currentToken) {
-				throw new Error('Failed to authenticate with AppRole');
+
+			// Test connection
+			const [testSuccess, failureMessage] = await this.test();
+			if (!testSuccess) {
+				throw new Error(failureMessage ?? 'Connection test failed');
 			}
-		}
 
-		// Test connection
-		const [testSuccess] = await this.test();
-		if (!testSuccess) {
-			throw new Error('Connection test failed');
+			// Setup token refresh
+			[this.#tokenInfo] = await this.getTokenInfo();
+			this.setupTokenRefresh();
+		} catch (error) {
+			this.logger.error('Failed to connect Vault provider', {
+				authMethod: this.settings.authMethod,
+				error: ensureError(error),
+			});
+			throw error;
 		}
-
-		// Setup token refresh
-		[this.#tokenInfo] = await this.getTokenInfo();
-		this.setupTokenRefresh();
 	}
 
 	async disconnect(): Promise<void> {
@@ -367,8 +376,10 @@ export class VaultProvider extends SecretsProvider {
 			}
 
 			this.setupTokenRefresh();
-		} catch {
-			this.logger.error('Failed to renew Vault token. Attempting to reconnect.');
+		} catch (error) {
+			this.logger.error('Failed to renew Vault token. Attempting to reconnect.', {
+				error: ensureError(error),
+			});
 			void this.connect();
 		}
 	};
@@ -386,7 +397,11 @@ export class VaultProvider extends SecretsProvider {
 			});
 
 			return body.auth.client_token;
-		} catch {
+		} catch (error) {
+			this.logger.warn('Vault provider username/password authentication failed', {
+				authMethod: 'usernameAndPassword',
+				error: ensureError(error),
+			});
 			return null;
 		}
 	}
@@ -401,7 +416,11 @@ export class VaultProvider extends SecretsProvider {
 			});
 
 			return body.auth.client_token;
-		} catch {
+		} catch (error) {
+			this.logger.warn('Vault provider AppRole authentication failed', {
+				authMethod: 'appRole',
+				error: ensureError(error),
+			});
 			return null;
 		}
 	}
@@ -438,7 +457,13 @@ export class VaultProvider extends SecretsProvider {
 			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
 			const method = (shouldPreferGet ? 'GET' : 'LIST') as IHttpRequestMethods;
 			listBody = await this.#http.request<VaultResponse<VaultSecretList>>({ url, method });
-		} catch {
+		} catch (error) {
+			this.logger.warn('Vault provider failed to list KV secrets', {
+				mountPath,
+				kvVersion,
+				path,
+				error: ensureError(error),
+			});
 			return null;
 		}
 		const data = Object.fromEntries(
@@ -463,7 +488,13 @@ export class VaultProvider extends SecretsProvider {
 								key,
 								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
-						} catch {
+						} catch (error) {
+							this.logger.warn('Vault provider failed to read KV secret', {
+								mountPath,
+								kvVersion,
+								path: path + key,
+								error: ensureError(error),
+							});
 							return null;
 						}
 					}),
@@ -542,23 +573,28 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async update(): Promise<void> {
-		const kvMounts = await this.discoverKvMounts();
+		try {
+			const kvMounts = await this.discoverKvMounts();
 
-		const secrets = Object.fromEntries(
-			(
-				await Promise.all(
-					kvMounts.map(async ({ path, version }): Promise<[string, IDataObject] | null> => {
-						const value = await this.getKVSecrets(path, version, '');
-						if (value === null) {
-							return null;
-						}
-						return [path.substring(0, path.length - 1), value[1]];
-					}),
-				)
-			).filter((entry): entry is [string, IDataObject] => entry !== null),
-		);
-		this.cachedSecrets = secrets;
-		this.logger.debug('Vault provider secrets updated');
+			const secrets = Object.fromEntries(
+				(
+					await Promise.all(
+						kvMounts.map(async ({ path, version }): Promise<[string, IDataObject] | null> => {
+							const value = await this.getKVSecrets(path, version, '');
+							if (value === null) {
+								return null;
+							}
+							return [path.substring(0, path.length - 1), value[1]];
+						}),
+					)
+				).filter((entry): entry is [string, IDataObject] => entry !== null),
+			);
+			this.cachedSecrets = secrets;
+			this.logger.debug('Vault provider secrets updated');
+		} catch (error) {
+			this.logger.error('Failed to update Vault provider secrets', { error: ensureError(error) });
+			throw error;
+		}
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
@@ -574,6 +610,8 @@ export class VaultProvider extends SecretsProvider {
 
 			return await this.testSecretAccess();
 		} catch (error) {
+			this.logger.error('Vault provider test failed', { error: ensureError(error) });
+
 			if (isConnectionRefusedError(error)) {
 				return [
 					false,
