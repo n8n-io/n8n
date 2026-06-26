@@ -219,8 +219,8 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(params.ephemeral).toBe(false);
-		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
-		expect(params.snapshot).toBeUndefined();
+		expect(params.image).toBeUndefined();
+		expect(params.snapshot).toEqual(expect.stringMatching(/^n8n\/agent-skills:/));
 		expect(options).toEqual({ timeout: 300 });
 	});
 
@@ -232,6 +232,25 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		const [params] = createMock.mock.calls[0];
 		expect(params.ephemeral).toBe(true);
+	});
+
+	it('exposes shared sandbox acquisition without changing scoped Daytona create params', async () => {
+		const service = makeService();
+
+		const sandbox = await service.acquireSandboxForAgent(projectId, agentId, userId);
+
+		expect(sandbox.id).toBe('sandbox-id');
+		const [params] = createMock.mock.calls[0];
+		expect(params.name).toBe(buildExpectedSandboxName());
+		expect(params.labels).toEqual({
+			'n8n-agents-knowledgebase': 'true',
+			'n8n-project-id': projectId,
+			'n8n-agent-id': agentId,
+			'n8n-user-id': userId,
+			'n8n-agents-sandbox-scope-id': userId,
+		});
+		expect(params.volumes).toEqual([expectedVolumeMount]);
+		expect(params.snapshot).toEqual(expect.stringMatching(/^n8n\/agent-skills:/));
 	});
 
 	it('does not include daytonaVolumeId in deterministic sandbox name', async () => {
@@ -338,13 +357,13 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 	});
 
-	it('ignores whitespace-only sandboxSnapshot', async () => {
+	it('uses the default agent skills snapshot when sandboxSnapshot is whitespace-only', async () => {
 		const service = makeService({ sandboxSnapshot: '   ' });
 
 		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
 
 		const [params] = createMock.mock.calls[0];
-		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
-		expect(params.snapshot).toBeUndefined();
+		expect(params.image).toBeUndefined();
+		expect(params.snapshot).toEqual(expect.stringMatching(/^n8n\/agent-skills:/));
 	});
 });

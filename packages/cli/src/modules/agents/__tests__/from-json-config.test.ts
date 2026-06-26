@@ -245,6 +245,21 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
 	});
 
+	it('does not wire runtime skills when no skills are configured', async () => {
+		const agent = await buildFromJson(
+			makeConfig(),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(false);
+	});
+
 	it('wires attached skills through the shared runtime skill loader without inlining bodies', async () => {
 		const config = makeConfig({
 			skills: [{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }],

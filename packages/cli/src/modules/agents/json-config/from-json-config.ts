@@ -462,7 +462,7 @@ async function resolveEpisodicMemoryJsonConfig(
 	} = await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const embeddingProviderOptions =
-		config.credential === MANAGED_CREDENTIAL_TOKEN
+		config.credential === MANAGED_CREDENTIAL_TOKEN || config.credential === 'managed'
 			? await resolveManagedEmbeddingProviderOptions?.()
 			: await resolveEmbeddingProviderOptionsFromCredential(
 					config.credential,

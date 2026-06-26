@@ -49,3 +49,21 @@ export {
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,
 } from './tools';
+export {
+	buildRuntimeSkillWorkspaceBundle,
+	createLazyWorkspaceRuntimeSkillSource,
+	materializeRuntimeSkillsIntoWorkspace,
+	N8N_SKILLS_DIR_ENV,
+	N8N_SKILL_DIR_ENV,
+	N8N_WORKSPACE_DIR_ENV,
+	RUNTIME_SKILL_MANIFEST_FILE,
+	RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
+	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
+	SANDBOX_RUNTIME_SKILLS_DIR,
+} from './materialize-runtime-skills';
+export type {
+	MaterializedRuntimeSkill,
+	MaterializedRuntimeSkills,
+	RuntimeSkillWorkspaceBundle,
+	RuntimeSkillWorkspaceManifest,
+} from './materialize-runtime-skills';

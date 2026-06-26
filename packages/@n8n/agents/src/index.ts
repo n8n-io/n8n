@@ -132,7 +132,9 @@ export { Agent } from './sdk/agent';
 export type { AgentSnapshot } from './sdk/agent';
 export {
 	appendSkillCatalogToInstructions,
+	buildRuntimeSkillWorkspaceBundle,
 	createListSkillsTool,
+	createLazyWorkspaceRuntimeSkillSource,
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
@@ -141,19 +143,31 @@ export {
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
 	loadRuntimeSkillSourceFromDirectory,
+	materializeRuntimeSkillsIntoWorkspace,
+	N8N_SKILLS_DIR_ENV,
+	N8N_SKILL_DIR_ENV,
+	N8N_WORKSPACE_DIR_ENV,
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
+	RUNTIME_SKILL_MANIFEST_FILE,
+	RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
+	SANDBOX_RUNTIME_SKILLS_DIR,
 	LIST_SKILLS_TOOL_NAME,
 	SKILL_LOAD_TOOL_NAME,
 	validateRuntimeSkill,
 } from './skills';
 export type {
+	MaterializedRuntimeSkill,
+	MaterializedRuntimeSkills,
 	RenderSkillCatalogOptions,
+	RuntimeSkillWorkspaceBundle,
+	RuntimeSkillWorkspaceManifest,
 	RuntimeSkill,
 	RuntimeSkillContent,
 	RuntimeSkillDependenciesContract,
@@ -248,6 +262,10 @@ export type {
 	InlineSubAgentProviderToolsResolver,
 	SubAgentTaskDifficulty,
 } from './runtime/tools/delegate-sub-agent-tool';
+export {
+	AIQ_RESEARCH_TOOL_NAME,
+	createAiqResearchTool,
+} from './runtime/tools/aiq-research-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';

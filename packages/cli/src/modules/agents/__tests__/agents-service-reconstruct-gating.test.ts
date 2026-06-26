@@ -34,6 +34,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import type { AgentSandboxWorkspaceService } from '../agent-sandbox-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
@@ -48,6 +49,46 @@ import type { AgentFileRepository } from '../repositories/agent-file.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+
+jest.mock('@n8n/agents', () => {
+	const actual = jest.requireActual<typeof import('@n8n/agents')>('@n8n/agents');
+	return {
+		...actual,
+		createLazyWorkspaceRuntimeSkillSource: ({ source }: { source: agents.RuntimeSkillSource }) =>
+			source,
+	};
+});
+
+jest.mock('../skills/builtin-runtime-skills', () => ({
+	createBuiltinRuntimeSkillSource: (): agents.RuntimeSkillSource => ({
+		registry: {
+			schemaVersion: 1,
+			skillsHash: 'builtin-skills-hash',
+			skills: [
+				{
+					id: 'aiq-research',
+					name: 'aiq-research',
+					description: 'Use AI-Q',
+					hash: 'aiq-hash',
+					linkedFiles: {
+						references: [],
+						templates: [],
+						scripts: [],
+						assets: [],
+						examples: [],
+						other: [],
+					},
+				},
+			],
+		},
+		loadSkill: async () => ({
+			id: 'aiq-research',
+			name: 'aiq-research',
+			description: 'Use AI-Q',
+			instructions: 'Use AI-Q',
+		}),
+	}),
+}));
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -91,6 +132,7 @@ function makeReconstructionService(
 		agentRepository?: AgentRepository;
 		agentsConfig?: Partial<AgentsConfig>;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
+		agentSandboxWorkspaceService?: AgentSandboxWorkspaceService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -122,6 +164,7 @@ function makeReconstructionService(
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		overrides.agentSandboxWorkspaceService,
 	);
 }
 
@@ -238,6 +281,42 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).toContain(WRITE_TODOS_TOOL_NAME);
+	});
+
+	it('attaches sandbox-backed runtime skills when the agent sandbox is enabled', async () => {
+		const logger = mock<Logger>();
+		const agentSandboxWorkspaceService = mock<AgentSandboxWorkspaceService>();
+		agentSandboxWorkspaceService.createWorkspace.mockResolvedValue({
+			workspace: {} as agents.Workspace,
+			capabilities: {
+				node: { available: true, version: 'v22.0.0' },
+				tsx: { available: true, version: 'tsx 4.0.0' },
+				python3: { available: true, version: 'Python 3.11.0' },
+			},
+		});
+		const service = makeReconstructionService([], {
+			agentsConfig: {
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				daytonaVolumeId: 'volume-1',
+			},
+			logger,
+			agentSandboxWorkspaceService,
+		});
+		const credentialProvider = mock<CredentialProvider>();
+
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+		expect(agentSandboxWorkspaceService.createWorkspace).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			'user-1',
+		);
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(builtAgent.workspace).toHaveBeenCalled();
+		expect(builtAgent.skills).toHaveBeenCalled();
+		const source = builtAgent.skills.mock.calls.at(-1)?.[0] as agents.RuntimeSkillSource;
+		expect(source.registry.skills.map((skill) => skill.id)).toContain('aiq-research');
 	});
 
 	function getInjectedDelegatePolicy() {

@@ -1,4 +1,5 @@
 import {
+	createLazyWorkspaceRuntimeSkillSource,
 	createWriteTodosTool,
 	type Agent as RuntimeAgent,
 	BuiltTool,
@@ -6,6 +7,7 @@ import {
 	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
+import { DAYTONA_WORKSPACE_ROOT } from '@n8n/agents/sandbox';
 import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
 import {
 	N8N_CHAT_ACTION_TOOL_NAME,
@@ -67,12 +69,21 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
+import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from './agent-knowledge-storage';
+import { AgentSandboxWorkspaceService } from './agent-sandbox-workspace.service';
+import { createBuiltinRuntimeSkillSource } from './skills/builtin-runtime-skills';
+import {
+	createDbRuntimeSkillSource,
+	mergeRuntimeSkillSources,
+} from './skills/db-runtime-skill-source';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
+
+const AGENT_SKILLS_SNAPSHOT_PREFIX = 'n8n/agent-skills:';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
@@ -146,6 +157,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly agentSandboxWorkspaceService?: AgentSandboxWorkspaceService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -283,6 +295,7 @@ export class AgentRuntimeReconstructionService {
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
 			integrationType,
 			credentialIntegrations,
+			skills,
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
@@ -393,6 +406,7 @@ export class AgentRuntimeReconstructionService {
 		parentAgentIdForDelegation: string;
 		integrationType?: string;
 		credentialIntegrations: AgentIntegrationConfig[];
+		skills: Record<string, AgentSkill>;
 	}): Promise<void> {
 		const {
 			agent,
@@ -406,9 +420,11 @@ export class AgentRuntimeReconstructionService {
 			parentAgentIdForDelegation,
 			integrationType,
 			credentialIntegrations,
+			skills,
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
+		await this.attachSandboxBackedSkills({ agent, agentId, projectId, userId, skills });
 
 		if (
 			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
@@ -501,6 +517,60 @@ export class AgentRuntimeReconstructionService {
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
+	}
+
+	private async attachSandboxBackedSkills(params: {
+		agent: RuntimeAgent;
+		agentId: string;
+		projectId: string;
+		userId: string;
+		skills: Record<string, AgentSkill>;
+	}): Promise<void> {
+		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) return;
+
+		const { agent, agentId, projectId, userId, skills } = params;
+		try {
+			const source = mergeRuntimeSkillSources(
+				createDbRuntimeSkillSource(skills),
+				createBuiltinRuntimeSkillSource(),
+			);
+			if (source.registry.skills.length === 0) {
+				throw new Error('No sandbox-backed runtime skills were loaded');
+			}
+
+			const sandboxWorkspaceService =
+				this.agentSandboxWorkspaceService ?? Container.get(AgentSandboxWorkspaceService);
+			const { workspace } = await sandboxWorkspaceService.createWorkspace(
+				projectId,
+				agentId,
+				userId,
+			);
+			agent.skills(
+				createLazyWorkspaceRuntimeSkillSource({
+					source,
+					workspace,
+					root: this.runtimeSkillMaterializationRoot(),
+					workspaceRoot: DAYTONA_WORKSPACE_ROOT,
+				}),
+			);
+			agent.workspace(workspace);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			this.logger.warn('Failed to attach sandbox-backed agent skills', {
+				projectId,
+				agentId,
+				error: errorMessage,
+			});
+			throw new Error(`Failed to attach sandbox-backed agent skills: ${errorMessage}`, {
+				cause: error,
+			});
+		}
+	}
+
+	private runtimeSkillMaterializationRoot(): string {
+		return this.agentsConfig.sandboxSnapshot.startsWith(AGENT_SKILLS_SNAPSHOT_PREFIX)
+			? DAYTONA_WORKSPACE_ROOT
+			: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH;
 	}
 
 	private async attachSubAgentDelegationTool(params: {

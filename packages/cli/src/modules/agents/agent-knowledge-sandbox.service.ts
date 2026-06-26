@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
+import { N8N_VERSION } from '@/constants';
 
 import {
 	buildReadKnowledgeCommand,
@@ -78,6 +79,7 @@ const DEAD_SANDBOX_STATES = new Set<SandboxState>([
 ]);
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
+const DEFAULT_SANDBOX_SNAPSHOT_NAME = `n8n/agent-skills:${N8N_VERSION}`;
 const AUTO_STOP_INTERVAL_MINUTES = 5;
 const SANDBOX_LIST_PAGE_SIZE = 100;
 
@@ -262,6 +264,16 @@ export class AgentKnowledgeSandboxService {
 	async warmSandbox(projectId: string, agentId: string, userId: string): Promise<void> {
 		this.assertKnowledgeConfiguration(projectId, agentId);
 		await this.acquireSandbox(projectId, agentId, userId);
+	}
+
+	async acquireSandboxForAgent(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		sandboxScopeId: string = userId,
+	): Promise<Sandbox> {
+		this.assertKnowledgeConfiguration(projectId, agentId);
+		return await this.acquireSandbox(projectId, agentId, userId, sandboxScopeId);
 	}
 
 	async searchKnowledge(
@@ -631,7 +643,7 @@ export class AgentKnowledgeSandboxService {
 
 	private async resolveDaytonaConnection(userId: string): Promise<AgentKnowledgeDaytonaConnection> {
 		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
-		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
+		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || DEFAULT_SANDBOX_SNAPSHOT_NAME;
 
 		if (!this.aiService.isProxyEnabled()) {
 			return {
