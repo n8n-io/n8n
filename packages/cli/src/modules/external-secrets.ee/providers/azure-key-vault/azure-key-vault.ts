@@ -134,7 +134,7 @@ export class AzureKeyVault extends SecretsProvider {
 
 			const updated: Record<string, string> = {};
 			const readErrors: Error[] = [];
-			for (const [index, promiseResult] of promises.entries()) {
+			for (const promiseResult of promises) {
 				if (promiseResult.status === 'fulfilled') {
 					const { name, value } = promiseResult.value;
 					if (value !== undefined) updated[name] = value;

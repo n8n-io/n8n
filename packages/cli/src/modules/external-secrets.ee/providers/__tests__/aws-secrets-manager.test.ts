@@ -222,7 +222,9 @@ describe('AwsSecretsManager', () => {
 		};
 		await awsSecretsManager.init(context);
 
-		listSecretsSpy.mockRejectedValue(new Error('Failed to list secrets'));
+		listSecretsSpy.mockImplementation(() => {
+			throw new Error('Failed to list secrets');
+		});
 
 		await expect(awsSecretsManager.update()).rejects.toThrow('Failed to list secrets');
 
