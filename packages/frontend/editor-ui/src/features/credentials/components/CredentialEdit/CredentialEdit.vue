@@ -451,16 +451,6 @@ const showHeaderSaveButton = computed(
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
-// Whether the credential is already shared (with other projects or globally) as
-// persisted. A shared credential can't be turned into a dynamic credential.
-const isCurrentlyShared = computed(() => {
-	const cred = currentCredential.value;
-	if (!cred) return false;
-	const sharedWithProjects = 'sharedWithProjects' in cred ? (cred.sharedWithProjects ?? []) : [];
-	const isGlobal = 'isGlobal' in cred ? Boolean(cred.isGlobal) : false;
-	return isGlobal || sharedWithProjects.length > 0;
-});
-
 const homeProject = computed(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
@@ -1709,7 +1699,6 @@ const { width } = useElementSize(credNameRef);
 						:selected-credential="selectedCredential"
 						:is-private-credentials-enabled="isPrivateCredentialsEnabled"
 						:is-resolvable="isResolvable"
-						:is-shared="isCurrentlyShared"
 						:connected-by-me="connectedByMe"
 						:is-new-credential="isNewCredential"
 						:managed-oauth-available="managedOAuthAvailable"
@@ -1736,7 +1725,6 @@ const { width } = useElementSize(credNameRef);
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
 						:is-shared-globally="isSharedGlobally"
-						:is-resolvable="isResolvable"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"
