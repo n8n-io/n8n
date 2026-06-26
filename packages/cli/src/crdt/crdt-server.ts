@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Application, Response } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
@@ -13,7 +13,12 @@ import { AuthService } from '@/auth/auth.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { CrdtConnection } from './crdt-room';
-import { CrdtRoomManager } from './crdt-room-manager';
+// `CrdtRoomManager` (and, transitively, `CrdtRoom` → `yjs`/`y-protocols`/`@n8n/crdt`)
+// is imported as a type only. The runtime module is loaded lazily on the first
+// connection (see `getRoomManager`) so a server with collaboration off — the
+// default — never pays the Yjs module cost at boot. See AGENTS.md "lazy-load
+// heavy modules".
+import type { CrdtRoomManager } from './crdt-room-manager';
 
 type CrdtRequest = AuthenticatedRequest<{}, {}, {}, { workflowId?: string; version?: string }> & {
 	ws?: WebSocket;
@@ -55,18 +60,34 @@ export class CrdtServer {
 		maxPayload: MAX_CRDT_MESSAGE_BYTES,
 	});
 
+	/** Lazily loaded on the first connection — never at boot. */
+	private roomManager: CrdtRoomManager | null = null;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly authService: AuthService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly roomManager: CrdtRoomManager,
 	) {
 		this.logger = this.logger.scoped('crdt');
 	}
 
 	private get enabled(): boolean {
 		return this.globalConfig.collaboration.crdt === 'server';
+	}
+
+	/**
+	 * Load the Yjs-backed room manager on demand. Importing it pulls in
+	 * `yjs`/`y-protocols`/`@n8n/crdt`, so we defer that to the first authorized
+	 * connection rather than at module load — keeping the cost off servers that
+	 * never use collaboration.
+	 */
+	private async getRoomManager(): Promise<CrdtRoomManager> {
+		if (!this.roomManager) {
+			const { CrdtRoomManager } = await import('./crdt-room-manager');
+			this.roomManager = Container.get(CrdtRoomManager);
+		}
+		return this.roomManager;
 	}
 
 	/** Registers the authenticated CRDT route. Counterpart to the upgrade handler. */
@@ -142,15 +163,22 @@ export class CrdtServer {
 			// it is authorized on. The version segment keeps distinct loaded
 			// versions (e.g. execution previews) in separate rooms.
 			const roomKey = `${workflowId}@${version ?? 'latest'}`;
-			this.attach(ws, roomKey, workflowId, req.user.id);
+			const roomManager = await this.getRoomManager();
+			this.attach(roomManager, ws, roomKey, workflowId, req.user.id);
 		} catch (error) {
 			this.logger.error('Failed to establish CRDT connection', { error });
 			ws.close(1011, 'Internal error');
 		}
 	}
 
-	private attach(ws: WebSocket, roomKey: string, workflowId: string, userId: string): void {
-		const room = this.roomManager.getOrCreate(roomKey);
+	private attach(
+		roomManager: CrdtRoomManager,
+		ws: WebSocket,
+		roomKey: string,
+		workflowId: string,
+		userId: string,
+	): void {
+		const room = roomManager.getOrCreate(roomKey);
 		const connection: CrdtConnection = {
 			send: (data) => {
 				if (ws.readyState === WebSocket.OPEN) ws.send(data, { binary: true });
@@ -169,7 +197,7 @@ export class CrdtServer {
 		});
 
 		ws.on('close', () => {
-			this.roomManager.removeConnection(roomKey, connection);
+			roomManager.removeConnection(roomKey, connection);
 			this.logger.debug('CRDT client disconnected', { roomKey, userId });
 		});
 
@@ -184,7 +212,8 @@ export class CrdtServer {
 
 	@OnShutdown()
 	shutdown(): void {
-		this.roomManager.destroyAll();
+		// `roomManager` is null if no client ever connected (nothing to tear down).
+		this.roomManager?.destroyAll();
 		this.wsServer.close();
 	}
 }
