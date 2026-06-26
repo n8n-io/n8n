@@ -4,7 +4,6 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-workflow';
 
-import { MemoryMessageContextStore } from '../telegram/replay-test-context';
 import { AgentChatBridge } from '../../../agent-chat-bridge';
 import { ChatIntegrationRegistry } from '../../../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../../../chat-integration.service';
@@ -13,6 +12,7 @@ import type { IntegrationMessageContextService } from '../../../integration-mess
 import type { IntegrationMessageContext } from '../../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../../integration-tools';
 import { SlackIntegration } from '../../../platforms/slack-integration';
+import { MemoryMessageContextStore } from '../telegram/replay-test-context';
 
 type AgentExecutorLike = ConstructorParameters<typeof AgentChatBridge>[2];
 
@@ -244,6 +244,9 @@ class TestSlackChat {
 	}
 }
 
+// TODO: Remove this fake adapter after the jest → vitest migration. It only
+// exists because the ESM-only `@chat-adapter/slack` package cannot be loaded in
+// jest's VM sandbox; vitest can load it natively, letting tests use the real adapter.
 class TestSlackAdapter {
 	readonly name = 'slack';
 

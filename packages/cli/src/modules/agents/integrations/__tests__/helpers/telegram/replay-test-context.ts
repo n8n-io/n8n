@@ -312,6 +312,9 @@ class TestChat {
 	}
 }
 
+// TODO: Remove this fake adapter after the jest → vitest migration. It only
+// exists because the ESM-only `@chat-adapter/telegram` package cannot be loaded in
+// jest's VM sandbox; vitest can load it natively, letting tests use the real adapter.
 class TestTelegramAdapter {
 	readonly name = 'telegram';
 
