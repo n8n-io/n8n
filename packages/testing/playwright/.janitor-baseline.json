@@ -313,38 +313,6 @@
 				"hash": "a58ac8ee8b5c"
 			}
 		],
-		"tests/e2e/projects/folders-basic.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 146,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(errorMessage, { exact: fals...",
-				"hash": "4c6fb24eb5b2"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 150,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(emptyErrorMessage)",
-				"hash": "c524bac65c97"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 153,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(tooLongErrorMessage)",
-				"hash": "98fd475ead3c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 156,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(dotsErrorMessage)",
-				"hash": "73fce4c260f3"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 172,
-				"message": "Chained locator call in test: n8n.notifications .getNotificationByTitleOrContent(FOLDER...",
-				"hash": "fcfd7b7736c9"
-			}
-		],
 		"tests/e2e/projects/projects-move-resources.spec.ts": [
 			{
 				"rule": "selector-purity",
