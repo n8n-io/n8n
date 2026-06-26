@@ -147,5 +147,27 @@ export function useLogsSelection(
 		{ immediate: true },
 	);
 
+	const erroredEntry = computed(() =>
+		isExecutionStopped.value
+			? findLogEntryRec((e) => isNodeLog(e) && !!e.runData?.error, tree.value)
+			: undefined,
+	);
+
+	// A failed run surfaces the error over remembered view state, once per run
+	watch(
+		() => (erroredEntry.value ? execution.value?.id : undefined),
+		(executionId) => {
+			if (!executionId || !erroredEntry.value) {
+				return;
+			}
+
+			manualLogEntrySelection.value = { type: 'initial' }; // auto-selects the errored node
+
+			for (let parent = erroredEntry.value.parent; parent !== undefined; parent = parent.parent) {
+				toggleExpand(parent, true);
+			}
+		},
+	);
+
 	return { selected, select, selectPrev, selectNext };
 }

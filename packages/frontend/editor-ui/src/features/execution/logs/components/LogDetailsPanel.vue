@@ -16,6 +16,7 @@ import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	getSubtreeTotalConsumedTokens,
+	isGroupLog,
 	isNodeLog,
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
@@ -69,6 +70,12 @@ const uiStore = useUIStore();
 const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const nodeEntry = computed(() => (isNodeLog(logEntry) ? logEntry : undefined));
+const groupEntry = computed(() => (isGroupLog(logEntry) ? logEntry : undefined));
+const displayName = computed(() =>
+	groupEntry.value
+		? groupEntry.value.group.name
+		: (latestInfo?.name ?? nodeEntry.value?.node.name ?? ''),
+);
 const type = computed(() =>
 	nodeEntry.value ? nodeTypeStore.getNodeType(nodeEntry.value.node.type) : null,
 );
@@ -116,11 +123,8 @@ function handleResizeEnd() {
 		>
 			<template #title>
 				<div :class="$style.title">
-					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-					<LogsViewNodeName
-						:name="latestInfo?.name ?? nodeEntry?.node.name ?? ''"
-						:is-deleted="latestInfo?.deleted ?? false"
-					/>
+					<NodeIcon v-if="!groupEntry" :node-type="type" :size="16" :class="$style.icon" />
+					<LogsViewNodeName :name="displayName" :is-deleted="latestInfo?.deleted ?? false" />
 					<LogsViewExecutionSummary
 						v-if="isOpen && nodeEntry?.runData !== undefined"
 						:class="$style.executionSummary"
