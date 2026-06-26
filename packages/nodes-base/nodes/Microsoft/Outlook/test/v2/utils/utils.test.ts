@@ -270,6 +270,10 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 		expect(() => validateMailbox('jane+test@contoso.com', node)).not.toThrow();
 	});
 
+	it("should accept a UPN containing an apostrophe (e.g. o'connor)", () => {
+		expect(() => validateMailbox("o'connor@contoso.com", node)).not.toThrow();
+	});
+
 	it('should accept a bare host/domain', () => {
 		expect(() => validateMailbox('contoso.onmicrosoft.com', node)).not.toThrow();
 	});
@@ -292,6 +296,12 @@ describe('Test MicrosoftOutlookV2, validateMailbox', () => {
 		expect(() => validateMailbox('a/b', node)).toThrow('The mailbox is not valid');
 		expect(() => validateMailbox('a\\b', node)).toThrow('The mailbox is not valid');
 		expect(() => validateMailbox('../evil', node)).toThrow('The mailbox is not valid');
+	});
+
+	it('should reject other URL-unsafe characters (?, #, space)', () => {
+		expect(() => validateMailbox('a?b', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('a#b', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('a b@contoso.com', node)).toThrow('The mailbox is not valid');
 	});
 
 	it('should reject a drive-style "!"-bearing id (proves the drive shape was not lifted)', () => {
