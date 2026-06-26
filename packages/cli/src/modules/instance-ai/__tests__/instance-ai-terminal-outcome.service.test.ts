@@ -6,6 +6,7 @@ const terminalOutcomeStorageMock = {
 
 // Manual mock — must be declared before any import that touches the mocked module.
 jest.mock('@n8n/instance-ai', () => ({
+	orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 	InstanceAiTerminalResponseGuard: class {
 		constructor(private readonly options: { runId: string; rootAgentId: string }) {}
 
@@ -266,7 +267,7 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
 			type: 'text-delta',
 			runId: outcome.runId,
-			agentId: 'agent-001',
+			agentId: 'orchestrator-run-1',
 			responseId: `background-outcome:${outcome.id}`,
 			payload: { text: outcome.userFacingMessage },
 		});
@@ -333,7 +334,7 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
 			type: 'text-delta',
 			runId: outcome.runId,
-			agentId: 'agent-001',
+			agentId: 'orchestrator-run-1',
 			responseId: `background-outcome:${outcome.id}`,
 			payload: { text: outcome.userFacingMessage },
 		});
