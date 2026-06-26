@@ -228,6 +228,37 @@ describe('Test MySql V2, operations', () => {
 		await expect(promise).rejects.toThrow('Invalid where clause');
 	});
 
+	it('deleteTable: delete, should route prep error to error output when continueOnFail is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'deleteTable',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			deleteCommand: 'delete',
+			where: {
+				values: [{ column: 'id', condition: '=1; select 1,2; -- -', value: '1' }],
+			},
+			options: {},
+		};
+
+		const mockRunQueries = vi.fn(async () => []);
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, true);
+
+		const result = await deleteTable.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			mockRunQueries as unknown as QueryRunner,
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].error).toBeDefined();
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(mockRunQueries).not.toHaveBeenCalled();
+	});
+
 	it('executeQuery, should call runQueries with', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
@@ -553,6 +584,38 @@ describe('Test MySql V2, operations', () => {
 		await expect(promise).rejects.toThrow('Invalid where clause');
 	});
 
+	it('select, should route prep error to error output when continueOnFail is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'select',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			limit: 2,
+			where: {
+				values: [{ column: 'id', condition: '=1; select 1,2; -- -', value: '1' }],
+			},
+			combineConditions: 'OR',
+			options: {},
+		};
+
+		const mockRunQueries = vi.fn(async () => []);
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, true);
+
+		const result = await select.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			mockRunQueries as unknown as QueryRunner,
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].error).toBeDefined();
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(mockRunQueries).not.toHaveBeenCalled();
+	});
+
 	it('select, should replace direction with ASC or DESC', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'select',
@@ -683,6 +746,37 @@ describe('Test MySql V2, operations', () => {
 		);
 	});
 
+	it('insert, should route prep error to error output when continueOnFail is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'insert',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			dataMode: 'defineBelow',
+			valuesToSend: { notValues: [] },
+			options: { queryBatching: 'independently' },
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+		const mockRunQueries = vi.fn(async () => []);
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, true);
+
+		const result = await insert.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			mockRunQueries as unknown as QueryRunner,
+			nodeOptions,
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].error).toBeDefined();
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(mockRunQueries).not.toHaveBeenCalled();
+	});
+
 	it('update, should call runQueries with', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'update',
@@ -750,6 +844,38 @@ describe('Test MySql V2, operations', () => {
 		);
 	});
 
+	it('update, should route prep error to error output when continueOnFail is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'update',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			columnToMatchOn: 'id',
+			dataMode: 'defineBelow',
+			valuesToSend: { notValues: [] },
+			options: {},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+		const mockRunQueries = vi.fn(async () => []);
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, true);
+
+		const result = await update.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			mockRunQueries as unknown as QueryRunner,
+			nodeOptions,
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].error).toBeDefined();
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(mockRunQueries).not.toHaveBeenCalled();
+	});
+
 	it('upsert, should call runQueries with', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'upsert',
@@ -807,6 +933,38 @@ describe('Test MySql V2, operations', () => {
 		expect(poolQuerySpy).toBeCalledWith(
 			"INSERT INTO `test_table`(`id`, `name`) VALUES(42,'test 4') ON DUPLICATE KEY UPDATE `name` = 'test 4';INSERT INTO `test_table`(`id`, `name`) VALUES(88,'test 88') ON DUPLICATE KEY UPDATE `name` = 'test 88'",
 		);
+	});
+
+	it('upsert, should route prep error to error output when continueOnFail is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'upsert',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			columnToMatchOn: 'id',
+			dataMode: 'defineBelow',
+			valuesToSend: { notValues: [] },
+			options: {},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+		const mockRunQueries = vi.fn(async () => []);
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, true);
+
+		const result = await upsert.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			mockRunQueries as unknown as QueryRunner,
+			nodeOptions,
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].error).toBeDefined();
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(mockRunQueries).not.toHaveBeenCalled();
 	});
 
 	it('executeQuery, should map pairedItem to original item index when a preceding item fails query preparation', async () => {
