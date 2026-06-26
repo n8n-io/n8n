@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-26T14:01:28.240Z",
-	"totalViolations": 112,
+	"generated": "2026-06-26T15:21:58.281Z",
+	"totalViolations": 108,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -361,32 +361,6 @@
 				"line": 270,
 				"message": "Direct page locator call: n8n.page.locator('body')",
 				"hash": "779bc814648c"
-			}
-		],
-		"tests/e2e/regression/ADO-2372-prevent-clipping-params.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 69,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 70,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 71,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 72,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
 			}
 		],
 		"tests/e2e/workflows/editor/tags.spec.ts": [
