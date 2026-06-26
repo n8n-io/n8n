@@ -4,7 +4,8 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
-import { microsoftApiRequestAllItems } from '../../transport';
+import { microsoftApiRequestAllItems, SP_HIDE } from '../../transport';
+import { throwIfChatUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [chatRLC, ...returnAllOrLimit];
 
@@ -13,12 +14,18 @@ const displayOptions = {
 		resource: ['chatMessage'],
 		operation: ['getAll'],
 	},
+	hide: {
+		...SP_HIDE,
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
+
+	// App-only Graph cannot read chats; fail before any request.
+	throwIfChatUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const returnAll = this.getNodeParameter('returnAll', i);

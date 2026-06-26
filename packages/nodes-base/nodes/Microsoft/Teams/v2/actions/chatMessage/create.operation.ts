@@ -4,7 +4,8 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
 import { prepareMessage } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, SP_HIDE } from '../../transport';
+import { throwIfChatUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
 	chatRLC,
@@ -62,12 +63,18 @@ const displayOptions = {
 		resource: ['chatMessage'],
 		operation: ['create'],
 	},
+	hide: {
+		...SP_HIDE,
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number, instanceId: string) {
 	// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
+
+	// App-only Graph cannot post chat messages; fail before any request.
+	throwIfChatUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const contentType = this.getNodeParameter('contentType', i) as string;
