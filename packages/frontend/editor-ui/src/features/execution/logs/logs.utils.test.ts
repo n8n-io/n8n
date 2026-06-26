@@ -11,6 +11,7 @@ import {
 	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
 	getTreeNodeData,
+	isNodeLog,
 	mergeStartData,
 	restoreChatHistory,
 	processFiles,
@@ -29,10 +30,28 @@ import {
 	aiModelNode,
 	createTestLogTreeCreationContext,
 } from './__test__/data';
-import type { LogEntrySelection } from './logs.types';
+import type { LogEntry, LogEntrySelection, NodeLogEntry } from './logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+
+// A log tree of node entries only, all the way down (overrides the union-typed
+// `children`/`parent` so assertions can read `.node`/`.runData` at any depth).
+type NodeTreeEntry = Omit<NodeLogEntry, 'children' | 'parent'> & {
+	parent?: NodeTreeEntry;
+	children: NodeTreeEntry[];
+};
+
+// These tests never pass canvas groups, so the builder result can only contain node
+// entries. Assert that recursively to narrow the tree without an unchecked cast.
+function assertNodeTree(entries: LogEntry[]): asserts entries is NodeTreeEntry[] {
+	for (const entry of entries) {
+		if (!isNodeLog(entry)) {
+			throw new Error(`Expected a node log entry but got a "${entry.type}" entry`);
+		}
+		assertNodeTree(entry.children);
+	}
+}
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
@@ -77,6 +96,7 @@ describe(getTreeNodeData, () => {
 			],
 		});
 		const logTree = getTreeNodeData(nodeA, ctx.data.resultData.runData.A[0], undefined, ctx);
+		assertNodeTree(logTree);
 
 		expect(logTree.length).toBe(1);
 
@@ -165,6 +185,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode1Tree);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
@@ -176,6 +197,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode2Tree);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -223,6 +245,7 @@ describe(getTreeNodeData, () => {
 			0,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode1Tree);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
@@ -234,6 +257,7 @@ describe(getTreeNodeData, () => {
 			1,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode2Tree);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -275,6 +299,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNodeTree);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
@@ -316,6 +341,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNodeTree);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
@@ -344,6 +370,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNodeTree);
 
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
@@ -423,6 +450,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode1Tree);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
@@ -437,6 +465,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode2Tree);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -525,6 +554,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode1Tree);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNodeA');
 		expect(rootNode1Tree[0].children[0].children.length).toBe(1);
@@ -538,6 +568,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode2Tree);
 
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SubNodeB');
@@ -598,6 +629,7 @@ describe(getTreeNodeData, () => {
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
 		);
+		assertNodeTree(rootNode1Tree);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNode1Tree[0].children[0].children.length).toBe(1);
@@ -1055,6 +1087,7 @@ describe(createLogTree, () => {
 			{ 'sub-workflow-id': subWorkflow },
 			{ 'sub-exec-id': subExecutionData },
 		);
+		assertNodeTree(logs);
 
 		expect(logs).toHaveLength(2);
 
@@ -1133,6 +1166,7 @@ describe(createLogTree, () => {
 			{ 'sub-workflow-id': subWorkflow },
 			{ 'sub-exec-id': subExecutionData },
 		);
+		assertNodeTree(logs);
 
 		expect(logs).toHaveLength(1);
 		expect(logs[0].node.name).toBe('A');
@@ -1153,6 +1187,7 @@ describe(createLogTree, () => {
 				data: createEmptyRunExecutionData(),
 			}),
 		);
+		assertNodeTree(logs);
 
 		expect(logs).toHaveLength(0);
 	});
@@ -1169,6 +1204,7 @@ describe(createLogTree, () => {
 				}),
 			}),
 		);
+		assertNodeTree(logs);
 
 		expect(logs).toHaveLength(1);
 		expect(logs[0].node.name).toBe(aiAgentNode.name);
@@ -1192,6 +1228,7 @@ describe(createLogTree, () => {
 				}),
 			}),
 		);
+		assertNodeTree(logs);
 
 		expect(logs).toHaveLength(1);
 		expect(logs[0].node.name).toBe(aiAgentNode.name);
@@ -1228,6 +1265,7 @@ describe(createLogTree, () => {
 				}),
 			}),
 		);
+		assertNodeTree(logs);
 
 		expect(logs).toHaveLength(1);
 		expect(logs[0].node.name).toBe('Agent B');
@@ -1273,6 +1311,7 @@ describe(createLogTree, () => {
 				}),
 			}),
 		);
+		assertNodeTree(logs);
 
 		// Should have only ONE AI Agent entry (not duplicated)
 		expect(logs).toHaveLength(1);

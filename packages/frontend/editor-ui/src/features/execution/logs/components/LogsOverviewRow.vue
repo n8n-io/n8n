@@ -11,6 +11,7 @@ import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeN
 import {
 	getSubtreeTotalConsumedTokens,
 	hasSubExecution,
+	isNodeLog,
 } from '@/features/execution/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
@@ -39,20 +40,26 @@ const container = useTemplateRef('containerRef');
 const locale = useI18n();
 const now = useTimestamp({ interval: 1000 });
 const nodeTypeStore = useNodeTypesStore();
-const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
-const isRunning = computed(() => props.data.runData?.executionStatus === 'running');
-const isWaiting = computed(() => props.data.runData?.executionStatus === 'waiting');
+const nodeData = computed(() => (isNodeLog(props.data) ? props.data : undefined));
+const runData = computed(() => nodeData.value?.runData);
+const type = computed(() =>
+	nodeData.value ? nodeTypeStore.getNodeType(nodeData.value.node.type) : null,
+);
+const isRunning = computed(() => runData.value?.executionStatus === 'running');
+const isWaiting = computed(() => runData.value?.executionStatus === 'waiting');
 const isSettled = computed(() => !isRunning.value && !isWaiting.value);
-const isError = computed(() => !!props.data.runData?.error);
+const isError = computed(() => !!runData.value?.error);
 const statusTextKeyPath = computed<BaseTextKey>(() =>
 	isSettled.value ? 'logs.overview.body.summaryText.in' : 'logs.overview.body.summaryText.for',
 );
 const startedAtText = computed(() => {
-	if (props.data.runData === undefined) {
+	const startTime = runData.value?.startTime;
+
+	if (startTime === undefined) {
 		return '—';
 	}
 
-	const time = new Date(props.data.runData.startTime);
+	const time = new Date(startTime);
 
 	return locale.baseText('logs.overview.body.started', {
 		interpolate: {
@@ -60,13 +67,13 @@ const startedAtText = computed(() => {
 		},
 	});
 });
-const statusText = computed(() => upperFirst(props.data.runData?.executionStatus ?? ''));
+const statusText = computed(() => upperFirst(runData.value?.executionStatus ?? ''));
 const timeText = computed(() =>
-	props.data.runData
+	runData.value
 		? locale.displayTimer(
 				isSettled.value
-					? props.data.runData.executionTime
-					: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
+					? runData.value.executionTime
+					: Math.floor((now.value - runData.value.startTime) / 1000) * 1000,
 				true,
 			)
 		: undefined,
@@ -144,7 +151,7 @@ watch(
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 		<LogsViewNodeName
 			:class="$style.name"
-			:name="latestInfo?.name ?? props.data.node.name"
+			:name="latestInfo?.name ?? nodeData?.node.name ?? ''"
 			:is-error="isError"
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>

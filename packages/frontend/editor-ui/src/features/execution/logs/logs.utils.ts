@@ -22,6 +22,8 @@ import type {
 	LogEntrySelection,
 	LogTreeCreationContext,
 	LogTreeFilter,
+	NodeLogEntry,
+	GroupLogEntry,
 } from './logs.types';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { type ChatMessage } from '@n8n/chat/types';
@@ -53,14 +55,23 @@ function getConsumedTokensFromTaskData(runData: ITaskData) {
 	);
 }
 
+export function isNodeLog(entry: LogEntry): entry is NodeLogEntry {
+	return entry.type === 'node';
+}
+
+export function isGroupLog(entry: LogEntry): entry is GroupLogEntry {
+	return entry.type === 'group';
+}
+
 function createNode(
 	node: INodeUi,
 	context: LogTreeCreationContext,
 	runIndex: number,
 	runData: ITaskData | undefined,
 	children: LogEntry[] = [],
-): LogEntry {
+): NodeLogEntry {
 	return {
+		type: 'node',
 		parent: context.parent,
 		node,
 		// The ID consists of workflow ID, node ID and run index (including ancestor's), which
@@ -184,7 +195,7 @@ export function getSubtreeTotalConsumedTokens(
 }
 
 function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
-	const entryWithError = findLogEntryRec((e) => !!e.runData?.error, subTree);
+	const entryWithError = findLogEntryRec((e) => isNodeLog(e) && !!e.runData?.error, subTree);
 
 	if (entryWithError) {
 		return entryWithError;
@@ -192,8 +203,11 @@ function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 
 	const entryForAiAgent = findLogEntryRec(
 		(entry) =>
-			entry.node.type === AGENT_LANGCHAIN_NODE_TYPE ||
-			(entry.parent?.node.type === AGENT_LANGCHAIN_NODE_TYPE && isPlaceholderLog(entry.parent)),
+			(isNodeLog(entry) && entry.node.type === AGENT_LANGCHAIN_NODE_TYPE) ||
+			(entry.parent !== undefined &&
+				isNodeLog(entry.parent) &&
+				entry.parent.node.type === AGENT_LANGCHAIN_NODE_TYPE &&
+				isPlaceholderLog(entry.parent)),
 		subTree,
 	);
 
@@ -335,13 +349,15 @@ export function findSelectedLogEntry(
 			return undefined;
 		case 'selected': {
 			const found = findLogEntryRec((e) => e.id === selection.entry.id, entries);
+			const target = selection.entry;
 
-			if (found === undefined && !isExecuting) {
-				for (let runIndex = selection.entry.runIndex - 1; runIndex >= 0; runIndex--) {
+			if (found === undefined && !isExecuting && isNodeLog(target)) {
+				for (let runIndex = target.runIndex - 1; runIndex >= 0; runIndex--) {
 					const fallback = findLogEntryRec(
 						(e) =>
-							e.workflow.id === selection.entry.workflow.id &&
-							e.node.id === selection.entry.node.id &&
+							isNodeLog(e) &&
+							e.workflow.id === target.workflow.id &&
+							e.node.id === target.node.id &&
 							e.runIndex === runIndex,
 						entries,
 					);
@@ -384,21 +400,25 @@ export function getEntryAtRelativeIndex(
 }
 
 function sortLogEntries(a: LogEntry, b: LogEntry): number {
-	if (a.runData === undefined) {
+	// Group entries (and placeholder nodes) carry no run data; sort by their first child instead
+	const aRunData = isNodeLog(a) ? a.runData : undefined;
+	const bRunData = isNodeLog(b) ? b.runData : undefined;
+
+	if (aRunData === undefined) {
 		return a.children.length > 0 ? sortLogEntries(a.children[0], b) : 0;
 	}
 
-	if (b.runData === undefined) {
+	if (bRunData === undefined) {
 		return b.children.length > 0 ? sortLogEntries(a, b.children[0]) : 0;
 	}
 
 	// We rely on execution index only when startTime is different
 	// Because it is reset to 0 when execution is waited, and therefore not necessarily unique
-	if (a.runData.startTime === b.runData.startTime) {
-		return a.runData.executionIndex - b.runData.executionIndex;
+	if (aRunData.startTime === bRunData.startTime) {
+		return aRunData.executionIndex - bRunData.executionIndex;
 	}
 
-	return a.runData.startTime - b.runData.startTime;
+	return aRunData.startTime - bRunData.startTime;
 }
 
 export function mergeStartData(
@@ -465,13 +485,14 @@ export function hasSubExecution(entry: LogEntry): boolean {
 }
 
 export function findSubExecutionLocator(entry: LogEntry): RelatedExecution | undefined {
-	const metadata = entry.runData?.metadata?.subExecution;
+	const runData = isNodeLog(entry) ? entry.runData : undefined;
+	const metadata = runData?.metadata?.subExecution;
 
 	if (metadata) {
 		return { workflowId: metadata.workflowId, executionId: metadata.executionId };
 	}
 
-	return parseErrorMetadata(entry.runData?.error)?.subExecution;
+	return parseErrorMetadata(runData?.error)?.subExecution;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
@@ -679,7 +700,7 @@ export function isSubNodeLog(logEntry: LogEntry): boolean {
 }
 
 export function isPlaceholderLog(treeNode: LogEntry): boolean {
-	return treeNode.runData === undefined;
+	return isNodeLog(treeNode) && treeNode.runData === undefined;
 }
 
 /**

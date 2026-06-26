@@ -4,21 +4,46 @@ import type {
 	LOGS_PANEL_STATE,
 } from '@/features/execution/logs/logs.constants';
 import type { INodeUi, LlmTokenUsageData } from '@/Interface';
-import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 
-export type LogEntry = {
+type BaseLogEntry = {
 	parent?: LogEntry;
-	node: INodeUi;
 	id: string;
 	children: LogEntry[];
 	runIndex: number;
-	runData: ITaskData | undefined;
 	consumedTokens: LlmTokenUsageData;
 	workflow: WorkflowObjectAccessors;
 	executionId: string;
 	execution: IRunExecutionData;
 	isSubExecution: boolean;
 };
+
+export type NodeLogEntry = BaseLogEntry & {
+	type: 'node';
+	node: INodeUi;
+	runData: ITaskData | undefined;
+};
+
+/** One boundary crossing of a group (a member execution where data enters or leaves the group). */
+export type GroupBoundaryRunData = {
+	id: string;
+	/** Member node name, used as selector label */
+	label: string;
+	/** The member entry to render in the IO panel */
+	entry: NodeLogEntry;
+};
+
+export type GroupLogEntry = BaseLogEntry & {
+	type: 'group';
+	group: IWorkflowGroup;
+	/** Which appearance of this group this is (groups split by branching/loops appear multiple times) */
+	segmentIndex: number;
+	/** Whether any member execution (including descendants) errored. */
+	hasError: boolean;
+	boundaries: { inputs: GroupBoundaryRunData[]; outputs: GroupBoundaryRunData[] };
+};
+
+export type LogEntry = NodeLogEntry | GroupLogEntry;
 
 export interface LogTreeCreationContext {
 	parent: LogEntry | undefined;

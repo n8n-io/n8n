@@ -14,7 +14,7 @@ import {
 	mockLoadedNodeType,
 } from '@/__tests__/mocks';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
-import type { LogEntry } from '../logs.types';
+import type { NodeLogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { HTML_NODE_TYPE } from '@/app/constants';
@@ -42,7 +42,7 @@ describe('LogDetailsPanel', () => {
 		source: [{ previousNode: 'Chat Trigger' }],
 	});
 
-	function createLogEntry(data: Partial<LogEntry> = {}) {
+	function createLogEntry(data: Partial<NodeLogEntry> = {}) {
 		return createTestLogEntry({
 			workflow: createTestWorkflowObject(workflowData),
 			execution: createRunExecutionData({

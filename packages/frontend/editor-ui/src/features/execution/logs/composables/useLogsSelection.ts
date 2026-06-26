@@ -4,6 +4,7 @@ import {
 	findSelectedLogEntry,
 	getDepth,
 	getEntryAtRelativeIndex,
+	isNodeLog,
 	isSubNodeLog,
 } from '@/features/execution/logs/logs.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -36,7 +37,7 @@ export function useLogsSelection(
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	function syncSelectionToCanvasIfEnabled(value: LogEntry) {
-		if (!logsStore.isLogSelectionSyncedWithCanvas) {
+		if (!logsStore.isLogSelectionSyncedWithCanvas || !isNodeLog(value)) {
 			return;
 		}
 
@@ -50,13 +51,15 @@ export function useLogsSelection(
 		if (value) {
 			syncSelectionToCanvasIfEnabled(value);
 
-			telemetry.track('User selected node in log view', {
-				node_type: value.node.type,
-				node_id: value.node.id,
-				execution_id: execution.value?.id,
-				workflow_id: execution.value?.workflowData.id,
-				subworkflow_depth: getDepth(value),
-			});
+			if (isNodeLog(value)) {
+				telemetry.track('User selected node in log view', {
+					node_type: value.node.type,
+					node_id: value.node.id,
+					execution_id: execution.value?.id,
+					workflow_id: execution.value?.workflowData.id,
+					subworkflow_depth: getDepth(value),
+				});
+			}
 		}
 	}
 
@@ -107,9 +110,11 @@ export function useLogsSelection(
 			const selectedNodeId = selectedOnCanvas
 				? workflowDocumentStore.value.nodesByName[selectedOnCanvas]?.id
 				: undefined;
+			const selectedEntryNodeId =
+				selected.value && isNodeLog(selected.value) ? selected.value.node.id : undefined;
 
 			nodeIdToSelect.value =
-				shouldSync && !canvasStore.hasRangeSelection && selected.value?.node.id !== selectedNodeId
+				shouldSync && !canvasStore.hasRangeSelection && selectedEntryNodeId !== selectedNodeId
 					? selectedNodeId
 					: undefined;
 		},
@@ -123,7 +128,7 @@ export function useLogsSelection(
 				return;
 			}
 
-			const entry = findLogEntryRec((e) => e.node.id === id, latestTree);
+			const entry = findLogEntryRec((e) => isNodeLog(e) && e.node.id === id, latestTree);
 
 			if (!entry) {
 				return;

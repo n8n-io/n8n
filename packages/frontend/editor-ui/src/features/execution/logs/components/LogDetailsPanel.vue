@@ -16,6 +16,7 @@ import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	getSubtreeTotalConsumedTokens,
+	isNodeLog,
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
@@ -67,7 +68,10 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
 const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
-const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
+const nodeEntry = computed(() => (isNodeLog(logEntry) ? logEntry : undefined));
+const type = computed(() =>
+	nodeEntry.value ? nodeTypeStore.getNodeType(nodeEntry.value.node.type) : null,
+);
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
@@ -114,16 +118,16 @@ function handleResizeEnd() {
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<LogsViewNodeName
-						:name="latestInfo?.name ?? logEntry.node.name"
+						:name="latestInfo?.name ?? nodeEntry?.node.name ?? ''"
 						:is-deleted="latestInfo?.deleted ?? false"
 					/>
 					<LogsViewExecutionSummary
-						v-if="isOpen && logEntry.runData !== undefined"
+						v-if="isOpen && nodeEntry?.runData !== undefined"
 						:class="$style.executionSummary"
-						:status="logEntry.runData.executionStatus ?? 'unknown'"
+						:status="nodeEntry.runData.executionStatus ?? 'unknown'"
 						:consumed-tokens="consumedTokens"
-						:start-time="logEntry.runData.startTime"
-						:time-took="logEntry.runData.executionTime"
+						:start-time="nodeEntry.runData.startTime"
+						:time-took="nodeEntry.runData.executionTime"
 					/>
 				</div>
 			</template>
@@ -175,7 +179,7 @@ function handleResizeEnd() {
 					{{ locale.baseText('ndv.output.runNodeHint') }}
 				</N8nText>
 			</div>
-			<template v-else>
+			<template v-else-if="nodeEntry">
 				<N8nResizeWrapper
 					v-if="!isTriggerNode && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
 					:class="{
@@ -195,7 +199,7 @@ function handleResizeEnd() {
 						data-test-id="log-details-input"
 						pane-type="input"
 						:title="locale.baseText('logs.details.header.actions.input')"
-						:log-entry="logEntry"
+						:log-entry="nodeEntry"
 						:collapsing-table-column-name="collapsingInputTableColumnName"
 						:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
 						:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
@@ -208,7 +212,7 @@ function handleResizeEnd() {
 					pane-type="output"
 					:class="$style.outputPanel"
 					:title="locale.baseText('logs.details.header.actions.output')"
-					:log-entry="logEntry"
+					:log-entry="nodeEntry"
 					:collapsing-table-column-name="collapsingOutputTableColumnName"
 					:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
 					:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"

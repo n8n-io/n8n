@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RunData from '@/features/ndv/runData/components/RunData.vue';
-import { type LogEntry } from '@/features/execution/logs/logs.types';
+import { type NodeLogEntry } from '@/features/execution/logs/logs.types';
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
@@ -28,7 +28,7 @@ const {
 } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
-	logEntry: LogEntry;
+	logEntry: NodeLogEntry;
 	collapsingTableColumnName: string | null;
 	searchShortcut?: SearchShortcut;
 	showRedactedOverlay?: boolean;
