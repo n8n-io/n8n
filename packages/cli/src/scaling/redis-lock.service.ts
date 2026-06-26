@@ -6,6 +6,7 @@ import { ensureError, OperationalError } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { RedisClientService } from '@/services/redis-client.service';
+import { OnShutdown } from '@n8n/decorators';
 
 const COMMAND_TIMEOUT_MS = 5_000;
 
@@ -164,5 +165,11 @@ export class RedisLockService implements ILockService {
 
 			await new Promise((resolve) => setTimeout(resolve, 50 + jitter)); // Wait before retrying
 		}
+	}
+
+	/** Disconnect the underlying Redis client. */
+	@OnShutdown()
+	destroy() {
+		this.redisClient.disconnect();
 	}
 }
