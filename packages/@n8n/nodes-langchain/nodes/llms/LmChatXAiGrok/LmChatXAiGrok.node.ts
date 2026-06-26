@@ -301,8 +301,8 @@ export class LmChatXAiGrok implements INodeType {
 							response_format: { type: options.responseFormat },
 						}
 					: undefined),
-				...(reasoning ? { reasoning_effort: reasoning } : undefined),
-				...(priority ? { service_tier: 'priority' } : undefined),
+				reasoning_effort: reasoning,
+				service_tier: priority ? 'priority' : undefined,
 			},
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
