@@ -38,6 +38,7 @@ async function handleCopy(value: string, field: string) {
 }
 
 const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
+const isRulesMappingInN8n = computed(() => mappingMethod.value === 'rules_in_n8n');
 
 const savingForm = ref<boolean>(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
@@ -203,6 +204,24 @@ const prompTestSamlConnectionBeforeActivating = async () => {
 };
 
 const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<boolean> => {
+	if (isSsoManagedByEnv.value) {
+		try {
+			savingForm.value = true;
+			const ruleSaveResult = await roleMappingRuleEditorRef.value?.save();
+			trackProvisioningChange({ configChanged: false }, ruleSaveResult);
+			toast.showMessage({
+				title: i18n.baseText('settings.sso.settings.save.success'),
+				type: 'success',
+			});
+			return true;
+		} catch (error) {
+			toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
+			return false;
+		} finally {
+			savingForm.value = false;
+		}
+	}
+
 	try {
 		savingForm.value = true;
 		validateSamlInput();
@@ -317,7 +336,9 @@ const validateSamlInput = () => {
 	}
 };
 
-const hasUnsavedChanges = computed(() => isSaveEnabled.value && !isSsoManagedByEnv.value);
+const hasUnsavedChanges = computed(
+	() => isSaveEnabled.value && (!isSsoManagedByEnv.value || isRulesMappingInN8n.value),
+);
 
 defineExpose({ hasUnsavedChanges, onSave });
 
@@ -468,7 +489,7 @@ onMounted(async () => {
 
 		<div :class="$style.buttons">
 			<N8nButton
-				v-if="!isSsoManagedByEnv"
+				v-if="!isSsoManagedByEnv || isRulesMappingInN8n"
 				:disabled="!isSaveEnabled"
 				:loading="savingForm"
 				size="large"

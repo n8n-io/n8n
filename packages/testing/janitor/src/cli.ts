@@ -16,6 +16,13 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
+import {
+	encodeImpactMap,
+	buildImpactMap,
+	distributeShards,
+	selectTests,
+	changedRuntimeDepsFromManifests,
+} from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -45,7 +52,6 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
-import { encodeImpactMap, mergeCoverage } from './core/coverage-map.js';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
@@ -71,12 +77,12 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
-import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
+import { readLockfileImporters } from './core/read-lockfile-importers.js';
+import { readManifestDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
-import { selectE2e } from './core/select-e2e.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { runTestScoped } from './core/test-scoped-runner.js';
@@ -486,7 +492,7 @@ async function runFilterShard(options: CliOptions): Promise<void> {
 	}
 }
 
-async function runOrchestrate(options: CliOptions): Promise<void> {
+async function runDistribute(options: CliOptions): Promise<void> {
 	const config = getConfig();
 
 	if (!options.shards || options.shards < 1) {
@@ -534,7 +540,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 	}
 
 	// Composable allowlist filter. distribute-tests.mjs pre-computes the union
-	// of AST + V8 selection and writes it here; orchestrate then balances shards
+	// of AST + V8 selection and writes it here; distributeShards then balances shards
 	// against that subset instead of the full discovered set.
 	if (options.includeSpecsFile) {
 		const includeRaw = fs.readFileSync(options.includeSpecsFile, 'utf-8');
@@ -577,7 +583,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 	}
 
-	const result = orchestrate(specs, options.shards, metrics, config.orchestration);
+	const result = distributeShards(specs, options.shards, metrics, config.orchestration);
 
 	if (options.shardIndex !== undefined) {
 		if (Number.isNaN(options.shardIndex) || options.shardIndex < 0) {
@@ -604,10 +610,14 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	const env = process.env.CHANGED_FILES;
 	if (flag === undefined && env === undefined) return null;
 	const raw = flag ?? env ?? '';
-	return raw
+	const files = raw
 		.split(/[\n,]+/)
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+	// An empty value is "no signal", not "nothing changed". ci-filter emits an
+	// empty list on huge change sets (too large to pass through env/argv); a [] return
+	// would SKIP every package — a false green — so collapse it to null (run full).
+	return files.length > 0 ? files : null;
 }
 
 function runAffectedPackages(options: CliOptions): void {
@@ -671,7 +681,7 @@ function runMergeCoverage(options: CliOptions): void {
 	const files = fs.existsSync(options.inputsDir) ? findLcovFiles(options.inputsDir) : [];
 	// spec attribution comes from each lcov's TN:; the path is only a fallback.
 	const inputs = files.map((f) => ({ text: fs.readFileSync(f, 'utf8'), spec: f }));
-	const result = mergeCoverage(inputs);
+	const result = buildImpactMap(inputs);
 	fs.writeFileSync(options.outLcov, result.lcov);
 	// Interned on-disk form — spec paths once, referenced by index (~10x smaller).
 	fs.writeFileSync(options.outMap, JSON.stringify(encodeImpactMap(result.impactMap)));
@@ -681,13 +691,27 @@ function runMergeCoverage(options: CliOptions): void {
 	);
 }
 
-/** select-e2e: changed files + impact map → spec list (JSON). I/O wrapper
- *  around {@link selectE2e}, where the fail-open safety contract lives. */
-function runSelectE2e(options: CliOptions): void {
-	const result = selectE2e({
-		changedFiles: readChangedFiles(options) ?? [],
+/** select: changed files + impact map → spec list (JSON). I/O wrapper
+ *  around {@link selectTests}, where the fail-open safety contract lives. */
+function runSelect(options: CliOptions): void {
+	const changedFiles = readChangedFiles(options) ?? [];
+	// With a base ref, read each changed package.json before/after so the
+	// devDependency-only classifier can drop a devDep-only lockfile change.
+	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
+	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
+	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
+	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
+	// change would parse it for nothing.
+	const lockfileImporters =
+		manifests && changedRuntimeDepsFromManifests(manifests).length > 0
+			? readLockfileImporters()
+			: undefined;
+	const result = selectTests({
+		changedFiles,
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
+		manifests,
+		lockfileImporters,
 	});
 	console.log(JSON.stringify(result));
 }
@@ -719,7 +743,7 @@ async function main(): Promise<void> {
 			case 'discover':
 				showDiscoverHelp();
 				break;
-			case 'orchestrate':
+			case 'distribute':
 				showOrchestrateHelp();
 				break;
 			case 'affected-packages':
@@ -754,8 +778,8 @@ async function main(): Promise<void> {
 		runMergeCoverage(options);
 		return;
 	}
-	if (options.command === 'select-e2e') {
-		runSelectE2e(options);
+	if (options.command === 'select') {
+		runSelect(options);
 		return;
 	}
 
@@ -796,8 +820,8 @@ async function main(): Promise<void> {
 		case 'discover':
 			runDiscover();
 			break;
-		case 'orchestrate':
-			await runOrchestrate(options);
+		case 'distribute':
+			await runDistribute(options);
 			break;
 		case 'filter-shard':
 			await runFilterShard(options);

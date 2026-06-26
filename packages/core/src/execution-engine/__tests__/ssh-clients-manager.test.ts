@@ -40,6 +40,12 @@ afterEach(() => {
 	sshClientsManager.onShutdown();
 });
 
+it('should not keep the process alive for the stale-connection cleanup timer', () => {
+	const { cleanupTimer } = sshClientsManager as unknown as { cleanupTimer: NodeJS.Timeout };
+
+	expect(cleanupTimer.hasRef()).toBe(false);
+});
+
 describe('getClient', () => {
 	it('should create a new SSH client', async () => {
 		const client = await sshClientsManager.getClient(credentials);

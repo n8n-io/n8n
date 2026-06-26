@@ -20,7 +20,7 @@ Commands:
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
   discover           Discover test specs and capabilities (for orchestration)
-  orchestrate        Distribute specs across shards using capability-aware bin-packing
+  distribute        Distribute specs across shards using capability-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -48,7 +48,7 @@ For command-specific help:
   playwright-janitor method-impact --help
   playwright-janitor tcr --help
   playwright-janitor discover --help
-  playwright-janitor orchestrate --help
+  playwright-janitor distribute --help
 `);
 }
 
@@ -183,8 +183,8 @@ Groups tests by capability to minimize fixture overhead, then uses greedy
 bin-packing to balance test time across shards. Outputs JSON to stdout.
 
 Usage:
-  playwright-janitor orchestrate --shards=<N>                    # Full result as JSON
-  playwright-janitor orchestrate --shards=<N> --shard-index=<I>  # Specs for one shard
+  playwright-janitor distribute --shards=<N>                    # Full result as JSON
+  playwright-janitor distribute --shards=<N> --shard-index=<I>  # Specs for one shard
 
 Options:
   --shards=<N>         Number of shards (required)
@@ -201,9 +201,9 @@ Output:
   { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
 
 Examples:
-  playwright-janitor orchestrate --shards=14 | jq '.shards[0].specs'
-  playwright-janitor orchestrate --shards=8 --impact
-  playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts
+  playwright-janitor distribute --shards=14 | jq '.shards[0].specs'
+  playwright-janitor distribute --shards=8 --impact
+  playwright-janitor distribute --shards=4 --impact --file=pages/CanvasPage.ts
 `);
 }
 

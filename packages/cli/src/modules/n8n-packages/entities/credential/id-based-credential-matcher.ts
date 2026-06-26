@@ -1,13 +1,16 @@
 import { SharedCredentialsRepository } from '@n8n/db';
-import type { Project, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher';
-import { createSuccessBinding, type CredentialBinding } from './credential.types';
+import {
+	CredentialMatcher,
+	type CredentialMatcherContext,
+	type ResolvedCredentialMatch,
+} from './credential-matcher';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 @Service()
@@ -24,38 +27,37 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 	protected async resolve(
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
-	): Promise<CredentialBinding[]> {
-		const resolvableIds = await this.findResolvableCredentialIds(
-			known.map((reference) => reference.id),
-			context.targetProject,
+	): Promise<Map<string, ResolvedCredentialMatch>> {
+		if (known.length === 0) {
+			return new Map();
+		}
+
+		const bindings = context.credentialBindings;
+		const usableTypesById = await this.findUsableCredentialTypesById(
+			context.projectId,
 			context.user,
 		);
 
-		return (
-			known
-				.filter((reference) => resolvableIds.has(reference.id))
-				// id-only matching: the target credential id is the source id.
-				.map((reference) => createSuccessBinding(reference.id, reference.id))
+		return new Map(
+			known.flatMap((reference) => {
+				const targetId = bindings?.get(reference.id) ?? reference.id;
+				const targetType = usableTypesById.get(targetId);
+				if (targetType === undefined) return [];
+				return [[reference.id, { targetId, targetType }] as const];
+			}),
 		);
 	}
 
-	private async findResolvableCredentialIds(
-		sourceIds: string[],
-		targetProject: Project,
+	/** Maps each credential the user can use in the target project to its type. */
+	private async findUsableCredentialTypesById(
+		projectId: string,
 		user: User,
-	): Promise<Set<string>> {
-		const uniqueIds = new Set(sourceIds);
-		if (uniqueIds.size === 0) {
-			return new Set();
-		}
-
+	): Promise<Map<string, string>> {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId: targetProject.id },
+			{ projectId },
 		);
 
-		return new Set(
-			usableCredentials.map((credential) => credential.id).filter((id) => uniqueIds.has(id)),
-		);
+		return new Map(usableCredentials.map((credential) => [credential.id, credential.type]));
 	}
 }

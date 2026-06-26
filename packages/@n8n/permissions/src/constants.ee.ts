@@ -62,7 +62,7 @@ export const RESOURCES = {
 	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	workflowTags: ['update', 'list'] as const,
-	role: ['manage'] as const,
+	role: ['manage', 'read'] as const,
 	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
@@ -71,8 +71,9 @@ export const RESOURCES = {
 	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
-	instanceAi: ['message', 'manage', 'gateway'] as const,
+	instanceAi: ['message', 'manage', 'gateway', 'eval'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
+	otel: ['manage'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -81,8 +82,8 @@ export const API_KEY_RESOURCES = {
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
-	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get', 'stop'] as const,
+	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
@@ -95,6 +96,7 @@ export const API_KEY_RESOURCES = {
 	insights: ['read'] as const,
 } as const;
 
+export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';

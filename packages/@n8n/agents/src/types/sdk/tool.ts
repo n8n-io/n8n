@@ -1,6 +1,7 @@
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
+import type { AgentExecutionCounter } from './agent';
 import type { AgentMessage } from './message';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
@@ -27,6 +28,8 @@ export interface ToolExecutionContext {
 	 * the work they started.
 	 */
 	abortSignal?: AbortSignal;
+	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
+	executionCounter?: AgentExecutionCounter;
 }
 
 export interface ToolContext {
@@ -42,6 +45,8 @@ export interface ToolContext {
 	emitEvent?: ToolExecutionContext['emitEvent'];
 	/** The current run's abort signal, for tools that start cancellable work. */
 	abortSignal?: ToolExecutionContext['abortSignal'];
+	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
+	executionCounter?: ToolExecutionContext['executionCounter'];
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -67,6 +72,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	emitEvent?: ToolExecutionContext['emitEvent'];
 	/** The current run's abort signal, for tools that start cancellable work. */
 	abortSignal?: ToolExecutionContext['abortSignal'];
+	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
+	executionCounter?: ToolExecutionContext['executionCounter'];
 }
 
 export interface BuiltTool {

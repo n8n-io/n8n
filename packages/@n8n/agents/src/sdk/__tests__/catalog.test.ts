@@ -70,4 +70,58 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog.azure).toBeUndefined();
 		expect(catalog['azure-cognitive-services']).toBeUndefined();
 	});
+
+	it('strips the "(latest)" suffix from model names and drops duplicate pinned snapshots', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-opus-4-5': {
+								id: 'claude-opus-4-5',
+								name: 'Claude Opus 4.5 (latest)',
+							},
+							'claude-opus-4-5-20251101': {
+								id: 'claude-opus-4-5-20251101',
+								name: 'Claude Opus 4.5',
+							},
+							'claude-opus-4-8': {
+								id: 'claude-opus-4-8',
+								name: 'Claude Opus 4.8',
+							},
+							'claude-3-5-haiku-latest': {
+								id: 'claude-3-5-haiku-latest',
+								name: 'Claude Haiku 3.5 (latest)',
+							},
+						},
+					},
+					google: {
+						id: 'google',
+						name: 'Google',
+						models: {
+							'gemini-flash-latest': {
+								id: 'gemini-flash-latest',
+								name: 'Gemini Flash Latest',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		// Alias keeps its id but loses the "(latest)" tag
+		expect(catalog.anthropic.models['claude-opus-4-5'].name).toBe('Claude Opus 4.5');
+		expect(catalog.anthropic.models['claude-3-5-haiku-latest'].name).toBe('Claude Haiku 3.5');
+		// Pinned snapshot with the same name as an alias is dropped
+		expect(catalog.anthropic.models['claude-opus-4-5-20251101']).toBeUndefined();
+		// Models without a same-named alias are untouched
+		expect(catalog.anthropic.models['claude-opus-4-8'].name).toBe('Claude Opus 4.8');
+		// Only the parenthesized suffix is stripped, not other "latest" naming
+		expect(catalog.google.models['gemini-flash-latest'].name).toBe('Gemini Flash Latest');
+	});
 });

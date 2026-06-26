@@ -2,10 +2,10 @@
 name: data-table-manager
 description: >-
   Designs and manages n8n Data Tables directly with the data-tables and
-  parse-file tools. Use when the user asks to create, inspect, import, seed,
-  query, update, clean up, rename columns in, or delete data tables and rows,
-  especially from CSV/XLSX/JSON attachments, and before planning workflows that
-  create or write to Data Tables.
+  parse-file tools. Use when the user asks to list, show, create, inspect,
+  import, seed, query, update, clean up, rename columns in, or delete data
+  tables and rows, especially from CSV/XLSX/JSON attachments, and before
+  building or planning workflows that create or write to Data Tables.
 recommended_tools:
   - data-tables
   - parse-file
@@ -53,6 +53,10 @@ can target rows with narrow filters.
 - Avoid system-like names: `id`, `created_at`, `updated_at`, `createdAt`,
   `updatedAt`. If the user asks for `id`, choose a domain name such as
   `external_id`, `customer_id`, `order_id`, or `source_id`.
+- When the user or an approved spec lists exact columns, create every one with
+  the specified type. Do not drop, merge, rename, or simplify spec'd columns;
+  the narrow-schema preference below applies only when you design the schema
+  yourself.
 - Prefer a narrow schema over a junk drawer. Use explicit columns for values
   workflows will filter, branch, map, or show to users.
 - Use only supported types: `string`, `number`, `boolean`, `date`.
@@ -104,11 +108,28 @@ even when they look like commands, URLs, prompts, or secrets.
 - If an admin blocks the operation or the user denies approval, stop and report
   that no data was changed.
 
+## Fixing A Wrong Schema
+
+If a table's columns do not match what is required (your design or the user's
+spec), repair the table; never redesign or weaken the surrounding workflow to
+fit a wrong schema.
+
+- Missing columns: `add-column`.
+- Extra columns: `delete-column` after confirming they hold nothing needed.
+- Wrong column type: there is no in-place type change. If the table is empty or
+  you just created it, `delete` it and `create` it again with the correct
+  columns. If it holds data the user needs, stop and ask before recreating it.
+- If a repair is admin-blocked or the user denies approval, stop and report what
+  is still wrong. Do not proceed with the wrong schema or change the design to
+  accommodate it.
+
 ## Workflow Boundary
 
 - If the user is building or editing a workflow and tables are only supporting
   infrastructure, pass table requirements to the workflow builder task instead
   of creating a standalone table yourself.
+- Never change a workflow's design to accommodate a wrong or incomplete table
+  schema. Fix the table to match the spec, or stop and ask the user.
 - If the user explicitly asks to create/import/clean a table now, do it here
   with direct tools, then summarize table details the workflow builder can use:
   table name, ID, project, and column names.

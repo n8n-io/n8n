@@ -18,6 +18,7 @@ import EvaluationsEmptyState from '../components/EvaluationsEmptyState/Evaluatio
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import { useWorkflowEvaluationState } from '../composables/useWorkflowEvaluationState';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
+import { useEvaluationsLicense } from '../composables/useEvaluationsLicense';
 const props = defineProps<{
 	workflowId: string;
 }>();
@@ -34,9 +35,7 @@ const router = useRouter();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 
-const evaluationsLicensed = computed(() => {
-	return usageStore.workflowsWithEvaluationsLimit !== 0;
-});
+const { isLicensed } = useEvaluationsLicense();
 
 const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
@@ -152,7 +151,12 @@ watch(
 			opened — same destination the floating CTA above already targets.
 		-->
 		<template v-if="isReady && showWizard && isEvaluationsWizardSidepanelEnabled">
-			<EvaluationsEmptyState :disabled="isProtectedEnvironment" @get-started="openWizardOnCanvas" />
+			<EvaluationsPaywall v-if="!isLicensed" />
+			<EvaluationsEmptyState
+				v-else
+				:disabled="isProtectedEnvironment"
+				@get-started="openWizardOnCanvas"
+			/>
 		</template>
 		<template v-else-if="isReady && showWizard">
 			<div :class="$style.setupContent">
@@ -183,7 +187,7 @@ watch(
 						referrerpolicy="strict-origin-when-cross-origin"
 						allowfullscreen
 					></iframe>
-					<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
+					<SetupWizard v-if="isLicensed" @run-test="runTest" />
 					<EvaluationsPaywall v-else />
 				</div>
 			</div>

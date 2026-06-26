@@ -70,6 +70,11 @@ jobs:
               !**/*.spec.ts
               !packages/testing/playwright/**
               !packages/frontend/@n8n/storybook/**
+              !scripts/agent-setup.mjs
+              !scripts/backend-module/**
+              !scripts/licenses/**
+              !scripts/mutation-health/**
+              !scripts/sync-agent-skill-links.mjs
             unit:
               **
               !packages/@n8n/task-runner-python/**
@@ -78,6 +83,11 @@ jobs:
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
+              !scripts/agent-setup.mjs
+              !scripts/backend-module/**
+              !scripts/licenses/**
+              !scripts/mutation-health/**
+              !scripts/sync-agent-skill-links.mjs
             e2e:
               .github/workflows/test-e2e-*.yml
               .github/workflows/prepare-docker-reusable.yml
@@ -98,6 +108,7 @@ jobs:
             workflow-scripts:
               .github/scripts/**
               scripts/licenses/**
+              scripts/mutation-health/**
             performance:
               packages/testing/performance/**
               packages/workflow/src/**
@@ -133,6 +144,9 @@ jobs:
               packages/cli/**/__tests__/**
               packages/testing/containers/services/postgres.ts
               .github/workflows/test-db-reusable.yml
+              docs/generated/**
+              .tbls.sqlite.yml
+              .tbls.postgres.yml
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e

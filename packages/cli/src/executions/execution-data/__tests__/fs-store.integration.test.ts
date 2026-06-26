@@ -81,6 +81,23 @@ describe('write', () => {
 		expect(stored).toMatchObject({ ...payload, version: 1 });
 	});
 
+	it('should return the byte size of the written bundle file', async () => {
+		const bytes = await fsStore.write(ref, payload);
+
+		const filePath = join(
+			storagePath,
+			'workflows',
+			workflowId,
+			'executions',
+			executionId,
+			'execution_data',
+			EXECUTION_DATA_BUNDLE_FILENAME,
+		);
+		const onDisk = await fs.readFile(filePath, 'utf-8');
+
+		expect(bytes).toBe(Buffer.byteLength(onDisk, 'utf-8'));
+	});
+
 	it('should overwrite on duplicate `executionId`', async () => {
 		await fsStore.write(ref, payload);
 

@@ -1,12 +1,13 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
 import { parseFeedUrl } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('rss-parser');
+vi.mock('rss-parser');
 
-const ParserMock = Parser as unknown as jest.Mock;
+const ParserMock = Parser as unknown as Mock;
 
 const RELAXED_ACCEPT =
 	'application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4';
@@ -19,12 +20,12 @@ describe('parseFeedUrl', () => {
 	let helpers: ReturnType<typeof mock<IExecuteFunctions['helpers']>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		helpers = mock<IExecuteFunctions['helpers']>();
 		helpers.httpRequest.mockResolvedValue(xmlBody);
 
-		(Parser.prototype.parseString as jest.Mock).mockResolvedValue(parsed);
+		(Parser.prototype.parseString as Mock).mockResolvedValue(parsed);
 	});
 
 	it('uses GET with default headers, text encoding, and no SSL skip when no options are passed', async () => {
@@ -111,7 +112,7 @@ describe('parseFeedUrl', () => {
 
 	it('propagates errors thrown by the parser', async () => {
 		const parseError = new Error('bad xml');
-		(Parser.prototype.parseString as jest.Mock).mockRejectedValue(parseError);
+		(Parser.prototype.parseString as Mock).mockRejectedValue(parseError);
 
 		await expect(parseFeedUrl(helpers, feedUrl)).rejects.toBe(parseError);
 	});
