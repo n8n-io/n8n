@@ -41,7 +41,7 @@ import {
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
 import { cleanupCredentials } from '../credentials/seeder';
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadTestCases } from '../data/source';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { createLogger } from '../harness/logger';
@@ -97,6 +97,7 @@ interface RunConfig {
 	args: ReturnType<typeof parseCliArgs>;
 	lanes: Lane[];
 	logger: EvalLogger;
+	testCasesWithFiles: WorkflowTestCaseWithFile[];
 	prebuiltManifest?: PrebuiltManifest;
 	prebuiltWorkflowIdsToDelete?: Set<string>;
 }
@@ -104,6 +105,8 @@ interface RunConfig {
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
+
+	const testCasesWithFiles = await loadTestCases(args, logger);
 
 	const prebuiltManifest = args.prebuiltWorkflows
 		? loadPrebuiltManifest(args.prebuiltWorkflows)
@@ -122,16 +125,16 @@ async function main(): Promise<void> {
 		const slugCount = Object.keys(prebuiltManifest).length;
 		logger.info(`Loaded prebuilt manifest: ${String(slugCount)} test case(s)`);
 
-		// Warn on slugs that don't match a local test-case file. Common cause
-		// is typos in the manifest — without this check, the typo silently
-		// falls through to an orchestrator build (or no run at all), and the
-		// user thinks the prebuilt path ran when it didn't.
-		const localSlugs = new Set(loadWorkflowTestCasesWithFiles().map((tc) => tc.fileSlug));
-		const orphanSlugs = Object.keys(prebuiltManifest).filter((slug) => !localSlugs.has(slug));
-		if (orphanSlugs.length > 0) {
-			logger.warn(
-				`Prebuilt manifest references ${String(orphanSlugs.length)} slug(s) with no matching local test case (will be ignored): ${orphanSlugs.join(', ')}`,
-			);
+		// Typo-check manifest slugs against known cases; skip when filtered (a
+		// deselected slug isn't a typo, else we'd warn on every filtered-out entry).
+		if (!args.filter && !args.exclude && !args.tier) {
+			const knownSlugs = new Set(testCasesWithFiles.map((tc) => tc.fileSlug));
+			const orphanSlugs = Object.keys(prebuiltManifest).filter((slug) => !knownSlugs.has(slug));
+			if (orphanSlugs.length > 0) {
+				logger.warn(
+					`Prebuilt manifest references ${String(orphanSlugs.length)} slug(s) with no matching test case (will be ignored): ${orphanSlugs.join(', ')}`,
+				);
+			}
 		}
 	}
 
@@ -181,6 +184,7 @@ async function main(): Promise<void> {
 				args,
 				lanes,
 				logger,
+				testCasesWithFiles,
 				prebuiltManifest,
 				prebuiltWorkflowIdsToDelete,
 			});
@@ -194,6 +198,7 @@ async function main(): Promise<void> {
 				args,
 				lanes,
 				logger,
+				testCasesWithFiles,
 				prebuiltManifest,
 				prebuiltWorkflowIdsToDelete,
 			});
@@ -245,11 +250,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	outcome: ComparisonOutcome;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
+	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, prebuiltWorkflowIdsToDelete } =
+		config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	if (testCasesWithFiles.length === 0) {
-		logger.info('No workflow test cases found in evaluations/data/workflows/');
+		logger.info('No workflow test cases selected (check --source / --filter / --exclude / --tier)');
 		return {
 			evaluation: { totalRuns: 0, testCases: [] },
 			experimentName: '',
@@ -264,14 +269,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	if (isolationWarning) logger.warn(isolationWarning);
 
 	const lsClient = new Client();
-	const datasetName = await syncDataset(
-		lsClient,
-		args.dataset,
-		logger,
-		args.filter,
-		args.exclude,
-		args.tier,
-	);
+	const datasetName = await syncDataset(lsClient, args.dataset, logger, testCasesWithFiles);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
@@ -667,16 +665,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		`Starting evaluate() with concurrency=${String(args.concurrency)}, ${String(lanes.length)} lane(s) × ${String(MAX_CONCURRENT_BUILDS)} concurrent builds, iterations=${String(args.iterations)}`,
 	);
 
-	// Always filter the LangSmith dataset by the local file slugs. The local
-	// JSON files are the source of truth; the dataset accumulates orphans (the
-	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
-	// run scenarios whose JSON file no longer exists.
+	// Filter the dataset to the selected slugs — the sync is additive, so orphans
+	// accumulate and we only want scenarios for currently-selected cases.
 	const sourceExamples = filteredExamplesIterable(
 		lsClient,
 		datasetName,
-		args.filter,
-		args.exclude,
-		args.tier,
+		testCasesWithFiles.map((tc) => tc.fileSlug),
 		logger,
 	);
 	const evaluateData =
@@ -803,22 +797,14 @@ async function* expandExamplesForIterations(
 function filteredExamplesIterable(
 	lsClient: Client,
 	datasetName: string,
-	filter: string | undefined,
-	exclude: string | undefined,
-	tier: string | undefined,
+	slugs: string[],
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
-	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude, tier).map((tc) => tc.fileSlug);
-	const labelParts: string[] = [];
-	if (filter) labelParts.push(`filter "${filter}"`);
-	if (exclude) labelParts.push(`exclude "${exclude}"`);
-	if (tier) labelParts.push(`tier "${tier}"`);
-	const label = labelParts.length > 0 ? labelParts.join(' + ') : 'Local test cases';
 	if (slugs.length === 0) {
-		logger.info(`${label} matched no local test case files`);
+		logger.info('No test cases selected — nothing to evaluate');
 		return (async function* () {})();
 	}
-	logger.info(`${label} matched ${String(slugs.length)} split(s): ${slugs.join(', ')}`);
+	logger.info(`Selected ${String(slugs.length)} split(s): ${slugs.join(', ')}`);
 	return lsClient.listExamples({ datasetName, splits: slugs });
 }
 
@@ -926,14 +912,14 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
+	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, prebuiltWorkflowIdsToDelete } =
+		config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	const slugByTestCase = new Map<WorkflowTestCase, string>(
 		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
 	);
 	if (testCasesWithFiles.length === 0) {
-		console.log('No workflow test cases found in evaluations/data/workflows/');
+		console.log('No workflow test cases selected (check --source / --filter / --exclude / --tier)');
 		return { evaluation: { totalRuns: 0, testCases: [] }, slugByTestCase };
 	}
 

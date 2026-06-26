@@ -49,7 +49,7 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 }
 
 /** Split a comma-separated CLI value into a normalized list of substring tokens. */
-function parseSubstringList(value: string | undefined): string[] {
+export function parseSubstringList(value: string | undefined): string[] {
 	if (!value) return [];
 	return value
 		.split(',')

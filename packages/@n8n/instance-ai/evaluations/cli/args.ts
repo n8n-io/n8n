@@ -69,6 +69,11 @@ export interface CliArgs {
 	 *  against its own baselines instead of the Instance AI one. Pair with a
 	 *  dedicated `--dataset` to keep MCP runs fully separate. */
 	baselinePrefix: string;
+	/** Test-case source: `disk` (default) reads data/workflows/, `langtracer` pulls a
+	 *  suite over MCP (needs LANGTRACER_URL + LANGTRACER_API_KEY). */
+	source: 'disk' | 'langtracer';
+	/** lang-tracer suite slug (or numeric id) to export when `--source langtracer`. */
+	suite?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +107,8 @@ const cliArgsSchema = z.object({
 		.min(1)
 		.transform((s) => (s.endsWith('-') ? s : `${s}-`))
 		.default(BASELINE_EXPERIMENT_PREFIX),
+	source: z.enum(['disk', 'langtracer']).default('disk'),
+	suite: z.string().min(1).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -116,6 +123,9 @@ export function parseCliArgs(argv: string[]): CliArgs {
 	}
 	if (validated.deletePrebuiltWorkflows && validated.keepWorkflows) {
 		throw new Error('--delete-prebuilt-workflows cannot be used with --keep-workflows');
+	}
+	if (validated.source === 'langtracer' && !validated.suite) {
+		throw new Error('--source langtracer requires --suite <slug>');
 	}
 
 	return {
@@ -137,6 +147,8 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		pinAiRoots: validated.pinAiRoots,
 		tier: validated.tier,
 		baselinePrefix: validated.baselinePrefix,
+		source: validated.source,
+		suite: validated.suite,
 	};
 }
 
@@ -188,6 +200,8 @@ interface RawArgs {
 	pinAiRoots?: string[];
 	tier?: string;
 	baselinePrefix: string;
+	source: string;
+	suite?: string;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -204,6 +218,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		iterations: 1,
 		pinAiRoots: undefined,
 		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
+		source: 'disk',
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -304,6 +319,16 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--baseline-prefix':
 				result.baselinePrefix = nextArg(argv, i, '--baseline-prefix');
+				i++;
+				break;
+
+			case '--source':
+				result.source = nextArg(argv, i, '--source');
+				i++;
+				break;
+
+			case '--suite':
+				result.suite = nextArg(argv, i, '--suite');
 				i++;
 				break;
 
