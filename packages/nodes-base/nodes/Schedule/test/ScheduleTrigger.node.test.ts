@@ -58,6 +58,25 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
+		it('should re-arm a schedule whose stored recurrence state is stale', async () => {
+			// staticData carries a stale day-of-year value (200) and no signature, as if the
+			// interval was switched from "every N days" to "every 3 hours". Without re-arming,
+			// recurrenceCheck reads 200 as an hour and the trigger never fires again.
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+				workflowStaticData: { recurrenceRules: [200] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(2 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+		});
+
 		it('should emit repeatedly for hourly intervals that do not divide evenly into a day', async () => {
 			const { emit } = await testTriggerNode(ScheduleTrigger, {
 				timezone,

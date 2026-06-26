@@ -44,6 +44,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { RoleCacheService } from './role-cache.service';
+import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
 
 @Service()
 export class RoleService {
@@ -53,6 +54,7 @@ export class RoleService {
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
 		private readonly logger: Logger,
+		private readonly roleDeletionCheckProxy: RoleDeletionCheckProxy,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
@@ -149,6 +151,13 @@ export class RoleService {
 		const usersWithRole = await this.roleRepository.countUsersWithRole(role);
 		if (usersWithRole > 0) {
 			throw new BadRequestError('Cannot delete role assigned to users');
+		}
+
+		// Let optional modules (e.g. SSO provisioning) veto deletion of a role
+		// they still reference, so it isn't silently orphaned.
+		const blockers = await this.roleDeletionCheckProxy.findRoleDeletionBlockers(slug);
+		if (blockers.length > 0) {
+			throw new BadRequestError(`Cannot delete role: ${blockers.join('; ')}`);
 		}
 
 		await this.roleRepository.removeBySlug(slug);

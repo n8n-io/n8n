@@ -338,6 +338,7 @@ for port in "${PORTS[@]}"; do
 	docker run -d --name "$name" \
 		--env-file "$ENV_FILE_PATH" \
 		-e E2E_TESTS=true \
+		-e N8N_USER_FOLDER=/home/node/.n8n \
 		-p "${port}:5678" \
 		"$IMAGE" >/dev/null
 

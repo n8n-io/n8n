@@ -93,8 +93,15 @@ export class ExecutionPersistence {
 	 */
 	async create(payload: CreateExecutionPayload) {
 		const { data: rawData, workflowData, ...rest } = payload;
-		const { connections, nodes, name, settings, id } = workflowData;
-		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
+		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
+		const workflowSnapshot: WorkflowSnapshot = {
+			connections,
+			nodes,
+			name,
+			settings,
+			id,
+			nodeGroups,
+		};
 		const storedAt = this.storageConfig.modeTag;
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
@@ -799,8 +806,8 @@ export class ExecutionPersistence {
 	private toWorkflowSnapshot(
 		workflowData: NonNullable<IExecutionResponse['workflowData']>,
 	): WorkflowSnapshot {
-		const { id, name, nodes, connections, settings } = workflowData;
-		return { id, name, nodes, connections, settings };
+		const { id, name, nodes, connections, settings, nodeGroups } = workflowData;
+		return { id, name, nodes, connections, settings, nodeGroups };
 	}
 
 	private async assembleExecution(

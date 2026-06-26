@@ -1,7 +1,11 @@
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
 import { useInstanceAiAvailable } from './useInstanceAiAvailability';
-import { buildInstanceAiCredentialQuestion, useInstanceAiHandoff } from './useInstanceAiHandoff';
+import {
+	buildInstanceAiCredentialHandoffContext,
+	buildInstanceAiCredentialQuestion,
+	useInstanceAiHandoff,
+} from './useInstanceAiHandoff';
 
 /**
  * Credential setup-help handler for surfaces with no workflow context — the
@@ -26,7 +30,7 @@ export function useInstanceAiCredentialHelp(): () => InstanceAiCredentialHelpHan
 				buildInstanceAiCredentialQuestion(credential),
 				undefined,
 				undefined,
-				{ newTab: true },
+				{ newTab: true, context: buildInstanceAiCredentialHandoffContext(credential) },
 			);
 			// New tab → keep the credential modal open so the user can finish the form.
 			return false;
