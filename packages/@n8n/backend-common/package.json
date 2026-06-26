@@ -29,6 +29,7 @@
     "@n8n/di": "workspace:*",
     "callsites": "catalog:",
     "flatted": "catalog:",
+    "logform": "2.6.1",
     "n8n-workflow": "workspace:*",
     "stream-json": "catalog:",
     "picocolors": "catalog:",

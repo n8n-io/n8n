@@ -49,7 +49,7 @@ export class WorkflowsPage extends BasePage {
 
 	async deleteWorkflow(workflowItem: Locator) {
 		await this.openWorkflowCardActions(workflowItem);
-		await this.page.getByTestId('action-delete').click();
+		await this.actionToggle.getAction('delete').click();
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
