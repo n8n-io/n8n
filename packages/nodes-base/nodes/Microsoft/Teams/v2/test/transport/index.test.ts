@@ -487,11 +487,15 @@ describe('Microsoft Teams Transport', () => {
 	});
 
 	describe('validateTeamsId', () => {
-		it('accepts a GUID and a colon-free Planner-style id', () => {
+		it('accepts a GUID and a Planner-style id', () => {
 			expect(() =>
 				validateTeamsId('1111-2222-3333-4444-555566667777', mockNode),
 			).not.toThrow();
 			expect(() => validateTeamsId('rl1HYb0cUEiHPc7zgB_KWWUAA7Of', mockNode)).not.toThrow();
+		});
+
+		it('accepts a real colon-bearing channel id (`:` and `@` are allowed)', () => {
+			expect(() => validateTeamsId('19:abc@thread.tacv2', mockNode)).not.toThrow();
 		});
 
 		it.each(['', '   '])('rejects empty / whitespace-only ids', (id) => {
@@ -502,8 +506,8 @@ describe('Microsoft Teams Transport', () => {
 			expect(() => validateTeamsId(id, mockNode)).toThrow();
 		});
 
-		it.each(['a/b', 'a\\b', '19:abc@thread.tacv2', 'a?b', 'a#b'])(
-			'rejects path-escaping ids (%s)',
+		it.each(['a/b', 'a\\b', 'a?b', 'a#b', 'x/../../groups/abc', 'abc?$expand=foo'])(
+			'rejects path-escape / query-injection ids (%s)',
 			(id) => {
 				expect(() => validateTeamsId(id, mockNode)).toThrow();
 			},
@@ -539,7 +543,7 @@ describe('Microsoft Teams Transport', () => {
 			expect(path).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
 		});
 
-		it('validates then encodes each id once under the Service Principal credential', () => {
+		it('validates and interpolates each id RAW under the Service Principal credential', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 
 			const path = buildTeamsPath.call(mockExecuteFunctions, [
@@ -551,36 +555,45 @@ describe('Microsoft Teams Transport', () => {
 			expect(path).toBe('/v1.0/planner/plans/plan_id-123/tasks');
 		});
 
-		it('encodes an @ exactly once under the Service Principal credential', () => {
+		it('passes a colon/at-bearing id RAW under SP (same shape as OAuth2, not encoded)', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 
 			const path = buildTeamsPath.call(mockExecuteFunctions, [
-				'/v1.0/groups/',
-				{ id: 'jane@contoso.com' },
-				'/members',
+				'/v1.0/teams/',
+				{ id: '1111-2222' },
+				'/channels/',
+				{ id: '19:abc@thread.tacv2' },
 			]);
 
-			expect(path).toBe('/v1.0/groups/jane%40contoso.com/members');
+			expect(path).toBe('/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2');
+			// proven raw Graph shape — never percent-encoded
+			expect(path).not.toContain('%3A');
+			expect(path).not.toContain('%40');
 		});
 
-		it('throws on a crafted traversal id under the Service Principal credential', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+		it.each(['x/../../groups/abc', 'abc?$expand=foo', 'a\\b', 'a#frag'])(
+			'throws on a crafted separator/injection id (%s) under the Service Principal credential',
+			(craftedId) => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 
-			expect(() =>
-				buildTeamsPath.call(mockExecuteFunctions, [
-					'/v1.0/teams/',
-					{ id: 'x/../../groups/abc' },
-					'/channels',
-				]),
-			).toThrow();
-		});
+				expect(() =>
+					buildTeamsPath.call(mockExecuteFunctions, [
+						'/v1.0/teams/',
+						{ id: craftedId },
+						'/channels',
+					]),
+				).toThrow();
+			},
+		);
 	});
 
 	describe('OAuth2 back-compat lock (byte-for-byte unchanged)', () => {
-		it('composes the legacy raw uri for a colon-bearing channelId that SP would reject', async () => {
+		it('composes the legacy raw uri for a colon-bearing channelId', async () => {
 			// Default OAuth2 selected. A realistic colon-bearing channel id flows through
 			// buildTeamsPath verbatim — no throw, no encoding — proving OAuth2 URL shapes
-			// are unchanged (the SP validator would reject this exact id).
+			// are unchanged. SP composes the SAME raw shape for this valid id (see the
+			// buildTeamsPath SP test); the two paths differ only in that SP rejects the
+			// separator/query-injection vectors.
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
 			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });

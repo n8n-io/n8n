@@ -146,6 +146,49 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		});
 	});
 
+	describe('channel:get under SP composes the proven raw Graph path', () => {
+		it('interpolates a real colon-bearing channelId RAW (not percent-encoded)', async () => {
+			(transport.microsoftApiRequest as Mock).mockResolvedValue({ id: 'ch' });
+			ctx.helpers.returnJsonArray = vi.fn((data) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+			) as unknown as IExecuteFunctions['helpers']['returnJsonArray'];
+			ctx.helpers.constructExecutionMetaData = vi.fn(
+				(data) => data,
+			) as unknown as IExecuteFunctions['helpers']['constructExecutionMetaData'];
+			selectSp({
+				resource: 'channel',
+				operation: 'get',
+				teamId: '1111-2222-3333',
+				channelId: '19:abc@thread.tacv2',
+			});
+
+			await node.execute.call(ctx);
+
+			expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/v1.0/teams/1111-2222-3333/channels/19:abc@thread.tacv2',
+			);
+			const calledPath = (transport.microsoftApiRequest as Mock).mock.calls[0][1] as string;
+			expect(calledPath).not.toContain('%3A');
+			expect(calledPath).not.toContain('%40');
+			expect(calledPath).not.toContain('/me');
+		});
+
+		it('rejects a separator-bearing channelId before any request', async () => {
+			selectSp({
+				resource: 'channel',
+				operation: 'get',
+				teamId: '1111-2222-3333',
+				channelId: 'x/../../groups/abc',
+			});
+
+			// channel:get wraps its body in a try/catch that rethrows a generic message, but
+			// the validator throw (a NodeOperationError) is surfaced before any request.
+			await expect(node.execute.call(ctx)).rejects.toThrow();
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('task path-id injection under SP', () => {
 		it.each(['get', 'deleteTask'])(
 			'task:%s rejects a crafted taskId via buildTeamsPath',

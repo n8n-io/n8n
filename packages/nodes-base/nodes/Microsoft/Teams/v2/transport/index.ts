@@ -68,19 +68,21 @@ export function joinedTeamsEndpoint(
 		: '/v1.0/me/joinedTeams';
 }
 
-// Reject any id that could escape its Graph path segment. `encodeURIComponent`
-// leaves `..` intact, so shape validation (not encoding) is what keeps a value
-// safe to interpolate — validate BEFORE encoding. Messages are fully static so a
-// rejected id is never echoed back. Rejects control chars and `/ \ : ? #`;
-// hyphens/dots/`@` are kept (GUIDs, UPNs and Planner ids legitimately use them).
+// Reject any id that could escape its Graph path segment or start a query/fragment:
+// path separators (`/` `\`), query/fragment starters (`?` `#`), and control chars
+// (0x00–0x1F). `:` and `@` are ALLOWED — they are structure-neutral inside a single
+// Teams id segment (real channel ids look like `19:...@thread.tacv2`), and the proven
+// OAuth2 URL shape interpolates them raw. Validating the shape (not encoding) is what
+// keeps a value safe to interpolate raw. Messages are static so a rejected id is
+// never echoed back.
 // eslint-disable-next-line no-control-regex
-const TEAMS_ID_REJECT = /[\x00-\x1f\/\\:?#]/;
+const TEAMS_ID_REJECT = /[\x00-\x1f\/\\?#]/;
 
 /**
  * Validates a user-supplied Graph id (already `extractValue`-resolved) before it is
- * encoded and interpolated into a Graph path. Throws a `NodeOperationError` with a
- * fully static message (never echoing the id) on a bad shape. Reused for both path
- * IDs and `task:create` body IDs (the latter validate-only — see `buildTeamsPath`).
+ * interpolated RAW into a Graph path. Throws a `NodeOperationError` with a fully
+ * static message (never echoing the id) on a bad shape. Reused for both path IDs and
+ * `task:create` body IDs (the latter validate-only — see `buildTeamsPath`).
  */
 export function validateTeamsId(id: string, node: INode): void {
 	const value = String(id ?? '').trim();
@@ -96,7 +98,7 @@ export function validateTeamsId(id: string, node: INode): void {
 	}
 	if (TEAMS_ID_REJECT.test(value)) {
 		throw new NodeOperationError(node, 'The ID is not valid', {
-			description: 'Remove any slashes, backslashes, colons, question marks or hashes and try again.',
+			description: 'Remove any slashes, backslashes, question marks or hashes and try again.',
 		});
 	}
 }
@@ -107,10 +109,13 @@ type TeamsPathSegment = string | { id: string };
  * Single, non-bypassable path builder for every Graph path that interpolates a
  * user-supplied id. `segments` is an ordered mix of literal strings and id parts
  * (`{ id: value }`). Under the Service Principal credential each `{ id }` is
- * validated (`validateTeamsId`) then `encodeURIComponent`-ed — the tenant-wide app
- * token makes a path-escape org-wide, so this is the path-injection guard. Under
- * OAuth2 the id is passed through verbatim (no validate, no encode) so OAuth2 URL
- * shapes stay byte-for-byte unchanged. The SP gate is read once here.
+ * validated (`validateTeamsId`) — the tenant-wide app token makes a path-escape
+ * org-wide, so rejecting `/ \ ? #` + control is the path-injection guard. The id is
+ * then interpolated RAW (no `encodeURIComponent`), sending the identical proven
+ * OAuth2 URL shape byte-for-byte (encoding `:`→`%3A` would be an unverified Graph
+ * shape). Under OAuth2 the id is passed through verbatim with no validation, so the
+ * SP path sends the same raw shape while being strictly more locked-down. The SP gate
+ * is read once here.
  */
 export function buildTeamsPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -123,7 +128,7 @@ export function buildTeamsPath(
 			if (typeof segment === 'string') return segment;
 			if (!isServicePrincipal) return segment.id;
 			validateTeamsId(segment.id, node);
-			return encodeURIComponent(segment.id.trim());
+			return segment.id.trim();
 		})
 		.join('');
 }
