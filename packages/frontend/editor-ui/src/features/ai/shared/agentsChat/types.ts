@@ -1,11 +1,13 @@
 import {
 	type ASK_CREDENTIAL_TOOL_NAME,
+	type ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	type ASK_LLM_TOOL_NAME,
 	type ASK_QUESTION_TOOL_NAME,
 	type APPROVAL_TOOL_NAME,
 	type N8N_CHAT_ACTION_TOOL_NAME,
 	type AskCredentialInput,
 	type AskCredentialResume,
+	type AskEmbeddingCredentialResume,
 	type AskLlmInput,
 	type AskLlmResume,
 	type AskQuestionInput,
@@ -84,6 +86,11 @@ export type InteractivePayload =
 			toolName: typeof ASK_CREDENTIAL_TOOL_NAME;
 			input: AskCredentialInput;
 			resolvedValue?: AskCredentialResume;
+	  })
+	| (InteractivePayloadBase & {
+			toolName: typeof ASK_EMBEDDING_CREDENTIAL_TOOL_NAME;
+			input: AskCredentialInput;
+			resolvedValue?: AskEmbeddingCredentialResume;
 	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof ASK_LLM_TOOL_NAME;

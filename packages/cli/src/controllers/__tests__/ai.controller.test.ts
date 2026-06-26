@@ -5,12 +5,13 @@ import type {
 	AiBuilderChatRequestDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { APIResponseError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 
 import { AiController, type FlushableResponse } from '../ai.controller';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
@@ -75,6 +76,12 @@ describe('AiController', () => {
 			await expect(controller.chat(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
+		});
+
+		it('should map missing AI assistant sessions to NotFoundError', async () => {
+			aiService.chat.mockRejectedValue(new APIResponseError('Session not found', 404));
+
+			await expect(controller.chat(request, response, payload)).rejects.toThrow(NotFoundError);
 		});
 
 		it('should register a close handler on the response for abort', async () => {

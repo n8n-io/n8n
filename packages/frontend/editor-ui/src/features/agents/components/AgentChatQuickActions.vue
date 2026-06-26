@@ -48,9 +48,16 @@ function onAddTool() {
 			mcpServers: props.mcpServers ?? [],
 			projectId: props.projectId,
 			agentId: props.agentId,
-			onConfirm: (tools: AgentJsonToolRef[], mcpServers: AgentJsonMcpServerConfig[] = []) => {
-				emit('update:tools', tools);
-				emit('update:mcp-servers', mcpServers);
+			onConfirm: (props: {
+				tools?: AgentJsonToolRef[];
+				mcpServers?: AgentJsonMcpServerConfig[];
+			}) => {
+				if (props.tools) {
+					emit('update:tools', props.tools);
+				}
+				if (props.mcpServers) {
+					emit('update:mcp-servers', props.mcpServers);
+				}
 			},
 		},
 	});
