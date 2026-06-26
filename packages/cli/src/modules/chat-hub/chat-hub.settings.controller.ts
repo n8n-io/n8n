@@ -1,15 +1,17 @@
-import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Post, Put, RestController, GlobalScope, Param } from '@n8n/decorators';
-
-import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	ChatHubLLMProvider,
 	chatHubLLMProviderSchema,
 	UpdateChatSettingsRequest,
+	UpdateChatEnabledRequest,
 	ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
+import { ModuleRegistry, Logger } from '@n8n/backend-common';
+import { type AuthenticatedRequest } from '@n8n/db';
+import { Body, Get, Post, Put, RestController, GlobalScope, Param } from '@n8n/decorators';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 
 @RestController('/chat')
 export class ChatHubSettingsController {
@@ -61,6 +63,25 @@ export class ChatHubSettingsController {
 		}
 
 		return await this.settings.getProviderSettings(payload.provider);
+	}
+
+	@Put('/enabled')
+	@GlobalScope('chatHub:manage')
+	async setEnabled(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: UpdateChatEnabledRequest,
+	) {
+		await this.settings.setEnabled(body.enabled);
+		try {
+			await this.moduleRegistry.refreshModuleSettings('chat-hub');
+		} catch (error) {
+			this.logger.warn('Failed to sync chat settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return { enabled: body.enabled };
 	}
 
 	@Put('/semantic-search')
