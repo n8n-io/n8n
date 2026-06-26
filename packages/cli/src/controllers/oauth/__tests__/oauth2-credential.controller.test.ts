@@ -59,6 +59,28 @@ describe('OAuth2CredentialController', () => {
 				res,
 			);
 		});
+
+		it('should return the OpenAI device auth page URL for OpenAI OAuth2 credentials', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({
+				id: 'openai-credential-id',
+				type: 'openAiOAuth2Api',
+			});
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+				user: mock<User>({ id: '123' }),
+				query: { id: 'openai-credential-id' },
+			});
+
+			const authUri = await controller.getAuthUri(req);
+
+			expect(authUri).toBe(
+				'http://localhost:5678/rest/openai-oauth2-credential/device-auth?id=openai-credential-id',
+			);
+			expect(oauthService.buildCsrfStateData).not.toHaveBeenCalled();
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('handleCallback', () => {

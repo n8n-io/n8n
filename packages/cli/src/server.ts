@@ -42,6 +42,7 @@ import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
 import '@/controllers/oauth/oauth1-credential.controller';
 import '@/controllers/oauth/oauth2-credential.controller';
+import '@/controllers/oauth/openai-oauth2-device.controller';
 import '@/controllers/orchestration.controller';
 import '@/controllers/owner.controller';
 import '@/controllers/password-reset.controller';

@@ -3,8 +3,32 @@ import type {
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
+	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
+
+function isDataObject(value: unknown): value is IDataObject {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function getOpenAiApiKey(credentials: ICredentialDataDecryptedObject): string {
+	const { oauthTokenData } = credentials;
+	let oauthAccessToken = '';
+	if (isDataObject(oauthTokenData)) {
+		oauthAccessToken =
+			typeof oauthTokenData.access_token === 'string' ? oauthTokenData.access_token : '';
+	}
+
+	const apiKey = typeof credentials.apiKey === 'string' ? credentials.apiKey : '';
+	return apiKey || oauthAccessToken;
+}
+
+export const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';
+export const OPEN_AI_OAUTH2_CREDENTIAL_TYPE = 'openAiOAuth2Api';
+
+export function getOpenAiCredentialType(authentication: unknown): string {
+	return authentication === 'oAuth2' ? OPEN_AI_OAUTH2_CREDENTIAL_TYPE : OPEN_AI_API_CREDENTIAL_TYPE;
+}
 
 export class OpenAiApi implements ICredentialType {
 	name = 'openAiApi';
@@ -84,7 +108,7 @@ export class OpenAiApi implements ICredentialType {
 	): Promise<IHttpRequestOptions> {
 		requestOptions.headers ??= {};
 
-		requestOptions.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
+		requestOptions.headers['Authorization'] = `Bearer ${getOpenAiApiKey(credentials)}`;
 		requestOptions.headers['OpenAI-Organization'] = credentials.organizationId;
 
 		if (

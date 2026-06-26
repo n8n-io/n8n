@@ -273,6 +273,10 @@ const isManagedOAuth = computed(
 	() => props.isOAuthType && props.managedOauthAvailable && !props.useCustomOauth,
 );
 
+const shouldShowOAuthRedirectUrl = computed(
+	() => props.isOAuthType && !isManagedOAuth.value && !props.credentialType.__hideOAuthRedirectUrl,
+);
+
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -558,7 +562,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</div>
 
 					<CopyInput
-						v-if="isOAuthType && !isManagedOAuth"
+						v-if="shouldShowOAuthRedirectUrl"
 						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 						:value="oAuthCallbackUrl"
 						:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"

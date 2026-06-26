@@ -15,6 +15,8 @@ import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 
+const OPENAI_OAUTH2_CREDENTIAL_TYPE = 'openAiOAuth2Api';
+
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
 	constructor(
@@ -29,8 +31,21 @@ export class OAuth2CredentialController {
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth, res: Response): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
+
+		if (credential.type === OPENAI_OAUTH2_CREDENTIAL_TYPE) {
+			return this.getOpenAiDeviceAuthUrl(credential.id);
+		}
+
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		return await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res);
+	}
+
+	private getOpenAiDeviceAuthUrl(credentialId: string): string {
+		const restUrl = this.oauthService
+			.getBaseUrl(OauthVersion.V2)
+			.replace(/\/oauth2-credential$/, '');
+
+		return `${restUrl}/openai-oauth2-credential/device-auth?id=${encodeURIComponent(credentialId)}`;
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */

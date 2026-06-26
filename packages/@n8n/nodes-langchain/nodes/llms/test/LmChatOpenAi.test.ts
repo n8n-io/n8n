@@ -10,6 +10,7 @@ import type { Mocked } from 'vitest';
 
 import * as common from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
+import { OpenAiAccountChatModel } from '../LMChatOpenAi/OpenAiAccountChatModel';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -21,6 +22,15 @@ const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHa
 const mockedCommon = vi.mocked(common);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+const JWT_ACCOUNT_CLAIM = 'https://api.openai.com/auth';
+
+function makeOpenAiAccountToken(accountId: string) {
+	const payload = Buffer.from(
+		JSON.stringify({ [JWT_ACCOUNT_CLAIM]: { chatgpt_account_id: accountId } }),
+	).toString('base64url');
+
+	return `test-header.${payload}.test-signature`;
+}
 
 describe('LmChatOpenAi', () => {
 	let lmChatOpenAi: LmChatOpenAi;
@@ -81,6 +91,20 @@ describe('LmChatOpenAi', () => {
 				{
 					name: 'openAiApi',
 					required: true,
+					displayOptions: {
+						show: {
+							authentication: ['apiKey'],
+						},
+					},
+				},
+				{
+					name: 'openAiOAuth2Api',
+					required: true,
+					displayOptions: {
+						show: {
+							authentication: ['oAuth2'],
+						},
+					},
 				},
 			]);
 		});
@@ -97,6 +121,7 @@ describe('LmChatOpenAi', () => {
 
 			// Mock getNodeParameter to handle the proper parameter names for v1.2
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'authentication') return 'apiKey';
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -233,6 +258,88 @@ describe('LmChatOpenAi', () => {
 					onFailedAttempt: expect.any(Function),
 				}),
 			);
+		});
+
+		it('should create OpenAI account model with OAuth token-backed credentials', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					access_token: makeOpenAiAccountToken('account-1'),
+				},
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'authentication') return 'oAuth2';
+				if (paramName === 'model.value') return 'gpt-5-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockContext.getCredentials).toHaveBeenCalledWith('openAiOAuth2Api');
+			expect(MockedChatOpenAI).not.toHaveBeenCalled();
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith('https://chatgpt.com/backend-api', {
+				headersTimeout: undefined,
+				bodyTimeout: undefined,
+			});
+			expect(result.response).toBeInstanceOf(OpenAiAccountChatModel);
+			expect(result.response).toMatchObject({ model: 'gpt-5.4-mini' });
+		});
+
+		it('should use the selected OpenAI account model for OAuth credentials', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					access_token: makeOpenAiAccountToken('account-1'),
+				},
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'authentication') return 'oAuth2';
+				if (paramName === 'openAiAccountModel.value') return 'gpt-5.3-codex';
+				if (paramName === 'model.value') return 'gpt-5-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(result.response).toBeInstanceOf(OpenAiAccountChatModel);
+			expect(result.response).toMatchObject({ model: 'gpt-5.3-codex' });
+		});
+
+		it('should pass supported OpenAI account options to the OAuth model', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					access_token: makeOpenAiAccountToken('account-1'),
+				},
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'authentication') return 'oAuth2';
+				if (paramName === 'model.value') return 'gpt-5-mini';
+				if (paramName === 'options')
+					return {
+						maxTokens: 1000,
+						timeout: 45000,
+						reasoningEffort: 'high',
+					};
+				return undefined;
+			});
+
+			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(result.response).toBeInstanceOf(OpenAiAccountChatModel);
+			expect(result.response).toMatchObject({
+				maxOutputTokens: 1000,
+				timeout: 45000,
+				reasoningEffort: 'high',
+			});
 		});
 
 		it('should handle custom headers from credentials', async () => {
