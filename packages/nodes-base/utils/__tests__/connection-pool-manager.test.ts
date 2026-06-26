@@ -335,10 +335,10 @@ describe('wasUsed', () => {
 	test('uses the current caller\'s `wasUsed`, not the one that created the pool', async () => {
 		// ARRANGE
 		const connectionType = {};
-		const fallBackHandler = jest.fn(async () => connectionType);
+		const fallBackHandler = vi.fn(async () => connectionType);
 
-		const firstWasUsed = jest.fn();
-		const secondWasUsed = jest.fn();
+		const firstWasUsed = vi.fn();
+		const secondWasUsed = vi.fn();
 
 		const baseOptions = {
 			credentials: {},
