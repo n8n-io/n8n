@@ -1,4 +1,4 @@
-import type { MockInstance } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -11,6 +11,7 @@ import type { FrontendSettings } from '@n8n/api-types';
 import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -229,6 +230,63 @@ describe('WorkflowCard', () => {
 
 		expect(heading).toHaveTextContent(data.name);
 		expect(badge).toHaveTextContent('John Doe');
+	});
+
+	// Breadcrumb links must use the base-relative path (.fullPath), not .href, so the
+	// router base (N8N_PATH) is not applied twice. Self-contained so the default router
+	// mock and the existing specs above are untouched.
+	describe('breadcrumb base-path handling', () => {
+		const FOLDER_PATH = '/projects/1/folders/1';
+
+		// A `team` home project keeps isSomeoneElsesWorkflow false so the breadcrumb
+		// shows. N8nBreadcrumbs is stubbed to render the first item's href as text; the
+		// template's `data-test-id` falls through onto the stub root, read back below.
+		const breadcrumbRenderOptions = () => ({
+			props: {
+				data: createWorkflow({
+					homeProject: { id: '1', name: 'Project 1', type: ProjectTypes.Team },
+					parentFolder: { id: '2', name: 'Parent folder', parentFolderId: null },
+				}),
+				showOwnershipBadge: true,
+			},
+			global: {
+				stubs: {
+					ProjectCardBadge: { template: '<div><slot /></div>' },
+					N8nBreadcrumbs: { props: ['items'], template: '<div>{{ items[0]?.href }}</div>' },
+				},
+			},
+		});
+
+		// Standard deployment (no N8N_PATH): href and fullPath are identical.
+		beforeEach(() => {
+			(router.resolve as unknown as Mock).mockReturnValue({ href: FOLDER_PATH, fullPath: FOLDER_PATH });
+		});
+
+		it('renders the parent-folder breadcrumb link', () => {
+			const { getByTestId } = renderComponent(breadcrumbRenderOptions());
+
+			expect(getByTestId('workflow-card-breadcrumbs').textContent).toBe(FOLDER_PATH);
+		});
+
+		// Edge case: under a sub-path (N8N_PATH=/n8n/), router.resolve(...).href is
+		// base-prefixed but .fullPath is not. Using .href would double the base
+		// ("/n8n/n8n/...") and 404.
+		describe('subpath deployment (e.g. N8N_PATH=/n8n/)', () => {
+			const BASE_PREFIXED = `/n8n${FOLDER_PATH}`;
+
+			beforeEach(() => {
+				(router.resolve as unknown as Mock).mockReturnValue({
+					href: BASE_PREFIXED,
+					fullPath: FOLDER_PATH,
+				});
+			});
+
+			it('keeps breadcrumb links base-relative', () => {
+				const { getByTestId } = renderComponent(breadcrumbRenderOptions());
+
+				expect(getByTestId('workflow-card-breadcrumbs').textContent).toBe(FOLDER_PATH);
+			});
+		});
 	});
 
 	it("should show 'Move' action if there is move resource permission and team projects available", async () => {
