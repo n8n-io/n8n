@@ -50,6 +50,7 @@ function createOrchestrationContext(): OrchestrationContext {
 		taskStorage: {},
 		workflowTaskService: {
 			getBuildOutcome: vi.fn(),
+			getLatestBuildOutcomeForWorkflow: vi.fn(),
 		},
 		domainContext,
 		plannedTaskService: {},

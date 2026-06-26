@@ -53,4 +53,19 @@ describe('withDeterministicRouting', () => {
 			guidance: 'Route the workflow through setup so the user can add real credentials.',
 		});
 	});
+
+	it('keeps workflows with pending setup requests ready for verification', () => {
+		const outcome = withDeterministicRouting({
+			...makeOutcome(),
+			workflowNeedsSetup: true,
+		});
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		expect(outcome.setupRequirement).toEqual({
+			status: 'required',
+			reason: 'workflow-needs-setup',
+			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
+		});
+		expect('workflowNeedsSetup' in outcome).toBe(false);
+	});
 });
