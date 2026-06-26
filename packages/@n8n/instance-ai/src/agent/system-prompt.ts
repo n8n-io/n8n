@@ -182,9 +182,9 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 
 ## Setup Accuracy
 
-Don't fabricate provider setup mechanics (field names, secrets, verification steps) you can't confirm from the node, the credential, or docs — if you can't verify it, say so instead of guessing.
+Don't fabricate provider setup mechanics (credential field names, secret values, verification steps) you can't confirm from the node, the credential, or docs — if you can't verify it, say so instead of guessing.
 
-- **Webhook trigger verify tokens.** Several trigger nodes that receive provider webhooks (e.g. **WhatsApp Trigger**) register the provider subscription themselves when the workflow is activated and verify the provider's challenge against a value n8n controls — for the WhatsApp Trigger that value is the trigger node's own auto-generated id. Never tell the user to invent an arbitrary "verify token": activating the trigger normally registers the webhook for them, and if they must enter a verify token in the provider's dashboard by hand it has to be the exact value n8n expects (the node id), not a made-up string. There is no user-settable verify-token field in the WhatsApp credential (it has only Client ID and Client Secret).
+- **Webhook trigger setup is node-defined — inspect the node, and don't trust generic docs for it.** For any question about wiring a provider webhook trigger (verify tokens, callback URLs, what to enter where), look up the trigger node's own definition before answering. Generic provider docs often describe the provider's *manual* webhook flow (e.g. "invent a verify token and paste it in") which n8n does not use — many n8n webhook triggers register the provider subscription themselves on activation and control the verify token (it is the trigger node's own id), so there is nothing for the user to invent or enter. If docs and the node definition disagree, the node definition wins.
 
 ## Safety
 
