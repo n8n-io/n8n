@@ -10,8 +10,11 @@ import {
 	findSelectedLogEntry,
 	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
+	getSubtreeTotalConsumedTokens,
 	getTreeNodeData,
+	isGroupLog,
 	isNodeLog,
+	isSubNodeLog,
 	mergeStartData,
 	restoreChatHistory,
 	processFiles,
@@ -30,7 +33,7 @@ import {
 	aiModelNode,
 	createTestLogTreeCreationContext,
 } from './__test__/data';
-import type { LogEntry, LogEntrySelection, NodeLogEntry } from './logs.types';
+import type { GroupLogEntry, LogEntry, LogEntrySelection, NodeLogEntry } from './logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
@@ -1756,5 +1759,346 @@ describe(findSubExecutionLocator, () => {
 		);
 
 		expect(found).toEqual({ workflowId: 'w1', executionId: 'e1' });
+	});
+});
+
+describe('createLogTree with canvas groups', () => {
+	const group = { id: 'group-1', name: 'My Group', nodeIds: ['B', 'C'] };
+
+	function expectGroup(entry: LogEntry): GroupLogEntry {
+		if (!isGroupLog(entry)) {
+			throw new Error('expected a group log entry');
+		}
+		return entry;
+	}
+
+	function expectNode(entry: LogEntry): NodeLogEntry {
+		if (!isNodeLog(entry)) {
+			throw new Error('expected a node log entry');
+		}
+		return entry;
+	}
+
+	// Linear main flow A -> B -> C -> D, with B and C optionally grouped.
+	function createLinearWorkflow(nodeIds: Record<string, string> = {}) {
+		return createTestWorkflowObject({
+			id: 'w1',
+			nodes: [
+				createTestNode({ id: nodeIds.A ?? 'A', name: 'A' }),
+				createTestNode({ id: nodeIds.B ?? 'B', name: 'B' }),
+				createTestNode({ id: nodeIds.C ?? 'C', name: 'C' }),
+				createTestNode({ id: nodeIds.D ?? 'D', name: 'D' }),
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				B: { main: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: { main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+	}
+
+	function taskAt(seconds: number, partial: Partial<ReturnType<typeof createTestTaskData>> = {}) {
+		return createTestTaskData({
+			startTime: Date.parse('2025-01-01T00:00:00.000Z') + seconds * 1000,
+			executionIndex: seconds,
+			...partial,
+		});
+	}
+
+	function linearResponse() {
+		return createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [taskAt(0)],
+						B: [taskAt(1, { source: [{ previousNode: 'A', previousNodeRun: 0 }] })],
+						C: [taskAt(2, { source: [{ previousNode: 'B', previousNodeRun: 0 }] })],
+						D: [taskAt(3, { source: [{ previousNode: 'C', previousNodeRun: 0 }] })],
+					},
+				},
+			}),
+		});
+	}
+
+	it('sums member tokens once for a group', () => {
+		const withTokens = (total: number) => ({
+			data: {
+				main: [
+					[{ json: { tokenUsage: { completionTokens: 0, promptTokens: 0, totalTokens: total } } }],
+				],
+			},
+		});
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [taskAt(0)],
+						B: [taskAt(1, withTokens(10))],
+						C: [taskAt(2, withTokens(5))],
+					},
+				},
+			}),
+		});
+
+		const logs = createLogTree(createLinearWorkflow(), response, {}, {}, undefined, [group]);
+		const groupEntry = expectGroup(logs[1]);
+
+		expect(getSubtreeTotalConsumedTokens(groupEntry, false).totalTokens).toBe(15);
+	});
+
+	// Grouped nodes must stay main-flow nodes: a false sub-node match makes their input pane show their own output
+	it('does not treat grouped member nodes as sub-nodes', () => {
+		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [
+			group,
+		]);
+		const groupEntry = expectGroup(logs[1]);
+
+		expect(isSubNodeLog(groupEntry.children[0])).toBe(false); // B
+		expect(isSubNodeLog(groupEntry.children[1])).toBe(false); // C
+	});
+
+	it('does not fold when no node groups are provided', () => {
+		const logs = createLogTree(createLinearWorkflow(), linearResponse());
+
+		expect(logs.map((e) => e.type)).toEqual(['node', 'node', 'node', 'node']);
+	});
+
+	it('folds contiguous grouped nodes into a single group segment', () => {
+		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [
+			group,
+		]);
+
+		expect(logs).toHaveLength(3); // A, group(B, C), D
+		expect(expectNode(logs[0]).node.name).toBe('A');
+
+		const groupEntry = expectGroup(logs[1]);
+		expect(groupEntry.group.id).toBe('group-1');
+		expect(groupEntry.segmentIndex).toBe(0);
+		expect(groupEntry.children.map((c) => expectNode(c).node.name)).toEqual(['B', 'C']);
+		expect(groupEntry.children.every((c) => c.parent === groupEntry)).toBe(true);
+
+		expect(expectNode(logs[2]).node.name).toBe('D');
+	});
+
+	it('wraps a single executed member in a group row', () => {
+		const singleMemberGroup = { id: 'g-single', name: 'Solo', nodeIds: ['B'] };
+		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [
+			singleMemberGroup,
+		]);
+
+		const groupEntry = expectGroup(logs[1]);
+		expect(groupEntry.children.map((c) => expectNode(c).node.name)).toEqual(['B']);
+	});
+
+	it('splits a group into multiple segments when interrupted by an ungrouped node', () => {
+		// Group A and C; B (ungrouped) runs between them -> two separate segments
+		const splitGroup = { id: 'g-split', name: 'Split', nodeIds: ['A', 'C'] };
+		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [
+			splitGroup,
+		]);
+
+		// group(A), B, group(C), D
+		expect(logs).toHaveLength(4);
+
+		const first = expectGroup(logs[0]);
+		const second = expectGroup(logs[2]);
+
+		expect(first.group.id).toBe('g-split');
+		expect(first.segmentIndex).toBe(0);
+		expect(first.children.map((c) => expectNode(c).node.name)).toEqual(['A']);
+
+		expect(expectNode(logs[1]).node.name).toBe('B');
+
+		expect(second.group.id).toBe('g-split');
+		expect(second.segmentIndex).toBe(1);
+		expect(second.children.map((c) => expectNode(c).node.name)).toEqual(['C']);
+
+		expect(expectNode(logs[3]).node.name).toBe('D');
+	});
+
+	it('keeps AI sub-nodes nested under their grouped member', () => {
+		const workflow = createTestWorkflowObject({
+			id: 'w1',
+			nodes: [
+				createTestNode({ id: 'A', name: 'A' }),
+				createTestNode({ id: 'Model', name: 'Model' }),
+			],
+			connections: {
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'A', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			},
+		});
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [taskAt(0)],
+						Model: [taskAt(1, { source: [{ previousNode: 'A', previousNodeRun: 0 }] })],
+					},
+				},
+			}),
+		});
+		const aiGroup = { id: 'g-ai', name: 'AI', nodeIds: ['A'] };
+
+		const logs = createLogTree(workflow, response, {}, {}, undefined, [aiGroup]);
+
+		const groupEntry = expectGroup(logs[0]);
+		const member = expectNode(groupEntry.children[0]);
+		expect(member.node.name).toBe('A');
+		expect(member.children.map((c) => expectNode(c).node.name)).toEqual(['Model']);
+	});
+
+	it('derives boundary input and output from the nodes crossing the group edge', () => {
+		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [
+			group,
+		]);
+		const groupEntry = expectGroup(logs[1]);
+
+		// B is fed from A (outside) -> input boundary; C feeds D (outside) -> output boundary
+		expect(groupEntry.boundaries.inputs.map((b) => b.label)).toEqual(['B']);
+		expect(groupEntry.boundaries.outputs.map((b) => b.label)).toEqual(['C']);
+		expect(groupEntry.boundaries.inputs[0].entry.node.name).toBe('B');
+	});
+
+	it('exposes multiple boundary crossings for selection', () => {
+		// A fans out to both B and C; B and C each leave the group to D and E
+		const workflow = createTestWorkflowObject({
+			id: 'w1',
+			nodes: [
+				createTestNode({ id: 'A', name: 'A' }),
+				createTestNode({ id: 'B', name: 'B' }),
+				createTestNode({ id: 'C', name: 'C' }),
+				createTestNode({ id: 'D', name: 'D' }),
+				createTestNode({ id: 'E', name: 'E' }),
+			],
+			connections: {
+				A: {
+					main: [
+						[
+							{ node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'C', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+				B: { main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: { main: [[{ node: 'E', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [taskAt(0)],
+						B: [taskAt(1, { source: [{ previousNode: 'A', previousNodeRun: 0 }] })],
+						C: [taskAt(2, { source: [{ previousNode: 'A', previousNodeRun: 0 }] })],
+						D: [taskAt(3, { source: [{ previousNode: 'B', previousNodeRun: 0 }] })],
+						E: [taskAt(4, { source: [{ previousNode: 'C', previousNodeRun: 0 }] })],
+					},
+				},
+			}),
+		});
+
+		const logs = createLogTree(workflow, response, {}, {}, undefined, [group]);
+		const groupEntry = expectGroup(logs[1]);
+
+		expect(groupEntry.boundaries.inputs.map((b) => b.label)).toEqual(['B', 'C']);
+		expect(groupEntry.boundaries.outputs.map((b) => b.label)).toEqual(['B', 'C']);
+	});
+
+	it('treats a trigger member with no source as a boundary input', () => {
+		const triggerGroup = { id: 'g-trigger', name: 'Trigger group', nodeIds: ['A', 'B'] };
+		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [
+			triggerGroup,
+		]);
+		const groupEntry = expectGroup(logs[0]);
+
+		// A has no source -> input boundary; B feeds C (outside) -> output boundary
+		expect(groupEntry.boundaries.inputs.map((b) => b.label)).toContain('A');
+		expect(groupEntry.boundaries.outputs.map((b) => b.label)).toContain('B');
+	});
+
+	it('falls back to first and last member when no edge crossing is detected', () => {
+		// Whole workflow is one group: nothing enters or leaves except the implicit ends
+		const wholeGroup = { id: 'g-all', name: 'All', nodeIds: ['A', 'B', 'C', 'D'] };
+		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [
+			wholeGroup,
+		]);
+		const groupEntry = expectGroup(logs[0]);
+
+		// A has no source -> still an input; D has no outgoing main child -> still an output
+		expect(groupEntry.boundaries.inputs[0].label).toBe('A');
+		expect(groupEntry.boundaries.outputs.at(-1)?.label).toBe('D');
+	});
+});
+
+describe(getDefaultCollapsedEntries, () => {
+	const group = { id: 'group-1', name: 'My Group', nodeIds: ['B', 'C'] };
+
+	function groupedWorkflow() {
+		return createTestWorkflowObject({
+			id: 'w1',
+			nodes: [
+				createTestNode({ id: 'A', name: 'A' }),
+				createTestNode({ id: 'B', name: 'B' }),
+				createTestNode({ id: 'C', name: 'C' }),
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				B: { main: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+	}
+
+	it('collapses group entries by default', () => {
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [createTestTaskData({ startTime: 1 })],
+						C: [createTestTaskData({ startTime: 2 })],
+					},
+				},
+			}),
+		});
+		const logs = createLogTree(groupedWorkflow(), response, {}, {}, undefined, [group]);
+		const groupEntry = logs.find(isGroupLog);
+
+		expect(groupEntry).toBeDefined();
+		expect(getDefaultCollapsedEntries(logs)[groupEntry!.id]).toBe(true);
+	});
+
+	it('keeps a group expanded when a descendant errored', () => {
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [createTestTaskData({ startTime: 1 })],
+						C: [
+							createTestTaskData({
+								startTime: 2,
+								executionStatus: 'error',
+								error: { message: 'boom' } as unknown as ExecutionError,
+							}),
+						],
+					},
+				},
+			}),
+		});
+		const logs = createLogTree(groupedWorkflow(), response, {}, {}, undefined, [group]);
+		const groupEntry = logs.find(isGroupLog);
+
+		expect(groupEntry).toBeDefined();
+		expect(getDefaultCollapsedEntries(logs)[groupEntry!.id]).toBeUndefined();
 	});
 });

@@ -54,6 +54,8 @@ export interface LogTreeCreationContext {
 	workflows: Record<string, WorkflowObjectAccessors>;
 	subWorkflowData: Record<string, IRunExecutionData>;
 	isSubExecution: boolean;
+	/** Canvas groups of the current workflow; empty disables group folding (e.g. sub-executions) */
+	nodeGroups: IWorkflowGroup[];
 }
 
 export interface LatestNodeInfo {
