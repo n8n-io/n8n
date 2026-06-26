@@ -1,0 +1,9 @@
+<connections>
+    <connection type="postgres" name="default">
+        <host>localhost</host>
+        <username>test</username>
+        <password>test</password>
+        <port>5432</port>
+        <logging>true</logging>
+    </connection>
+</connections>
