@@ -282,6 +282,19 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			);
 		});
 
+		it('should pass a GUID mailbox through verbatim (nothing to percent-encode)', async () => {
+			setupSP({ mailbox: '11111111-1111-1111-1111-111111111111' });
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/11111111-1111-1111-1111-111111111111/messages',
+				}),
+			);
+		});
+
 		it('should target the sovereign cloud base for the SP mailbox', async () => {
 			setupSP({ mailbox: 'user@example.com', graphApiBaseUrl: 'https://graph.microsoft.us' });
 
@@ -314,6 +327,16 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			await expect(
 				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages'),
 			).rejects.toThrow(NodeOperationError);
+			await expect(
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages'),
+			).rejects.toThrow('A mailbox is required for the Service Principal');
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('should treat a whitespace-only mailbox as required and make no request', async () => {
+			// resolveMailbox trims to '' before validateMailbox, so this hits the required path.
+			setupSP({ mailbox: '   ' });
+
 			await expect(
 				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages'),
 			).rejects.toThrow('A mailbox is required for the Service Principal');

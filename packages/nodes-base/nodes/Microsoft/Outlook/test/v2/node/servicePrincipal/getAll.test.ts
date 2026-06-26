@@ -66,8 +66,21 @@ describe('Test MicrosoftOutlookV2, Service Principal => message:getAll (paginate
 			});
 	});
 
-	new NodeTestHarness().setupTests({
+	const harness = new NodeTestHarness();
+
+	harness.setupTests({
 		credentials,
 		workflowFiles: ['getAll.workflow.json'],
+	});
+
+	// The harness compares the live two-page merge against pinData; assert the
+	// expected merge contract explicitly (exactly 2 items, page 1 then page 2).
+	it('merges both pages into 2 items in page order', () => {
+		const workflow = harness.readWorkflowJSON('getAll.workflow.json');
+		const output = workflow.pinData?.['Microsoft Outlook'] ?? [];
+
+		expect(output).toHaveLength(2);
+		expect(output.map((item) => item.json.id)).toEqual(['msg-page1', 'msg-page2']);
+		expect(output.map((item) => item.json.subject)).toEqual(['Page 1 Email', 'Page 2 Email']);
 	});
 });

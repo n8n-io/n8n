@@ -114,4 +114,21 @@ describe('MicrosoftOutlookTrigger transport - Service Principal mailbox rewrite'
 			`receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`,
 		);
 	});
+
+	it('rejects with the required-mailbox error and makes no request when the mailbox is empty', async () => {
+		mockPollFunctions.getMode.mockReturnValue('manual');
+		mockPollFunctions.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
+			if (name === 'authentication') return 'microsoftEntraServicePrincipalApi';
+			if (name === 'mailbox') return '';
+			if (name === 'filters') return {};
+			if (name === 'options') return {};
+			if (name === 'output') return 'simple';
+			return fallback;
+		}) as unknown as IPollFunctions['getNodeParameter']);
+
+		await expect(
+			getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate),
+		).rejects.toThrow('A mailbox is required for the Service Principal');
+		expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+	});
 });
