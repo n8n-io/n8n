@@ -115,7 +115,7 @@ describe('buildAgentCardChips', () => {
 		expect(chips.map((c) => c.icon)).toEqual(['workflow', 'code', 'wrench']);
 	});
 
-	it('uses sparkles for skills and clipboard-list for tasks', () => {
+	it('uses sparkles for skills and clock for tasks', () => {
 		const summary = makeSummary({
 			skills: [{ id: 's1', name: 'Skill' }],
 			tasks: [{ id: 't1', name: 'Task', enabled: false }],
@@ -123,6 +123,53 @@ describe('buildAgentCardChips', () => {
 
 		const chips = buildAgentCardChips(summary, null);
 		expect(chips.find((c) => c.key.startsWith('skill:'))?.icon).toBe('sparkles');
-		expect(chips.find((c) => c.key.startsWith('task:'))?.icon).toBe('clipboard-list');
+		expect(chips.find((c) => c.key.startsWith('task:'))?.icon).toBe('clock');
+	});
+
+	it('carries the node type on node-tool chips so the card can render the node icon', () => {
+		const summary = makeSummary({
+			tools: [
+				{
+					type: 'node',
+					name: 'send_message',
+					nodeType: 'n8n-nodes-base.telegramTool',
+					nodeTypeVersion: 2,
+				},
+				{ type: 'workflow', name: 'Run WF' },
+			],
+		});
+
+		const chips = buildAgentCardChips(summary, null);
+		const nodeChip = chips.find((c) => c.label === 'Send message');
+		expect(nodeChip).toMatchObject({ nodeType: 'n8n-nodes-base.telegramTool', nodeTypeVersion: 2 });
+		// Workflow tools don't carry a node type.
+		expect(chips.find((c) => c.label === 'Run wf')?.nodeType).toBeUndefined();
+	});
+
+	it('carries the node type on a grouped node chip', () => {
+		const summary = makeSummary({
+			tools: [
+				{
+					type: 'node',
+					name: 'send_message',
+					nodeType: 'n8n-nodes-base.telegramTool',
+					nodeTypeVersion: 1,
+				},
+				{
+					type: 'node',
+					name: 'get_chat',
+					nodeType: 'n8n-nodes-base.telegramTool',
+					nodeTypeVersion: 1,
+				},
+			],
+		});
+
+		const chips = buildAgentCardChips(summary, null, () => 'Telegram');
+		expect(chips).toHaveLength(1);
+		expect(chips[0]).toMatchObject({
+			label: '2 Telegram',
+			nodeType: 'n8n-nodes-base.telegramTool',
+			nodeTypeVersion: 1,
+		});
 	});
 });

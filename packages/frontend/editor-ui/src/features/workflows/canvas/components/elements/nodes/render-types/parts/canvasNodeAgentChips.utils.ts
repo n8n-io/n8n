@@ -10,8 +10,16 @@ import { MIN_GROUPED_TOOLS_PER_TYPE } from '@/features/agents/components/AgentCa
 export interface AgentCardChip {
 	/** Stable key for v-for and overflow dropdown item ids. */
 	key: string;
+	/** Fallback design-system icon, used when `nodeType` is absent or unresolved. */
 	icon: IconName;
 	label: string;
+	/**
+	 * Node type + version for node-tool chips, so the chip can render the node's
+	 * own icon (via `NodeIcon`) instead of the generic fallback. Absent for
+	 * channels / skills / tasks / workflow / custom tools.
+	 */
+	nodeType?: string;
+	nodeTypeVersion?: number;
 }
 
 /**
@@ -41,6 +49,10 @@ function individualToolChip(tool: AgentCapabilityTool, index: number): AgentCard
 		// Mirror the agent edit page, which humanizes every tool name (raw node
 		// tool ids like `get_available_dates` → "Get available dates").
 		label: formatToolNameForDisplay(tool.name),
+		// Node tools carry their node type so the chip renders the node's icon;
+		// undefined for workflow/custom tools.
+		nodeType: tool.nodeType,
+		nodeTypeVersion: tool.nodeTypeVersion,
 	};
 }
 
@@ -86,6 +98,9 @@ function buildToolChips(
 					key: `tool:node:${nodeType}`,
 					icon: TOOL_ICONS.node,
 					label: `${group.length} ${nodeTypeLabels.get(nodeType)}`,
+					// All members share this node type, so the group chip shows its icon.
+					nodeType,
+					nodeTypeVersion: group[0].tool.nodeTypeVersion,
 				},
 			});
 		} else {
@@ -135,7 +150,7 @@ export function buildAgentCardChips(
 	}
 
 	for (const task of summary.tasks) {
-		chips.push({ key: `task:${task.id}`, icon: 'clipboard-list', label: task.name });
+		chips.push({ key: `task:${task.id}`, icon: 'clock', label: task.name });
 	}
 
 	return chips;
