@@ -147,9 +147,6 @@
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
-      "undici@5": "catalog:undici-v6",
-      "undici@6": "catalog:undici-v6",
-      "undici@7": "catalog:undici-v7",
       "tar": "^7.5.16",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
@@ -188,7 +185,16 @@
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
       "langsmith": "0.6.0",
-      "hono": "4.12.25"
+      "hono": "4.12.25",
+      "node-rsa": "2.0.0",
+      "@turbo/darwin-64@<=2.9.18": "2.9.18",
+      "@turbo/linux-64@<=2.9.18": "2.9.18",
+      "@turbo/windows-64@<=2.9.18": "2.9.18",
+      "ibm-cloud-sdk-core": "^5.5.0",
+      "undici@5": "catalog:undici-v6",
+      "undici@6": "catalog:undici-v6",
+      "undici@7": "catalog:undici-v7",
+      "@babel/traverse": "^7.23.2"      
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
