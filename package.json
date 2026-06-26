@@ -98,6 +98,7 @@
     "tsc-watch": "^6.2.0",
     "turbo": "2.9.15",
     "typescript": "*",
+    "yaml": "catalog:",
     "zx": "^8.8.5"
   },
   "pnpm": {

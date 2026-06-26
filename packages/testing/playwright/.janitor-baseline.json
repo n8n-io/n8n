@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-25T10:17:26.367Z",
-	"totalViolations": 131,
+	"generated": "2026-06-25T12:22:26.752Z",
+	"totalViolations": 126,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -223,38 +223,6 @@
 				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByTestId('add-connection-button')",
 				"hash": "dd2f0028a100"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
-				"hash": "b9469409e327"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Chained locator call in test: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
-				"hash": "398194940a4c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat')",
-				"hash": "ffd406dce67d"
-			}
-		],
-		"tests/e2e/ai/langchain-vectorstores.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 88,
-				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().getByTestId('canvas-chat-...",
-				"hash": "ad9bd1b56ea5"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 94,
-				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().getByTestId('canvas-chat-...",
-				"hash": "ad9bd1b56ea5"
 			}
 		],
 		"tests/e2e/ai/workflow-builder.spec.ts": [
@@ -343,38 +311,6 @@
 				"line": 65,
 				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' })",
 				"hash": "a58ac8ee8b5c"
-			}
-		],
-		"tests/e2e/projects/folders-basic.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 146,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(errorMessage, { exact: fals...",
-				"hash": "4c6fb24eb5b2"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 150,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(emptyErrorMessage)",
-				"hash": "c524bac65c97"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 153,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(tooLongErrorMessage)",
-				"hash": "98fd475ead3c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 156,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(dotsErrorMessage)",
-				"hash": "73fce4c260f3"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 172,
-				"message": "Chained locator call in test: n8n.notifications .getNotificationByTitleOrContent(FOLDER...",
-				"hash": "fcfd7b7736c9"
 			}
 		],
 		"tests/e2e/projects/projects-move-resources.spec.ts": [
