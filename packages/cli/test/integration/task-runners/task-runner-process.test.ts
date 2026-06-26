@@ -24,7 +24,13 @@ describe('TaskRunnerProcess', () => {
 	const taskBroker = Container.get(TaskBroker);
 	const taskRunnerService = Container.get(TaskBrokerWsServer);
 
+	// This suite stops the runner with a bare signal, without the broker drain that
+	// happens during a real n8n shutdown. With a non-zero grace, the runner would
+	// keep serving for the whole period before draining, so drain immediately here.
+	const originalGracefulShutdownTimeout = process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+
 	beforeAll(async () => {
+		process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = '0';
 		await taskRunnerServer.start();
 		// Set the port to the actually used port
 		config.port = taskRunnerServer.port;
@@ -32,6 +38,11 @@ describe('TaskRunnerProcess', () => {
 
 	afterAll(async () => {
 		await taskRunnerServer.stop();
+		if (originalGracefulShutdownTimeout === undefined) {
+			delete process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+		} else {
+			process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = originalGracefulShutdownTimeout;
+		}
 	});
 
 	afterEach(async () => {

@@ -33,6 +33,7 @@ export class InstanceRiskReporter implements RiskReporter {
 	) {
 		this.http = outboundHttp.requests({
 			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -160,13 +161,12 @@ export class InstanceRiskReporter implements RiskReporter {
 		const BASE_URL = this.globalConfig.versionNotifications.endpoint;
 		const { instanceId } = this.instanceSettings;
 
-		const response = (await this.http.request({
+		const response = await this.http.request<n8n.Version[]>({
 			url: BASE_URL + currentVersionName,
 			method: 'GET',
 			headers: { 'n8n-instance-id': instanceId },
 			json: true,
-			timeout: REQUEST_TIMEOUT_MS,
-		})) as n8n.Version[];
+		});
 
 		return response;
 	}

@@ -468,6 +468,50 @@ describe('credentialService.list — scoping', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Credential listing — eval credential-view allowlist
+// ---------------------------------------------------------------------------
+
+describe('credentialService.list — eval allowlist', () => {
+	it('filters the listed credentials to the allowlisted IDs', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			{ id: 'c3', name: 'Slack #2', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { credentialIdAllowlist: ['c1', 'c3'] });
+		const result = await ctx.credentialService.list();
+
+		expect(result).toEqual([
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+			{ id: 'c3', name: 'Slack #2', type: 'slackApi' },
+		]);
+	});
+
+	it('returns an empty list without querying the credentials service when the allowlist is empty', async () => {
+		const ctx = service.createContext(user, { credentialIdAllowlist: [] });
+		const result = await ctx.credentialService.list();
+
+		expect(result).toEqual([]);
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('does not filter the list when no allowlist is set', async () => {
+		const all = [
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+		];
+		credentialsService.getMany.mockResolvedValue(all as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.list();
+
+		expect(result).toEqual(all);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Credential adapter — credential ownership revalidation
 // ---------------------------------------------------------------------------
 

@@ -114,6 +114,13 @@ export class WorkflowPublicationApplier {
 			.getUnregisteredNonWebhookTriggerNodeIds(record.workflowId, desiredTriggerNodes)
 			.forEach((nodeId) => toAdd.add(nodeId));
 
+		// Webhook triggers live in the `webhook_entity` table, so reconcile them
+		// against that stored state the same way: re-add any desired webhook node
+		// whose webhooks aren't all registered locally.
+		const nodesWithUnregisteredWebhooks =
+			await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(workflow, newVersion);
+		nodesWithUnregisteredWebhooks.forEach((nodeId) => toAdd.add(nodeId));
+
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {

@@ -18,10 +18,16 @@ describe('OAuthConsentView', () => {
 		createTestingPinia({ stubActions: false });
 		consentStore = mockedStore(useConsentStore);
 
-		consentStore.consentDetails = {
+		const details = {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
+			redirectUri: 'https://legitimate-client.com/callback',
 		};
+		consentStore.consentDetails = details;
+		consentStore.fetchConsentDetails.mockImplementation(async () => {
+			consentStore.consentDetails = details;
+			return details;
+		});
 		consentStore.isLoading = false;
 		consentStore.error = null;
 
@@ -134,8 +140,10 @@ describe('OAuthConsentView', () => {
 			redirectUrl,
 		});
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId, getByLabelText } = renderComponent();
 		await waitAllPromises();
+
+		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
 		const allowButton = getByTestId('consent-allow-button');
 		await userEvent.click(allowButton);
@@ -143,5 +151,17 @@ describe('OAuthConsentView', () => {
 
 		expect(consentStore.approveConsent).toHaveBeenCalledWith(true);
 		expect(window.location.href).toBe(redirectUrl);
+	});
+
+	it('should disable allow button until redirect URL is trusted', async () => {
+		const { getByTestId, getByLabelText } = renderComponent();
+		await waitAllPromises();
+
+		const allowButton = getByTestId('consent-allow-button');
+		expect(allowButton).toBeDisabled();
+
+		await userEvent.click(getByLabelText('I recognize and trust this URL'));
+
+		expect(allowButton).not.toBeDisabled();
 	});
 });

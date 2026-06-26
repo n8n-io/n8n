@@ -36,7 +36,6 @@ export const frontendConfig = tseslint.config(
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
 		rules: {
-			'import-x/no-extraneous-dependencies': 'warn',
 			'vue/one-component-per-file': 'off',
 
 			// TODO: remove these

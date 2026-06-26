@@ -10,6 +10,7 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import type { FetchFn } from '../runtime/model/model-factory';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
@@ -154,6 +155,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private hasRuntimeSkillTool = false;
 
 	private memoryConfig?: MemoryConfig;
+
+	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 
 	// TODO: Guardrails are accepted by the builder API for forward
 	// compatibility but not yet wired to the runtime.
@@ -321,6 +324,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					'See the Memory class documentation for all options.',
 			);
 		}
+		return this;
+	}
+
+	/** Observe observational-memory background task lifecycle (observer/reflector). */
+	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
+		this.onMemoryTaskEvent = observer;
 		return this;
 	}
 
@@ -961,6 +970,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
 			runState,
+			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 		};
 	}
 

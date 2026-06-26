@@ -5,6 +5,7 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
+import { isRecord } from '@n8n/utils';
 
 import type {
 	HITLInterruptValue,
@@ -179,10 +180,6 @@ export function cleanContextTags(text: string): string {
 // ============================================================================
 // HITL INTERRUPTS
 // ============================================================================
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 function isUnknownArray(value: unknown): value is unknown[] {
 	return Array.isArray(value);

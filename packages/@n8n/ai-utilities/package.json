@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -85,12 +85,15 @@
     "dist"
   ],
   "devDependencies": {
-    "@types/json-schema": "^7.0.15",
+    "@types/json-schema": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "@types/mime-types": "catalog:",
+    "@types/lodash": "catalog:",
+    "@types/proxy-from-env": "catalog:",
+    "fast-glob": "catalog:",
     "tsx": "catalog:",
     "axios": "catalog:",
     "nock": "catalog:"
@@ -105,16 +108,15 @@
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",
+    "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
-    "https-proxy-agent": "catalog:",
     "@thednp/dommatrix": "^2.0.12",
     "pdf-parse": "catalog:",
-    "proxy-from-env": "catalog:",
     "undici": "catalog:undici-v6"
   },
   "license": "LicenseRef-n8n-sustainable-use"

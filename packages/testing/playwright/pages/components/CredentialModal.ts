@@ -225,6 +225,28 @@ export class CredentialModal extends BaseModal {
 	}
 
 	/**
+	 * Get an option by its text within the currently visible dropdown popper
+	 * (e.g. the sharing user select or the credential picker dropdown).
+	 */
+	getVisibleDropdownOption(text: string): Locator {
+		return this.getVisibleDropdown().getByText(text);
+	}
+
+	/**
+	 * Get a credential sharing-list item by the name it displays in the Sharing tab.
+	 */
+	getSharingListItem(name: string): Locator {
+		return this.getModal().getByTestId('project-sharing-list-item').filter({ hasText: name });
+	}
+
+	/**
+	 * Remove a user (or "All users") from the credential sharing list.
+	 */
+	async removeUserFromSharing(name: string): Promise<void> {
+		await this.getSharingListItem(name).getByTestId('project-sharing-remove').click();
+	}
+
+	/**
 	 * Add a user to credential sharing
 	 * @param emailOrName - User email or name to share with
 	 */

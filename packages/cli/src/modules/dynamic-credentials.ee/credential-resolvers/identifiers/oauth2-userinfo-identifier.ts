@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
-import { OAuth2MetadataHttpClient, REQUEST_TIMEOUT } from './oauth2-metadata-http-client';
+import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
 import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 // Use minimum of 30 seconds to avoid cache thrashing
@@ -144,7 +144,6 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			method: 'GET',
 			headers: { authorization: `Bearer ${context.identity}` },
 			json: true,
-			timeout: REQUEST_TIMEOUT,
 		});
 
 		if (response.statusCode !== 200) {

@@ -5,7 +5,12 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { ActiveWorkflowTriggers, ScheduledTaskManager } from 'n8n-core';
+import {
+	ActiveWorkflowTriggers,
+	PollTriggerExecutor,
+	ScheduledTaskManager,
+	Tracing,
+} from 'n8n-core';
 import type {
 	CronExpression,
 	ExecutionError,
@@ -35,6 +40,8 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 describe('ActiveWorkflowManager', () => {
+	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
+	const workflowGroup = (id: string) => ({ type: WORKFLOW_SCHEDULE_GROUP_TYPE, id });
 	let activeWorkflowManager: ActiveWorkflowManager;
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
@@ -676,22 +683,19 @@ describe('ActiveWorkflowManager', () => {
 
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const logger = mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });
+				const triggersAndPollers = {
+					runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
+						await wf.nodeTypes
+							.getByNameAndVersion(node.type, node.typeVersion)
+							.poll!.call(pollFunctions),
+				} as ConstructorParameters<typeof ActiveWorkflowTriggers>[2];
 				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
-					mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
+					logger,
 					scheduledTaskManager,
-					{
-						runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
-							await wf.nodeTypes
-								.getByNameAndVersion(node.type, node.typeVersion)
-								.poll!.call(pollFunctions),
-					} as ConstructorParameters<typeof ActiveWorkflowTriggers>[2],
+					triggersAndPollers,
 					mock(),
-					{
-						startSpan: async (_options: unknown, fn: (span: unknown) => Promise<void>) =>
-							await fn({ setStatus: () => {} }),
-						pickWorkflowAttributes: () => ({}),
-						pickNodeAttributes: () => ({}),
-					} as unknown as ConstructorParameters<typeof ActiveWorkflowTriggers>[4],
+					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing()),
 				);
 
 				await realActiveWorkflowTriggers.addAllTriggers(
@@ -710,8 +714,7 @@ describe('ActiveWorkflowManager', () => {
 					),
 				);
 
-				const executeScheduledPoll = scheduledTaskManager.registerCron.mock
-					.calls[0][1] as () => void;
+				const executeScheduledPoll = scheduledTaskManager.register.mock.calls[0][1] as () => void;
 
 				// First cron tick completes and emits: advanced pool state is persisted.
 				executeScheduledPoll();
@@ -751,14 +754,13 @@ describe('ActiveWorkflowManager', () => {
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 				mock(),
-				mock(),
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
 				mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) }),
 				realScheduledTaskManager,
 				mock(),
 				mock(),
-				mock(),
+				mock<PollTriggerExecutor>(),
 			);
 			activeWorkflowManager = new ActiveWorkflowManager(
 				mockLogger(),
@@ -781,37 +783,47 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		afterEach(() => {
-			realScheduledTaskManager.deregisterAllCrons();
+			realScheduledTaskManager.deregisterGroups(WORKFLOW_SCHEDULE_GROUP_TYPE);
 			jest.useRealTimers();
 		});
 
 		it('should stop a cron left registered for an inactive workflow', async () => {
-			realScheduledTaskManager.registerCron(
-				{ workflowId: 'wf-desynced', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
+			realScheduledTaskManager.register(
+				{
+					group: workflowGroup('wf-desynced'),
+					targetId: 'schedule-node',
+					timezone: 'GMT',
+					expression: hourly,
+				},
 				jest.fn(),
 			);
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-desynced')).toBe(true);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(true);
 			expect(realActiveWorkflowTriggers.isActive('wf-desynced')).toBe(false);
 
 			await activeWorkflowManager.removeNonWebhookTriggers('wf-desynced');
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-desynced')).toBe(false);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(false);
 		});
 
 		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
 			// removeAllNonWebhookTriggerWorkflows is the @OnLeaderStepdown / @OnShutdown
 			// handler. On stepdown the process keeps running as a follower, so a stranded
 			// cron left behind would survive the demotion and resurface on the next takeover.
-			realScheduledTaskManager.registerCron(
-				{ workflowId: 'wf-orphan', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
+			realScheduledTaskManager.register(
+				{
+					group: workflowGroup('wf-orphan'),
+					targetId: 'schedule-node',
+					timezone: 'GMT',
+					expression: hourly,
+				},
 				jest.fn(),
 			);
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(true);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-orphan'))).toBe(true);
 			expect(realActiveWorkflowTriggers.isActive('wf-orphan')).toBe(false);
 
 			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
-			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(false);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-orphan'))).toBe(false);
 		});
 
 		it('does not tear down triggers under the publication service flag', async () => {
@@ -819,14 +831,19 @@ describe('ActiveWorkflowManager', () => {
 			// under the lifecycle lock, so this handler must be a no-op.
 			workflowsConfig.useWorkflowPublicationService = true;
 			try {
-				realScheduledTaskManager.registerCron(
-					{ workflowId: 'wf-pub', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
+				realScheduledTaskManager.register(
+					{
+						group: workflowGroup('wf-pub'),
+						targetId: 'schedule-node',
+						timezone: 'GMT',
+						expression: hourly,
+					},
 					jest.fn(),
 				);
 
 				await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
-				expect(realScheduledTaskManager.cronsByWorkflow.has('wf-pub')).toBe(true);
+				expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-pub'))).toBe(true);
 			} finally {
 				workflowsConfig.useWorkflowPublicationService = false;
 			}

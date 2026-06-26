@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
 import { ResourceCards } from './components/ResourceCards';
 
@@ -11,6 +12,7 @@ export class WorkflowsPage extends BasePage {
 
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
 
 	private async openWorkflowCardActions(workflowItem: Locator) {
 		await workflowItem.getByTestId('workflow-card-actions').getByRole('button').click();
@@ -47,7 +49,7 @@ export class WorkflowsPage extends BasePage {
 
 	async deleteWorkflow(workflowItem: Locator) {
 		await this.openWorkflowCardActions(workflowItem);
-		await this.page.getByTestId('action-delete').click();
+		await this.actionToggle.getAction('delete').click();
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
@@ -118,11 +120,11 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getFolderBreadcrumbsActionToggle() {
-		return this.page.getByTestId('action-toggle-dropdown');
+		return this.actionToggle.root;
 	}
 
 	getFolderBreadcrumbsAction(actionName: string) {
-		return this.getFolderBreadcrumbsActionToggle().getByTestId(`action-${actionName}`);
+		return this.actionToggle.getAction(actionName);
 	}
 
 	// Add region for actions

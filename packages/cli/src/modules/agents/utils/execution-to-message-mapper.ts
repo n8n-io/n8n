@@ -1,4 +1,5 @@
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
@@ -9,10 +10,10 @@ type ExecutionTranscript = Pick<
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
+type ToolCallContentPart = AgentPersistedMessageContentPart & {
+	type: 'tool-call';
+	toolCallId: string;
+};
 
 function textPart(text: string): AgentPersistedMessageContentPart | null {
 	if (!text.trim()) return null;
@@ -37,6 +38,34 @@ function textMessageDto(
 function toolCallState(event: ToolCallTimelineEvent): 'resolved' | 'rejected' | undefined {
 	if (typeof event.endTime !== 'number' || event.endTime <= 0) return undefined;
 	return event.success ? 'resolved' : 'rejected';
+}
+
+function isToolCallWithId(part: AgentPersistedMessageContentPart): part is ToolCallContentPart {
+	return part.type === 'tool-call' && typeof part.toolCallId === 'string' && part.toolCallId !== '';
+}
+
+function isTerminalToolCallPart(part: ToolCallContentPart): boolean {
+	return (
+		part.state === 'resolved' ||
+		part.state === 'rejected' ||
+		part.canceled === true ||
+		part.output !== undefined ||
+		part.error !== undefined
+	);
+}
+
+function mergeTerminalToolCallPart(
+	previous: ToolCallContentPart,
+	terminal: ToolCallContentPart,
+): ToolCallContentPart {
+	return {
+		...previous,
+		...terminal,
+		input: previous.input ?? terminal.input,
+		startTime: previous.startTime ?? terminal.startTime,
+		endTime: terminal.endTime ?? previous.endTime,
+		canceled: terminal.canceled ?? previous.canceled,
+	};
 }
 
 function toolErrorMessage(output: unknown): string | undefined {
@@ -163,5 +192,41 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 export function executionsToMessagesDto(
 	executions: ExecutionTranscript[],
 ): AgentPersistedMessageDto[] {
-	return executions.flatMap(executionToMessagesDto);
+	const messages = executions.flatMap(executionToMessagesDto);
+	const firstToolCallById = new Map<
+		string,
+		{ message: AgentPersistedMessageDto; partIndex: number }
+	>();
+	const duplicatePartIndexesByMessage = new Map<AgentPersistedMessageDto, Set<number>>();
+
+	for (const message of messages) {
+		for (const [partIndex, part] of message.content.entries()) {
+			if (!isToolCallWithId(part)) continue;
+			const first = firstToolCallById.get(part.toolCallId);
+			if (!first) {
+				firstToolCallById.set(part.toolCallId, { message, partIndex });
+				continue;
+			}
+
+			const firstPart = first.message.content[first.partIndex];
+			if (!isToolCallWithId(firstPart)) continue;
+
+			if (isTerminalToolCallPart(part)) {
+				first.message.content[first.partIndex] = mergeTerminalToolCallPart(firstPart, part);
+				const indexes = duplicatePartIndexesByMessage.get(message) ?? new Set<number>();
+				indexes.add(partIndex);
+				duplicatePartIndexesByMessage.set(message, indexes);
+			} else if (isTerminalToolCallPart(firstPart)) {
+				const indexes = duplicatePartIndexesByMessage.get(message) ?? new Set<number>();
+				indexes.add(partIndex);
+				duplicatePartIndexesByMessage.set(message, indexes);
+			}
+		}
+	}
+
+	for (const [message, duplicateIndexes] of duplicatePartIndexesByMessage) {
+		message.content = message.content.filter((_, index) => !duplicateIndexes.has(index));
+	}
+
+	return messages.filter((message) => message.content.length > 0);
 }

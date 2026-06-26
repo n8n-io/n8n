@@ -77,6 +77,7 @@ export class CommunityPackagesService {
 	) {
 		this.http = outboundHttp.requests({
 			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -202,13 +203,12 @@ export class CommunityPackagesService {
 		const N8N_BACKEND_SERVICE_URL = 'https://api.n8n.io/api/package';
 
 		try {
-			const response = (await this.http.request({
+			const response = await this.http.request<CommunityPackages.PackageStatusCheck>({
 				url: N8N_BACKEND_SERVICE_URL,
 				method: 'POST',
 				body: { name: packageName },
 				json: true,
-				timeout: REQUEST_TIMEOUT_MS,
-			})) as CommunityPackages.PackageStatusCheck;
+			});
 
 			if (response.status !== NPM_PACKAGE_STATUS_GOOD) return response;
 		} catch {

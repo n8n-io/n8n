@@ -18,6 +18,7 @@ export type FetchFn = typeof globalThis.fetch;
 type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
+	fetch?: FetchFn;
 };
 type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
@@ -28,15 +29,18 @@ function isLanguageModel(config: unknown): config is LanguageModel {
 }
 
 /**
- * Fallback proxy `fetch` used only when the caller does not inject one.
+ * Env-proxy `fetch` fallback for standalone SDK use.
  *
- * Prefer passing a `fetch` built by `@n8n/backend-network` into
- * {@link createModel} / {@link createEmbeddingModel}.
+ * `@n8n/agents` is a standalone SDK and deliberately does not depend on `@n8n/backend-network`,
+ * so it cannot build the backend's centrally-guarded transport itself.
+ * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
+ * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
  */
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
 
+	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
 	const { ProxyAgent } = require('undici') as typeof Undici;
 	const dispatcher = new ProxyAgent(proxyUrl);
 	return (async (url, init) =>

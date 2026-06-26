@@ -1,8 +1,8 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentChatMessagesResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
-	AgentPersistedMessageDto,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -102,20 +102,6 @@ export const createAgent = async (
 	);
 };
 
-export const updateAgent = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	data: { code?: string; name?: string },
-): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}`,
-		data,
-	);
-};
-
 export const deleteAgent = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -165,6 +151,18 @@ export const deleteAgentFile = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
+	);
+};
+
+export const warmAgentKnowledgeSandbox = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ accepted: true }> => {
+	return await makeRestApiRequest<{ accepted: true }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
 	);
 };
 
@@ -498,8 +496,8 @@ export const getChatMessages = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
@@ -510,8 +508,8 @@ export const getTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,

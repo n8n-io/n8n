@@ -180,6 +180,12 @@ describe('SubAgentForegroundRunner', () => {
 				threadId: result.threadId,
 				agentId: 'agent-1',
 				source: 'subagent',
+				telemetry: {
+					runType: 'production',
+					configuration: expect.objectContaining({
+						model: 'anthropic/claude-sonnet-4-5',
+					}),
+				},
 			}),
 		);
 	});

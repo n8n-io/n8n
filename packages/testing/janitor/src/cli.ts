@@ -610,10 +610,14 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	const env = process.env.CHANGED_FILES;
 	if (flag === undefined && env === undefined) return null;
 	const raw = flag ?? env ?? '';
-	return raw
+	const files = raw
 		.split(/[\n,]+/)
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+	// An empty value is "no signal", not "nothing changed". ci-filter emits an
+	// empty list on huge change sets (too large to pass through env/argv); a [] return
+	// would SKIP every package — a false green — so collapse it to null (run full).
+	return files.length > 0 ? files : null;
 }
 
 function runAffectedPackages(options: CliOptions): void {

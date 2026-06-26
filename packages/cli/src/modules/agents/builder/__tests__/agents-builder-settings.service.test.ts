@@ -13,6 +13,12 @@ import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../error
 
 const ENV_KEYS = ['N8N_AI_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY'] as const;
 
+function makeJwt(exp: number): string {
+	const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url');
+	const payload = Buffer.from(JSON.stringify({ sub: 'test', exp })).toString('base64url');
+	return `${header}.${payload}.fake-sig`;
+}
+
 function clearEnvKeys() {
 	for (const key of ENV_KEYS) delete process.env[key];
 }
@@ -76,18 +82,30 @@ describe('AgentsBuilderSettingsService', () => {
 	describe('resolveModelConfig', () => {
 		it('mode=default + proxy enabled → returns proxy LanguageModel', async () => {
 			mockPersistedSettings({ mode: 'default' });
+			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
+			const getBuilderApiProxyToken = jest
+				.fn()
+				.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' });
 			aiService.isProxyEnabled.mockReturnValue(true);
 			aiService.getClient.mockResolvedValue({
 				getApiProxyBaseUrl: () => 'https://proxy.example/api',
-				getBuilderApiProxyToken: jest
-					.fn()
-					.mockResolvedValue({ accessToken: 'tok', tokenType: 'Bearer' }),
+				getBuilderApiProxyToken,
 			} as never);
 
 			const result = await service.resolveModelConfig(user);
 
 			expect(result.isProxied).toBe(true);
 			expect(result.config).toBeDefined();
+			expect(result.tracingProxyConfig?.apiUrl).toBe('https://proxy.example/api/langsmith');
+			await expect(result.tracingProxyConfig?.getAuthHeaders()).resolves.toEqual({
+				Authorization: `Bearer ${proxyToken}`,
+				'x-n8n-feature': 'agent-builder',
+				'x-n8n-version': expect.any(String),
+			});
+			expect(getBuilderApiProxyToken).toHaveBeenCalledWith(
+				{ id: 'user-1' },
+				{ userMessageId: expect.any(String) },
+			);
 		});
 
 		it('mode=default + proxy disabled + env set → returns env-var anthropic config', async () => {

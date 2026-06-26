@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import { scrubSecretsInText } from '@n8n/utils';
+import { isRecord, scrubSecretsInText } from '@n8n/utils';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
@@ -233,10 +233,6 @@ export type TimelineEvent =
 			nodeParameters?: Record<string, unknown>;
 	  }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
 
 /**
  * Collects execution data from agent stream chunks.

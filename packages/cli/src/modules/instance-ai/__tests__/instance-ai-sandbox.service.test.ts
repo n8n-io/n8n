@@ -241,6 +241,17 @@ describe('InstanceAiSandboxService', () => {
 			expect(config).toMatchObject({ provider: 'daytona', ephemeral: true });
 			expect((config as { autoDeleteInterval?: number }).autoDeleteInterval).toBeUndefined();
 		});
+
+		it('pins the full snapshot name when the override env var is set', () => {
+			const { service } = createSandboxService({
+				config: { ...daytonaEnvConfig, sandboxSnapshot: 'n8n/instance-ai:2.27.3' },
+			});
+
+			expect(service.getSandboxConfigFromEnv()).toMatchObject({
+				provider: 'daytona',
+				snapshot: 'n8n/instance-ai:2.27.3',
+			});
+		});
 	});
 
 	describe('workspace lifecycle', () => {

@@ -115,7 +115,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			return { description: {} };
 		}) as typeof nodeTypes.getByNameAndVersion);
 
-		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
+		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
 		mockStripImportStatements.mockImplementation((code: string) => code);
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 
@@ -225,6 +225,30 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(result.isError).toBeUndefined();
 		});
 
+		test('surfaces validation warnings in the response', async () => {
+			const warning = {
+				code: 'INVALID_OUTPUT_INDEX',
+				message: "'Fetch Google' has a connection from its error output (index 1).",
+				nodeName: 'Fetch Google',
+			};
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [warning] });
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.warnings).toEqual([warning]);
+			expect(result.isError).toBeUndefined();
+		});
+
+		test('omits the warnings field when validation produced none', async () => {
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response).not.toHaveProperty('warnings');
+		});
+
 		test('sets correct workflow entity defaults', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
@@ -257,6 +281,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 		test('falls back to "Untitled Workflow" when neither name nor code name exists', async () => {
 			mockParseAndValidate.mockResolvedValue({
+				warnings: [],
 				workflow: { ...mockWorkflowJson, name: undefined },
 			});
 
@@ -530,6 +555,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			test('rejects workflow whose data table id does not exist', async () => {
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', 'missing'))],
@@ -547,6 +573,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			test('rejects workflow whose data table name does not exist', async () => {
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('name', 'missing-table'))],
@@ -567,6 +594,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					count: 1,
 				});
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', 'dt-existing'))],
@@ -591,6 +619,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					count: 1,
 				});
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', 'dt-existing'))],
@@ -615,6 +644,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			test('skips validation when dataTableId is an expression', async () => {
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', '={{ $json.id }}'))],
@@ -661,6 +691,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				});
 
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [httpNodeWithGithub('6CoUMkVOJRNsbmr2')],
@@ -686,6 +717,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				);
 
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [httpNodeWithGithub('ghost')],
@@ -706,6 +738,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				]);
 
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [httpNodeWithGithub('in-project-cred')],

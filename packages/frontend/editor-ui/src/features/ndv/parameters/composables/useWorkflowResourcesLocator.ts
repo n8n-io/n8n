@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsListStore, type WorkflowListFilters } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Router } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
@@ -11,6 +12,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsListStore = useWorkflowsListStore();
+	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const { renameNode } = useCanvasOperations();
@@ -72,15 +74,26 @@ export function useWorkflowResourcesLocator(router: Router) {
 		}
 
 		currentPage.value++;
+
+		const parentWorkflowId = workflowsStore.workflowId;
+
+		const filters: WorkflowListFilters = {
+			triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+		};
+		if (searchFilter.value) {
+			filters.query = searchFilter.value;
+		}
+		if (parentWorkflowId) {
+			filters.includeCallableSubworkflows = true;
+			filters.parentWorkflowId = parentWorkflowId;
+		}
+
 		const workflows = await workflowsListStore.fetchWorkflowsPage(
 			undefined,
 			currentPage.value,
 			PAGE_SIZE,
 			'updatedAt:desc',
-			{
-				...(searchFilter.value ? { query: searchFilter.value } : {}),
-				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-			},
+			filters,
 		);
 		totalCount.value = workflowsListStore.totalWorkflowCount;
 

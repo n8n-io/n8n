@@ -4,6 +4,7 @@
  * restore-version, update-version.
  */
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -617,7 +618,11 @@ async function handleSetupApply(
 		// "this still requires user intervention".
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
 		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
-		const completedNodes = buildCompletedReport(resumeData.credentials, resumeData.nodeParameters);
+		const completedNodes = buildCompletedReport(
+			resumeData.credentials,
+			resumeData.nodeParameters,
+			applyResult.applied,
+		);
 
 		// Detect credentials that were applied but failed testing.
 		const credTestFailures = collectCredentialTestFailures(
@@ -744,10 +749,6 @@ async function handleValidate(
 			error: error instanceof Error ? error.message : 'Failed to validate workflow',
 		};
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isWorkflowJson(value: unknown): value is WorkflowJSON {

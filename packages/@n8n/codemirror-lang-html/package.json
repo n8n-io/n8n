@@ -38,7 +38,9 @@
     "@codemirror/language": "catalog:",
     "@codemirror/state": "catalog:",
     "@codemirror/view": "catalog:",
-    "@lezer/common": "catalog:"
+    "@lezer/common": "catalog:",
+    "@lezer/highlight": "catalog:",
+    "@lezer/lr": "catalog:"
   },
   "devDependencies": {
     "@codemirror/buildhelper": "^0.1.5",
@@ -46,6 +48,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@rollup/plugin-node-resolve": "^9.0.0",
     "@n8n/vitest-config": "workspace:*",
+    "ist": "1.1.7",
     "vitest": "catalog:",
     "rollup": "^2.52.2"
   },

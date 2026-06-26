@@ -349,6 +349,26 @@ describe('POST /workflows/:workflowId/test-runs/new', () => {
 		);
 	});
 
+	test('should forward evaluationConfigId and compileFromConfig to the service', async () => {
+		testRunner.startTestRun.mockResolvedValue({
+			testRun: { id: 'config-run-id' } as never,
+			finished: Promise.resolve(),
+		});
+
+		const resp = await authOwnerAgent
+			.post(`/workflows/${workflowUnderTest.id}/test-runs/new`)
+			.send({ evaluationConfigId: 'cfg-abc', compileFromConfig: true });
+
+		expect(resp.statusCode).toBe(202);
+		expect(resp.body).toEqual({ success: true, testRunId: 'config-run-id' });
+		expect(testRunner.startTestRun).toHaveBeenCalledWith(
+			expect.objectContaining({ id: ownerShell.id }),
+			workflowUnderTest.id,
+			1,
+			expect.objectContaining({ evaluationConfigId: 'cfg-abc', compileFromConfig: true }),
+		);
+	});
+
 	test('should return 404 if user does not have access to workflow', async () => {
 		const resp = await authOwnerAgent.post(`/workflows/${otherWorkflow.id}/test-runs/new`);
 

@@ -10,7 +10,7 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
-import { createAdmin, createOwner, createMember } from '../shared/db/users';
+import { createAdmin, createOwner, createMember, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -221,6 +221,24 @@ export async function setupTestContext(): Promise<TestContext> {
  */
 export async function cleanupTestContext(): Promise<void> {
 	await cleanupRolesAndScopes();
+}
+
+/**
+ * Creates a user holding a custom *instance* (global) role that grants exactly
+ * `scopeSlugs`, and returns the user alongside its authenticated agent. Used to
+ * prove that instance-level authorization is driven by scope, not role name.
+ */
+export async function createGlobalRoleUser(
+	testServer: ReturnType<typeof utils.setupTestServer>,
+	scopeSlugs: string[],
+	displayName: string,
+): Promise<{ user: User; agent: SuperAgentTest }> {
+	const role = await createCustomRoleWithScopeSlugs(scopeSlugs, {
+		roleType: 'global',
+		displayName,
+	});
+	const user = await createUser({ role });
+	return { user, agent: testServer.authAgentFor(user) };
 }
 
 /**

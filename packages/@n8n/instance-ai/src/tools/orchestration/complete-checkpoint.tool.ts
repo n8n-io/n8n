@@ -10,6 +10,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -35,10 +36,6 @@ const outputSchema = z.object({
 	result: z.string(),
 	ok: z.boolean(),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function requiresWorkflowSetup(outcome: Record<string, unknown> | undefined): boolean {
 	const setupRequirement = outcome?.setupRequirement;

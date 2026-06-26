@@ -1,4 +1,5 @@
 import type { ApiKeyScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils';
 import path from 'path';
 import RefParser from '@apidevtools/json-schema-ref-parser';
 
@@ -47,10 +48,6 @@ export interface DiscoverOptions {
 }
 
 let cachedEndpointsPromise: Promise<EndpointInfo[]> | undefined;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isScopeTagged(value: unknown): value is ScopeTaggedMiddleware {
 	return typeof value === 'function' && '__apiKeyScope' in value;

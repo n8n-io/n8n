@@ -1,14 +1,20 @@
 import { inTest, Logger } from '@n8n/backend-common';
+import { isAxiosError } from '@n8n/backend-network';
 import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
-import { Tracing, SentryTracing } from '@/observability';
+import {
+	Tracing,
+	SentryTracing,
+	buildBeforeSendTransaction,
+	buildTracesSampler,
+	DEFAULT_SLOW_SPAN_THRESHOLD_MS,
+} from '@/observability';
 
 type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
 
@@ -31,6 +37,9 @@ type ErrorReporterInitOptions = {
 
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
 	tracesSampleRate: number;
+
+	/** Threshold in ms below which non-errored `db`/`http.client` spans are dropped. */
+	slowSpanThresholdMs?: number;
 
 	/** Sample rate for Sentry profiling (0.0 to 1.0). 0 means disabled */
 	profilesSampleRate: number;
@@ -139,6 +148,7 @@ export class ErrorReporter {
 		eventLoopBlockMaxEventsPerHour,
 		profilesSampleRate,
 		tracesSampleRate,
+		slowSpanThresholdMs = DEFAULT_SLOW_SPAN_THRESHOLD_MS,
 		eligibleIntegrations = {},
 		healthEndpoint = '/healthz',
 	}: ErrorReporterInitOptions) {
@@ -229,7 +239,12 @@ export class ErrorReporter {
 			environment,
 			serverName,
 			maxValueLength: SENTRY_MAX_VALUE_LENGTH,
-			...(isTracingEnabled ? { tracesSampleRate } : {}),
+			...(isTracingEnabled
+				? {
+						tracesSampler: buildTracesSampler(tracesSampleRate),
+						beforeSendTransaction: buildBeforeSendTransaction(slowSpanThresholdMs),
+					}
+				: {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
@@ -287,7 +302,7 @@ export class ErrorReporter {
 			return null;
 		}
 
-		if (originalException instanceof AxiosError) return null;
+		if (isAxiosError(originalException)) return null;
 
 		if (originalException instanceof BaseError) {
 			if (!originalException.shouldReport) return null;

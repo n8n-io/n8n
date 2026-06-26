@@ -205,6 +205,35 @@ describe('CredentialsService', () => {
 			});
 		});
 
+		it('should redact null password field values without throwing', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+
+			const decryptedData = {
+				clientId: 'abc123',
+				clientSecret: null, // null, not a string
+				oauthTokenData: null,
+				csrfSecret: null,
+			};
+
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			const redactedData = service.redact(
+				decryptedData as unknown as ICredentialDataDecryptedObject,
+				credential,
+			);
+
+			expect(redactedData).toEqual({
+				clientId: 'abc123',
+				clientSecret: CREDENTIAL_EMPTY_VALUE,
+				oauthTokenData: CREDENTIAL_EMPTY_VALUE,
+				csrfSecret: CREDENTIAL_EMPTY_VALUE,
+			});
+		});
+
 		it('should redact sensitive values in a fixed collection with multiple values', () => {
 			const fixedCollectionCredType = {
 				properties: [

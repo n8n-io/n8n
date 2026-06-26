@@ -16,6 +16,7 @@ import {
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import {
 	SUB_AGENT_RESOURCE_PREFIX,
 	type AgentDbMessage,
@@ -46,10 +47,6 @@ function parseJsonSafe(text: string): unknown {
 	} catch {
 		return undefined;
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isAgentMessage(value: unknown): value is AgentMessage {

@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils';
+
 import type { WorkflowNodeResponse } from '../../clients/n8n-client';
 import type { BinaryCheck, BinaryCheckContext } from '../types';
 import { HTTP_REQUEST_TYPE, forEachConnection, isTriggerNode } from '../utils';
@@ -20,10 +22,6 @@ const MULTI_ITEM_ANCESTOR_HINTS = [
 	/launch tasks/i,
 	/due tasks/i,
 ];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 function getItemFlowAnnotations(ctx: BinaryCheckContext): Record<string, unknown> {
 	const itemFlow = ctx.annotations?.itemFlow;

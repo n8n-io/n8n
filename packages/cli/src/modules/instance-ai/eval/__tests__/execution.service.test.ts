@@ -61,8 +61,8 @@ jest.mock('../llm-wire-server', () => {
 });
 
 const mockRestoreNoProxy = jest.fn();
-jest.mock('../proxy-loopback', () => ({
-	patchNoProxyForLoopback: jest.fn(() => mockRestoreNoProxy),
+jest.mock('@n8n/backend-network/proxy', () => ({
+	ensureHostsBypassProxy: jest.fn(() => mockRestoreNoProxy),
 }));
 jest.mock('@n8n/workflow-sdk', () => ({
 	normalizePinData: jest.fn((pd: unknown) => pd),
@@ -251,10 +251,10 @@ describe('EvalExecutionService', () => {
 		// Default: kill-switch enabled. Tests that need it off flip this.
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 
-		const proxyLoopback = require('../proxy-loopback') as {
-			patchNoProxyForLoopback: jest.Mock;
+		const proxyModule = require('@n8n/backend-network/proxy') as {
+			ensureHostsBypassProxy: jest.Mock;
 		};
-		proxyLoopback.patchNoProxyForLoopback.mockImplementation(() => mockRestoreNoProxy);
+		proxyModule.ensureHostsBypassProxy.mockImplementation(() => mockRestoreNoProxy);
 
 		// Mirror runMainProcess: capture + invoke the closure on a stub additionalData.
 		workflowRunner.run.mockImplementation(async (data) => {
@@ -569,8 +569,8 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('tears down the wire server when NO_PROXY patching throws after boot', async () => {
-				const proxyLoopback = require('../proxy-loopback');
-				proxyLoopback.patchNoProxyForLoopback.mockImplementationOnce(() => {
+				const proxyModule = require('@n8n/backend-network/proxy');
+				proxyModule.ensureHostsBypassProxy.mockImplementationOnce(() => {
 					throw new Error('env mutation blocked');
 				});
 

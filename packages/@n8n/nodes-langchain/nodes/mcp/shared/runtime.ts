@@ -1,5 +1,7 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { logWrapper } from '@n8n/ai-utilities';
+import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import pick from 'lodash/pick';
 import { StructuredToolkit } from 'n8n-core';
@@ -7,6 +9,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
+	type INode,
 	type INodeExecutionData,
 	type INodePropertyOptions,
 	NodeConnectionTypes,
@@ -15,6 +18,15 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { McpClientsManager } from './McpClientsManager';
+import type { McpAuthenticationOption, McpServerTransport, McpTool } from './types';
+import {
+	connectMcpClientForCredential,
+	getAllTools,
+	isStructuredContent,
+	mapToNodeOperationError,
+} from './utils';
+import type { McpToolIncludeMode } from '../McpClientTool/types';
 import {
 	buildMcpToolName,
 	createCallTool,
@@ -22,14 +34,6 @@ import {
 	getSelectedTools,
 	mcpToolToDynamicTool,
 } from '../McpClientTool/utils';
-import type { McpToolIncludeMode } from '../McpClientTool/types';
-import type { McpAuthenticationOption, McpServerTransport } from './types';
-import {
-	connectMcpClientForCredential,
-	getAllTools,
-	isStructuredContent,
-	mapToNodeOperationError,
-} from './utils';
 
 /**
  * Connection config used to open an MCP client. Shared across `supplyData`,
@@ -179,82 +183,179 @@ export async function buildMcpToolkit(
 }
 
 /**
+ * Connect to the MCP server and return the client + filtered tools, or throw a
+ * `NodeOperationError` on connection failure or an empty tool list. The
+ * `connectOrThrow` counterpart to {@link connectAndGetTools}.
+ */
+async function connectOrThrow(
+	ctx: IExecuteFunctions,
+	config: ResolvedMcpConfig,
+	itemIndex: number,
+): Promise<{ client: Client; mcpTools: McpTool[] }> {
+	const node = ctx.getNode();
+	const { client, mcpTools, error } = await connectAndGetTools(ctx, config);
+
+	if (error) {
+		throw new NodeOperationError(node, error.error, { itemIndex });
+	}
+	if (!mcpTools?.length) {
+		await client.close();
+		throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
+	}
+
+	return { client, mcpTools };
+}
+
+/**
+ * Run the tool named in `item.json.tool` against the connected client and push
+ * the result onto `returnData`. Shared by the cached and non-cached execute paths.
+ */
+async function runToolCall(opts: {
+	ctx: IExecuteFunctions;
+	node: INode;
+	item: INodeExecutionData;
+	mcpTools: McpTool[];
+	client: Client;
+	timeout: number;
+	itemIndex: number;
+	returnData: INodeExecutionData[];
+}): Promise<void> {
+	const { ctx, node, item, mcpTools, client, timeout, itemIndex, returnData } = opts;
+
+	if (!item.json.tool || typeof item.json.tool !== 'string') {
+		throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
+			itemIndex,
+		});
+	}
+
+	const toolName = item.json.tool;
+	for (const tool of mcpTools) {
+		const prefixedName = buildMcpToolName(node.name, tool.name);
+		if (toolName !== prefixedName) continue;
+
+		const { tool: _, ...toolArguments } = item.json;
+		const schema: JSONSchema7 = tool.inputSchema;
+		const sanitizedToolArguments: IDataObject =
+			schema.additionalProperties !== true
+				? pick(toolArguments, Object.keys(schema.properties ?? {}))
+				: toolArguments;
+
+		const result = await client.callTool(
+			{ name: tool.name, arguments: sanitizedToolArguments },
+			CallToolResultSchema,
+			{
+				timeout,
+				signal: ctx.getExecutionCancelSignal(),
+			},
+		);
+
+		if (node.typeVersion >= 1.3 && result.isError) {
+			const errorMessage =
+				getErrorDescriptionFromToolCall(result) ?? `Tool "${tool.name}" returned an error`;
+			throw new NodeOperationError(node, errorMessage, { itemIndex });
+		}
+
+		returnData.push({
+			json: {
+				response: result.content as IDataObject,
+				...(isStructuredContent(result.structuredContent) && {
+					structuredContent: result.structuredContent,
+				}),
+			},
+			pairedItem: { item: itemIndex },
+		});
+	}
+}
+
+/**
  * Execute a single MCP tool call from an agent toolkit invocation.
  *
  * The agent passes `item.json.tool` (the prefixed tool name) and the tool arguments
  * inline on `item.json`. We sanitize the arguments against the tool's input schema
  * and forward the call to the MCP server.
+ *
+ * When `enableSessionCache` is set, the connected client is kept alive in
+ * {@link McpClientsManager} and reused across tool calls within the same execution,
+ * so stateful MCP servers keep their session between Agent V3 tool calls. Otherwise
+ * a fresh connection is opened and closed per call (legacy behaviour).
  */
 export async function executeMcpTool(
 	ctx: IExecuteFunctions,
 	resolveConfig: (itemIndex: number) => ResolvedMcpConfig | Promise<ResolvedMcpConfig>,
+	options: { enableSessionCache?: boolean } = {},
 ): Promise<INodeExecutionData[][]> {
 	const node = ctx.getNode();
 	const items = ctx.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
-	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		const signal = ctx.getExecutionCancelSignal();
-		if (signal?.aborted) {
+	const assertNotCancelled = (itemIndex: number): void => {
+		if (ctx.getExecutionCancelSignal()?.aborted) {
 			throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
 		}
+	};
 
-		const item = items[itemIndex];
-		const config = await resolveConfig(itemIndex);
-		const { client, mcpTools, error } = await connectAndGetTools(ctx, config);
+	// Require a real execution id: without one the cache key would collide across
+	// concurrent executions (e.g. `undefined:NodeName`) and leak a session between
+	// them. Fall back to the per-call connection in that case.
+	const executionId = ctx.getExecutionId();
 
-		if (error) {
-			throw new NodeOperationError(node, error.error, { itemIndex });
+	if (options.enableSessionCache && executionId) {
+		assertNotCancelled(0);
+
+		const manager = Container.get(McpClientsManager);
+		const cacheKey = `${executionId}:${node.name}`;
+		// One cached client per execution+node, connected with the first item's
+		// config. Agent tool dispatch always sends a single item, so per-item
+		// connection config does not apply here (only per-item `timeout` below).
+		const firstConfig = await resolveConfig(0);
+
+		const { client, mcpTools } = await manager.getOrConnect(
+			cacheKey,
+			async () => await connectOrThrow(ctx, firstConfig, 0),
+			{
+				logger: ctx.logger,
+				onExecutionCancellation: ctx.onExecutionCancellation?.bind(ctx),
+			},
+		);
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			assertNotCancelled(itemIndex);
+			const config = await resolveConfig(itemIndex);
+			await runToolCall({
+				ctx,
+				node,
+				item: items[itemIndex],
+				mcpTools,
+				client,
+				timeout: config.timeout,
+				itemIndex,
+				returnData,
+			});
 		}
 
+		// Bump the entry's idle timer at the end so the session survives the gap
+		// until the next tool call (e.g. agent/LLM latency) without being evicted.
+		manager.refresh(cacheKey);
+		return [returnData];
+	}
+
+	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		assertNotCancelled(itemIndex);
+
+		const config = await resolveConfig(itemIndex);
+		const { client, mcpTools } = await connectOrThrow(ctx, config, itemIndex);
+
 		try {
-			if (!mcpTools?.length) {
-				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
-			}
-
-			if (!item.json.tool || typeof item.json.tool !== 'string') {
-				throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
-					itemIndex,
-				});
-			}
-
-			const toolName = item.json.tool;
-			for (const tool of mcpTools) {
-				const prefixedName = buildMcpToolName(node.name, tool.name);
-				if (toolName !== prefixedName) continue;
-
-				const { tool: _, ...toolArguments } = item.json;
-				const schema: JSONSchema7 = tool.inputSchema;
-				const sanitizedToolArguments: IDataObject =
-					schema.additionalProperties !== true
-						? pick(toolArguments, Object.keys(schema.properties ?? {}))
-						: toolArguments;
-
-				const result = await client.callTool(
-					{ name: tool.name, arguments: sanitizedToolArguments },
-					CallToolResultSchema,
-					{
-						timeout: config.timeout,
-						signal: ctx.getExecutionCancelSignal(),
-					},
-				);
-
-				if (node.typeVersion >= 1.3 && result.isError) {
-					const errorMessage =
-						getErrorDescriptionFromToolCall(result) ?? `Tool "${tool.name}" returned an error`;
-					throw new NodeOperationError(node, errorMessage, { itemIndex });
-				}
-
-				returnData.push({
-					json: {
-						response: result.content as IDataObject,
-						...(isStructuredContent(result.structuredContent) && {
-							structuredContent: result.structuredContent,
-						}),
-					},
-					pairedItem: { item: itemIndex },
-				});
-			}
+			await runToolCall({
+				ctx,
+				node,
+				item: items[itemIndex],
+				mcpTools,
+				client,
+				timeout: config.timeout,
+				itemIndex,
+				returnData,
+			});
 		} finally {
 			await client.close();
 		}

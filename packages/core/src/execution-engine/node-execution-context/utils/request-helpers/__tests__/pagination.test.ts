@@ -1,6 +1,13 @@
-import type { IRequestOptions, PaginationOptions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	IRequestOptions,
+	IWorkflowDataProxyAdditionalKeys,
+	PaginationOptions,
+} from 'n8n-workflow';
 
-import { applyPaginationRequestData } from '../pagination';
+import { applyPaginationRequestData, requestWithAuthenticationPaginated } from '../pagination';
 
 describe('applyPaginationRequestData', () => {
 	test('should merge pagination request data with original request options', () => {
@@ -143,5 +150,103 @@ describe('applyPaginationRequestData', () => {
 			uri: 'https://original.com/api',
 			method: 'GET',
 		});
+	});
+});
+
+describe('requestWithAuthenticationPaginated', () => {
+	const node = { typeVersion: 1 } as INode;
+
+	const setup = () => {
+		const requestOptions: IRequestOptions = {
+			uri: 'https://example.com',
+			headers: { 'x-secret': 'live-secret' },
+		};
+
+		const paginationOptions = {
+			continue: '={{ false }}',
+			request: { url: 'https://example.com/page' },
+			maxRequests: 1,
+		} as unknown as PaginationOptions;
+
+		const capturedKeys: IWorkflowDataProxyAdditionalKeys[] = [];
+		const resolveValue = vi.fn((parameterValue, _i, _r, _e, additionalKeys) => {
+			if (additionalKeys) capturedKeys.push(additionalKeys);
+			// The pagination request data is resolved at the top of each loop iteration
+			if (parameterValue === paginationOptions.request) {
+				return { url: 'https://example.com/page' };
+			}
+			// maxRequests -> stop after the first page
+			return 1;
+		});
+
+		const request = vi.fn().mockResolvedValue({ body: {}, headers: {}, statusCode: 200 });
+		const ctx = { helpers: { request } } as unknown as IExecuteFunctions;
+
+		return { ctx, requestOptions, paginationOptions, resolveValue, request, capturedKeys };
+	};
+
+	test('exposes the provided sanitized request to pagination expressions', async () => {
+		const { ctx, requestOptions, paginationOptions, resolveValue, capturedKeys } = setup();
+
+		const sanitizedRequest: IDataObject = {
+			uri: 'https://example.com',
+			headers: { 'x-secret': '**hidden**' },
+		};
+
+		await requestWithAuthenticationPaginated.call(
+			ctx,
+			requestOptions,
+			0,
+			paginationOptions,
+			resolveValue,
+			node,
+			undefined,
+			undefined,
+			sanitizedRequest,
+		);
+
+		expect(capturedKeys.length).toBeGreaterThan(0);
+		expect(capturedKeys[0].$request).toBe(sanitizedRequest);
+		expect((capturedKeys[0].$request as IDataObject).headers).toEqual({ 'x-secret': '**hidden**' });
+	});
+
+	test('uses the unmodified request options for the actual outgoing request', async () => {
+		const { ctx, requestOptions, paginationOptions, resolveValue, request } = setup();
+
+		const sanitizedRequest: IDataObject = {
+			uri: 'https://example.com',
+			headers: { 'x-secret': '**hidden**' },
+		};
+
+		await requestWithAuthenticationPaginated.call(
+			ctx,
+			requestOptions,
+			0,
+			paginationOptions,
+			resolveValue,
+			node,
+			undefined,
+			undefined,
+			sanitizedRequest,
+		);
+
+		expect(request).toHaveBeenCalledTimes(1);
+		const sentOptions = request.mock.calls[0][0] as IRequestOptions;
+		expect((sentOptions.headers as IDataObject)['x-secret']).toBe('live-secret');
+	});
+
+	test('falls back to the request options when no sanitized request is provided', async () => {
+		const { ctx, requestOptions, paginationOptions, resolveValue, capturedKeys } = setup();
+
+		await requestWithAuthenticationPaginated.call(
+			ctx,
+			requestOptions,
+			0,
+			paginationOptions,
+			resolveValue,
+			node,
+		);
+
+		expect(capturedKeys[0].$request).toBe(requestOptions);
 	});
 });

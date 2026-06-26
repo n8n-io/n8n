@@ -47,6 +47,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'settings',
 		'staticData',
 		'pinData',
+		'nodeGroups',
 	]);
 
 	const fullExecutionData: UpdateExecutionPayload = {

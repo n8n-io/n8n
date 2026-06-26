@@ -28,13 +28,13 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
-import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -1025,7 +1025,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 	describe('executeAgent', () => {
 		const ownershipService = mockInstance(OwnershipService);
-		const agentsService = mockInstance(AgentsService);
+		const agentExecutionOrchestratorService = mockInstance(AgentExecutionOrchestratorService);
 
 		const AGENT_ID = 'agent-id';
 		const MESSAGE = 'hello';
@@ -1034,8 +1034,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			agentsService.executeForWorkflow.mockResolvedValue(
-				mock<Awaited<ReturnType<typeof agentsService.executeForWorkflow>>>(),
+			agentExecutionOrchestratorService.executeForWorkflow.mockResolvedValue(
+				mock<Awaited<ReturnType<typeof agentExecutionOrchestratorService.executeForWorkflow>>>(),
 			);
 		});
 
@@ -1050,7 +1050,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 			expect(ownershipService.getPersonalProjectOwnerCached).not.toHaveBeenCalled();
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1085,7 +1085,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				outputSchema,
 			);
 
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1115,7 +1115,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
 			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith('project-1');
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
@@ -1142,7 +1142,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await expect(
 				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow('Cannot execute agent without a userId in additional data');
-			expect(agentsService.executeForWorkflow).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('throws when userId is missing and no workflowId is available to resolve ownership', async () => {
@@ -1169,8 +1169,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
 
-				// agentsService.executeForWorkflow should with 8th parameter true
-				expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
+				expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 					AGENT_ID,
 					MESSAGE,
 					EXEC_ID,
@@ -1203,8 +1203,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
 
-			// agentsService.executeForWorkflow should with 8th parameter true
-			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+			// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,

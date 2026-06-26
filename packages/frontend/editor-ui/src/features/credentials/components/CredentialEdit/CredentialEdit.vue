@@ -439,7 +439,6 @@ const showSaveButton = computed(() => {
 	if (isQuickConnectMode.value) return false;
 	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
 	if (!hasPermission) return false;
-	if (isOAuthType.value && !isOAuthConnected.value) return false;
 	return true;
 });
 
@@ -1234,6 +1233,11 @@ async function updateCredential(
 		hasUnsavedChanges.value = false;
 		isSaved.value = true;
 
+		toast.showMessage({
+			title: i18n.baseText('credentials.update.toast.title'),
+			type: 'success',
+		});
+
 		if (credential) {
 			await externalHooks.run('credential.saved', {
 				credential_type: credentialDetails.type,
@@ -1635,9 +1639,12 @@ const { width } = useElementSize(credNameRef);
 					<SaveButton
 						v-if="showHeaderSaveButton"
 						:class="$style.saveButton"
-						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:disabled="
+							(!isNewCredential && !hasUnsavedChanges && !isTesting) || !requiredPropertiesFilled
+						"
+						:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
 						:is-saving="isSaving || isTesting"
-						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
 						:saving-label="
 							isTesting
 								? i18n.baseText('credentialEdit.credentialEdit.testing')
@@ -1825,5 +1832,6 @@ const { width } = useElementSize(credNameRef);
 
 .saveButton {
 	flex-shrink: 0;
+	min-width: 57px;
 }
 </style>

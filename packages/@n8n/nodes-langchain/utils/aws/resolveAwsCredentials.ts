@@ -1,13 +1,13 @@
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
-import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@smithy/types';
+import { type AWSRegion, getAwsDomain } from 'n8n-nodes-base/dist/credentials/common/aws/regions';
 import type {
 	AwsAssumeRoleCredentialsType,
 	AwsIamCredentialsType,
-	AWSRegion,
 } from 'n8n-nodes-base/dist/credentials/common/aws/types';
 import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
+import { assertSupportedAwsRegion } from 'n8n-nodes-base/dist/credentials/common/aws/utils';
 import { UserError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 export type ResolvedAwsCredentials = {
@@ -37,6 +37,9 @@ export async function resolveAwsCredentials(
 
 	const creds = (await context.getCredentials('awsAssumeRole')) as AwsAssumeRoleCredentialsType;
 
+	// Validate before the region is interpolated into the STS endpoint URL below.
+	assertSupportedAwsRegion(creds.region);
+
 	if (!creds.roleArn || creds.roleArn.trim() === '') {
 		throw new UserError('Role ARN is required when assuming a role.');
 	}
@@ -50,7 +53,7 @@ export async function resolveAwsCredentials(
 	let masterCredentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
 	if (creds.useSystemCredentialsForRole) {
 		masterCredentials = async () => {
-			const sys = await getSystemCredentials();
+			const sys = await getSystemCredentials(creds.region);
 			if (!sys) {
 				throw new UserError(
 					'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
@@ -76,12 +79,15 @@ export async function resolveAwsCredentials(
 		};
 	}
 
-	const stsTarget = `https://sts.${creds.region}.amazonaws.com`;
+	const stsTarget = `https://sts.${creds.region}.${getAwsDomain(creds.region)}`;
 	const proxyAgent = getNodeProxyAgent(stsTarget);
 	const requestHandler = proxyAgent
 		? new NodeHttpHandler({ httpAgent: proxyAgent, httpsAgent: proxyAgent })
 		: undefined;
 
+	// Lazy-load the AWS SDK so the ~1.5 MB umbrella (Cognito/SSO clients) isn't
+	// pulled in at startup for workflows that never assume an AWS role.
+	const { fromTemporaryCredentials } = await import('@aws-sdk/credential-providers');
 	const provider = fromTemporaryCredentials({
 		params: {
 			RoleArn: creds.roleArn.trim(),

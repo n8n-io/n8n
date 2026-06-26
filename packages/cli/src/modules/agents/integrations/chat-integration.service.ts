@@ -83,6 +83,14 @@ interface DisconnectOptions {
 	skipExternalHooks?: boolean;
 }
 
+async function getAgentExecutionOrchestratorService() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { AgentExecutionOrchestratorService } = await import(
+		'../agent-execution-orchestrator.service'
+	);
+	return Container.get(AgentExecutionOrchestratorService);
+}
+
 /**
  * Manages per-agent Chat SDK instances and their lifecycle.
  *
@@ -227,15 +235,12 @@ export class ChatIntegrationService {
 			// Create supporting infrastructure
 			const componentMapper = new ComponentMapper();
 
-			// Lazy-import AgentsService to avoid circular DI dependency
-			// eslint-disable-next-line import-x/no-cycle
-			const { AgentsService } = await import('../agents.service');
-			const agentService = Container.get(AgentsService);
+			const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
 
 			bridge = AgentChatBridge.create(
 				chat,
 				agentId,
-				agentService,
+				agentExecutionOrchestratorService,
 				componentMapper,
 				this.logger,
 				projectId,
@@ -341,9 +346,9 @@ export class ChatIntegrationService {
 
 	/**
 	 * Diff the previous and next chat integrations of an agent and reconcile
-	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
+	 * runtime connections accordingly. Used by `AgentConfigService.updateConfig`
 	 * after the builder writes a new integrations array, and by
-	 * `AgentsService.publishAgent` to wake up integrations that were persisted
+	 * `AgentPublishService.publishAgent` to wake up integrations that were persisted
 	 * while the agent was still a draft.
 	 *
 	 * Disconnects of removed integrations always run (so unpublishing-then-

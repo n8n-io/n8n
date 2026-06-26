@@ -36,6 +36,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
 
+	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
+	browserUseEnabled: boolean = true;
+
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
@@ -63,6 +66,15 @@ export class InstanceAiConfig {
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
+
+	/**
+	 * Overrides the full Daytona snapshot name used to create sandboxes (e.g.
+	 * `n8n/instance-ai:2.27.3`). Defaults to the versioned snapshot derived from the running
+	 * n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back
+	 * to building from the base image.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
 
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
@@ -159,4 +171,8 @@ export class InstanceAiConfig {
 	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
+
+	/** Enable extended thinking / reasoning for the orchestrator agent. */
+	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
+	thinkingEnabled: boolean = true;
 }

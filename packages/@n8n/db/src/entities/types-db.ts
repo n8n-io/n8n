@@ -115,6 +115,11 @@ export interface IExecutionResponse extends IExecutionBase {
 	annotation: {
 		tags: ITagBase[];
 	};
+	/**
+	 * Set when run data was skipped for exceeding `ExecutionsConfig.maxDisplaySize`. `data` is
+	 * then an empty run-data object and `jsonSizeBytes` holds the real size.
+	 */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface PublicUser {
@@ -468,7 +473,7 @@ export type AuthenticatedRequest<
 };
 
 export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
-	return 'user' in req && req.user !== null;
+	return 'user' in req && Object.hasOwn(req, 'user') && req.user !== null;
 }
 
 /**

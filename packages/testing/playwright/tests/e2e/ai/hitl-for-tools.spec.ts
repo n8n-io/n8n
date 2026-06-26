@@ -34,7 +34,7 @@ async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 3000) {
 }
 
 async function setEditorText(n8n: n8nPage, parameterName: string, value: string) {
-	const codeEditor = n8n.ndv.getParameterInput(parameterName).locator('.cm-content');
+	const codeEditor = n8n.ndv.getParameterEditor(parameterName);
 	await codeEditor.click();
 	await n8n.page.keyboard.press('ControlOrMeta+a');
 	await n8n.page.keyboard.press('Delete');
@@ -114,7 +114,7 @@ test.describe(
 				{ closeNDV: false },
 			);
 
-			await n8n.ndv.getParameterInput('description').locator('textarea').fill('Send email');
+			await n8n.ndv.getParameterTextarea('description').fill('Send email');
 			await setEditorText(n8n, 'jsCode', 'return "Email sent";');
 
 			await n8n.ndv.setParameterSwitch('specifyInputSchema', true);
@@ -140,7 +140,7 @@ test.describe(
 
 			await n8n.canvas.clickManualChatButton();
 			await n8n.canvas.logsPanel.sendManualChatMessage('Send welcome email to john@gmail.com');
-			const approveButton = n8n.page.getByTestId('canvas-chat').getByText('Approve');
+			const approveButton = n8n.canvas.manualChat.getApproveButton();
 			await expect(approveButton).toBeVisible({ timeout: 15000 });
 			await approveButton.click({ button: 'middle' });
 			await waitForWorkflowSuccess(n8n);

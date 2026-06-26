@@ -19,7 +19,13 @@ import {
 	createCredentials,
 	getCredentialSharings,
 } from '../shared/db/credentials';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import {
+	addApiKey,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+	createUser,
+} from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -453,7 +459,30 @@ describe('POST /credentials/:id/test', () => {
 	});
 });
 
+// Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are
+// derived from those role scopes. Proves the public-API bypass is scope-driven.
+const makeGlobalRoleUserAgent = async (scopeSlugs: string[]) => {
+	const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'global' });
+	const user = await createUser({ role });
+	user.apiKeys = [await addApiKey(user)];
+	return testServer.publicApiAgentFor(user);
+};
+
 describe('DELETE /credentials/:id', () => {
+	test('should delete non-owned cred for custom role with credential:read', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+		const agent = await makeGlobalRoleUserAgent(['credential:read', 'credential:delete']);
+
+		const response = await agent.delete(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
+			id: savedCredential.id,
+		});
+		expect(deletedCredential).toBeNull();
+	});
+
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
 
