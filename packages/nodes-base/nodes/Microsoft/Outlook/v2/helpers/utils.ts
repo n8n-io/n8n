@@ -351,7 +351,8 @@ export function validateMailbox(id: string, node: INode): void {
 		!/^\.+$/.test(id) && (MAILBOX_GUID.test(id) || MAILBOX_UPN.test(id) || MAILBOX_HOST.test(id));
 	if (!valid) {
 		throw new NodeOperationError(node, 'The mailbox is not valid', {
-			description: 'Remove any slashes, backslashes, colons, commas, or spaces and try again.',
+			description:
+				'Enter a user principal name (UPN) or object ID. Remove any slashes, backslashes, colons, commas, spaces, or encoded characters and try again.',
 		});
 	}
 }

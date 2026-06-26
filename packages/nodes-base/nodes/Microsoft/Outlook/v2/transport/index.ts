@@ -50,8 +50,10 @@ export function resolveMailbox(
 ): string | undefined {
 	if (credentialType !== 'microsoftEntraServicePrincipalApi') return undefined;
 	// Read at item index 0 (per-node constant, same as the `authentication` selector).
-	// The 2-arg form is the only one valid across execute/poll/loadOptions contexts;
-	// the id-mode RLC has no extractValue regex, so its `.value` is already the bare id.
+	// loadOptions' getNodeParameter has no itemIndex arg (execute/poll do), so the
+	// { extractValue: true } overload can't be shared across all three contexts.
+	// Read the raw param and take the id-mode RLC value directly (this RLC has no
+	// extractValue regex, so .value is already the bare mailbox id).
 	const raw = this.getNodeParameter('mailbox', 0);
 	const value = isResourceLocatorValue(raw) ? raw.value : raw;
 	const mailbox = (typeof value === 'string' ? value : '').trim();
