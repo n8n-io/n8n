@@ -775,79 +775,6 @@ describe('ExternalSecretsManager', () => {
 			managerWithProjectMode?.shutdown();
 		});
 
-		const createManagerWithRealProviderServices = ({
-			providerClass = DummyProvider,
-			connections,
-		}: {
-			providerClass?: new () => SecretsProvider;
-			connections: Array<{
-				providerKey: string;
-				type: string;
-				encryptedSettings: string;
-				isEnabled: boolean;
-			}>;
-		}) => {
-			const providersFactory = new MockProviders();
-			providersFactory.setProviders({ dummy: providerClass });
-
-			const providerRegistry = new ExternalSecretsProviderRegistry();
-			const providerLifecycle = new ExternalSecretsProviderLifecycle(
-				mockLogger(),
-				providersFactory,
-			);
-			const retryManager = new ExternalSecretsRetryManager(mockLogger());
-			const providerConnectionManager = new ExternalSecretsProviderConnectionManager(
-				mockLogger(),
-				providerRegistry,
-				providerLifecycle,
-				retryManager,
-			);
-			const secretsCache = new ExternalSecretsSecretsCache(mockLogger(), providerRegistry);
-
-			const repository = mock<SecretsProviderConnectionRepository>();
-			repository.findAll.mockResolvedValue(connections as never);
-
-			const cipher = mock<Cipher>();
-			cipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
-
-			const managerWithRealServices = new ExternalSecretsManager(
-				mockLogger(),
-				{
-					updateInterval: 60,
-					externalSecretsForProjects: true,
-					externalSecretsMultipleConnections: false,
-				} as ExternalSecretsConfig,
-				providersFactory,
-				mockEventService,
-				mockPublisher,
-				mockSettingsStore,
-				providerRegistry,
-				providerLifecycle,
-				retryManager,
-				providerConnectionManager,
-				secretsCache,
-				repository,
-				cipher,
-			);
-
-			return {
-				managerWithRealServices,
-				providerRegistry,
-			};
-		};
-
-		const addConnectedProviderWithSecrets = async (
-			providerRegistry: ExternalSecretsProviderRegistry,
-			providerKey: string,
-			secrets: Record<string, string>,
-		) => {
-			const existingProvider = new DummyProvider();
-			await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
-			await existingProvider.connect();
-			existingProvider.secrets = secrets;
-			providerRegistry.add(providerKey, existingProvider);
-		};
-
 		it('should load providers from repository when flag is enabled', async () => {
 			const mockConnection = {
 				id: 1,
@@ -1109,6 +1036,79 @@ describe('ExternalSecretsManager', () => {
 		});
 
 		describe('provider reload consistency', () => {
+			const createProviderReloadTestManager = ({
+				providerClass = DummyProvider,
+				connections,
+			}: {
+				providerClass?: new () => SecretsProvider;
+				connections: Array<{
+					providerKey: string;
+					type: string;
+					encryptedSettings: string;
+					isEnabled: boolean;
+				}>;
+			}) => {
+				const providersFactory = new MockProviders();
+				providersFactory.setProviders({ dummy: providerClass });
+
+				const providerRegistry = new ExternalSecretsProviderRegistry();
+				const providerLifecycle = new ExternalSecretsProviderLifecycle(
+					mockLogger(),
+					providersFactory,
+				);
+				const retryManager = new ExternalSecretsRetryManager(mockLogger());
+				const providerConnectionManager = new ExternalSecretsProviderConnectionManager(
+					mockLogger(),
+					providerRegistry,
+					providerLifecycle,
+					retryManager,
+				);
+				const secretsCache = new ExternalSecretsSecretsCache(mockLogger(), providerRegistry);
+
+				const repository = mock<SecretsProviderConnectionRepository>();
+				repository.findAll.mockResolvedValue(connections as never);
+
+				const cipher = mock<Cipher>();
+				cipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+				const manager = new ExternalSecretsManager(
+					mockLogger(),
+					{
+						updateInterval: 60,
+						externalSecretsForProjects: true,
+						externalSecretsMultipleConnections: false,
+					} as ExternalSecretsConfig,
+					providersFactory,
+					mockEventService,
+					mockPublisher,
+					mockSettingsStore,
+					providerRegistry,
+					providerLifecycle,
+					retryManager,
+					providerConnectionManager,
+					secretsCache,
+					repository,
+					cipher,
+				);
+
+				return {
+					manager,
+					providerRegistry,
+				};
+			};
+
+			const addConnectedProviderWithSecrets = async (
+				providerRegistry: ExternalSecretsProviderRegistry,
+				providerKey: string,
+				secrets: Record<string, string>,
+			) => {
+				const existingProvider = new DummyProvider();
+				await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
+				await existingProvider.connect();
+				existingProvider.secrets = secrets;
+				providerRegistry.add(providerKey, existingProvider);
+			};
+
 			it('should keep serving existing secrets while provider connection reload is in progress', async () => {
 				const connectStarted = createDeferred();
 				const allowConnectToFinish = createDeferred();
@@ -1120,33 +1120,31 @@ describe('ExternalSecretsManager', () => {
 					}
 				}
 
-				const { managerWithRealServices, providerRegistry } = createManagerWithRealProviderServices(
-					{
-						providerClass: SlowConnectProvider,
-						connections: [
-							{
-								providerKey: 'my-vault',
-								type: 'dummy',
-								encryptedSettings: 'encrypted-data',
-								isEnabled: true,
-							},
-						],
-					},
-				);
+				const { manager, providerRegistry } = createProviderReloadTestManager({
+					providerClass: SlowConnectProvider,
+					connections: [
+						{
+							providerKey: 'my-vault',
+							type: 'dummy',
+							encryptedSettings: 'encrypted-data',
+							isEnabled: true,
+						},
+					],
+				});
 
 				await addConnectedProviderWithSecrets(providerRegistry, 'my-vault', {
 					test1: 'old-value',
 				});
 
-				const reloadPromise = managerWithRealServices.reloadAllProviders();
+				const reloadPromise = manager.reloadAllProviders();
 				await connectStarted.promise;
 
 				try {
-					expect(managerWithRealServices.getSecret('my-vault', 'test1')).toBe('old-value');
+					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 				} finally {
 					allowConnectToFinish.resolve();
 					await reloadPromise;
-					managerWithRealServices.shutdown();
+					manager.shutdown();
 				}
 			});
 
@@ -1157,59 +1155,55 @@ describe('ExternalSecretsManager', () => {
 					}
 				}
 
-				const { managerWithRealServices, providerRegistry } = createManagerWithRealProviderServices(
-					{
-						providerClass: FailingConnectProvider,
-						connections: [
-							{
-								providerKey: 'my-vault',
-								type: 'dummy',
-								encryptedSettings: 'encrypted-data',
-								isEnabled: true,
-							},
-						],
-					},
-				);
+				const { manager, providerRegistry } = createProviderReloadTestManager({
+					providerClass: FailingConnectProvider,
+					connections: [
+						{
+							providerKey: 'my-vault',
+							type: 'dummy',
+							encryptedSettings: 'encrypted-data',
+							isEnabled: true,
+						},
+					],
+				});
 
 				await addConnectedProviderWithSecrets(providerRegistry, 'my-vault', {
 					test1: 'old-value',
 				});
 
 				try {
-					await managerWithRealServices.reloadAllProviders();
+					await manager.reloadAllProviders();
 
-					expect(managerWithRealServices.getSecret('my-vault', 'test1')).toBeUndefined();
+					expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
 					expect(providerRegistry.get('my-vault')?.state).toBe('error');
 				} finally {
-					managerWithRealServices.shutdown();
+					manager.shutdown();
 				}
 			});
 
 			it('should stop serving secrets when a provider connection is disabled', async () => {
-				const { managerWithRealServices, providerRegistry } = createManagerWithRealProviderServices(
-					{
-						connections: [
-							{
-								providerKey: 'my-vault',
-								type: 'dummy',
-								encryptedSettings: 'encrypted-data',
-								isEnabled: false,
-							},
-						],
-					},
-				);
+				const { manager, providerRegistry } = createProviderReloadTestManager({
+					connections: [
+						{
+							providerKey: 'my-vault',
+							type: 'dummy',
+							encryptedSettings: 'encrypted-data',
+							isEnabled: false,
+						},
+					],
+				});
 
 				await addConnectedProviderWithSecrets(providerRegistry, 'my-vault', {
 					test1: 'old-value',
 				});
 
 				try {
-					await managerWithRealServices.reloadAllProviders();
+					await manager.reloadAllProviders();
 
-					expect(managerWithRealServices.getSecret('my-vault', 'test1')).toBeUndefined();
+					expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
 					expect(providerRegistry.has('my-vault')).toBe(false);
 				} finally {
-					managerWithRealServices.shutdown();
+					manager.shutdown();
 				}
 			});
 		});
