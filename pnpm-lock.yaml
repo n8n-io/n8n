@@ -98,7 +98,7 @@ catalogs:
       version: 0.187.0
     '@iconify-json/lucide':
       specifier: ^1.2.112
-      version: 1.2.112
+      version: 1.2.114
     '@iconify-json/mdi':
       specifier: ^1.1.63
       version: 1.1.63
@@ -680,6 +680,7 @@ overrides:
   date-fns-tz: 2.0.0
   form-data: 4.0.6
   pdf-parse: 2.4.5
+  pdfjs-dist: 5.4.296
   tmp: 0.2.7
   nodemailer: 8.0.10
   validator: 13.15.26
@@ -765,9 +766,9 @@ patchedDependencies:
   minifaker:
     hash: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
     path: patches/minifaker.patch
-  pdfjs-dist@5.3.31:
-    hash: 421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd
-    path: patches/pdfjs-dist@5.3.31.patch
+  pdfjs-dist@5.4.296:
+    hash: e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f
+    path: patches/pdfjs-dist@5.4.296.patch
   pkce-challenge@5.0.0:
     hash: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
     path: patches/pkce-challenge@5.0.0.patch
@@ -2515,7 +2516,7 @@ importers:
     devDependencies:
       '@iconify-json/lucide':
         specifier: 'catalog:'
-        version: 1.2.112
+        version: 1.2.114
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.67)
@@ -2646,7 +2647,7 @@ importers:
     devDependencies:
       '@iconify-json/lucide':
         specifier: 'catalog:'
-        version: 1.2.112
+        version: 1.2.114
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4421,7 +4422,7 @@ importers:
     devDependencies:
       '@iconify-json/lucide':
         specifier: 'catalog:'
-        version: 1.2.112
+        version: 1.2.114
       '@iconify-json/mdi':
         specifier: 'catalog:'
         version: 1.1.63
@@ -4970,7 +4971,7 @@ importers:
         version: 4.1.3(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
       '@iconify-json/lucide':
         specifier: 'catalog:'
-        version: 1.2.112
+        version: 1.2.114
       '@iconify-json/mdi':
         specifier: 'catalog:'
         version: 1.1.63
@@ -5715,8 +5716,8 @@ importers:
         specifier: 9.1.1
         version: 9.1.1
       pdfjs-dist:
-        specifier: 5.3.31
-        version: 5.3.31(patch_hash=421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd)
+        specifier: 5.4.296
+        version: 5.4.296(patch_hash=e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f)
       pg:
         specifier: 'catalog:'
         version: 8.17.0(pg-native@3.8.0)
@@ -8241,8 +8242,8 @@ packages:
     resolution: {integrity: sha512-RxSa9VjcDWgWCYsaLdZItdCnJj7p4LxggaEk+Y3MP0dHKoxez8ioG07DVekVbZZqccsrL+oPB/N9AzVPxj4blg==}
     engines: {node: '>=0.8.0'}
 
-  '@iconify-json/lucide@1.2.112':
-    resolution: {integrity: sha512-B4sYH2Sm/UPNJYrhh4i+GFHeHfrYPQF9evX2QduJv08iSWw9Mfn1VvF28iIh6pBtZpYlMnuB8/P51mDYlYBYWg==}
+  '@iconify-json/lucide@1.2.114':
+    resolution: {integrity: sha512-NbvH3B1BYo6wBtS7joLi7f2UVQOqK2dtZodMFf3kkBs+Tnh9TkRuy8oVHr1RM8UK6bUtvAXxfNlGAah0CuvPCw==}
 
   '@iconify-json/mdi@1.1.63':
     resolution: {integrity: sha512-b07dRM5LYdwJqd/lm+1+JDNDNSWHvpZ7ujb73oJxx3lmK1J0giDS0BSc4yia0hixNV0Z2q/4GyxAu/A8XqDnbg==}
@@ -12207,6 +12208,9 @@ packages:
 
   '@types/ssh2@0.5.52':
     resolution: {integrity: sha512-lbLLlXxdCZOSJMCInKH2+9V/77ET2J6NPQHpFI0kda61Dd1KglJs+fPQBchizmzYSOJBgdTajhPqBO1xxLywvg==}
+
+  '@types/ssh2@1.11.6':
+    resolution: {integrity: sha512-8Mf6bhzYYBLEB/G6COux7DS/F5bCWwojv/qFo2yH/e4cLzAavJnxvFXrYW59iKfXdhG6OmzJcXDasgOb/s0rxw==}
 
   '@types/ssh2@1.15.0':
     resolution: {integrity: sha512-YcT8jP5F8NzWeevWvcyrrLB3zcneVjzYY9ZDSMAMboI+2zR1qYWFhwsyOFVzT7Jorn67vqxC0FRiw8YyG9P1ww==}
@@ -18215,9 +18219,6 @@ packages:
     resolution: {integrity: sha512-Tz09sEL2EEuv5fFowm419c1+a/jSMiBjI9gHxVLrVdbUkkNUUfjsVYs9pVZu5oCon/kmRh9TfLEObFtkVxmY0w==}
     engines: {node: '>=8.0.0'}
 
-  nan@2.20.0:
-    resolution: {integrity: sha512-bk3gXBZDGILuuo/6sKtr0DQmSThYHLtNCdSdXk9YkxD/jK6X2vmCyyXBBxyqZ4XcnzTyYEAThfX3DCEnLf6igw==}
-
   nan@2.26.2:
     resolution: {integrity: sha512-0tTvBTYkt3tdGw22nrAy50x7gpbGCCFH3AFcyS5WiUu7Eu4vWlri1woE6qHBSfy11vksDqkiwjOnlR7WV8G1Hw==}
 
@@ -18964,10 +18965,6 @@ packages:
     resolution: {integrity: sha512-mHU89HGh7v+4u2ubfnevJ03lmPgQ5WU4CxAVmTSh/sxVTEDYd1er/dKS/A6vg77NX47KTEoihq8jZBLr8Cxuwg==}
     engines: {node: '>=20.16.0 <21 || >=22.3.0'}
     hasBin: true
-
-  pdfjs-dist@5.3.31:
-    resolution: {integrity: sha512-EhPdIjNX0fcdwYQO+e3BAAJPXt+XI29TZWC7COhIXs/K0JHcUt1Gdz1ITpebTwVMFiLsukdUZ3u0oTO7jij+VA==}
-    engines: {node: '>=20.16.0 || >=22.3.0'}
 
   pdfjs-dist@5.4.296:
     resolution: {integrity: sha512-DlOzet0HO7OEnmUmB6wWGJrrdvbyJKftI1bhMitK7O2N8W2gc757yyYBbINy9IDafXAV9wmKr9t7xsTaNKRG5Q==}
@@ -25136,7 +25133,7 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.40.0
       axios: 1.18.0(debug@4.4.3)
       busboy: 1.6.0
-      dotenv: 17.4.2
+      dotenv: 17.2.3
       expand-tilde: 2.0.2
       fast-glob: 3.3.3
       form-data: 4.0.6
@@ -25170,7 +25167,7 @@ snapshots:
   '@dotenvx/dotenvx@1.55.1':
     dependencies:
       commander: 11.1.0
-      dotenv: 17.4.2
+      dotenv: 17.2.3
       eciesjs: 0.4.18
       execa: 5.1.1
       fdir: 6.5.0(picomatch@4.0.4)
@@ -25644,7 +25641,7 @@ snapshots:
       readable-stream: 1.1.14
       xregexp: 2.0.0
 
-  '@iconify-json/lucide@1.2.112':
+  '@iconify-json/lucide@1.2.114':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -29591,13 +29588,13 @@ snapshots:
   '@types/docker-modem@3.0.6':
     dependencies:
       '@types/node': 20.19.41
-      '@types/ssh2': 1.15.0
+      '@types/ssh2': 1.11.6
 
   '@types/dockerode@4.0.1':
     dependencies:
       '@types/docker-modem': 3.0.6
       '@types/node': 20.19.41
-      '@types/ssh2': 1.15.0
+      '@types/ssh2': 1.11.6
 
   '@types/eslint@9.6.1':
     dependencies:
@@ -29942,7 +29939,7 @@ snapshots:
 
   '@types/ssh2-sftp-client@9.0.5':
     dependencies:
-      '@types/ssh2': 1.15.0
+      '@types/ssh2': 1.11.6
 
   '@types/ssh2-streams@0.1.12':
     dependencies:
@@ -29952,6 +29949,10 @@ snapshots:
     dependencies:
       '@types/node': 20.19.41
       '@types/ssh2-streams': 0.1.12
+
+  '@types/ssh2@1.11.6':
+    dependencies:
+      '@types/node': 20.19.41
 
   '@types/ssh2@1.15.0':
     dependencies:
@@ -32199,7 +32200,7 @@ snapshots:
   cpu-features@0.0.10:
     dependencies:
       buildcheck: 0.0.6
-      nan: 2.20.0
+      nan: 2.26.2
     optional: true
 
   crc-32@1.2.2: {}
@@ -33156,7 +33157,7 @@ snapshots:
       has-property-descriptors: 1.0.2
       has-proto: 1.2.0
       has-symbols: 1.1.0
-      hasown: 2.0.4
+      hasown: 2.0.2
       internal-slot: 1.1.0
       is-array-buffer: 3.0.5
       is-callable: 1.2.7
@@ -33233,7 +33234,7 @@ snapshots:
 
   es-shim-unscopables@1.1.0:
     dependencies:
-      hasown: 2.0.4
+      hasown: 2.0.2
 
   es-to-primitive@1.3.0:
     dependencies:
@@ -34226,7 +34227,7 @@ snapshots:
       call-bound: 1.0.4
       define-properties: 1.2.1
       functions-have-names: 1.2.3
-      hasown: 2.0.4
+      hasown: 2.0.2
       is-callable: 1.2.7
 
   functions-have-names@1.2.3: {}
@@ -34982,7 +34983,7 @@ snapshots:
   internal-slot@1.1.0:
     dependencies:
       es-errors: 1.3.0
-      hasown: 2.0.4
+      hasown: 2.0.2
       side-channel: 1.1.0
 
   interpret@1.4.0: {}
@@ -35066,7 +35067,7 @@ snapshots:
 
   is-core-module@2.16.1:
     dependencies:
-      hasown: 2.0.4
+      hasown: 2.0.2
 
   is-data-view@1.0.2:
     dependencies:
@@ -35169,7 +35170,7 @@ snapshots:
       call-bound: 1.0.4
       gopd: 1.2.0
       has-tostringtag: 1.0.2
-      hasown: 2.0.4
+      hasown: 2.0.2
 
   is-regexp@1.0.0: {}
 
@@ -37502,9 +37503,6 @@ snapshots:
     dependencies:
       lru.min: 1.1.4
 
-  nan@2.20.0:
-    optional: true
-
   nan@2.26.2: {}
 
   nanoclone@0.2.1: {}
@@ -38306,13 +38304,9 @@ snapshots:
   pdf-parse@2.4.5:
     dependencies:
       '@napi-rs/canvas': 0.1.80
-      pdfjs-dist: 5.4.296
+      pdfjs-dist: 5.4.296(patch_hash=e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f)
 
-  pdfjs-dist@5.3.31(patch_hash=421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd):
-    optionalDependencies:
-      '@napi-rs/canvas': 0.1.80
-
-  pdfjs-dist@5.4.296:
+  pdfjs-dist@5.4.296(patch_hash=e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f):
     optionalDependencies:
       '@napi-rs/canvas': 0.1.80
 
@@ -40043,7 +40037,7 @@ snapshots:
 
   sleep@6.1.0:
     dependencies:
-      nan: 2.20.0
+      nan: 2.26.2
     optional: true
 
   slice-ansi@3.0.0:
@@ -40200,7 +40194,7 @@ snapshots:
       bcrypt-pbkdf: 1.0.2
     optionalDependencies:
       cpu-features: 0.0.10
-      nan: 2.20.0
+      nan: 2.26.2
 
   ssh2@1.16.0:
     dependencies:
@@ -40208,7 +40202,7 @@ snapshots:
       bcrypt-pbkdf: 1.0.2
     optionalDependencies:
       cpu-features: 0.0.10
-      nan: 2.20.0
+      nan: 2.26.2
 
   sshpk@1.18.0:
     dependencies:

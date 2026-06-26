@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-25T12:22:26.752Z",
-	"totalViolations": 126,
+	"generated": "2026-06-26T07:21:36.867Z",
+	"totalViolations": 117,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -311,38 +311,6 @@
 				"line": 65,
 				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' })",
 				"hash": "a58ac8ee8b5c"
-			}
-		],
-		"tests/e2e/projects/folders-basic.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 146,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(errorMessage, { exact: fals...",
-				"hash": "4c6fb24eb5b2"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 150,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(emptyErrorMessage)",
-				"hash": "c524bac65c97"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 153,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(tooLongErrorMessage)",
-				"hash": "98fd475ead3c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 156,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(dotsErrorMessage)",
-				"hash": "73fce4c260f3"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 172,
-				"message": "Chained locator call in test: n8n.notifications .getNotificationByTitleOrContent(FOLDER...",
-				"hash": "fcfd7b7736c9"
 			}
 		],
 		"tests/e2e/projects/projects-move-resources.spec.ts": [
@@ -741,32 +709,6 @@
 				"line": 270,
 				"message": "Raw API call detected: request.get(",
 				"hash": "3783a2d87c82"
-			}
-		],
-		"tests/e2e/workflows/editor/subworkflows/subworkflow-version-resolution.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 65,
-				"message": "Raw API call detected: request.patch(",
-				"hash": "0acea681877b"
-			},
-			{
-				"rule": "api-purity",
-				"line": 117,
-				"message": "Raw API call detected: request.post(",
-				"hash": "ba11a5486f8c"
-			},
-			{
-				"rule": "api-purity",
-				"line": 146,
-				"message": "Raw API call detected: request.patch(",
-				"hash": "0acea681877b"
-			},
-			{
-				"rule": "api-purity",
-				"line": 299,
-				"message": "Raw API call detected: request.patch(",
-				"hash": "0acea681877b"
 			}
 		],
 		"pages/WorkflowsPage.ts": [
