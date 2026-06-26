@@ -11,7 +11,7 @@ const rolesAccessingAllProjects = ref<Role[]>([ROLE.Owner, ROLE.Admin]);
 
 const visibleProjectsNum = ref(2);
 const allProjects = computed(() => {
-	if (props.data.role && rolesAccessingAllProjects.value.includes(props.data.role)) {
+	if (props.data.role && rolesAccessingAllProjects.value.includes(props.data.role as Role)) {
 		return [i18n.baseText('settings.users.table.row.allProjects')];
 	} else if (!props.data.projectRelations?.length) {
 		return [i18n.baseText('settings.users.table.row.personalProject')];
