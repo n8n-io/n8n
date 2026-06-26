@@ -93,14 +93,16 @@ export async function resolveEnvironmentViaSdk(): Promise<SystemCredentials | nu
 export async function resolveWebIdentityViaSdk(region?: string): Promise<SystemCredentials | null> {
 	if (!getEnv('AWS_ROLE_ARN') || !getEnv('AWS_WEB_IDENTITY_TOKEN_FILE')) return null;
 	const { fromTokenFile } = await import('@aws-sdk/credential-providers');
-	const { NodeHttpHandler } = await import('@smithy/node-http-handler');
 	// Pin to single-attempt + 2 s timeout to match the other remote resolvers.
+	// Pass the handler config as a plain object so NodeHttpHandler.create() builds
+	// the handler internally — avoids importing @smithy/node-http-handler directly
+	// (it's not a declared dependency of nodes-base).
 	return await runProvider(
 		fromTokenFile({
 			clientConfig: {
 				...(region ? { region } : {}),
 				maxAttempts: 1,
-				requestHandler: new NodeHttpHandler({ requestTimeout: 2000, connectionTimeout: 2000 }),
+				requestHandler: { requestTimeout: 2000, connectionTimeout: 2000 },
 			},
 		}),
 	);
@@ -111,13 +113,32 @@ export async function resolvePodIdentityViaSdk(): Promise<SystemCredentials | nu
 	const fullUri = getEnv('AWS_CONTAINER_CREDENTIALS_FULL_URI');
 	if (!fullUri) return null;
 	const { fromHttp } = await import('@aws-sdk/credential-providers');
+
+	// Resolve the auth token before calling fromHttp for two reasons:
+	// 1. The SDK reads the token file verbatim (no trim); a trailing \n in the
+	//    Authorization header causes the Pod Identity agent to reject the request.
+	// 2. Passing both awsContainerAuthorizationToken and awsContainerAuthorizationTokenFile
+	//    lets the SDK's "direct token wins" logic override file-based tokens — the
+	//    opposite of legacy behaviour. Resolving here keeps file-first precedence.
+	const tokenFile = getEnv('AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE');
+	let awsContainerAuthorizationToken: string | undefined;
+	if (tokenFile) {
+		try {
+			const { readFile } = await import('node:fs/promises');
+			awsContainerAuthorizationToken = (await readFile(tokenFile, 'utf-8')).trim() || undefined;
+		} catch {
+			return null;
+		}
+	} else {
+		awsContainerAuthorizationToken = getEnv('AWS_CONTAINER_AUTHORIZATION_TOKEN');
+	}
+
 	// `fromHttp` (not `fromContainerMetadata`) so we can pass the full URI and
-	// token sources explicitly, keeping this source scoped to FULL_URI only.
+	// token explicitly, keeping this source scoped to FULL_URI only.
 	return await runProvider(
 		fromHttp({
 			awsContainerCredentialsFullUri: fullUri,
-			awsContainerAuthorizationTokenFile: getEnv('AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE'),
-			awsContainerAuthorizationToken: getEnv('AWS_CONTAINER_AUTHORIZATION_TOKEN'),
+			awsContainerAuthorizationToken,
 			// Match the legacy single-attempt behaviour (no retry) and the legacy
 			// 2 s request timeout. `fromHttp`'s `timeout` is used as both the
 			// HTTP request/connection timeout and the delay between retry

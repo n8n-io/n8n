@@ -24,11 +24,11 @@ const {
 	};
 });
 
-const { MockNodeHttpHandler } = vi.hoisted(() => ({
-	MockNodeHttpHandler: vi.fn(),
+const { mockReadFile } = vi.hoisted(() => ({
+	mockReadFile: vi.fn(),
 }));
 
-vi.mock('@smithy/node-http-handler', () => ({ NodeHttpHandler: MockNodeHttpHandler }));
+vi.mock('node:fs/promises', () => ({ readFile: mockReadFile }));
 vi.mock('@n8n/di', () => ({ Container: mockContainer }));
 vi.mock('@n8n/config', () => ({ SecurityConfig: MockSecurityConfig }));
 vi.mock('@aws-sdk/credential-providers', () => ({
@@ -154,24 +154,23 @@ describe('system-credentials-sdk', () => {
 			it('resolves via fromTokenFile when IRSA env is present', async () => {
 				const result = await resolveWebIdentityViaSdk();
 				expect(result).toEqual(SDK_IDENTITY);
-				expect(MockNodeHttpHandler).toHaveBeenCalledWith({
-					requestTimeout: 2000,
-					connectionTimeout: 2000,
-				});
 				expect(fromTokenFile).toHaveBeenCalledWith({
-					clientConfig: { maxAttempts: 1, requestHandler: expect.any(Object) },
+					clientConfig: {
+						maxAttempts: 1,
+						requestHandler: { requestTimeout: 2000, connectionTimeout: 2000 },
+					},
 				});
 			});
 
 			it('passes region to the STS client config when provided', async () => {
 				const result = await resolveWebIdentityViaSdk('eu-west-1');
 				expect(result).toEqual(SDK_IDENTITY);
-				expect(MockNodeHttpHandler).toHaveBeenCalledWith({
-					requestTimeout: 2000,
-					connectionTimeout: 2000,
-				});
 				expect(fromTokenFile).toHaveBeenCalledWith({
-					clientConfig: { region: 'eu-west-1', maxAttempts: 1, requestHandler: expect.any(Object) },
+					clientConfig: {
+						region: 'eu-west-1',
+						maxAttempts: 1,
+						requestHandler: { requestTimeout: 2000, connectionTimeout: 2000 },
+					},
 				});
 			});
 
@@ -185,7 +184,7 @@ describe('system-credentials-sdk', () => {
 		});
 
 		describe('podIdentity', () => {
-			it('passes the full URI and token sources to fromHttp', async () => {
+			it('reads and trims the token file, passes it as the sole auth token to fromHttp', async () => {
 				mockEnvGetter.mockImplementation((key: string) => {
 					switch (key) {
 						case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
@@ -196,13 +195,37 @@ describe('system-credentials-sdk', () => {
 							return undefined;
 					}
 				});
+				mockReadFile.mockResolvedValue('tok123\n');
 
 				const result = await resolvePodIdentityViaSdk();
 				expect(result).toEqual(SDK_IDENTITY);
+				expect(mockReadFile).toHaveBeenCalledWith('/var/run/secrets/token', 'utf-8');
 				expect(fromHttp).toHaveBeenCalledWith({
 					awsContainerCredentialsFullUri: 'http://169.254.170.23/v1/credentials',
-					awsContainerAuthorizationTokenFile: '/var/run/secrets/token',
-					awsContainerAuthorizationToken: undefined,
+					awsContainerAuthorizationToken: 'tok123',
+					timeout: 2000,
+					maxRetries: 0,
+				});
+			});
+
+			it('falls back to the direct token when no token file is configured', async () => {
+				mockEnvGetter.mockImplementation((key: string) => {
+					switch (key) {
+						case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+							return 'http://169.254.170.23/v1/credentials';
+						case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+							return 'direct-token';
+						default:
+							return undefined;
+					}
+				});
+
+				const result = await resolvePodIdentityViaSdk();
+				expect(result).toEqual(SDK_IDENTITY);
+				expect(mockReadFile).not.toHaveBeenCalled();
+				expect(fromHttp).toHaveBeenCalledWith({
+					awsContainerCredentialsFullUri: 'http://169.254.170.23/v1/credentials',
+					awsContainerAuthorizationToken: 'direct-token',
 					timeout: 2000,
 					maxRetries: 0,
 				});
