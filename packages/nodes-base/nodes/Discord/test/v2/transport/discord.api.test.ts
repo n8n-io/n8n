@@ -263,6 +263,22 @@ describe('Discord v2 > transport', () => {
 			expect(sleepMock).toHaveBeenNthCalledWith(2, 3000); // post-success reset-after
 		});
 
+		it('forwards custom headers (e.g. audit-log reason) to the request', async () => {
+			const { context, requestWithAuthentication } = createMockContext();
+			requestWithAuthentication.mockResolvedValueOnce({ body: { success: true }, headers: {} });
+
+			await discordApiRequest.call(context, 'PUT', '/guilds/1/bans/2', undefined, undefined, {
+				'X-Audit-Log-Reason': 'Suspicious%20or%20spam%20account',
+			});
+
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'discordBotApi',
+				expect.objectContaining({
+					headers: { 'X-Audit-Log-Reason': 'Suspicious%20or%20spam%20account' },
+				}),
+			);
+		});
+
 		it('wraps non-429 errors as NodeApiError', async () => {
 			const { context, requestWithAuthentication } = createMockContext();
 			requestWithAuthentication.mockRejectedValueOnce({ statusCode: 400, message: 'bad request' });
