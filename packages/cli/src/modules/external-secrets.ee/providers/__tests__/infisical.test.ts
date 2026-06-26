@@ -64,6 +64,11 @@ describe('InfisicalProvider', () => {
 	const logger = mockInstance(Logger);
 	logger.scoped.mockReturnValue(logger);
 
+	beforeEach(() => {
+		jest.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+	});
+
 	function createProvider(routes: Route[]) {
 		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(routes, jest.fn);
 		const provider = new InfisicalProvider(logger, outboundHttp);
@@ -188,6 +193,13 @@ describe('InfisicalProvider', () => {
 			const [success, message] = await provider.test();
 			expect(success).toBe(false);
 			expect(message).toBe('Connection refused. Check the Site URL.');
+			expect(logger.error).toHaveBeenCalledWith(
+				'Infisical provider test failed',
+				expect.objectContaining({
+					projectId: PROJECT_ID,
+					error: expect.any(Error),
+				}),
+			);
 		});
 	});
 
@@ -200,6 +212,16 @@ describe('InfisicalProvider', () => {
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to connect Infisical provider',
+				expect.objectContaining({
+					authMethod: 'universalAuth',
+					projectId: PROJECT_ID,
+					environment: ENVIRONMENT,
+					secretPath: SECRET_PATH,
+					error: expect.any(Error),
+				}),
+			);
 		});
 	});
 
@@ -269,6 +291,39 @@ describe('InfisicalProvider', () => {
 				.filter((options) => options.url.endsWith(SECRETS_PATH));
 			expect(secretsCalls).toHaveLength(2);
 			expect(secretsCalls[1].headers).toMatchObject({ Authorization: 'Bearer refreshed-token' });
+		});
+
+		it('logs and rethrows update failures', async () => {
+			const { provider } = await connectedProvider([
+				{ method: 'GET', pathname: SECRETS_PATH, status: 500, body: { message: 'Failed' } },
+			]);
+
+			await expect(provider.update()).rejects.toThrow('Request failed with status 500');
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to update Infisical provider secrets',
+				expect.objectContaining({
+					projectId: PROJECT_ID,
+					environment: ENVIRONMENT,
+					secretPath: SECRET_PATH,
+					error: expect.any(Error),
+				}),
+			);
+		});
+
+		it('logs token refresh failures before attempting to reconnect', async () => {
+			const { provider } = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, networkError: 'ECONNREFUSED' },
+			]);
+			const connect = jest.spyOn(provider, 'connect').mockResolvedValue();
+
+			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to refresh Infisical token. Attempting reconnect.',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+			expect(connect).toHaveBeenCalled();
 		});
 
 		it('caches secrets from imports alongside top-level secrets', async () => {
