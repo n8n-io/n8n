@@ -5,6 +5,7 @@ import { join } from 'path';
 import { runSharedChannelIntegrationContract } from './helpers/channel-integration-contract';
 import {
 	createLinearReplayContext,
+	type LinearCommentEventFixture,
 	type LinearReplayFixtures,
 } from './helpers/linear/replay-test-context';
 import {
@@ -19,9 +20,12 @@ import {
 const slackFixtures = jsonParse<SlackReplayFixtures>(
 	readFileSync(join(__dirname, 'fixtures/slack/basic.json'), 'utf8'),
 );
-const linearFixtures = jsonParse<LinearReplayFixtures>(
-	readFileSync(join(__dirname, 'fixtures/linear/basic.json'), 'utf8'),
-);
+const linearFixtures = jsonParse<
+	LinearReplayFixtures & {
+		followUp: LinearCommentEventFixture;
+		selfMessage: LinearCommentEventFixture;
+	}
+>(readFileSync(join(__dirname, 'fixtures/linear/basic.json'), 'utf8'));
 const telegramFixtures = jsonParse<TelegramReplayFixtures>(
 	readFileSync(join(__dirname, 'fixtures/telegram/basic.json'), 'utf8'),
 );
