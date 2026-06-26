@@ -2,6 +2,7 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { LogsPanel } from './components/LogsPanel';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class ExecutionsPage extends BasePage {
 	async goto(projectId?: string) {
@@ -69,6 +70,18 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('execution-list-empty');
 	}
 
+	getNoTriggerContent(): Locator {
+		return this.page.getByTestId('workflow-execution-no-trigger-content');
+	}
+
+	getAddFirstStepButton(): Locator {
+		return this.page.getByRole('button', { name: 'Add first step' });
+	}
+
+	getNoContent(): Locator {
+		return this.page.getByTestId('workflow-execution-no-content');
+	}
+
 	getSuccessfulExecutionItems(): Locator {
 		return this.page.locator('[data-test-execution-status="success"]');
 	}
@@ -98,7 +111,7 @@ export class ExecutionsPage extends BasePage {
 
 	async deleteExecutionInPreview(): Promise<void> {
 		await this.page.getByTestId('execution-preview-delete-button').click();
-		await this.page.locator('button.btn--confirm').click();
+		await new MessageBox(this.page).confirmButton.click();
 	}
 
 	// Filter methods

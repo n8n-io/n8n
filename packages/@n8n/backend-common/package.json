@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-common",
-  "version": "1.27.0",
+  "version": "1.28.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -29,6 +29,7 @@
     "@n8n/di": "workspace:*",
     "callsites": "catalog:",
     "flatted": "catalog:",
+    "logform": "2.6.1",
     "n8n-workflow": "workspace:*",
     "stream-json": "catalog:",
     "picocolors": "catalog:",

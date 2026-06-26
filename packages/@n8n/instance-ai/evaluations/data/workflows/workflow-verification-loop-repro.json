@@ -1,0 +1,37 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"First create a plan and wait for my approval before building. Do not skip the plan approval step.",
+				"",
+				"After I approve, build a workflow named \"workflow verification loop repro\" with exactly this shape:",
+				"",
+				"Manual Trigger",
+				"→ Code node named \"Return no items\" that returns an empty array",
+				"→ HTTP Request node named \"Unreached POST\" configured as POST to https://example.com/repro with a small JSON body",
+				"→ Edit Fields node named \"After post\"",
+				"",
+				"Do not add fallback branches, do not seed data, do not change the Code node to return items, and do not remove the HTTP POST.",
+				"After saving, verify the workflow automatically."
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["behaviour", "verification", "orchestration", "regression"],
+	"executionScenarios": [
+		{
+			"name": "empty-output-stops-before-post",
+			"description": "The code node returns no items, so the HTTP POST and downstream Edit Fields node are not reached.",
+			"dataSetup": "Manual trigger input can be an empty item. HTTP requests are mocked; however, the workflow should stop before the HTTP Request node because the Code node returns an empty array.",
+			"successCriteria": "The workflow execution stops after the Code node returns no items. The HTTP POST is not actually executed and the agent reports that downstream nodes were not verified instead of repeatedly re-running verification."
+		}
+	],
+	"description": "Regression case for repeated post-build workflow-verification follow-ups when verification succeeds with partial coverage or never settles.",
+	"processExpectations": [
+		"The agent does not repeatedly re-enter workflow verification for the same saved workflow; it verifies once or twice at most, then reports partial/manual verification if downstream nodes cannot be reached."
+	],
+	"triggerType": "manual",
+	"messageBudget": 20,
+	"datasets": ["behaviour", "verification", "full"]
+}
