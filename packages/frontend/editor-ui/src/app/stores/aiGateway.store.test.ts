@@ -45,7 +45,7 @@ const MOCK_CONFIG = {
 			[OPERATION_ONLY]: ['AI Invoice Parser', 'Merge PDF'],
 		},
 	},
-	managedHiddenParameters: {
+	hiddenNodeProperties: {
 		'n8n-nodes-browserbase.browserbase': ['modelSource'],
 	},
 };
@@ -396,7 +396,7 @@ describe('aiGateway.store', () => {
 			).toBe(false);
 		});
 
-		it('should return false for a node with no managedHiddenParameters entry', async () => {
+		it('should return false for a node with no hiddenNodeProperties entry', async () => {
 			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
 			const store = useAiGatewayStore();
 			await store.fetchConfig();
@@ -406,8 +406,8 @@ describe('aiGateway.store', () => {
 			);
 		});
 
-		it('should return false when config has no managedHiddenParameters field', async () => {
-			const configWithout = { ...MOCK_CONFIG, managedHiddenParameters: undefined };
+		it('should return false when config has no hiddenNodeProperties field', async () => {
+			const configWithout = { ...MOCK_CONFIG, hiddenNodeProperties: undefined };
 			mockGetGatewayConfig.mockResolvedValue(configWithout);
 			const store = useAiGatewayStore();
 			await store.fetchConfig();

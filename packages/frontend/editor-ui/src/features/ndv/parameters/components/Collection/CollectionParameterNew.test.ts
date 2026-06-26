@@ -554,5 +554,39 @@ describe('CollectionParameterNew.vue', () => {
 			expect(getByTestId('collection-parameter-add-dropdown')).toBeInTheDocument();
 			expect(mockIsManagedHiddenParameter).not.toHaveBeenCalled();
 		});
+
+		it('removes collection-type options the gateway declares hidden', async () => {
+			mockActiveNode = gatewayManagedNode;
+			mockIsManagedHiddenParameter.mockImplementation(
+				(_type, param) => param === 'nestedCollection',
+			);
+
+			const singleCollectionProps: Props = {
+				...baseProps,
+				parameter: {
+					...baseProps.parameter,
+					options: [
+						{
+							name: 'nestedCollection',
+							displayName: 'Nested Collection',
+							values: [
+								{
+									displayName: 'Field 1',
+									name: 'field1',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+				values: {},
+			};
+
+			const { queryByTestId } = renderComponent({ props: singleCollectionProps });
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
+		});
 	});
 });

@@ -574,6 +574,47 @@ describe('CollectionParameterLegacy.vue', () => {
 			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
 			expect(mockIsManagedHiddenParameter).not.toHaveBeenCalled();
 		});
+
+		it('removes collection-type options the gateway declares hidden', async () => {
+			mockActiveNode = gatewayManagedNode;
+			mockIsManagedHiddenParameter.mockImplementation(
+				(_type, param) => param === 'nestedCollection',
+			);
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: [
+							{
+								displayName: 'Currency',
+								name: 'currency',
+								type: 'string',
+								default: 'USD',
+							},
+							{
+								name: 'nestedCollection',
+								displayName: 'Nested Collection',
+								values: [
+									{
+										displayName: 'Field 1',
+										name: 'field1',
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+					},
+				},
+			});
+			await flushPromises();
+
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Currency');
+		});
 	});
 
 	describe('hideDelete prop', () => {

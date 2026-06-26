@@ -125,7 +125,7 @@ describe('useAiGateway', () => {
 				nodes: [],
 				credentialTypes: [],
 				providerConfig: {},
-				managedHiddenParameters: { 'n8n-nodes-base.browserbase': ['modelSource'] },
+				hiddenNodeProperties: { 'n8n-nodes-base.browserbase': ['modelSource'] },
 			});
 			const aiGatewayStore = useAiGatewayStore();
 			await aiGatewayStore.fetchConfig();
