@@ -5,6 +5,11 @@ import { mock } from 'jest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
 
 jest.mock('@aws-sdk/client-secrets-manager');
@@ -74,13 +79,13 @@ describe('AwsSecretsManager', () => {
 			await awsSecretsManager.connect();
 
 			expect(awsSecretsManager.state).toBe('error');
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'AWS Secrets Manager provider test failed',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
 			);
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect AWS Secrets Manager provider',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderConnectionError) }),
 			);
 		});
 	});
@@ -221,9 +226,9 @@ describe('AwsSecretsManager', () => {
 
 		await expect(awsSecretsManager.update()).rejects.toThrow('Failed to list secrets');
 
-		expect(logger.error).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to update AWS Secrets Manager provider secrets',
-			expect.objectContaining({ error: expect.any(Error) }),
+			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
 		);
 	});
 });

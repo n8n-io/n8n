@@ -6,9 +6,15 @@ import {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
+import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderTokenRefreshError,
+	SecretsProviderUpdateError,
+} from '../errors/secrets-provider-errors';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
@@ -193,12 +199,12 @@ export class InfisicalProvider extends SecretsProvider {
 
 			this.setupTokenRefresh();
 		} catch (error) {
-			this.logger.error('Failed to connect Infisical provider', {
+			this.logger.warn('Failed to connect Infisical provider', {
 				authMethod: this.settings.authMethod,
-				projectId: this.settings.projectId,
-				environment: this.settings.environment,
-				secretPath: this.settings.secretPath,
-				error: ensureError(error),
+				error: new SecretsProviderConnectionError(this.name, this.displayName, {
+					authMethod: this.settings.authMethod,
+					statusCode: httpStatusFromError(error),
+				}),
 			});
 			throw error;
 		}
@@ -243,9 +249,11 @@ export class InfisicalProvider extends SecretsProvider {
 
 			return [false, `Unexpected response from Infisical (status ${resp.statusCode}).`];
 		} catch (error) {
-			this.logger.error('Infisical provider test failed', {
-				projectId: this.settings.projectId,
-				error: ensureError(error),
+			this.logger.warn('Infisical provider test failed', {
+				error: new SecretsProviderTestError(this.name, this.displayName, {
+					statusCode: httpStatusFromError(error),
+					resource: 'workspace',
+				}),
 			});
 
 			if (isConnectionRefusedError(error)) {
@@ -277,11 +285,11 @@ export class InfisicalProvider extends SecretsProvider {
 				throw error;
 			}
 		} catch (error) {
-			this.logger.error('Failed to update Infisical provider secrets', {
-				projectId: this.settings.projectId,
-				environment: this.settings.environment,
-				secretPath: this.settings.secretPath,
-				error: ensureError(error),
+			this.logger.warn('Failed to update Infisical provider secrets', {
+				error: new SecretsProviderUpdateError(this.name, this.displayName, {
+					statusCode: httpStatusFromError(error),
+					resource: 'secrets',
+				}),
 			});
 			throw error;
 		}
@@ -365,9 +373,11 @@ export class InfisicalProvider extends SecretsProvider {
 			await this.loginUniversalAuth();
 			if (this.refreshAbort.signal.aborted) return;
 			this.setupTokenRefresh();
-		} catch (error) {
-			this.logger.error('Failed to refresh Infisical token. Attempting reconnect.', {
-				error: ensureError(error),
+		} catch {
+			this.logger.warn('Failed to refresh Infisical token. Attempting reconnect.', {
+				error: new SecretsProviderTokenRefreshError(this.name, this.displayName, {
+					authMethod: this.settings.authMethod,
+				}),
 			});
 			void this.connect();
 		}

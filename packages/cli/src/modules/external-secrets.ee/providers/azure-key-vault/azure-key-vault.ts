@@ -5,6 +5,11 @@ import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow
 
 import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
 export class AzureKeyVault extends SecretsProvider {
@@ -87,8 +92,8 @@ export class AzureKeyVault extends SecretsProvider {
 
 			this.logger.debug('Azure Key Vault provider connected');
 		} catch (error) {
-			this.logger.error('Failed to connect Azure Key Vault provider', {
-				error: ensureError(error),
+			this.logger.warn('Failed to connect Azure Key Vault provider', {
+				error: new SecretsProviderConnectionError(this.name, this.displayName),
 			});
 			throw error;
 		}
@@ -101,8 +106,8 @@ export class AzureKeyVault extends SecretsProvider {
 			await this.client.listPropertiesOfSecrets().next();
 			return [true];
 		} catch (error: unknown) {
-			this.logger.error('Azure Key Vault provider test failed', {
-				error: ensureError(error),
+			this.logger.warn('Azure Key Vault provider test failed', {
+				error: new SecretsProviderTestError(this.name, this.displayName),
 			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
@@ -136,8 +141,10 @@ export class AzureKeyVault extends SecretsProvider {
 				} else {
 					const error = ensureError(promiseResult.reason);
 					readErrors.push(error);
-					this.logger.warn(`Could not read Azure Key Vault secret "${secretNames[index]}"`, {
-						error,
+					this.logger.warn('Could not read Azure Key Vault secret', {
+						error: new SecretsProviderUpdateError(this.name, this.displayName, {
+							resource: 'secret-read',
+						}),
 					});
 				}
 			}
@@ -151,8 +158,8 @@ export class AzureKeyVault extends SecretsProvider {
 			this.cachedSecrets = updated;
 			this.logger.debug('Azure Key Vault provider secrets updated');
 		} catch (error) {
-			this.logger.error('Failed to update Azure Key Vault provider secrets', {
-				error: ensureError(error),
+			this.logger.warn('Failed to update Azure Key Vault provider secrets', {
+				error: new SecretsProviderUpdateError(this.name, this.displayName),
 			});
 			throw error;
 		}

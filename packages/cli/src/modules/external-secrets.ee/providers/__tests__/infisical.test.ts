@@ -3,6 +3,12 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderTokenRefreshError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { InfisicalProvider } from '../infisical';
 
 const SITE_URL = 'https://app.infisical.com';
@@ -193,11 +199,10 @@ describe('InfisicalProvider', () => {
 			const [success, message] = await provider.test();
 			expect(success).toBe(false);
 			expect(message).toBe('Connection refused. Check the Site URL.');
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Infisical provider test failed',
 				expect.objectContaining({
-					projectId: PROJECT_ID,
-					error: expect.any(Error),
+					error: expect.any(SecretsProviderTestError),
 				}),
 			);
 		});
@@ -212,14 +217,11 @@ describe('InfisicalProvider', () => {
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect Infisical provider',
 				expect.objectContaining({
 					authMethod: 'universalAuth',
-					projectId: PROJECT_ID,
-					environment: ENVIRONMENT,
-					secretPath: SECRET_PATH,
-					error: expect.any(Error),
+					error: expect.any(SecretsProviderConnectionError),
 				}),
 			);
 		});
@@ -300,13 +302,10 @@ describe('InfisicalProvider', () => {
 
 			await expect(provider.update()).rejects.toThrow('Request failed with status 500');
 
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to update Infisical provider secrets',
 				expect.objectContaining({
-					projectId: PROJECT_ID,
-					environment: ENVIRONMENT,
-					secretPath: SECRET_PATH,
-					error: expect.any(Error),
+					error: expect.any(SecretsProviderUpdateError),
 				}),
 			);
 		});
@@ -319,9 +318,9 @@ describe('InfisicalProvider', () => {
 
 			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
 
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to refresh Infisical token. Attempting reconnect.',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderTokenRefreshError) }),
 			);
 			expect(connect).toHaveBeenCalled();
 		});

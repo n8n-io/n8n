@@ -1,7 +1,7 @@
 import type { protos, SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ensureError, jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
+import { jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
 
 import type {
 	GcpSecretsManagerContext,
@@ -9,6 +9,12 @@ import type {
 	RawGcpSecretAccountKey,
 } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderInitializationError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
 export class GcpSecretsManager extends SecretsProvider {
@@ -46,8 +52,8 @@ export class GcpSecretsManager extends SecretsProvider {
 		try {
 			this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
 		} catch (error) {
-			this.logger.error('Failed to initialize GCP Secrets Manager provider', {
-				error: ensureError(error),
+			this.logger.warn('Failed to initialize GCP Secrets Manager provider', {
+				error: new SecretsProviderInitializationError(this.name, this.displayName),
 			});
 			throw error;
 		}
@@ -70,8 +76,8 @@ export class GcpSecretsManager extends SecretsProvider {
 
 			this.logger.debug('GCP Secrets Manager provider connected');
 		} catch (error) {
-			this.logger.error('Failed to connect GCP Secrets Manager provider', {
-				error: ensureError(error),
+			this.logger.warn('Failed to connect GCP Secrets Manager provider', {
+				error: new SecretsProviderConnectionError(this.name, this.displayName),
 			});
 			throw error;
 		}
@@ -84,8 +90,10 @@ export class GcpSecretsManager extends SecretsProvider {
 			await this.client.initialize();
 			return [true];
 		} catch (error: unknown) {
-			this.logger.error('GCP Secrets Manager provider test failed', {
-				error: ensureError(error),
+			this.logger.warn('GCP Secrets Manager provider test failed', {
+				error: new SecretsProviderTestError(this.name, this.displayName, {
+					errorCode: this.getErrorCode(error),
+				}),
 			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
@@ -131,12 +139,12 @@ export class GcpSecretsManager extends SecretsProvider {
 					// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
 					const errorCode = this.getErrorCode(error);
 					if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
-						this.logger.info(
-							`Skipping GCP secret: ${name}, version: latest as the version is not accessible`,
-							{
-								error: ensureError(error),
-							},
-						);
+						this.logger.warn('Skipping inaccessible GCP secret version', {
+							error: new SecretsProviderUpdateError(this.name, this.displayName, {
+								errorCode,
+								resource: 'secret-version',
+							}),
+						});
 					} else {
 						// Rethrow unexpected errors to avoid masking broader failures
 						throw error;
@@ -165,8 +173,10 @@ export class GcpSecretsManager extends SecretsProvider {
 
 			this.logger.debug('GCP Secrets Manager provider secrets updated');
 		} catch (error) {
-			this.logger.error('Failed to update GCP Secrets Manager provider secrets', {
-				error: ensureError(error),
+			this.logger.warn('Failed to update GCP Secrets Manager provider secrets', {
+				error: new SecretsProviderUpdateError(this.name, this.displayName, {
+					errorCode: this.getErrorCode(error),
+				}),
 			});
 			throw error;
 		}

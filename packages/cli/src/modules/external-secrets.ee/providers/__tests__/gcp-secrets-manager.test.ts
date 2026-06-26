@@ -4,6 +4,11 @@ import type { google } from '@google-cloud/secret-manager/build/protos/protos';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
+import {
+	SecretsProviderInitializationError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
 import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
 
@@ -49,9 +54,9 @@ describe('GCP Secrets Manager', () => {
 			await expect(
 				gcpSecretsManager.init(mock<GcpSecretsManagerContext>({ settings })),
 			).rejects.toThrow(UserError);
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to initialize GCP Secrets Manager provider',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderInitializationError) }),
 			);
 		});
 
@@ -162,9 +167,9 @@ describe('GCP Secrets Manager', () => {
 			.mockRejectedValue(new Error('Invalid credentials'));
 
 		await expect(gcpSecretsManager.test()).resolves.toEqual([false, 'Invalid credentials']);
-		expect(logger.error).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith(
 			'GCP Secrets Manager provider test failed',
-			expect.objectContaining({ error: expect.any(Error) }),
+			expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
 		);
 	});
 
@@ -212,9 +217,9 @@ describe('GCP Secrets Manager', () => {
 		await gcpSecretsManager.connect();
 
 		await expect(gcpSecretsManager.update()).rejects.toThrow('test error');
-		expect(logger.error).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to update GCP Secrets Manager provider secrets',
-			expect.objectContaining({ error: expect.any(Error) }),
+			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
 		);
 	});
 

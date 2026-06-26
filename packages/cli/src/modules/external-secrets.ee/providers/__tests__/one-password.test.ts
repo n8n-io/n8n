@@ -3,6 +3,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderInitializationError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { OnePasswordProvider } from '../one-password';
 import type { OnePasswordContext } from '../one-password';
 
@@ -35,9 +41,9 @@ describe('OnePasswordProvider', () => {
 			await expect(provider.init(mock<OnePasswordContext>({ settings }))).rejects.toThrow(
 				UserError,
 			);
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to initialize 1Password provider',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderInitializationError) }),
 			);
 		});
 
@@ -95,10 +101,10 @@ describe('OnePasswordProvider', () => {
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect 1Password provider',
 				expect.objectContaining({
-					error: expect.objectContaining({ message: 'Unauthorized' }),
+					error: expect.any(SecretsProviderConnectionError),
 				}),
 			);
 		});
@@ -135,9 +141,9 @@ describe('OnePasswordProvider', () => {
 			const result = await provider.test();
 
 			expect(result).toEqual([false, 'Connection refused']);
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'1Password provider test failed',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
 			);
 		});
 	});
@@ -297,10 +303,10 @@ describe('OnePasswordProvider', () => {
 
 			await expect(provider.update()).rejects.toThrow('Service unavailable');
 
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to update 1Password provider secrets',
 				expect.objectContaining({
-					error: expect.objectContaining({ message: 'Service unavailable' }),
+					error: expect.any(SecretsProviderUpdateError),
 				}),
 			);
 		});

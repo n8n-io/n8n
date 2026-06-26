@@ -1,9 +1,15 @@
 import type { OPConnect } from '@1password/connect';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ensureError, UserError, type IDataObject, type INodeProperties } from 'n8n-workflow';
+import { UserError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderInitializationError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../errors/secrets-provider-errors';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
 
 export type OnePasswordContext = SecretsProviderSettings<{
@@ -70,8 +76,8 @@ export class OnePasswordProvider extends SecretsProvider {
 				accessToken: trimmedAccessToken,
 			};
 		} catch (error) {
-			this.logger.error('Failed to initialize 1Password provider', {
-				error: ensureError(error),
+			this.logger.warn('Failed to initialize 1Password provider', {
+				error: new SecretsProviderInitializationError(this.name, this.displayName),
 			});
 			throw error;
 		}
@@ -98,8 +104,8 @@ export class OnePasswordProvider extends SecretsProvider {
 
 			this.logger.debug('1Password provider connected');
 		} catch (error) {
-			this.logger.error('Failed to connect 1Password provider', {
-				error: ensureError(error),
+			this.logger.warn('Failed to connect 1Password provider', {
+				error: new SecretsProviderConnectionError(this.name, this.displayName),
 			});
 			throw error;
 		}
@@ -112,8 +118,8 @@ export class OnePasswordProvider extends SecretsProvider {
 			await this.client.listVaults();
 			return [true];
 		} catch (error: unknown) {
-			this.logger.error('1Password provider test failed', {
-				error: ensureError(error),
+			this.logger.warn('1Password provider test failed', {
+				error: new SecretsProviderTestError(this.name, this.displayName),
 			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
@@ -158,8 +164,8 @@ export class OnePasswordProvider extends SecretsProvider {
 
 			this.logger.debug('1Password provider secrets updated');
 		} catch (error) {
-			this.logger.error('Failed to update 1Password provider secrets', {
-				error: ensureError(error),
+			this.logger.warn('Failed to update 1Password provider secrets', {
+				error: new SecretsProviderUpdateError(this.name, this.displayName),
 			});
 			throw error;
 		}

@@ -6,7 +6,6 @@ import {
 } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import {
-	ensureError,
 	type IDataObject,
 	type IHttpRequestMethods,
 	type IHttpRequestOptions,
@@ -15,6 +14,12 @@ import {
 } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderTokenRefreshError,
+	SecretsProviderUpdateError,
+} from '../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../external-secrets.config';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
@@ -321,9 +326,11 @@ export class VaultProvider extends SecretsProvider {
 			[this.#tokenInfo] = await this.getTokenInfo();
 			this.setupTokenRefresh();
 		} catch (error) {
-			this.logger.error('Failed to connect Vault provider', {
+			this.logger.warn('Failed to connect Vault provider', {
 				authMethod: this.settings.authMethod,
-				error: ensureError(error),
+				error: new SecretsProviderConnectionError(this.name, this.displayName, {
+					authMethod: this.settings.authMethod,
+				}),
 			});
 			throw error;
 		}
@@ -376,9 +383,9 @@ export class VaultProvider extends SecretsProvider {
 			}
 
 			this.setupTokenRefresh();
-		} catch (error) {
-			this.logger.error('Failed to renew Vault token. Attempting to reconnect.', {
-				error: ensureError(error),
+		} catch {
+			this.logger.warn('Failed to renew Vault token. Attempting to reconnect.', {
+				error: new SecretsProviderTokenRefreshError(this.name, this.displayName),
 			});
 			void this.connect();
 		}
@@ -397,10 +404,12 @@ export class VaultProvider extends SecretsProvider {
 			});
 
 			return body.auth.client_token;
-		} catch (error) {
+		} catch {
 			this.logger.warn('Vault provider username/password authentication failed', {
 				authMethod: 'usernameAndPassword',
-				error: ensureError(error),
+				error: new SecretsProviderConnectionError(this.name, this.displayName, {
+					authMethod: 'usernameAndPassword',
+				}),
 			});
 			return null;
 		}
@@ -416,10 +425,12 @@ export class VaultProvider extends SecretsProvider {
 			});
 
 			return body.auth.client_token;
-		} catch (error) {
+		} catch {
 			this.logger.warn('Vault provider AppRole authentication failed', {
 				authMethod: 'appRole',
-				error: ensureError(error),
+				error: new SecretsProviderConnectionError(this.name, this.displayName, {
+					authMethod: 'appRole',
+				}),
 			});
 			return null;
 		}
@@ -457,12 +468,15 @@ export class VaultProvider extends SecretsProvider {
 			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
 			const method = (shouldPreferGet ? 'GET' : 'LIST') as IHttpRequestMethods;
 			listBody = await this.#http.request<VaultResponse<VaultSecretList>>({ url, method });
-		} catch (error) {
+		} catch {
 			this.logger.warn('Vault provider failed to list KV secrets', {
 				mountPath,
 				kvVersion,
-				path,
-				error: ensureError(error),
+				error: new SecretsProviderUpdateError(this.name, this.displayName, {
+					mountPath,
+					kvVersion,
+					resource: 'kv-list',
+				}),
 			});
 			return null;
 		}
@@ -488,12 +502,15 @@ export class VaultProvider extends SecretsProvider {
 								key,
 								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
-						} catch (error) {
+						} catch {
 							this.logger.warn('Vault provider failed to read KV secret', {
 								mountPath,
 								kvVersion,
-								path: path + key,
-								error: ensureError(error),
+								error: new SecretsProviderUpdateError(this.name, this.displayName, {
+									mountPath,
+									kvVersion,
+									resource: 'kv-read',
+								}),
 							});
 							return null;
 						}
@@ -592,7 +609,9 @@ export class VaultProvider extends SecretsProvider {
 			this.cachedSecrets = secrets;
 			this.logger.debug('Vault provider secrets updated');
 		} catch (error) {
-			this.logger.error('Failed to update Vault provider secrets', { error: ensureError(error) });
+			this.logger.warn('Failed to update Vault provider secrets', {
+				error: new SecretsProviderUpdateError(this.name, this.displayName),
+			});
 			throw error;
 		}
 	}
@@ -610,7 +629,11 @@ export class VaultProvider extends SecretsProvider {
 
 			return await this.testSecretAccess();
 		} catch (error) {
-			this.logger.error('Vault provider test failed', { error: ensureError(error) });
+			this.logger.warn('Vault provider test failed', {
+				error: new SecretsProviderTestError(this.name, this.displayName, {
+					resource: 'token-lookup',
+				}),
+			});
 
 			if (isConnectionRefusedError(error)) {
 				return [

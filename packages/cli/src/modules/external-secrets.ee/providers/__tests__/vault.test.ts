@@ -2,6 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderTokenRefreshError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../../external-secrets.config';
 import { VaultProvider } from '../vault';
 
@@ -228,7 +234,7 @@ describe('VaultProvider', () => {
 				'Vault provider username/password authentication failed',
 				expect.objectContaining({
 					authMethod: 'usernameAndPassword',
-					error: expect.any(Error),
+					error: expect.any(SecretsProviderConnectionError),
 				}),
 			);
 		});
@@ -326,8 +332,7 @@ describe('VaultProvider', () => {
 				expect.objectContaining({
 					mountPath: 'forbidden/',
 					kvVersion: '2',
-					path: '',
-					error: expect.any(Error),
+					error: expect.any(SecretsProviderUpdateError),
 				}),
 			);
 		});
@@ -339,9 +344,9 @@ describe('VaultProvider', () => {
 
 			await expect(provider.update()).rejects.toThrow('Request failed with status 500');
 
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to update Vault provider secrets',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
 			);
 		});
 	});
@@ -491,9 +496,9 @@ describe('VaultProvider', () => {
 			expect(message).toBe(
 				'Connection refused. Please check the host and port of the server are correct.',
 			);
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Vault provider test failed',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
 			);
 		});
 
@@ -505,13 +510,11 @@ describe('VaultProvider', () => {
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect Vault provider',
 				expect.objectContaining({
 					authMethod: 'token',
-					error: expect.objectContaining({
-						message: 'Could not find auth path. Try adding /v1/ to the end of your base URL.',
-					}),
+					error: expect.any(SecretsProviderConnectionError),
 				}),
 			);
 		});
@@ -526,9 +529,9 @@ describe('VaultProvider', () => {
 
 			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
 
-			expect(logger.error).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to renew Vault token. Attempting to reconnect.',
-				expect.objectContaining({ error: expect.any(Error) }),
+				expect.objectContaining({ error: expect.any(SecretsProviderTokenRefreshError) }),
 			);
 			expect(connect).toHaveBeenCalled();
 		});

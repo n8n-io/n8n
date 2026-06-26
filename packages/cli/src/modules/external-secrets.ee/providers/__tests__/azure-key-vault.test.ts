@@ -4,6 +4,10 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import { UnexpectedError } from 'n8n-workflow';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
@@ -40,9 +44,9 @@ describe('AzureKeyVault', () => {
 		await azureKeyVault.connect();
 
 		expect(azureKeyVault.state).toBe('error');
-		expect(logger.error).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to connect Azure Key Vault provider',
-			expect.objectContaining({ error: setupError }),
+			expect.objectContaining({ error: expect.any(SecretsProviderConnectionError) }),
 		);
 	});
 
@@ -211,9 +215,9 @@ describe('AzureKeyVault', () => {
 			expect(thrown.message).toBe('Could not read any secrets from Azure Key Vault');
 			expect(thrown.cause).toEqual(expect.objectContaining({ message: 'Key Vault unavailable' }));
 		}
-		expect(logger.error).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to update Azure Key Vault provider secrets',
-			expect.objectContaining({ error: expect.any(Error) }),
+			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
 		);
 		expect(azureKeyVault.getSecret('only-secret')).toBe('cached-value');
 	});
