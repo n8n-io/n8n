@@ -4,6 +4,7 @@ import {
 	findSelectedLogEntry,
 	getDepth,
 	getEntryAtRelativeIndex,
+	isGroupLog,
 	isNodeLog,
 	isSubNodeLog,
 } from '@/features/execution/logs/logs.utils';
@@ -37,7 +38,14 @@ export function useLogsSelection(
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	function syncSelectionToCanvasIfEnabled(value: LogEntry) {
-		if (!logsStore.isLogSelectionSyncedWithCanvas || !isNodeLog(value)) {
+		if (!logsStore.isLogSelectionSyncedWithCanvas) {
+			return;
+		}
+
+		// Selecting a group highlights its member nodes; the canvas maps a selected member
+		// back to its group, so this works whether the group is collapsed or expanded.
+		if (isGroupLog(value)) {
+			canvasEventBus.emit('nodes:select', { ids: value.group.nodeIds, panIntoView: true });
 			return;
 		}
 
@@ -55,6 +63,14 @@ export function useLogsSelection(
 				telemetry.track('User selected node in log view', {
 					node_type: value.node.type,
 					node_id: value.node.id,
+					execution_id: execution.value?.id,
+					workflow_id: execution.value?.workflowData.id,
+					subworkflow_depth: getDepth(value),
+				});
+			} else if (isGroupLog(value)) {
+				telemetry.track('User selected canvas group in log view', {
+					group_id: value.group.id,
+					node_count: value.group.nodeIds.length,
 					execution_id: execution.value?.id,
 					workflow_id: execution.value?.workflowData.id,
 					subworkflow_depth: getDepth(value),
@@ -110,11 +126,23 @@ export function useLogsSelection(
 			const selectedNodeId = selectedOnCanvas
 				? workflowDocumentStore.value.nodesByName[selectedOnCanvas]?.id
 				: undefined;
+			const selectedEntry = selected.value;
 			const selectedEntryNodeId =
-				selected.value && isNodeLog(selected.value) ? selected.value.node.id : undefined;
+				selectedEntry && isNodeLog(selectedEntry) ? selectedEntry.node.id : undefined;
+
+			// Keep a selected group row selected even when canvas highlights one of its members
+			// (which happens as a result of our own logs->canvas sync)
+			const isMemberOfSelectedGroup =
+				selectedEntry !== undefined &&
+				isGroupLog(selectedEntry) &&
+				selectedNodeId !== undefined &&
+				selectedEntry.group.nodeIds.includes(selectedNodeId);
 
 			nodeIdToSelect.value =
-				shouldSync && !canvasStore.hasRangeSelection && selectedEntryNodeId !== selectedNodeId
+				shouldSync &&
+				!canvasStore.hasRangeSelection &&
+				!isMemberOfSelectedGroup &&
+				selectedEntryNodeId !== selectedNodeId
 					? selectedNodeId
 					: undefined;
 		},
@@ -143,6 +171,47 @@ export function useLogsSelection(
 				toggleExpand(parent, true);
 				parent = parent.parent;
 			}
+		},
+		{ immediate: true },
+	);
+
+	// Selecting a collapsed group on canvas selects that group's row in logs
+	watch(
+		[tree, () => canvasStore.selectedGroupId, () => logsStore.isLogSelectionSyncedWithCanvas],
+		([latestTree, groupId, shouldSync]) => {
+			if (!shouldSync || !groupId) {
+				return;
+			}
+
+			const isGroupAlreadySelected =
+				selected.value && isGroupLog(selected.value) && selected.value.group.id === groupId;
+
+			if (isGroupAlreadySelected) {
+				return;
+			}
+
+			const groupEntry = findLogEntryRec(
+				(entry) => isGroupLog(entry) && entry.group.id === groupId,
+				latestTree,
+			);
+
+			if (!groupEntry || !isGroupLog(groupEntry)) {
+				return;
+			}
+
+			const isMemberNodeAlreadySelected =
+				selected.value &&
+				isNodeLog(selected.value) &&
+				groupEntry.group.nodeIds.includes(selected.value.node.id);
+
+			if (isMemberNodeAlreadySelected) {
+				return;
+			}
+
+			manualLogEntrySelection.value = {
+				type: 'selected',
+				entry: groupEntry,
+			};
 		},
 		{ immediate: true },
 	);
