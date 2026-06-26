@@ -31,6 +31,26 @@ const modelField: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
 		{
+			name: 'Claude Sonnet 4.6',
+			value: 'claude-sonnet-4-6',
+		},
+		{
+			name: 'Claude Sonnet 4.5',
+			value: 'claude-sonnet-4-5-20250929',
+		},
+		{
+			name: 'Claude Opus 4.8',
+			value: 'claude-opus-4-8',
+		},
+		{
+			name: 'Claude Opus 4.7',
+			value: 'claude-opus-4-7',
+		},
+		{
+			name: 'Claude Haiku 4.5',
+			value: 'claude-haiku-4-5-20251001',
+		},
+		{
 			name: 'Claude 3.5 Sonnet(20241022)',
 			value: 'claude-3-5-sonnet-20241022',
 		},
@@ -73,7 +93,7 @@ const modelField: INodeProperties = {
 	],
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
-	default: 'claude-2',
+	default: 'claude-sonnet-4-6',
 	builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 };
 
@@ -136,7 +156,7 @@ export class LmChatAnthropic implements INodeType {
 			},
 			{
 				...modelField,
-				default: 'claude-3-sonnet-20240229',
+				default: 'claude-sonnet-4-6',
 				displayOptions: {
 					show: {
 						'@version': [1.1],
@@ -145,7 +165,7 @@ export class LmChatAnthropic implements INodeType {
 			},
 			{
 				...modelField,
-				default: 'claude-3-5-sonnet-20240620',
+				default: 'claude-sonnet-4-6',
 				options: (modelField.options ?? []).filter(
 					(o): o is INodePropertyOptions => 'name' in o && !o.name.toString().startsWith('LEGACY'),
 				),
