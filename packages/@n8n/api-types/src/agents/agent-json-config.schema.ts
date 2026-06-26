@@ -1,5 +1,4 @@
 import { z, type ZodError } from 'zod';
-
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 
 /**
