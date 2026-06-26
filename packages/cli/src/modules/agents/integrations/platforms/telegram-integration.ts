@@ -16,7 +16,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
-import type { IntegrationAction } from '../integration-tools';
+import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 
 /**
  * Telegram platform integration.
@@ -67,7 +67,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
-	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'send_dm']);
 
 	readonly needsShortCallbackData = true;
 

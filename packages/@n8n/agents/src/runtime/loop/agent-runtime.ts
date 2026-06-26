@@ -453,6 +453,13 @@ export class AgentRuntime {
 		const list = new AgentMessageList();
 		await this.memory.loadInto(list, options);
 		list.addInput(input);
+
+		// Persist input now (after history load, so the prompt isn't polluted) so it
+		// survives an abort or abandoned HITL suspend that never reaches finishComplete.
+		// Best-effort: persistInputMessages swallows failures — the end-of-turn save
+		// is authoritative for completed turns, so this must not abort the turn.
+		await this.memory.persistInputMessages(list, options);
+
 		return list;
 	}
 
@@ -657,11 +664,15 @@ export class AgentRuntime {
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 			});
 
+			// Fold the just-finished turn's usage in before the abort check so a
+			// stop that lands right after the model call still bills its tokens.
+			totalUsage = accumulateUsage(totalUsage, turn.usage);
+			incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
+			sink.reportUsage(totalUsage);
+
 			this.assertNotAborted(abortScope);
 
 			lastFinishReason = turn.finishReason;
-			totalUsage = accumulateUsage(totalUsage, turn.usage);
-			incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
 			list.addResponse(turn.newMessages);
 
 			if (turn.aiFinishReason !== 'tool-calls') {
@@ -719,6 +730,7 @@ export class AgentRuntime {
 	 * StreamSession, which owns the single shutdown / cleanup path.
 	 */
 	private startStream(ctx: LoopContext): ReadableStream<StreamChunk> {
+		let sink: StreamSink | undefined;
 		return startStreamSession({
 			eventBus: this.eventBus,
 			abortScope: ctx.abortScope,
@@ -727,9 +739,10 @@ export class AgentRuntime {
 			withRootSpan: async (operation, options, runId, fn) =>
 				await this.telemetry.withRootSpan(operation, options, runId, fn),
 			runLoop: async (guard) => {
-				const sink = new StreamSink(guard, this.createRunServices(), ctx.options);
+				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
 				await this.runAgentLoop(ctx, sink);
 			},
+			getAbortFinish: () => sink?.getAbortFinish() ?? {},
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),
 			updateState: (status) => this.updateState({ status }),
@@ -739,8 +752,9 @@ export class AgentRuntime {
 	}
 
 	/**
-	 * Persist a suspended run state and update the current state snapshot.
-	 * Returns the runtime's runId.
+	 * Persist a suspended run state and update the current state snapshot, and durably
+	 * save the turn-so-far to thread memory so a suspended turn that is later cancelled or
+	 * abandoned still leaves its assistant work behind. Returns the runtime's runId.
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
@@ -768,6 +782,8 @@ export class AgentRuntime {
 		};
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
+		await this.memory.persistTurnOnSuspend(list, options);
+
 		return this.runId;
 	}
 

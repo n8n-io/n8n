@@ -20,8 +20,12 @@ export type ProxyUrl = `${'http' | 'https'}://${string}`;
  * Type guard for {@link ProxyUrl}.
  * Only HTTP(S) forward proxies are supported.
  */
-export function isSupportedProxyUrl(value: string): value is ProxyUrl {
-	return value.startsWith('http://') || value.startsWith('https://');
+export function isSupportedProxyUrl(value: string | null | undefined): value is ProxyUrl {
+	return (
+		value !== null &&
+		value !== undefined &&
+		(value.startsWith('http://') || value.startsWith('https://'))
+	);
 }
 
 /**
