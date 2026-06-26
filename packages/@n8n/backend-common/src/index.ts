@@ -14,4 +14,8 @@ export { CliParser } from './cli-parser';
 export { TypedEmitter } from './typed-emitter';
 
 export { LockService } from './locking/lock.service';
-export { type ILockService, LockNamespace } from './locking/lock-service.interface';
+export {
+	type ILockService,
+	LockNamespace,
+	LockAcquisitionTimeoutError,
+} from './locking/lock-service.interface';

@@ -1,7 +1,10 @@
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
 
-import type { ILockService, LockNamespace } from './lock-service.interface';
+import {
+	LockAcquisitionTimeoutError,
+	type ILockService,
+	type LockNamespace,
+} from './lock-service.interface';
 
 type ReleaseFn = () => void;
 /**
@@ -80,7 +83,9 @@ export class InProcessLockService implements ILockService {
 						lockState.queue.splice(idx, 1);
 					}
 					reject(
-						new OperationalError(`Timed out waiting for lock '${lockId}' after ${timeoutMs}ms`),
+						new LockAcquisitionTimeoutError(
+							`Timed out waiting for lock '${lockId}' after ${timeoutMs}ms`,
+						),
 					);
 				}, timeoutMs);
 			}

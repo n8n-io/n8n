@@ -1,3 +1,5 @@
+import { OperationalError } from 'n8n-workflow';
+
 /**
  * Lock namespaces. A `const` object rather than an `enum`: `const enum` erases
  * to `undefined` for cross-package callers under `isolatedModules`, and a plain
@@ -9,6 +11,9 @@ export const LockNamespace = {
 } as const;
 
 export type LockNamespace = (typeof LockNamespace)[keyof typeof LockNamespace];
+
+/** Thrown by `withLease` when the lease cannot be acquired within `waitTimeoutMs`. */
+export class LockAcquisitionTimeoutError extends OperationalError {}
 
 export interface ILockService {
 	/**

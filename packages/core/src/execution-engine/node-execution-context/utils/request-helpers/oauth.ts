@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { LockNamespace, LockService } from '@n8n/backend-common';
+import { LockNamespace, LockAcquisitionTimeoutError, LockService } from '@n8n/backend-common';
 import { removeEmptyBody } from '@n8n/backend-network';
 import type {
 	ClientOAuth2Options,
@@ -136,13 +136,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		});
 	}
 
-	// From here till the setting of a new promise in the map, we are in a critical section.
-	// If two processes reach this point at the same time, they will both try to refresh the token.
-	// The first one to set the promise in the map will be the one that actually does the refresh,
-	// while the second one will just wait for the first one to finish and return its result.
-	// Therefore other than awaiting the existing promise we cannot yield the execution to the event loop,
-	// otherwise we risk that the first process finishes and removes the promise from the map before the
-	// second process sets it, leading to both processes refreshing the token concurrently.
+	// Critical section from here until the in-flight promise is stored in the map.
+	// This map is process-LOCAL: it coalesces concurrent refreshes *within this instance*
+	// so they share one network call. Cross-instance serialization is handled by the lease below.
+	// We must not yield to the event loop before `inFlightRefreshes.set(...)`, or a second concurrent
+	// caller could pass the `has` check before the promise is registered and trigger a duplicate refresh.
 	if (inFlightRefreshes.has(credentialId)) {
 		return await inFlightRefreshes.get(credentialId)!;
 	}
@@ -270,7 +268,24 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 	};
 
 	const promise = Container.get(LockService)
-		.withLease(LockNamespace.CREDENTIALS, credentialId, runRefresh)
+		.withLease(LockNamespace.CREDENTIALS, credentialId, runRefresh, {
+			waitTimeoutMs: 10_000,
+			leaseTtlMs: 30_000,
+		})
+		.catch(async (error) => {
+			if (error instanceof LockAcquisitionTimeoutError) {
+				// The lease is an efficiency primitive, not a correctness one. If the lock
+				// backend is unavailable/contended, refresh without cross-process coordination
+				// rather than stalling the execution; runRefresh's read-back check still avoids
+				// a redundant network call when another holder already rotated the token.
+				ctx.logger.warn(
+					`Could not acquire refresh lock for credential "${credentialId}"; refreshing without cross-process coordination`,
+					{ error },
+				);
+				return await runRefresh();
+			}
+			throw error;
+		})
 		.finally(() => inFlightRefreshes.delete(credentialId));
 	inFlightRefreshes.set(credentialId, promise);
 

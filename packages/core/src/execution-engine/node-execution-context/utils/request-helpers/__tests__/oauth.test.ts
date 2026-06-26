@@ -1061,6 +1061,10 @@ describe('requestOAuth2 - concurrent refresh serialization', () => {
 			LockNamespace.CREDENTIALS,
 			'cred-id',
 			expect.any(Function),
+			expect.objectContaining({
+				waitTimeoutMs: expect.any(Number),
+				leaseTtlMs: expect.any(Number),
+			}),
 		);
 		withLeaseSpy.mockRestore();
 	});

@@ -1,8 +1,13 @@
-import { type ILockService, type LockNamespace, Logger } from '@n8n/backend-common';
+import {
+	type ILockService,
+	type LockNamespace,
+	LockAcquisitionTimeoutError,
+	Logger,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
-import { ensureError, OperationalError } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { RedisClientService } from '@/services/redis-client.service';
@@ -156,7 +161,7 @@ export class RedisLockService implements ILockService {
 			}
 
 			if (options?.waitTimeoutMs !== undefined && Date.now() - startTime > options.waitTimeoutMs) {
-				throw new OperationalError(
+				throw new LockAcquisitionTimeoutError(
 					`Timed out waiting for lock '${key}' in namespace '${ns}' after ${options.waitTimeoutMs}ms`,
 				);
 			}
