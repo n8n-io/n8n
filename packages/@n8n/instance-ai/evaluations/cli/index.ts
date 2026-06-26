@@ -51,6 +51,7 @@ import {
 	cleanupPrebuiltWorkflows,
 	fetchPrebuiltBuild,
 	loadPrebuiltManifest,
+	partitionByPrebuiltCoverage,
 	pickPrebuiltWorkflowId,
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
@@ -107,7 +108,7 @@ async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
 
-	const testCasesWithFiles = await loadTestCases(args, logger);
+	let testCasesWithFiles = await loadTestCases(args, logger);
 
 	const prebuiltManifest = args.prebuiltWorkflows
 		? loadPrebuiltManifest(args.prebuiltWorkflows)
@@ -137,6 +138,19 @@ async function main(): Promise<void> {
 				);
 			}
 		}
+
+		// Skip selected cases the manifest has no build for, rather than silently
+		// orchestrator-building them (which would mix builders in one result set).
+		const { covered, skipped } = partitionByPrebuiltCoverage(testCasesWithFiles, prebuiltManifest);
+		if (skipped.length > 0) {
+			logger.warn(
+				`Prebuilt: skipping ${String(skipped.length)} selected case(s) with no workflow in the manifest: ${skipped.map((tc) => tc.fileSlug).join(', ')}`,
+			);
+		}
+		if (covered.length === 0) {
+			throw new Error('Prebuilt manifest covers none of the selected test cases — nothing to run.');
+		}
+		testCasesWithFiles = covered;
 	}
 
 	// One lane per base URL. The LangSmith path then uses a work-stealing
