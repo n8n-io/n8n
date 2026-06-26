@@ -1735,5 +1735,49 @@ describe('HttpRequestV3', () => {
 			expect(sleepSpy).toHaveBeenCalledTimes(2); // After item 0, after item 1
 			expect(sleepSpy).toHaveBeenCalledWith(100);
 		});
+
+		it('should fire both sequential delay and batch interval sleeps independently', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({
+					'options.sequentialExecution': true,
+					'options.sequentialDelay': 50,
+					// Override the whole options object so batching values reach the code
+					options: {
+						batching: { batch: { batchSize: 2, batchInterval: 100 } },
+						redirect: '',
+						proxy: '',
+						timeout: '',
+						allowUnauthorizedCerts: false,
+						queryParameterArrays: '',
+						lowercaseHeaders: true,
+						response: {
+							responseFormat: 'json',
+							outputPropertyName: 'data',
+							fullResponse: false,
+							neverError: false,
+						},
+					},
+				}),
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ r: '1' }))
+				.mockResolvedValueOnce(makeResponse({ r: '2' }))
+				.mockResolvedValueOnce(makeResponse({ r: '3' }));
+
+			await node.execute.call(executeFunctions);
+
+			// 3 items, batchSize=2: items 0-1 in batch 1, item 2 in batch 2.
+			// Batch interval fires once after batch 1 completes (100ms).
+			// Sequential delay fires after items 0 and 1, not after the last item.
+			expect(sleepSpy).toHaveBeenCalledTimes(3);
+			expect(sleepSpy).toHaveBeenCalledWith(50); // sequential delay
+			expect(sleepSpy).toHaveBeenCalledWith(100); // batch interval
+		});
 	});
 });

@@ -816,6 +816,12 @@ export class HttpRequestV3 implements INodeType {
 						sequentialResults.push({ status: 'rejected', reason: requestError });
 					}
 
+					// NOTE: we process every item even when a request fails to match the
+					// Promise.allSettled behavior of concurrent mode. Early-exit would
+					// change error semantics for users switching from concurrent to
+					// sequential. If the team wants a "stop on first error" option later
+					// it can be added as a separate, opt‑in feature.
+
 					// Sanitization runs for both success and failure (matches .finally() in concurrent path)
 					if (!errorItems[itemIndex]) {
 						try {
