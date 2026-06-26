@@ -3937,7 +3937,7 @@
 	"nodeIssues.credentials.notIdentified": "Credentials with name {name} exist for {type}.",
 	"nodeIssues.credentials.notIdentified.hint": "Credentials are not clearly identified. Please select the correct credentials.",
 	"nodeIssues.credentials.privateNotConnected": "'{name}' private credential is not connected for you. Connect yours to execute this step manually.",
-	"nodeIssues.credentials.privateRequiresManualTrigger": "Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.",
+	"nodeIssues.credentials.privateRequiresManualTrigger": "Private credentials require a trigger that establishes who is running the workflow, such as a Manual, Chat, or Sub-workflow trigger. Change the trigger, or switch this credential to Static.",
 	"nodeIssues.input.missing": "No node connected to required input \"{inputName}\"",
 	"ndv.trigger.moreInfo": "More info",
 	"ndv.trigger.copiedTestUrl": "Test URL copied to clipboard",
