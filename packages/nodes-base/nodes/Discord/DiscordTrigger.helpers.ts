@@ -83,7 +83,8 @@ export function computeIntents(selectedEvents: string[]): number {
 export interface EventFilters {
 	selectedEvents: string[];
 	guildId: string;
-	channelId: string;
+	/** Channel ids to listen to. Empty = all channels. */
+	channelIds: string[];
 	ignoreBots: boolean;
 	/** Drop events triggered by this bot's own user (messages & reactions). */
 	excludeSelf: boolean;
@@ -167,9 +168,10 @@ export function buildEventItems(
 	}
 
 	// Optional channel filter (only meaningful for events that carry a channel).
-	if (filters.channelId && def.hasChannel) {
+	// An empty list means "all channels", so no filtering is applied.
+	if (filters.channelIds.length && def.hasChannel) {
 		const eventChannelId = data.channel_id as string | undefined;
-		if (eventChannelId !== filters.channelId) return null;
+		if (!eventChannelId || !filters.channelIds.includes(eventChannelId)) return null;
 	}
 
 	if (filters.ignoreBots && def.value === 'messageCreate') {

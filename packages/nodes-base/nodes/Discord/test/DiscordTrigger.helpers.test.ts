@@ -63,7 +63,7 @@ describe('DiscordTrigger helpers', () => {
 		const baseFilters: EventFilters = {
 			selectedEvents: ['messageCreate'],
 			guildId: 'guild-1',
-			channelId: '',
+			channelIds: [],
 			ignoreBots: false,
 			excludeSelf: false,
 			includeRoles: [],
@@ -106,13 +106,41 @@ describe('DiscordTrigger helpers', () => {
 		});
 
 		it('applies the channel filter when set', () => {
-			const filters = { ...baseFilters, channelId: 'chan-1' };
+			const filters = { ...baseFilters, channelIds: ['chan-1'] };
 			expect(
 				buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1', channel_id: 'chan-2' }, filters),
 			).toBeNull();
 			expect(
 				buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1', channel_id: 'chan-1' }, filters),
 			).not.toBeNull();
+		});
+
+		it('fires for any of several selected channels', () => {
+			const filters = { ...baseFilters, channelIds: ['chan-1', 'chan-3'] };
+			expect(
+				buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1', channel_id: 'chan-1' }, filters),
+			).not.toBeNull();
+			expect(
+				buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1', channel_id: 'chan-3' }, filters),
+			).not.toBeNull();
+			expect(
+				buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1', channel_id: 'chan-2' }, filters),
+			).toBeNull();
+		});
+
+		it('listens to all channels when no channel is selected', () => {
+			expect(
+				buildEventItems(
+					'MESSAGE_CREATE',
+					{ guild_id: 'guild-1', channel_id: 'any-chan' },
+					baseFilters,
+				),
+			).not.toBeNull();
+		});
+
+		it('drops a channel-bearing event with no channel_id when channels are filtered', () => {
+			const filters = { ...baseFilters, channelIds: ['chan-1'] };
+			expect(buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1' }, filters)).toBeNull();
 		});
 
 		it('ignores bot messages for messageCreate when ignoreBots is set', () => {
@@ -309,7 +337,7 @@ describe('DiscordTrigger helpers', () => {
 			const filters: EventFilters = {
 				selectedEvents: ['memberAdd'],
 				guildId: 'guild-1',
-				channelId: 'chan-1',
+				channelIds: ['chan-1'],
 				ignoreBots: false,
 				excludeSelf: false,
 				includeRoles: [],

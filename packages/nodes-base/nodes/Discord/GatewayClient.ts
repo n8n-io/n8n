@@ -55,23 +55,14 @@ export interface GatewayClientOptions {
  */
 export class GatewayClient extends EventEmitter {
 	private ws?: WebSocket;
-
 	private heartbeatTimer?: NodeJS.Timeout;
-
 	private reconnectTimer?: NodeJS.Timeout;
-
 	private lastSequence: number | null = null;
-
 	private sessionId?: string;
-
 	private resumeGatewayUrl?: string;
-
 	private heartbeatAcked = true;
-
 	private reconnectAttempts = 0;
-
 	private closing = false;
-
 	private botUserId?: string;
 
 	constructor(private readonly options: GatewayClientOptions) {

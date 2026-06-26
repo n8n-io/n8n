@@ -66,8 +66,8 @@ describe('Discord Trigger Node', () => {
 					return ['messageCreate'];
 				case 'guildId':
 					return 'guild-1';
-				case 'channelId':
-					return '';
+				case 'channelIds':
+					return [];
 				case 'options':
 					return {};
 				default:
@@ -113,6 +113,51 @@ describe('Discord Trigger Node', () => {
 		lastGateway().emit('dispatch', 'MESSAGE_CREATE', { guild_id: 'other', content: 'hi' });
 
 		expect(triggerFunctions.emit).not.toHaveBeenCalled();
+	});
+
+	it('only emits for the selected channels when channelIds is set', async () => {
+		triggerFunctions.getMode.mockReturnValue('trigger');
+		triggerFunctions.getNodeParameter.mockImplementation((name: string) => {
+			switch (name) {
+				case 'events':
+					return ['messageCreate'];
+				case 'guildId':
+					return 'guild-1';
+				case 'channelIds':
+					return ['chan-1', 'chan-2'];
+				case 'options':
+					return {};
+				default:
+					return undefined;
+			}
+		});
+
+		await new DiscordTrigger().trigger.call(triggerFunctions);
+
+		lastGateway().emit('dispatch', 'MESSAGE_CREATE', {
+			guild_id: 'guild-1',
+			channel_id: 'chan-3',
+			content: 'ignored',
+		});
+		expect(triggerFunctions.emit).not.toHaveBeenCalled();
+
+		lastGateway().emit('dispatch', 'MESSAGE_CREATE', {
+			guild_id: 'guild-1',
+			channel_id: 'chan-2',
+			content: 'kept',
+		});
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						eventType: 'messageCreate',
+						guild_id: 'guild-1',
+						channel_id: 'chan-2',
+						content: 'kept',
+					},
+				},
+			],
+		]);
 	});
 
 	it('emits the first matching event then resolves in manual mode', async () => {
