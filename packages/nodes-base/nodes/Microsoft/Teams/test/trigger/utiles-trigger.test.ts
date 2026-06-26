@@ -10,14 +10,22 @@ import {
 	getResourcePath,
 	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
-import { microsoftApiRequest } from '../../v2/transport';
+import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
 import type { Mock } from 'vitest';
+import type * as _transport from '../../v2/transport';
 
-vi.mock('../../v2/transport', () => ({
-	microsoftApiRequest: {
-		call: vi.fn(),
-	},
-}));
+// Keep the real credential-resolution + path helpers (getTeamsCredentialType,
+// joinedTeamsEndpoint, buildTeamsPath) so the SP-gated trigger branches are
+// exercised; only stub the network helper.
+vi.mock('../../v2/transport', async () => {
+	const actual = await vi.importActual<typeof _transport>('../../v2/transport');
+	return {
+		...actual,
+		microsoftApiRequest: {
+			call: vi.fn(),
+		},
+	};
+});
 
 describe('Microsoft Teams Helpers Functions', () => {
 	let mockLoadOptionsFunctions: any;
@@ -291,74 +299,77 @@ describe('Microsoft Teams Helpers Functions', () => {
 	});
 
 	describe('getResourcePath', () => {
+		// Resolve getNodeParameter by NAME so a leading authentication read (the SP
+		// resolver) doesn't shift the assertion. `authentication` defaults to OAuth2.
+		const setParams = (params: Record<string, unknown>) => {
+			mockHookFunctions.getNodeParameter.mockImplementation(
+				(name: string, fallback?: unknown) =>
+					name in params ? params[name] : fallback,
+			);
+		};
+
 		it('should return the correct resource path for newChat event', async () => {
+			setParams({});
 			const result = await getResourcePath.call(mockHookFunctions, 'newChat');
 			expect(result).toBe('/me/chats');
 		});
 
 		it('should return the correct resource path for newChatMessage event with watchAllChats', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(true);
+			setParams({ watchAllChats: true });
 			const result = await getResourcePath.call(mockHookFunctions, 'newChatMessage');
 			expect(result).toBe('/me/chats/getAllMessages');
 		});
 
 		it('should return the correct resource path for newChatMessage event with chatId', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(false).mockReturnValueOnce('chat123');
+			setParams({ watchAllChats: false, chatId: 'chat123' });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newChatMessage');
 			expect(result).toBe('/chats/chat123/messages');
 		});
 
 		it('should return the correct resource path for newChatMessage event with chatId missing', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(false);
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(undefined);
+			setParams({ watchAllChats: false, chatId: undefined });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newChatMessage');
 			expect(result).toBe('/chats/undefined/messages');
 		});
 		it('should return the correct resource path for newChannel event', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(false);
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce('team123');
+			setParams({ watchAllTeams: false, teamId: 'team123' });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newChannel');
 			expect(result).toBe('/teams/team123/channels');
 		});
 
 		it('should return the correct resource path for newChannel event with teamId missing', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(undefined);
+			setParams({ watchAllTeams: false, teamId: undefined });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newChannel');
 			expect(result).toBe('/teams/undefined/channels');
 		});
 
 		it('should return the correct resource path for newChannelMessage event with a specific team and channel', async () => {
-			mockHookFunctions.getNodeParameter
-				.mockReturnValueOnce(false)
-				.mockReturnValueOnce('team123')
-				.mockReturnValueOnce(false)
-				.mockReturnValueOnce('channel123');
+			setParams({ watchAllTeams: false, teamId: 'team123', watchAllChannels: false, channelId: 'channel123' });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
 			expect(result).toBe('/teams/team123/channels/channel123/messages');
 		});
 
 		it('should return the correct resource path for newTeamMember event', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(false);
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce('team123');
+			setParams({ watchAllTeams: false, teamId: 'team123' });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newTeamMember');
 			expect(result).toBe('/teams/team123/members');
 		});
 
 		it('should return the correct resource path for newTeamMember event with teamId missing', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(undefined);
+			setParams({ watchAllTeams: false, teamId: undefined });
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newTeamMember');
 			expect(result).toBe('/teams/undefined/members');
 		});
 
 		it('should return the correct resource path for newTeamMember event with watchAllTeams', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(true);
+			setParams({ watchAllTeams: true });
 
 			(microsoftApiRequest.call as Mock).mockResolvedValueOnce({
 				value: [
@@ -369,6 +380,55 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 			const result = await getResourcePath.call(mockHookFunctions, 'newTeamMember');
 			expect(result).toEqual(['/teams/team1/members', '/teams/team2/members']);
+		});
+	});
+
+	describe('getResourcePath under the Service Principal credential', () => {
+		const setSpParams = (params: Record<string, unknown>) => {
+			mockHookFunctions.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
+				if (name === 'authentication') return SERVICE_PRINCIPAL_AUTH;
+				return name in params ? params[name] : fallback;
+			});
+		};
+
+		it.each(['newChat', 'newChatMessage'])(
+			'throws a static error for %s and never composes a /me path',
+			async (event) => {
+				setSpParams({ watchAllChats: false, chatId: 'chat123' });
+
+				await expect(getResourcePath.call(mockHookFunctions, event)).rejects.toThrow(
+					'Chat triggers are not available with the Service Principal credential',
+				);
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			},
+		);
+
+		it('encodes the teamId for newChannel (no decode round-trip, fetchAllTeams not called)', async () => {
+			setSpParams({ watchAllTeams: false, teamId: 'team_id-123' });
+
+			const result = await getResourcePath.call(mockHookFunctions, 'newChannel');
+			expect(result).toBe('/teams/team_id-123/channels');
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+		});
+
+		it('encodes teamId + channelId for newChannelMessage and rejects a crafted channelId', async () => {
+			setSpParams({
+				watchAllTeams: false,
+				teamId: 'team123',
+				watchAllChannels: false,
+				channelId: 'c/../../groups/abc',
+			});
+
+			await expect(getResourcePath.call(mockHookFunctions, 'newChannelMessage')).rejects.toThrow(
+				'The ID is not valid',
+			);
+		});
+
+		it('encodes the teamId for newTeamMember', async () => {
+			setSpParams({ watchAllTeams: false, teamId: 'team123' });
+
+			const result = await getResourcePath.call(mockHookFunctions, 'newTeamMember');
+			expect(result).toBe('/teams/team123/members');
 		});
 	});
 });

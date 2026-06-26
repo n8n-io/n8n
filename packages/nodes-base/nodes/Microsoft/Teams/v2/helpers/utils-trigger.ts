@@ -4,7 +4,13 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type { TeamResponse, ChannelResponse, SubscriptionResponse } from './types';
 import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
-import { microsoftApiRequest } from '../transport';
+import {
+	buildTeamsPath,
+	getTeamsCredentialType,
+	joinedTeamsEndpoint,
+	microsoftApiRequest,
+	SERVICE_PRINCIPAL_AUTH,
+} from '../transport';
 
 export function generateClientState(): string {
 	return randomBytes(32).toString('hex');
@@ -14,7 +20,7 @@ export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[
 	const { value: teams } = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		'/v1.0/me/joinedTeams',
+		joinedTeamsEndpoint.call(this),
 	)) as { value: TeamResponse[] };
 	return teams;
 }
@@ -91,12 +97,21 @@ export async function getResourcePath(
 	this: IHookFunctions,
 	event: string,
 ): Promise<string | string[]> {
+	// App-only Graph has no signed-in user. On the SP-reachable branches the
+	// path-interpolated teamId/channelId are validated + encoded via buildTeamsPath
+	// (which also drops the OAuth2-only decodeURIComponent on the SP path). The OAuth2
+	// branches below are byte-for-byte unchanged (incl. the pre-existing decode).
+	const isServicePrincipal = getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
+
 	switch (event) {
 		case 'newChat': {
+			if (isServicePrincipal) throwChatTriggerUnsupported.call(this);
 			return '/me/chats';
 		}
 
 		case 'newChatMessage': {
+			if (isServicePrincipal) throwChatTriggerUnsupported.call(this);
+
 			const watchAllChats = this.getNodeParameter('watchAllChats', false, {
 				extractValue: true,
 			}) as boolean;
@@ -119,6 +134,9 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/channels`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
+				if (isServicePrincipal) {
+					return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/channels']);
+				}
 				return `/teams/${teamId}/channels`;
 			}
 		}
@@ -150,6 +168,16 @@ export async function getResourcePath(
 					const channelId = this.getNodeParameter('channelId', undefined, {
 						extractValue: true,
 					}) as string;
+					if (isServicePrincipal) {
+						// SP path: validate + encode, and DO NOT decodeURIComponent.
+						return buildTeamsPath.call(this, [
+							'/teams/',
+							{ id: teamId },
+							'/channels/',
+							{ id: channelId },
+							'/messages',
+						]);
+					}
 					return `/teams/${teamId}/channels/${decodeURIComponent(channelId)}/messages`;
 				}
 			}
@@ -165,6 +193,9 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/members`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
+				if (isServicePrincipal) {
+					return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/members']);
+				}
 				return `/teams/${teamId}/members`;
 			}
 		}
@@ -176,4 +207,20 @@ export async function getResourcePath(
 			});
 		}
 	}
+}
+
+/**
+ * Chat triggers subscribe to `/me/chats[...]`, which has no app-only equivalent.
+ * Throws a static `NodeOperationError` before composing any `/me` path under the
+ * Service Principal credential.
+ */
+function throwChatTriggerUnsupported(this: IHookFunctions): never {
+	throw new NodeOperationError(
+		this.getNode(),
+		'Chat triggers are not available with the Service Principal credential',
+		{
+			description:
+				'App-only Microsoft Graph cannot subscribe to a signed-in user’s chats. Use an OAuth2 credential for chat triggers.',
+		},
+	);
 }
