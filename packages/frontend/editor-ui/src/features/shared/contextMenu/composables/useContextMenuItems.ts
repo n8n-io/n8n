@@ -5,6 +5,7 @@ import {
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -58,6 +59,7 @@ type Item = ActionDropdownItem<ContextMenuAction>;
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
@@ -181,6 +183,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 		const aiActions: Item[] = [
 			!onlyStickies &&
+				settingsStore.isCloudDeployment &&
 				(aiAssistant.value || aiBuilder.value) &&
 				!instanceAi.value &&
 				focusedNodesStore.isFeatureEnabled && {

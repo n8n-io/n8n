@@ -21,6 +21,7 @@ import { shallowRef } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import {
@@ -76,6 +77,7 @@ const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 describe('useContextMenu', () => {
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let focusedNodesStore: ReturnType<typeof useFocusedNodesStore>;
@@ -92,6 +94,8 @@ describe('useContextMenu', () => {
 
 		uiStore = useUIStore();
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
+
+		settingsStore = useSettingsStore();
 
 		focusedNodesStore = useFocusedNodesStore();
 
@@ -118,6 +122,8 @@ describe('useContextMenu', () => {
 			editorContextFlags.aiAssistant = true;
 			editorContextFlags.aiBuilder = true;
 			vi.spyOn(focusedNodesStore, 'isFeatureEnabled', 'get').mockReturnValue(true);
+			// Cloud-only entry point; default to cloud so only the case under test varies.
+			vi.spyOn(settingsStore, 'isCloudDeployment', 'get').mockReturnValue(true);
 		});
 
 		it('shows "Focus AI on selected" when the focused-nodes feature is on and AI is available', () => {
@@ -130,6 +136,17 @@ describe('useContextMenu', () => {
 		it('hides "Focus AI on selected" when the editor host disables AI', () => {
 			editorContextFlags.aiAssistant = false;
 			editorContextFlags.aiBuilder = false;
+
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(false);
+		});
+
+		// Regression for ADO-5013: this entry point must stay cloud-only and not
+		// leak onto self-hosted instances when AI is licensed and the experiment is on.
+		it('hides "Focus AI on selected" on self-hosted instances', () => {
+			vi.spyOn(settingsStore, 'isCloudDeployment', 'get').mockReturnValue(false);
 
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });

@@ -279,13 +279,15 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	describe('Add to AI button', () => {
-		// The focused-nodes experiment and the instance-wide AI flags gate the
-		// button; enable both so only the per-editor host override varies.
+		// The cloud deployment flag, focused-nodes experiment and instance-wide
+		// AI flags gate the button; enable all three so only the case under test
+		// (per-editor host override or deployment type) varies.
 		const setupAiStores = () => {
 			const testingPinia = createTestingPinia();
 			setActivePinia(testingPinia);
 			mockedStore(useFocusedNodesStore).isFeatureEnabled = true;
 			mockedStore(useSettingsStore).isAiAssistantEnabled = true;
+			mockedStore(useSettingsStore).isCloudDeployment = true;
 			return testingPinia;
 		};
 
@@ -315,6 +317,26 @@ describe('CanvasNodeToolbar', () => {
 							aiBuilder: false,
 							askAi: false,
 						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('add-to-ai-button')).not.toBeInTheDocument();
+		});
+
+		// Regression for ADO-5013: this entry point must stay cloud-only. On a
+		// self-hosted instance the button leaked through whenever AI Assistant
+		// was licensed and the focused-nodes experiment was on.
+		it('should hide on self-hosted instances even when AI and the experiment are enabled', () => {
+			const testingPinia = setupAiStores();
+			mockedStore(useSettingsStore).isCloudDeployment = false;
+
+			const { queryByTestId } = renderComponent({
+				pinia: testingPinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
 					},
 				},
 			});
