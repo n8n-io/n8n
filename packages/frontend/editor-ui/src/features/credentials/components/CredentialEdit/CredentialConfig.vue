@@ -51,6 +51,7 @@ import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect'
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -153,6 +154,14 @@ const credentialTypeName = computed(() => props.credentialType?.name);
 const credentialOwnerName = computed(() =>
 	credentialsStore.getCredentialOwnerNameById(`${props.credentialId}`),
 );
+// Team-owned credentials don't have a single human "owner", so naming the
+// project ("Only My project can edit…") is misleading — point at the edit
+// permission instead. Personal/shared credentials keep naming the owner.
+const isHomeTeamProject = computed(
+	() =>
+		credentialsStore.getCredentialById(`${props.credentialId}`)?.homeProject?.type ===
+		ProjectTypes.Team,
+);
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
 	const activeNode = ndvStore.value.activeNode;
@@ -245,6 +254,16 @@ const canEdit = computed(() => {
 
 const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
+});
+
+// Connecting an existing private credential only needs the `connect` capability
+// (no edit rights); shared/static credentials store the token on the shared
+// credential itself, so connecting them follows the write permission.
+const canConnect = computed(() => {
+	if (!isNewCredential.value && props.isResolvable) {
+		return !!props.credentialPermissions.connect;
+	}
+	return canWrite.value;
 });
 
 // When Instance AI is available it supersedes the legacy assistant for setup
@@ -437,9 +456,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				>
 					<template #button>
 						<div :class="$style.bannerActions">
-							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
+							<GoogleAuthButton v-if="isGoogleOAuthType && canConnect" @click="$emit('oauth')" />
 							<QuickConnectButton
-								v-else
+								v-else-if="canConnect"
 								size="small"
 								:service-name="serviceName"
 								:credential-type-name="credentialType.name"
@@ -448,7 +467,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								v-if="showDisconnectButton"
+								v-if="showDisconnectButton && canConnect"
 								variant="outline"
 								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -523,12 +542,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					@click="$emit('oauth')"
 				>
 					<template v-if="isGoogleOAuthType" #button>
-						<div data-test-id="quick-connect-button">
+						<div v-if="canConnect" data-test-id="quick-connect-button">
 							<GoogleAuthButton @click="$emit('oauth')" />
 						</div>
 					</template>
 					<template v-else #button>
 						<QuickConnectButton
+							v-if="canConnect"
 							size="small"
 							:service-name="serviceName"
 							:credential-type-name="credentialType.name"
@@ -603,20 +623,23 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<div>
 						<N8nInfoTip :bold="false">
 							{{
-								i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
-									interpolate: { credentialOwnerName },
-								})
+								isHomeTeamProject
+									? i18n.baseText('credentialEdit.credentialEdit.info.sharee.team')
+									: i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
+											interpolate: { credentialOwnerName },
+										})
 							}}
 						</N8nInfoTip>
 					</div>
 				</EnterpriseEdition>
 
 				<CredentialInputs
-					v-if="credentialType && canWrite"
+					v-if="credentialType"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="showValidationWarning"
+					:is-read-only="!canWrite"
 					@update="onDataChange"
 				/>
 
