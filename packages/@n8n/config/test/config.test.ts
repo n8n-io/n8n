@@ -253,6 +253,7 @@ describe('GlobalConfig', () => {
 				includeFormMetrics: false,
 				includeWorkflowInfoMetrics: false,
 				workflowInfoMetricInterval: 60,
+				includeDbPoolMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -290,6 +291,10 @@ describe('GlobalConfig', () => {
 		compressionNode: {
 			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
 			maxZipEntries: 5000,
+		},
+		mcpClient: {
+			cacheTtl: 300000,
+			cacheMaxSize: 500,
 		},
 		chatHub: {
 			executionContextTtl: 3600,
