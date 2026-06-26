@@ -13,7 +13,7 @@ Work test-first — a test written after the code tends to assert what the code 
 
 - Match existing code style, patterns, and project conventions. Read neighbouring code before writing.
 - Keep the diff minimal and coherent — don't touch unrelated code.
-- **Simplicity (ponytail, full):** the simplest code that satisfies the plan — walk the YAGNI ladder (need it at all? → stdlib → native → one line → minimum bespoke). No speculative abstractions, configurability, or error handling for scenarios the task doesn't create. If 200 lines could be 50, write the 50.
+- **Simplicity:** write the simplest code that satisfies the plan (YAGNI) — prefer existing utilities, the standard library, and native features over new bespoke code; avoid speculative abstractions, configurability, or error handling for cases the task doesn't create.
 - **Surgical changes:** don't refactor, rename, or reformat code the task didn't require, even if you'd do it differently. Remove only the imports/vars/functions your own change orphaned; if you spot unrelated dead code, flag it rather than deleting it.
 - Add or adjust tests per the plan. Run the relevant build, lint, typecheck, and tests locally using the project's own scripts (per AGENTS.md: `pnpm build > build.log 2>&1`, package-local `pnpm lint`/`pnpm typecheck`/`pnpm test`, and `pnpm test:affected` for changed-scope) and get them passing before you report done.
 - Never weaken, skip, or delete tests just to make them pass.
