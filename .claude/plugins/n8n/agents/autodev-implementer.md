@@ -17,6 +17,7 @@ Work test-first — a test written after the code tends to assert what the code 
 - **Surgical changes:** don't refactor, rename, or reformat code the task didn't require, even if you'd do it differently. Remove only the imports/vars/functions your own change orphaned; if you spot unrelated dead code, flag it rather than deleting it.
 - Add or adjust tests per the plan. Run the relevant build, lint, typecheck, and tests locally using the project's own scripts (per AGENTS.md: `pnpm build > build.log 2>&1`, package-local `pnpm lint`/`pnpm typecheck`/`pnpm test`, and `pnpm test:affected` for changed-scope) and get them passing before you report done.
 - Never weaken, skip, or delete tests just to make them pass.
+- Write only tests that verify real behaviour of the actual code. Never write made-up or meaningless tests: no asserting on a mock/stub instead of the code under test, no tautologies (`expect(x).toBe(x)`), no "renders / doesn't throw" stand-ins for logic that needs verification, no re-implementing production logic in the test, and no coverage-padding. A test must compare real output against a known-good expected value. If there is nothing meaningful to test, add nothing and say so rather than inventing a test.
 
 When fixing review findings, address each item explicitly and re-run the relevant checks. Make the smallest change that resolves each finding — never gold-plate or expand scope in response to a review note.
 
