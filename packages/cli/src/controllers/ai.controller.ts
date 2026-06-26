@@ -1,4 +1,3 @@
-import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import type {
 	AiGatewayConfigDto,
 	AiGatewayUsageResponse,
@@ -16,14 +15,26 @@ import {
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
+import { AiConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
+import {
+	Body,
+	createIpRateLimit,
+	Get,
+	Licensed,
+	Post,
+	Query,
+	RestController,
+	GlobalScope,
+} from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
+import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
@@ -36,6 +47,9 @@ import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
 
 export type FlushableResponse = Response & { flush: () => void };
+
+// Read at class-load so the configured limit is baked into the route decorator.
+const aiRateLimit = createIpRateLimit(Container.get(AiConfig).rateLimit);
 
 @RestController('/ai')
 export class AiController {
@@ -52,7 +66,7 @@ export class AiController {
 	// "Cannot set headers after they are sent" error for streaming responses.
 	// This ensures errors during streaming are handled within the stream itself.
 	@Licensed('feat:aiBuilder')
-	@Post('/build', { ipRateLimit: { limit: 100 }, usesTemplates: true })
+	@Post('/build', { ipRateLimit: aiRateLimit, usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
@@ -135,7 +149,7 @@ export class AiController {
 		}
 	}
 
-	@Post('/chat', { ipRateLimit: { limit: 100 } })
+	@Post('/chat', { ipRateLimit: aiRateLimit })
 	async chat(req: AuthenticatedRequest, res: FlushableResponse, @Body payload: AiChatRequestDto) {
 		try {
 			const abortController = new AbortController();
@@ -244,7 +258,7 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/sessions', { ipRateLimit: { limit: 100 } })
+	@Post('/sessions', { ipRateLimit: aiRateLimit })
 	async getSessions(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -315,7 +329,7 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/build/truncate-messages', { ipRateLimit: { limit: 100 } })
+	@Post('/build/truncate-messages', { ipRateLimit: aiRateLimit })
 	async truncateMessages(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -336,7 +350,7 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/build/clear-session', { ipRateLimit: { limit: 100 } })
+	@Post('/build/clear-session', { ipRateLimit: aiRateLimit })
 	async clearSession(
 		req: AuthenticatedRequest,
 		_: Response,

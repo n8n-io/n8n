@@ -35,7 +35,10 @@ import type { SuperAgentTest } from '@test-integration/types';
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
-	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
+	const globalConfig = mock<GlobalConfig>({
+		endpoints: { rest: 'rest' },
+		rateLimit: { multiplier: 1, disabled: false },
+	});
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
 	let agent: SuperAgentTest;
@@ -52,7 +55,7 @@ describe('ControllerRegistry', () => {
 			globalConfig,
 			metadata,
 			lastActiveAtService,
-			new RateLimitService(),
+			new RateLimitService(globalConfig.rateLimit),
 		).activate(app);
 		agent = testAgent(app);
 	});

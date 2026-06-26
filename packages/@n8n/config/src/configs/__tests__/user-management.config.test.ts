@@ -64,4 +64,35 @@ describe('UserManagementConfig', () => {
 
 		consoleWarnSpy.mockRestore();
 	});
+
+	describe('invitation rate limits', () => {
+		it('applies the documented defaults', () => {
+			const config = Container.get(UserManagementConfig);
+			expect(config.invitationRateLimit).toBe(10);
+			expect(config.invitationAcceptRateLimit).toBe(100);
+		});
+
+		it('reads the limits from their environment variables', () => {
+			process.env = {
+				N8N_INVITATION_RATE_LIMIT: '25',
+				N8N_INVITATION_ACCEPT_RATE_LIMIT: '300',
+			};
+			const config = Container.get(UserManagementConfig);
+			expect(config.invitationRateLimit).toBe(25);
+			expect(config.invitationAcceptRateLimit).toBe(300);
+		});
+
+		it('accepts 0 to disable rate limiting', () => {
+			process.env = { N8N_INVITATION_RATE_LIMIT: '0' };
+			expect(Container.get(UserManagementConfig).invitationRateLimit).toBe(0);
+		});
+
+		it.each(['-5', 'abc', '1.5'])(
+			'falls back to the default when given an invalid value (%s)',
+			(value) => {
+				process.env = { N8N_INVITATION_RATE_LIMIT: value };
+				expect(Container.get(UserManagementConfig).invitationRateLimit).toBe(10);
+			},
+		);
+	});
 });
