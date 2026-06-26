@@ -273,17 +273,17 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
-	 * cached published data: `nodes`/`connections` and the `versionId` that ran
-	 * come from the published version snapshot, every other field from the live
-	 * workflow entity. `pinData`, `meta` and `nodeGroups` are deliberately left
-	 * out — they are irrelevant to a production trigger execution.
+	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the cached
+	 * published data. `pinData`, `meta` and `nodeGroups` are deliberately left out —
+	 * they are irrelevant to a production trigger execution.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
 	async loadPublishedWorkflowData(workflowId: string): Promise<IWorkflowBase> {
 		const publishedData =
-			await this.workflowPublishedDataService.getCachedPublishedWorkflowData(workflowId);
+			await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
+				workflowId,
+			);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {
@@ -291,22 +291,6 @@ export class TriggerExecutionContextFactory {
 			});
 		}
 
-		const { workflow, publishedVersion } = publishedData;
-		return {
-			id: workflow.id,
-			name: workflow.name,
-			description: workflow.description,
-			active: workflow.active,
-			isArchived: workflow.isArchived,
-			createdAt: workflow.createdAt,
-			updatedAt: workflow.updatedAt,
-			settings: workflow.settings,
-			staticData: workflow.staticData,
-			activeVersionId: workflow.activeVersionId,
-			versionCounter: workflow.versionCounter,
-			nodes: publishedVersion.nodes,
-			connections: publishedVersion.connections,
-			versionId: publishedVersion.versionId,
-		};
+		return publishedData;
 	}
 }

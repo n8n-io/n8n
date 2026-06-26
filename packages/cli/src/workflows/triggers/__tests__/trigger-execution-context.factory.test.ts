@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import type {
@@ -23,7 +23,10 @@ import type { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type {
+	PublishedWorkflowDataForExecution,
+	WorkflowPublishedDataService,
+} from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import {
 	TriggerExecutionContextFactory,
@@ -419,31 +422,29 @@ describe('TriggerExecutionContextFactory', () => {
 	});
 
 	describe('loadPublishedWorkflowData', () => {
-		test('sources nodes/connections/versionId from the published version and other fields from the workflow entity', async () => {
+		test('sources nodes/connections/versionId from the published version and other fields from the workflow projection', async () => {
 			const publishedNodes: INode[] = [{ id: 'n1' } as INode];
 			const publishedConnections: IConnections = {};
-			const workflow = {
+			const workflowData = {
 				id: 'wf-1',
 				name: 'My workflow',
+				description: null,
 				active: true,
 				isArchived: false,
+				createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2026-01-02T00:00:00.000Z'),
 				settings: { timezone: 'Europe/Berlin' },
 				staticData: { foo: 'bar' },
 				activeVersionId: 'published-version',
 				versionCounter: 3,
-				pinData: { Trigger: [] },
-				meta: { templateId: 'tmpl' },
-				nodeGroups: [{ id: 'g1' }],
-			} as unknown as WorkflowEntity;
+				versionId: 'published-version',
+				nodes: publishedNodes,
+				connections: publishedConnections,
+			} satisfies PublishedWorkflowDataForExecution;
 
-			workflowPublishedDataService.getCachedPublishedWorkflowData.mockResolvedValue({
-				workflow,
-				publishedVersion: {
-					versionId: 'published-version',
-					nodes: publishedNodes,
-					connections: publishedConnections,
-				} as WorkflowHistory,
-			});
+			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
+				workflowData,
+			);
 
 			const result = await factory.loadPublishedWorkflowData('wf-1');
 
@@ -468,7 +469,9 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		test('throws UnexpectedError when the service returns null', async () => {
-			workflowPublishedDataService.getCachedPublishedWorkflowData.mockResolvedValue(null);
+			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
+				null,
+			);
 
 			await expect(factory.loadPublishedWorkflowData('wf-1')).rejects.toThrow(UnexpectedError);
 		});

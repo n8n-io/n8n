@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import type { CacheService } from '@/services/cache/cache.service';
 import {
 	WorkflowPublishedDataService,
-	type PublishedWorkflowData,
+	type PublishedWorkflowDataForExecution,
 } from '@/workflows/workflow-published-data.service';
 
 describe('WorkflowPublishedDataService', () => {
@@ -49,6 +49,25 @@ describe('WorkflowPublishedDataService', () => {
 		return { record, nodes, connections };
 	}
 
+	function makeCachedData(): PublishedWorkflowDataForExecution {
+		return {
+			id: 'wf-1',
+			name: 'Workflow Name',
+			description: null,
+			active: true,
+			isArchived: false,
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+			settings: {},
+			staticData: undefined,
+			activeVersionId: 'v1',
+			versionCounter: 1,
+			versionId: 'v1',
+			nodes: [],
+			connections: {},
+		};
+	}
+
 	describe('getPublishedWorkflowData', () => {
 		// The default read goes straight to the database, never the cache.
 		test('returns published data from the repository', async () => {
@@ -85,40 +104,69 @@ describe('WorkflowPublishedDataService', () => {
 		});
 	});
 
-	describe('getCachedPublishedWorkflowData', () => {
+	describe('getPublishedWorkflowDataForExecution', () => {
+		test('returns the slim published data projection from the repository', async () => {
+			const cachedData = makeCachedData();
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				cachedData,
+			);
+
+			const result = await service.getPublishedWorkflowDataForExecution('wf-1');
+
+			expect(result).toBe(cachedData);
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
+			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getCachedPublishedWorkflowDataForExecution', () => {
 		test('returns the cached value without touching the repository on a hit', async () => {
-			const cached = mock<PublishedWorkflowData>();
+			const cached = makeCachedData();
 			cacheService.get.mockResolvedValue(cached);
 
-			const result = await service.getCachedPublishedWorkflowData('wf-1');
+			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
 
 			expect(result).toBe(cached);
 			expect(
 				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
 			).not.toHaveBeenCalled();
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionForExecution,
+			).not.toHaveBeenCalled();
 		});
 
 		test('reads from the database on a miss without populating the cache', async () => {
-			const { record } = makeRecord();
+			const cachedData = makeCachedData();
 			cacheService.get.mockResolvedValue(undefined);
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				cachedData,
+			);
 
-			const result = await service.getCachedPublishedWorkflowData('wf-1');
+			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result).not.toBeNull();
+			expect(result).toBe(cachedData);
 			expect(cacheService.set).not.toHaveBeenCalled();
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
+			).not.toHaveBeenCalled();
 		});
 
 		test('falls back to the database when the cache read fails', async () => {
-			const { record } = makeRecord();
+			const cachedData = makeCachedData();
 			cacheService.get.mockRejectedValueOnce(new Error('redis down'));
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				cachedData,
+			);
 
-			const result = await service.getCachedPublishedWorkflowData('wf-1');
+			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result).not.toBeNull();
-			expect(result!.workflow.name).toBe('Workflow Name');
+			expect(result).toBe(cachedData);
+			expect(result!.name).toBe('Workflow Name');
 			expect(logger.warn).toHaveBeenCalled();
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
+			).not.toHaveBeenCalled();
 		});
 	});
 
@@ -138,20 +186,21 @@ describe('WorkflowPublishedDataService', () => {
 
 	describe('refreshCache', () => {
 		test('reloads from the database and caches the result without expiry', async () => {
-			const { record } = makeRecord();
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+			const cachedData = makeCachedData();
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				cachedData,
+			);
 
 			await service.refreshCache('wf-1');
 
-			expect(cacheService.set).toHaveBeenCalledWith(
-				cacheKey,
-				expect.objectContaining({ workflow: record.workflow }),
-				0,
-			);
+			expect(cacheService.set).toHaveBeenCalledWith(cacheKey, cachedData, 0);
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
+			).not.toHaveBeenCalled();
 		});
 
 		test('deletes the entry when the workflow has no published version', async () => {
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(null);
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(null);
 
 			await service.refreshCache('wf-1');
 
@@ -160,8 +209,10 @@ describe('WorkflowPublishedDataService', () => {
 		});
 
 		test('propagates cache failures so the publication is retried', async () => {
-			const { record } = makeRecord();
-			workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
+			const cachedData = makeCachedData();
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				cachedData,
+			);
 			cacheService.set.mockRejectedValueOnce(new Error('uncacheable'));
 
 			await expect(service.refreshCache('wf-1')).rejects.toThrow('uncacheable');
