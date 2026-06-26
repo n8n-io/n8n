@@ -1,0 +1,48 @@
+name: 'CI: Fork (Typecheck + Unit Tests)'
+
+# Lightweight CI for the TheophilusChinomona/n8n fork.
+# Runs on a self-hosted runner on claw — no org secrets required.
+# Full upstream CI (ci-pull-requests.yml) is disabled on this fork
+# because it requires n8n-io org infrastructure.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-fork-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-and-test:
+    name: Typecheck + Unit Tests
+    if: github.repository != 'n8n-io/n8n'
+    runs-on: [self-hosted, linux, x64, claw]
+    timeout-minutes: 60
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      PNPM_HOME: /home/openclaw/.local/share/pnpm
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Verify toolchain
+        run: |
+          node --version
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests (backend)
+        run: pnpm test:ci:backend:unit
+        env:
+          DB_TYPE: sqlite
