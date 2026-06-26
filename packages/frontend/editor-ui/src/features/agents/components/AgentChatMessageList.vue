@@ -7,13 +7,14 @@ import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteracti
 import { useI18n } from '@n8n/i18n';
 import {
 	buildDisplayGroups,
-	getMessageInteractives,
-	isRecord,
-	type ChatMessage,
 	type DisplayGroup,
-	type InteractivePayload,
-	type ToolCall,
-} from '../composables/agentChatMessages';
+} from '@/features/ai/shared/agentsChat/displayGroups';
+import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import type {
+	ChatMessage,
+	InteractivePayload,
+	ToolCall,
+} from '@/features/ai/shared/agentsChat/types';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';

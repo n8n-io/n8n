@@ -38,11 +38,16 @@ const props = defineProps<{
 const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
 const singletonConnections = computed(() => store.connections);
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
-const isVisible = computed(
-	() =>
-		!store.isLocalGatewayDisabledByAdmin &&
-		(store.gatewayStatusLoaded || store.browserStatusLoaded || store.isLocalGatewayDisabled),
-);
+const isVisible = computed(() => {
+	const anyChannelEnabled =
+		!store.isLocalGatewayDisabledByAdmin || store.isBrowserUseEnabledByAdmin || isMcpEnabled.value;
+	const statusReady =
+		store.gatewayStatusLoaded ||
+		store.browserStatusLoaded ||
+		store.isLocalGatewayDisabled ||
+		isMcpEnabled.value;
+	return anyChannelEnabled && statusReady;
+});
 
 void store.fetch();
 
@@ -81,8 +86,10 @@ const addItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() =>
 		singletonConnections.value.map((connection) => connection.type),
 	);
 	return baseAddItems.value.filter((item) => {
-		if (store.isLocalGatewayDisabledByAdmin) return false;
-		if (item.id === 'computer-use' && addedSingletonConnections.has(item.id)) return false;
+		if (item.id === 'computer-use') {
+			if (store.isLocalGatewayDisabledByAdmin) return false;
+			if (addedSingletonConnections.has(item.id)) return false;
+		}
 		return true;
 	});
 });

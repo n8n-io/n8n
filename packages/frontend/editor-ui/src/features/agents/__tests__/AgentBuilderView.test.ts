@@ -12,8 +12,8 @@ const routeQuery: Record<string, string | undefined> = {};
 let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
-const showErrorMock = vi.fn();
 const showMessageMock = vi.fn();
+const showErrorMock = vi.fn();
 const {
 	fetchAllCredentialsForWorkflowMock,
 	fetchAllCredentialsMock,
@@ -422,7 +422,10 @@ const commonStubs = {
 		name: 'AgentBuilderUnconfiguredEmptyState',
 		template: '<div data-testid="stub-agent-builder-unconfigured-empty-state" />',
 	},
-	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
+	N8nIcon: {
+		template: '<i v-bind="$attrs" :data-icon="icon"></i>',
+		props: ['icon', 'size', 'spin'],
+	},
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 	N8nActionDropdown: { template: '<div />' },
 	Transition: { template: '<div><slot/></div>' },
@@ -462,6 +465,7 @@ describe('AgentBuilderView — preview routing', () => {
 		warmAgentKnowledgeSandboxMock.mockClear();
 		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
+		showErrorMock.mockReset();
 	});
 
 	it('renders the build chat in the editing experience without the old mode toggle', async () => {
@@ -766,17 +770,15 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
 	});
 
-	it('renders seeded initial builds from the URL as full-width before async initialization settles', async () => {
+	it('renders seeded initial builds from the URL as full-width once initialization settles', async () => {
 		routeQuery.prompt = 'Build a recruiting agent';
 		routeQuery.expandBuildChat = 'true';
 
-		const wrapper = await renderView({ waitForAsyncSetup: false });
+		const wrapper = await renderView();
 
 		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
 		expect(chatColumn.props('isFullWidth')).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
-
-		await flushPromises();
 	});
 
 	it('auto-expands seeded initial builds from the URL and clears the query flag', async () => {
@@ -1111,5 +1113,51 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
 			{ id: 'summarize_notes', skill: updatedSkill },
 		]);
+	});
+
+	it('shows the loading spinner while initialize() is in flight and hides it after', async () => {
+		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+		const pinia = createPinia();
+		setActivePinia(pinia);
+
+		// A promise that we control — lets us capture the intermediate loading state.
+		let resolveAgent!: (v: unknown) => void;
+		getAgentMock.mockReturnValueOnce(new Promise((r) => (resolveAgent = r)));
+
+		const wrapper = mount(AgentBuilderView, {
+			global: { plugins: [pinia], stubs: commonStubs },
+		});
+
+		// initialize() hasn't resolved yet → spinner visible, content hidden.
+		await nextTick();
+		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
+
+		// Let initialize() complete.
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+
+		// Spinner gone, content rendered.
+		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
+	});
+
+	it('clears the loading spinner and shows an error when initialize() throws (finally path)', async () => {
+		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+		const pinia = createPinia();
+		setActivePinia(pinia);
+
+		getAgentMock.mockRejectedValueOnce(new Error('network error'));
+
+		const wrapper = mount(AgentBuilderView, {
+			global: { plugins: [pinia], stubs: commonStubs },
+		});
+
+		await flushPromises();
+
+		// initialized is set in the `finally` block, so the spinner must be gone.
+		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		// The catch block must have surfaced the error to the user.
+		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
 });

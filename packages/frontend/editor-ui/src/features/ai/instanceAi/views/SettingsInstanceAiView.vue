@@ -92,6 +92,11 @@ function handleComputerUseToggle(value: string | number | boolean) {
 	void store.save();
 }
 
+function handleBrowserUseToggle(value: string | number | boolean) {
+	store.setField('browserUseEnabled', Boolean(value));
+	void store.save();
+}
+
 function handleMcpAccessToggle(value: string | number | boolean) {
 	store.setField('mcpAccessEnabled', Boolean(value));
 	void store.save();
@@ -158,6 +163,25 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							:disabled="store.isSaving"
 							data-test-id="n8n-agent-computer-use-toggle"
 							@update:model-value="handleComputerUseToggle"
+						/>
+					</div>
+				</div>
+
+				<div v-if="isAdmin" :class="$style.card">
+					<div :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.browserUse.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.browserUse.description') }}
+							</span>
+						</div>
+						<ElSwitch
+							:model-value="store.settings?.browserUseEnabled ?? true"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-browser-use-toggle"
+							@update:model-value="handleBrowserUseToggle"
 						/>
 					</div>
 				</div>

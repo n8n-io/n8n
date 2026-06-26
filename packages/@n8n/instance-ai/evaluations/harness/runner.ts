@@ -40,7 +40,11 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
-import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
+import {
+	buildConversationMetrics,
+	extractOutcomeFromEvents,
+	mergeSeededConversationMetrics,
+} from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
@@ -61,6 +65,7 @@ import type {
 import {
 	conversationUserTurnsAsText,
 	failedBuildsPerTurn,
+	lastAgentText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
@@ -621,7 +626,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		abortController.abort();
 		await ssePromise.catch(() => {});
 
-		const conversationMetrics = buildConversationMetrics(events);
+		const conversationMetrics = mergeSeededConversationMetrics(
+			seededTranscript,
+			buildConversationMetrics(events),
+		);
 		const transcript = [
 			...seededTranscript,
 			...buildTranscriptFromEvents({
@@ -647,7 +655,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
 		const buildTrace: BuildTrace = {
-			finalText: eventOutcome.finalText,
+			finalText:
+				eventOutcome.finalText.length > 0 ? eventOutcome.finalText : lastAgentText(transcript),
 			toolCalls: eventOutcome.toolCalls,
 			agentActivities: eventOutcome.agentActivities,
 		};
