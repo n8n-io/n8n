@@ -1,17 +1,15 @@
-import { createVerify, X509Certificate } from 'node:crypto';
+import { createVerify, generateKeyPairSync, X509Certificate } from 'node:crypto';
 
 import { buildClientAssertion } from '@/client-assertion';
 import { formatPrivateKey } from '@/format-private-key';
 
 import * as config from './config';
 
+// SHA-1 (not SHA-256) thumbprint of config.certificate, base64url-encoded
+const EXPECTED_X5T = 'aK3rs6ongTQ6RIYSBIx5LFJD-Q4';
+
 function decodeSegment(segment: string) {
 	return JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as Record<string, unknown>;
-}
-
-function expectedThumbprint(): string {
-	const fingerprint = new X509Certificate(formatPrivateKey(config.certificate)).fingerprint;
-	return Buffer.from(fingerprint.replace(/:/g, ''), 'hex').toString('base64url');
 }
 
 describe('buildClientAssertion', () => {
@@ -27,7 +25,7 @@ describe('buildClientAssertion', () => {
 		const header = decodeSegment(headerSeg);
 		const payload = decodeSegment(payloadSeg);
 
-		expect(header).toMatchObject({ alg: 'RS256', typ: 'JWT', x5t: expectedThumbprint() });
+		expect(header).toMatchObject({ alg: 'RS256', typ: 'JWT', x5t: EXPECTED_X5T });
 		expect(payload).toMatchObject({
 			aud: config.accessTokenUri,
 			iss: config.clientId,
@@ -65,5 +63,19 @@ describe('buildClientAssertion', () => {
 				certificate: config.certificate,
 			}),
 		).toThrow();
+	});
+
+	it('throws when a well-formed non-RSA (EC) private key is provided', () => {
+		const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+
+		expect(() =>
+			buildClientAssertion({
+				clientId: config.clientId,
+				accessTokenUri: config.accessTokenUri,
+				privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+
+				certificate: config.certificate,
+			}),
+		).toThrow('requires an RSA private key');
 	});
 });

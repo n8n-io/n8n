@@ -1,4 +1,4 @@
-import { createSign, randomUUID, X509Certificate } from 'node:crypto';
+import { createPrivateKey, createSign, randomUUID, X509Certificate } from 'node:crypto';
 
 import { formatPrivateKey } from './format-private-key';
 
@@ -41,9 +41,15 @@ export function buildClientAssertion(options: BuildClientAssertionOptions): stri
 		nbf: now,
 		exp: now + ASSERTION_TTL_SECONDS,
 	};
+
+	// `createSign('RSA-SHA256')` also signs EC/Ed25519 keys, producing a signature
+	// that contradicts the pinned `alg: RS256` header. Reject non-RSA keys up front.
+	const privateKey = createPrivateKey(formatPrivateKey(options.privateKey));
+	if (privateKey.asymmetricKeyType !== 'rsa') {
+		throw new Error('Certificate authentication requires an RSA private key');
+	}
+
 	const signingInput = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
-	const signature = createSign('RSA-SHA256')
-		.update(signingInput)
-		.sign(formatPrivateKey(options.privateKey));
+	const signature = createSign('RSA-SHA256').update(signingInput).sign(privateKey);
 	return `${signingInput}.${base64url(signature)}`;
 }
