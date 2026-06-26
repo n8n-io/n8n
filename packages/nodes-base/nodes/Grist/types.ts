@@ -1,12 +1,22 @@
 export type GristCredentials = {
-	apiKey: string;
-	planType: 'free' | 'paid' | 'selfHosted';
+	apiKey?: string;
+	url?: string;
+	oauthTokenData?: { access_token?: string };
+	// Legacy API-key credential fields, superseded by `url`:
 	customSubdomain?: string;
 	selfHostedUrl?: string;
 };
 
-export type GristColumns = {
-	columns: Array<{ id: string }>;
+export type GristColumnSchema = {
+	columns: Array<{
+		id: string;
+		fields: {
+			label?: string;
+			type?: string;
+			isFormula?: boolean;
+			formula?: string;
+		};
+	}>;
 };
 
 export type GristSortProperties = Array<{
@@ -42,6 +52,21 @@ export type GristUpdateRowPayload = {
 	}>;
 };
 
+export type GristUpsertRowPayload = {
+	records: Array<{
+		require: { [key: string]: unknown };
+		fields: { [key: string]: unknown };
+	}>;
+};
+
 export type SendingOptions = 'defineInNode' | 'autoMapInputs';
 
 export type FieldsToSend = { properties: GristDefinedFields };
+
+export type GristWebhookList = {
+	webhooks: Array<{ id: string; fields?: { url?: string } }>;
+};
+
+export type GristWebhookCreated = {
+	webhooks: Array<{ id: string }>;
+};
