@@ -46,7 +46,16 @@ import type { IRunExecutionData } from './run-execution-data/run-execution-data'
 export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
 export interface IAdditionalCredentialOptions {
+	/**
+	 * Additional options for OAuth2 credentials.
+	 */
 	oauth2?: IOAuth2Options;
+
+	/**
+	 * Additional options for non-OAuth2 & non-OAuth1 credentials.
+	 */
+	generic?: ISimplifiedAuthOptions;
+
 	credentialsDecrypted?: ICredentialsDecrypted;
 }
 
@@ -87,6 +96,15 @@ export interface IOAuth2Options {
 	keepBearer?: boolean;
 	tokenExpiredStatusCode?: number;
 	keyToIncludeInAccessTokenHeader?: string;
+}
+
+export interface ISimplifiedAuthOptions {
+	/**
+	 * HTTP status codes that trigger a token refresh (if preAuthentication is defined on the credentials).
+	 * Defaults to `[401]` when not set.
+	 * @default [401]
+	 */
+	tokenExpiredStatusCodes?: NonEmptyArray<number>;
 }
 
 export interface IConnection {
