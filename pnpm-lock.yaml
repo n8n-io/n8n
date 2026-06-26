@@ -3341,7 +3341,7 @@ importers:
         specifier: ^4.3.4
         version: 4.4.3(supports-color@8.1.1)
       dotenv:
-        specifier: 17.2.3
+        specifier: 'catalog:'
         version: 17.2.3
       glob:
         specifier: 10.5.0
@@ -25167,7 +25167,7 @@ snapshots:
   '@dotenvx/dotenvx@1.55.1':
     dependencies:
       commander: 11.1.0
-      dotenv: 17.2.3
+      dotenv: 17.4.2
       eciesjs: 0.4.18
       execa: 5.1.1
       fdir: 6.5.0(picomatch@4.0.4)
