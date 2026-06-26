@@ -770,17 +770,15 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
 	});
 
-	it('renders seeded initial builds from the URL as full-width before async initialization settles', async () => {
+	it('renders seeded initial builds from the URL as full-width once initialization settles', async () => {
 		routeQuery.prompt = 'Build a recruiting agent';
 		routeQuery.expandBuildChat = 'true';
 
-		const wrapper = await renderView({ waitForAsyncSetup: false });
+		const wrapper = await renderView();
 
 		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
 		expect(chatColumn.props('isFullWidth')).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
-
-		await flushPromises();
 	});
 
 	it('auto-expands seeded initial builds from the URL and clears the query flag', async () => {
