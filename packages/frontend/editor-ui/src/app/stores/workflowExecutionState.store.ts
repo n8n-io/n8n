@@ -232,7 +232,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		}
 
 		const isExecutionDataDisplayed = computed(
-			() => activeExecutionId.value === undefined && typeof displayedExecutionId.value === 'string',
+			() =>
+				!isInDebugMode.value &&
+				activeExecutionId.value === undefined &&
+				typeof displayedExecutionId.value === 'string',
 		);
 
 		const activeExecutionRunData = computed(() => {

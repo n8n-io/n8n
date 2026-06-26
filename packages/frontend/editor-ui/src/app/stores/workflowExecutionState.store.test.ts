@@ -625,6 +625,32 @@ describe('workflowExecutionState.store', () => {
 		});
 
 		describe('activeExecutionPinDataByNodeName', () => {
+			it('does not treat a displayed execution as preview pin data in debug mode', () => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				const execution = makeExecution({
+					id: 'exec-1',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {},
+							pinData: { 'HTTP Request': [{ json: { source: 'workflow-pin-data' } }] },
+						},
+					}),
+				});
+
+				executionStateStore.setWorkflowExecutionData(execution);
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(true);
+
+				executionStateStore.setIsInDebugMode(true);
+
+				expect(executionStateStore.displayedExecutionId).toBe('exec-1');
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(false);
+				expect(executionStateStore.activeExecutionPinDataByNodeName).toEqual({
+					'HTTP Request': [{ json: { source: 'workflow-pin-data' } }],
+				});
+			});
+
 			it('uses the in-progress execution pin data while a new execution id is pending', () => {
 				const executionStateStore = useWorkflowExecutionStateStore(
 					createWorkflowDocumentId('wf-1'),
