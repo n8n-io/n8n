@@ -61,7 +61,7 @@ describe('workflow package export — with credentials', () => {
 			credential,
 		});
 
-		const stream = await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
+		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.credentials).toEqual([
@@ -119,7 +119,7 @@ describe('workflow package export — with credentials', () => {
 			credential,
 		});
 
-		const stream = await service.exportWorkflows({
+		const stream = await service.exportPackage({
 			user: owner,
 			workflowIds: [wfA.id, wfB.id],
 		});
@@ -149,7 +149,7 @@ describe('workflow package export — with credentials', () => {
 			credentialType: 'httpHeaderAuth',
 		});
 
-		const stream = await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
+		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.credentials).toBeUndefined();
@@ -192,7 +192,7 @@ describe('workflow package export — with credentials', () => {
 		// credential was never shared with them. The export must still succeed,
 		// recording the credential as a requirement using the name+type carried
 		// in the workflow JSON.
-		const stream = await service.exportWorkflows({
+		const stream = await service.exportPackage({
 			user: sharee,
 			workflowIds: [workflow.id],
 		});
