@@ -29,6 +29,7 @@ class TestTaskAnalyzer:
             external_allow=set(),
             builtins_deny=set(),
             runner_env_deny=True,
+            runner_env_allow=set(),
         )
 
         return TaskAnalyzer(security_config)
@@ -773,6 +774,7 @@ class TestAllowAll(TestTaskAnalyzer):
             external_allow={"*"},
             builtins_deny=set(),
             runner_env_deny=True,
+            runner_env_allow=set(),
         )
         analyzer = TaskAnalyzer(security_config)
 

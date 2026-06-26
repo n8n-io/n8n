@@ -42,6 +42,7 @@ describe('PyTaskRunnerProcess', () => {
 			'N8N_RUNNERS_EXTERNAL_ALLOW',
 			'N8N_RUNNERS_BUILTINS_DENY',
 			'N8N_BLOCK_RUNNER_ENV_ACCESS',
+			'N8N_RUNNER_ENV_ALLOW',
 		])('should propagate %s from env as is', async (envVar) => {
 			process.env[envVar] = 'custom value';
 

@@ -551,3 +551,55 @@ async def test_env_accessible_when_allowed_per_item(
     for item in result["data"]["result"]:
         assert item["json"]["has_path"] is True
         assert item["json"]["env_count"] > 0
+
+
+@pytest.mark.asyncio
+async def test_env_allowlist_preserves_listed_vars_all_items(
+    broker, manager_with_env_allowlist
+):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        import os
+        return [{"json": {
+            "allowed": os.environ.get('N8N_TEST_ALLOWED_VAR', 'NOT_FOUND'),
+            "path": os.environ.get('PATH', 'NOT_FOUND'),
+            "env_count": len(dict(os.environ))
+        }}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"][0]["json"]["allowed"] == "preserved-value"
+    assert result["data"]["result"][0]["json"]["path"] == "NOT_FOUND"
+    assert result["data"]["result"][0]["json"]["env_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_env_allowlist_preserves_listed_vars_per_item(
+    broker, manager_with_env_allowlist
+):
+    task_id = nanoid()
+    items = [
+        {"json": {"index": 0}},
+        {"json": {"index": 1}},
+    ]
+    code = textwrap.dedent("""
+        import os
+        return {
+            "allowed": os.environ.get('N8N_TEST_ALLOWED_VAR', 'NOT_FOUND'),
+            "path": os.environ.get('PATH', 'NOT_FOUND'),
+            "env_count": len(dict(os.environ))
+        }
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert len(result["data"]["result"]) == 2
+    for item in result["data"]["result"]:
+        assert item["json"]["allowed"] == "preserved-value"
+        assert item["json"]["path"] == "NOT_FOUND"
+        assert item["json"]["env_count"] == 1
