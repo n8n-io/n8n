@@ -1,8 +1,8 @@
 diff --git a/legacy/build/pdf.mjs b/legacy/build/pdf.mjs
-index 1a373ea986beef21076d30438235d180a0487c20..9d584f4fcc13f0b86e57160570c530e5ac794638 100644
+index d0c1864edb1d3a042468fd3f8ca98f9b52b67a1b..e26bc47c11e5ce612a7f6f4fead34e04473e68f1 100644
 --- a/legacy/build/pdf.mjs
 +++ b/legacy/build/pdf.mjs
-@@ -12060,9 +12060,9 @@ class DOMWasmFactory extends BaseWasmFactory {
+@@ -14336,9 +14336,9 @@ class AnnotationEditor {
  if (isNodeJS) {
    let canvas;
    try {
@@ -14,7 +14,7 @@ index 1a373ea986beef21076d30438235d180a0487c20..9d584f4fcc13f0b86e57160570c530e5
      } catch (ex) {
        warn(`Cannot load "@napi-rs/canvas" package: "${ex}".`);
      }
-@@ -12106,8 +12106,8 @@ async function node_utils_fetchData(url) {
+@@ -14382,8 +14382,8 @@ async function node_utils_fetchData(url) {
  class NodeFilterFactory extends BaseFilterFactory {}
  class NodeCanvasFactory extends BaseCanvasFactory {
    _createCanvas(width, height) {
