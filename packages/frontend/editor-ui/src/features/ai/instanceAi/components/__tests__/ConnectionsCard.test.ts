@@ -151,6 +151,9 @@ describe('ConnectionsCard', () => {
 		});
 
 		it('hides the empty-state CTA and shows the simplified title', () => {
+			settingsStoreMock.mockReturnValue(
+				makeSettingsStore({ connections: [COMPUTER_USE_CONNECTION] }),
+			);
 			const { queryByTestId, getByText } = renderComponent();
 			expect(queryByTestId('instance-ai-connections-empty-cta')).toBeNull();
 			expect(getByText('instanceAi.connections.empty.titleNoComputerUse')).toBeVisible();
