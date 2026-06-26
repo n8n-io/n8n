@@ -577,6 +577,18 @@ export class InstanceAiGatewayCreateCredentialDto extends Z.class({
 	projectId: z.string().optional(),
 }) {}
 
+export interface InstanceAiBrowserCreateLinkResponse {
+	connectUrl: string;
+	expiresAt: string | null;
+	ttlSeconds: number | null;
+}
+
+export interface InstanceAiBrowserStatusResponse {
+	connected: boolean;
+	connectedAt: string | null;
+	toolCategories: ToolCategory[];
+}
+
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
 // ---------------------------------------------------------------------------
@@ -1153,6 +1165,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	browserUseEnabled: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -1169,6 +1182,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	browserUseEnabled: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

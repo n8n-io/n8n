@@ -17,7 +17,7 @@ import { traceable } from 'langsmith/traceable';
 import { join } from 'path';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
-import { parseCliArgs } from './args';
+import { parseCliArgs, partialIsolationWarning } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
@@ -40,6 +40,7 @@ import {
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
+import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import { cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
@@ -203,6 +204,8 @@ async function main(): Promise<void> {
 
 		const totalDuration = Date.now() - startTime;
 		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+		// Gated tiers report an absolute green verdict in place of the baseline comparison.
+		const gate = isGatedTier(args.tier) ? evaluateGate(evaluation, { slugByTestCase }) : undefined;
 		const { jsonPath, prCommentPath } = writeEvalResults(
 			evaluation,
 			totalDuration,
@@ -212,6 +215,7 @@ async function main(): Promise<void> {
 			commitSha,
 			slugByTestCase,
 			ciRunUrl(),
+			gate,
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -221,7 +225,7 @@ async function main(): Promise<void> {
 		const debugHtmlPath = writeRunDebugReport(reportResults);
 		console.log(`LLM debug:  ${debugHtmlPath}`);
 		console.log(
-			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
+			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 	} finally {
 		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
@@ -242,7 +246,7 @@ async function main(): Promise<void> {
 async function runWithLangSmith(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	experimentName: string;
-	outcome: ComparisonOutcome;
+	outcome: ComparisonOutcome | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
 	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
@@ -258,8 +262,20 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	}
 
+	// A dedicated dataset and baseline prefix are the two halves of cohort
+	// isolation; overriding only one silently touches shared Instance AI data.
+	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
+	if (isolationWarning) logger.warn(isolationWarning);
+
 	const lsClient = new Client();
-	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
+	const datasetName = await syncDataset(
+		lsClient,
+		args.dataset,
+		logger,
+		args.filter,
+		args.exclude,
+		args.tier,
+	);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
@@ -683,7 +699,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			metadata: {
 				filter: args.filter ?? 'all',
 				exclude: args.exclude ?? null,
+				tier: args.tier ?? null,
 				prebuilt: prebuiltManifest !== undefined,
+				baselinePrefix: args.baselinePrefix,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
@@ -731,13 +749,18 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			logger,
 		});
 
-		const outcome = await tryRunComparison({
-			lsClient,
-			prExperimentName: experimentResults.experimentName,
-			evaluation,
-			testCasesWithFiles,
-			logger,
-		});
+		// Gated tiers (e.g. `pr`) assert an absolute green bar instead of comparing
+		// to a baseline — skip the comparison entirely.
+		const outcome = isGatedTier(args.tier)
+			? undefined
+			: await tryRunComparison({
+					lsClient,
+					prExperimentName: experimentResults.experimentName,
+					evaluation,
+					testCasesWithFiles,
+					baselinePrefix: args.baselinePrefix,
+					logger,
+				});
 
 		const slugByTestCase = new Map<WorkflowTestCase, string>(
 			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
@@ -1119,6 +1142,7 @@ function writeEvalResults(
 	commitSha: string | undefined,
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
 	runUrl: string | undefined,
+	gate: GateResult | undefined,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1154,6 +1178,8 @@ function writeEvalResults(
 			: undefined,
 		comparisonStatus: outcome?.kind ?? 'not_attempted',
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
+		// Absolute green-gate verdict for curated tiers (undefined for baseline-compared runs).
+		gate,
 		testCases: testCases.map((tc) => ({
 			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
@@ -1202,7 +1228,7 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl }),
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl, gate }),
 	);
 
 	return { jsonPath, prCommentPath };
@@ -1247,16 +1273,20 @@ async function tryRunComparison(config: {
 	prExperimentName: string;
 	evaluation: MultiRunEvaluation;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
+	baselinePrefix: string;
 	logger: EvalLogger;
 }): Promise<ComparisonOutcome> {
-	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
+	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, baselinePrefix, logger } =
+		config;
 
 	try {
-		const baselineName = await findLatestBaseline(lsClient);
+		const baselineName = await findLatestBaseline(lsClient, baselinePrefix);
 		if (!baselineName) {
+			// Strip the trailing hyphen so the hint names the experiment, not the lookup prefix.
+			const baselineExperimentName = baselinePrefix.replace(/-$/, '');
 			logger.verbose(
 				'No baseline experiment found — skipping comparison. ' +
-					'Run with --experiment-name instance-ai-baseline to create one.',
+					`Run with --experiment-name ${baselineExperimentName} to create one.`,
 			);
 			return { kind: 'no_baseline' };
 		}

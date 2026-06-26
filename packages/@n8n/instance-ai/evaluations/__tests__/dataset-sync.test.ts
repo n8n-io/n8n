@@ -221,4 +221,16 @@ describe('syncDataset', () => {
 		await syncDataset(second.client, 'ds', logger);
 		expect(second.createExamples).not.toHaveBeenCalled();
 	});
+
+	it('forwards filter, exclude, and tier to the test-case loader', async () => {
+		// The dataset-isolation guarantee depends on these selection args reaching
+		// the loader unchanged — a dedicated --dataset must sync only its own cohort
+		// (e.g. --tier mcp), never the whole corpus.
+		mockedLoad.mockReturnValue([scenarioFixture('foo', 'happy-path')]);
+		const { client } = buildClient([]);
+
+		await syncDataset(client, 'ds', logger, 'contact-form', 'cross-team', 'mcp');
+
+		expect(mockedLoad).toHaveBeenCalledWith('contact-form', 'cross-team', 'mcp');
+	});
 });
