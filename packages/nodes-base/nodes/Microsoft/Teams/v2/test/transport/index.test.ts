@@ -3,18 +3,35 @@ import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { MicrosoftTeamsTrigger } from '../../../MicrosoftTeamsTrigger.node';
-import { getTeams } from '../../methods/listSearch';
-import { getTeamsCredentialType, microsoftApiRequest } from '../../transport/index';
+import {
+	getBuckets,
+	getChannels,
+	getChats,
+	getMembers,
+	getPlans,
+	getTeams,
+} from '../../methods/listSearch';
+import {
+	buildTeamsPath,
+	getTeamsCredentialType,
+	joinedTeamsEndpoint,
+	microsoftApiRequest,
+	SERVICE_PRINCIPAL_AUTH,
+	validateTeamsId,
+} from '../../transport/index';
 
 describe('Microsoft Teams Transport', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 	let mockRequestOAuth2: Mock;
+	let mockRequestWithAuthentication: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockRequestOAuth2 = vi.fn();
+		mockRequestWithAuthentication = vi.fn();
 		mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;
+		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
 
 		mockNode = {
 			id: 'test-node',
@@ -229,6 +246,8 @@ describe('Microsoft Teams Transport', () => {
 					'microsoftTeamsOAuth2Api',
 					expect.anything(),
 				);
+				// dual-branch lock: the OAuth2 path must never reach requestWithAuthentication
+				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 			});
 
 			it('should use microsoftTeamsOAuth2Api when explicitly selected', async () => {
@@ -241,6 +260,7 @@ describe('Microsoft Teams Transport', () => {
 					'microsoftTeamsOAuth2Api',
 					expect.anything(),
 				);
+				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 			});
 
 			it('should use microsoftOAuth2Api when the generic credential is selected', async () => {
@@ -250,6 +270,7 @@ describe('Microsoft Teams Transport', () => {
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 			});
 
 			it('should resolve the credential name from the authentication parameter at index 0', async () => {
@@ -274,6 +295,143 @@ describe('Microsoft Teams Transport', () => {
 				);
 			});
 		});
+
+		describe('service principal authentication', () => {
+			beforeEach(() => {
+				mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
+				// Drive selection by parameter NAME, not a flat return value, so the
+				// resolver's `getNodeParameter('authentication', 0)` resolves to SP while
+				// other reads (resource, etc.) fall through to undefined.
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) =>
+					name === 'authentication' ? SERVICE_PRINCIPAL_AUTH : undefined,
+				);
+				// SP credential carries a minted accessToken, NOT oauthTokenData.
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					accessToken: 'token',
+					graphApiBaseUrl: 'https://graph.microsoft.com',
+				});
+			});
+
+			it('routes the request through requestWithAuthentication (NOT requestOAuth2)', async () => {
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
+				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+					SERVICE_PRINCIPAL_AUTH,
+					expect.objectContaining({
+						method: 'GET',
+						uri: 'https://graph.microsoft.com/v1.0/teams',
+					}),
+				);
+				// dual-branch lock: the SP path must never reach requestOAuth2
+				expect(mockRequestOAuth2).not.toHaveBeenCalled();
+			});
+
+			it('never composes a /me path under the Service Principal credential', async () => {
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+
+				const calledUri = mockRequestWithAuthentication.mock.calls[0][1].uri as string;
+				expect(calledUri).not.toContain('/me');
+			});
+
+			it('honors a sovereign graphApiBaseUrl', async () => {
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					accessToken: 'token',
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+					SERVICE_PRINCIPAL_AUTH,
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.us/v1.0/teams',
+					}),
+				);
+			});
+
+			describe('error suppression (no raw Graph body leaks at any status)', () => {
+				// A raw Graph error body carrying a correlation id + reflected input. Under
+				// SP NONE of this may reach the surfaced message at ANY status.
+				const rawBody = (statusCode: number, code: string) => ({
+					statusCode,
+					error: {
+						error: {
+							code,
+							message:
+								'request-id: 11111111-2222-3333-4444-555555555555; client-request-id: aaaa; token=eyJ0eParrotedSecret; resource /teams/19:injected@thread.tacv2',
+						},
+					},
+				});
+
+				it.each([
+					[
+						401,
+						'InvalidAuthenticationToken',
+						"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.",
+					],
+					[
+						402,
+						'PaymentRequired',
+						'This operation requires a metered Microsoft Teams API to be enabled on the tenant.',
+					],
+					[
+						403,
+						'Forbidden',
+						'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.',
+					],
+					[
+						400,
+						'BadRequest',
+						"Microsoft Graph rejected the request (HTTP 400). Check the operation's inputs and the app registration's permissions.",
+					],
+					[
+						429,
+						'TooManyRequests',
+						"Microsoft Graph rejected the request (HTTP 429). Check the operation's inputs and the app registration's permissions.",
+					],
+					[
+						503,
+						'ServiceUnavailable',
+						"Microsoft Graph rejected the request (HTTP 503). Check the operation's inputs and the app registration's permissions.",
+					],
+				])(
+					'maps HTTP %i to a static message and never leaks the raw body',
+					async (statusCode, code, expectedMessage) => {
+						mockRequestWithAuthentication.mockRejectedValue(rawBody(statusCode, code));
+
+						const error = await microsoftApiRequest
+							.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
+							.catch((e: Error) => e);
+
+						expect(error.constructor.name).toBe('NodeApiError');
+						expect(error.message).toBe(expectedMessage);
+						expect(error.message).not.toContain('request-id');
+						expect(error.message).not.toContain('client-request-id');
+						expect(error.message).not.toContain('token=');
+						expect(error.message).not.toContain('injected');
+					},
+				);
+
+				it('rewrites a NotFound body to the static "{Resource} not found" message', async () => {
+					mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+						if (name === 'authentication') return SERVICE_PRINCIPAL_AUTH;
+						if (name === 'resource') return 'channel';
+						return undefined;
+					});
+					mockRequestWithAuthentication.mockRejectedValue({
+						statusCode: 404,
+						error: { error: { code: 'NotFound', message: 'Resource not found' } },
+					});
+
+					const error = await microsoftApiRequest
+						.call(mockExecuteFunctions, 'GET', '/v1.0/teams/x/channels/y')
+						.catch((e: Error) => e);
+
+					expect(error.message).toBe('Channel not found');
+				});
+			});
+		});
 	});
 
 	describe('getTeamsCredentialType', () => {
@@ -294,16 +452,156 @@ describe('Microsoft Teams Transport', () => {
 
 			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftOAuth2Api');
 		});
+
+		it('should return the Service Principal credential when selected', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe(SERVICE_PRINCIPAL_AUTH);
+		});
+	});
+
+	describe('joinedTeamsEndpoint', () => {
+		it('returns /v1.0/teams under the Service Principal credential', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/teams');
+		});
+
+		it('returns /v1.0/me/joinedTeams under OAuth2 (default)', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/me/joinedTeams');
+		});
+	});
+
+	describe('validateTeamsId', () => {
+		it('accepts a GUID and a colon-free Planner-style id', () => {
+			expect(() =>
+				validateTeamsId('1111-2222-3333-4444-555566667777', mockNode),
+			).not.toThrow();
+			expect(() => validateTeamsId('rl1HYb0cUEiHPc7zgB_KWWUAA7Of', mockNode)).not.toThrow();
+		});
+
+		it.each(['', '   '])('rejects empty / whitespace-only ids', (id) => {
+			expect(() => validateTeamsId(id, mockNode)).toThrow();
+		});
+
+		it.each(['.', '..', '...'])('rejects dots-only ids', (id) => {
+			expect(() => validateTeamsId(id, mockNode)).toThrow();
+		});
+
+		it.each(['a/b', 'a\\b', '19:abc@thread.tacv2', 'a?b', 'a#b'])(
+			'rejects path-escaping ids (%s)',
+			(id) => {
+				expect(() => validateTeamsId(id, mockNode)).toThrow();
+			},
+		);
+
+		it('throws a static message that never echoes the rejected id', () => {
+			const error = (() => {
+				try {
+					validateTeamsId('x/../../groups/secretInjected', mockNode);
+					return undefined;
+				} catch (e) {
+					return e as Error;
+				}
+			})();
+
+			expect(error).toBeDefined();
+			expect(error?.message).not.toContain('secretInjected');
+			expect(error?.message).not.toContain('groups');
+			expect(error?.message).not.toContain('..');
+		});
+	});
+
+	describe('buildTeamsPath', () => {
+		it('passes ids verbatim under OAuth2 (no validate, no encode)', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+
+			const path = buildTeamsPath.call(mockExecuteFunctions, [
+				'/v1.0/teams/',
+				{ id: '19:abc@thread.tacv2' },
+				'/channels',
+			]);
+
+			expect(path).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
+		});
+
+		it('validates then encodes each id once under the Service Principal credential', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			const path = buildTeamsPath.call(mockExecuteFunctions, [
+				'/v1.0/planner/plans/',
+				{ id: 'plan_id-123' },
+				'/tasks',
+			]);
+
+			expect(path).toBe('/v1.0/planner/plans/plan_id-123/tasks');
+		});
+
+		it('encodes an @ exactly once under the Service Principal credential', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			const path = buildTeamsPath.call(mockExecuteFunctions, [
+				'/v1.0/groups/',
+				{ id: 'jane@contoso.com' },
+				'/members',
+			]);
+
+			expect(path).toBe('/v1.0/groups/jane%40contoso.com/members');
+		});
+
+		it('throws on a crafted traversal id under the Service Principal credential', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			expect(() =>
+				buildTeamsPath.call(mockExecuteFunctions, [
+					'/v1.0/teams/',
+					{ id: 'x/../../groups/abc' },
+					'/channels',
+				]),
+			).toThrow();
+		});
+	});
+
+	describe('OAuth2 back-compat lock (byte-for-byte unchanged)', () => {
+		it('composes the legacy raw uri for a colon-bearing channelId that SP would reject', async () => {
+			// Default OAuth2 selected. A realistic colon-bearing channel id flows through
+			// buildTeamsPath verbatim — no throw, no encoding — proving OAuth2 URL shapes
+			// are unchanged (the SP validator would reject this exact id).
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+
+			const resource = buildTeamsPath.call(mockExecuteFunctions, [
+				'/v1.0/teams/',
+				{ id: '1111-2222' },
+				'/channels/',
+				{ id: '19:abc@thread.tacv2' },
+			]);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', resource);
+
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftTeamsOAuth2Api',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2',
+				}),
+			);
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('listSearch credential routing', () => {
 		let mockLoadOptions: Mocked<ILoadOptionsFunctions>;
 		let loadOptionsRequestOAuth2: Mock;
+		let loadOptionsRequestWithAuthentication: Mock;
 
 		beforeEach(() => {
 			mockLoadOptions = mockDeep<ILoadOptionsFunctions>();
 			loadOptionsRequestOAuth2 = vi.fn().mockResolvedValue({ value: [] });
+			loadOptionsRequestWithAuthentication = vi.fn().mockResolvedValue({ value: [] });
 			mockLoadOptions.helpers.requestOAuth2 = loadOptionsRequestOAuth2;
+			mockLoadOptions.helpers.requestWithAuthentication = loadOptionsRequestWithAuthentication;
 			mockLoadOptions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 		});
 
@@ -317,6 +615,7 @@ describe('Microsoft Teams Transport', () => {
 				'microsoftOAuth2Api',
 				expect.anything(),
 			);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('should default list-search requests to the Teams credential', async () => {
@@ -329,17 +628,92 @@ describe('Microsoft Teams Transport', () => {
 				'microsoftTeamsOAuth2Api',
 				expect.anything(),
 			);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('getTeams hits /v1.0/teams (not /me/joinedTeams) through requestWithAuthentication under SP', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			mockLoadOptions.getCredentials.mockResolvedValue({
+				accessToken: 'token',
+				graphApiBaseUrl: '',
+			});
+
+			await getTeams.call(mockLoadOptions);
+
+			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
+			expect(loadOptionsRequestWithAuthentication).toHaveBeenCalledWith(
+				SERVICE_PRINCIPAL_AUTH,
+				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/teams' }),
+			);
+			const calledUri = loadOptionsRequestWithAuthentication.mock.calls[0][1].uri as string;
+			expect(calledUri).not.toContain('/me/joinedTeams');
+			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('getChats throws a static error under SP and never issues a request', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			await expect(getChats.call(mockLoadOptions)).rejects.toThrow(
+				'Chats are not available with the Service Principal credential',
+			);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		// MAJOR B hard gate: every SP-reachable listSearch method that interpolates an id
+		// must reject a crafted traversal id via buildTeamsPath, before any request.
+		describe('SP id-injection gate (enumerated)', () => {
+			const craftedId = 'x/../../groups/abc';
+
+			beforeEach(() => {
+				mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+				mockLoadOptions.getCredentials.mockResolvedValue({
+					accessToken: 'token',
+					graphApiBaseUrl: '',
+				});
+			});
+
+			it('getChannels rejects a crafted teamId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+
+				await expect(getChannels.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('getPlans rejects a crafted groupId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+
+				await expect(getPlans.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('getBuckets rejects a crafted (unvalidated) planId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+
+				await expect(getBuckets.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('getMembers rejects a crafted groupId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+
+				await expect(getMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
 		});
 	});
 
 	describe('microsoftApiRequest under a webhook hook (IHookFunctions) context', () => {
 		let mockHookFunctions: Mocked<IHookFunctions>;
 		let hookRequestOAuth2: Mock;
+		let hookRequestWithAuthentication: Mock;
 
 		beforeEach(() => {
 			mockHookFunctions = mockDeep<IHookFunctions>();
 			hookRequestOAuth2 = vi.fn().mockResolvedValue({ value: [] });
+			hookRequestWithAuthentication = vi.fn().mockResolvedValue({ value: [] });
 			mockHookFunctions.helpers.requestOAuth2 = hookRequestOAuth2;
+			mockHookFunctions.helpers.requestWithAuthentication = hookRequestWithAuthentication;
 			mockHookFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 			mockHookFunctions.getNode.mockReturnValue(mockNode);
 		});
@@ -351,6 +725,7 @@ describe('Microsoft Teams Transport', () => {
 
 			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+			expect(hookRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('should default to the Teams credential', async () => {
@@ -360,6 +735,7 @@ describe('Microsoft Teams Transport', () => {
 
 			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
 			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftTeamsOAuth2Api', expect.anything());
+			expect(hookRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 	});
 
