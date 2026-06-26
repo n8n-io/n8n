@@ -359,4 +359,45 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 	});
+
+	describe('Path parameter handling', () => {
+		it('should throw a clear error when model omits a path parameter', async () => {
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/users/{userId}/posts';
+					case 'options':
+						return {};
+					case 'sendInQuery':
+						return false;
+					case 'sendInBody':
+						return false;
+					case 'sendInHeaders':
+						return false;
+					case 'placeholderDefinitions.values':
+						return [
+							{
+								name: 'userId',
+								type: 'string',
+								description: 'The user ID',
+							},
+						];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			// Invoke with empty input — model omitted userId
+			const res = await (response as N8nTool).invoke({});
+
+			expect(res).toContain('error');
+			expect(res).toContain("path parameter 'userId'");
+			// Verify the bug fix: we throw BEFORE making any HTTP request
+			expect(helpers.httpRequest).not.toHaveBeenCalled();
+		});
+	});
 });
