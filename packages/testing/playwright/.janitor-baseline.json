@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-23T20:38:55.035Z",
-	"totalViolations": 141,
+	"generated": "2026-06-25T12:22:26.752Z",
+	"totalViolations": 126,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -76,13 +76,7 @@
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 350,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 430,
+				"line": 352,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -229,38 +223,6 @@
 				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByTestId('add-connection-button')",
 				"hash": "dd2f0028a100"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
-				"hash": "b9469409e327"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Chained locator call in test: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
-				"hash": "398194940a4c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 143,
-				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat')",
-				"hash": "ffd406dce67d"
-			}
-		],
-		"tests/e2e/ai/langchain-vectorstores.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 88,
-				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().getByTestId('canvas-chat-...",
-				"hash": "ad9bd1b56ea5"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 94,
-				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().getByTestId('canvas-chat-...",
-				"hash": "ad9bd1b56ea5"
 			}
 		],
 		"tests/e2e/ai/workflow-builder.spec.ts": [
@@ -513,32 +475,6 @@
 				"hash": "0eb6824192ab"
 			}
 		],
-		"tests/e2e/workflows/executions/list.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 324,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-trigger-conte...",
-				"hash": "9f1081df0a8a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 326,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })....",
-				"hash": "3b12669e6a7f"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 326,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })",
-				"hash": "ff575079b421"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 332,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-content')",
-				"hash": "10cc160abd6b"
-			}
-		],
 		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -575,32 +511,6 @@
 				"line": 96,
 				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
 				"hash": "e8fc423eeeb7"
-			}
-		],
-		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 44,
-				"message": "Direct page locator call: n8n.page.getByTestId('node-creator-plus-button')",
-				"hash": "2b61afc80039"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 55,
-				"message": "Direct page locator call: n8n.page.getByTestId('execute-node-button')",
-				"hash": "af9330ed3874"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 56,
-				"message": "Direct page locator call: n8n.page.getByTestId('delete-node-button')",
-				"hash": "01554562f936"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 57,
-				"message": "Direct page locator call: n8n.page.getByTestId('disable-node-button')",
-				"hash": "4f683821335f"
 			}
 		],
 		"composables/BuilderWizardComposer.ts": [
@@ -865,12 +775,6 @@
 				"line": 38,
 				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
 				"hash": "206b89bd1594"
-			},
-			{
-				"rule": "deduplication",
-				"line": 52,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
-				"hash": "2f37cf533810"
 			}
 		],
 		"pages/WorkerViewPage.ts": [

@@ -13,6 +13,7 @@ import type {
 	Mysql2PoolConnection,
 	ParameterMatch,
 	QueryMode,
+	QueryRunner,
 	QueryValues,
 	QueryWithValues,
 	SortRule,
@@ -322,7 +323,7 @@ export function configureQueryRunner(
 	this: IExecuteFunctions,
 	options: IDataObject,
 	pool: Mysql2Pool,
-) {
+): QueryRunner {
 	return async (queries: QueryWithValues[]) => {
 		if (queries.length === 0) {
 			return [];

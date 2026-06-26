@@ -2,6 +2,7 @@
 jest.mock('@n8n/instance-ai', () => {
 	const { z } = jest.requireActual('zod');
 	return {
+		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
@@ -515,6 +516,7 @@ type ShutdownServiceInternals = {
 	};
 	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: jest.MockedFunction<() => void> };
+	browserSessionService: { shutdown: jest.MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: jest.MockedFunction<() => void> };
 	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
@@ -777,6 +779,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			schedulePlannedTasks: jest.Mock;
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
+			browserSessionService: { findMcpServer: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: jest.Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -828,6 +831,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
 		service.domainAccessTrackersByThread = new Map();
+		service.browserSessionService = { findMcpServer: jest.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: jest.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
@@ -965,6 +969,7 @@ describe('InstanceAiService — shutdown', () => {
 		};
 		service.gatewayService = { disconnectAll: jest.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: jest.fn() };
+		service.browserSessionService = { shutdown: jest.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
 		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
@@ -1091,6 +1096,33 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
+	});
+
+	it('passes handoff context into executeRun', () => {
+		const service = createStartRunService();
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		service.startRun(fakeUser, 'thread-a', 'How do I set this up?', undefined, context);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'How do I set this up?',
+			expect.any(AbortController),
+			undefined,
+			context,
+			'group-1',
+			undefined,
+		);
 	});
 });
 
@@ -1873,7 +1905,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
 
 		expect(plannedTaskService.markRunning).toHaveBeenCalledWith('thread-a', 'wf-1', {
-			agentId: 'agent-001',
+			agentId: 'orchestrator-plan-run-1',
 		});
 		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith('build-workflow', graph, {
 			buildTask,
