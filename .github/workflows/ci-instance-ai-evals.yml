@@ -81,12 +81,13 @@ jobs:
           set -euo pipefail
           if [ -n "$INPUT_PR" ]; then
             # Dispatch against a PR number: test the latest push (auto PR-open
-            # runs go stale). Prefer the merge ref (refs/pull/N/merge): it tests
-            # the merged state like PR-open, and main CI's prepare-docker caches
-            # its image so load-n8n-docker hits instead of rebuilding. But the
-            # merge ref updates async after a push - use it only when its parents
-            # include the current head (i.e. it reflects the latest push);
-            # otherwise fall back to the raw head and rebuild.
+            # runs go stale). Prefer the merge ref (refs/pull/N/merge) so we test
+            # the merged state like PR-open does. The merge ref updates async
+            # after a push - use it only when its parents include the current
+            # head (i.e. it reflects the latest push); otherwise fall back to the
+            # raw head. Either way a dispatched run can't restore the prepare-docker
+            # image cache (it's scoped to refs/pull/N/merge), so load-n8n-docker
+            # rebuilds from the checkout.
             pr_json=$(gh api "repos/$REPO/pulls/$INPUT_PR")
             head_sha=$(echo "$pr_json" | jq -r '.head.sha')
             head_ref=$(echo "$pr_json" | jq -r '.head.ref')
@@ -96,9 +97,9 @@ jobs:
                gh api "repos/$REPO/commits/$merge_sha" --jq '.parents[].sha' 2>/dev/null \
                  | grep -qx "$head_sha"; then
               tested_sha="$merge_sha"
-              echo "PR #$INPUT_PR: testing merge ref $merge_sha (fresh; reuses image cache)"
+              echo "PR #$INPUT_PR: testing merge ref $merge_sha (fresh; merged state, image rebuilt)"
             else
-              echo "PR #$INPUT_PR: testing head $head_sha (merge ref stale/unavailable; rebuild)"
+              echo "PR #$INPUT_PR: testing head $head_sha (merge ref stale/unavailable; image rebuilt)"
             fi
             branch="$tested_sha"; cache_sha="$tested_sha"; revision_sha="$tested_sha"
             pr_number="$INPUT_PR"; tier="${INPUT_TIER:-pr}"
@@ -108,9 +109,14 @@ jobs:
             branch="$GH_SHA"; cache_sha="$GH_SHA"; revision_sha="$GH_SHA"
             head_ref="$EVENT_HEAD_REF"; pr_number="$EVENT_PR_NUMBER"; tier="${INPUT_TIER:-pr}"
           else
-            # Dispatch with an explicit branch (or the default).
-            branch="${INPUT_BRANCH:-$GH_SHA}"; cache_sha="$GH_SHA"; revision_sha="$GH_SHA"
-            head_ref="${INPUT_BRANCH:-$GH_SHA}"; pr_number=""; tier="${INPUT_TIER:-full}"
+            # Dispatch with an explicit branch (defaults to 'master'). Key the
+            # image cache and LangSmith tags on the ref under test, not
+            # github.sha: github.sha is the workflow's own ref (master when
+            # dispatched there), so keying on it would load master's prebuilt
+            # image even when testing another branch. A branch name misses the
+            # SHA-keyed cache, so load-n8n-docker rebuilds from the checkout.
+            branch="${INPUT_BRANCH:-$GH_SHA}"; cache_sha="$branch"; revision_sha="$branch"
+            head_ref="$branch"; pr_number=""; tier="${INPUT_TIER:-full}"
           fi
           {
             echo "branch=$branch"
