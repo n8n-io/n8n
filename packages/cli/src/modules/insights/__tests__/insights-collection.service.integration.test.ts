@@ -749,4 +749,33 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		expect(shutdownResolved).toBe(true);
 		expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(1);
 	});
+
+	test('persists raw insights on a steady-state flush once metadata is cached', async () => {
+		// ARRANGE
+		insightsCollectionService.init();
+		repoMocks.insertInsightsRaw.mockClear();
+		repoMocks.upsertMetadata.mockClear();
+		// On a real database (e.g. PostgreSQL) an upsert with zero value sets is
+		// rejected, which is why every other write call site guards on length > 0.
+		// The in-memory SQLite test DB tolerates it, so model the real behaviour here.
+		repoMocks.upsertMetadata.mockImplementation(async (rows: unknown[]) => {
+			if (rows.length === 0) {
+				throw new Error('Cannot perform upsert with an empty array of value sets');
+			}
+		});
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+
+		// ACT - first flush is a cache miss: metadata is upserted, raw insights inserted
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		await insightsCollectionService.flushEvents();
+		expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(1);
+
+		// ACT AGAIN - same workflow, metadata now cached and unchanged so the
+		// metadata array is empty and `upsert([])` is attempted on the real DB
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		await insightsCollectionService.flushEvents();
+
+		// ASSERT - the second flush must persist its raw insights just like the first
+		expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(2);
+	});
 });
