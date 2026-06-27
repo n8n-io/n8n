@@ -12,6 +12,11 @@ import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-req
 
 const regions = [
 	{
+		name: 'global',
+		displayName: 'Global',
+		location: 'Global',
+	},
+	{
 		name: 'africa-south1',
 		displayName: 'Africa',
 		location: 'Johannesburg',
