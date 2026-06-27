@@ -329,6 +329,8 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('category: "productivity"');
 		expect(prompt).toContain('recommendedTools: ["data-tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
+		expect(prompt).toContain('"filePath": "<exact linkedFiles path>"');
+		expect(prompt).toContain('omit `filePath` for main instructions');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
 
@@ -587,9 +589,16 @@ Use the workflow SDK.`,
 		});
 
 		const loadTool = createSkillLoadTool(fileBackedSource);
-		expect(loadTool.description).toContain('use filePath only for a linked file path');
+		expect(loadTool.description).toContain('Omit filePath to load the main skill instructions');
+		expect(loadTool.description).toContain('exact relative path returned in linkedFiles');
+		expect(loadTool.description).toContain('never use "/"');
 		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
 		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		const schemaWithFilePath = loadTool.inputSchema.innerType();
+		const filePathSchema = schemaWithFilePath.shape.filePath as { description?: string };
+		expect(filePathSchema.description).toContain('Omit this field to load the main skill');
+		expect(filePathSchema.description).toContain('exact relative path returned in linkedFiles');
+		expect(filePathSchema.description).toContain('Do not use "/"');
 		expect(
 			loadTool.inputSchema.safeParse({
 				skillId: 'summarize_notes',

@@ -16,6 +16,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
+copyAgentBuiltinSkills();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -81,4 +82,13 @@ function generateTimezoneData() {
 		return acc;
 	}, {});
 	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
+}
+
+function copyAgentBuiltinSkills() {
+	const sourceDir = path.resolve(ROOT_DIR, 'src', 'modules', 'agents', 'skills', 'builtin');
+	const destinationDir = path.resolve(ROOT_DIR, 'dist', 'modules', 'agents', 'skills', 'builtin');
+
+	shell.rm('-rf', destinationDir);
+	shell.mkdir('-p', path.dirname(destinationDir));
+	shell.cp('-r', sourceDir, destinationDir);
 }

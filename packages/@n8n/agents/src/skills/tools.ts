@@ -123,7 +123,9 @@ const skillLoadInputWithFilesSchema = skillLoadBaseInputSchema
 			.string()
 			.min(1)
 			.optional()
-			.describe('Optional linked file path relative to the skill directory.'),
+			.describe(
+				'Optional. Omit this field to load the main skill instructions. Only set it to an exact relative path returned in linkedFiles, such as "scripts/example.py". Do not use "/", directory paths, or absolute paths.',
+			),
 	})
 	.refine(({ skillId, name }) => skillId !== undefined || name !== undefined, {
 		message: 'Either skillId or name is required.',
@@ -196,7 +198,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 	const loadFile = source.loadFile;
 	return new Tool(SKILL_LOAD_TOOL_NAME)
 		.description(
-			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles.',
+			'Load a skill by skillId or name. Omit filePath to load the main skill instructions. Use filePath only for an exact relative path returned in linkedFiles; never use "/" or a directory path.',
 		)
 		.input(skillLoadInputWithFilesSchema)
 		.output(skillLoadOutputSchema)

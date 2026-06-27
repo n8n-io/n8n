@@ -1,29 +1,67 @@
 import { loadRuntimeSkillSourceFromDirectory, type RuntimeSkillSource } from '@n8n/agents';
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 const BUILTIN_SKILLS_DIR = join(__dirname, 'builtin');
-const SOURCE_TREE_BUILTIN_SKILLS_DIR = 'src/modules/agents/skills/builtin';
 
+let cachedFullBuiltinSource: RuntimeSkillSource | undefined;
 let cachedBuiltinSource: RuntimeSkillSource | undefined;
 
 function builtinSkillsDirectory(): string {
-	const candidates = [
-		BUILTIN_SKILLS_DIR,
-		resolve(process.cwd(), SOURCE_TREE_BUILTIN_SKILLS_DIR),
-		resolve(process.cwd(), 'packages/cli', SOURCE_TREE_BUILTIN_SKILLS_DIR),
-		resolve(__dirname, '../../../../src/modules/agents/skills/builtin'),
-	];
-	const directory = candidates.find((candidate) =>
-		existsSync(join(candidate, 'aiq-research', 'SKILL.md')),
-	);
-	if (!directory) {
-		throw new Error(`Built-in agent skills directory not found. Tried: ${candidates.join(', ')}`);
+	if (!existsSync(join(BUILTIN_SKILLS_DIR, 'aiq-research', 'SKILL.md'))) {
+		throw new Error(`Built-in agent skills directory not found: ${BUILTIN_SKILLS_DIR}`);
 	}
-	return directory;
+	return BUILTIN_SKILLS_DIR;
 }
 
 export function createBuiltinRuntimeSkillSource(): RuntimeSkillSource {
-	cachedBuiltinSource ??= loadRuntimeSkillSourceFromDirectory(builtinSkillsDirectory());
+	cachedBuiltinSource ??= withoutScriptLinkedFiles(createFullBuiltinRuntimeSkillSource());
 	return cachedBuiltinSource;
+}
+
+export function createFullBuiltinRuntimeSkillSource(): RuntimeSkillSource {
+	cachedFullBuiltinSource ??= loadRuntimeSkillSourceFromDirectory(builtinSkillsDirectory());
+	return cachedFullBuiltinSource;
+}
+
+function withoutScriptLinkedFiles(source: RuntimeSkillSource): RuntimeSkillSource {
+	const registry = {
+		...source.registry,
+		skills: source.registry.skills.map((skill) => ({
+			...skill,
+			linkedFiles: {
+				...skill.linkedFiles,
+				scripts: [],
+			},
+		})),
+	};
+	const hasLoadableLinkedFiles = registry.skills.some((skill) =>
+		Object.entries(skill.linkedFiles).some(
+			([group, files]) => group !== 'scripts' && files.length > 0,
+		),
+	);
+	const loadFile = source.loadFile;
+
+	return {
+		registry,
+		loadSkill: async (skillId) => {
+			const skill = await source.loadSkill(skillId);
+			if (!skill) return null;
+			return {
+				...skill,
+				linkedFiles: skill.linkedFiles
+					? {
+							...skill.linkedFiles,
+							scripts: [],
+						}
+					: undefined,
+			};
+		},
+		...(hasLoadableLinkedFiles && loadFile
+			? {
+					loadFile: async (skillId: string, filePath: string) =>
+						filePath.startsWith('scripts/') ? null : await loadFile(skillId, filePath),
+				}
+			: {}),
+	};
 }

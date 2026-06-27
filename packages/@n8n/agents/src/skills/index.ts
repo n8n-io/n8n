@@ -51,8 +51,7 @@ export {
 } from './tools';
 export {
 	buildRuntimeSkillWorkspaceBundle,
-	createLazyWorkspaceRuntimeSkillSource,
-	materializeRuntimeSkillsIntoWorkspace,
+	createPrebakedWorkspaceRuntimeSkillSource,
 	N8N_SKILLS_DIR_ENV,
 	N8N_SKILL_DIR_ENV,
 	N8N_WORKSPACE_DIR_ENV,

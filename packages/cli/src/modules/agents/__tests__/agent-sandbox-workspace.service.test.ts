@@ -57,6 +57,7 @@ describe('AgentSandboxWorkspaceService', () => {
 			'health',
 		]);
 
+		expect(workspace.filesystem).toBeUndefined();
 		expect(knowledgeSandboxService.acquireSandboxForAgent).toHaveBeenCalledWith(
 			'project-1',
 			'agent-1',

@@ -3,10 +3,6 @@ import {
 	Workspace,
 	type CommandResult,
 	type ExecuteCommandOptions,
-	type FileContent,
-	type FileEntry,
-	type FileStat,
-	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
@@ -109,7 +105,6 @@ export class AgentSandboxWorkspaceService {
 		const workspace = new Workspace({
 			id: `agent-sandbox-${agentId}`,
 			name: `Agent sandbox ${agentId}`,
-			filesystem: this.toWorkspaceFilesystem(sandbox),
 			sandbox: this.toWorkspaceSandbox(sandbox),
 		});
 		const capabilities = await this.probeRuntimeCapabilities(workspace);
@@ -167,63 +162,6 @@ export class AgentSandboxWorkspaceService {
 		};
 	}
 
-	private toWorkspaceFilesystem(sandbox: Sandbox): WorkspaceFilesystem {
-		return {
-			id: `agent-sandbox-fs-${sandbox.id}`,
-			name: 'AgentSandboxFilesystem',
-			provider: 'daytona',
-			status: 'ready',
-			readFile: async (path, options) => {
-				const buffer = await sandbox.fs.downloadFile(path);
-				return options?.encoding ? buffer.toString(options.encoding) : buffer;
-			},
-			writeFile: async (path, content) => {
-				await sandbox.fs.uploadFiles([{ source: toBuffer(content), destination: path }]);
-			},
-			appendFile: async (path, content) => {
-				let existing: Buffer<ArrayBufferLike> = Buffer.alloc(0);
-				try {
-					existing = await sandbox.fs.downloadFile(path);
-				} catch {}
-				await sandbox.fs.uploadFile(Buffer.concat([existing, toBuffer(content)]), path);
-			},
-			deleteFile: async (path, options) => await sandbox.fs.deleteFile(path, options?.recursive),
-			copyFile: async (src, dest) =>
-				await sandbox.fs.uploadFile(await sandbox.fs.downloadFile(src), dest),
-			moveFile: async (src, dest) => await sandbox.fs.moveFiles(src, dest),
-			mkdir: async (path) => await sandbox.fs.createFolder(path, '755'),
-			rmdir: async (path, options) =>
-				await sandbox.fs.deleteFile(path, options?.recursive ?? false),
-			readdir: async (path): Promise<FileEntry[]> => {
-				const files = await sandbox.fs.listFiles(path);
-				return files.map((file) => ({
-					name: file.name ?? '',
-					type: file.isDir ? 'directory' : 'file',
-					size: file.size,
-				}));
-			},
-			exists: async (path) => {
-				try {
-					await sandbox.fs.getFileDetails(path);
-					return true;
-				} catch {
-					return false;
-				}
-			},
-			stat: async (path): Promise<FileStat> => {
-				const info = await sandbox.fs.getFileDetails(path);
-				return {
-					name: info.name ?? path.split('/').pop() ?? '',
-					path,
-					type: info.isDir ? 'directory' : 'file',
-					size: info.size ?? 0,
-					createdAt: new Date(info.modTime ?? 0),
-					modifiedAt: new Date(info.modTime ?? 0),
-				};
-			},
-		};
-	}
-
 	private async probeRuntime(
 		workspace: Workspace,
 		command: string,
@@ -235,8 +173,4 @@ export class AgentSandboxWorkspaceService {
 		if (!result) return { available: false, error: 'Sandbox command execution is unavailable' };
 		return toCapability(result);
 	}
-}
-
-function toBuffer(content: FileContent): Buffer {
-	return typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
 }

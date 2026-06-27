@@ -1,5 +1,5 @@
 import {
-	createLazyWorkspaceRuntimeSkillSource,
+	createPrebakedWorkspaceRuntimeSkillSource,
 	createWriteTodosTool,
 	type Agent as RuntimeAgent,
 	BuiltTool,
@@ -69,21 +69,14 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
-import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from './agent-knowledge-storage';
 import { AgentSandboxWorkspaceService } from './agent-sandbox-workspace.service';
 import { createBuiltinRuntimeSkillSource } from './skills/builtin-runtime-skills';
-import {
-	createDbRuntimeSkillSource,
-	mergeRuntimeSkillSources,
-} from './skills/db-runtime-skill-source';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
-
-const AGENT_SKILLS_SNAPSHOT_PREFIX = 'n8n/agent-skills:';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
@@ -424,7 +417,7 @@ export class AgentRuntimeReconstructionService {
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
-		await this.attachSandboxBackedSkills({ agent, agentId, projectId, userId, skills });
+		await this.attachSandboxBackedSkills({ agent, agentId, projectId, userId });
 
 		if (
 			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
@@ -524,16 +517,12 @@ export class AgentRuntimeReconstructionService {
 		agentId: string;
 		projectId: string;
 		userId: string;
-		skills: Record<string, AgentSkill>;
 	}): Promise<void> {
 		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) return;
 
-		const { agent, agentId, projectId, userId, skills } = params;
+		const { agent, agentId, projectId, userId } = params;
 		try {
-			const source = mergeRuntimeSkillSources(
-				createDbRuntimeSkillSource(skills),
-				createBuiltinRuntimeSkillSource(),
-			);
+			const source = createBuiltinRuntimeSkillSource();
 			if (source.registry.skills.length === 0) {
 				throw new Error('No sandbox-backed runtime skills were loaded');
 			}
@@ -546,10 +535,9 @@ export class AgentRuntimeReconstructionService {
 				userId,
 			);
 			agent.skills(
-				createLazyWorkspaceRuntimeSkillSource({
+				createPrebakedWorkspaceRuntimeSkillSource({
 					source,
-					workspace,
-					root: this.runtimeSkillMaterializationRoot(),
+					root: DAYTONA_WORKSPACE_ROOT,
 					workspaceRoot: DAYTONA_WORKSPACE_ROOT,
 				}),
 			);
@@ -565,12 +553,6 @@ export class AgentRuntimeReconstructionService {
 				cause: error,
 			});
 		}
-	}
-
-	private runtimeSkillMaterializationRoot(): string {
-		return this.agentsConfig.sandboxSnapshot.startsWith(AGENT_SKILLS_SNAPSHOT_PREFIX)
-			? DAYTONA_WORKSPACE_ROOT
-			: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH;
 	}
 
 	private async attachSubAgentDelegationTool(params: {

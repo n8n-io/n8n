@@ -1,7 +1,9 @@
 ---
 name: aiq-research
 description: |
-  Use when asked to run deep research or AI-Q research through a reachable NVIDIA AI-Q Blueprint backend.
+  Use when asked to run deep research or AI-Q research through a reachable NVIDIA AI-Q Blueprint backend. Load this
+  skill for instructions, then execute `$SKILL_DIR/scripts/aiq.py` with workspace_execute_command. Do not load the
+  helper script as a linked file.
 license: Apache-2.0
 compatibility: |
   Designed for Claude Code, OpenCode, Codex, and Agent Skills-compatible tools. Requires Python 3.11+ and network
@@ -36,7 +38,8 @@ allowed_tools:
 ## Purpose
 
 Use this skill to call a locally running NVIDIA AI-Q Blueprint server through the helper script at
-`scripts/aiq.py`.
+`$SKILL_DIR/scripts/aiq.py`. Do not load the helper script as a linked file; execute it with
+`workspace_execute_command` using the commands below.
 
 Use this skill for research-shaped requests, including:
 

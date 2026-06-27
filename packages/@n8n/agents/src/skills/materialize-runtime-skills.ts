@@ -1,7 +1,5 @@
 import { normalize as posixNormalize, join as posixJoin } from 'node:path/posix';
 
-import { getWorkspaceRoot } from '../workspace/sandbox';
-import type { Workspace } from '../workspace';
 import {
 	RUNTIME_SKILL_FILE_NAME,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
@@ -15,7 +13,6 @@ import {
 	type RuntimeSkillRegistryEntry,
 	type RuntimeSkillSource,
 } from './types';
-import { materializeWorkspaceBundle, type WorkspaceBundle } from './workspace-bundle';
 
 export const SANDBOX_RUNTIME_SKILLS_DIR = 'skills';
 export const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE = 'registry.json';
@@ -45,9 +42,9 @@ export interface RuntimeSkillWorkspaceManifest {
 	skillsHash: string;
 }
 
-export interface RuntimeSkillWorkspaceBundle
-	extends MaterializedRuntimeSkills,
-		WorkspaceBundle<RuntimeSkillWorkspaceManifest> {
+export interface RuntimeSkillWorkspaceBundle extends MaterializedRuntimeSkills {
+	files: Map<string, string | Buffer>;
+	manifest: RuntimeSkillWorkspaceManifest;
 	manifestPath: string;
 	skillsHash: string;
 }
@@ -59,18 +56,11 @@ interface BuildRuntimeSkillWorkspaceBundleOptions {
 	skillsRoot?: string;
 }
 
-interface MaterializeRuntimeSkillsOptions {
+interface PrebakedWorkspaceRuntimeSkillSourceOptions {
 	source: RuntimeSkillSource;
-	workspace: Workspace;
-	root?: string;
+	root: string;
 	workspaceRoot?: string;
-}
-
-interface LazyWorkspaceRuntimeSkillSourceOptions {
-	source: RuntimeSkillSource;
-	workspace: Workspace | undefined;
-	root?: string;
-	workspaceRoot?: string;
+	skillsRoot?: string;
 }
 
 const LINKED_FILE_GROUPS = [
@@ -409,6 +399,7 @@ export async function buildRuntimeSkillWorkspaceBundle({
 		skillsHash: source.registry.skillsHash,
 	};
 	const manifestPath = posixJoin(skillsRoot, RUNTIME_SKILL_MANIFEST_FILE);
+	files.set(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 	const env: NodeJS.ProcessEnv = {
 		[N8N_WORKSPACE_DIR_ENV]: workspaceRoot,
 		[N8N_SKILLS_DIR_ENV]: skillsRoot,
@@ -433,105 +424,29 @@ export async function buildRuntimeSkillWorkspaceBundle({
 	};
 }
 
-export async function materializeRuntimeSkillsIntoWorkspace({
+export function createPrebakedWorkspaceRuntimeSkillSource({
 	source,
-	workspace,
 	root,
-	workspaceRoot,
-}: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
-	if (source.registry.skills.length === 0) return undefined;
+	workspaceRoot = root,
+	skillsRoot = posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR),
+}: PrebakedWorkspaceRuntimeSkillSourceOptions): RuntimeSkillSource {
+	if (source.registry.skills.length === 0) return source;
 
-	const resolvedWorkspaceRoot = workspaceRoot ?? root ?? (await getWorkspaceRoot(workspace));
-	const resolvedRoot = root ?? resolvedWorkspaceRoot;
-	const manifestPath = posixJoin(
-		resolvedRoot,
-		SANDBOX_RUNTIME_SKILLS_DIR,
-		RUNTIME_SKILL_MANIFEST_FILE,
-	);
-
-	return await materializeWorkspaceBundle<
-		RuntimeSkillWorkspaceBundle,
-		RuntimeSkillWorkspaceManifest
-	>({
-		workspace,
-		manifestPath,
-		expectedHash: source.registry.skillsHash,
-		hashField: 'skillsHash',
-		schemaVersion: RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
-		loadPrebaked: async () =>
-			await buildRuntimeSkillWorkspaceBundle({
-				source,
-				root: resolvedRoot,
-				workspaceRoot: resolvedWorkspaceRoot,
-			}),
-		buildBundle: async () => {
-			const bundle = await buildRuntimeSkillWorkspaceBundle({
-				source,
-				root: resolvedRoot,
-				workspaceRoot: resolvedWorkspaceRoot,
-			});
-			if (!bundle) throw new Error('Expected runtime skill bundle after registry validation');
-			return bundle;
-		},
+	const materialized = source.registry.skills.map((entry) => {
+		const directory = materializedSkillDirectory(skillsRoot, entry);
+		return {
+			id: entry.id,
+			name: entry.name,
+			path: posixJoin(directory, RUNTIME_SKILL_FILE_NAME),
+			directory,
+		};
 	});
-}
-
-export function createLazyWorkspaceRuntimeSkillSource({
-	source,
-	workspace,
-	root,
-	workspaceRoot,
-}: LazyWorkspaceRuntimeSkillSourceOptions): RuntimeSkillSource {
-	if (!workspace || source.registry.skills.length === 0) return source;
-	const targetWorkspace = workspace;
-
-	let materialized: MaterializedRuntimeSkills | undefined;
-	let materializePromise: Promise<MaterializedRuntimeSkills | undefined> | undefined;
-
-	const workspaceSource: RuntimeSkillSource = {
-		registry: source.registry,
-		prepare: async () => {
-			await ensureMaterialized();
-		},
-		loadSkill: async (skillId: string) => await (await ensureSource()).loadSkill(skillId),
-		...(source.loadFile
-			? {
-					loadFile: async (skillId: string, filePath: string) => {
-						const preparedSource = await ensureSource();
-						return (await preparedSource.loadFile?.(skillId, filePath)) ?? null;
-					},
-				}
-			: {}),
-	};
-
-	async function ensureMaterialized(): Promise<MaterializedRuntimeSkills | undefined> {
-		if (materialized) return materialized;
-
-		materializePromise ??= materializeRuntimeSkillsIntoWorkspace({
-			source,
-			workspace: targetWorkspace,
-			root,
-			workspaceRoot,
-		}).then(
-			(result) => {
-				if (result) {
-					materialized = result;
-					workspaceSource.registry = result.source.registry;
-				}
-				return result;
-			},
-			(error: unknown) => {
-				materializePromise = undefined;
-				throw error;
-			},
-		);
-
-		return await materializePromise;
-	}
-
-	async function ensureSource(): Promise<RuntimeSkillSource> {
-		return (await ensureMaterialized())?.source ?? source;
-	}
-
-	return workspaceSource;
+	const registry = materializedRegistry(source.registry, materialized);
+	return createMaterializedRuntimeSkillSource(
+		source,
+		registry,
+		materialized,
+		workspaceRoot,
+		skillsRoot,
+	);
 }

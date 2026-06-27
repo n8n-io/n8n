@@ -4,8 +4,8 @@ import {
 	getInlineDelegateSubAgentToolOptions,
 	WRITE_TODOS_TOOL_NAME,
 } from '@n8n/agents';
-import type * as agents from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
+import type * as agents from '@n8n/agents';
 import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
@@ -54,8 +54,37 @@ jest.mock('@n8n/agents', () => {
 	const actual = jest.requireActual<typeof import('@n8n/agents')>('@n8n/agents');
 	return {
 		...actual,
-		createLazyWorkspaceRuntimeSkillSource: ({ source }: { source: agents.RuntimeSkillSource }) =>
+		createPrebakedWorkspaceRuntimeSkillSource: ({
 			source,
+			root,
+		}: {
+			source: agents.RuntimeSkillSource;
+			root: string;
+		}): agents.RuntimeSkillSource => {
+			const skillsRoot = `${root}/skills`;
+			return {
+				...source,
+				registry: {
+					...source.registry,
+					skills: source.registry.skills.map((skill) => ({
+						...skill,
+						path: `${skillsRoot}/${skill.name}/SKILL.md`,
+						directory: `${skillsRoot}/${skill.name}`,
+					})),
+				},
+				loadSkill: async (skillId: string) => {
+					const skill = await source.loadSkill(skillId);
+					if (!skill) return null;
+					const directory = `${skillsRoot}/${skill.name}`;
+					return {
+						...skill,
+						path: `${directory}/SKILL.md`,
+						directory,
+						instructions: skill.instructions.replaceAll('$SKILL_DIR', directory),
+					};
+				},
+			};
+		},
 	};
 });
 
@@ -85,7 +114,7 @@ jest.mock('../skills/builtin-runtime-skills', () => ({
 			id: 'aiq-research',
 			name: 'aiq-research',
 			description: 'Use AI-Q',
-			instructions: 'Use AI-Q',
+			instructions: 'Run python3 $SKILL_DIR/scripts/aiq.py',
 		}),
 	}),
 }));
@@ -286,8 +315,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	it('attaches sandbox-backed runtime skills when the agent sandbox is enabled', async () => {
 		const logger = mock<Logger>();
 		const agentSandboxWorkspaceService = mock<AgentSandboxWorkspaceService>();
+		const workspace = {} as agents.Workspace;
 		agentSandboxWorkspaceService.createWorkspace.mockResolvedValue({
-			workspace: {} as agents.Workspace,
+			workspace,
 			capabilities: {
 				node: { available: true, version: 'v22.0.0' },
 				tsx: { available: true, version: 'tsx 4.0.0' },
@@ -313,10 +343,20 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			'user-1',
 		);
 		expect(logger.warn).not.toHaveBeenCalled();
-		expect(builtAgent.workspace).toHaveBeenCalled();
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
 		expect(builtAgent.skills).toHaveBeenCalled();
 		const source = builtAgent.skills.mock.calls.at(-1)?.[0] as agents.RuntimeSkillSource;
 		expect(source.registry.skills.map((skill) => skill.id)).toContain('aiq-research');
+		expect(source.registry.skills[0]).toMatchObject({
+			id: 'aiq-research',
+			path: '/home/daytona/workspace/skills/aiq-research/SKILL.md',
+			directory: '/home/daytona/workspace/skills/aiq-research',
+			linkedFiles: expect.objectContaining({ scripts: [] }),
+		});
+		await expect(source.loadSkill('aiq-research')).resolves.toMatchObject({
+			instructions: 'Run python3 /home/daytona/workspace/skills/aiq-research/scripts/aiq.py',
+		});
+		expect(getInjectedToolNames()).not.toContain('aiq_research');
 	});
 
 	function getInjectedDelegatePolicy() {

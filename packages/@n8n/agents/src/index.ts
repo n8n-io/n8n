@@ -134,7 +134,7 @@ export {
 	appendSkillCatalogToInstructions,
 	buildRuntimeSkillWorkspaceBundle,
 	createListSkillsTool,
-	createLazyWorkspaceRuntimeSkillSource,
+	createPrebakedWorkspaceRuntimeSkillSource,
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
@@ -143,7 +143,6 @@ export {
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
 	loadRuntimeSkillSourceFromDirectory,
-	materializeRuntimeSkillsIntoWorkspace,
 	N8N_SKILLS_DIR_ENV,
 	N8N_SKILL_DIR_ENV,
 	N8N_WORKSPACE_DIR_ENV,
@@ -262,10 +261,6 @@ export type {
 	InlineSubAgentProviderToolsResolver,
 	SubAgentTaskDifficulty,
 } from './runtime/tools/delegate-sub-agent-tool';
-export {
-	AIQ_RESEARCH_TOOL_NAME,
-	createAiqResearchTool,
-} from './runtime/tools/aiq-research-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';

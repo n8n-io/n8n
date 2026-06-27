@@ -1,13 +1,16 @@
-import type { Daytona, Image } from '@daytona/sdk';
+import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytona/sdk';
 import { buildRuntimeSkillWorkspaceBundle } from '@n8n/agents';
 import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { N8N_VERSION } from '@/constants';
 
-import { createBuiltinRuntimeSkillSource } from './skills/builtin-runtime-skills';
+import { createFullBuiltinRuntimeSkillSource } from './skills/builtin-runtime-skills';
 
 export interface CreateAgentSandboxSnapshotOptions {
 	timeout?: number;
@@ -25,22 +28,41 @@ const PACKAGE_JSON = JSON.stringify(
 	2,
 );
 
-function shellEscape(value: string): string {
-	return /^[A-Za-z0-9_./:=@+-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
+const DAYTONA_WORKSPACE_BAKE_ROOT = '/tmp/n8n-agent-skills-bake';
+
+function isAlreadyExistsError(error: unknown): error is TDaytonaError {
+	const { DaytonaError } = loadDaytona();
+	if (!(error instanceof DaytonaError)) return false;
+	if (error.statusCode === 409) return true;
+	return /already exists/i.test(error.message);
 }
 
-function writeFileCommand(path: string, content: string | Buffer): string {
-	const base64 =
-		typeof content === 'string'
-			? Buffer.from(content, 'utf-8').toString('base64')
-			: content.toString('base64');
-	const directory = path.slice(0, path.lastIndexOf('/'));
-	return `mkdir -p ${shellEscape(directory)} && printf '%s' ${shellEscape(base64)} | base64 -d > ${shellEscape(path)}`;
+async function stageWorkspaceFilesForImage(
+	files: Map<string, string | Buffer>,
+	workspaceRoot: string,
+): Promise<string> {
+	const stagingDir = await mkdtemp(path.join(tmpdir(), 'n8n-agent-skills-'));
+
+	await Promise.all(
+		[...files].map(async ([workspacePath, content]) => {
+			const relativePath = path.posix.relative(workspaceRoot, workspacePath);
+			if (!relativePath || relativePath.startsWith('..') || path.posix.isAbsolute(relativePath)) {
+				throw new Error(`Cannot stage file outside Daytona workspace root: ${workspacePath}`);
+			}
+
+			const destination = path.join(stagingDir, relativePath);
+			await mkdir(path.dirname(destination), { recursive: true });
+			await writeFile(destination, content);
+		}),
+	);
+
+	return stagingDir;
 }
 
 @Service()
 export class AgentSandboxSnapshotService {
 	private cachedImage: Promise<Image> | undefined;
+	private stagingDir: string | undefined;
 
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
@@ -61,35 +83,50 @@ export class AgentSandboxSnapshotService {
 		options?: CreateAgentSandboxSnapshotOptions,
 	): Promise<string> {
 		const name = this.snapshotName();
-		await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
-		this.logger.info('Created regular agent skills Daytona snapshot', { name });
-		return name;
+		try {
+			await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
+			this.logger.info('Created regular agent skills Daytona snapshot', { name });
+			return name;
+		} catch (error) {
+			if (isAlreadyExistsError(error)) {
+				this.logger.info('Regular agent skills Daytona snapshot already exists', { name });
+				return name;
+			}
+			throw error;
+		}
 	}
 
 	invalidate(): void {
+		const stagingDir = this.stagingDir;
 		this.cachedImage = undefined;
+		this.stagingDir = undefined;
+		if (stagingDir) {
+			void rm(stagingDir, { recursive: true, force: true });
+		}
 	}
 
 	private async prepareImage(): Promise<Image> {
 		const bundle = await buildRuntimeSkillWorkspaceBundle({
-			source: createBuiltinRuntimeSkillSource(),
+			source: createFullBuiltinRuntimeSkillSource(),
 			root: DAYTONA_WORKSPACE_ROOT,
 		});
 		const files = new Map<string, string | Buffer>(bundle?.files ?? []);
 		files.set(`${DAYTONA_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
-
-		const commands = [...files].map(([path, content]) => writeFileCommand(path, content));
-		commands.push(`cd ${shellEscape(DAYTONA_WORKSPACE_ROOT)} && npm install --ignore-scripts`);
+		const stagingDir = await stageWorkspaceFilesForImage(files, DAYTONA_WORKSPACE_ROOT);
+		this.stagingDir = stagingDir;
 
 		const { Image } = loadDaytona();
-		const image = Image.base(
-			this.agentsConfig.sandboxImage || 'daytonaio/sandbox:0.5.0',
-		).runCommands(...commands);
+		const image = Image.base(this.agentsConfig.sandboxImage || 'daytonaio/sandbox:0.5.0')
+			.addLocalDir(stagingDir, DAYTONA_WORKSPACE_BAKE_ROOT)
+			.runCommands(
+				`cp -a ${DAYTONA_WORKSPACE_BAKE_ROOT}/. ${DAYTONA_WORKSPACE_ROOT}/ && cd ${DAYTONA_WORKSPACE_ROOT} && npm install --ignore-scripts`,
+			);
 
 		this.logger.info('Prepared regular agent skills Daytona image descriptor', {
 			dockerfileLength: image.dockerfile.length,
 			runtimeSkillsHash: bundle?.skillsHash,
 			runtimeSkillFiles: bundle?.files.size ?? 0,
+			stagingDir,
 		});
 
 		return image;
