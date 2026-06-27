@@ -16,6 +16,7 @@ import {
 
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { wrapGeminiBindTools } from '../gemini-common/normalizeGeminiToolSchema';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -207,7 +208,7 @@ export class LmChatGoogleVertex implements INodeType {
 				modelConfig.thinkingBudget = options.thinkingBudget;
 			}
 
-			const model = new ChatVertexAI(modelConfig);
+			const model = wrapGeminiBindTools(new ChatVertexAI(modelConfig));
 
 			return {
 				response: model,
