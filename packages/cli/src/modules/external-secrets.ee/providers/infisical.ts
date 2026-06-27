@@ -9,6 +9,12 @@ import { Container } from '@n8n/di';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderTokenRefreshError,
+	SecretsProviderUpdateError,
+} from '../errors/secrets-provider-errors';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
@@ -178,19 +184,30 @@ export class InfisicalProvider extends SecretsProvider {
 	protected async doConnect(): Promise<void> {
 		this.refreshAbort = new AbortController();
 
-		if (this.settings.authMethod === 'universalAuth') {
-			if (!this.settings.clientId || !this.settings.clientSecret) {
-				throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+		try {
+			if (this.settings.authMethod === 'universalAuth') {
+				if (!this.settings.clientId || !this.settings.clientSecret) {
+					throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+				}
+				await this.loginUniversalAuth();
 			}
-			await this.loginUniversalAuth();
-		}
 
-		const [testSuccess, testMessage] = await this.test();
-		if (!testSuccess) {
-			throw new Error(testMessage ?? 'Connection test failed');
-		}
+			const [testSuccess, testMessage] = await this.test();
+			if (!testSuccess) {
+				throw new Error(testMessage ?? 'Connection test failed');
+			}
 
-		this.setupTokenRefresh();
+			this.setupTokenRefresh();
+		} catch (error) {
+			this.logger.warn('Failed to connect Infisical provider', {
+				authMethod: this.settings.authMethod,
+				error: new SecretsProviderConnectionError(this.name, this.displayName, {
+					authMethod: this.settings.authMethod,
+					statusCode: httpStatusFromError(error),
+				}),
+			});
+			throw error;
+		}
 	}
 
 	async disconnect(): Promise<void> {
@@ -232,6 +249,13 @@ export class InfisicalProvider extends SecretsProvider {
 
 			return [false, `Unexpected response from Infisical (status ${resp.statusCode}).`];
 		} catch (error) {
+			this.logger.warn('Infisical provider test failed', {
+				error: new SecretsProviderTestError(this.name, this.displayName, {
+					statusCode: httpStatusFromError(error),
+					resource: 'workspace',
+				}),
+			});
+
 			if (isConnectionRefusedError(error)) {
 				return [false, 'Connection refused. Check the Site URL.'];
 			}
@@ -244,17 +268,29 @@ export class InfisicalProvider extends SecretsProvider {
 			throw new UnexpectedError('Update attempted on Infisical before authentication');
 		}
 
-		await this.ensureTokenFresh();
-
 		try {
-			this.cacheSecrets(await this.fetchSecrets());
-		} catch (error) {
-			if (httpStatusFromError(error) === 401) {
-				this.logger.debug('Infisical token rejected during update; re-authenticating and retrying');
-				await this.loginUniversalAuth();
+			await this.ensureTokenFresh();
+
+			try {
 				this.cacheSecrets(await this.fetchSecrets());
-				return;
+			} catch (error) {
+				if (httpStatusFromError(error) === 401) {
+					this.logger.debug(
+						'Infisical token rejected during update; re-authenticating and retrying',
+					);
+					await this.loginUniversalAuth();
+					this.cacheSecrets(await this.fetchSecrets());
+					return;
+				}
+				throw error;
 			}
+		} catch (error) {
+			this.logger.warn('Failed to update Infisical provider secrets', {
+				error: new SecretsProviderUpdateError(this.name, this.displayName, {
+					statusCode: httpStatusFromError(error),
+					resource: 'secrets',
+				}),
+			});
 			throw error;
 		}
 	}
@@ -338,7 +374,11 @@ export class InfisicalProvider extends SecretsProvider {
 			if (this.refreshAbort.signal.aborted) return;
 			this.setupTokenRefresh();
 		} catch {
-			this.logger.error('Failed to refresh Infisical token. Attempting reconnect.');
+			this.logger.warn('Failed to refresh Infisical token. Attempting reconnect.', {
+				error: new SecretsProviderTokenRefreshError(this.name, this.displayName, {
+					authMethod: this.settings.authMethod,
+				}),
+			});
 			void this.connect();
 		}
 	};

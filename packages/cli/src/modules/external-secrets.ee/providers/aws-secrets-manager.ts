@@ -2,9 +2,15 @@ import type { SecretsManager, SecretsManagerClientConfig } from '@aws-sdk/client
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import type { INodeProperties } from 'n8n-workflow';
+import { type INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderInitializationError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../errors/secrets-provider-errors';
 import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
 import { SecretsProvider } from '../types';
 import type { SecretsProviderSettings } from '../types';
@@ -109,29 +115,39 @@ export class AwsSecretsManager extends SecretsProvider {
 	}
 
 	async init(context: AwsSecretsManagerContext) {
-		this.assertAuthType(context);
+		try {
+			this.assertAuthType(context);
 
-		const { region, authMethod } = context.settings;
-		const clientConfig: SecretsManagerClientConfig = { region };
+			const { region, authMethod } = context.settings;
+			const clientConfig: SecretsManagerClientConfig = { region };
 
-		if (authMethod === 'iamUser') {
-			const { accessKeyId, secretAccessKey } = context.settings;
-			clientConfig.credentials = { accessKeyId, secretAccessKey };
+			if (authMethod === 'iamUser') {
+				const { accessKeyId, secretAccessKey } = context.settings;
+				clientConfig.credentials = { accessKeyId, secretAccessKey };
+			}
+
+			// Drive the AWS SDK's HTTP transport through n8n's outbound client,
+			// so its calls reuse our agents (proxy + TLS) like every other outbound request.
+			// SigV4 signing and the credential chain stay with the SDK.
+			clientConfig.requestHandler = this.outboundHttp
+				.transport({
+					ssrf: 'disabled', // fixed AWS-resolved Secrets Manager host, not user-controlled
+				})
+				.getNodeAgent();
+
+			const { SecretsManager } = await import('@aws-sdk/client-secrets-manager');
+			this.client = new SecretsManager(clientConfig);
+
+			this.logger.debug('AWS Secrets Manager provider initialized');
+		} catch (error) {
+			this.logger.warn('Failed to initialize AWS Secrets Manager provider', {
+				authMethod: context.settings.authMethod,
+				error: new SecretsProviderInitializationError(this.name, this.displayName, {
+					authMethod: context.settings.authMethod,
+				}),
+			});
+			throw error;
 		}
-
-		// Drive the AWS SDK's HTTP transport through n8n's outbound client,
-		// so its calls reuse our agents (proxy + TLS) like every other outbound request.
-		// SigV4 signing and the credential chain stay with the SDK.
-		clientConfig.requestHandler = this.outboundHttp
-			.transport({
-				ssrf: 'disabled', // fixed AWS-resolved Secrets Manager host, not user-controlled
-			})
-			.getNodeAgent();
-
-		const { SecretsManager } = await import('@aws-sdk/client-secrets-manager');
-		this.client = new SecretsManager(clientConfig);
-
-		this.logger.debug('AWS Secrets Manager provider initialized');
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
@@ -140,18 +156,28 @@ export class AwsSecretsManager extends SecretsProvider {
 			return [true];
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
+			this.logger.warn('AWS Secrets Manager provider test failed', {
+				error: new SecretsProviderTestError(this.name, this.displayName),
+			});
 			return [false, error.message];
 		}
 	}
 
 	protected async doConnect(): Promise<void> {
-		const [wasSuccessful, errorMsg] = await this.test();
+		try {
+			const [wasSuccessful, errorMsg] = await this.test();
 
-		if (!wasSuccessful) {
-			throw new Error(errorMsg || 'Connection failed');
+			if (!wasSuccessful) {
+				throw new Error(errorMsg || 'Connection failed');
+			}
+
+			this.logger.debug('AWS Secrets Manager provider connected');
+		} catch (error) {
+			this.logger.warn('Failed to connect AWS Secrets Manager provider', {
+				error: new SecretsProviderConnectionError(this.name, this.displayName),
+			});
+			throw error;
 		}
-
-		this.logger.debug('AWS Secrets Manager provider connected');
 	}
 
 	async disconnect() {
@@ -159,15 +185,22 @@ export class AwsSecretsManager extends SecretsProvider {
 	}
 
 	async update() {
-		const secrets = await this.fetchAllSecrets();
+		try {
+			const secrets = await this.fetchAllSecrets();
 
-		const supportedSecrets = secrets;
+			const supportedSecrets = secrets;
 
-		this.cachedSecrets = Object.fromEntries(
-			supportedSecrets.map((s) => [s.secretName, s.secretValue]),
-		);
+			this.cachedSecrets = Object.fromEntries(
+				supportedSecrets.map((s) => [s.secretName, s.secretValue]),
+			);
 
-		this.logger.debug('AWS Secrets Manager provider secrets updated');
+			this.logger.debug('AWS Secrets Manager provider secrets updated');
+		} catch (error) {
+			this.logger.warn('Failed to update AWS Secrets Manager provider secrets', {
+				error: new SecretsProviderUpdateError(this.name, this.displayName),
+			});
+			throw error;
+		}
 	}
 
 	getSecret(name: string) {

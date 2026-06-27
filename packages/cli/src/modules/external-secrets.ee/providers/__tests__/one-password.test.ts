@@ -1,6 +1,14 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderInitializationError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { OnePasswordProvider } from '../one-password';
 import type { OnePasswordContext } from '../one-password';
 
@@ -17,10 +25,14 @@ jest.mock('@1password/connect', () => ({
 }));
 
 describe('OnePasswordProvider', () => {
-	const provider = new OnePasswordProvider();
+	const logger = mockInstance(Logger);
+	logger.scoped.mockReturnValue(logger);
+	let provider: OnePasswordProvider;
 
-	afterEach(() => {
+	beforeEach(() => {
 		jest.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		provider = new OnePasswordProvider(logger);
 	});
 
 	describe('init validation', () => {
@@ -28,6 +40,10 @@ describe('OnePasswordProvider', () => {
 			const settings = { serverUrl: '', accessToken: 'test-token' };
 			await expect(provider.init(mock<OnePasswordContext>({ settings }))).rejects.toThrow(
 				UserError,
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to initialize 1Password provider',
+				expect.objectContaining({ error: expect.any(SecretsProviderInitializationError) }),
 			);
 		});
 
@@ -85,6 +101,12 @@ describe('OnePasswordProvider', () => {
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to connect 1Password provider',
+				expect.objectContaining({
+					error: expect.any(SecretsProviderConnectionError),
+				}),
+			);
 		});
 	});
 
@@ -119,6 +141,10 @@ describe('OnePasswordProvider', () => {
 			const result = await provider.test();
 
 			expect(result).toEqual([false, 'Connection refused']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'1Password provider test failed',
+				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
+			);
 		});
 	});
 
@@ -270,6 +296,19 @@ describe('OnePasswordProvider', () => {
 			await provider.update();
 
 			expect(provider.hasSecret('Empty Fields')).toBe(false);
+		});
+
+		it('should log and rethrow update failures', async () => {
+			mockListVaults.mockRejectedValue(new Error('Service unavailable'));
+
+			await expect(provider.update()).rejects.toThrow('Service unavailable');
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to update 1Password provider secrets',
+				expect.objectContaining({
+					error: expect.any(SecretsProviderUpdateError),
+				}),
+			);
 		});
 	});
 

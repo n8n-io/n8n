@@ -1,8 +1,13 @@
 import { SecretClient } from '@azure/keyvault-secrets';
 import type { KeyVaultSecret } from '@azure/keyvault-secrets';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import { UnexpectedError } from 'n8n-workflow';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
@@ -10,10 +15,39 @@ jest.mock('@azure/identity');
 jest.mock('@azure/keyvault-secrets');
 
 describe('AzureKeyVault', () => {
-	const azureKeyVault = new AzureKeyVault();
+	const logger = mock<Logger>();
+	let azureKeyVault: AzureKeyVault;
 
-	afterEach(() => {
+	beforeEach(() => {
 		jest.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		azureKeyVault = new AzureKeyVault(logger);
+	});
+
+	it('should log failed client setup while preserving error state', async () => {
+		await azureKeyVault.init(
+			mock<AzureKeyVaultContext>({
+				settings: {
+					vaultName: 'my-vault',
+					tenantId: 'my-tenant-id',
+					clientId: 'my-client-id',
+					clientSecret: 'my-client-secret',
+				},
+			}),
+		);
+
+		const setupError = new Error('Invalid configuration');
+		(SecretClient as unknown as jest.Mock).mockImplementationOnce(() => {
+			throw setupError;
+		});
+
+		await azureKeyVault.connect();
+
+		expect(azureKeyVault.state).toBe('error');
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to connect Azure Key Vault provider',
+			expect.objectContaining({ error: expect.any(SecretsProviderConnectionError) }),
+		);
 	});
 
 	it('should update cached secrets', async () => {
@@ -181,6 +215,10 @@ describe('AzureKeyVault', () => {
 			expect(thrown.message).toBe('Could not read any secrets from Azure Key Vault');
 			expect(thrown.cause).toEqual(expect.objectContaining({ message: 'Key Vault unavailable' }));
 		}
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to update Azure Key Vault provider secrets',
+			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
+		);
 		expect(azureKeyVault.getSecret('only-secret')).toBe('cached-value');
 	});
 });

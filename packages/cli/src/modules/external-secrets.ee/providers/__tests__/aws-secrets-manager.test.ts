@@ -1,9 +1,15 @@
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
+import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp, HttpTransport } from '@n8n/backend-network';
 import { mock } from 'jest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 
+import {
+	SecretsProviderConnectionError,
+	SecretsProviderTestError,
+	SecretsProviderUpdateError,
+} from '../../errors/secrets-provider-errors';
 import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
 
 jest.mock('@aws-sdk/client-secrets-manager');
@@ -16,13 +22,15 @@ describe('AwsSecretsManager', () => {
 	const context = mock<AwsSecretsManagerContext>();
 	const listSecretsSpy = jest.spyOn(SecretsManager.prototype, 'listSecrets');
 	const batchGetSpy = jest.spyOn(SecretsManager.prototype, 'batchGetSecretValue');
+	const logger = mock<Logger>();
 
 	let awsSecretsManager: AwsSecretsManager;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		logger.scoped.mockReturnValue(logger);
 
-		awsSecretsManager = new AwsSecretsManager();
+		awsSecretsManager = new AwsSecretsManager(logger);
 	});
 
 	describe('transport wiring', () => {
@@ -71,6 +79,14 @@ describe('AwsSecretsManager', () => {
 			await awsSecretsManager.connect();
 
 			expect(awsSecretsManager.state).toBe('error');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'AWS Secrets Manager provider test failed',
+				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to connect AWS Secrets Manager provider',
+				expect.objectContaining({ error: expect.any(SecretsProviderConnectionError) }),
+			);
 		});
 	});
 
@@ -195,5 +211,26 @@ describe('AwsSecretsManager', () => {
 		expect(awsSecretsManager.getSecret('secret1')).toBe('secret1-value');
 		expect(awsSecretsManager.getSecret('secret2')).toBe('secret2-value');
 		expect(awsSecretsManager.getSecret('secret3')).toBe('secret3-value');
+	});
+
+	it('should log and rethrow update failures', async () => {
+		context.settings = {
+			region,
+			authMethod: 'iamUser',
+			accessKeyId,
+			secretAccessKey,
+		};
+		await awsSecretsManager.init(context);
+
+		listSecretsSpy.mockImplementation(() => {
+			throw new Error('Failed to list secrets');
+		});
+
+		await expect(awsSecretsManager.update()).rejects.toThrow('Failed to list secrets');
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to update AWS Secrets Manager provider secrets',
+			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
+		);
 	});
 });
