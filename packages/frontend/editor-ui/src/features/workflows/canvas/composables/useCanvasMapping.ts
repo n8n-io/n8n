@@ -178,6 +178,7 @@ export function useCanvasMapping({
 					waiting: executionSnapshot.waiting,
 					waitingForNext: executionSnapshot.waitingForNext,
 					running: executionSnapshot.running,
+					executionTime: runData?.at(-1)?.executionTime,
 				},
 				runData: {
 					outputMap: rd.executionRunDataOutputMapByNodeId.get(node.id),

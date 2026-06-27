@@ -162,6 +162,51 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(nodes.value[0].data?.execution.waitingForNext).toBe(true);
 	});
 
+	it('maps executionTime from the last runData task', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		setRunData(rd, 'a', [
+			{ executionStatus: 'success', executionTime: 500 } as ITaskData,
+			{ executionStatus: 'success', executionTime: 1234 } as ITaskData,
+		]);
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		// Only the last task's executionTime should be used
+		expect(nodes.value[0].data?.execution.executionTime).toBe(1234);
+	});
+
+	it('sets executionTime to undefined when runData is empty', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		expect(nodes.value[0].data?.execution.executionTime).toBeUndefined();
+	});
+
+	it('sets executionTime to undefined when the last task has no executionTime', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		expect(nodes.value[0].data?.execution.executionTime).toBeUndefined();
+	});
+
 	it('exposes runData with iterations (excluding canceled) and outputMap', () => {
 		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
 		const rd = createEmptyCanvasRenderData();

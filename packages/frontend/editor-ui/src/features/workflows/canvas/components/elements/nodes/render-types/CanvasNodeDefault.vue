@@ -2,6 +2,7 @@
 import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
@@ -44,10 +45,17 @@ const {
 	executionWaiting,
 	executionWaitingForNext,
 	executionRunning,
+	executionTime,
 	hasRunData,
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+
+const { check } = useEnvFeatureFlag();
+const showNodeExecutionTime = computed(() => check.value('SHOW_NODE_EXECUTION_TIME'));
+const formattedExecutionTime = computed(() =>
+	executionTime.value !== undefined ? i18n.displayTimer(executionTime.value, true) : undefined,
+);
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
@@ -233,6 +241,13 @@ function onActivate(event: MouseEvent) {
 			</div>
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<div
+			v-if="showNodeExecutionTime && formattedExecutionTime && !executionRunning"
+			:class="$style.executionTime"
+			data-test-id="canvas-node-execution-time"
+		>
+			{{ formattedExecutionTime }}
+		</div>
 	</div>
 </template>
 
@@ -443,6 +458,18 @@ function onActivate(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons--margin);
 	right: var(--canvas-node--status-icons--margin);
+}
+
+.executionTime {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	margin-bottom: var(--spacing--2xs);
+	font-size: var(--font-size--xs);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
+	pointer-events: none;
 }
 
 .icon {

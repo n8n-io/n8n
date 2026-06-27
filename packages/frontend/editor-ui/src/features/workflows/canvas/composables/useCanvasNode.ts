@@ -49,6 +49,7 @@ export function useCanvasNode() {
 	const executionWaiting = computed(() => data.value.execution.waiting);
 	const executionWaitingForNext = computed(() => data.value.execution.waitingForNext);
 	const executionRunning = computed(() => data.value.execution.running);
+	const executionTime = computed(() => data.value.execution.executionTime);
 
 	const runDataOutputMap = computed(() => data.value.runData.outputMap);
 	const runDataIterations = computed(() => data.value.runData.iterations);
@@ -86,6 +87,7 @@ export function useCanvasNode() {
 		executionWaiting,
 		executionWaitingForNext,
 		executionRunning,
+		executionTime,
 		render,
 		eventBus,
 		isNotInstalledCommunityNode,

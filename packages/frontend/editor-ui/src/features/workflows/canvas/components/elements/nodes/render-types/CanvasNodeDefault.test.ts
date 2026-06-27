@@ -6,6 +6,7 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { NodeConnectionTypes, type IPinData } from 'n8n-workflow';
@@ -13,6 +14,7 @@ import { computed, type ComputedRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
+import type { FrontendSettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
@@ -68,6 +70,7 @@ const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 });
 
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
 const mockedUseRoute = vi.mocked(useRoute);
 
 beforeEach(() => {
@@ -84,6 +87,8 @@ beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
+	settingsStore = mockedStore(useSettingsStore);
+	settingsStore.settings = { envFeatureFlags: {} } as FrontendSettings;
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 });
 
@@ -613,6 +618,94 @@ describe('CanvasNodeDefault', () => {
 			await fireEvent.click(getByText('Test Node'));
 
 			expect(emitted()).not.toHaveProperty('replace:node');
+		});
+	});
+
+	describe('execution time display', () => {
+		function enableExecutionTimeFlag() {
+			settingsStore.settings = {
+				envFeatureFlags: {
+					N8N_ENV_FEAT_SHOW_NODE_EXECUTION_TIME: 'true',
+				} as N8nEnvFeatFlags,
+			} as FrontendSettings;
+		}
+
+		it('should display execution time when flag is active, time is defined and node is not running', () => {
+			enableExecutionTimeFlag();
+
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { running: false, executionTime: 1234 },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-node-execution-time')).toBeVisible();
+		});
+
+		it('should not display execution time when flag is active but node is running', () => {
+			enableExecutionTimeFlag();
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { running: true, executionTime: 1234 },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-execution-time')).toBeNull();
+		});
+
+		it('should not display execution time when flag is inactive', () => {
+			// settingsStore.settings.envFeatureFlags is empty by default in beforeEach
+			const { queryByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { running: false, executionTime: 1234 },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-execution-time')).toBeNull();
+		});
+
+		it('should not display execution time when flag is active but executionTime is undefined', () => {
+			enableExecutionTimeFlag();
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { running: false },
+							},
+						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-execution-time')).toBeNull();
 		});
 	});
 });
