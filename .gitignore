@@ -35,6 +35,7 @@ build-storybook.log
 build.log
 tcr-dry.log
 .agent-setup/
+.agent-recordings/
 sbom-source.cdx.json
 *.junit.xml
 junit.xml
