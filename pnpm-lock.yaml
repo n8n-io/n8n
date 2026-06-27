@@ -5648,8 +5648,8 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       ts-ics:
-        specifier: 1.2.2
-        version: 1.2.2(date-fns@2.30.0)(lodash@4.18.1)(zod@3.25.67)
+        specifier: 2.4.5
+        version: 2.4.5
       undici:
         specifier: catalog:undici-v6
         version: 6.24.1
@@ -14130,11 +14130,6 @@ packages:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
 
-  date-fns-tz@2.0.0:
-    resolution: {integrity: sha512-OAtcLdB9vxSXTWHdT8b398ARImVwQMyjfYGkKD2zaGpHseG2UPHbHjXELReErZFxWdSLph3c2zOaaTyHfOhERQ==}
-    peerDependencies:
-      date-fns: 2.30.0
-
   date-fns@2.30.0:
     resolution: {integrity: sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw==}
     engines: {node: '>=0.11'}
@@ -20808,12 +20803,8 @@ packages:
     resolution: {integrity: sha512-XyLVuhBVvdJTJr2FJJV2L1pc4MwSjMhcunRVgDE9k4wbb2ee7ORYnPewxMWUav12vxyfUM686MSGsqnVRIInuw==}
     engines: {node: '>=18'}
 
-  ts-ics@1.2.2:
-    resolution: {integrity: sha512-L7T5JQi99qQ2Uv7AoCHUZ8Mx1bJYo7qBZtBckuHueR90I3WVdW5NC/tOqTVgu18c3zj08du+xlgWlTIcE+Foxw==}
-    peerDependencies:
-      date-fns: 2.30.0
-      lodash: 4.18.1
-      zod: 3.25.67
+  ts-ics@2.4.5:
+    resolution: {integrity: sha512-2BdtYaPiKGxGoGAdq0kFP8SPNjmvGWvJYyoOCOP3Yvt4Jxb3plMoG7ad/tU3hrivgUOxjoJrbmeuo/e9STosUg==}
 
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
@@ -32046,10 +32037,6 @@ snapshots:
       es-errors: 1.3.0
       is-data-view: 1.0.2
 
-  date-fns-tz@2.0.0(date-fns@2.30.0):
-    dependencies:
-      date-fns: 2.30.0
-
   date-fns@2.30.0:
     dependencies:
       '@babel/runtime': 7.29.7
@@ -40338,12 +40325,9 @@ snapshots:
       '@ts-graphviz/common': 2.1.5
       '@ts-graphviz/core': 2.0.7
 
-  ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.18.1)(zod@3.25.67):
+  ts-ics@2.4.5:
     dependencies:
-      date-fns: 2.30.0
-      date-fns-tz: 2.0.0(date-fns@2.30.0)
-      lodash: 4.18.1
-      zod: 3.25.67
+      '@standard-schema/spec': 1.1.0
 
   ts-interface-checker@0.1.13: {}
 
