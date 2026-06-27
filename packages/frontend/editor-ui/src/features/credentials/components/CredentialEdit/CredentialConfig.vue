@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
@@ -8,7 +8,7 @@ import type {
 	INode,
 	INodeProperties,
 } from 'n8n-workflow';
-import { isCommunityPackageName } from 'n8n-workflow';
+import { DOMAIN_RESTRICTION_FIELD_NAMES, isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
@@ -39,6 +39,7 @@ import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nCollapsiblePanel,
 	N8nInfoTip,
 	N8nInlineAskAssistantButton,
 	N8nLink,
@@ -193,6 +194,18 @@ const oAuthCallbackUrl = computed(() => {
 			: 'oauth1';
 	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 });
+
+const isAdvancedSectionOpen = ref(false);
+
+const advancedProperties = computed(() =>
+	props.credentialProperties.filter((property) =>
+		DOMAIN_RESTRICTION_FIELD_NAMES.includes(property.name),
+	),
+);
+
+const standardProperties = computed(() =>
+	props.credentialProperties.filter((property) => !advancedProperties.value.includes(property)),
+);
 
 const showOAuthSuccessBanner = computed(() => {
 	return (
@@ -588,11 +601,26 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<CredentialInputs
 					v-if="credentialType && canWrite"
 					:credential-data="credentialData"
-					:credential-properties="credentialProperties"
+					:credential-properties="standardProperties"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="showValidationWarning"
 					@update="onDataChange"
 				/>
+
+				<N8nCollapsiblePanel
+					v-if="credentialType && canWrite && advancedProperties.length"
+					v-model="isAdvancedSectionOpen"
+					:title="i18n.baseText('credentialEdit.credentialConfig.advanced')"
+					data-test-id="credential-advanced-section"
+				>
+					<CredentialInputs
+						:credential-data="credentialData"
+						:credential-properties="advancedProperties"
+						:documentation-url="documentationUrl"
+						:show-validation-warnings="showValidationWarning"
+						@update="onDataChange"
+					/>
+				</N8nCollapsiblePanel>
 
 				<N8nText v-if="isMissingCredentials" color="text-base" size="medium">
 					{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}

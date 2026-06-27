@@ -320,6 +320,11 @@ const isOAuthType = computed(() => {
 });
 
 const managedOAuthAvailable = computed(() => {
+	// Detect directly from the credential type so managed mode also resolves when the
+	// credential is edited from the credentials list (no active node context).
+	if (credentialTypeName.value && hasManagedOAuthCredentials(credentialTypeName.value)) {
+		return true;
+	}
 	return (
 		activeNodeType.value?.credentials?.some((type) => hasManagedOAuthCredentials(type.name)) ??
 		false

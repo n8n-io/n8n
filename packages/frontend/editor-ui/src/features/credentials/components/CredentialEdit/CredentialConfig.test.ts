@@ -1,5 +1,5 @@
 import CredentialConfig from './CredentialConfig.vue';
-import { screen } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -580,6 +580,68 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByTestId('copy-input')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Advanced section', () => {
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: true,
+			share: true,
+			list: true,
+			move: true,
+		};
+
+		const domainsField = {
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'options' as const,
+			default: 'all',
+			options: [{ name: 'All', value: 'all' }],
+		};
+
+		const standardField = {
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string' as const,
+			default: '',
+		};
+
+		it('groups domain-restriction fields under an Advanced section, separate from standard inputs', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [standardField, domainsField],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			const advancedSection = screen.getByTestId('credential-advanced-section');
+			expect(advancedSection).toBeInTheDocument();
+			expect(within(advancedSection).getByText('Allowed HTTP Request Domains')).toBeInTheDocument();
+			// The standard field stays outside the Advanced section.
+			expect(within(advancedSection).queryByText('API Key')).not.toBeInTheDocument();
+			expect(screen.getByText('API Key')).toBeInTheDocument();
+		});
+
+		it('does not render the Advanced section when no domain-restriction fields are present', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [standardField],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-advanced-section')).not.toBeInTheDocument();
 		});
 	});
 
