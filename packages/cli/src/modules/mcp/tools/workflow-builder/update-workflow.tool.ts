@@ -9,7 +9,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
-import { validateCredentialReferences } from './credential-validation';
+import { mcpCredentialCheckBypassed, validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
@@ -506,16 +506,24 @@ export const createUpdateWorkflowTool = (
 				throw new Error(result.error);
 			}
 
-			const credentialCheck = await validateCredentialReferences(
-				strictOperations,
-				existingWorkflow,
-				user,
-				credentialsService,
-				nodeTypes,
-				{ workflowId: existingWorkflow.id },
+			// Skip the credential check when the runtime permission gate would
+			// (workflow in the personal project of a user with global
+			// `credential:list`), so we don't reject an edit the runtime would run.
+			const owningProject = await sharedWorkflowRepository.getWorkflowOwningProject(
+				existingWorkflow.id,
 			);
-			if (!credentialCheck.ok) {
-				throw new Error(credentialCheck.error);
+			if (!mcpCredentialCheckBypassed(owningProject, user)) {
+				const credentialCheck = await validateCredentialReferences(
+					strictOperations,
+					existingWorkflow,
+					user,
+					credentialsService,
+					nodeTypes,
+					{ workflowId: existingWorkflow.id },
+				);
+				if (!credentialCheck.ok) {
+					throw new Error(credentialCheck.error);
+				}
 			}
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(

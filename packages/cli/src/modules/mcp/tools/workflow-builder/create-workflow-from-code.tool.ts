@@ -3,7 +3,10 @@ import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
-import { validateWorkflowCredentialReferences } from './credential-validation';
+import {
+	mcpCredentialCheckBypassed,
+	validateWorkflowCredentialReferences,
+} from './credential-validation';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
@@ -274,19 +277,21 @@ export const createCreateWorkflowFromCodeTool = (
 					effectiveProjectId,
 				);
 
-			// Explicit credential ids in the generated code bypass auto-assignment,
-			// so verify they're reachable from the target project. This matches the
-			// runtime permission gate and prevents persisting a cross-project id that
-			// would only fail at execution time.
-			const credentialCheck = await validateWorkflowCredentialReferences(
-				newWorkflow.nodes,
-				user,
-				credentialsService,
-				nodeTypes,
-				effectiveProjectId,
-			);
-			if (!credentialCheck.ok) {
-				throw new Error(credentialCheck.error);
+			if (!mcpCredentialCheckBypassed(landingProject, user)) {
+				// Explicit credential ids in the generated code bypass auto-assignment,
+				// so verify they're reachable from the target project. This matches the
+				// runtime permission gate and prevents persisting a cross-project id that
+				// would only fail at execution time.
+				const credentialCheck = await validateWorkflowCredentialReferences(
+					newWorkflow.nodes,
+					user,
+					credentialsService,
+					nodeTypes,
+					effectiveProjectId,
+				);
+				if (!credentialCheck.ok) {
+					throw new Error(credentialCheck.error);
+				}
 			}
 
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
