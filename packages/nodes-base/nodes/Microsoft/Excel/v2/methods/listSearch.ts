@@ -4,14 +4,27 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../transport';
+import { getExcelCredentialType, microsoftApiRequest } from '../transport';
 
 export async function searchWorkbooks(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	if (getExcelCredentialType.call(this) === 'microsoftEntraServicePrincipalApi') {
+		// App-only Graph cannot search a drive, so the "From List" workbook picker can't work
+		// under the Service Principal — steer the user to the "By ID" mode.
+		throw new NodeOperationError(
+			this.getNode(),
+			'Search is not supported with the Service Principal credential',
+			{
+				description:
+					'App-only Microsoft Graph cannot search a drive. Switch the Workbook field to "By ID" and paste the workbook ID, or use an OAuth2 credential.',
+			},
+		);
+	}
 	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
 	const extensionFilter = fileExtensions.join(' OR ');
 
@@ -81,7 +94,7 @@ export async function getWorksheetsList(
 	response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets`,
+		`/drive/items/${encodeURIComponent(workbookId)}/workbook/worksheets`,
 		undefined,
 		{
 			select: 'id,name',
@@ -110,16 +123,18 @@ export async function getWorksheetTables(
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
 	}
 
-	const worksheetId = this.getNodeParameter('worksheet', undefined, {
-		extractValue: true,
-	}) as string;
+	const worksheetId = encodeURIComponent(
+		this.getNodeParameter('worksheet', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	let response: IDataObject = {};
 
 	response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
+		`/drive/items/${encodeURIComponent(workbookId)}/workbook/worksheets/${worksheetId}/tables`,
 		undefined,
 	);
 
@@ -132,7 +147,7 @@ export async function getWorksheetTables(
 		const { address } = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
+			`/drive/items/${encodeURIComponent(workbookId)}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
 			undefined,
 			{
 				select: 'address',

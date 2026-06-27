@@ -24,9 +24,11 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = encodeURIComponent(
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			try {
 				await microsoftApiRequest.call(this, 'DELETE', `/drive/items/${workbookId}`);

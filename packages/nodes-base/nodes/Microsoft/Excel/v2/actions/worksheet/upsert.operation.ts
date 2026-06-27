@@ -204,13 +204,17 @@ export async function execute(
 	const nodeVersion = this.getNode().typeVersion;
 
 	try {
-		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
-			extractValue: true,
-		}) as string;
+		const workbookId = encodeURIComponent(
+			this.getNodeParameter('workbook', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
-		const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
-			extractValue: true,
-		}) as string;
+		const worksheetId = encodeURIComponent(
+			this.getNodeParameter('worksheet', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
 		let range = this.getNodeParameter('range', 0, '') as string;
 		checkRange(this.getNode(), range);

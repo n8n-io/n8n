@@ -145,13 +145,17 @@ export async function execute(
 
 	const nodeVersion = this.getNode().typeVersion;
 
-	const workbookId = this.getNodeParameter('workbook', 0, undefined, {
-		extractValue: true,
-	}) as string;
+	const workbookId = encodeURIComponent(
+		this.getNodeParameter('workbook', 0, undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
-	const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
-		extractValue: true,
-	}) as string;
+	const worksheetId = encodeURIComponent(
+		this.getNodeParameter('worksheet', 0, undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
