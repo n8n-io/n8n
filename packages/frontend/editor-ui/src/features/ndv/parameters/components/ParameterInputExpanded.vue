@@ -237,6 +237,7 @@ defineExpose({
 				:values="fixedCollectionValues"
 				:node-values="nodeValues"
 				:path="parameter.name"
+				:is-for-credential="true"
 				:hidden-issues-inputs="hiddenIssuesInputs"
 				@value-changed="valueChanged"
 			/>
