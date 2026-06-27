@@ -2,8 +2,18 @@ import { i18n, i18nInstance, setLanguage, updateLocaleMessages } from '@n8n/i18n
 import type { LocaleMessages } from '@n8n/i18n/types';
 import { locale as designLocale } from '@n8n/design-system';
 
+// Static import required - import.meta.glob is not transformed by Rolldown in production
+import enMessages from '@n8n/i18n/locales/en.json';
+
 const hot = import.meta.hot;
 const DEFAULT_LOCALE = 'en';
+
+// Adds numberFormats property required by LocaleMessages type
+function toLocaleMessages(json: typeof enMessages): LocaleMessages {
+	return { ...json, numberFormats: {} };
+}
+
+updateLocaleMessages('en', toLocaleMessages(enMessages));
 
 if (hot) {
 	// Eagerly import locale JSONs so this module becomes their HMR owner
