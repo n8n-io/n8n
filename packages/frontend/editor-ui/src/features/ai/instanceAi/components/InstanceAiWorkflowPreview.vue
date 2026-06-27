@@ -2,9 +2,9 @@
 import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
-import TabBar from '@/app/components/MainHeader/TabBar.vue';
 import {
 	EditorEnabledFeaturesKey,
 	type EditorEnabledFeatures,
@@ -211,11 +211,10 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 
 <template>
 	<div :class="$style.content">
-		<div :class="$style.tabBarSlot">
-			<TabBar
-				v-if="workflowViewOptions.length > 1"
-				:items="workflowViewOptions"
+		<div v-if="workflowViewOptions.length > 1" :class="$style.viewTabs">
+			<N8nRadioButtons
 				:model-value="activeWorkflowView"
+				:options="workflowViewOptions"
 				data-test-id="instance-ai-workflow-view-tabs"
 				@update:model-value="setActiveWorkflowView"
 			/>
@@ -248,9 +247,13 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 	flex-direction: column;
 }
 
-/* Zero-height anchor so TabBar straddles the canvas top edge, like MainHeader. */
-.tabBarSlot {
-	position: relative;
+/* Centred pill in its own band between the artifact bar and the canvas. */
+.viewTabs {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--4xs);
 }
 
 .viewContent {
