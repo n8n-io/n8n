@@ -92,7 +92,10 @@ describe('Public API scope parity', () => {
 
 	test('every API key scope in API_KEY_RESOURCES is consumed by at least one endpoint', () => {
 		const consumed = new Set(
-			ops.map((op) => op.requiredScope).filter((s): s is string => s !== null && s !== 'none'),
+			ops.flatMap((op) => {
+				if (op.requiredScope === null || op.requiredScope === 'none') return [];
+				return op.requiredScope.split(',').map((scope) => scope.trim());
+			}),
 		);
 		const declared = new Set<string>();
 		for (const [resource, operations] of Object.entries(API_KEY_RESOURCES)) {

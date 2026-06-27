@@ -1,27 +1,31 @@
 post:
-  x-eov-operation-id: exportWorkflows
-  x-required-scope: workflow:export
+  x-eov-operation-id: exportPackage
+  x-required-scope: project:export,workflow:export
   x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
   tags:
     - N8nPackage
-  summary: 'Beta: Export workflows as an n8n package'
+  summary: 'Beta: Export workflows and projects as an n8n package'
   description: |
     **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
     instance to enable this endpoint. While disabled, requests return `404`.
 
-    Export one or more workflows as a gzipped tar archive (.n8np). The response is
-    streamed as `application/gzip` with a `Content-Disposition` attachment header.
-    Requires the n8n Packages feature to be licensed.
+    Export either workflows or team projects as a gzipped tar archive (.n8np).
+    Provide `workflowIds` or `projectIds`, but not both. Empty projects export
+    project metadata only. The response is streamed as `application/gzip` with a
+    `Content-Disposition` attachment header. Requires the n8n Packages feature to be
+    licensed.
+
+    API key scopes: `workflow:export` is required when exporting workflows, and `project:export` is required when exporting projects.
   requestBody:
-    description: Workflows to include in the exported package.
+    description: Workflows or team projects to include in the exported package.
     required: true
     content:
       application/json:
         schema:
-          $ref: '../schemas/exportWorkflowsRequest.yml'
+          $ref: '../schemas/exportPackageRequest.yml'
   responses:
     '200':
-      description: A gzipped tar archive containing the exported workflows.
+      description: A gzipped tar archive containing the exported package contents.
       content:
         application/gzip:
           schema:

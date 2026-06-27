@@ -88,6 +88,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Import Workflow',
 		description: 'Allows importing workflows from a portable package into the project.',
 	},
+	'project:export': {
+		displayName: 'Export Project',
+		description: 'Allows including projects in a portable package export.',
+	},
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',

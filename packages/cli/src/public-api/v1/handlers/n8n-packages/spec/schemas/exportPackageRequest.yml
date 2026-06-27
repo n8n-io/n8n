@@ -1,11 +1,8 @@
 type: object
 additionalProperties: false
-required:
-  - workflowIds
 properties:
   workflowIds:
     type: array
-    minItems: 1
     maxItems: 300
     description: IDs of the workflows to include in the exported package.
     items:
@@ -13,3 +10,11 @@ properties:
       minLength: 1
     example:
       - 2tUt1wbLX592XDdX
+  projectIds:
+    type: array
+    description: IDs of the team projects to include in the exported package.
+    items:
+      type: string
+      minLength: 1
+    example:
+      - Ox8O54VQrmBrb4qL
