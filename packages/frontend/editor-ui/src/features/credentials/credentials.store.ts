@@ -353,7 +353,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		options?: { skipStoreUpdate?: boolean },
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
+		// Instance-pull demo: allow supplying an explicit credential id so the prd
+		// credential matches the source id. Backend only honors it under the demo flag.
+		const id = settingsStore.settings.instancePull?.enabled ? data.id : undefined;
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
+			...(id ? { id } : {}),
 			name: data.name,
 			type: data.type,
 			data: data.data ?? {},

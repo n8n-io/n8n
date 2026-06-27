@@ -61,6 +61,7 @@ export class ModuleRegistry {
 		'n8n-packages',
 		'runtime-credentials',
 		'mcp-registry',
+		'instance-pull',
 	];
 
 	private readonly activeModules: string[] = [];

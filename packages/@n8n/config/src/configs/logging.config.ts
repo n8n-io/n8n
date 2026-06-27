@@ -49,6 +49,7 @@ export const LOG_SCOPES = [
 	'workflow-publication',
 	'poll-trigger',
 	'metrics',
+	'instance-pull',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

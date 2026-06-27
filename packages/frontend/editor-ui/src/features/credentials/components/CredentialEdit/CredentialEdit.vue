@@ -130,6 +130,10 @@ const activeTab = ref('connection');
 const authError = ref('');
 const credentialId = ref('');
 const credentialName = ref('');
+// Instance-pull demo: a deep link can request a specific id for the new credential
+// so it matches the source id on a prd instance. Kept separate from `credentialId`
+// (which gates new-vs-edit) and only applied on create under the demo flag.
+const prefilledCredentialId = ref('');
 const selectedCredential = ref('');
 const credentialData = ref<ICredentialDataDecryptedObject>({});
 const currentCredential = ref<ICredentialsResponse | ICredentialsDecryptedResponse | null>(null);
@@ -474,6 +478,15 @@ const homeProject = computed(() => {
 
 const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
 
+// Instance-pull demo: surface the prefilled id so the operator can confirm the
+// new credential will match the source id. Only under the demo flag.
+const showPrefilledIdNotice = computed(
+	() =>
+		settingsStore.settings.instancePull?.enabled === true &&
+		isNewCredential.value &&
+		!!prefilledCredentialId.value,
+);
+
 function setCredentialPropertyDefaults() {
 	if (credentialType.value) {
 		for (const property of credentialType.value.properties) {
@@ -523,14 +536,22 @@ onMounted(async () => {
 		}
 
 		if (props.mode === 'new' && credentialTypeName.value) {
+			// Instance-pull demo: a deep link prefills name/id for the new credential.
+			const query = router.currentRoute.value.query;
+			const queryName = typeof query.credentialName === 'string' ? query.credentialName : undefined;
+			if (typeof query.credentialId === 'string') {
+				prefilledCredentialId.value = query.credentialId;
+			}
+
 			const modalSuggestedName = isCredentialModalState(modalState)
 				? modalState.suggestedName
 				: undefined;
-			credentialName.value = modalSuggestedName
-				? modalSuggestedName
-				: await credentialsStore.getNewCredentialName({
-						credentialTypeName: defaultCredentialTypeName.value,
-					});
+			credentialName.value =
+				queryName ??
+				modalSuggestedName ??
+				(await credentialsStore.getNewCredentialName({
+					credentialTypeName: defaultCredentialTypeName.value,
+				}));
 
 			credentialData.value = {
 				...credentialData.value,
@@ -1020,6 +1041,11 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
+		// Instance-pull demo: carry a prefilled id so the created credential matches
+		// the source id. Backend only honors it under the demo flag.
+		if (prefilledCredentialId.value) {
+			credentialDetails.id = prefilledCredentialId.value;
+		}
 		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
@@ -1633,6 +1659,18 @@ const { width } = useElementSize(credNameRef);
 						<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
 							credentialType.displayName
 						}}</N8nText>
+						<N8nText
+							v-if="showPrefilledIdNotice"
+							size="small"
+							tag="p"
+							color="text-light"
+							data-test-id="credential-prefilled-id"
+							>{{
+								i18n.baseText('credentialEdit.credentialEdit.prefilledId', {
+									interpolate: { id: prefilledCredentialId },
+								})
+							}}</N8nText
+						>
 					</div>
 				</div>
 				<div :class="$style.credActions">

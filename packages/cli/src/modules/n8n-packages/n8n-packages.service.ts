@@ -7,6 +7,7 @@ import { N8N_VERSION } from '@/constants';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { ImportPipeline } from './engine/import-pipeline';
+import type { PackageWriter } from './io/package-writer';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import type {
 	ExportWorkflowsRequest,
@@ -25,9 +26,16 @@ export class N8nPackagesService {
 		private readonly importPipeline: ImportPipeline,
 	) {}
 
-	async exportWorkflows(request: ExportWorkflowsRequest): Promise<Readable> {
-		const writer = new TarPackageWriter();
-
+	/**
+	 * Exports the requested workflows (and their credential requirements) as a
+	 * package. The {@link PackageWriter} is injectable so callers can target a
+	 * tar stream (default) or, for the instance-pull demo, an exploded tree on
+	 * disk via `FilesystemPackageWriter`.
+	 */
+	async exportWorkflows(
+		request: ExportWorkflowsRequest,
+		writer: PackageWriter = new TarPackageWriter(),
+	): Promise<Readable> {
 		const { entries: workflowEntries, requirements: workflowRequirements } =
 			await this.workflowExporter.export({
 				user: request.user,

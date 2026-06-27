@@ -48,6 +48,7 @@ describe('eligibleModules', () => {
 			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
+			'instance-pull',
 		]);
 	});
 
@@ -82,6 +83,7 @@ describe('eligibleModules', () => {
 			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
+			'instance-pull',
 			'instance-ai',
 		]);
 	});

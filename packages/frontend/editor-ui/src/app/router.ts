@@ -57,6 +57,10 @@ const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
 	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
+const InstancePullView = async () =>
+	await import('@/features/instance-pull.ee/views/InstancePullView.vue');
+const InstancePullDiffView = async () =>
+	await import('@/features/instance-pull.ee/views/InstancePullDiffView.vue');
 const SettingsLogStreamingView = async () =>
 	await import('@/features/integrations/logStreaming.ee/views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
@@ -486,6 +490,22 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+		},
+	},
+	{
+		path: '/instance-pull/diff/:prNumber',
+		name: VIEWS.INSTANCE_PULL_DIFF,
+		component: InstancePullDiffView,
+		// Demo-only (`N8N_INSTANCE_PULL_DEMO`); bounce out when the flag is off.
+		beforeEnter: () => {
+			const settingsStore = useSettingsStore();
+			if (!settingsStore.instancePull?.enabled) {
+				return { name: VIEWS.HOMEPAGE };
+			}
+			return true;
+		},
+		meta: {
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -983,6 +1003,30 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'environments',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'instance-pull',
+				name: VIEWS.INSTANCE_PULL_SETTINGS,
+				component: InstancePullView,
+				// Demo-only (`N8N_INSTANCE_PULL_DEMO`); bounce out when the flag is off.
+				beforeEnter: () => {
+					const settingsStore = useSettingsStore();
+					if (!settingsStore.instancePull?.enabled) {
+						return { name: VIEWS.HOMEPAGE };
+					}
+					return true;
+				},
+				meta: {
+					middleware: ['authenticated'],
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'instance-pull',
 							};
 						},
 					},

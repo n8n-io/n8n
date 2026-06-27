@@ -170,6 +170,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
+	// Role-aware instance-pull demo (see `instance-pull.ee`): drives the
+	// "Publishing" settings view. `undefined` when the demo is off.
+	const instancePull = computed(() => settings.value.instancePull);
+
 	const isChatFeatureEnabled = computed(
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
 	);
@@ -484,6 +488,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isModuleActive,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
+		instancePull,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,

@@ -21,6 +21,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { InstancePullConfig } from '@/modules/instance-pull.ee/instance-pull.config';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -137,6 +138,7 @@ export class FrontendService {
 		private readonly ownershipService: OwnershipService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly instancePullConfig: InstancePullConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -414,6 +416,10 @@ export class FrontendService {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
+			instancePull: {
+				enabled: this.instancePullConfig.enabled,
+				role: this.instancePullConfig.role,
+			},
 			canvasOnly: this.globalConfig.canvasOnly,
 			collaboration: {
 				crdt: this.globalConfig.collaboration.crdt,

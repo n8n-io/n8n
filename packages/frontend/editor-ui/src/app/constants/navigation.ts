@@ -77,6 +77,8 @@ export const enum VIEWS {
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
 	RESOURCE_CENTER = 'ResourceCenter',
+	INSTANCE_PULL_SETTINGS = 'InstancePullSettings',
+	INSTANCE_PULL_DIFF = 'InstancePullDiff',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
