@@ -69,16 +69,16 @@ for open-ended) until you can write it. Never create a placeholder or vague skil
 
 - Use \`allowedTools\` only for exact tool names already attached to the target
   agent that this skill may use.
-- Use \`recommendedTools\` for the smaller set of allowed tools the target agent
-  should normally reach for when the skill loads.
 - Add \`references\` for longer markdown-only supporting files under
   \`references/...\`, such as rubrics, examples, policies, templates, or
-  checklists.
-- Use metadata fields like \`interface\`, \`policy\`, \`dependencies\`,
-  \`version\`, \`license\`, \`compatibility\`, \`platforms\`, and \`metadata\`
-  only when the user or existing agent context gives you the exact values.
-- Omit fields you cannot fill confidently. Do not invent tool names, file paths,
-  versions, licenses, compatibility claims, or dependencies.
+  checklists. References are not automatically loaded when the skill loads.
+  If you add references, the main \`instructions\` must say exactly when to load
+  each reference by path.
+- Example reference load rules: "Before scoring renewal risk, load
+  \`references/risk-rubric.md\`"; "Before drafting negotiation copy, load
+  \`references/negotiation-playbook.md\`"; "Before asking intake questions, load
+  \`references/intake-checklist.md\`".
+- Omit fields you cannot fill confidently. Do not invent tool names or file paths.
 - Scripts are not supported in this phase. Do not pass scripts or non-markdown
   linked files to \`create_skill\`.
 

@@ -326,15 +326,6 @@ function getConfiguredSkillSource(
 			description: skill.description,
 			instructions: skill.instructions,
 			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
-			...(skill.recommendedTools ? { recommendedTools: skill.recommendedTools } : {}),
-			...(skill.interface ? { interface: skill.interface } : {}),
-			...(skill.policy ? { policy: skill.policy } : {}),
-			...(skill.dependencies ? { dependencies: skill.dependencies } : {}),
-			...(skill.version ? { version: skill.version } : {}),
-			...(skill.license ? { license: skill.license } : {}),
-			...(skill.compatibility ? { compatibility: skill.compatibility } : {}),
-			...(skill.platforms ? { platforms: skill.platforms } : {}),
-			...(skill.metadata ? { metadata: skill.metadata } : {}),
 			linkedFiles,
 		});
 	}

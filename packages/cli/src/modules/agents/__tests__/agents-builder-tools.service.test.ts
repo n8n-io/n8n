@@ -1120,6 +1120,11 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('when to load it');
 			expect(tool.description).toContain('ask the user clarifying');
 			expect(tool.description).toContain('Gotchas');
+			expect(tool.description).toContain('References are not automatically loaded');
+			expect(tool.description).toContain('instructions must say exactly when to load each one');
+			expect(tool.systemInstruction).toContain(
+				'explicit conditions for loading each referenced file',
+			);
 		});
 
 		it('puts the structured body template in the instructions parameter', () => {
@@ -1140,6 +1145,20 @@ describe('AgentsBuilderToolsService', () => {
 			]) {
 				expect(instructionsSchema.description).toContain(heading);
 			}
+		});
+
+		it('describes references as explicit progressive-disclosure files', () => {
+			const { service } = makeService();
+
+			const tool = getCreateSkillTool(service);
+			const referencesSchema = (
+				tool.inputSchema as unknown as { shape: { references: { description?: string } } }
+			).shape.references;
+
+			expect(referencesSchema.description).toContain('References are not automatically loaded');
+			expect(referencesSchema.description).toContain(
+				'instructions must say exactly when to load each reference by path',
+			);
 		});
 
 		it('creates a skill and returns the generated skill id', async () => {
@@ -1179,27 +1198,14 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('creates a rich skill and forwards extended fields', async () => {
+		it('creates a skill with allowed tools and references', async () => {
 			const { service, agentsService } = makeService();
 			const skill = {
 				name: 'Handle Vendor Renewals',
 				description: 'Use when reviewing vendor renewal requests and contract terms',
 				instructions: 'Review renewal details, compare terms, and summarize next steps.',
 				allowedTools: ['read_contract', 'send_email'],
-				recommendedTools: ['read_contract'],
 				references: [{ path: 'references/renewal-checklist.md', content: '# Checklist' }],
-				interface: { displayName: 'Vendor renewals', icon: 'file-text' },
-				policy: { allowImplicitInvocation: true, product: 'Procurement' },
-				dependencies: {
-					tools: ['read_contract'],
-					secrets: ['vendor_api_key'],
-					mcpServers: [{ name: 'vendor-docs', transport: 'sse', url: 'https://example.com/sse' }],
-				},
-				version: '1.0.0',
-				license: 'MIT',
-				compatibility: 'n8n agents',
-				platforms: ['n8n'],
-				metadata: { owner: 'procurement' },
 			};
 			agentsService.createSkill.mockResolvedValue({
 				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
@@ -1233,7 +1239,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result.success).toBe(false);
 		});
 
-		it('accepts rich skill fields and rejects old or unsupported fields via the input schema', () => {
+		it('accepts allowed tools and references and rejects old or unsupported fields via the input schema', () => {
 			const { service } = makeService();
 			const schema = getCreateSkillTool(service).inputSchema as unknown as {
 				safeParse: (input: unknown) => { success: boolean };
@@ -1247,11 +1253,25 @@ describe('AgentsBuilderToolsService', () => {
 			expect(
 				schema.safeParse({
 					...validSkill,
+					allowedTools: ['search_docs'],
 					references: [{ path: 'references/guide.md', content: '# Guide' }],
 				}).success,
 			).toBe(true);
-			expect(schema.safeParse({ ...validSkill, body: 'Old field' }).success).toBe(false);
-			expect(schema.safeParse({ ...validSkill, scripts: [] }).success).toBe(false);
+			for (const field of [
+				'body',
+				'recommendedTools',
+				'interface',
+				'policy',
+				'dependencies',
+				'version',
+				'license',
+				'compatibility',
+				'platforms',
+				'metadata',
+				'scripts',
+			]) {
+				expect(schema.safeParse({ ...validSkill, [field]: {} }).success).toBe(false);
+			}
 			expect(
 				schema.safeParse({
 					...validSkill,

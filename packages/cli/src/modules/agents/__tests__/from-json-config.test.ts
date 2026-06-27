@@ -292,7 +292,6 @@ describe('buildFromJson()', () => {
 						description: 'Use for meeting notes and transcripts',
 						instructions: 'Extract decisions and action items.',
 						allowedTools: ['load_workflow'],
-						recommendedTools: ['search_docs'],
 						references: [
 							{
 								path: 'references/guide.md',
@@ -353,7 +352,6 @@ describe('buildFromJson()', () => {
 		expect(listOutput?.skills[0]).toMatchObject({
 			name: 'Summarize notes',
 			allowedTools: ['load_workflow'],
-			recommendedTools: ['search_docs'],
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({

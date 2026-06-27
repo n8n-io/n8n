@@ -103,8 +103,12 @@ describe('AgentSkillsService', () => {
 				sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 			}),
 		]);
-		expect(agentRepository.save.mock.calls[0][0].skills[result.id].references).toEqual(
-			result.skill.references,
+		expect(agentRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				skills: {
+					[result.id]: expect.objectContaining({ references: result.skill.references }),
+				},
+			}),
 		);
 	});
 
@@ -204,7 +208,13 @@ describe('AgentSkillsService', () => {
 		});
 
 		expect(result.skill.references).toEqual([]);
-		expect(agentRepository.save.mock.calls[0][0].skills.summarize_notes.references).toEqual([]);
+		expect(agentRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				skills: {
+					summarize_notes: expect.objectContaining({ references: [] }),
+				},
+			}),
+		);
 	});
 
 	it('rejects creating a skill with a duplicate name', async () => {

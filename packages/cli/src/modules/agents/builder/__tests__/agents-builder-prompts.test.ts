@@ -63,9 +63,12 @@ describe('target skill availability', () => {
 		expect(skill).toBeDefined();
 		expect(skill?.instructions).toContain('`instructions`');
 		expect(skill?.instructions).toContain('`allowedTools`');
-		expect(skill?.instructions).toContain('`recommendedTools`');
 		expect(skill?.instructions).toContain('`references`');
+		expect(skill?.instructions).toContain('References are not automatically loaded');
+		expect(skill?.instructions).toContain('exactly when to load');
+		expect(skill?.instructions).toContain('`references/risk-rubric.md`');
 		expect(skill?.instructions).toContain('Scripts are not supported');
+		expect(skill?.instructions).not.toContain('`recommendedTools`');
 		expect(skill?.instructions).not.toContain('`body`.');
 	});
 });

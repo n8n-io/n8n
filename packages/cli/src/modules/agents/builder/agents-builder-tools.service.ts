@@ -89,30 +89,11 @@ const createSkillInputSchema = z
 		allowedTools: agentSkillSchema.shape.allowedTools
 			.optional()
 			.describe('Exact target-agent tool names this skill is allowed to use.'),
-		recommendedTools: agentSkillSchema.shape.recommendedTools
-			.optional()
-			.describe('Preferred target-agent tool names this skill should normally use.'),
 		references: agentSkillSchema.shape.references
 			.optional()
-			.describe('Markdown-only supporting files, usually under references/...'),
-		interface: agentSkillSchema.shape.interface
-			.optional()
-			.describe('Optional display metadata for skill surfaces.'),
-		policy: agentSkillSchema.shape.policy.optional().describe('Optional skill invocation policy.'),
-		dependencies: agentSkillSchema.shape.dependencies
-			.optional()
-			.describe('Optional dependencies the skill needs, such as tools, secrets, or MCP servers.'),
-		version: agentSkillSchema.shape.version.optional().describe('Optional skill version.'),
-		license: agentSkillSchema.shape.license.optional().describe('Optional skill license.'),
-		compatibility: agentSkillSchema.shape.compatibility
-			.optional()
-			.describe('Optional runtime or platform compatibility notes.'),
-		platforms: agentSkillSchema.shape.platforms
-			.optional()
-			.describe('Optional supported platforms.'),
-		metadata: agentSkillSchema.shape.metadata
-			.optional()
-			.describe('Optional structured metadata for the skill.'),
+			.describe(
+				'Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path.',
+			),
 	})
 	.strict();
 
@@ -740,8 +721,8 @@ export class AgentsBuilderToolsService {
 					'Inputs, Steps, Rules, Example, Gotchas) filled with concrete content — see the instructions parameter ' +
 					'for the template. You MUST NOT call this with a vague description or thin/placeholder instructions: ' +
 					'if you lack the domain detail to write a genuinely useful skill, ask the user clarifying ' +
-					'questions first. Use allowedTools/recommendedTools only with exact target-agent tool names, ' +
-					'and references only for markdown supporting files under the references/ directory. Scripts and non-markdown linked files are not supported. ' +
+					'questions first. Use allowedTools only with exact target-agent tool names, ' +
+					'and references only for markdown supporting files under the references/ directory. References are not automatically loaded; when you provide references, instructions must say exactly when to load each one by path. Scripts and non-markdown linked files are not supported. ' +
 					'This does NOT attach the skill to the agent config; follow up with read_config ' +
 					'and patch_config (or write_config) to add a `{ type: "skill", id }` entry to `skills`. ' +
 					'Returns { ok: true, id, skill } or { ok: false, errors }.',
@@ -752,7 +733,8 @@ export class AgentsBuilderToolsService {
 					'(Overview, Inputs, Steps, Rules, Example, Gotchas) with each applicable section filled in with ' +
 					'concrete, specific content. If you do not have enough domain detail to write a genuinely ' +
 					'useful skill, ask the user clarifying questions until you do before calling create_skill. ' +
-					'Do not invent tool names, reference paths, versions, licenses, or compatibility claims.',
+					'Do not create references unless the instructions include explicit conditions for loading each referenced file. ' +
+					'Do not invent tool names or reference paths.',
 			)
 			.input(createSkillInputSchema)
 			.handler(async (input: CreateSkillInput) => {

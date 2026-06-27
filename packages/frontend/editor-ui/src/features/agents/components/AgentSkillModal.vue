@@ -37,17 +37,6 @@ const skill = ref<AgentSkill>(
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
 		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
-		...(props.data.skill?.recommendedTools
-			? { recommendedTools: props.data.skill.recommendedTools }
-			: {}),
-		...(props.data.skill?.interface ? { interface: props.data.skill.interface } : {}),
-		...(props.data.skill?.policy ? { policy: props.data.skill.policy } : {}),
-		...(props.data.skill?.dependencies ? { dependencies: props.data.skill.dependencies } : {}),
-		...(props.data.skill?.version ? { version: props.data.skill.version } : {}),
-		...(props.data.skill?.license ? { license: props.data.skill.license } : {}),
-		...(props.data.skill?.compatibility ? { compatibility: props.data.skill.compatibility } : {}),
-		...(props.data.skill?.platforms ? { platforms: props.data.skill.platforms } : {}),
-		...(props.data.skill?.metadata ? { metadata: props.data.skill.metadata } : {}),
 		...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
 	}),
 );
@@ -165,15 +154,6 @@ function onSave() {
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
 		...(skill.value.allowedTools ? { allowedTools: skill.value.allowedTools } : {}),
-		...(skill.value.recommendedTools ? { recommendedTools: skill.value.recommendedTools } : {}),
-		...(skill.value.interface ? { interface: skill.value.interface } : {}),
-		...(skill.value.policy ? { policy: skill.value.policy } : {}),
-		...(skill.value.dependencies ? { dependencies: skill.value.dependencies } : {}),
-		...(skill.value.version ? { version: skill.value.version } : {}),
-		...(skill.value.license ? { license: skill.value.license } : {}),
-		...(skill.value.compatibility ? { compatibility: skill.value.compatibility } : {}),
-		...(skill.value.platforms ? { platforms: skill.value.platforms } : {}),
-		...(skill.value.metadata ? { metadata: skill.value.metadata } : {}),
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	};
 

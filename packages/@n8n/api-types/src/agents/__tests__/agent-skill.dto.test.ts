@@ -22,23 +22,10 @@ describe('agent skill DTOs', () => {
 		).toBe(true);
 	});
 
-	it('accepts SDK metadata and markdown references without derived file metadata', () => {
+	it('accepts allowed tools and markdown references without derived file metadata', () => {
 		const result = agentSkillSchema.safeParse({
 			...validSkill,
 			allowedTools: ['load_workflow'],
-			recommendedTools: ['search_docs'],
-			interface: { displayName: 'Summarize notes' },
-			policy: { allowImplicitInvocation: true },
-			dependencies: {
-				tools: ['load_workflow'],
-				secrets: ['N8N_API_KEY'],
-				mcpServers: [{ name: 'browser', transport: 'sse' }],
-			},
-			version: '1.0.0',
-			license: 'MIT',
-			compatibility: 'n8n >= 2',
-			platforms: ['daytona'],
-			metadata: { owner: 'agents' },
 			references: [
 				{
 					path: 'references/guide.md',
@@ -48,6 +35,23 @@ describe('agent skill DTOs', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects removed metadata fields', () => {
+		for (const field of [
+			'recommendedTools',
+			'interface',
+			'policy',
+			'dependencies',
+			'version',
+			'license',
+			'compatibility',
+			'platforms',
+			'metadata',
+		]) {
+			expect(agentSkillSchema.safeParse({ ...validSkill, [field]: {} }).success).toBe(false);
+			expect(UpdateAgentSkillDto.safeParse({ [field]: {} }).success).toBe(false);
+		}
 	});
 
 	it('rejects scripts and other unsupported linked file groups', () => {
@@ -118,8 +122,6 @@ describe('agent skill DTOs', () => {
 		expect(
 			UpdateAgentSkillDto.safeParse({
 				allowedTools: [],
-				recommendedTools: [],
-				platforms: [],
 			}).success,
 		).toBe(true);
 	});

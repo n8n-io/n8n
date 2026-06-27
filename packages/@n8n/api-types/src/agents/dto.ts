@@ -144,58 +144,11 @@ const agentSkillReferencesSchema = z
 		}
 	});
 
-const agentSkillInterfaceSchema = z
-	.object({
-		displayName: z.string().min(1).optional(),
-		shortDescription: z.string().min(1).optional(),
-		defaultPrompt: z.string().min(1).optional(),
-		icon: z.string().min(1).optional(),
-		brandColor: z.string().min(1).optional(),
-	})
-	.strict();
-
-const agentSkillPolicySchema = z
-	.object({
-		allowImplicitInvocation: z.boolean().optional(),
-		product: z.string().min(1).optional(),
-	})
-	.strict();
-
-const agentSkillDependenciesSchema = z
-	.object({
-		tools: agentSkillStringArraySchema.optional(),
-		secrets: agentSkillStringArraySchema.optional(),
-		mcpServers: z
-			.array(
-				z
-					.object({
-						name: z.string().min(1),
-						description: z.string().min(1).optional(),
-						transport: z.string().min(1).optional(),
-						url: z.string().min(1).optional(),
-						command: z.string().min(1).optional(),
-					})
-					.strict(),
-			)
-			.min(1)
-			.optional(),
-	})
-	.strict();
-
 const agentSkillShape = {
 	name: z.string().min(1).max(128),
 	description: z.string().min(1).max(512),
 	instructions: z.string().min(1).max(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
 	allowedTools: agentSkillStringArraySchema.optional(),
-	recommendedTools: agentSkillStringArraySchema.optional(),
-	interface: agentSkillInterfaceSchema.optional(),
-	policy: agentSkillPolicySchema.optional(),
-	dependencies: agentSkillDependenciesSchema.optional(),
-	version: z.string().min(1).max(128).optional(),
-	license: z.string().min(1).max(128).optional(),
-	compatibility: z.string().min(1).optional(),
-	platforms: agentSkillStringArraySchema.optional(),
-	metadata: z.record(z.unknown()).optional(),
 	references: agentSkillReferencesSchema.optional(),
 	scripts: z.never().optional(),
 	templates: z.never().optional(),
@@ -211,15 +164,6 @@ const updateAgentSkillShape = {
 	description: agentSkillShape.description.optional(),
 	instructions: agentSkillShape.instructions.optional(),
 	allowedTools: agentSkillShape.allowedTools.optional(),
-	recommendedTools: agentSkillShape.recommendedTools.optional(),
-	interface: agentSkillShape.interface.optional(),
-	policy: agentSkillShape.policy.optional(),
-	dependencies: agentSkillShape.dependencies.optional(),
-	version: agentSkillShape.version.optional(),
-	license: agentSkillShape.license.optional(),
-	compatibility: agentSkillShape.compatibility.optional(),
-	platforms: agentSkillShape.platforms.optional(),
-	metadata: agentSkillShape.metadata.optional(),
 	references: agentSkillShape.references.optional(),
 };
 

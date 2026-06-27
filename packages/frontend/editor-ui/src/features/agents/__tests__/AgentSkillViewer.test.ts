@@ -74,7 +74,7 @@ describe('AgentSkillViewer', () => {
 		});
 
 		const file = makeFile(
-			'---\nname: Summarize notes\ndescription: Use for notes\nallowed_tools:\n  - load_workflow\n---\n# Playbook\nFollow these steps.',
+			'---\nname: Summarize notes\ndescription: Use for notes\nallowed_tools:\n  - load_workflow\nrecommended_tools:\n  - search_docs\n---\n# Playbook\nFollow these steps.',
 			'SKILL.md',
 		);
 		const input = wrapper.find('[data-testid="agent-skill-skill-md-file-input"]');
@@ -86,7 +86,8 @@ describe('AgentSkillViewer', () => {
 		await input.trigger('change');
 		await flushPromises();
 
-		expect(wrapper.emitted('update:skill')).toContainEqual([
+		const importedSkill = wrapper.emitted('update:skill')?.at(-1)?.[0] as Record<string, unknown>;
+		expect(importedSkill).toEqual(
 			expect.objectContaining({
 				name: 'Summarize notes',
 				description: 'Use for notes',
@@ -94,7 +95,8 @@ describe('AgentSkillViewer', () => {
 				allowedTools: ['load_workflow'],
 				references: undefined,
 			}),
-		]);
+		);
+		expect(importedSkill).not.toHaveProperty('recommendedTools');
 	});
 
 	it('imports markdown references from a folder', async () => {

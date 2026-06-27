@@ -100,47 +100,11 @@ export interface AgentSkillReference {
 	sha256?: string;
 }
 
-export interface AgentSkillInterfaceContract {
-	displayName?: string;
-	shortDescription?: string;
-	defaultPrompt?: string;
-	icon?: string;
-	brandColor?: string;
-}
-
-export interface AgentSkillPolicyContract {
-	allowImplicitInvocation?: boolean;
-	product?: string;
-}
-
-export interface AgentSkillMcpServerDependency {
-	name: string;
-	description?: string;
-	transport?: string;
-	url?: string;
-	command?: string;
-}
-
-export interface AgentSkillDependenciesContract {
-	tools?: string[];
-	secrets?: string[];
-	mcpServers?: AgentSkillMcpServerDependency[];
-}
-
 export interface AgentSkill {
 	name: string;
 	description: string;
 	instructions: string;
 	allowedTools?: string[];
-	recommendedTools?: string[];
-	interface?: AgentSkillInterfaceContract;
-	policy?: AgentSkillPolicyContract;
-	dependencies?: AgentSkillDependenciesContract;
-	version?: string;
-	license?: string;
-	compatibility?: string;
-	platforms?: string[];
-	metadata?: Record<string, unknown>;
 	references?: AgentSkillReference[];
 }
 

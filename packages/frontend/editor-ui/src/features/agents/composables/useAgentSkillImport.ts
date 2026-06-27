@@ -21,15 +21,6 @@ type SkillFrontmatter = {
 	name?: unknown;
 	description?: unknown;
 	allowed_tools?: unknown;
-	recommended_tools?: unknown;
-	interface?: unknown;
-	policy?: unknown;
-	dependencies?: unknown;
-	version?: unknown;
-	license?: unknown;
-	compatibility?: unknown;
-	platforms?: unknown;
-	metadata?: unknown;
 };
 
 export function useAgentSkillImport() {
@@ -97,15 +88,6 @@ export function useAgentSkillImport() {
 		return {
 			...parsed,
 			allowedTools: parsed.allowedTools,
-			recommendedTools: parsed.recommendedTools,
-			interface: parsed.interface,
-			policy: parsed.policy,
-			dependencies: parsed.dependencies,
-			version: parsed.version,
-			license: parsed.license,
-			compatibility: parsed.compatibility,
-			platforms: parsed.platforms,
-			metadata: parsed.metadata,
 			references: references.length > 0 ? references : undefined,
 		};
 	}
@@ -138,7 +120,7 @@ function parseSkillMarkdown(content: string): AgentSkill {
 	}
 
 	const data = parseYaml(lines.slice(1, endIndex).join('\n')) as SkillFrontmatter | null;
-	if (!data || typeof data !== 'object') {
+	if (!isRecord(data)) {
 		throw new AgentSkillImportError('agents.builder.skills.import.invalidFrontmatter');
 	}
 
@@ -157,15 +139,6 @@ function parseSkillMarkdown(content: string): AgentSkill {
 		description,
 		instructions,
 		...optionalStringArrayField('allowedTools', data.allowed_tools),
-		...optionalStringArrayField('recommendedTools', data.recommended_tools),
-		...optionalInterface(data.interface),
-		...optionalPolicy(data.policy),
-		...optionalDependencies(data.dependencies),
-		...optionalStringField('version', data.version),
-		...optionalStringField('license', data.license),
-		...optionalStringField('compatibility', data.compatibility),
-		...optionalStringArrayField('platforms', data.platforms),
-		...(isRecord(data.metadata) ? { metadata: data.metadata } : {}),
 	};
 }
 
@@ -180,76 +153,9 @@ function readRequiredString(value: unknown, field: 'name' | 'description'): stri
 	return value.trim();
 }
 
-function optionalStringField(field: 'version' | 'license' | 'compatibility', value: unknown) {
-	return typeof value === 'string' && value.trim() ? { [field]: value.trim() } : {};
-}
-
-function optionalStringArrayField(
-	field: 'allowedTools' | 'recommendedTools' | 'platforms',
-	value: unknown,
-) {
+function optionalStringArrayField(field: 'allowedTools', value: unknown) {
 	if (typeof value === 'string' && value.trim()) return { [field]: [value.trim()] };
-	if (!Array.isArray(value)) return {};
-	const strings = value.filter(
-		(item): item is string => typeof item === 'string' && Boolean(item.trim()),
-	);
-	return strings.length > 0 ? { [field]: strings.map((item) => item.trim()) } : {};
-}
-
-function optionalInterface(value: unknown): Pick<AgentSkill, 'interface'> | {} {
-	if (!isRecord(value)) return {};
-	const interfaceData: AgentSkill['interface'] = {
-		...optionalStringProperty('displayName', value.display_name),
-		...optionalStringProperty('shortDescription', value.short_description),
-		...optionalStringProperty('defaultPrompt', value.default_prompt),
-		...optionalStringProperty('icon', value.icon),
-		...optionalStringProperty('brandColor', value.brand_color),
-	};
-	return Object.keys(interfaceData).length > 0 ? { interface: interfaceData } : {};
-}
-
-function optionalPolicy(value: unknown): Pick<AgentSkill, 'policy'> | {} {
-	if (!isRecord(value)) return {};
-	const policy: AgentSkill['policy'] = {
-		...(typeof value.allow_implicit_invocation === 'boolean'
-			? { allowImplicitInvocation: value.allow_implicit_invocation }
-			: {}),
-		...optionalStringProperty('product', value.product),
-	};
-	return Object.keys(policy).length > 0 ? { policy } : {};
-}
-
-function optionalDependencies(value: unknown): Pick<AgentSkill, 'dependencies'> | {} {
-	if (!isRecord(value)) return {};
-	const mcpServers = Array.isArray(value.mcp_servers)
-		? value.mcp_servers.filter(isRecord).flatMap((server) => {
-				if (typeof server.name !== 'string' || !server.name.trim()) return [];
-				return [
-					{
-						name: server.name.trim(),
-						...optionalStringProperty('description', server.description),
-						...optionalStringProperty('transport', server.transport),
-						...optionalStringProperty('url', server.url),
-						...optionalStringProperty('command', server.command),
-					},
-				];
-			})
-		: [];
-	const dependencies: AgentSkill['dependencies'] = {
-		...optionalStringArrayProperty('tools', value.tools),
-		...optionalStringArrayProperty('secrets', value.secrets),
-		...(mcpServers.length > 0 ? { mcpServers } : {}),
-	};
-	return Object.keys(dependencies).length > 0 ? { dependencies } : {};
-}
-
-function optionalStringProperty<T extends string>(
-	field: T,
-	value: unknown,
-): Partial<Record<T, string>> {
-	return typeof value === 'string' && value.trim()
-		? ({ [field]: value.trim() } as Partial<Record<T, string>>)
-		: {};
+	return optionalStringArrayProperty(field, value);
 }
 
 function optionalStringArrayProperty<T extends string>(
