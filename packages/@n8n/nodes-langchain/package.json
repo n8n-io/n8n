@@ -280,6 +280,7 @@
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-16",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@oracle/langchain-oracledb": "0.2.0",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",
