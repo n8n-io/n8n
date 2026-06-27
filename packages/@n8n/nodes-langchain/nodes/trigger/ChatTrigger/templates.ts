@@ -1,5 +1,6 @@
 import sanitizeHtml from 'sanitize-html';
 
+import { CHAT_CDN_VERSION } from './constants';
 import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
 
 function sanitizeUserInput(input: unknown): string {
@@ -122,7 +123,7 @@ export function createPage({
 			<meta name="viewport" content="width=device-width, initial-scale=1">
 			<title>Chat</title>
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
-			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat@${CHAT_CDN_VERSION}/dist/style.css" rel="stylesheet" />
 			<style>
 				html,
 				body,
@@ -135,7 +136,7 @@ export function createPage({
 		</head>
 		<body>
 			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat@${CHAT_CDN_VERSION}/dist/chat.bundle.es.js';
 
 				(async function () {
 					const authentication = '${sanitizedAuthentication}';

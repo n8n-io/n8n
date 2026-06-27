@@ -1,3 +1,10 @@
+// Version of `@n8n/chat` to load from the jsDelivr CDN in the hosted chat page.
+// Pinned so the served page always matches a tested bundle: without a version
+// the CDN serves `@latest`, and a new `@n8n/chat` release would change the
+// hosted page's markup/styles without any change on the user's side.
+// Keep in sync with the `@n8n/chat` package version on each release.
+export const CHAT_CDN_VERSION = '1.26.0';
+
 // CSS Variables are defined in `@n8n/chat/src/css/_tokens.scss`
 export const cssVariables = `
 :root {
