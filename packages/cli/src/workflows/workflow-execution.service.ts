@@ -191,7 +191,7 @@ export class WorkflowExecutionService {
 		if (isFullExecutionFromUnknownTrigger(payload)) {
 			const pinnedTrigger = this.selectPinnedTrigger(
 				workflowData,
-				payload.destinationNode.nodeName,
+				payload.destinationNode?.nodeName,
 				workflowData.pinData ?? {},
 			);
 
@@ -520,19 +520,25 @@ export class WorkflowExecutionService {
 	 * that is a parent of the destination node. Webhook triggers are prioritized over other
 	 * trigger types in the sorting order.
 	 *
+	 * When no destination node is given (the whole workflow runs), the first pinned trigger is returned.
+	 *
 	 * @param workflow The workflow containing the nodes and connections
-	 * @param destinationNode The name of the node to find a pinned trigger for
+	 * @param destinationNode The name of the node to find a pinned trigger for, or undefined to run the entire workflow
 	 * @param pinData Pin data mapping node names to their pinned data
 	 * @returns The pinned trigger node if found, undefined otherwise
 	 */
 	selectPinnedTrigger(
 		workflow: IWorkflowBase,
-		destinationNode: string,
+		destinationNode: string | undefined,
 		pinData: IPinData,
 	): INode | undefined {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
 
 		if (allPinnedTriggers.length === 0) return undefined;
+
+		if (destinationNode === undefined) {
+			return allPinnedTriggers[0];
+		}
 
 		const destinationParents = new Set(
 			new Workflow({
