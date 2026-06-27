@@ -329,6 +329,57 @@ describe('dataTable filters', () => {
 				]);
 			});
 
+			it('treats empty strings as empty when using isEmpty', async () => {
+				// ARRANGE
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+					name: 'dataTable',
+					columns: [{ name: 'c1', type: 'string' }],
+				});
+
+				const rows = [{ c1: 'value' }, { c1: null }, { c1: '' }];
+
+				await dataTableService.insertRows(dataTableId, project.id, rows);
+
+				// ACT
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'c1', condition: 'isEmpty', value: null }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(2);
+				expect(result.data).toMatchObject([
+					expect.objectContaining({ c1: null }),
+					expect.objectContaining({ c1: '' }),
+				]);
+			});
+
+			it('excludes empty strings when using isNotEmpty', async () => {
+				// ARRANGE
+				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+					name: 'dataTable',
+					columns: [{ name: 'c1', type: 'string' }],
+				});
+
+				const rows = [{ c1: 'value' }, { c1: null }, { c1: '' }];
+
+				await dataTableService.insertRows(dataTableId, project.id, rows);
+
+				// ACT
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'c1', condition: 'isNotEmpty', value: null }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(1);
+				expect(result.data).toMatchObject([expect.objectContaining({ c1: 'value' })]);
+			});
+
 			it('includes null values when using neq with specific value', async () => {
 				// ARRANGE
 				const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
