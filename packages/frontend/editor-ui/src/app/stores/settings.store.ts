@@ -183,6 +183,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
+	const isWorkerPoolsEnabled = computed(() => settings.value.workerPools?.enabled === true);
+
+	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
+	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
+	const isAgentsNodeToolsFeatureEnabled = computed(() =>
+		isAgentModuleActive('node-tools-searcher'),
+	);
+
 	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
 	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
@@ -486,6 +494,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
+		isWorkerPoolsEnabled,
+		isAgentsNodeToolsFeatureEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 	};

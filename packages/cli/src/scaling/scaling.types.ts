@@ -24,6 +24,7 @@ export type JobData = {
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;
+	poolName?: string;
 
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */

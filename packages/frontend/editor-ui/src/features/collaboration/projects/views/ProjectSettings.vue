@@ -28,6 +28,7 @@ import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
+import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import {
@@ -86,12 +87,14 @@ const resourceCounts = ref<ResourceCounts>({
 const formData = ref<
 	Pick<Project, 'name' | 'description' | 'relations'> & {
 		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
+		defaultPool: string | null;
 	}
 >({
 	name: '',
 	description: '',
 	relations: [],
 	customTelemetryTags: [],
+	defaultPool: null,
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
@@ -281,6 +284,14 @@ const resetFormData = () => {
 		? deepCopy(projectsStore.currentProject.customTelemetryTags)
 		: [];
 	telemetryTagsRef.value?.resetTouched();
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+};
+
+const hasWorkerPoolsChanges = (): boolean => {
+	const stored = projectsStore.currentProjectPoolSettings?.defaultPool || null;
+	// Treat empty string and null as equivalent (both mean "default queue")
+	const current = formData.value.defaultPool || null;
+	return current !== stored;
 };
 
 const onCancel = () => {
@@ -355,13 +366,28 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name ?? '',
-			description: formData.value.description ?? '',
-			...(settingsStore.isOtelCustomSpanAttributesEnabled
-				? { customTelemetryTags: formData.value.customTelemetryTags }
-				: {}),
-		});
+		const projectId = projectsStore.currentProject.id;
+		const tasks: Array<Promise<void>> = [];
+
+		tasks.push(
+			projectsStore.updateProject(projectId, {
+				name: formData.value.name ?? '',
+				description: formData.value.description ?? '',
+				...(settingsStore.isOtelCustomSpanAttributesEnabled
+					? { customTelemetryTags: formData.value.customTelemetryTags }
+					: {}),
+			}),
+		);
+
+		if (isWorkerPoolsEnabled.value && hasWorkerPoolsChanges()) {
+			tasks.push(
+				projectsStore.updateCurrentProjectPoolSettings(projectId, {
+					defaultPool: formData.value.defaultPool ?? '',
+				}),
+			);
+		}
+
+		await Promise.all(tasks);
 		isDirty.value = false;
 	} catch (error) {
 		showSaveError(error);
@@ -438,7 +464,15 @@ const onIconUpdated = async () => {
 	}
 };
 
-// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
+const isWorkerPoolsEnabled = computed(() => settingsStore.isWorkerPoolsEnabled);
+
+const resetPoolSettingsFormData = () => {
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+};
+
+// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits.
+// Also the single hook reacting to the project becoming available (it loads asynchronously on a
+// direct page load), so project-scoped data like the pool settings is fetched here too.
 watch(
 	() => projectsStore.currentProject,
 	async () => {
@@ -451,6 +485,16 @@ watch(
 		selectProjectNameIfMatchesDefault();
 		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
 			projectIcon.value = projectsStore.currentProject.icon;
+		}
+
+		const projectId = projectsStore.currentProjectId;
+		if (canUpdateProject.value && projectId && isWorkerPoolsEnabled.value) {
+			await projectsStore
+				.fetchProjectPoolSettings(projectId)
+				.catch(() => {
+					// Non-fatal; store has been cleared, fall back to defaults below.
+				})
+				.finally(resetPoolSettingsFormData);
 		}
 	},
 	{ immediate: true },
@@ -742,6 +786,18 @@ onMounted(async () => {
 						@validate="isTelemetryTagsValid = $event"
 					/>
 				</fieldset>
+				<ProjectWorkerPoolsSection
+					v-if="isWorkerPoolsEnabled"
+					:default-pool="formData.defaultPool"
+					:available-pools="projectsStore.currentProjectPoolSettings?.availablePools ?? []"
+					@update:default-pool="
+						(v) => {
+							formData.defaultPool = v;
+							onTextInput();
+						}
+					"
+				/>
+
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{

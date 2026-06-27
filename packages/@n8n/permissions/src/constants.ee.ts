@@ -15,7 +15,7 @@ export const RESOURCES = {
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
-	orchestration: ['read', 'list'] as const,
+	orchestration: ['read', 'list', 'manage'] as const,
 	project: [...DEFAULT_OPERATIONS] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,

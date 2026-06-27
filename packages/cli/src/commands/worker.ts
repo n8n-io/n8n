@@ -13,12 +13,13 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { resolveQueueName, resolveWorkerPoolName } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { JwtService } from '@/services/jwt.service';
 
@@ -205,9 +206,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		workerServer?.markAsReady();
 
+		const poolName = resolveWorkerPoolName(this.globalConfig.queue.workerPool);
+		const queueName = resolveQueueName('worker', poolName);
+
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		this.logger.info(` * Pool: ${poolName === '' ? '(default)' : poolName}`);
+		this.logger.info(` * Queue: ${queueName}`);
 		this.logger.info('');
 
 		if (!inTest && process.stdout.isTTY) {
