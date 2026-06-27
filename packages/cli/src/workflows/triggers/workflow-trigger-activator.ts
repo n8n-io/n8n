@@ -583,7 +583,7 @@ export class WorkflowTriggerActivator {
 
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {
 		return async () =>
-			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
+			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow.id);
 	}
 
 	private throwRejectedPhaseError(results: Array<PromiseSettledResult<unknown>>): void {
