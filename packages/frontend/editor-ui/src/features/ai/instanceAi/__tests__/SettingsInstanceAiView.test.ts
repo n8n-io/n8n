@@ -50,12 +50,17 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { mcpConnectionsExperimentMock } = vi.hoisted(() => ({
+const { mcpConnectionsExperimentMock, computerUseExperimentMock } = vi.hoisted(() => ({
 	mcpConnectionsExperimentMock: vi.fn(),
+	computerUseExperimentMock: vi.fn(),
 }));
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
+}));
+
+vi.mock('@/experiments/instanceAiComputerUse', () => ({
+	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
 }));
 
 function makeStub(name: string) {
@@ -90,6 +95,7 @@ function setModuleSettings(
 const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
@@ -105,6 +111,7 @@ describe('SettingsInstanceAiView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiSettingsStore();
@@ -262,6 +269,21 @@ describe('SettingsInstanceAiView', () => {
 
 			const { queryByText } = renderComponent();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+	});
+
+	describe('Computer use settings', () => {
+		it('shows the computer use toggle when the experiment is enabled', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-computer-use-toggle')).toBeVisible();
+		});
+
+		it('hides the computer use toggle when the experiment is disabled', () => {
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-computer-use-toggle')).toBeNull();
 		});
 	});
 

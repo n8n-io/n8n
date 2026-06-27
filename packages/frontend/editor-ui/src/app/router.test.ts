@@ -254,6 +254,7 @@ describe('router', () => {
 		const instanceAiModuleSettings = {
 			enabled: true,
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
 			sandboxEnabled: true,

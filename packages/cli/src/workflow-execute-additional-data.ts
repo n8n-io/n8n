@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
 	ExecutionError,
@@ -348,6 +349,7 @@ export async function executeAgent(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executionMode: WorkflowExecuteMode,
 	outputSchema?: JSONSchema7,
+	workflowContext?: ExecuteAgentWorkflowContext,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
 	const telemetryUserId = additionalData.userId;
@@ -395,6 +397,7 @@ export async function executeAgent(
 		telemetryUserId,
 		useDraftVersion,
 		outputSchema,
+		workflowContext,
 	);
 }
 

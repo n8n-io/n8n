@@ -31,9 +31,7 @@ test.describe(
 
 				await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 
-				const assistantButton = n8n.aiAssistant
-					.getCredentialEditAssistantButton()
-					.locator('button');
+				const assistantButton = n8n.aiAssistant.getCredentialEditAssistantButton();
 				await expect(assistantButton).toBeVisible();
 				await assistantButton.click();
 
@@ -58,9 +56,7 @@ test.describe(
 				await n8n.workflows.addResource.credential();
 				await n8n.credentials.selectCredentialType('Notion API');
 
-				const assistantButton = n8n.aiAssistant
-					.getCredentialEditAssistantButton()
-					.locator('button');
+				const assistantButton = n8n.aiAssistant.getCredentialEditAssistantButton();
 				await expect(assistantButton).toBeVisible();
 				await assistantButton.click();
 
