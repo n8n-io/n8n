@@ -825,6 +825,7 @@ describe('useNodeHelpers()', () => {
 		const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 		const MANUAL_CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 		const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
+		const MCP_TRIGGER = '@n8n/n8n-nodes-langchain.mcpTrigger';
 		const WEBHOOK_TRIGGER = 'n8n-nodes-base.webhook';
 		const EXECUTE_WORKFLOW_TRIGGER = 'n8n-nodes-base.executeWorkflowTrigger';
 
@@ -1053,8 +1054,50 @@ describe('useNodeHelpers()', () => {
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 				expect(result?.credentials?.[NOTION_API]).toEqual([
-					'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+					'Private credentials require a trigger that establishes who is running the workflow, such as a Manual, Chat, or Sub-workflow trigger. Change the trigger, or switch this credential to Static.',
 				]);
+			});
+
+			it('does not warn when a private credential is used under an MCP trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MCP_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when a private credential is used under a Chat Trigger with availableInChat', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(CHAT_TRIGGER, { parameters: { availableInChat: true } }),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('warns when a private credential is used under a trigger with only an identity extractor', () => {
+				// A context-establishment hook provides an external identity, not the n8n
+				// user identity the system resolver needs — so private creds still warn,
+				// matching the backend's system-resolver publish check.
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(WEBHOOK_TRIGGER, {
+						parameters: {
+							executionsHooksVersion: 1,
+							contextEstablishmentHooks: { hooks: [{ hookName: 'credentials.bearerToken' }] },
+						},
+					}),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]).toBeDefined();
 			});
 
 			it('does not warn when a static (non-resolvable) credential is used under a non-manual trigger', () => {
@@ -1090,7 +1133,9 @@ describe('useNodeHelpers()', () => {
 				expect(result).toBeNull();
 			});
 
-			it('warns when any trigger in a multi-trigger workflow is non-manual', () => {
+			it('does not warn when at least one trigger in a multi-trigger workflow is compatible', () => {
+				// Mirrors the backend: the workflow is compatible as long as one trigger
+				// establishes the n8n user identity, even if others do not.
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [
 					buildTriggerNode(MANUAL_TRIGGER),
@@ -1100,8 +1145,21 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
+				expect(result).toBeNull();
+			});
+
+			it('warns when no trigger in a multi-trigger workflow is compatible', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(WEBHOOK_TRIGGER),
+					buildTriggerNode('n8n-nodes-base.scheduleTrigger'),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
 				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
-					'Private credentials only work in manually triggered workflows',
+					'Private credentials require a trigger that establishes who is running the workflow',
 				);
 			});
 
@@ -1189,7 +1247,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+						'Private credentials require a trigger that establishes who is running the workflow, such as a Manual, Chat, or Sub-workflow trigger. Change the trigger, or switch this credential to Static.',
 					]);
 				});
 
@@ -1221,7 +1279,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+						'Private credentials require a trigger that establishes who is running the workflow, such as a Manual, Chat, or Sub-workflow trigger. Change the trigger, or switch this credential to Static.',
 					]);
 				});
 

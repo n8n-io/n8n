@@ -26,6 +26,10 @@ export class ResourceMoveModal extends FloatingUiHelper {
 		return this.page.getByTestId('move-to-folder-dropdown');
 	}
 
+	async openProjectSelect(): Promise<void> {
+		await this.getProjectSelectCredential().locator('input').click();
+	}
+
 	getProjectOptions(): Locator {
 		return this.getVisiblePopoverOption();
 	}

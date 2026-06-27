@@ -210,7 +210,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when isOAuthType is false', async () => {
@@ -236,7 +236,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks create permission for new credential', async () => {
@@ -262,7 +262,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks update permission for existing credential', async () => {
@@ -288,7 +288,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
@@ -315,8 +315,8 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-card-end-user')).toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for existing credential', async () => {
@@ -343,11 +343,11 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-card-end-user')).toBeInTheDocument();
 		});
 
-		it('should disable the dynamic credentials toggle when the credential is already shared', async () => {
+		it('should disable the end-user credential card when the credential is already shared', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -372,7 +372,10 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toHaveClass('is-disabled');
+			expect(screen.getByTestId('credential-type-card-end-user')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 	});
 

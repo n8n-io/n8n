@@ -456,14 +456,6 @@ const isExecutionRedacted = computed(
 		!hasRunError.value,
 );
 
-/**
- * Simulation entry for this node when the displayed execution mocked its
- * output (AI verification run) instead of performing the real operation.
- */
-const executionSimulation = computed(() =>
-	node.value ? workflowExecution.value?.resultData?.simulation?.[node.value.name] : undefined,
-);
-
 const unfilteredDataCount = computed(() =>
 	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
 );
@@ -1518,20 +1510,6 @@ defineExpose({ enterEditMode });
 					{{ i18n.baseText('runData.pindata.learnMore') }}
 				</N8nLink>
 			</template>
-		</N8nCallout>
-
-		<N8nCallout
-			v-if="!isPaneTypeInput && executionSimulation && hasNodeRun"
-			theme="secondary"
-			icon="flask-conical"
-			:class="$style.pinnedDataCallout"
-			data-test-id="ndv-simulated-data-callout"
-		>
-			{{
-				i18n.baseText('runData.simulatedData.callout', {
-					interpolate: { reason: executionSimulation.reason },
-				})
-			}}
 		</N8nCallout>
 
 		<div :class="$style.header">

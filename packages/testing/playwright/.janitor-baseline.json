@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-25T12:22:26.752Z",
-	"totalViolations": 126,
+	"generated": "2026-06-26T15:21:58.281Z",
+	"totalViolations": 108,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -313,58 +313,6 @@
 				"hash": "a58ac8ee8b5c"
 			}
 		],
-		"tests/e2e/projects/folders-basic.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 146,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(errorMessage, { exact: fals...",
-				"hash": "4c6fb24eb5b2"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 150,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(emptyErrorMessage)",
-				"hash": "c524bac65c97"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 153,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(tooLongErrorMessage)",
-				"hash": "98fd475ead3c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 156,
-				"message": "Chained locator call in test: n8n.modal.container.getByText(dotsErrorMessage)",
-				"hash": "73fce4c260f3"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 172,
-				"message": "Chained locator call in test: n8n.notifications .getNotificationByTitleOrContent(FOLDER...",
-				"hash": "fcfd7b7736c9"
-			}
-		],
-		"tests/e2e/projects/projects-move-resources.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 107,
-				"message": "Chained locator call in test: n8n.resourceMoveModal.getProjectSelectCredential().locato...",
-				"hash": "2ab2448baa04"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 124,
-				"message": "Chained locator call in test: n8n.resourceMoveModal.getProjectSelectCredential().locato...",
-				"hash": "2ab2448baa04"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 141,
-				"message": "Chained locator call in test: n8n.resourceMoveModal.getProjectSelectCredential().locato...",
-				"hash": "2ab2448baa04"
-			}
-		],
 		"tests/e2e/projects/projects.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -415,46 +363,6 @@
 				"hash": "779bc814648c"
 			}
 		],
-		"tests/e2e/regression/ADO-2372-prevent-clipping-params.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 69,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 70,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 71,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 72,
-				"message": "Chained locator call in test: editor.locator('.cm-line')",
-				"hash": "5a9d1d0ea7b1"
-			}
-		],
-		"tests/e2e/sharing/access-control.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 83,
-				"message": "Chained locator call in test: adminN8n.credentials.credentialModal.getVisibleDropdown()...",
-				"hash": "6d910dfd4dd1"
-			},
-			{
-				"rule": "api-purity",
-				"line": 109,
-				"message": "Raw API call detected: request.get(",
-				"hash": "7fcb046dd97c"
-			}
-		],
 		"tests/e2e/workflows/editor/tags.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -467,12 +375,6 @@
 				"line": 69,
 				"message": "Chained locator call in test: n8n.canvas.tagsManagerModal.getTable().getByText(tag2)",
 				"hash": "4158ea621594"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 215,
-				"message": "Chained locator call in test: n8n.canvas.getVisibleDropdown().locator('li')",
-				"hash": "0eb6824192ab"
 			}
 		],
 		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
@@ -705,6 +607,14 @@
 				"hash": "314e16747365"
 			}
 		],
+		"tests/e2e/sharing/access-control.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 109,
+				"message": "Raw API call detected: request.get(",
+				"hash": "7fcb046dd97c"
+			}
+		],
 		"tests/e2e/sharing/workflow-sharing.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -738,35 +648,9 @@
 		"tests/e2e/workflows/editor/execution/logs.spec.ts": [
 			{
 				"rule": "api-purity",
-				"line": 270,
+				"line": 282,
 				"message": "Raw API call detected: request.get(",
 				"hash": "3783a2d87c82"
-			}
-		],
-		"tests/e2e/workflows/editor/subworkflows/subworkflow-version-resolution.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 65,
-				"message": "Raw API call detected: request.patch(",
-				"hash": "0acea681877b"
-			},
-			{
-				"rule": "api-purity",
-				"line": 117,
-				"message": "Raw API call detected: request.post(",
-				"hash": "ba11a5486f8c"
-			},
-			{
-				"rule": "api-purity",
-				"line": 146,
-				"message": "Raw API call detected: request.patch(",
-				"hash": "0acea681877b"
-			},
-			{
-				"rule": "api-purity",
-				"line": 299,
-				"message": "Raw API call detected: request.patch(",
-				"hash": "0acea681877b"
 			}
 		],
 		"pages/WorkflowsPage.ts": [
