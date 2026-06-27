@@ -313,6 +313,62 @@ export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
 	return 'other';
 }
 
+export interface RepoCoordinates {
+	host: string;
+	owner: string;
+	repo: string;
+}
+
+/**
+ * Parses owner/repo (and host) from an SSH or HTTPS git remote URL.
+ * Handles `git@host:owner/repo.git`, `ssh://git@host/owner/repo.git` and
+ * `https://host/owner/repo.git`. For nested GitLab groups, `owner` keeps the
+ * full namespace path (e.g. `group/subgroup`).
+ *
+ * @throws {UserError} If the URL cannot be parsed into host/owner/repo
+ */
+export function parseRepoCoordinates(repoUrl: string): RepoCoordinates {
+	const stripGit = (s: string) => s.replace(/\.git$/, '').replace(/\/$/, '');
+
+	// scp-like SSH syntax: git@host:owner/repo.git
+	const scpMatch = /^[^@]+@([^:]+):(.+)$/.exec(repoUrl);
+	if (scpMatch) {
+		const host = scpMatch[1];
+		const segments = stripGit(scpMatch[2]).split('/').filter(Boolean);
+		return buildCoordinates(host, segments, repoUrl);
+	}
+
+	// URL syntax: ssh://git@host/owner/repo.git or https://host/owner/repo.git
+	try {
+		const url = new URL(repoUrl);
+		const segments = stripGit(url.pathname).split('/').filter(Boolean);
+		return buildCoordinates(url.host, segments, repoUrl);
+	} catch {
+		throw new UserError(`Could not parse repository URL: ${repoUrl}`);
+	}
+}
+
+function buildCoordinates(host: string, segments: string[], repoUrl: string): RepoCoordinates {
+	if (segments.length < 2) {
+		throw new UserError(`Could not parse owner/repo from repository URL: ${repoUrl}`);
+	}
+	const repo = segments[segments.length - 1];
+	const owner = segments.slice(0, -1).join('/');
+	return { host, owner, repo };
+}
+
+/**
+ * Derives the REST API base URL for the given remote, supporting both the
+ * public hosts and self-managed instances (GitHub Enterprise, self-hosted GitLab).
+ */
+export function getApiBaseUrl(repoUrl: string, providerId: 'github' | 'gitlab'): string {
+	const { host } = parseRepoCoordinates(repoUrl);
+	if (providerId === 'github') {
+		return host === 'github.com' ? 'https://api.github.com' : `https://${host}/api/v3`;
+	}
+	return host === 'gitlab.com' ? 'https://gitlab.com/api/v4' : `https://${host}/api/v4`;
+}
+
 function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
 	if (!files || !Array.isArray(files)) {
 		return [];

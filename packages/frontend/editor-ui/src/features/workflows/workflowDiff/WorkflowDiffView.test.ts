@@ -30,11 +30,12 @@ vi.mock('@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue', () => ({
 }));
 
 // Mock useProvideViewportSync
+const mockSyncIsEnabled = ref(true);
 vi.mock('@/features/workflows/workflowDiff/useViewportSync', () => ({
 	useProvideViewportSync: () => ({
 		selectedDetailId: ref(undefined),
 		onNodeClick: vi.fn(),
-		syncIsEnabled: ref(true),
+		syncIsEnabled: mockSyncIsEnabled,
 	}),
 }));
 
@@ -163,6 +164,7 @@ const defaultWorkflowDiffMock = () =>
 describe('WorkflowDiffView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockSyncIsEnabled.value = true;
 		capturedApplyLayoutProps = { top: undefined, bottom: undefined };
 		createTestingPinia();
 		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
@@ -230,6 +232,52 @@ describe('WorkflowDiffView', () => {
 			// When tidyUp is undefined, applyLayout will be falsy (false)
 			expect(capturedApplyLayoutProps.top).toBeFalsy();
 			expect(capturedApplyLayoutProps.bottom).toBeFalsy();
+		});
+	});
+
+	describe('defaultSyncViews prop', () => {
+		const createMockWorkflow = (id: string, name: string) => ({
+			id,
+			name,
+			nodes: [],
+			connections: {},
+			active: false,
+			isArchived: false,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+			versionId: '1',
+			activeVersionId: null,
+			homeProject: {
+				id: 'project-1',
+				name: 'Project',
+				type: 'personal' as const,
+				icon: null,
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
+		});
+
+		it('should leave sync enabled by default', () => {
+			render(WorkflowDiffView, {
+				props: {
+					sourceWorkflow: createMockWorkflow('source-workflow', 'Source Workflow'),
+					targetWorkflow: createMockWorkflow('target-workflow', 'Target Workflow'),
+				},
+			});
+
+			expect(mockSyncIsEnabled.value).toBe(true);
+		});
+
+		it('should disable sync when defaultSyncViews is false', () => {
+			render(WorkflowDiffView, {
+				props: {
+					sourceWorkflow: createMockWorkflow('source-workflow', 'Source Workflow'),
+					targetWorkflow: createMockWorkflow('target-workflow', 'Target Workflow'),
+					defaultSyncViews: false,
+				},
+			});
+
+			expect(mockSyncIsEnabled.value).toBe(false);
 		});
 	});
 

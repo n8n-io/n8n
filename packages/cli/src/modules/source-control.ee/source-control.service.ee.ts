@@ -35,6 +35,7 @@ import {
 	filterByType,
 	getDeletedResources,
 	getNonDeletedResources,
+	mapLocalWorkflowToSourceControlledFile,
 } from './source-control-resource-helper';
 import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlScopedService } from './source-control-scoped.service';
@@ -202,6 +203,10 @@ export class SourceControlService {
 			} else if (!options.keepKeyPair) {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
+
+			// Code-review credentials are independent of the git transport, so always clear them.
+			await this.sourceControlPreferencesService.deleteApiToken();
+			await this.sourceControlPreferencesService.deleteGithubAppCredentials();
 
 			// Clear known_hosts to allow fresh host key verification on reconnect
 			await this.sourceControlPreferencesService.resetKnownHosts();
@@ -678,6 +683,80 @@ export class SourceControlService {
 			}
 			default:
 				throw new BadRequestError(`Unsupported file type: ${type}`);
+		}
+	}
+
+	/** All workflows the user can access, for review request selection. */
+	async listReviewWorkflowCandidates(user: User): Promise<SourceControlledFile[]> {
+		await this.sanityCheck();
+		const context = await this.sourceControlContextFactory.createContext(user);
+		const localWorkflows = await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
+		return localWorkflows.map(mapLocalWorkflowToSourceControlledFile);
+	}
+
+	/**
+	 * Exports selected workflows to a new feature branch and pushes it.
+	 * Restores the connected branch workfolder afterward so local git state stays clean.
+	 */
+	async pushWorkflowsForReviewBranch(
+		user: User,
+		options: {
+			workflowIds: string[];
+			branchName: string;
+			commitMessage: string;
+			baseBranch: string;
+		},
+	): Promise<void> {
+		await this.sanityCheck();
+
+		const context = await this.sourceControlContextFactory.createContext(user);
+
+		const localWorkflows = await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
+		const filesToPush = localWorkflows
+			.filter((workflow) => options.workflowIds.includes(workflow.id))
+			.map(mapLocalWorkflowToSourceControlledFile);
+
+		if (filesToPush.length !== options.workflowIds.length) {
+			throw new BadRequestError(
+				'One or more selected workflows cannot be included in a review request',
+			);
+		}
+
+		const { current: originalBranch } = await this.gitService.getCurrentBranch();
+		const { baseBranch, branchName } = options;
+
+		try {
+			await this.gitService.fetch();
+			await this.gitService.checkout(baseBranch);
+			await this.gitService.resetBranch({ hard: true, target: `origin/${baseBranch}` });
+			await this.gitService.checkoutLocalBranch(branchName);
+
+			const filesToBePushed = new Set<string>();
+			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
+			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
+			workflowsToBeExported.forEach((file) => filesToBePushed.add(file.file));
+
+			filesToBePushed.add(getTagsPath(this.gitFolder));
+			await this.sourceControlExportService.exportTagsToWorkFolder(context);
+
+			await this.gitService.stage(filesToBePushed);
+			await this.gitService.commit(options.commitMessage);
+			await this.gitService.push({ branch: branchName, force: false });
+		} catch (error) {
+			this.logger.error('Failed to push review branch', { error });
+			try {
+				await this.gitService.resetBranch({ hard: true, target: `origin/${baseBranch}` });
+			} catch (resetError) {
+				this.logger.error('Failed to reset branch after review push error', { error: resetError });
+			}
+			throw error;
+		} finally {
+			try {
+				await this.gitService.checkout(originalBranch || baseBranch);
+				await this.gitService.resetBranch({ hard: true, target: `origin/${baseBranch}` });
+			} catch (resetError) {
+				this.logger.error('Failed to restore branch after review push', { error: resetError });
+			}
 		}
 	}
 }
