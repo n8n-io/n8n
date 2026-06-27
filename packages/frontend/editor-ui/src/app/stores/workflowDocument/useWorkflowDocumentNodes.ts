@@ -44,7 +44,7 @@ import { useNodeTypesStore } from '../nodeTypes.store';
 
 export type NodeAddedPayload = { node: INodeUi };
 export type NodeRemovedPayload = { name: string; id: string };
-export type NodeUpdatedPayload = { name: string };
+export type NodeUpdatedPayload = { name: string; id: string };
 export type NodesSetPayload = { nodeIds: string[] };
 export type NodesResetPayload = object;
 
@@ -101,7 +101,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			deps.syncWorkflowObject(nodes.value);
 			void onNodesChange.trigger({
 				action: CHANGE_ACTION.UPDATE,
-				payload: { name: node.name },
+				payload: { name: node.name, id: node.id },
 			});
 		}
 

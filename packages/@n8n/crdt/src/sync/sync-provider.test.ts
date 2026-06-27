@@ -114,6 +114,23 @@ describe.each([CRDTEngine.yjs])('SyncProvider Conformance: %s', (engine) => {
 			expect(map2.get('after')).toBeUndefined();
 		});
 
+		it('should not leak subscriptions when stopped before start() resolves', async () => {
+			// Scope disposal can call stop() while start() is still awaiting
+			// connect(). stop() must cancel the in-flight start so the transport
+			// and doc subscriptions don't leak past it.
+			const startPromise = sync1.start();
+			sync1.stop();
+			await startPromise;
+
+			expect(sync1.syncing).toBe(false);
+			expect(transport1.connected).toBe(false);
+
+			// No doc subscription leaked: a local change must not reach the peer.
+			await sync2.start();
+			map1.set('after', 'race');
+			expect(map2.get('after')).toBeUndefined();
+		});
+
 		it('should call onSyncStateChange handlers', async () => {
 			const states: boolean[] = [];
 			sync1.onSyncStateChange((syncing) => states.push(syncing));
