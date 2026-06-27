@@ -15,10 +15,21 @@ captured when it was defined, not this mapping.
 """
 
 import json
+import sys
 from collections.abc import Callable
 
-from src.constants import BLOCKED_ATTRIBUTES, EXECUTOR_CIRCULAR_REFERENCE_KEY
+from src.constants import (
+    BLOCKED_ATTRIBUTES,
+    EXECUTOR_CIRCULAR_REFERENCE_KEY,
+    EXECUTOR_FILENAMES,
+)
 from src.errors import SecurityViolationError
+
+# Bind the frame helper while ``sys`` is importable (this module drops most of
+# its builtins at end of load). Keep only this function, not all of ``sys``, to
+# limit what user code could reach through this module.
+_get_frame = sys._getframe
+del sys
 
 
 # Sourced from the analyzer's BLOCKED_ATTRIBUTES so the static and runtime
@@ -191,6 +202,23 @@ def _validation_target(name, args, kwargs) -> tuple[str, str | None]:
     return name, None
 
 
+def _import_initiated_by_user_code() -> bool:
+    """Whether this import's immediate caller is the user's own code.
+
+    Told apart by the calling frame's filename: user code runs under a fixed
+    sentinel filename, set when the executor compiles it. This is the immediate
+    initiator, not the ultimate one — an import a package makes on the user's
+    behalf counts as package code.
+    """
+    # Frames: 0 here, 1 _GuardedImport.__call__, 2 the import statement / importlib call.
+    try:
+        initiator = _get_frame(2)
+    except ValueError:
+        # No frame to inspect: fail closed and treat it as user code.
+        return True
+    return initiator.f_code.co_filename in EXECUTOR_FILENAMES
+
+
 class _GuardedImport(_HardenedCallable):
     """Hardened wrapper around an import entry point.
 
@@ -209,16 +237,23 @@ class _GuardedImport(_HardenedCallable):
         object.__setattr__(self, "_original", original)
 
     def __call__(self, name, *args, **kwargs):
-        validate = object.__getattribute__(self, "_validate_import")
         config = object.__getattribute__(self, "_security_config")
-        check_name, package = _validation_target(name, args, kwargs)
-        is_allowed, error_msg = validate(check_name, config, package)
-        if not is_allowed:
-            assert error_msg is not None
-            raise SecurityViolationError(
-                message="Security violation detected",
-                description=error_msg,
-            )
+        # When trusted, imports made by package code skip the allowlist; the
+        # user's own imports are always checked. This covers all package code,
+        # not only allowlisted packages.
+        trusted = (
+            config.allow_transitive_imports and not _import_initiated_by_user_code()
+        )
+        if not trusted:
+            validate = object.__getattribute__(self, "_validate_import")
+            check_name, package = _validation_target(name, args, kwargs)
+            is_allowed, error_msg = validate(check_name, config, package)
+            if not is_allowed:
+                assert error_msg is not None
+                raise SecurityViolationError(
+                    message="Security violation detected",
+                    description=error_msg,
+                )
         original = object.__getattribute__(self, "_original")
         return original(name, *args, **kwargs)
 
