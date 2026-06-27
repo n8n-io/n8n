@@ -229,6 +229,7 @@ function toDate(value: string): Date {
 	return date;
 }
 
+// Stryker disable next-line ArrayDeclaration: the default `['']` vs `[]` both yield a falsy `valueFormat` after destructuring, taking the same `tryToParseDateTime` branch — equivalent.
 export function toDateTime(value: string, extraArgs: [string] = ['']): DateTime {
 	try {
 		const [valueFormat] = extraArgs;
@@ -343,6 +344,9 @@ function replaceSpecialChars(value: string) {
 }
 
 function toSentenceCase(value: string) {
+	// Stryker disable next-line MethodExpression: `value.slice()` with no args returns
+	// the same string and strings are immutable, so `current = value` is output-identical
+	// for every input — an equivalent mutant no test can distinguish.
 	let current = value.slice();
 	let buffer = '';
 
@@ -383,10 +387,12 @@ function extractEmail(value: string) {
 function extractDomain(value: string) {
 	if (isEmail(value)) {
 		const matched = EMAIL_REGEXP.exec(value);
-		// This shouldn't happen
+		// This shouldn't happen: isEmail() tested the same regex, so exec() always matches here.
+		// Stryker disable next-line BlockStatement: the guard above is unreachable dead code (matched is never null when isEmail is true), so emptying its body is equivalent.
 		if (!matched) {
 			return undefined;
 		}
+		// Stryker disable next-line OptionalChaining: EMAIL_REGEXP has a named `domain` group, so `.groups` is always defined on a match — the `?.` never short-circuits and is equivalent to `.`.
 		return matched.groups?.domain;
 	}
 
@@ -411,6 +417,9 @@ function extractUrlPath(value: string) {
 		const url = new URL(value);
 		return url.pathname;
 	} catch (error) {
+		// Equivalent-mutant note: emptying this catch body still falls through to the
+		// function's implicit `return undefined`, so the BlockStatement mutant here is
+		// output-identical for every input that throws.
 		return undefined;
 	}
 }
