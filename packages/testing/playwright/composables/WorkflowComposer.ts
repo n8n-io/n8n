@@ -133,7 +133,7 @@ export class WorkflowComposer {
 		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
 		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
 
-		const folderOption = this.n8n.page.getByTestId('move-to-folder-option').getByText(folderName);
+		const folderOption = this.n8n.resourceMoveModal.getFolderOption(folderName);
 		await folderOption.waitFor({ state: 'visible' });
 		await folderOption.click();
 	}
