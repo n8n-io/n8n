@@ -131,6 +131,8 @@ export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 	'089_instance_ai_split_empty_state',
 );
 
+export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance_ai_browser_use');
+
 export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
 
 export const EXPERIMENTS_TO_TRACK = [
@@ -166,5 +168,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
+	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
 ];
