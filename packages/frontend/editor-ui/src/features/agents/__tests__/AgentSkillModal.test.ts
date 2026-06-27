@@ -32,11 +32,11 @@ const ModalStub = defineComponent({
 
 const SkillViewerStub = defineComponent({
 	emits: ['update:skill', 'update:valid'],
-	props: ['skill', 'showValidationWarnings', 'errors', 'scrollable'],
-	setup(_, { emit }) {
+	props: ['skill', 'selectedPath', 'showValidationWarnings', 'errors', 'scrollable'],
+	setup(props, { emit }) {
 		const valid = ref(true);
 		onMounted(() => emit('update:valid', valid.value));
-		return () => h('div', { 'data-testid': 'agent-skill-viewer-stub' });
+		return () => h('div', { 'data-testid': 'agent-skill-viewer-stub' }, props.selectedPath);
 	},
 });
 
@@ -44,8 +44,10 @@ const MODAL_NAME = 'AgentSkillModal';
 
 function renderModal({
 	onConfirm = vi.fn(),
+	skill,
 }: {
 	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
+	skill?: AgentSkill;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -57,6 +59,8 @@ function renderModal({
 					props: ['variant', 'disabled'],
 				},
 				N8nHeading: { template: '<h2><slot /></h2>' },
+				N8nIcon: { template: '<i />' },
+				N8nText: { template: '<span><slot /></span>' },
 			},
 		},
 	});
@@ -66,6 +70,7 @@ function renderModal({
 			data: {
 				projectId: 'p1',
 				agentId: 'a1',
+				skill,
 				onConfirm,
 			},
 		},
@@ -92,5 +97,33 @@ describe('AgentSkillModal', () => {
 		expect(apiCreateSpy).not.toHaveBeenCalled();
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('switches the selected editor file from SKILL.md to a reference', async () => {
+		const { container, getByText } = renderModal({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				references: [
+					{
+						path: 'references/guide.md',
+						content: '# Guide',
+						bytes: 7,
+						sha256: 'a'.repeat(64),
+					},
+				],
+			},
+		});
+
+		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
+			'SKILL.md',
+		);
+
+		await fireEvent.click(getByText('references/guide.md'));
+
+		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
+			'references/guide.md',
+		);
 	});
 });

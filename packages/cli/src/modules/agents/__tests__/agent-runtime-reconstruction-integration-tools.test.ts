@@ -126,6 +126,7 @@ function makeRuntimeReconstructionService(
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		mock<AgentSkillsService>(),
 	);
 }
 
@@ -233,7 +234,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRuntimeReconstructionService,
 			credentialsService,
 		);
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, runtimeCacheService);
+		agentSkillsService = mock<AgentSkillsService>();
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
@@ -286,6 +287,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,
+			agentSkillsService,
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

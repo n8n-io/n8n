@@ -14,6 +14,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 8 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
+| [agent_skill_definition](agent_skill_definition.md) | 18 |  | table |
+| [agent_skill_snapshot](agent_skill_snapshot.md) | 18 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
@@ -132,6 +134,8 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_skill_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_skill_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -354,6 +358,46 @@ erDiagram
   TEXT skills
   TEXT tools
   datetime_3_ updatedAt
+  varchar_36_ versionId PK
+}
+"agent_skill_definition" {
+  varchar_36_ agentId FK
+  TEXT allowedTools
+  TEXT compatibility
+  datetime_3_ createdAt
+  TEXT dependencies
+  varchar_512_ description
+  varchar_32_ id PK
+  TEXT instructions
+  TEXT interface
+  varchar_128_ license
+  TEXT linkedFiles
+  TEXT metadata
+  varchar_128_ name
+  TEXT platforms
+  TEXT policy
+  TEXT recommendedTools
+  datetime_3_ updatedAt
+  varchar_128_ version
+}
+"agent_skill_snapshot" {
+  TEXT allowedTools
+  TEXT compatibility
+  datetime_3_ createdAt
+  TEXT dependencies
+  varchar_512_ description
+  TEXT instructions
+  TEXT interface
+  varchar_128_ license
+  TEXT linkedFiles
+  TEXT metadata
+  varchar_128_ name
+  TEXT platforms
+  TEXT policy
+  TEXT recommendedTools
+  varchar_32_ skillId PK
+  datetime_3_ updatedAt
+  varchar_128_ version
   varchar_36_ versionId PK
 }
 "agent_task_definition" {

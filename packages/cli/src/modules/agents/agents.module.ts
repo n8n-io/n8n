@@ -112,6 +112,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
 		const { AgentHistory } = await import('./entities/agent-history.entity');
+		const { AgentSkillDefinition } = await import('./entities/agent-skill.entity');
+		const { AgentSkillSnapshot } = await import('./entities/agent-skill-snapshot.entity');
 		const { AgentTask } = await import('./entities/agent-task.entity');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity');
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity');
@@ -142,6 +144,8 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentHistory,
+			AgentSkillDefinition,
+			AgentSkillSnapshot,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,

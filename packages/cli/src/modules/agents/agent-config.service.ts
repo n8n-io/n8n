@@ -186,7 +186,7 @@ export class AgentConfigService {
 		}
 
 		if (skillsProvided) {
-			this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
+			await this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
 		}
 
 		this.runtimeCacheService.clearRuntimes(agentId);
@@ -258,7 +258,7 @@ export class AgentConfigService {
 		existingTaskIds: ReadonlySet<string>,
 	): Promise<ResolvedSubAgentRef[]> {
 		if (config.skills !== undefined) {
-			const skills = entity.skills ?? {};
+			const skills = await this.agentSkillsService.getSkillMapForAgent(entity.id);
 			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
 		}
 

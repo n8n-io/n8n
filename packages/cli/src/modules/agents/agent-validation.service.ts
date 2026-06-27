@@ -147,9 +147,9 @@ export class AgentValidationService {
 		}
 
 		missing.push(
-			...this.agentSkillsService
-				.getMissingSkillIds(config, agentEntity.skills ?? {})
-				.map((skillId) => `skill:${skillId}`),
+			...(await this.agentSkillsService.getMissingSkillIds(config, agentEntity.id)).map(
+				(skillId) => `skill:${skillId}`,
+			),
 		);
 
 		return { missing };

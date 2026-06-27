@@ -105,7 +105,9 @@ function makeService() {
 	});
 
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
-	skillsService.snapshotConfiguredSkills.mockReturnValue(null);
+	skillsService.snapshotConfiguredSkills.mockResolvedValue(undefined);
+	skillsService.restoreSkillsFromSnapshot.mockResolvedValue(undefined);
+	skillsService.getSkillMapForAgent.mockResolvedValue({});
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
 	chatIntegrationService.disconnect.mockResolvedValue();
@@ -157,9 +159,6 @@ describe('AgentPublishService', () => {
 			trx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
-		const configuredSkills = {
-			skill: { name: 'Skill', description: 'desc', instructions: 'Use it' },
-		};
 		const agent = makeAgent({
 			schema: {
 				...schema,
@@ -170,7 +169,6 @@ describe('AgentPublishService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		customToolsService.snapshotConfiguredTools.mockReturnValue(configuredTools as never);
-		skillsService.snapshotConfiguredSkills.mockReturnValue(configuredSkills);
 		taskRepo.findBy.mockResolvedValue([
 			{
 				id: 'task-1',
@@ -188,10 +186,16 @@ describe('AgentPublishService', () => {
 				agentId,
 				schema: agent.schema,
 				tools: configuredTools,
-				skills: configuredSkills,
+				skills: null,
 				publishedBy: user,
 			},
 			trx,
+		);
+		expect(skillsService.snapshotConfiguredSkills).toHaveBeenCalledWith(
+			trx,
+			versionId,
+			agentId,
+			agent.schema,
 		);
 		expect(taskSnapshotRepository.saveForVersion).toHaveBeenCalledWith(
 			[expect.objectContaining({ versionId, taskId: 'task-1', objective: 'Summarize messages' })],
@@ -266,12 +270,16 @@ describe('AgentPublishService', () => {
 	});
 
 	it('reverts draft fields and task bodies from the active published snapshot', async () => {
-		const { service, agentRepository, taskSnapshotRepository, taskRepo } = makeService();
+		const { service, agentRepository, taskSnapshotRepository, taskRepo, skillsService, trx } =
+			makeService();
+		const restoredSkills = {
+			skill: { name: 'Skill', description: 'desc', instructions: 'Use it' },
+		};
 		const activeVersion = makeHistory({
 			versionId: 'published-v1',
 			schema,
 			tools: { tool: { descriptor: { name: 'published' } } } as unknown as AgentHistory['tools'],
-			skills: { skill: { name: 'Skill', description: 'desc', instructions: 'Use it' } },
+			skills: null,
 		});
 		const agent = makeAgent({
 			name: 'Draft Agent',
@@ -284,6 +292,7 @@ describe('AgentPublishService', () => {
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		skillsService.getSkillMapForAgent.mockResolvedValue(restoredSkills);
 		taskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
 		taskRepo.findBy.mockResolvedValue([{ id: 'task-1' }, { id: 'draft-only' }]);
 
@@ -293,7 +302,12 @@ describe('AgentPublishService', () => {
 		expect(agent.name).toBe(schema.name);
 		expect(agent.versionId).toBe('published-v1');
 		expect(agent.tools).toEqual(activeVersion.tools);
-		expect(agent.skills).toEqual(activeVersion.skills);
+		expect(agent.skills).toEqual(restoredSkills);
+		expect(skillsService.restoreSkillsFromSnapshot).toHaveBeenCalledWith(
+			trx,
+			agentId,
+			'published-v1',
+		);
 		expect(taskRepo.delete).toHaveBeenCalledWith(['draft-only']);
 		expect(taskRepo.update).toHaveBeenCalledWith(
 			'task-1',
@@ -302,8 +316,15 @@ describe('AgentPublishService', () => {
 	});
 
 	it('reverts to a selected history row and task snapshot without changing the active published version', async () => {
-		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository, taskRepo } =
-			makeService();
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			taskSnapshotRepository,
+			taskRepo,
+			skillsService,
+			trx,
+		} = makeService();
 		const agent = makeAgent({
 			activeVersionId: 'current-active',
 			activeVersion: makeHistory({ versionId: 'current-active' }),
@@ -315,6 +336,9 @@ describe('AgentPublishService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+		skillsService.getSkillMapForAgent.mockResolvedValue({
+			skill: { name: 'Older skill', description: 'desc', instructions: 'Use it' },
+		});
 		taskSnapshotRepository.findByVersionId.mockResolvedValue([
 			makeTaskSnapshot({
 				versionId: 'older-version',
@@ -331,6 +355,11 @@ describe('AgentPublishService', () => {
 		expect(agent.name).toBe('Older Agent');
 		expect(agent.activeVersionId).toBe('current-active');
 		expect(agent.versionId).not.toBe('older-version');
+		expect(skillsService.restoreSkillsFromSnapshot).toHaveBeenCalledWith(
+			trx,
+			agentId,
+			'older-version',
+		);
 		expect(taskRepo.delete).toHaveBeenCalledWith(['draft-only']);
 		expect(taskRepo.update).toHaveBeenCalledWith(
 			'task-1',

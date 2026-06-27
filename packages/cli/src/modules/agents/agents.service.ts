@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -19,6 +20,7 @@ export class AgentsService {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
+		private readonly agentSkillsService: AgentSkillsService,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -56,7 +58,10 @@ export class AgentsService {
 	}
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
-		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) return null;
+		agent.skills = await this.agentSkillsService.getSkillMapForAgent(agentId);
+		return agent;
 	}
 
 	async findByUser(userId: string): Promise<Agent[]> {

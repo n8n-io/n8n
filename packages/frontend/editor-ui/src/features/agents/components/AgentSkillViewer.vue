@@ -5,17 +5,21 @@ import { N8nButton, N8nFormInput, N8nIcon, N8nMarkdownEditor, N8nText } from '@n
 import { useI18n } from '@n8n/i18n';
 
 import type { Rule, RuleGroup } from '@/Interface';
-import type { AgentSkill } from '../types';
+import { AgentSkillImportError, useAgentSkillImport } from '../composables/useAgentSkillImport';
+import type { AgentSkill, AgentSkillReference } from '../types';
+
+const SKILL_FILE = 'SKILL.md';
 
 const props = withDefaults(
 	defineProps<{
 		skill: AgentSkill;
 		disabled?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
+		selectedPath?: string;
 		scrollable?: boolean;
 		showValidationWarnings?: boolean;
 	}>(),
-	{ disabled: false, scrollable: true, showValidationWarnings: false },
+	{ disabled: false, selectedPath: SKILL_FILE, scrollable: true, showValidationWarnings: false },
 );
 
 const emit = defineEmits<{
@@ -24,7 +28,9 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const fileInput = ref<HTMLInputElement>();
+const { importSkillFiles } = useAgentSkillImport();
+const skillFileInput = ref<HTMLInputElement>();
+const skillFolderInput = ref<HTMLInputElement>();
 const name = ref(props.skill.name);
 const description = ref(props.skill.description);
 const fileError = ref('');
@@ -53,8 +59,15 @@ const instructionsError = computed(() => {
 const instructionsValid = computed(
 	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
 );
+const referencesValid = computed(() =>
+	(props.skill.references ?? []).every((reference) => reference.content.trim()),
+);
 const formIsValid = computed(
-	() => formValidation.name && formValidation.description && instructionsValid.value,
+	() =>
+		formValidation.name &&
+		formValidation.description &&
+		instructionsValid.value &&
+		referencesValid.value,
 );
 const instructionsCharacterCount = computed(() =>
 	i18n.baseText('agents.builder.skills.instructions.characterCount', {
@@ -64,7 +77,18 @@ const instructionsCharacterCount = computed(() =>
 		},
 	}),
 );
-const acceptedInstructionExtensions = new Set(['txt', 'md']);
+const isSkillFileSelected = computed(() => props.selectedPath === SKILL_FILE);
+const selectedReference = computed(() =>
+	(props.skill.references ?? []).find((reference) => reference.path === props.selectedPath),
+);
+const allowedToolsText = computed(() => props.skill.allowedTools?.join(', ') ?? '');
+const selectedReferenceCharacterCount = computed(() =>
+	i18n.baseText('agents.builder.skills.references.characterCount', {
+		interpolate: {
+			count: (selectedReference.value?.content ?? '').length.toLocaleString(),
+		},
+	}),
+);
 
 function onNameInput(value: string | number | boolean | null | undefined) {
 	const next = typeof value === 'string' ? value : String(value ?? '');
@@ -86,41 +110,66 @@ function onInstructionsInput(value: string) {
 	emit('update:skill', { instructions: value });
 }
 
-function replaceInstructions(instructions: string) {
-	fileError.value = '';
-	emit('update:skill', { instructions });
+function onAllowedToolsInput(value: string | number | boolean | null | undefined) {
+	const next = typeof value === 'string' ? value : String(value ?? '');
+	const allowedTools = next
+		.split(',')
+		.map((tool) => tool.trim())
+		.filter(Boolean);
+	emit('update:skill', { allowedTools: allowedTools.length > 0 ? allowedTools : undefined });
 }
 
-function openFilePicker() {
-	fileInput.value?.click();
+function openSkillFilePicker() {
+	skillFileInput.value?.click();
 }
 
-function readInstructionsFile(file: File) {
-	const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
-	if (!acceptedInstructionExtensions.has(extension)) {
-		fileError.value = i18n.baseText('agents.builder.skills.instructions.file.invalidType');
-		return;
+function openSkillFolderPicker() {
+	skillFolderInput.value?.click();
+}
+
+async function importFiles(files: File[]) {
+	try {
+		fileError.value = '';
+		emit('update:skill', await importSkillFiles(files));
+	} catch (error) {
+		fileError.value =
+			error instanceof AgentSkillImportError
+				? i18n.baseText(error.i18nKey)
+				: i18n.baseText('agents.builder.skills.import.invalidFolder');
 	}
-
-	const reader = new FileReader();
-	reader.onload = () => {
-		replaceInstructions(String(reader.result ?? ''));
-		reader.onload = null;
-		reader.onerror = null;
-	};
-	reader.onerror = () => {
-		fileError.value = i18n.baseText('agents.builder.skills.instructions.file.readError');
-		reader.onload = null;
-		reader.onerror = null;
-	};
-	reader.readAsText(file);
 }
 
-function onInstructionsFileChange(event: Event) {
+function onSkillFileChange(event: Event) {
 	const input = event.target instanceof HTMLInputElement ? event.target : null;
-	const file = input?.files?.[0];
-	if (file) readInstructionsFile(file);
+	const files = input?.files ? Array.from(input.files) : [];
+	if (files.length > 0) void importFiles(files);
 	if (input) input.value = '';
+}
+
+function onSkillFolderChange(event: Event) {
+	const input = event.target instanceof HTMLInputElement ? event.target : null;
+	const files = input?.files ? Array.from(input.files) : [];
+	if (files.length > 0) void importFiles(files);
+	if (input) input.value = '';
+}
+
+function replaceReference(updated: AgentSkillReference) {
+	emit('update:skill', {
+		references: (props.skill.references ?? []).map((reference) =>
+			reference.path === updated.path ? updated : reference,
+		),
+	});
+}
+
+async function onReferenceInput(value: string) {
+	const reference = selectedReference.value;
+	if (!reference) return;
+	replaceReference({
+		...reference,
+		content: value,
+		bytes: new TextEncoder().encode(value).byteLength,
+		sha256: await sha256(value),
+	});
 }
 
 watch(
@@ -138,6 +187,11 @@ watch(
 );
 
 watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
+
+async function sha256(content: string): Promise<string> {
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 </script>
 
 <template>
@@ -145,83 +199,144 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 		:class="[$style.panel, props.scrollable && $style.scrollable]"
 		data-testid="agent-skill-viewer"
 	>
-		<div :class="$style.field">
-			<N8nFormInput
-				:model-value="name"
-				:label="i18n.baseText('agents.builder.skills.name.label')"
-				name="skill-name"
-				required
-				label-size="small"
-				:placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
-				:disabled="props.disabled"
-				:show-validation-warnings="props.showValidationWarnings"
-				:validation-rules="nameValidationRules"
-				data-testid="agent-skill-name-input"
-				@update:model-value="onNameInput"
-				@validate="onFieldValidate('name', $event)"
-			/>
-		</div>
-
-		<div :class="$style.field">
-			<N8nFormInput
-				:model-value="description"
-				:label="i18n.baseText('agents.builder.skills.description.label')"
-				name="skill-description"
-				required
-				label-size="small"
-				:placeholder="i18n.baseText('agents.builder.skills.description.placeholder')"
-				:disabled="props.disabled"
-				:show-validation-warnings="props.showValidationWarnings"
-				:validation-rules="descriptionValidationRules"
-				data-testid="agent-skill-description-input"
-				@update:model-value="onDescriptionInput"
-				@validate="onFieldValidate('description', $event)"
-			/>
-		</div>
-
-		<div :class="[$style.field, $style.instructionsField]">
-			<div :class="$style.instructionsHeader">
-				<label :class="$style.label">
-					<N8nText size="small" :bold="true">{{
-						i18n.baseText('agents.builder.skills.instructions.label')
-					}}</N8nText>
-				</label>
+		<template v-if="isSkillFileSelected">
+			<div :class="$style.importActions">
 				<N8nButton
 					variant="subtle"
 					size="mini"
 					:disabled="props.disabled"
-					data-testid="agent-skill-upload-instructions"
-					@click="openFilePicker"
+					data-testid="agent-skill-upload-skill-md"
+					@click="openSkillFilePicker"
 				>
 					<template #prefix><N8nIcon icon="upload" :size="12" /></template>
-					{{ i18n.baseText('agents.builder.skills.instructions.file.upload') }}
+					{{ i18n.baseText('agents.builder.skills.import.skillFile') }}
+				</N8nButton>
+				<N8nButton
+					variant="subtle"
+					size="mini"
+					:disabled="props.disabled"
+					data-testid="agent-skill-upload-folder"
+					@click="openSkillFolderPicker"
+				>
+					<template #prefix><N8nIcon icon="folder-up" :size="12" /></template>
+					{{ i18n.baseText('agents.builder.skills.import.folder') }}
 				</N8nButton>
 				<input
-					ref="fileInput"
+					ref="skillFileInput"
 					type="file"
-					accept=".txt,.md,text/plain,text/markdown"
+					accept=".md,text/markdown"
 					:disabled="props.disabled"
 					:class="$style.fileInput"
-					data-testid="agent-skill-instructions-file-input"
-					@change="onInstructionsFileChange"
+					data-testid="agent-skill-skill-md-file-input"
+					@change="onSkillFileChange"
 				/>
+				<input
+					ref="skillFolderInput"
+					type="file"
+					webkitdirectory
+					multiple
+					:disabled="props.disabled"
+					:class="$style.fileInput"
+					data-testid="agent-skill-folder-file-input"
+					@change="onSkillFolderChange"
+				/>
+			</div>
+			<N8nText v-if="fileError" size="small" color="danger">{{ fileError }}</N8nText>
+
+			<div :class="$style.field">
+				<N8nFormInput
+					:model-value="name"
+					:label="i18n.baseText('agents.builder.skills.name.label')"
+					name="skill-name"
+					required
+					label-size="small"
+					:placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
+					:disabled="props.disabled"
+					:show-validation-warnings="props.showValidationWarnings"
+					:validation-rules="nameValidationRules"
+					data-testid="agent-skill-name-input"
+					@update:model-value="onNameInput"
+					@validate="onFieldValidate('name', $event)"
+				/>
+			</div>
+
+			<div :class="$style.field">
+				<N8nFormInput
+					:model-value="description"
+					:label="i18n.baseText('agents.builder.skills.description.label')"
+					name="skill-description"
+					required
+					label-size="small"
+					:placeholder="i18n.baseText('agents.builder.skills.description.placeholder')"
+					:disabled="props.disabled"
+					:show-validation-warnings="props.showValidationWarnings"
+					:validation-rules="descriptionValidationRules"
+					data-testid="agent-skill-description-input"
+					@update:model-value="onDescriptionInput"
+					@validate="onFieldValidate('description', $event)"
+				/>
+			</div>
+
+			<div :class="$style.field">
+				<N8nFormInput
+					:model-value="allowedToolsText"
+					:label="i18n.baseText('agents.builder.skills.allowedTools.label')"
+					name="skill-allowed-tools"
+					label-size="small"
+					:placeholder="i18n.baseText('agents.builder.skills.allowedTools.placeholder')"
+					:disabled="props.disabled"
+					data-testid="agent-skill-allowed-tools-input"
+					@update:model-value="onAllowedToolsInput"
+				/>
+			</div>
+
+			<div :class="[$style.field, $style.instructionsField]">
+				<div :class="$style.instructionsHeader">
+					<label :class="$style.label">
+						<N8nText size="small" :bold="true">{{
+							i18n.baseText('agents.builder.skills.instructions.label')
+						}}</N8nText>
+					</label>
+				</div>
+				<N8nMarkdownEditor
+					:class="$style.editor"
+					:model-value="props.skill.instructions ?? ''"
+					:readonly="props.disabled"
+					max-height="100%"
+					data-testid="agent-skill-instructions-editor"
+					@update:model-value="onInstructionsInput"
+				/>
+				<N8nText v-if="instructionsError" size="small" color="danger">{{
+					instructionsError
+				}}</N8nText>
+				<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
+					props.errors.instructions
+				}}</N8nText>
+				<N8nText size="xsmall" color="text-light">{{ instructionsCharacterCount }}</N8nText>
+			</div>
+		</template>
+
+		<div v-else-if="selectedReference" :class="[$style.field, $style.instructionsField]">
+			<div :class="$style.instructionsHeader">
+				<div :class="$style.referenceTitle">
+					<N8nText size="small" :bold="true">{{ selectedReference.path }}</N8nText>
+					<N8nText size="xsmall" color="text-light">{{
+						i18n.baseText('agents.builder.skills.references.markdownOnly')
+					}}</N8nText>
+				</div>
 			</div>
 			<N8nMarkdownEditor
 				:class="$style.editor"
-				:model-value="props.skill.instructions ?? ''"
+				:model-value="selectedReference.content"
 				:readonly="props.disabled"
 				max-height="100%"
-				data-testid="agent-skill-instructions-editor"
-				@update:model-value="onInstructionsInput"
+				data-testid="agent-skill-reference-editor"
+				@update:model-value="onReferenceInput"
 			/>
-			<N8nText v-if="fileError" size="small" color="danger">{{ fileError }}</N8nText>
-			<N8nText v-if="instructionsError" size="small" color="danger">{{
-				instructionsError
-			}}</N8nText>
-			<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
-				props.errors.instructions
-			}}</N8nText>
-			<N8nText size="xsmall" color="text-light">{{ instructionsCharacterCount }}</N8nText>
+			<N8nText v-if="!selectedReference.content.trim()" size="small" color="danger">
+				{{ i18n.baseText('agents.builder.skills.references.contentRequired') }}
+			</N8nText>
+			<N8nText size="xsmall" color="text-light">{{ selectedReferenceCharacterCount }}</N8nText>
 		</div>
 	</div>
 </template>
@@ -250,6 +365,11 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	gap: var(--spacing--3xs);
 }
 
+.importActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+}
+
 .instructionsField {
 	flex: 1;
 	min-height: 0;
@@ -273,5 +393,11 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 .editor {
 	flex: 1;
 	min-height: 0;
+}
+
+.referenceTitle {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 </style>

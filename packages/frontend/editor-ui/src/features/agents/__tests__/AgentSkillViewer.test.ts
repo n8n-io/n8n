@@ -1,5 +1,5 @@
-import { mount, flushPromises } from '@vue/test-utils';
-import { defineComponent, h, nextTick, onMounted } from 'vue';
+import { flushPromises, mount } from '@vue/test-utils';
+import { defineComponent, h, onMounted } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AgentSkillViewer from '../components/AgentSkillViewer.vue';
@@ -29,31 +29,20 @@ const N8nFormInputStub = defineComponent({
 	},
 });
 
-let fileReaderText = '';
-
-class MockFileReader {
-	result: string | ArrayBuffer | null = null;
-	onload: (() => void) | null = null;
-	onerror: (() => void) | null = null;
-
-	readAsText() {
-		queueMicrotask(() => {
-			this.result = fileReaderText;
-			this.onload?.();
-		});
-	}
-}
-
 describe('AgentSkillViewer', () => {
 	beforeEach(() => {
-		vi.stubGlobal('FileReader', MockFileReader);
+		vi.stubGlobal('crypto', {
+			subtle: {
+				digest: vi.fn(async () => new Uint8Array(32).fill(1).buffer),
+			},
+		});
 	});
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
 	});
 
-	it('reads a local markdown file into the instructions field', async () => {
+	it('imports SKILL.md frontmatter and instructions', async () => {
 		const wrapper = mount(AgentSkillViewer, {
 			props: {
 				skill: {
@@ -78,11 +67,11 @@ describe('AgentSkillViewer', () => {
 			},
 		});
 
-		fileReaderText = '# Playbook\nFollow these steps.';
-		const file = new File([fileReaderText], 'playbook.md', {
-			type: 'text/markdown',
-		});
-		const input = wrapper.find('[data-testid="agent-skill-instructions-file-input"]');
+		const file = makeFile(
+			'---\nname: Summarize notes\ndescription: Use for notes\nallowed_tools:\n  - load_workflow\n---\n# Playbook\nFollow these steps.',
+			'SKILL.md',
+		);
+		const input = wrapper.find('[data-testid="agent-skill-skill-md-file-input"]');
 		Object.defineProperty(input.element, 'files', {
 			value: [file],
 			configurable: true,
@@ -90,10 +79,102 @@ describe('AgentSkillViewer', () => {
 
 		await input.trigger('change');
 		await flushPromises();
-		await nextTick();
 
 		expect(wrapper.emitted('update:skill')).toContainEqual([
-			{ instructions: '# Playbook\nFollow these steps.' },
+			{
+				name: 'Summarize notes',
+				description: 'Use for notes',
+				instructions: '# Playbook\nFollow these steps.',
+				allowedTools: ['load_workflow'],
+			},
 		]);
 	});
+
+	it('imports markdown references from a folder', async () => {
+		const wrapper = mountViewer();
+		const skillFile = makeFile(
+			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
+			'skill-folder/SKILL.md',
+		);
+		const referenceFile = makeFile('# Guide', 'skill-folder/references/guide.md');
+		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
+		Object.defineProperty(input.element, 'files', {
+			value: [skillFile, referenceFile],
+			configurable: true,
+		});
+
+		await input.trigger('change');
+		await flushPromises();
+
+		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([
+			expect.objectContaining({
+				name: 'Research',
+				references: [
+					{
+						path: 'references/guide.md',
+						content: '# Guide',
+						bytes: 7,
+						sha256: '01'.repeat(32),
+					},
+				],
+			}),
+		]);
+	});
+
+	it('rejects scripts in imported folders', async () => {
+		const wrapper = mountViewer();
+		const skillFile = makeFile(
+			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
+			'skill-folder/SKILL.md',
+		);
+		const scriptFile = makeFile('print("no")', 'skill-folder/scripts/run.py');
+		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
+		Object.defineProperty(input.element, 'files', {
+			value: [skillFile, scriptFile],
+			configurable: true,
+		});
+
+		await input.trigger('change');
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('agents.builder.skills.import.scriptsUnsupported');
+	});
 });
+
+function mountViewer() {
+	return mount(AgentSkillViewer, {
+		props: {
+			skill: {
+				name: 'Summarize',
+				description: 'Use when summarizing notes',
+				instructions: '',
+			},
+		},
+		global: {
+			stubs: {
+				N8nButton: {
+					template:
+						'<button type="button" @click="$emit(\'click\')"><slot name="prefix" /><slot /></button>',
+					emits: ['click'],
+				},
+				N8nFormInput: N8nFormInputStub,
+				N8nIcon: { template: '<i />' },
+				N8nText: { template: '<span><slot /></span>' },
+				MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
+			},
+		},
+	});
+}
+
+function makeFile(content: string, path: string): File {
+	const file = new File([content], path.split('/').at(-1) ?? 'file.md');
+	Object.defineProperty(file, 'webkitRelativePath', {
+		value: path,
+		configurable: true,
+	});
+	Object.defineProperty(file, 'text', {
+		value: async () => await Promise.resolve(content),
+		configurable: true,
+	});
+	return file;
+}

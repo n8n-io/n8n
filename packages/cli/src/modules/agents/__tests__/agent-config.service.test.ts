@@ -47,7 +47,8 @@ function makeService() {
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
-	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
+	agentSkillsService.getSkillMapForAgent.mockResolvedValue({});
+	agentSkillsService.removeUnreferencedSkills.mockImplementation(async (agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
 		agent.skills = Object.fromEntries(
 			Object.entries(agent.skills ?? {}).filter(([id]) => ids.has(id)),

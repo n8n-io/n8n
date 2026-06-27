@@ -46,11 +46,7 @@ export class AgentsSkillsController {
 		@Body payload: CreateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		const skill: AgentSkill = {
-			name: payload.name,
-			description: payload.description,
-			instructions: payload.instructions,
-		};
+		const skill: AgentSkill = payload;
 
 		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, skill);
 	}

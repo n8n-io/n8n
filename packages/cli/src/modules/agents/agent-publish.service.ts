@@ -77,13 +77,16 @@ export class AgentPublishService {
 						agentId: agent.id,
 						schema: agent.schema,
 						tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-						skills: this.agentSkillsService.snapshotConfiguredSkills(
-							agent.schema,
-							agent.skills ?? {},
-						),
+						skills: null,
 						publishedBy: user,
 					},
 					trx,
+				);
+				await this.agentSkillsService.snapshotConfiguredSkills(
+					trx,
+					agent.versionId,
+					agent.id,
+					agent.schema,
 				);
 				await this.snapshotConfiguredTasks(trx, agent.versionId, agent.id, agent.schema);
 				agent.activeVersionId = agent.versionId;
@@ -161,7 +164,7 @@ export class AgentPublishService {
 		await this.agentRepository.manager.transaction(async (trx) => {
 			agent.schema = activeVersion.schema ? deepCopy(activeVersion.schema) : null;
 			agent.tools = deepCopy(activeVersion.tools ?? {});
-			agent.skills = deepCopy(activeVersion.skills ?? {});
+			agent.skills = {};
 			agent.versionId = activeVersion.versionId;
 
 			if (agent.schema) {
@@ -169,8 +172,14 @@ export class AgentPublishService {
 			}
 
 			await trx.save(agent);
+			await this.agentSkillsService.restoreSkillsFromSnapshot(
+				trx,
+				agentId,
+				activeVersion.versionId,
+			);
 			await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
+		agent.skills = await this.agentSkillsService.getSkillMapForAgent(agentId);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -196,7 +205,7 @@ export class AgentPublishService {
 
 			agent.schema = target.schema ? deepCopy(target.schema) : null;
 			agent.tools = deepCopy(target.tools ?? {});
-			agent.skills = deepCopy(target.skills ?? {});
+			agent.skills = {};
 			agent.versionId = uuid();
 
 			if (agent.schema) {
@@ -204,8 +213,10 @@ export class AgentPublishService {
 			}
 
 			await trx.save(agent);
+			await this.agentSkillsService.restoreSkillsFromSnapshot(trx, agentId, target.versionId);
 			await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
+		agent.skills = await this.agentSkillsService.getSkillMapForAgent(agentId);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 

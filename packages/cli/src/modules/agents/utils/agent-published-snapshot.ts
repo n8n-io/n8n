@@ -14,6 +14,6 @@ export function getPublishedAgentSnapshot(agentEntity: Agent): Agent {
 		...agentEntity,
 		schema: activeVersionSchema,
 		tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
-		skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
+		skills: {},
 	} as Agent;
 }

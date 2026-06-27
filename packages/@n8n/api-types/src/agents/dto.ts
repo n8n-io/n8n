@@ -76,22 +76,135 @@ export class UpdateAgentTaskDto extends Z.class({
 	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
 }) {}
 
-export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 10_000;
+export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
 
-export const agentSkillSchema = z.object({
+const agentSkillStringArraySchema = z.array(z.string().trim().min(1)).min(1);
+
+const agentSkillReferenceSchema = z.object({
+	path: z
+		.string()
+		.min(1)
+		.max(512)
+		.refine((path) => {
+			const normalized = path.replaceAll('\\', '/');
+			const segments = normalized.split('/');
+			return (
+				path === normalized &&
+				normalized.startsWith('references/') &&
+				(normalized.endsWith('.md') || normalized.endsWith('.markdown')) &&
+				segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+			);
+		}, 'Reference path must be a markdown file under references/'),
+	content: z.string().min(1),
+	bytes: z.number().int().nonnegative(),
+	sha256: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+const agentSkillInterfaceSchema = z
+	.object({
+		displayName: z.string().min(1).optional(),
+		shortDescription: z.string().min(1).optional(),
+		defaultPrompt: z.string().min(1).optional(),
+		icon: z.string().min(1).optional(),
+		brandColor: z.string().min(1).optional(),
+	})
+	.strict();
+
+const agentSkillPolicySchema = z
+	.object({
+		allowImplicitInvocation: z.boolean().optional(),
+		product: z.string().min(1).optional(),
+	})
+	.strict();
+
+const agentSkillDependenciesSchema = z
+	.object({
+		tools: agentSkillStringArraySchema.optional(),
+		secrets: agentSkillStringArraySchema.optional(),
+		mcpServers: z
+			.array(
+				z
+					.object({
+						name: z.string().min(1),
+						description: z.string().min(1).optional(),
+						transport: z.string().min(1).optional(),
+						url: z.string().min(1).optional(),
+						command: z.string().min(1).optional(),
+					})
+					.strict(),
+			)
+			.min(1)
+			.optional(),
+	})
+	.strict();
+
+const agentSkillShape = {
 	name: z.string().min(1).max(128),
 	description: z.string().min(1).max(512),
 	instructions: z.string().min(1).max(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
-});
+	allowedTools: agentSkillStringArraySchema.optional(),
+	recommendedTools: agentSkillStringArraySchema.optional(),
+	interface: agentSkillInterfaceSchema.optional(),
+	policy: agentSkillPolicySchema.optional(),
+	dependencies: agentSkillDependenciesSchema.optional(),
+	version: z.string().min(1).max(128).optional(),
+	license: z.string().min(1).max(128).optional(),
+	compatibility: z.string().min(1).optional(),
+	platforms: agentSkillStringArraySchema.optional(),
+	metadata: z.record(z.unknown()).optional(),
+	references: z.array(agentSkillReferenceSchema).optional(),
+	scripts: z.never().optional(),
+	templates: z.never().optional(),
+	assets: z.never().optional(),
+	examples: z.never().optional(),
+	other: z.never().optional(),
+};
+const agentSkillAllowedFields = new Set(Object.keys(agentSkillShape));
+
+export const agentSkillSchema = z
+	.object(agentSkillShape)
+	.passthrough()
+	.superRefine((skill, ctx) => {
+		for (const field of Object.keys(skill)) {
+			if (agentSkillAllowedFields.has(field)) continue;
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Unsupported skill field "${field}"`,
+				path: [field],
+			});
+		}
+		const paths = new Set<string>();
+		for (const [index, reference] of (skill.references ?? []).entries()) {
+			if (paths.has(reference.path)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `Duplicate reference path "${reference.path}"`,
+					path: ['references', index, 'path'],
+				});
+			}
+			paths.add(reference.path);
+		}
+	});
 
 export class CreateAgentSkillDto extends Z.class({
-	...agentSkillSchema.shape,
+	...agentSkillShape,
 }) {}
 
 export class UpdateAgentSkillDto extends Z.class({
-	name: agentSkillSchema.shape.name.optional(),
-	description: agentSkillSchema.shape.description.optional(),
-	instructions: agentSkillSchema.shape.instructions.optional(),
+	name: agentSkillShape.name.optional(),
+	description: agentSkillShape.description.optional(),
+	instructions: agentSkillShape.instructions.optional(),
+	allowedTools: agentSkillShape.allowedTools.optional(),
+	recommendedTools: agentSkillShape.recommendedTools.optional(),
+	interface: agentSkillShape.interface.optional(),
+	policy: agentSkillShape.policy.optional(),
+	dependencies: agentSkillShape.dependencies.optional(),
+	version: agentSkillShape.version.optional(),
+	license: agentSkillShape.license.optional(),
+	compatibility: agentSkillShape.compatibility.optional(),
+	platforms: agentSkillShape.platforms.optional(),
+	metadata: agentSkillShape.metadata.optional(),
+	references: agentSkillShape.references.optional(),
 }) {}
 
 export class AgentChatMessageDto extends Z.class({

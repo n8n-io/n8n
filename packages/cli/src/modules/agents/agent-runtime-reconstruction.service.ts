@@ -44,6 +44,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { Agent } from './entities/agent.entity';
+import { AgentSkillsService } from './agent-skills.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
@@ -146,6 +147,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly agentSkillsService: AgentSkillsService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -178,7 +180,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			toolDescriptors,
 			toolCodeByName: toolsByName,
-			skills: agentEntity.skills ?? {},
+			skills: await this.getSkillsForAgentEntity(agentEntity, config),
 			userId,
 			runtimeProfile: 'top-level',
 			parentAgentIdForDelegation: agentEntity.id,
@@ -186,6 +188,16 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations: agentEntity.integrations ?? [],
 			subAgentDelegation,
 		});
+	}
+
+	private async getSkillsForAgentEntity(
+		agentEntity: Agent,
+		config: AgentJsonConfig,
+	): Promise<Record<string, AgentSkill>> {
+		if (agentEntity.activeVersionId && agentEntity.activeVersion?.schema === config) {
+			return await this.agentSkillsService.getSkillMapForVersion(agentEntity.activeVersionId);
+		}
+		return await this.agentSkillsService.getSkillMapForAgent(agentEntity.id);
 	}
 
 	async reconstructFromResolvedSource(

@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
 import { mockLogger } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import type { Agent } from '../entities/agent.entity';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentSkillDefinition } from '../entities/agent-skill.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentSkillSnapshotRepository } from '../repositories/agent-skill-snapshot.repository';
+import type { AgentSkillRepository } from '../repositories/agent-skill.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -29,6 +33,9 @@ describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let runtimeCacheService: jest.Mocked<AgentRuntimeCacheService>;
+	let skillRepository: jest.Mocked<AgentSkillRepository>;
+	let skillSnapshotRepository: jest.Mocked<AgentSkillSnapshotRepository>;
+	let trx: { save: jest.Mock; remove: jest.Mock; getRepository: jest.Mock };
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -38,11 +45,28 @@ describe('AgentSkillsService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		Container.reset();
 
 		agentRepository = mock<AgentRepository>();
 		runtimeCacheService = mock<AgentRuntimeCacheService>();
-		agentRepository.save.mockImplementation(async (a) => a as Agent);
-		service = new AgentSkillsService(mockLogger(), agentRepository, runtimeCacheService);
+		Container.set(AgentRuntimeCacheService, runtimeCacheService);
+		skillRepository = mock<AgentSkillRepository>();
+		skillSnapshotRepository = mock<AgentSkillSnapshotRepository>();
+		trx = {
+			save: jest.fn(async (entity) => entity),
+			remove: jest.fn(async (entity) => entity),
+			getRepository: jest.fn(),
+		};
+		agentRepository.manager = {
+			transaction: jest.fn(async (handler) => await handler(trx)),
+		} as never;
+		skillRepository.create.mockImplementation((definition) => definition as AgentSkillDefinition);
+		service = new AgentSkillsService(
+			mockLogger(),
+			agentRepository,
+			skillRepository,
+			skillSnapshotRepository,
+		);
 	});
 
 	it('creates a skill without attaching it to the config', async () => {
@@ -55,6 +79,7 @@ describe('AgentSkillsService', () => {
 			},
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		skillRepository.findByAgentId.mockResolvedValue([]);
 
 		const result = await service.createSkill(agentId, projectId, skill);
 
@@ -63,9 +88,10 @@ describe('AgentSkillsService', () => {
 			skill,
 			versionId: agent.versionId,
 		});
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
-			[result.id]: skill,
-		});
+		expect(trx.save).toHaveBeenCalledWith(expect.objectContaining({ id: result.id, agentId }));
+		expect(trx.save).toHaveBeenCalledWith(
+			expect.objectContaining({ id: result.id, linkedFiles: { references: [] } }),
+		);
 		expect(agent.schema?.skills).toEqual([]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
@@ -80,64 +106,250 @@ describe('AgentSkillsService', () => {
 			},
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		skillRepository.findByAgentId.mockResolvedValue([]);
 
 		const result = await service.createAndAttachSkill(agentId, projectId, skill);
 
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
-			[result.id]: skill,
-		});
+		expect(trx.save).toHaveBeenCalledWith(expect.objectContaining({ id: result.id, agentId }));
 		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: result.id }]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
 	it('loads one skill from the agent', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ skills: { summarize_notes: skill } }),
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		skillRepository.findByIdAndAgentId.mockResolvedValue(
+			makeDefinition('summarize_notes', {
+				linkedFiles: {
+					references: [
+						{
+							path: 'references/guide.md',
+							content: '# Guide',
+							bytes: 0,
+							sha256: '0'.repeat(64),
+						},
+					],
+				},
+			}),
 		);
 
-		await expect(service.getSkill(agentId, projectId, 'summarize_notes')).resolves.toEqual(skill);
+		await expect(service.getSkill(agentId, projectId, 'summarize_notes')).resolves.toEqual({
+			...skill,
+			references: [
+				{
+					path: 'references/guide.md',
+					content: '# Guide',
+					bytes: 7,
+					sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+				},
+			],
+		});
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
-	it('updates an existing skill on the agent', async () => {
-		const agent = makeAgent({ skills: { summarize_notes: skill } });
+	it('updates an existing skill and replaces references when provided', async () => {
+		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		skillRepository.findByIdAndAgentId.mockResolvedValue(makeDefinition('summarize_notes'));
 
 		const result = await service.updateSkill(agentId, projectId, 'summarize_notes', {
 			description: 'Summarizes support notes',
+			references: [
+				{
+					path: 'references/guide.md',
+					content: '# Guide',
+					bytes: 0,
+					sha256: '0'.repeat(64),
+				},
+			],
 		});
 
 		expect(result).toEqual({
 			id: 'summarize_notes',
-			skill: {
+			skill: expect.objectContaining({
 				...skill,
 				description: 'Summarizes support notes',
-			},
+				references: [
+					expect.objectContaining({
+						path: 'references/guide.md',
+						content: '# Guide',
+						bytes: 7,
+						sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+					}),
+				],
+			}),
 			versionId: agent.versionId,
 		});
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
-			summarize_notes: result.skill,
-		});
+		expect(trx.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'summarize_notes',
+				linkedFiles: {
+					references: [
+						expect.objectContaining({
+							path: 'references/guide.md',
+							bytes: 7,
+							sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+						}),
+					],
+				},
+			}),
+		);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
-	it('rejects skill snapshots when configured skill bodies are missing', () => {
-		expect(() =>
-			service.snapshotConfiguredSkills(
-				{
-					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Be helpful',
-					skills: [{ type: 'skill', id: 'missing_skill' }],
+	it('preserves existing references when updates omit references', async () => {
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		skillRepository.findByIdAndAgentId.mockResolvedValue(
+			makeDefinition('summarize_notes', {
+				linkedFiles: {
+					references: [
+						{
+							path: 'references/guide.md',
+							content: '# Guide',
+							bytes: 7,
+							sha256: '0'.repeat(64),
+						},
+					],
 				},
-				{},
-			),
-		).toThrow('Cannot publish agent with missing skill bodies: missing_skill');
+			}),
+		);
+
+		await service.updateSkill(agentId, projectId, 'summarize_notes', {
+			description: 'Summarizes support notes',
+		});
+
+		expect(trx.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'summarize_notes',
+				linkedFiles: {
+					references: [
+						expect.objectContaining({
+							path: 'references/guide.md',
+							content: '# Guide',
+							bytes: 7,
+						}),
+					],
+				},
+			}),
+		);
+	});
+
+	it('rejects skill snapshots when configured skill bodies are missing', async () => {
+		trx.getRepository.mockReturnValue({
+			findBy: jest.fn(async () => []),
+		});
+
+		await expect(
+			service.snapshotConfiguredSkills(trx as never, 'version-1', agentId, {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				skills: [{ type: 'skill', id: 'missing_skill' }],
+			}),
+		).rejects.toThrow('Cannot publish agent with missing skill bodies: missing_skill');
+	});
+
+	it('snapshots configured skills with linked files on the skill row', async () => {
+		trx.getRepository.mockReturnValue({
+			findBy: jest.fn(async () => [
+				makeDefinition('summarize_notes', {
+					linkedFiles: {
+						references: [
+							{
+								path: 'references/guide.md',
+								content: '# Guide',
+								bytes: 7,
+								sha256: 'a'.repeat(64),
+							},
+						],
+					},
+				}),
+			]),
+		});
+
+		await service.snapshotConfiguredSkills(trx as never, 'version-1', agentId, {
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		});
+
+		expect(skillSnapshotRepository.saveForVersion).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					versionId: 'version-1',
+					skillId: 'summarize_notes',
+					linkedFiles: {
+						references: [
+							expect.objectContaining({
+								path: 'references/guide.md',
+								content: '# Guide',
+							}),
+						],
+					},
+				}),
+			],
+			trx,
+		);
+	});
+
+	it('restores linked files from skill snapshots into draft definitions', async () => {
+		const definitionRepo = {
+			findBy: jest.fn(async () => []),
+			delete: jest.fn(),
+			save: jest.fn(),
+		};
+		trx.getRepository.mockReturnValue(definitionRepo);
+		skillSnapshotRepository.findByVersionId.mockResolvedValue([
+			{
+				versionId: 'version-1',
+				skillId: 'summarize_notes',
+				name: skill.name,
+				description: skill.description,
+				instructions: skill.instructions,
+				allowedTools: null,
+				recommendedTools: null,
+				interfaceData: null,
+				policy: null,
+				dependencies: null,
+				versionName: null,
+				license: null,
+				compatibility: null,
+				platforms: null,
+				metadata: null,
+				linkedFiles: {
+					references: [
+						{
+							path: 'references/guide.md',
+							content: '# Guide',
+							bytes: 7,
+							sha256: 'a'.repeat(64),
+						},
+					],
+				},
+			} as never,
+		]);
+
+		await service.restoreSkillsFromSnapshot(trx as never, agentId, 'version-1');
+
+		expect(definitionRepo.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'summarize_notes',
+				agentId,
+				linkedFiles: {
+					references: [
+						expect.objectContaining({
+							path: 'references/guide.md',
+							content: '# Guide',
+						}),
+					],
+				},
+			}),
+		);
 	});
 
 	it('deletes a skill and removes its config ref', async () => {
 		const agent = makeAgent({
-			skills: { summarize_notes: skill },
 			schema: {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -147,12 +359,57 @@ describe('AgentSkillsService', () => {
 			},
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		skillRepository.findByIdAndAgentId.mockResolvedValue(makeDefinition('summarize_notes'));
 
 		await service.deleteSkill(agentId, projectId, 'summarize_notes');
 
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({});
+		expect(trx.remove).toHaveBeenCalledWith(expect.objectContaining({ id: 'summarize_notes' }));
 		expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(agent.schema?.skills).toEqual([]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
+
+	it('detects missing configured skills from definition rows', async () => {
+		skillRepository.findByAgentId.mockResolvedValue([makeDefinition('present_skill')]);
+
+		await expect(
+			service.getMissingSkillIds(
+				{
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					skills: [
+						{ type: 'skill', id: 'present_skill' },
+						{ type: 'skill', id: 'missing_skill' },
+					],
+				},
+				agentId,
+			),
+		).resolves.toEqual(['missing_skill']);
+	});
 });
+
+function makeDefinition(
+	id: string,
+	overrides: Partial<AgentSkillDefinition> = {},
+): AgentSkillDefinition {
+	return {
+		id,
+		agentId,
+		name: 'Summarize Notes',
+		description: 'Summarizes a meeting transcript',
+		instructions: 'Extract decisions and action items.',
+		allowedTools: null,
+		recommendedTools: null,
+		interfaceData: null,
+		policy: null,
+		dependencies: null,
+		version: null,
+		license: null,
+		compatibility: null,
+		platforms: null,
+		metadata: null,
+		linkedFiles: { references: [] },
+		...overrides,
+	} as AgentSkillDefinition;
+}

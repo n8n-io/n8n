@@ -7,6 +7,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
@@ -38,11 +39,13 @@ function makeService() {
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
+	const agentSkillsService = mock<AgentSkillsService>();
 	const agentTaskService = mock<AgentTaskService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
+	agentSkillsService.getSkillMapForAgent.mockResolvedValue({});
 	Container.set(AgentTaskService, agentTaskService);
 
 	const service = new AgentsService(
@@ -52,6 +55,7 @@ function makeService() {
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
+		agentSkillsService,
 	);
 
 	return {
@@ -60,6 +64,7 @@ function makeService() {
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
+		agentSkillsService,
 		agentTaskService,
 	};
 }

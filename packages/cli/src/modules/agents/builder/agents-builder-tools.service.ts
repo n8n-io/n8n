@@ -694,6 +694,8 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const agentSkillBaseSchema = agentSkillSchema.innerType();
+
 		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
 			.description(
 				'Create and store an agent skill (a reusable, load-on-demand capability). Pass the skill name, a ' +
@@ -715,9 +717,9 @@ export class AgentsBuilderToolsService {
 			)
 			.input(
 				z.object({
-					name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
-					description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
-					body: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
+					name: agentSkillBaseSchema.shape.name.describe('Human-readable skill name'),
+					description: agentSkillBaseSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
+					body: agentSkillBaseSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
 				}),
 			)
 			.handler(

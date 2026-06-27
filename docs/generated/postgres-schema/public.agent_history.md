@@ -12,7 +12,7 @@
 | skills | json |  | true |  |  | Frozen map of `skillId → AgentSkill` at publish time |
 | tools | json |  | true |  |  | Frozen map of `toolId → { code, descriptor }` at publish time |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| versionId | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agents](public.agents.md) |  |  |
+| versionId | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_skill_snapshot](public.agent_skill_snapshot.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agents](public.agents.md) |  |  |
 
 ## Constraints
 
@@ -42,6 +42,7 @@ erDiagram
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agent_skill_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 
@@ -104,6 +105,26 @@ erDiagram
   integer totalDuration
   integer totalPromptTokens
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_skill_snapshot" {
+  json allowedTools
+  text compatibility
+  timestamp_3__with_time_zone createdAt
+  json dependencies
+  varchar_512_ description
+  text instructions
+  json interface
+  varchar_128_ license
+  json linkedFiles
+  json metadata
+  varchar_128_ name
+  json platforms
+  json policy
+  json recommendedTools
+  varchar_32_ skillId
+  timestamp_3__with_time_zone updatedAt
+  varchar_128_ version
+  varchar_36_ versionId FK
 }
 "public.agent_task_snapshot" {
   timestamp_3__with_time_zone createdAt

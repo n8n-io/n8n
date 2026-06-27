@@ -212,6 +212,7 @@ import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-Ad
 import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
 import { DropAgentDescriptionFromAgents1784000000037 } from '../common/1784000000037-DropAgentDescriptionFromAgents';
 import type { Migration } from '../migration-types';
+import { CreateAgentSkillDefinitionTable1784000000038 } from '../common/1784000000038-CreateAgentSkillDefinitionTable';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -427,4 +428,5 @@ export const postgresMigrations: Migration[] = [
 	AddUniqueAgentFileNames1784000000035,
 	CreateInstanceAiThreadGrantTable1784000000036,
 	DropAgentDescriptionFromAgents1784000000037,
+	CreateAgentSkillDefinitionTable1784000000038,
 ];

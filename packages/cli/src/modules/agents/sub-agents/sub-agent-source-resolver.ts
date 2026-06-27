@@ -13,6 +13,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
+import { AgentSkillsService } from '../agent-skills.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -33,6 +34,7 @@ export class SubAgentSourceResolver {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
+		private readonly agentSkillsService: AgentSkillsService,
 	) {}
 
 	/**
@@ -73,7 +75,8 @@ export class SubAgentSourceResolver {
 					versionId: source.versionId,
 					config: this.toRunnableConfig(version.schema),
 				},
-				...getAgentRuntimeAssets(version),
+				...getAgentToolAssets(version),
+				skills: await this.agentSkillsService.getSkillMapForVersion(source.versionId),
 			};
 		}
 
@@ -88,7 +91,8 @@ export class SubAgentSourceResolver {
 				versionId: agent.versionId ?? undefined,
 				config: this.toRunnableConfig(config),
 			},
-			...getAgentRuntimeAssets(agent),
+			...getAgentToolAssets(agent),
+			skills: await this.agentSkillsService.getSkillMapForAgent(agent.id),
 		};
 	}
 
@@ -104,9 +108,9 @@ export class SubAgentSourceResolver {
 	}
 }
 
-function getAgentRuntimeAssets(
-	agent: Pick<Agent | AgentHistory, 'tools' | 'skills'>,
-): Omit<ResolvedSubAgentRuntimeSource, 'source'> {
+function getAgentToolAssets(
+	agent: Pick<Agent | AgentHistory, 'tools'>,
+): Pick<ResolvedSubAgentRuntimeSource, 'toolDescriptors' | 'toolCodeByName'> {
 	const toolDescriptors: Record<string, ToolDescriptor> = {};
 	const toolCodeByName: Record<string, string> = {};
 
@@ -118,6 +122,5 @@ function getAgentRuntimeAssets(
 	return {
 		toolDescriptors,
 		toolCodeByName,
-		skills: agent.skills ?? {},
 	};
 }
