@@ -1,4 +1,8 @@
-import type { LogEntry, LogEntrySelection } from '@/features/execution/logs/logs.types';
+import {
+	isLogGroupEntry,
+	type LogEntrySelection,
+	type LogTreeEntry,
+} from '@/features/execution/logs/logs.types';
 import {
 	findLogEntryRec,
 	findSelectedLogEntry,
@@ -8,6 +12,7 @@ import {
 } from '@/features/execution/logs/logs.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { createCanvasGroupNodeId } from '@/features/workflows/canvas/canvas.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -19,9 +24,9 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 export function useLogsSelection(
 	execution: ComputedRef<IExecutionResponse | undefined>,
-	tree: Ref<LogEntry[]>,
-	flatLogEntries: ComputedRef<LogEntry[]>,
-	toggleExpand: (entry: LogEntry, expand?: boolean) => void,
+	tree: Ref<LogTreeEntry[]>,
+	flatLogEntries: ComputedRef<LogTreeEntry[]>,
+	toggleExpand: (entry: LogTreeEntry, expand?: boolean) => void,
 ) {
 	const telemetry = useTelemetry();
 	const manualLogEntrySelection = shallowRef<LogEntrySelection>({ type: 'initial' });
@@ -35,28 +40,35 @@ export function useLogsSelection(
 	const canvasStore = useCanvasStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	function syncSelectionToCanvasIfEnabled(value: LogEntry) {
+	function syncSelectionToCanvasIfEnabled(value: LogTreeEntry) {
 		if (!logsStore.isLogSelectionSyncedWithCanvas) {
 			return;
 		}
 
-		canvasEventBus.emit('nodes:select', { ids: [value.node.id], panIntoView: true });
+		// A group maps to its collapsed group node on the canvas; a node maps to itself.
+		const canvasId = isLogGroupEntry(value)
+			? createCanvasGroupNodeId(value.group.id)
+			: value.node.id;
+
+		canvasEventBus.emit('nodes:select', { ids: [canvasId], panIntoView: true });
 	}
 
-	function select(value: LogEntry | undefined) {
+	function select(value: LogTreeEntry | undefined) {
 		manualLogEntrySelection.value =
 			value === undefined ? { type: 'none' } : { type: 'selected', entry: value };
 
 		if (value) {
 			syncSelectionToCanvasIfEnabled(value);
 
-			telemetry.track('User selected node in log view', {
-				node_type: value.node.type,
-				node_id: value.node.id,
-				execution_id: execution.value?.id,
-				workflow_id: execution.value?.workflowData.id,
-				subworkflow_depth: getDepth(value),
-			});
+			if (!isLogGroupEntry(value)) {
+				telemetry.track('User selected node in log view', {
+					node_type: value.node.type,
+					node_id: value.node.id,
+					execution_id: execution.value?.id,
+					workflow_id: execution.value?.workflowData.id,
+					subworkflow_depth: getDepth(value),
+				});
+			}
 		}
 	}
 
@@ -107,9 +119,11 @@ export function useLogsSelection(
 			const selectedNodeId = selectedOnCanvas
 				? workflowDocumentStore.value.nodesByName[selectedOnCanvas]?.id
 				: undefined;
+			const currentSelectedNodeId =
+				selected.value && !isLogGroupEntry(selected.value) ? selected.value.node.id : undefined;
 
 			nodeIdToSelect.value =
-				shouldSync && !canvasStore.hasRangeSelection && selected.value?.node.id !== selectedNodeId
+				shouldSync && !canvasStore.hasRangeSelection && currentSelectedNodeId !== selectedNodeId
 					? selectedNodeId
 					: undefined;
 		},
@@ -123,7 +137,7 @@ export function useLogsSelection(
 				return;
 			}
 
-			const entry = findLogEntryRec((e) => e.node.id === id, latestTree);
+			const entry = findLogEntryRec((e) => !isLogGroupEntry(e) && e.node.id === id, latestTree);
 
 			if (!entry) {
 				return;

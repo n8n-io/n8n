@@ -228,6 +228,40 @@ test.describe(
 			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
 		});
 
+		test('nests a group and its members in the logs panel', async ({ n8n }) => {
+			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+
+			await n8n.canvas.logsPanel.open();
+			await n8n.canvas.clickExecuteWorkflowButton();
+
+			// The group surfaces as a single row, collapsed by default so members are hidden.
+			const groupRow = n8n.canvas.logsPanel.getGroupLogEntryByName(DEFAULT_GROUP_TITLE);
+			await expect(groupRow).toBeVisible();
+			await expect(n8n.canvas.logsPanel.getLogEntries().filter({ hasText: 'Set A' })).toHaveCount(
+				0,
+			);
+
+			// Expanding reveals its members nested underneath.
+			await groupRow.getByLabel('Toggle row').click();
+			await expect(n8n.canvas.logsPanel.getLogEntries().filter({ hasText: 'Set A' })).toHaveCount(
+				1,
+			);
+			await expect(n8n.canvas.logsPanel.getLogEntries().filter({ hasText: 'Set B' })).toHaveCount(
+				1,
+			);
+
+			// Selecting the group shows input and output, exactly like a node.
+			await groupRow.click();
+			await expect(n8n.canvas.logsPanel.inputPanel.get()).toBeVisible();
+			await expect(n8n.canvas.logsPanel.outputPanel.get()).toBeVisible();
+
+			// Linear group: single root (Set A) and single leaf (Set B), so no port selectors.
+			await expect(n8n.canvas.logsPanel.getGroupPortSelects()).toHaveCount(0);
+		});
+
 		test('auto-extends the group when a new connection would otherwise invalidate it', async ({
 			n8n,
 		}) => {
@@ -402,6 +436,56 @@ test.describe(
 					'Collapse',
 				);
 			});
+		});
+	},
+);
+
+test.describe(
+	'Canvas node groups — leaf port selection in logs',
+	{ annotation: [{ type: 'owner', description: 'Adore' }] },
+	() => {
+		const BRANCHED_FIXTURE = 'Canvas-node-groups-branched-fixture.json';
+		const BRANCHED_GROUP_TITLE = 'Branched group';
+
+		test.beforeEach(async ({ n8n, setupRequirements }) => {
+			await setupRequirements(requirements);
+			await n8n.start.fromImportedWorkflow(BRANCHED_FIXTURE);
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.deselectAll();
+		});
+
+		test('shows an output port selector for a group with multiple leaves', async ({ n8n }) => {
+			await n8n.canvas.logsPanel.open();
+			await n8n.canvas.clickExecuteWorkflowButton();
+
+			const groupRow = n8n.canvas.logsPanel.getGroupLogEntryByName(BRANCHED_GROUP_TITLE);
+			await expect(groupRow).toBeVisible();
+			await groupRow.click();
+
+			// Single root (a) → no input port selector.
+			// Two leaves (c, d) → one output port selector.
+			await expect(n8n.canvas.logsPanel.getGroupPortSelects()).toHaveCount(1);
+		});
+
+		test('switching output port changes the visible leaf member', async ({ n8n }) => {
+			await n8n.canvas.logsPanel.open();
+			await n8n.canvas.clickExecuteWorkflowButton();
+
+			const groupRow = n8n.canvas.logsPanel.getGroupLogEntryByName(BRANCHED_GROUP_TITLE);
+			await groupRow.click();
+
+			const portSelect = n8n.canvas.logsPanel.getGroupPortSelects();
+			await expect(portSelect).toHaveCount(1);
+
+			// Open the output port selector and switch to the second leaf (d)
+			await portSelect.click();
+
+			const options = n8n.page.getByTestId('logs-group-port-option');
+			await expect(options).toHaveCount(2);
+			await options.nth(1).click();
+
+			// The output pane now shows node d's output data
+			await expect(n8n.canvas.logsPanel.outputPanel.get().getByText('d')).toBeVisible();
 		});
 	},
 );

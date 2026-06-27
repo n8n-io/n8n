@@ -1755,6 +1755,7 @@
 	"logs.overview.body.run": "Execute step",
 	"logs.overview.body.open": "Open...",
 	"logs.overview.body.toggleRow": "Toggle row",
+	"logs.overview.body.group.nodeCount": "{count} node | {count} nodes",
 	"logs.details.header.actions.input": "Input",
 	"logs.details.header.actions.output": "Output",
 	"logs.details.header.actions.viewAgentSession": "View session",

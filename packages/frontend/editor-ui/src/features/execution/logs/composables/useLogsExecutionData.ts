@@ -10,11 +10,22 @@ import {
 	createLogTree,
 	findSubExecutionLocator,
 	mergeStartData,
+	wrapLogEntriesInGroups,
 } from '@/features/execution/logs/logs.utils';
 import { useToast } from '@/app/composables/useToast';
-import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
+import {
+	isLogGroupEntry,
+	type LatestNodeInfo,
+	type LogTreeEntry,
+	type LogTreeFilter,
+} from '../logs.types';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { CHAT_TRIGGER_NODE_TYPE, LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
+import {
+	CANVAS_NODES_GROUPING_EXPERIMENT,
+	CHAT_TRIGGER_NODE_TYPE,
+	LOGS_EXECUTION_DATA_THROTTLE_DURATION,
+} from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
@@ -34,6 +45,13 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const posthogStore = usePostHog();
+	const isNodeGroupingEnabled = computed(() =>
+		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
+	);
+	const nodeGroups = computed(() =>
+		isNodeGroupingEnabled.value ? workflowDocumentStore.value.allGroups : [],
+	);
 	const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 	const toast = useToast();
 
@@ -85,7 +103,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		);
 	});
 
-	const entries = computed<LogEntry[]>(() => {
+	const entries = computed<LogTreeEntry[]>(() => {
 		if ((isEnabled !== undefined && !isEnabled.value) || !throttledState.value || !workflow.value) {
 			return [];
 		}
@@ -95,13 +113,17 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			throttledState.value.response,
 		);
 
-		return createLogTree(
+		const tree = createLogTree(
 			workflow.value,
 			mergedExecutionData,
 			subWorkflows.value,
 			subWorkflowExecData.value,
 			filter?.value,
 		);
+
+		// Skip group wrapping when filtering to a single run — the filter exists to
+		// drill into one run, so the group ancestor would only add noise.
+		return wrapLogEntriesInGroups(tree, filter?.value !== undefined ? [] : nodeGroups.value);
 	});
 
 	function resetExecutionData() {
@@ -113,7 +135,11 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 
-	async function loadSubExecution(logEntry: LogEntry) {
+	async function loadSubExecution(logEntry: LogTreeEntry) {
+		if (isLogGroupEntry(logEntry)) {
+			return;
+		}
+
 		const locator = findSubExecutionLocator(logEntry);
 
 		if (!state.value || locator === undefined) {

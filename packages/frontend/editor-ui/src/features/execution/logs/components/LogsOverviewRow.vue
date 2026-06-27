@@ -12,6 +12,7 @@ import {
 	getSubtreeTotalConsumedTokens,
 	hasSubExecution,
 } from '@/features/execution/logs/logs.utils';
+import { useLogsTreeIndents } from '@/features/execution/logs/composables/useLogsTreeIndents';
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
 
@@ -78,21 +79,7 @@ const subtreeConsumedTokens = computed(() =>
 
 const hasChildren = computed(() => props.data.children.length > 0 || hasSubExecution(props.data));
 
-const indents = computed(() => {
-	const ret: Array<{ straight: boolean; curved: boolean }> = [];
-
-	let data: LogEntry = props.data;
-
-	while (data.parent !== undefined) {
-		const siblings = data.parent?.children ?? [];
-		const lastSibling = siblings[siblings.length - 1];
-
-		ret.unshift({ straight: lastSibling?.id !== data.id, curved: data === props.data });
-		data = data.parent;
-	}
-
-	return ret;
-});
+const indents = useLogsTreeIndents(() => props.data);
 
 // Focus when selected: For scrolling into view and for keyboard navigation to work
 watch(

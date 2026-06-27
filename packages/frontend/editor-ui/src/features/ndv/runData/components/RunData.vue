@@ -1613,18 +1613,19 @@ defineExpose({ enterEditMode });
 
 			<div
 				v-if="
-					maxRunIndex > 0 &&
+					(maxRunIndex > 0 || $slots['run-selector-prepend']) &&
 					!displaysMultipleNodes &&
-					!props.disableRunIndexSelection &&
 					!isExecutionRedacted
 				"
 				v-show="!editMode.enabled"
 				:class="$style.runSelector"
 			>
 				<div :class="$style.runSelectorInner">
+					<slot name="run-selector-prepend" />
 					<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
 
 					<N8nSelect
+						v-if="maxRunIndex > 0 && !props.disableRunIndexSelection"
 						:model-value="runIndex"
 						:class="$style.runSelectorSelect"
 						size="small"

@@ -2,7 +2,12 @@
 import LogsOverviewRows from '@/features/execution/logs/components/LogsOverviewRows.vue';
 import { useLogsExecutionData } from '@/features/execution/logs/composables/useLogsExecutionData';
 import { useLogsTreeExpand } from '@/features/execution/logs/composables/useLogsTreeExpand';
-import type { LogEntry, LogTreeFilter } from '@/features/execution/logs/logs.types';
+import {
+	isLogGroupEntry,
+	type LogEntry,
+	type LogTreeEntry,
+	type LogTreeFilter,
+} from '@/features/execution/logs/logs.types';
 import { findLogEntryById } from '@/features/execution/logs/logs.utils';
 import type { INodeUi } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
@@ -29,8 +34,14 @@ const { entries, execution, latestNodeNameById, loadSubExecution } = useLogsExec
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const selected = shallowRef<LogEntry>();
 
-function select(entry: LogEntry | undefined) {
-	selected.value = entry?.node.id === node.id ? undefined : entry;
+function select(entry: LogTreeEntry | undefined) {
+	// This view is filtered to a single node, so group entries never appear here.
+	if (!entry || isLogGroupEntry(entry)) {
+		selected.value = undefined;
+		return;
+	}
+
+	selected.value = entry.node.id === node.id ? undefined : entry;
 }
 
 watch(
