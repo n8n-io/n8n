@@ -123,6 +123,7 @@
     "wa-sqlite": "github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7",
     "web-tree-sitter": "0.24.3",
     "xss": "catalog:",
+    "yaml": "catalog:",
     "zod": "catalog:",
     "z-vue-scan": "^0.0.35"
   },

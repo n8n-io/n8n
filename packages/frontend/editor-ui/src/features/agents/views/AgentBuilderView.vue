@@ -1032,6 +1032,13 @@ function onOpenSkillFromList(id: string) {
 					nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
 					onConfigFieldUpdate({ skills: nextSkills });
 				}
+				skillAutosave.scheduleAutosave({
+					type: 'skill',
+					projectId: projectId.value,
+					agentId: agentId.value,
+					skillId,
+					skill: updatedSkill,
+				});
 			},
 		},
 	});

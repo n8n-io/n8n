@@ -5,8 +5,12 @@ import { useI18n } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
+import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
+
+const SKILL_FILE = 'SKILL.md';
 
 export type AgentSkillModalData = {
 	projectId: string;
@@ -24,14 +28,29 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const agentTelemetry = useAgentTelemetry();
 
 const skill = ref<AgentSkill>({
 	name: props.data.skill?.name ?? '',
 	description: props.data.skill?.description ?? '',
 	instructions: props.data.skill?.instructions ?? '',
+	...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
+	...(props.data.skill?.recommendedTools
+		? { recommendedTools: props.data.skill.recommendedTools }
+		: {}),
+	...(props.data.skill?.interface ? { interface: props.data.skill.interface } : {}),
+	...(props.data.skill?.policy ? { policy: props.data.skill.policy } : {}),
+	...(props.data.skill?.dependencies ? { dependencies: props.data.skill.dependencies } : {}),
+	...(props.data.skill?.version ? { version: props.data.skill.version } : {}),
+	...(props.data.skill?.license ? { license: props.data.skill.license } : {}),
+	...(props.data.skill?.compatibility ? { compatibility: props.data.skill.compatibility } : {}),
+	...(props.data.skill?.platforms ? { platforms: props.data.skill.platforms } : {}),
+	...(props.data.skill?.metadata ? { metadata: props.data.skill.metadata } : {}),
+	...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
 });
 const submitted = ref(false);
 const formIsValid = ref(false);
+const selectedPath = ref(SKILL_FILE);
 
 const isEditing = computed(() => !!props.data.skillId);
 
@@ -56,6 +75,9 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 	if (!instructions) {
 		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsRequired');
 	}
+	if (skill.value.references?.some((reference) => !reference.content.trim())) {
+		errors.references = i18n.baseText('agents.builder.skills.references.invalidSummary');
+	}
 
 	return errors;
 });
@@ -65,10 +87,58 @@ const canSave = computed(() => formIsValid.value);
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
 	skill.value = { ...skill.value, ...updates };
+	if (
+		selectedPath.value !== SKILL_FILE &&
+		!skill.value.references?.some((reference) => reference.path === selectedPath.value)
+	) {
+		selectedPath.value = SKILL_FILE;
+	}
+}
+
+function onAddReference() {
+	const path = nextReferencePath(skill.value.references ?? []);
+	skill.value = {
+		...skill.value,
+		references: [...(skill.value.references ?? []), { path, content: '', bytes: 0 }],
+	};
+	selectedPath.value = path;
+}
+
+function onRemoveReference(path: string) {
+	skill.value = {
+		...skill.value,
+		references: (skill.value.references ?? []).filter((reference) => reference.path !== path),
+	};
+	if (selectedPath.value === path) {
+		selectedPath.value = SKILL_FILE;
+	}
+}
+
+function nextReferencePath(references: NonNullable<AgentSkill['references']>): string {
+	const existingPaths = new Set(references.map((reference) => reference.path));
+	let index = 1;
+	let path = 'references/reference.md';
+	while (existingPaths.has(path)) {
+		index += 1;
+		path = `references/reference-${index}.md`;
+	}
+	return path;
 }
 
 function onValidUpdate(valid: boolean) {
 	formIsValid.value = valid;
+}
+
+function onImportSkill(payload: {
+	source: 'skill_file' | 'folder';
+	status: 'success' | 'error';
+	referenceCount?: number;
+	error?: string;
+}) {
+	agentTelemetry.trackImportedSkill({
+		agentId: props.data.agentId,
+		...payload,
+	});
 }
 
 function closeModal() {
@@ -83,6 +153,17 @@ function onSave() {
 		name: skill.value.name.trim(),
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
+		...(skill.value.allowedTools ? { allowedTools: skill.value.allowedTools } : {}),
+		...(skill.value.recommendedTools ? { recommendedTools: skill.value.recommendedTools } : {}),
+		...(skill.value.interface ? { interface: skill.value.interface } : {}),
+		...(skill.value.policy ? { policy: skill.value.policy } : {}),
+		...(skill.value.dependencies ? { dependencies: skill.value.dependencies } : {}),
+		...(skill.value.version ? { version: skill.value.version } : {}),
+		...(skill.value.license ? { license: skill.value.license } : {}),
+		...(skill.value.compatibility ? { compatibility: skill.value.compatibility } : {}),
+		...(skill.value.platforms ? { platforms: skill.value.platforms } : {}),
+		...(skill.value.metadata ? { metadata: skill.value.metadata } : {}),
+		...(skill.value.references ? { references: skill.value.references } : {}),
 	};
 
 	props.data.onConfirm({ id: props.data.skillId, skill: payload });
@@ -99,7 +180,7 @@ function onRemove() {
 <template>
 	<Modal
 		:name="props.modalName"
-		width="860px"
+		width="1100px"
 		:custom-class="$style.modal"
 		data-testid="agent-skill-modal"
 	>
@@ -111,11 +192,21 @@ function onRemove() {
 
 		<template #content>
 			<div :class="$style.content">
+				<AgentSkillFileNav
+					:skill="skill"
+					:selected-path="selectedPath"
+					@add-reference="onAddReference"
+					@remove-reference="onRemoveReference"
+					@select="selectedPath = $event"
+				/>
 				<AgentSkillViewer
 					:skill="skill"
+					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:scrollable="false"
 					:show-validation-warnings="submitted"
+					@import:skill="onImportSkill"
+					@select:path="selectedPath = $event"
 					@update:skill="onSkillUpdate"
 					@update:valid="onValidUpdate"
 				/>
@@ -155,7 +246,8 @@ function onRemove() {
 .content {
 	height: 620px;
 	min-height: 0;
-	margin: calc(-1 * var(--spacing--lg));
+	margin: 0 calc(-1 * var(--spacing--lg)) calc(-1 * var(--spacing--lg));
+	display: flex;
 }
 
 .modal {

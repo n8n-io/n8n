@@ -233,7 +233,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRuntimeReconstructionService,
 			credentialsService,
 		);
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, runtimeCacheService);
+		Container.set(AgentRuntimeCacheService, runtimeCacheService);
+		agentSkillsService = new AgentSkillsService(logger, agentRepository);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
@@ -269,7 +270,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRepository,
 			agentHistoryRepository,
 			agentTaskSnapshotRepository,
-			agentSkillsService,
 			agentCustomToolsService,
 			runtimeCacheService,
 		);
