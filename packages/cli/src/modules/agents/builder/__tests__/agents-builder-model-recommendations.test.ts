@@ -202,6 +202,7 @@ describe('builder model recommendations', () => {
 
 	it('registers only optional builder runtime skills', () => {
 		const skills = getBuilderRuntimeSkills();
+		const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
 
 		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
@@ -211,12 +212,89 @@ describe('builder model recommendations', () => {
 			'agent-builder-target-skills',
 			'agent-builder-target-tasks',
 		]);
+		expect(skillsById.has('agent-builder-research')).toBe(false);
 		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
 		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');
 		expect(skills[0].instructions).toContain('Linear node tools');
 		expect(skills[2].description).toContain('stable dynamic selector fields');
 		expect(skills[2].instructions).toContain('Linear `teamId`');
 		expect(skills[2].instructions).toContain('Do not use `$fromAI`');
+		expect(skillsById.get('agent-builder-integrations')).toMatchObject({
+			recommendedTools: ['list_integration_types', 'ask_credential', 'read_config', 'patch_config'],
+			allowedTools: [
+				'list_integration_types',
+				'ask_credential',
+				'read_config',
+				'patch_config',
+				'write_config',
+			],
+		});
+		expect(skillsById.get('agent-builder-mcp')).toMatchObject({
+			recommendedTools: [
+				'search_mcp_servers',
+				'ask_credential',
+				'verify_mcp_server',
+				'read_config',
+				'patch_config',
+			],
+			allowedTools: [
+				'search_mcp_servers',
+				'ask_credential',
+				'verify_mcp_server',
+				'ask_question',
+				'read_config',
+				'patch_config',
+				'write_config',
+			],
+		});
+		expect(skillsById.get('agent-builder-resource-locators')).toMatchObject({
+			recommendedTools: [
+				'search_nodes',
+				'get_node_types',
+				'ask_credential',
+				'get_resource_locator_options',
+				'read_config',
+				'patch_config',
+			],
+			allowedTools: [
+				'search_nodes',
+				'get_node_types',
+				'ask_credential',
+				'get_resource_locator_options',
+				'ask_question',
+				'read_config',
+				'patch_config',
+				'write_config',
+			],
+		});
+		expect(skillsById.get('agent-builder-sub-agents')).toMatchObject({
+			recommendedTools: ['list_sub_agents', 'ask_question', 'read_config', 'patch_config'],
+			allowedTools: [
+				'list_sub_agents',
+				'ask_question',
+				'read_config',
+				'patch_config',
+				'write_config',
+			],
+		});
+		expect(skillsById.get('agent-builder-target-skills')).toMatchObject({
+			recommendedTools: ['create_skill', 'ask_question', 'read_config', 'patch_config'],
+			allowedTools: ['create_skill', 'ask_question', 'read_config', 'patch_config', 'write_config'],
+		});
+		expect(skillsById.get('agent-builder-target-tasks')).toMatchObject({
+			recommendedTools: ['create_task', 'ask_question', 'read_config', 'patch_config'],
+			allowedTools: [
+				'create_task',
+				'ask_question',
+				'read_config',
+				'patch_config',
+				'write_config',
+				'list_workflows',
+				'search_nodes',
+				'get_node_types',
+				'ask_credential',
+			],
+		});
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {

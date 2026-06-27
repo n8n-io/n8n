@@ -1122,13 +1122,13 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('Gotchas');
 		});
 
-		it('puts the structured body template in the body parameter', () => {
+		it('puts the structured body template in the instructions parameter', () => {
 			const { service } = makeService();
 
 			const tool = getCreateSkillTool(service);
-			const bodySchema = (
-				tool.inputSchema as unknown as { shape: { body: { description?: string } } }
-			).shape.body;
+			const instructionsSchema = (
+				tool.inputSchema as unknown as { shape: { instructions: { description?: string } } }
+			).shape.instructions;
 
 			for (const heading of [
 				'## Overview',
@@ -1138,7 +1138,7 @@ describe('AgentsBuilderToolsService', () => {
 				'## Example',
 				'## Gotchas',
 			]) {
-				expect(bodySchema.description).toContain(heading);
+				expect(instructionsSchema.description).toContain(heading);
 			}
 		});
 
@@ -1158,7 +1158,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',
-					body: 'Extract decisions and action items.',
+					instructions: 'Extract decisions and action items.',
 				},
 				ctx,
 			);
@@ -1179,7 +1179,45 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('enforces name and body size limits via the input schema', () => {
+		it('creates a rich skill and forwards extended fields', async () => {
+			const { service, agentsService } = makeService();
+			const skill = {
+				name: 'Handle Vendor Renewals',
+				description: 'Use when reviewing vendor renewal requests and contract terms',
+				instructions: 'Review renewal details, compare terms, and summarize next steps.',
+				allowedTools: ['read_contract', 'send_email'],
+				recommendedTools: ['read_contract'],
+				references: [{ path: 'references/renewal-checklist.md', content: '# Checklist' }],
+				interface: { displayName: 'Vendor renewals', icon: 'file-text' },
+				policy: { allowImplicitInvocation: true, product: 'Procurement' },
+				dependencies: {
+					tools: ['read_contract'],
+					secrets: ['vendor_api_key'],
+					mcpServers: [{ name: 'vendor-docs', transport: 'sse', url: 'https://example.com/sse' }],
+				},
+				version: '1.0.0',
+				license: 'MIT',
+				compatibility: 'n8n agents',
+				platforms: ['n8n'],
+				metadata: { owner: 'procurement' },
+			};
+			agentsService.createSkill.mockResolvedValue({
+				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
+				skill,
+				versionId: 'v2',
+			});
+
+			const result = await getCreateSkillTool(service).handler!(skill, ctx);
+
+			expect(agentsService.createSkill).toHaveBeenCalledWith(agentId, projectId, skill);
+			expect(result).toEqual({
+				ok: true,
+				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
+				skill,
+			});
+		});
+
+		it('enforces name and instruction size limits via the input schema', () => {
 			const { service } = makeService();
 
 			const result = (
@@ -1189,10 +1227,37 @@ describe('AgentsBuilderToolsService', () => {
 			).safeParse({
 				name: 'a'.repeat(129),
 				description: 'Use when summarizing meeting notes',
-				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+				instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			});
 
 			expect(result.success).toBe(false);
+		});
+
+		it('accepts rich skill fields and rejects old or unsupported fields via the input schema', () => {
+			const { service } = makeService();
+			const schema = getCreateSkillTool(service).inputSchema as unknown as {
+				safeParse: (input: unknown) => { success: boolean };
+			};
+			const validSkill = {
+				name: 'Review Docs',
+				description: 'Use when reviewing internal docs',
+				instructions: 'Review the document and return actionable feedback.',
+			};
+
+			expect(
+				schema.safeParse({
+					...validSkill,
+					references: [{ path: 'references/guide.md', content: '# Guide' }],
+				}).success,
+			).toBe(true);
+			expect(schema.safeParse({ ...validSkill, body: 'Old field' }).success).toBe(false);
+			expect(schema.safeParse({ ...validSkill, scripts: [] }).success).toBe(false);
+			expect(
+				schema.safeParse({
+					...validSkill,
+					references: [{ path: '../guide.md', content: '# Guide' }],
+				}).success,
+			).toBe(false);
 		});
 	});
 
