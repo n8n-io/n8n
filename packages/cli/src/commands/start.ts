@@ -36,6 +36,7 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -398,6 +399,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
+		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
 
 		if (this.globalConfig.executions.mode === 'regular') {

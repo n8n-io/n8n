@@ -53,6 +53,7 @@ import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-E
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
 import { AddExecutionEntityWorkflowStatusIndex1784000000031 } from './1784000000031-AddExecutionEntityWorkflowStatusIndex';
+import { CreateWorkflowStatisticsDeltaTable1784000000038 } from './1784000000038-CreateWorkflowStatisticsDeltaTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -427,4 +428,5 @@ export const postgresMigrations: Migration[] = [
 	AddUniqueAgentFileNames1784000000035,
 	CreateInstanceAiThreadGrantTable1784000000036,
 	DropAgentDescriptionFromAgents1784000000037,
+	CreateWorkflowStatisticsDeltaTable1784000000038,
 ];
