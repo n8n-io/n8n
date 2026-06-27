@@ -22,6 +22,26 @@ const POOL_TORN_DOWN_MESSAGE = 'Cannot use a pool after calling end on the pool'
 const DRIVER_NOT_CONNECTED_MESSAGE = 'Driver not Connected';
 
 /**
+ * Minimal view of the pg-pool internals we reach into when force-closing a pool
+ * whose graceful teardown has timed out. `_clients` is private, so we type only
+ * the shape we touch and stay defensive about it at the call site.
+ *
+ * Each entry is a pooled client. `release(err)` is the per-client release function
+ * pg-pool installs while the client is checked out; passing an error makes the pool
+ * discard the client instead of returning it, which is what lets a stuck `end()`
+ * (waiting on an un-drained checked-out client) finish. `connection.stream` is the
+ * underlying socket, hard-closed as a backstop for clients with no `release`
+ * (e.g. ones still mid-connect) and to free the socket promptly.
+ */
+interface PgPoolClient {
+	release?: (error?: Error) => void;
+	connection?: { stream?: { destroy?: () => void } };
+}
+interface PgPoolInternals {
+	_clients?: PgPoolClient[];
+}
+
+/**
  * Watches a DataSource and recovers it when the connection goes bad.
  * - Pings on `databaseConfig.pingIntervalSeconds`, races against `databaseConfig.pingTimeoutMs`.
  * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
@@ -191,13 +211,7 @@ export class DbConnectionMonitor {
 
 				try {
 					if (this.dataSource.isInitialized) {
-						// We deliberately don't bound this drain with a forced teardown.
-						// `pool.end()` does not interrupt in-flight queries:
-						// already-acquired clients keep running until their query finishes,
-						// and only *new* acquisitions are refused
-						// (those are handled by the acquisition wait in `wrapConnectionAcquisition`).
-						// So awaiting `destroy()` lets healthy queries drain on their own without us touching pg-pool internals.
-						await this.dataSource.destroy();
+						await this.destroyDataSource();
 					}
 
 					if (this.stopped) {
@@ -239,6 +253,103 @@ export class DbConnectionMonitor {
 			this.errorReporter.error(ensureError(error));
 		} finally {
 			this.stopRecovery();
+		}
+	}
+
+	/**
+	 * Tears down the DataSource, bounding the Postgres pool drain so recovery can't
+	 * hang forever at this step.
+	 *
+	 * `pool.end()` (which `destroy()` awaits) only resolves once every pooled client
+	 * has been removed. A client whose query is frozen against an unreachable backend
+	 * (e.g. a SHUNNED proxy or a paused process: TCP open but unresponsive) is never
+	 * released, so `end()`, and therefore `destroy()`, blocks indefinitely and the
+	 * recovery loop is pinned at attempt 1.
+	 *
+	 * For Postgres we race the drain against `destroyTimeoutMs`; if it elapses we
+	 * force-close the pool's sockets, which lets the abandoned `end()` settle (and so
+	 * the original `destroy()` resolves and clears `isInitialized`, unblocking the
+	 * `initialize()` that follows). SQLite already bounds teardown with the
+	 * sqlite-pooled driver's own `destroyTimeout`, so it takes the plain path.
+	 * `destroyTimeoutMs <= 0` disables the bound (legacy behavior).
+	 */
+	private async destroyDataSource() {
+		const destroyPromise = this.dataSource.destroy();
+
+		const timeoutMs = Number(this.databaseConfig.postgresdb?.destroyTimeoutMs);
+		if (!this.isPostgres || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+			await destroyPromise;
+			return;
+		}
+
+		// Capture the pool before destroy() nulls `driver.master`, so we can still
+		// force-close it on timeout.
+		const pool = this.postgresDriver.master;
+		// If the timeout wins the race, destroyPromise is still pending; force-closing
+		// settles it, but guard against an unhandled rejection should it ever throw.
+		destroyPromise.catch(() => {});
+
+		const abortController = new AbortController();
+		let timedOut = false;
+		try {
+			await Promise.race([
+				destroyPromise,
+				setTimeoutP(timeoutMs, undefined, { signal: abortController.signal }).then(() => {
+					timedOut = true;
+					throw new OperationalError(`Database pool teardown timed out after ${timeoutMs}ms`);
+				}),
+			]);
+		} catch (error) {
+			if (!timedOut) {
+				throw error; // a genuine destroy() failure, not our timeout
+			}
+			this.logger.warn(
+				`Database pool teardown exceeded ${timeoutMs}ms; force-closing connection sockets to continue recovery`,
+			);
+			this.forceClosePostgresPool(pool);
+			// Force-closing fires pg-pool's pending `client.end()` callbacks, so the
+			// original destroy() now resolves and flips `isInitialized` to false.
+			await destroyPromise;
+		} finally {
+			abortController.abort();
+		}
+	}
+
+	/**
+	 * Forcibly discards every client in the given pg pool so a stuck `pool.end()` can
+	 * finish. `pool.end()` only resolves once `_clients` is empty; a checked-out client
+	 * whose query won't drain against a frozen backend keeps it non-empty forever, and
+	 * destroying the socket alone does not remove it (a checked-out client has no
+	 * pool-level error listener). Releasing it *with an error* makes the pool discard
+	 * it, which empties `_clients`. The socket is then hard-closed as a backstop for
+	 * clients with no `release` (e.g. still mid-connect) and to free it promptly.
+	 *
+	 * Defensive about shape because `_clients`/`release` are pg-pool internals a driver
+	 * upgrade could rename; each call is isolated so one bad client can't abort the rest.
+	 * If those internals ever change, the recovery integration test (which freezes a real
+	 * pooled connection) stops unblocking and fails loudly — that is the guardrail, the
+	 * same way the POOL_TORN_DOWN_MESSAGE strings above are pinned by the integration test.
+	 */
+	private forceClosePostgresPool(pool: PostgresDriver['master']) {
+		const clients = (pool as unknown as PgPoolInternals | undefined)?._clients;
+		if (!Array.isArray(clients)) {
+			this.logger.warn(
+				'Cannot force-close Postgres pool: pool._clients is unavailable (pg-pool internals may have changed)',
+			);
+			return;
+		}
+		// Snapshot: release(err) mutates the pool's own `_clients` array as it discards.
+		for (const client of [...clients]) {
+			try {
+				client?.release?.(new OperationalError('Connection force-closed during database recovery'));
+			} catch {
+				// Already released / double-release guard — the socket destroy below still applies.
+			}
+			try {
+				client?.connection?.stream?.destroy?.();
+			} catch {
+				// Best-effort socket teardown.
+			}
 		}
 	}
 
