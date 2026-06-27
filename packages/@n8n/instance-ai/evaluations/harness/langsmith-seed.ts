@@ -3,7 +3,7 @@
 // seed, last = live), and reconstruct each seed workflow from its source at the
 // build boundary. Transient: traces retain ~14 days.
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 

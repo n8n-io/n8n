@@ -5,15 +5,7 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    },
     "./dist/*": {
       "types": "./dist/*.d.mts",
       "import": "./dist/*.mjs",
@@ -23,6 +15,13 @@
       "types": "./dist/*.d.mts",
       "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*.d.cts"
+      ]
     }
   },
   "scripts": {

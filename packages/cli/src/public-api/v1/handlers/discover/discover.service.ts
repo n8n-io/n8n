@@ -1,5 +1,5 @@
 import type { ApiKeyScope } from '@n8n/permissions';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 import RefParser from '@apidevtools/json-schema-ref-parser';
 

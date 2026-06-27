@@ -1,5 +1,5 @@
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
