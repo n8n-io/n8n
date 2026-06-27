@@ -5,6 +5,7 @@ import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 const globalConfig = mock<GlobalConfig>({ generic: { gracefulShutdownTimeout: 30 } });
 
@@ -88,6 +89,91 @@ describe('TaskBrokerWsServer', () => {
 
 			await server.stop();
 			jest.useRealTimers();
+		});
+	});
+
+	describe('runner:unresponsive event', () => {
+		it('should disconnect the named runner when the broker emits `runner:unresponsive`', async () => {
+			const lifecycleEvents = new TaskRunnerLifecycleEvents();
+			const server = new TaskBrokerWsServer(
+				mock(),
+				mock(),
+				mock(),
+				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
+				lifecycleEvents,
+				globalConfig,
+			);
+
+			const ws = mock<WebSocket>();
+			server.runnerConnections.set('stuck-runner', ws);
+
+			server.start();
+
+			lifecycleEvents.emit('runner:unresponsive', { runnerId: 'stuck-runner' });
+
+			// `removeConnection` is async via the `void this.removeConnection(...)` call
+			// inside the listener — flush microtasks before asserting.
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+
+			await server.stop();
+		});
+
+		it('should not disconnect other runners when one is reported unresponsive', async () => {
+			const lifecycleEvents = new TaskRunnerLifecycleEvents();
+			const server = new TaskBrokerWsServer(
+				mock(),
+				mock(),
+				mock(),
+				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
+				lifecycleEvents,
+				globalConfig,
+			);
+
+			const stuckWs = mock<WebSocket>();
+			const healthyWs = mock<WebSocket>();
+			server.runnerConnections.set('stuck-runner', stuckWs);
+			server.runnerConnections.set('healthy-runner', healthyWs);
+
+			server.start();
+
+			lifecycleEvents.emit('runner:unresponsive', { runnerId: 'stuck-runner' });
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(stuckWs.close).toHaveBeenCalled();
+			expect(healthyWs.close).not.toHaveBeenCalled();
+
+			await server.stop();
+		});
+
+		it('should unsubscribe on stop so events after stop do not disconnect runners', async () => {
+			const lifecycleEvents = new TaskRunnerLifecycleEvents();
+			const server = new TaskBrokerWsServer(
+				mock(),
+				mock(),
+				mock(),
+				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
+				lifecycleEvents,
+				globalConfig,
+			);
+
+			const ws = mock<WebSocket>();
+			server.runnerConnections.set('runner-1', ws);
+
+			server.start();
+			await server.stop();
+
+			lifecycleEvents.emit('runner:unresponsive', { runnerId: 'runner-1' });
+			await Promise.resolve();
+			await Promise.resolve();
+
+			// `stop()` itself drains runners via `stopConnectedRunners` — so we
+			// expect close to have been called from the drain, but NOT a second
+			// time from a stale `runner:unresponsive` listener.
+			expect(ws.close).toHaveBeenCalledTimes(1);
 		});
 	});
 
