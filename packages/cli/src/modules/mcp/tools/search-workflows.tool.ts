@@ -65,7 +65,7 @@ const outputSchema = {
 					.describe('Whether the user has permission to execute this workflow'),
 				availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
 				tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
-			}),
+			}).passthrough(),
 		)
 		.describe('List of workflows matching the query'),
 	count: z.number().int().min(0).describe('Total number of workflows that match the filters'),
