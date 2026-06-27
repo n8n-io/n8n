@@ -1,4 +1,8 @@
-import { type AgentJsonConfig, type AgentVersionListItemDto } from '@n8n/api-types';
+import {
+	type AgentJsonConfig,
+	type AgentSkill,
+	type AgentVersionListItemDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -11,7 +15,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentSkillsService } from './agent-skills.service';
 import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -30,7 +33,6 @@ export class AgentPublishService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
 		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
-		private readonly agentSkillsService: AgentSkillsService,
 		private readonly customToolsService: AgentCustomToolsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
@@ -77,10 +79,7 @@ export class AgentPublishService {
 						agentId: agent.id,
 						schema: agent.schema,
 						tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-						skills: this.agentSkillsService.snapshotConfiguredSkills(
-							agent.schema,
-							agent.skills ?? {},
-						),
+						skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
 						publishedBy: user,
 					},
 					trx,
@@ -287,6 +286,42 @@ export class AgentPublishService {
 			}),
 			trx,
 		);
+	}
+
+	private pickConfiguredSkillBodies(
+		config: AgentJsonConfig | null,
+		skills: Record<string, AgentSkill>,
+	): Record<string, AgentSkill> | null {
+		if (!config) return null;
+
+		const missing = this.getMissingSkillIds(config, skills);
+		if (missing.length > 0) {
+			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
+		}
+
+		const snapshot: Record<string, AgentSkill> = {};
+		for (const ref of config.skills ?? []) {
+			const skill = skills[ref.id];
+			if (skill) snapshot[ref.id] = deepCopy(skill);
+		}
+
+		return snapshot;
+	}
+
+	private getMissingSkillIds(
+		config: AgentJsonConfig,
+		skills: Record<string, AgentSkill>,
+	): string[] {
+		const seen = new Set<string>();
+		const missing: string[] = [];
+
+		for (const ref of config.skills ?? []) {
+			if (seen.has(ref.id)) continue;
+			seen.add(ref.id);
+			if (!skills[ref.id]) missing.push(ref.id);
+		}
+
+		return missing;
 	}
 
 	/**

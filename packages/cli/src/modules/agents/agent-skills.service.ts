@@ -3,14 +3,15 @@ import {
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
+	type AgentSkillReference,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
+import { createHash } from 'crypto';
 import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -23,7 +24,6 @@ export class AgentSkillsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
@@ -50,16 +50,18 @@ export class AgentSkillsService {
 		if (!entity) throw new NotFoundError('Agent not found');
 
 		this.validateSkill(skill);
+		const normalizedSkill = this.withNormalizedReferences(skill);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, normalizedSkill.name);
 
-		const skillId = this.addSkill(entity, skill);
+		const skillId = this.addSkill(entity, normalizedSkill);
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill, versionId: saved.versionId };
+		return { id: skillId, skill: normalizedSkill, versionId: saved.versionId };
 	}
 
 	async createAndAttachSkill(
@@ -72,17 +74,19 @@ export class AgentSkillsService {
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		this.validateSkill(skill);
+		const normalizedSkill = this.withNormalizedReferences(skill);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, normalizedSkill.name);
 
-		const skillId = this.addSkill(entity, skill);
+		const skillId = this.addSkill(entity, normalizedSkill);
 		this.attachSkillRef(entity, skillId);
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill, versionId: saved.versionId };
+		return { id: skillId, skill: normalizedSkill, versionId: saved.versionId };
 	}
 
 	async updateSkill(
@@ -99,19 +103,21 @@ export class AgentSkillsService {
 
 		const updated = { ...existing, ...updates };
 		this.validateSkill(updated);
+		const normalizedUpdated = this.withNormalizedReferences(updated);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, normalizedUpdated.name, skillId);
 
 		entity.skills = {
 			...(entity.skills ?? {}),
-			[skillId]: updated,
+			[skillId]: normalizedUpdated,
 		};
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill: updated, versionId: saved.versionId };
+		return { id: skillId, skill: normalizedUpdated, versionId: saved.versionId };
 	}
 
 	async deleteSkill(agentId: string, projectId: string, skillId: string): Promise<void> {
@@ -130,7 +136,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
@@ -163,24 +169,6 @@ export class AgentSkillsService {
 		return missing;
 	}
 
-	snapshotConfiguredSkills(
-		config: AgentJsonConfig | null,
-		skills: AgentSkillEntries,
-	): AgentSkillEntries | null {
-		if (!config) return null;
-		const missing = this.getMissingSkillIds(config, skills);
-		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
-		}
-
-		const snapshot: AgentSkillEntries = {};
-		for (const ref of config.skills ?? []) {
-			const skill = skills[ref.id];
-			if (skill) snapshot[ref.id] = { ...skill };
-		}
-		return snapshot;
-	}
-
 	private validateSkill(skill: AgentSkill): void {
 		const result = agentSkillSchema.safeParse(skill);
 		if (!result.success) {
@@ -201,6 +189,25 @@ export class AgentSkillsService {
 		return skillId;
 	}
 
+	private assertSkillNameIsUnique(
+		existing: AgentSkillEntries,
+		name: string,
+		currentSkillId?: string,
+	): void {
+		const normalizedName = this.normalizeSkillName(name);
+		const duplicate = Object.entries(existing ?? {}).find(
+			([id, skill]) =>
+				id !== currentSkillId && this.normalizeSkillName(skill.name) === normalizedName,
+		);
+		if (duplicate) {
+			throw new UserError(`Agent already has a skill named "${name.trim()}".`);
+		}
+	}
+
+	private normalizeSkillName(name: string): string {
+		return name.trim().toLowerCase();
+	}
+
 	private attachSkillRef(entity: Agent, skillId: string): void {
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
@@ -208,5 +215,33 @@ export class AgentSkillsService {
 			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
 			{ type: 'skill', id: skillId },
 		];
+	}
+
+	private normalizeReferences(
+		references: AgentSkillReference[] | undefined,
+	): AgentSkillReference[] {
+		if (!references) return [];
+		return references.map((reference) => {
+			const content = reference.content;
+			return {
+				path: reference.path,
+				content,
+				bytes: Buffer.byteLength(content, 'utf8'),
+				sha256: createHash('sha256').update(content).digest('hex'),
+			};
+		});
+	}
+
+	private withNormalizedReferences(skill: AgentSkill): AgentSkill {
+		if (skill.references === undefined) return skill;
+		return {
+			...skill,
+			references: this.normalizeReferences(skill.references),
+		};
+	}
+
+	private async clearRuntimes(agentId: string): Promise<void> {
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
+		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
 	}
 }

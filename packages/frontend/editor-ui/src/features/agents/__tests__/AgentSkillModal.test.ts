@@ -31,12 +31,13 @@ const ModalStub = defineComponent({
 });
 
 const SkillViewerStub = defineComponent({
-	emits: ['update:skill', 'update:valid'],
-	props: ['skill', 'showValidationWarnings', 'errors', 'scrollable'],
-	setup(_, { emit }) {
+	emits: ['import:skill', 'update:skill', 'update:valid'],
+	props: ['skill', 'selectedPath', 'showValidationWarnings', 'errors', 'scrollable'],
+	setup(props, { emit }) {
 		const valid = ref(true);
 		onMounted(() => emit('update:valid', valid.value));
-		return () => h('div', { 'data-testid': 'agent-skill-viewer-stub' });
+		return () =>
+			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [h('span', props.selectedPath)]);
 	},
 });
 
@@ -44,8 +45,12 @@ const MODAL_NAME = 'AgentSkillModal';
 
 function renderModal({
 	onConfirm = vi.fn(),
+	skill,
+	availableTools,
 }: {
 	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
+	skill?: AgentSkill;
+	availableTools?: Array<{ name: string; label: string }>;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -57,6 +62,8 @@ function renderModal({
 					props: ['variant', 'disabled'],
 				},
 				N8nHeading: { template: '<h2><slot /></h2>' },
+				N8nIcon: { template: '<i />' },
+				N8nText: { template: '<span><slot /></span>' },
 			},
 		},
 	});
@@ -66,6 +73,8 @@ function renderModal({
 			data: {
 				projectId: 'p1',
 				agentId: 'a1',
+				skill,
+				availableTools,
 				onConfirm,
 			},
 		},
@@ -92,5 +101,44 @@ describe('AgentSkillModal', () => {
 		expect(apiCreateSpy).not.toHaveBeenCalled();
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('adds and removes references from the file navigation', async () => {
+		const { container } = renderModal({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+			},
+		});
+
+		const addReferenceButton = container.querySelector('[data-testid="agent-skill-add-reference"]');
+		expect(addReferenceButton).toBeInTheDocument();
+
+		await fireEvent.click(addReferenceButton as Element);
+
+		expect(
+			container.querySelector(
+				'[data-testid="agent-skill-reference-nav-item-references-reference-md"]',
+			),
+		).toHaveTextContent('references/reference.md');
+		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
+			'references/reference.md',
+		);
+
+		await fireEvent.click(
+			container.querySelector(
+				'[data-testid="agent-skill-reference-nav-item-references-reference-md-remove"]',
+			) as Element,
+		);
+
+		expect(
+			container.querySelector(
+				'[data-testid="agent-skill-reference-nav-item-references-reference-md"]',
+			),
+		).not.toBeInTheDocument();
+		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
+			'SKILL.md',
+		);
 	});
 });

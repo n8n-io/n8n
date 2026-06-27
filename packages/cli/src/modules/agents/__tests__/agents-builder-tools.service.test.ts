@@ -1120,15 +1120,20 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('when to load it');
 			expect(tool.description).toContain('ask the user clarifying');
 			expect(tool.description).toContain('Gotchas');
+			expect(tool.description).toContain('References are not automatically loaded');
+			expect(tool.description).toContain('instructions must say exactly when to load each one');
+			expect(tool.systemInstruction).toContain(
+				'explicit conditions for loading each referenced file',
+			);
 		});
 
-		it('puts the structured body template in the body parameter', () => {
+		it('puts the structured body template in the instructions parameter', () => {
 			const { service } = makeService();
 
 			const tool = getCreateSkillTool(service);
-			const bodySchema = (
-				tool.inputSchema as unknown as { shape: { body: { description?: string } } }
-			).shape.body;
+			const instructionsSchema = (
+				tool.inputSchema as unknown as { shape: { instructions: { description?: string } } }
+			).shape.instructions;
 
 			for (const heading of [
 				'## Overview',
@@ -1138,7 +1143,7 @@ describe('AgentsBuilderToolsService', () => {
 				'## Example',
 				'## Gotchas',
 			]) {
-				expect(bodySchema.description).toContain(heading);
+				expect(instructionsSchema.description).toContain(heading);
 			}
 		});
 
@@ -1158,7 +1163,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',
-					body: 'Extract decisions and action items.',
+					instructions: 'Extract decisions and action items.',
 				},
 				ctx,
 			);
@@ -1179,7 +1184,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('enforces name and body size limits via the input schema', () => {
+		it('enforces name and instruction size limits via the input schema', () => {
 			const { service } = makeService();
 
 			const result = (
@@ -1189,7 +1194,7 @@ describe('AgentsBuilderToolsService', () => {
 			).safeParse({
 				name: 'a'.repeat(129),
 				description: 'Use when summarizing meeting notes',
-				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+				instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			});
 
 			expect(result.success).toBe(false);

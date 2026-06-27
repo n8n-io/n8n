@@ -5225,6 +5225,9 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
       z-vue-scan:
         specifier: ^0.0.35
         version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
