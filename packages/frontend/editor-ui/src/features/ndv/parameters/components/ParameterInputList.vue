@@ -438,7 +438,6 @@ function deleteOption(optionName: string): void {
 }
 
 function isHiddenByAiGateway(parameter: INodeProperties): boolean {
-	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 	if (!node.value) return false;
 
 	const credentials = node.value.credentials;
@@ -448,6 +447,12 @@ function isHiddenByAiGateway(parameter: INodeProperties): boolean {
 		(cred) => cred.__aiGatewayManaged === true,
 	);
 	if (!hasGatewayCredential) return false;
+
+	if (aiGateway.isNodePropertyHidden(node.value, parameter.name)) {
+		return true;
+	}
+
+	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 
 	const params = props.path
 		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
