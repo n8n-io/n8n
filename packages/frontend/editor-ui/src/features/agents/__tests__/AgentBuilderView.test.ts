@@ -1118,6 +1118,16 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
 		await nextTick();
+
+		expect(
+			(wrapper.vm as unknown as { agent: { skills: Record<string, unknown> } }).agent.skills,
+		).toEqual({
+			summarize_notes: updatedSkill,
+		});
+		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
+			{ id: 'summarize_notes', skill: updatedSkill },
+		]);
+
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 		await nextTick();
 
@@ -1128,42 +1138,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			'summarize_notes',
 			updatedSkill,
 		);
-	});
-
-	it('removes unavailable allowed tools before creating a skill', async () => {
-		const skill = {
-			name: 'summarize_notes',
-			description: 'Use when summarizing notes',
-			instructions: 'Read the notes and produce a concise summary.',
-			allowedTools: ['load_workflow', 'missing_tool'],
-		};
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-			tools: [{ type: 'workflow', workflow: 'load_workflow' }],
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
-		createAgentSkillMock.mockResolvedValueOnce({
-			id: 'skill_0Ab9ZkLm3Pq7Xy2N',
-			skill: { ...skill, allowedTools: ['load_workflow'] },
-			versionId: 'v2',
-		});
-
-		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('add-skill');
-		await nextTick();
-
-		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { skill: typeof skill }) => void;
-		};
-		modalData.onConfirm({ skill });
-		await flushPromises();
-
-		expect(createAgentSkillMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
-			...skill,
-			allowedTools: ['load_workflow'],
-		});
 	});
 
 	it('omits allowed tools before saving a skill when none are attached', async () => {

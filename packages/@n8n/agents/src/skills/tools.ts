@@ -356,7 +356,7 @@ function findSkillEntry(
 }
 
 function hasLinkedFiles(linkedFiles: RuntimeSkillLinkedFiles): boolean {
-	return Object.values(linkedFiles).some((files) => files.length > 0);
+	return LINKED_FILE_GROUPS.some((group) => linkedFiles[group].length > 0);
 }
 
 function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {

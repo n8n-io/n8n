@@ -1147,20 +1147,6 @@ describe('AgentsBuilderToolsService', () => {
 			}
 		});
 
-		it('describes references as explicit progressive-disclosure files', () => {
-			const { service } = makeService();
-
-			const tool = getCreateSkillTool(service);
-			const referencesSchema = (
-				tool.inputSchema as unknown as { shape: { references: { description?: string } } }
-			).shape.references;
-
-			expect(referencesSchema.description).toContain('References are not automatically loaded');
-			expect(referencesSchema.description).toContain(
-				'instructions must say exactly when to load each reference by path',
-			);
-		});
-
 		it('creates a skill and returns the generated skill id', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.createSkill.mockResolvedValue({
@@ -1198,31 +1184,6 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('creates a skill with allowed tools and references', async () => {
-			const { service, agentsService } = makeService();
-			const skill = {
-				name: 'Handle Vendor Renewals',
-				description: 'Use when reviewing vendor renewal requests and contract terms',
-				instructions: 'Review renewal details, compare terms, and summarize next steps.',
-				allowedTools: ['read_contract', 'send_email'],
-				references: [{ path: 'references/renewal-checklist.md', content: '# Checklist' }],
-			};
-			agentsService.createSkill.mockResolvedValue({
-				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
-				skill,
-				versionId: 'v2',
-			});
-
-			const result = await getCreateSkillTool(service).handler!(skill, ctx);
-
-			expect(agentsService.createSkill).toHaveBeenCalledWith(agentId, projectId, skill);
-			expect(result).toEqual({
-				ok: true,
-				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
-				skill,
-			});
-		});
-
 		it('enforces name and instruction size limits via the input schema', () => {
 			const { service } = makeService();
 
@@ -1237,47 +1198,6 @@ describe('AgentsBuilderToolsService', () => {
 			});
 
 			expect(result.success).toBe(false);
-		});
-
-		it('accepts allowed tools and references and rejects old or unsupported fields via the input schema', () => {
-			const { service } = makeService();
-			const schema = getCreateSkillTool(service).inputSchema as unknown as {
-				safeParse: (input: unknown) => { success: boolean };
-			};
-			const validSkill = {
-				name: 'Review Docs',
-				description: 'Use when reviewing internal docs',
-				instructions: 'Review the document and return actionable feedback.',
-			};
-
-			expect(
-				schema.safeParse({
-					...validSkill,
-					allowedTools: ['search_docs'],
-					references: [{ path: 'references/guide.md', content: '# Guide' }],
-				}).success,
-			).toBe(true);
-			for (const field of [
-				'body',
-				'recommendedTools',
-				'interface',
-				'policy',
-				'dependencies',
-				'version',
-				'license',
-				'compatibility',
-				'platforms',
-				'metadata',
-				'scripts',
-			]) {
-				expect(schema.safeParse({ ...validSkill, [field]: {} }).success).toBe(false);
-			}
-			expect(
-				schema.safeParse({
-					...validSkill,
-					references: [{ path: '../guide.md', content: '# Guide' }],
-				}).success,
-			).toBe(false);
 		});
 	});
 

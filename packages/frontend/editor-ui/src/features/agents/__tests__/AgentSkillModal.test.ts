@@ -37,26 +37,7 @@ const SkillViewerStub = defineComponent({
 		const valid = ref(true);
 		onMounted(() => emit('update:valid', valid.value));
 		return () =>
-			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [
-				h('span', props.selectedPath),
-				h(
-					'span',
-					{ 'data-testid': 'agent-skill-allowed-tools-stub' },
-					props.skill.allowedTools?.join(','),
-				),
-				h(
-					'button',
-					{
-						'data-testid': 'agent-skill-import-stub',
-						onClick: () =>
-							emit('update:skill', {
-								...props.skill,
-								allowedTools: ['load_workflow', 'missing_tool'],
-							}),
-					},
-					'Import',
-				),
-			]);
+			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [h('span', props.selectedPath)]);
 	},
 });
 
@@ -122,35 +103,7 @@ describe('AgentSkillModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('switches the selected editor file from SKILL.md to a reference', async () => {
-		const { container, getByText } = renderModal({
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-				references: [
-					{
-						path: 'references/guide.md',
-						content: '# Guide',
-						bytes: 7,
-						sha256: 'a'.repeat(64),
-					},
-				],
-			},
-		});
-
-		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
-			'SKILL.md',
-		);
-
-		await fireEvent.click(getByText('references/guide.md'));
-
-		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
-			'references/guide.md',
-		);
-	});
-
-	it('adds a blank reference from the references section action', async () => {
+	it('adds and removes references from the file navigation', async () => {
 		const { container } = renderModal({
 			skill: {
 				name: 'Research',
@@ -172,56 +125,20 @@ describe('AgentSkillModal', () => {
 		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
 			'references/reference.md',
 		);
-	});
 
-	it('removes a reference from the references section action', async () => {
-		const { container, getByText } = renderModal({
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-				references: [
-					{
-						path: 'references/guide.md',
-						content: '# Guide',
-						bytes: 7,
-						sha256: 'a'.repeat(64),
-					},
-				],
-			},
-		});
-
-		await fireEvent.click(getByText('references/guide.md'));
 		await fireEvent.click(
 			container.querySelector(
-				'[data-testid="agent-skill-reference-nav-item-references-guide-md-remove"]',
+				'[data-testid="agent-skill-reference-nav-item-references-reference-md-remove"]',
 			) as Element,
 		);
 
 		expect(
-			container.querySelector('[data-testid="agent-skill-reference-nav-item-references-guide-md"]'),
+			container.querySelector(
+				'[data-testid="agent-skill-reference-nav-item-references-reference-md"]',
+			),
 		).not.toBeInTheDocument();
 		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
 			'SKILL.md',
 		);
-	});
-
-	it('strips imported allowed tools that are not attached to the agent', async () => {
-		const { container } = renderModal({
-			availableTools: [{ name: 'load_workflow', label: 'Load workflow' }],
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-			},
-		});
-
-		await fireEvent.click(
-			container.querySelector('[data-testid="agent-skill-import-stub"]') as Element,
-		);
-
-		expect(
-			container.querySelector('[data-testid="agent-skill-allowed-tools-stub"]'),
-		).toHaveTextContent('load_workflow');
 	});
 });

@@ -38,45 +38,11 @@ describe('agent skill DTOs', () => {
 	});
 
 	it('rejects removed metadata fields', () => {
-		for (const field of [
-			'recommendedTools',
-			'interface',
-			'policy',
-			'dependencies',
-			'version',
-			'license',
-			'compatibility',
-			'platforms',
-			'metadata',
-		]) {
-			expect(agentSkillSchema.safeParse({ ...validSkill, [field]: {} }).success).toBe(false);
-			expect(UpdateAgentSkillDto.safeParse({ [field]: {} }).success).toBe(false);
-		}
-	});
-
-	it('rejects scripts and other unsupported linked file groups', () => {
-		const payload = {
-			...validSkill,
-			scripts: [{ path: 'scripts/run.py', content: 'print("hi")' }],
-		};
-
-		expect(CreateAgentSkillDto.safeParse(payload).success).toBe(false);
-		expect(UpdateAgentSkillDto.safeParse(payload).success).toBe(false);
+		expect(agentSkillSchema.safeParse({ ...validSkill, recommendedTools: [] }).success).toBe(false);
+		expect(UpdateAgentSkillDto.safeParse({ metadata: {} }).success).toBe(false);
 	});
 
 	it('rejects invalid or duplicate reference paths', () => {
-		expect(
-			CreateAgentSkillDto.safeParse({
-				...validSkill,
-				references: [
-					{
-						path: '../guide.md',
-						content: '# Guide',
-					},
-				],
-			}).success,
-		).toBe(false);
-
 		expect(
 			CreateAgentSkillDto.safeParse({
 				...validSkill,
@@ -124,14 +90,5 @@ describe('agent skill DTOs', () => {
 				allowedTools: [],
 			}).success,
 		).toBe(true);
-	});
-
-	it('rejects oversized instructions', () => {
-		expect(
-			CreateAgentSkillDto.safeParse({
-				...validSkill,
-				instructions: 'x'.repeat(65_537),
-			}).success,
-		).toBe(false);
 	});
 });

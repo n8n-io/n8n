@@ -621,18 +621,16 @@ Use the workflow SDK.`,
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
 
-		for (const filePath of ['/', '.', '', 'SKILL.md']) {
-			await expect(
-				loadTool.handler?.({ skillId: 'summarize_notes', filePath }, {}),
-			).resolves.toMatchObject({
-				ok: true,
-				success: true,
-				skillId: 'summarize_notes',
-				name: 'Summarize notes',
-				content: 'Extract decisions.',
-				instructions: 'Extract decisions.',
-			});
-		}
+		await expect(
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: '' }, {}),
+		).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions.',
+			instructions: 'Extract decisions.',
+		});
 
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),

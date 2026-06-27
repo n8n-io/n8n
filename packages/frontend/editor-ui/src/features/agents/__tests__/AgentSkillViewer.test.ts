@@ -225,27 +225,7 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
 
-	it('removes allowed tools from chips', async () => {
-		const wrapper = mountViewer({
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-				allowedTools: ['load_workflow'],
-			},
-			availableTools: [{ name: 'load_workflow', label: 'Load workflow', icon: 'workflow' }],
-		});
-
-		expect(wrapper.find('[data-testid="agent-skill-allowed-tool-chip"]').text()).toContain(
-			'Load workflow',
-		);
-
-		await wrapper.find('[data-testid="agent-skill-allowed-tool-remove"]').trigger('click');
-
-		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: undefined }]);
-	});
-
-	it('adds allowed tools from the attached tool picker', async () => {
+	it('updates allowed tools from the picker and chips', async () => {
 		const wrapper = mountViewer({
 			skill: {
 				name: 'Research',
@@ -265,6 +245,22 @@ describe('AgentSkillViewer', () => {
 		await nextTick();
 
 		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: ['load_workflow'] }]);
+		await wrapper.setProps({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				allowedTools: ['load_workflow'],
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-skill-allowed-tool-chip"]').text()).toContain(
+			'Load workflow',
+		);
+
+		await wrapper.find('[data-testid="agent-skill-allowed-tool-remove"]').trigger('click');
+
+		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: undefined }]);
 	});
 });
 
