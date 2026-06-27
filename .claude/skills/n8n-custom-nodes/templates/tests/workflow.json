@@ -1,0 +1,59 @@
+{
+	"name": "__ServiceName__ Create Item Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-1",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "create",
+				"name": "New Item"
+			},
+			"type": "n8n-nodes-base.__serviceName__",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-1",
+			"name": "Create Item",
+			"credentials": {
+				"__serviceNameApi__": {
+					"id": "cred-1",
+					"name": "__ServiceName__ API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Item": [
+			{
+				"json": {
+					"id": "item-123",
+					"name": "New Item",
+					"createdAt": "2024-01-01T00:00:00Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Item",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
