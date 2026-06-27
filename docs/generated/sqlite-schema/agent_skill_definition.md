@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_skill_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "name" varchar(128) NOT NULL, "description" varchar(512) NOT NULL, "instructions" text NOT NULL, "allowedTools" text, "recommendedTools" text, "interface" text, "policy" text, "dependencies" text, "version" varchar(128), "license" varchar(128), "compatibility" text, "platforms" text, "metadata" text, "linkedFiles" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_fa93987d9dbc15d62a07813d595" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_skill_definition" ("id" varchar(32) NOT NULL, "agentId" varchar(36) NOT NULL, "name" varchar(128) NOT NULL, "description" varchar(512) NOT NULL, "instructions" text NOT NULL, "allowedTools" text, "recommendedTools" text, "interface" text, "policy" text, "dependencies" text, "version" varchar(128), "license" varchar(128), "compatibility" text, "platforms" text, "metadata" text, "linkedFiles" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_fa93987d9dbc15d62a07813d595" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, PRIMARY KEY ("id", "agentId"))
 ```
 
 </details>
@@ -39,25 +39,26 @@ CREATE TABLE "agent_skill_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "a
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_agent_skill_definition_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_agent_skill_definition_1 | PRIMARY KEY | PRIMARY KEY (id, agentId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_fa93987d9dbc15d62a07813d59 | CREATE INDEX "IDX_fa93987d9dbc15d62a07813d59" ON "agent_skill_definition" ("agentId")  |
-| sqlite_autoindex_agent_skill_definition_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_agent_skill_definition_1 | PRIMARY KEY (id, agentId) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"agent_skill_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_skill_definition" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_skill_definition" {
-  varchar_36_ agentId FK
+  varchar_36_ agentId PK
   TEXT allowedTools
   TEXT compatibility
   datetime_3_ createdAt

@@ -15,6 +15,7 @@ import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-def
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -185,22 +186,25 @@ export class AgentConfigService {
 			}
 		}
 
-		if (skillsProvided) {
-			await this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
-		}
-
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		const saved = await this.agentRepository.save(entity);
-		this.logger.debug('Updated agent JSON config', { agentId, projectId });
-
-		if (tasksProvided) {
-			const referencedTaskIds = new Set((result.config.tasks ?? []).map((ref) => ref.id));
-			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
-			if (orphanTaskIds.length > 0) {
-				await this.agentTaskRepository.delete(orphanTaskIds);
+		const saved = await this.agentRepository.manager.transaction(async (trx) => {
+			if (skillsProvided) {
+				await this.agentSkillsService.removeUnreferencedSkills(entity, result.config, trx);
 			}
-		}
+
+			const savedAgent = await trx.save(entity);
+
+			if (tasksProvided) {
+				const referencedTaskIds = new Set((result.config.tasks ?? []).map((ref) => ref.id));
+				const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
+				if (orphanTaskIds.length > 0) {
+					await trx.getRepository(AgentTask).delete(orphanTaskIds);
+				}
+			}
+			return savedAgent;
+		});
+		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		if (integrationsProvided) {
 			await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);

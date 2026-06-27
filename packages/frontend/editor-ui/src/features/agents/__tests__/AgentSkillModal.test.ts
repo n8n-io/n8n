@@ -31,7 +31,7 @@ const ModalStub = defineComponent({
 });
 
 const SkillViewerStub = defineComponent({
-	emits: ['update:skill', 'update:valid'],
+	emits: ['import:skill', 'update:skill', 'update:valid'],
 	props: ['skill', 'selectedPath', 'showValidationWarnings', 'errors', 'scrollable'],
 	setup(props, { emit }) {
 		const valid = ref(true);

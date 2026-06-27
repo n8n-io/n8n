@@ -239,7 +239,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.objectContaining({
 				schema: activeVersion.schema,
 				tools: activeVersion.tools,
-				skills: activeVersion.skills,
+				skills: {},
 			}),
 			expect.anything(),
 			'publisher-1',

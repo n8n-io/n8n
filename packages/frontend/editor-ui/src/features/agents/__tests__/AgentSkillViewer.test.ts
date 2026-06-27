@@ -81,12 +81,13 @@ describe('AgentSkillViewer', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('update:skill')).toContainEqual([
-			{
+			expect.objectContaining({
 				name: 'Summarize notes',
 				description: 'Use for notes',
 				instructions: '# Playbook\nFollow these steps.',
 				allowedTools: ['load_workflow'],
-			},
+				references: undefined,
+			}),
 		]);
 	});
 

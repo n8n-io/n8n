@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+} from '@n8n/api-types';
 import { N8nButton, N8nFormInput, N8nIcon, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -25,6 +28,14 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:skill': [updates: Partial<AgentSkill>];
 	'update:valid': [valid: boolean];
+	'import:skill': [
+		payload: {
+			source: 'skill_file' | 'folder';
+			status: 'success' | 'error';
+			referenceCount?: number;
+			error?: string;
+		},
+	];
 }>();
 
 const i18n = useI18n();
@@ -59,9 +70,15 @@ const instructionsError = computed(() => {
 const instructionsValid = computed(
 	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
 );
-const referencesValid = computed(() =>
-	(props.skill.references ?? []).every((reference) => reference.content.trim()),
+const invalidReferences = computed(() =>
+	(props.skill.references ?? []).filter(
+		(reference) =>
+			!reference.content.trim() ||
+			(reference.bytes ?? new TextEncoder().encode(reference.content).byteLength) >
+				AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	),
 );
+const referencesValid = computed(() => invalidReferences.value.length === 0);
 const formIsValid = computed(
 	() =>
 		formValidation.name &&
@@ -89,6 +106,23 @@ const selectedReferenceCharacterCount = computed(() =>
 		},
 	}),
 );
+const selectedReferenceError = computed(() => {
+	const reference = selectedReference.value;
+	if (!reference) return '';
+	if (!reference.content.trim())
+		return i18n.baseText('agents.builder.skills.references.contentRequired');
+	const bytes = reference.bytes ?? new TextEncoder().encode(reference.content).byteLength;
+	if (bytes > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
+		return i18n.baseText('agents.builder.skills.references.contentMaxBytes', {
+			interpolate: { max: AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString() },
+		});
+	}
+	return '';
+});
+const referencesError = computed(() => {
+	if (referencesValid.value) return '';
+	return i18n.baseText('agents.builder.skills.references.invalidSummary');
+});
 
 function onNameInput(value: string | number | boolean | null | undefined) {
 	const next = typeof value === 'string' ? value : String(value ?? '');
@@ -127,29 +161,40 @@ function openSkillFolderPicker() {
 	skillFolderInput.value?.click();
 }
 
-async function importFiles(files: File[]) {
+async function importFiles(files: File[], source: 'skill_file' | 'folder') {
 	try {
 		fileError.value = '';
-		emit('update:skill', await importSkillFiles(files));
+		const importedSkill = await importSkillFiles(files);
+		emit('update:skill', importedSkill);
+		emit('import:skill', {
+			source,
+			status: 'success',
+			referenceCount: importedSkill.references?.length ?? 0,
+		});
 	} catch (error) {
 		fileError.value =
 			error instanceof AgentSkillImportError
 				? i18n.baseText(error.i18nKey)
 				: i18n.baseText('agents.builder.skills.import.invalidFolder');
+		emit('import:skill', {
+			source,
+			status: 'error',
+			error: error instanceof AgentSkillImportError ? error.i18nKey : 'unknown',
+		});
 	}
 }
 
 function onSkillFileChange(event: Event) {
 	const input = event.target instanceof HTMLInputElement ? event.target : null;
 	const files = input?.files ? Array.from(input.files) : [];
-	if (files.length > 0) void importFiles(files);
+	if (files.length > 0) void importFiles(files, 'skill_file');
 	if (input) input.value = '';
 }
 
 function onSkillFolderChange(event: Event) {
 	const input = event.target instanceof HTMLInputElement ? event.target : null;
 	const files = input?.files ? Array.from(input.files) : [];
-	if (files.length > 0) void importFiles(files);
+	if (files.length > 0) void importFiles(files, 'folder');
 	if (input) input.value = '';
 }
 
@@ -242,6 +287,10 @@ async function sha256(content: string): Promise<string> {
 				/>
 			</div>
 			<N8nText v-if="fileError" size="small" color="danger">{{ fileError }}</N8nText>
+			<N8nText v-if="referencesError" size="small" color="danger">{{ referencesError }}</N8nText>
+			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
+				props.errors.references
+			}}</N8nText>
 
 			<div :class="$style.field">
 				<N8nFormInput
@@ -333,9 +382,9 @@ async function sha256(content: string): Promise<string> {
 				data-testid="agent-skill-reference-editor"
 				@update:model-value="onReferenceInput"
 			/>
-			<N8nText v-if="!selectedReference.content.trim()" size="small" color="danger">
-				{{ i18n.baseText('agents.builder.skills.references.contentRequired') }}
-			</N8nText>
+			<N8nText v-if="selectedReferenceError" size="small" color="danger">{{
+				selectedReferenceError
+			}}</N8nText>
 			<N8nText size="xsmall" color="text-light">{{ selectedReferenceCharacterCount }}</N8nText>
 		</div>
 	</div>

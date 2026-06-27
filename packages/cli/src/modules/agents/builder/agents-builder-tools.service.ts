@@ -694,7 +694,7 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		const agentSkillBaseSchema = agentSkillSchema.innerType();
+		const agentSkillBaseSchema = agentSkillSchema;
 
 		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
 			.description(

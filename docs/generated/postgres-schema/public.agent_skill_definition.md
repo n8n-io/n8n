@@ -28,7 +28,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | FK_fa93987d9dbc15d62a07813d595 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
-| PK_0f31a45c1a580012305e6095436 | PRIMARY KEY | PRIMARY KEY (id) |
+| PK_6138b6f4266576779f65c49a1a8 | PRIMARY KEY | PRIMARY KEY (id, "agentId") |
 | agent_skill_definition_agentId_not_null | n | NOT NULL "agentId" |
 | agent_skill_definition_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_skill_definition_description_not_null | n | NOT NULL description |
@@ -42,7 +42,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_fa93987d9dbc15d62a07813d59 | CREATE INDEX "IDX_fa93987d9dbc15d62a07813d59" ON public.agent_skill_definition USING btree ("agentId") |
-| PK_0f31a45c1a580012305e6095436 | CREATE UNIQUE INDEX "PK_0f31a45c1a580012305e6095436" ON public.agent_skill_definition USING btree (id) |
+| PK_6138b6f4266576779f65c49a1a8 | CREATE UNIQUE INDEX "PK_6138b6f4266576779f65c49a1a8" ON public.agent_skill_definition USING btree (id, "agentId") |
 
 ## Relations
 

@@ -31,7 +31,7 @@ export class AgentSkillDefinition extends WithTimestamps {
 	id: string;
 
 	@Index()
-	@Column({
+	@PrimaryColumn({
 		type: 'varchar',
 		length: 36,
 		comment: 'Owning agent; skill definitions are deleted with the agent',

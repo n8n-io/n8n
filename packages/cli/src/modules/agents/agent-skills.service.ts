@@ -72,6 +72,7 @@ export class AgentSkillsService {
 		const normalizedSkill = this.withNormalizedReferences(skill);
 
 		const existing = await this.skillRepository.findByAgentId(agentId);
+		this.assertSkillNameIsUnique(existing, normalizedSkill.name);
 		const skillId = generateAgentResourceId(
 			'skill',
 			existing.map((entry) => entry.id),
@@ -101,6 +102,7 @@ export class AgentSkillsService {
 		const normalizedSkill = this.withNormalizedReferences(skill);
 
 		const existing = await this.skillRepository.findByAgentId(agentId);
+		this.assertSkillNameIsUnique(existing, normalizedSkill.name);
 		const skillId = generateAgentResourceId(
 			'skill',
 			existing.map((entry) => entry.id),
@@ -134,6 +136,11 @@ export class AgentSkillsService {
 		const updated = { ...existing, ...updates };
 		this.validateSkill(updated);
 		const normalizedUpdated = this.withNormalizedReferences(updated);
+		this.assertSkillNameIsUnique(
+			await this.skillRepository.findByAgentId(agentId),
+			normalizedUpdated.name,
+			skillId,
+		);
 
 		const saved = await this.agentRepository.manager.transaction(async (trx) => {
 			await trx.save(this.assignDefinition(definition, normalizedUpdated));
@@ -172,7 +179,11 @@ export class AgentSkillsService {
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
 
-	async removeUnreferencedSkills(entity: Agent, config: AgentJsonConfig): Promise<void> {
+	async removeUnreferencedSkills(
+		entity: Agent,
+		config: AgentJsonConfig,
+		trx?: EntityManager,
+	): Promise<void> {
 		const referencedSkillIds = new Set((config.skills ?? []).map((t) => t.id));
 		const existing = await this.skillRepository.findByAgentId(entity.id);
 		const orphanSkillIds = existing
@@ -180,7 +191,7 @@ export class AgentSkillsService {
 			.filter((id) => !referencedSkillIds.has(id));
 		if (orphanSkillIds.length === 0) return;
 
-		await this.skillRepository.delete(orphanSkillIds);
+		await this.skillRepository.deleteByAgentIdAndIds(entity.id, orphanSkillIds, trx);
 	}
 
 	async getMissingSkillIds(config: AgentJsonConfig | null, agentId: string): Promise<string[]> {
@@ -256,7 +267,9 @@ export class AgentSkillsService {
 		const snapshotIds = new Set(snapshots.map((snapshot) => snapshot.skillId));
 
 		const orphanIds = existing.filter((row) => !snapshotIds.has(row.id)).map((row) => row.id);
-		if (orphanIds.length > 0) await definitionRepo.delete(orphanIds);
+		if (orphanIds.length > 0) {
+			await this.skillRepository.deleteByAgentIdAndIds(agentId, orphanIds, trx);
+		}
 
 		for (const snapshot of snapshots) {
 			await definitionRepo.save({
@@ -328,6 +341,25 @@ export class AgentSkillsService {
 			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
 			{ type: 'skill', id: skillId },
 		];
+	}
+
+	private assertSkillNameIsUnique(
+		existing: AgentSkillDefinition[],
+		name: string,
+		currentSkillId?: string,
+	): void {
+		const normalizedName = this.normalizeSkillName(name);
+		const duplicate = existing.find(
+			(skill) =>
+				skill.id !== currentSkillId && this.normalizeSkillName(skill.name) === normalizedName,
+		);
+		if (duplicate) {
+			throw new UserError(`Agent already has a skill named "${name.trim()}".`);
+		}
+	}
+
+	private normalizeSkillName(name: string): string {
+		return name.trim().toLowerCase();
 	}
 
 	private async clearRuntimes(agentId: string): Promise<void> {

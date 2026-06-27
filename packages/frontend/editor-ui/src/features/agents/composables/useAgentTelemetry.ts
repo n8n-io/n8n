@@ -192,6 +192,23 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackImportedSkill(params: {
+		agentId: string;
+		source: 'skill_file' | 'folder';
+		status: 'success' | 'error';
+		referenceCount?: number;
+		error?: string;
+	}) {
+		safeTrack('User imported agent skill', {
+			agent_id: params.agentId,
+			source: params.source,
+			status: params.status,
+			...(params.referenceCount !== undefined ? { reference_count: params.referenceCount } : {}),
+			...(params.error ? { error: params.error } : {}),
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -206,5 +223,6 @@ export function useAgentTelemetry() {
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackImportedSkill,
 	};
 }

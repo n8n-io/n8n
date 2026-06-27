@@ -24,6 +24,7 @@ import type {
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
@@ -349,8 +350,8 @@ function getConfiguredSkillSource(
 				skillId,
 				filePath: reference.path,
 				content: reference.content,
-				bytes: reference.bytes,
-				sha256: reference.sha256,
+				bytes: reference.bytes ?? Buffer.byteLength(reference.content, 'utf8'),
+				sha256: reference.sha256 ?? createHash('sha256').update(reference.content).digest('hex'),
 			});
 		},
 	};
@@ -360,8 +361,8 @@ function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
 	return {
 		references: (skill.references ?? []).map((reference) => ({
 			path: reference.path,
-			bytes: reference.bytes,
-			sha256: reference.sha256,
+			bytes: reference.bytes ?? Buffer.byteLength(reference.content, 'utf8'),
+			sha256: reference.sha256 ?? createHash('sha256').update(reference.content).digest('hex'),
 		})),
 		templates: [],
 		scripts: [],

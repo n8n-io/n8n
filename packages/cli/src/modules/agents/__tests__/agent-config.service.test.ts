@@ -42,18 +42,21 @@ function makeService() {
 	const agentSkillsService = mock<AgentSkillsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
+	const taskRepo = { delete: jest.fn() };
+	const trx = {
+		save: jest.fn(async (agent) => agent as Agent),
+		getRepository: jest.fn(() => taskRepo),
+	};
 
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	Object.defineProperty(agentRepository, 'manager', {
+		value: { transaction: jest.fn(async (handler) => await handler(trx)) },
+		configurable: true,
+	});
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	agentSkillsService.getSkillMapForAgent.mockResolvedValue({});
-	agentSkillsService.removeUnreferencedSkills.mockImplementation(async (agent, config) => {
-		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
-		agent.skills = Object.fromEntries(
-			Object.entries(agent.skills ?? {}).filter(([id]) => ids.has(id)),
-		);
-	});
+	agentSkillsService.removeUnreferencedSkills.mockResolvedValue(undefined);
 
 	const service = new AgentConfigService(
 		mockLogger(),
@@ -71,6 +74,8 @@ function makeService() {
 		agentSkillsService,
 		runtimeCacheService,
 		credentialsService,
+		trx,
+		taskRepo,
 	};
 }
 
@@ -133,7 +138,8 @@ describe('AgentConfigService', () => {
 
 	describe('updateConfig', () => {
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
-			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
+			const { service, agentRepository, credentialsService, runtimeCacheService, trx } =
+				makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -151,7 +157,7 @@ describe('AgentConfigService', () => {
 				...baseConfig,
 				instructions: 'Updated instructions',
 			});
-			let saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			let saved = trx.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema).toEqual(
 				expect.objectContaining({
 					instructions: 'Updated instructions',
@@ -164,7 +170,7 @@ describe('AgentConfigService', () => {
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'slack-cred' }]);
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig, integrations: [] });
-			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			saved = trx.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
@@ -176,6 +182,8 @@ describe('AgentConfigService', () => {
 				agentTaskRepository,
 				agentSkillsService,
 				runtimeCacheService,
+				trx,
+				taskRepo,
 			} = makeService();
 			const agent = makeAgent({
 				tools: {
@@ -193,6 +201,9 @@ describe('AgentConfigService', () => {
 				},
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentSkillsService.getSkillMapForAgent.mockResolvedValue({
+				'skill-1': { name: 'Skill', description: 'desc', instructions: 'Use it' },
+			});
 			agentTaskRepository.findByAgentId.mockResolvedValue([
 				{ id: 'task-1' },
 				{ id: 'task-2' },
@@ -214,18 +225,22 @@ describe('AgentConfigService', () => {
 				],
 			});
 
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			const saved = trx.save.mock.calls[0][0] as Agent;
 			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
 			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
 			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
-			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
-			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
+			expect(taskRepo.delete).toHaveBeenCalledWith(['task-2']);
+			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalledWith(
+				agent,
+				expect.objectContaining({ skills: [{ type: 'skill', id: 'skill-1' }] }),
+				trx,
+			);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {
-			const { service, agentRepository, credentialsService } = makeService();
+			const { service, agentRepository, credentialsService, trx } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			mockAccessibleCredentials(credentialsService, ['known-cred']);
 
@@ -252,7 +267,7 @@ describe('AgentConfigService', () => {
 				],
 			});
 
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			const saved = trx.save.mock.calls[0][0] as Agent;
 			const savedConfig = saved.schema as AgentJsonConfig;
 			expect(savedConfig.credential).toBe('');
 			expect(savedConfig.memory?.observationalMemory?.observerModel?.credential).toBe('');
@@ -264,7 +279,7 @@ describe('AgentConfigService', () => {
 		});
 
 		it('stores only existing published subagents and rejects invalid subagent refs', async () => {
-			const { service, agentRepository } = makeService();
+			const { service, agentRepository, trx } = makeService();
 			const agent = makeAgent();
 			const publishedSubAgent = makeAgent({ id: 'agent-2', activeVersionId: 'published-v2' });
 			const unpublishedSubAgent = makeAgent({ id: 'agent-3', activeVersionId: null });
@@ -287,7 +302,7 @@ describe('AgentConfigService', () => {
 				},
 			});
 
-			expect((agentRepository.save.mock.calls[0][0] as Agent).schema?.subAgents).toEqual({
+			expect((trx.save.mock.calls[0][0] as Agent).schema?.subAgents).toEqual({
 				maxChildren: 3,
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			});

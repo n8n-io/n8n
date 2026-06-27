@@ -13,7 +13,7 @@ export class CreateAgentSkillDefinitionTable1784000000038 implements ReversibleM
 					.primary.comment('Application-generated skill ID referenced from agent JSON config'),
 				column('agentId')
 					.varchar(36)
-					.notNull.comment('Owning agent; skill definitions are deleted with the agent'),
+					.primary.comment('Owning agent; skill definitions are deleted with the agent'),
 				column('name').varchar(128).notNull,
 				column('description').varchar(512).notNull,
 				column('instructions').text.notNull.comment('Markdown body from SKILL.md'),
@@ -119,7 +119,10 @@ export class CreateAgentSkillDefinitionTable1784000000038 implements ReversibleM
 				entry.value ->> 'compatibility',
 				entry.value -> 'platforms',
 				entry.value -> 'metadata',
-				'{"references":[]}'::json,
+				jsonb_build_object(
+					'references',
+					COALESCE(entry.value -> 'references', '[]'::jsonb)
+				)::json,
 				a."createdAt",
 				a."updatedAt"
 			FROM ${agents} a
@@ -154,7 +157,10 @@ export class CreateAgentSkillDefinitionTable1784000000038 implements ReversibleM
 				json_extract(entry.value, '$.compatibility'),
 				json_extract(entry.value, '$.platforms'),
 				json_extract(entry.value, '$.metadata'),
-				'{"references":[]}',
+				json_object(
+					'references',
+					json(COALESCE(json_extract(entry.value, '$.references'), '[]'))
+				),
 				a."createdAt",
 				a."updatedAt"
 			FROM ${agents} a, json_each(COALESCE(a."skills", '{}')) entry
@@ -187,7 +193,10 @@ export class CreateAgentSkillDefinitionTable1784000000038 implements ReversibleM
 				entry.value ->> 'compatibility',
 				entry.value -> 'platforms',
 				entry.value -> 'metadata',
-				'{"references":[]}'::json,
+				jsonb_build_object(
+					'references',
+					COALESCE(entry.value -> 'references', '[]'::jsonb)
+				)::json,
 				h."createdAt",
 				h."updatedAt"
 			FROM ${history} h
@@ -222,7 +231,10 @@ export class CreateAgentSkillDefinitionTable1784000000038 implements ReversibleM
 				json_extract(entry.value, '$.compatibility'),
 				json_extract(entry.value, '$.platforms'),
 				json_extract(entry.value, '$.metadata'),
-				'{"references":[]}',
+				json_object(
+					'references',
+					json(COALESCE(json_extract(entry.value, '$.references'), '[]'))
+				),
 				h."createdAt",
 				h."updatedAt"
 			FROM ${history} h, json_each(COALESCE(h."skills", '{}')) entry

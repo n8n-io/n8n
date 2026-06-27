@@ -22,25 +22,39 @@ const references = computed(() => props.skill.references ?? []);
 function isSelected(path: string) {
 	return props.selectedPath === path;
 }
+
+function testIdForPath(path: string) {
+	return `agent-skill-reference-nav-item-${path.replace(/[^A-Za-z0-9_-]+/g, '-')}`;
+}
 </script>
 
 <template>
-	<nav :class="$style.nav" data-testid="agent-skill-file-nav">
+	<nav
+		:class="$style.nav"
+		:aria-label="i18n.baseText('agents.builder.skills.filesNav.label')"
+		data-testid="agent-skill-file-nav"
+	>
 		<button
 			type="button"
 			:class="[$style.item, isSelected(SKILL_FILE) && $style.selected]"
+			:aria-current="isSelected(SKILL_FILE) ? 'page' : undefined"
 			data-testid="agent-skill-file-nav-item"
 			@click="emit('select', SKILL_FILE)"
 		>
-			<N8nIcon icon="scroll-text" :size="16" />
+			<N8nIcon icon="scroll-text" :size="16" :class="$style.icon" />
 			<N8nText size="small" :bold="true">{{ SKILL_FILE }}</N8nText>
 		</button>
 
 		<div :class="$style.section">
-			<N8nText size="xsmall" color="text-light" :bold="true">
+			<N8nText size="xsmall" color="text-light" :bold="true" :class="$style.sectionTitle">
 				{{ i18n.baseText('agents.builder.skills.references.title') }}
 			</N8nText>
-			<N8nText v-if="references.length === 0" size="xsmall" color="text-light">
+			<N8nText
+				v-if="references.length === 0"
+				size="xsmall"
+				color="text-light"
+				:class="$style.sectionTitle"
+			>
 				{{ i18n.baseText('agents.builder.skills.references.empty') }}
 			</N8nText>
 			<button
@@ -48,10 +62,12 @@ function isSelected(path: string) {
 				:key="reference.path"
 				type="button"
 				:class="[$style.item, $style.reference, isSelected(reference.path) && $style.selected]"
-				data-testid="agent-skill-reference-nav-item"
+				:aria-current="isSelected(reference.path) ? 'page' : undefined"
+				:aria-label="reference.path"
+				:data-testid="testIdForPath(reference.path)"
 				@click="emit('select', reference.path)"
 			>
-				<N8nIcon icon="file-text" :size="16" />
+				<N8nIcon icon="file-text" :size="16" :class="$style.icon" />
 				<N8nText size="small" :class="$style.path">{{ reference.path }}</N8nText>
 			</button>
 		</div>
@@ -61,6 +77,7 @@ function isSelected(path: string) {
 <style module lang="scss">
 .nav {
 	width: 240px;
+	box-sizing: border-box;
 	flex-shrink: 0;
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	padding: var(--spacing--sm);
@@ -81,6 +98,7 @@ function isSelected(path: string) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
+	min-width: 0;
 	border: none;
 	background: transparent;
 	border-radius: var(--border-radius-base);
@@ -94,8 +112,16 @@ function isSelected(path: string) {
 	}
 }
 
+.icon {
+	flex-shrink: 0;
+}
+
 .reference {
 	padding-left: var(--spacing--xs);
+}
+
+.sectionTitle {
+	padding-inline: var(--spacing--2xs);
 }
 
 .selected {

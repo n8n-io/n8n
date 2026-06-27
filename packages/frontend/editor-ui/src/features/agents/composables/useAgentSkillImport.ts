@@ -1,4 +1,10 @@
 import { parse as parseYaml } from 'yaml';
+import {
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES,
+} from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 
 import type { AgentSkill, AgentSkillReference } from '../types';
 
@@ -6,7 +12,7 @@ const SKILL_FILE_NAME = 'SKILL.md';
 const FRONTMATTER_DELIMITER = '---';
 
 export class AgentSkillImportError extends Error {
-	constructor(public readonly i18nKey: string) {
+	constructor(readonly i18nKey: BaseTextKey) {
 		super(i18nKey);
 	}
 }
@@ -46,6 +52,7 @@ export function useAgentSkillImport() {
 		const parsed = parseSkillMarkdown(skillContent);
 		const references: AgentSkillReference[] = [];
 		const seenPaths = new Set<string>();
+		let totalReferenceBytes = 0;
 
 		for (const entry of fileEntries) {
 			if (entry === skillFile) continue;
@@ -62,20 +69,44 @@ export function useAgentSkillImport() {
 			if (seenPaths.has(relativePath)) {
 				throw new AgentSkillImportError('agents.builder.skills.import.duplicateReference');
 			}
+			if (references.length >= AGENT_SKILL_REFERENCE_MAX_COUNT) {
+				throw new AgentSkillImportError('agents.builder.skills.import.tooManyReferences');
+			}
+			if (entry.file.size > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
+				throw new AgentSkillImportError('agents.builder.skills.import.referenceTooLarge');
+			}
 			seenPaths.add(relativePath);
 
 			const content = await readFileText(entry.file);
+			const bytes = new TextEncoder().encode(content).byteLength;
+			if (bytes > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
+				throw new AgentSkillImportError('agents.builder.skills.import.referenceTooLarge');
+			}
+			totalReferenceBytes += bytes;
+			if (totalReferenceBytes > AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) {
+				throw new AgentSkillImportError('agents.builder.skills.import.referencesTooLarge');
+			}
 			references.push({
 				path: relativePath,
 				content,
-				bytes: new TextEncoder().encode(content).byteLength,
+				bytes,
 				sha256: await sha256(content),
 			});
 		}
 
 		return {
 			...parsed,
-			...(references.length > 0 ? { references } : {}),
+			allowedTools: parsed.allowedTools,
+			recommendedTools: parsed.recommendedTools,
+			interface: parsed.interface,
+			policy: parsed.policy,
+			dependencies: parsed.dependencies,
+			version: parsed.version,
+			license: parsed.license,
+			compatibility: parsed.compatibility,
+			platforms: parsed.platforms,
+			metadata: parsed.metadata,
+			references: references.length > 0 ? references : undefined,
 		};
 	}
 
@@ -138,15 +169,15 @@ function parseSkillMarkdown(content: string): AgentSkill {
 	};
 }
 
-function readRequiredString(value: unknown, field: string): string {
+function readRequiredString(value: unknown, field: 'name' | 'description'): string {
 	if (typeof value !== 'string' || !value.trim()) {
-		throw new AgentSkillImportError(`agents.builder.skills.import.missing${capitalize(field)}`);
+		throw new AgentSkillImportError(
+			field === 'name'
+				? 'agents.builder.skills.import.missingName'
+				: 'agents.builder.skills.import.missingDescription',
+		);
 	}
 	return value.trim();
-}
-
-function capitalize(value: string): string {
-	return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function optionalStringField(field: 'version' | 'license' | 'compatibility', value: unknown) {
@@ -216,7 +247,9 @@ function optionalStringProperty<T extends string>(
 	field: T,
 	value: unknown,
 ): Partial<Record<T, string>> {
-	return typeof value === 'string' && value.trim() ? { [field]: value.trim() } : {};
+	return typeof value === 'string' && value.trim()
+		? ({ [field]: value.trim() } as Partial<Record<T, string>>)
+		: {};
 }
 
 function optionalStringArrayProperty<T extends string>(
@@ -227,7 +260,9 @@ function optionalStringArrayProperty<T extends string>(
 	const strings = value.filter(
 		(item): item is string => typeof item === 'string' && Boolean(item.trim()),
 	);
-	return strings.length > 0 ? { [field]: strings.map((item) => item.trim()) } : {};
+	return strings.length > 0
+		? ({ [field]: strings.map((item) => item.trim()) } as Partial<Record<T, string[]>>)
+		: {};
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

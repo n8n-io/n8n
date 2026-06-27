@@ -57,9 +57,10 @@ describe('AgentSkillsService', () => {
 			remove: jest.fn(async (entity) => entity),
 			getRepository: jest.fn(),
 		};
-		agentRepository.manager = {
-			transaction: jest.fn(async (handler) => await handler(trx)),
-		} as never;
+		Object.defineProperty(agentRepository, 'manager', {
+			value: { transaction: jest.fn(async (handler) => await handler(trx)) },
+			configurable: true,
+		});
 		skillRepository.create.mockImplementation((definition) => definition as AgentSkillDefinition);
 		service = new AgentSkillsService(
 			mockLogger(),
@@ -150,6 +151,7 @@ describe('AgentSkillsService', () => {
 		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		skillRepository.findByIdAndAgentId.mockResolvedValue(makeDefinition('summarize_notes'));
+		skillRepository.findByAgentId.mockResolvedValue([makeDefinition('summarize_notes')]);
 
 		const result = await service.updateSkill(agentId, projectId, 'summarize_notes', {
 			description: 'Summarizes support notes',
@@ -213,6 +215,20 @@ describe('AgentSkillsService', () => {
 				},
 			}),
 		);
+		skillRepository.findByAgentId.mockResolvedValue([
+			makeDefinition('summarize_notes', {
+				linkedFiles: {
+					references: [
+						{
+							path: 'references/guide.md',
+							content: '# Guide',
+							bytes: 7,
+							sha256: '0'.repeat(64),
+						},
+					],
+				},
+			}),
+		]);
 
 		await service.updateSkill(agentId, projectId, 'summarize_notes', {
 			description: 'Summarizes support notes',
@@ -232,6 +248,39 @@ describe('AgentSkillsService', () => {
 				},
 			}),
 		);
+	});
+
+	it('rejects creating a skill with a duplicate name', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					skills: [],
+				},
+			}),
+		);
+		skillRepository.findByAgentId.mockResolvedValue([
+			makeDefinition('summarize_notes', { name: 'Summarize Notes' }),
+		]);
+
+		await expect(service.createAndAttachSkill(agentId, projectId, skill)).rejects.toThrow(
+			'Agent already has a skill named "Summarize Notes".',
+		);
+	});
+
+	it('rejects renaming a skill to another existing skill name', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		skillRepository.findByIdAndAgentId.mockResolvedValue(makeDefinition('summarize_notes'));
+		skillRepository.findByAgentId.mockResolvedValue([
+			makeDefinition('summarize_notes'),
+			makeDefinition('other_skill', { name: 'Other Skill' }),
+		]);
+
+		await expect(
+			service.updateSkill(agentId, projectId, 'summarize_notes', { name: 'Other Skill' }),
+		).rejects.toThrow('Agent already has a skill named "Other Skill".');
 	});
 
 	it('rejects skill snapshots when configured skill bodies are missing', async () => {
@@ -386,6 +435,30 @@ describe('AgentSkillsService', () => {
 				agentId,
 			),
 		).resolves.toEqual(['missing_skill']);
+	});
+
+	it('deletes unreferenced skills scoped to the current agent', async () => {
+		skillRepository.findByAgentId.mockResolvedValue([
+			makeDefinition('kept_skill'),
+			makeDefinition('orphan_skill'),
+		]);
+
+		await service.removeUnreferencedSkills(
+			makeAgent({ id: agentId }),
+			{
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				skills: [{ type: 'skill', id: 'kept_skill' }],
+			},
+			trx as never,
+		);
+
+		expect(skillRepository.deleteByAgentIdAndIds).toHaveBeenCalledWith(
+			agentId,
+			['orphan_skill'],
+			trx,
+		);
 	});
 });
 

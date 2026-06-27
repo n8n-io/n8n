@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
@@ -27,6 +28,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const agentTelemetry = useAgentTelemetry();
 
 const skill = ref<AgentSkill>({
 	name: props.data.skill?.name ?? '',
@@ -73,6 +75,9 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 	if (!instructions) {
 		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsRequired');
 	}
+	if (skill.value.references?.some((reference) => !reference.content.trim())) {
+		errors.references = i18n.baseText('agents.builder.skills.references.invalidSummary');
+	}
 
 	return errors;
 });
@@ -92,6 +97,18 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 
 function onValidUpdate(valid: boolean) {
 	formIsValid.value = valid;
+}
+
+function onImportSkill(payload: {
+	source: 'skill_file' | 'folder';
+	status: 'success' | 'error';
+	referenceCount?: number;
+	error?: string;
+}) {
+	agentTelemetry.trackImportedSkill({
+		agentId: props.data.agentId,
+		...payload,
+	});
 }
 
 function closeModal() {
@@ -156,6 +173,7 @@ function onRemove() {
 					:errors="visibleErrors"
 					:scrollable="false"
 					:show-validation-warnings="submitted"
+					@import:skill="onImportSkill"
 					@update:skill="onSkillUpdate"
 					@update:valid="onValidUpdate"
 				/>

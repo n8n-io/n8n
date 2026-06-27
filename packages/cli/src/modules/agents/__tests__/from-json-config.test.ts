@@ -347,7 +347,9 @@ describe('buildFromJson()', () => {
 		});
 
 		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');
-		const listOutput = await listSkills!.handler?.({}, {});
+		const listOutput = (await listSkills!.handler?.({}, {})) as {
+			skills: Array<Record<string, unknown>>;
+		};
 		expect(listOutput?.skills[0]).toMatchObject({
 			name: 'Summarize notes',
 			allowedTools: ['load_workflow'],

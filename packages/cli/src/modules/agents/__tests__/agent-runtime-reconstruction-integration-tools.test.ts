@@ -1,4 +1,4 @@
-import { type AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	CustomFetch,
@@ -38,7 +38,7 @@ import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentSkillsService } from '../agent-skills.service';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';

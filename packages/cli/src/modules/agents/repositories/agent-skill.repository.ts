@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository, type EntityManager } from '@n8n/typeorm';
 
 import { AgentSkillDefinition } from '../entities/agent-skill.entity';
 
@@ -15,5 +15,11 @@ export class AgentSkillRepository extends Repository<AgentSkillDefinition> {
 
 	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentSkillDefinition | null> {
 		return await this.findOne({ where: { id, agentId } });
+	}
+
+	async deleteByAgentIdAndIds(agentId: string, ids: string[], trx?: EntityManager): Promise<void> {
+		if (ids.length === 0) return;
+		const repo = trx?.getRepository(AgentSkillDefinition) ?? this;
+		await repo.delete({ agentId, id: In(ids) });
 	}
 }

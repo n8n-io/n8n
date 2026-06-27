@@ -118,6 +118,7 @@ export class AgentPublishService {
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
+		agent.skills = await this.agentSkillsService.getSkillMapForAgent(agentId);
 		return agent;
 	}
 

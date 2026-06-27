@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
+import type { AgentSkillsService } from '../../agent-skills.service';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
@@ -65,13 +66,21 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 describe('SubAgentSourceResolver', () => {
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
+	let agentSkillsService: jest.Mocked<AgentSkillsService>;
 	let resolver: SubAgentSourceResolver;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
-		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository);
+		agentSkillsService = mock<AgentSkillsService>();
+		agentSkillsService.getSkillMapForAgent.mockResolvedValue({});
+		agentSkillsService.getSkillMapForVersion.mockResolvedValue({});
+		resolver = new SubAgentSourceResolver(
+			agentRepository,
+			agentHistoryRepository,
+			agentSkillsService,
+		);
 	});
 
 	it('resolves a saved draft n8n agent in the same project', async () => {
@@ -102,6 +111,7 @@ describe('SubAgentSourceResolver', () => {
 				config: runnableConfig,
 			},
 		});
+		expect(agentSkillsService.getSkillMapForVersion).toHaveBeenCalledWith(versionId);
 	});
 
 	it('resolves runtime assets for saved n8n agent drafts', async () => {
@@ -113,15 +123,15 @@ describe('SubAgentSourceResolver', () => {
 						descriptor: customToolDescriptor,
 					},
 				},
-				skills: {
-					skill_1: {
-						name: 'Skill 1',
-						description: 'Helps with tests',
-						instructions: 'Skill body',
-					},
-				},
 			}),
 		);
+		agentSkillsService.getSkillMapForAgent.mockResolvedValue({
+			skill_1: {
+				name: 'Skill 1',
+				description: 'Helps with tests',
+				instructions: 'Skill body',
+			},
+		});
 
 		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).resolves.toMatchObject({
 			source: {
@@ -141,6 +151,7 @@ describe('SubAgentSourceResolver', () => {
 				},
 			},
 		});
+		expect(agentSkillsService.getSkillMapForAgent).toHaveBeenCalledWith(agentId);
 	});
 
 	it('rejects missing or inaccessible n8n agents', async () => {

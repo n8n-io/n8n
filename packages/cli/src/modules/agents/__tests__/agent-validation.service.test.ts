@@ -42,7 +42,7 @@ function makeAiService(proxyEnabled = false) {
 function makeService(aiService = makeAiService()) {
 	const agentRepository = mock<AgentRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
-	agentSkillsService.getMissingSkillIds.mockReturnValue([]);
+	agentSkillsService.getMissingSkillIds.mockResolvedValue([]);
 
 	return {
 		service: new AgentValidationService(agentRepository, agentSkillsService, aiService),
@@ -92,7 +92,7 @@ describe('AgentValidationService', () => {
 
 	it('consolidates missing optional credential-backed features', async () => {
 		const { service, agentRepository, agentSkillsService } = makeService();
-		agentSkillsService.getMissingSkillIds.mockReturnValue(['skill-1']);
+		agentSkillsService.getMissingSkillIds.mockResolvedValue(['skill-1']);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,

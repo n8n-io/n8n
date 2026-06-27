@@ -159,15 +159,24 @@ describe('AgentPublishService', () => {
 			trx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
+		const configuredSkills = {
+			summarize_notes: {
+				name: 'Summarize Notes',
+				description: 'Summarizes notes',
+				instructions: 'Use it',
+			},
+		};
 		const agent = makeAgent({
 			schema: {
 				...schema,
 				tools: [{ type: 'custom', id: 'tool' }],
+				skills: [{ type: 'skill', id: 'summarize_notes' }],
 				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 			},
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		skillsService.getSkillMapForAgent.mockResolvedValue(configuredSkills);
 		customToolsService.snapshotConfiguredTools.mockReturnValue(configuredTools as never);
 		taskRepo.findBy.mockResolvedValue([
 			{
@@ -201,6 +210,7 @@ describe('AgentPublishService', () => {
 			[expect.objectContaining({ versionId, taskId: 'task-1', objective: 'Summarize messages' })],
 			trx,
 		);
+		expect(agent.skills).toEqual(configuredSkills);
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
