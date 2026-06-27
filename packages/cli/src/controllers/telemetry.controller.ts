@@ -1,9 +1,24 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, Options, Post, RestController } from '@n8n/decorators';
+import { createIpRateLimit, Get, Options, Post, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { NextFunction, Response } from 'express';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
+
+// Window is fixed; only the count is configurable. Read at class-load so the
+// limit is baked into the route decorator.
+const TELEMETRY_WINDOW_MS = 1 * Time.minutes.toMilliseconds;
+const diagnosticsConfig = Container.get(GlobalConfig).diagnostics;
+const telemetryRateLimit = createIpRateLimit(
+	diagnosticsConfig.telemetryRateLimit,
+	TELEMETRY_WINDOW_MS,
+);
+const telemetrySourceRateLimit = createIpRateLimit(
+	diagnosticsConfig.telemetrySourceRateLimit,
+	TELEMETRY_WINDOW_MS,
+);
 
 @RestController('/telemetry')
 export class TelemetryController {
@@ -68,7 +83,7 @@ export class TelemetryController {
 	// cookie-stripped, rate-limited, and proxies only to the fixed diagnostics target.
 	@Options('/proxy/:version/:action', {
 		skipAuth: true,
-		ipRateLimit: { limit: 100, windowMs: 60_000 },
+		ipRateLimit: telemetryRateLimit,
 	})
 	proxyPreflight(req: AuthenticatedRequest, res: Response) {
 		this.applyCors(req, res);
@@ -77,7 +92,7 @@ export class TelemetryController {
 
 	// Public telemetry passthrough: no scope decorator. The endpoint is unauthenticated,
 	// cookie-stripped, rate-limited, and proxies only to the fixed diagnostics target.
-	@Post('/proxy/:version/track', { skipAuth: true, ipRateLimit: { limit: 100, windowMs: 60_000 } })
+	@Post('/proxy/:version/track', { skipAuth: true, ipRateLimit: telemetryRateLimit })
 	async track(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		this.applyCors(req, res);
 		await this.proxy(req, res, next);
@@ -87,7 +102,7 @@ export class TelemetryController {
 	// cookie-stripped, rate-limited, and proxies only to the fixed diagnostics target.
 	@Post('/proxy/:version/identify', {
 		skipAuth: true,
-		ipRateLimit: { limit: 100, windowMs: 60_000 },
+		ipRateLimit: telemetryRateLimit,
 	})
 	async identify(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		this.applyCors(req, res);
@@ -96,7 +111,7 @@ export class TelemetryController {
 
 	// Public telemetry passthrough: no scope decorator. The endpoint is unauthenticated,
 	// cookie-stripped, rate-limited, and proxies only to the fixed diagnostics target.
-	@Post('/proxy/:version/page', { skipAuth: true, ipRateLimit: { limit: 50, windowMs: 60_000 } })
+	@Post('/proxy/:version/page', { skipAuth: true, ipRateLimit: telemetrySourceRateLimit })
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		this.applyCors(req, res);
 		await this.proxy(req, res, next);
@@ -106,7 +121,7 @@ export class TelemetryController {
 	// the instance write key server-side and returns only the SDK config.
 	@Options('/rudderstack/sourceConfig', {
 		skipAuth: true,
-		ipRateLimit: { limit: 50, windowMs: 60_000 },
+		ipRateLimit: telemetrySourceRateLimit,
 		usesTemplates: true,
 	})
 	sourceConfigPreflight(req: AuthenticatedRequest, res: Response) {
@@ -118,7 +133,7 @@ export class TelemetryController {
 	// the instance write key server-side and returns only the SDK config.
 	@Get('/rudderstack/sourceConfig', {
 		skipAuth: true,
-		ipRateLimit: { limit: 50, windowMs: 60_000 },
+		ipRateLimit: telemetrySourceRateLimit,
 		usesTemplates: true,
 	})
 	async sourceConfig(req: AuthenticatedRequest, res: Response) {

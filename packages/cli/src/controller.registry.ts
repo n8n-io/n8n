@@ -156,8 +156,9 @@ export class ControllerRegistry {
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
-		// LAYER 1: IP-based rate limiting (always before auth)
-		if (inProduction && route.ipRateLimit) {
+		// LAYER 1: IP-based rate limiting (always before auth). N8N_RATE_LIMIT_DISABLED
+		// skips only this layer; keyed (Layer 2) limiters below stay active.
+		if (inProduction && route.ipRateLimit && !this.globalConfig.rateLimit.disabled) {
 			middlewares.push(this.rateLimitService.createIpRateLimitMiddleware(route.ipRateLimit));
 		}
 

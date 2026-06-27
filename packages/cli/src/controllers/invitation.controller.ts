@@ -1,8 +1,11 @@
 import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
+import { createIpRateLimit, Post, GlobalScope, RestController, Body } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -14,11 +17,18 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
+import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
-import { Time } from '@n8n/constants';
+
+// Read at class-load so the configured limit is baked into the route decorator.
+const userManagementConfig = Container.get(GlobalConfig).userManagement;
+const inviteRateLimit = createIpRateLimit(userManagementConfig.invitationRateLimit);
+const acceptRateLimit = createIpRateLimit(
+	userManagementConfig.invitationAcceptRateLimit,
+	1 * Time.minutes.toMilliseconds,
+);
 
 @RestController('/invitations')
 export class InvitationController {
@@ -39,7 +49,7 @@ export class InvitationController {
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Post('/', { ipRateLimit: { limit: 10 } })
+	@Post('/', { ipRateLimit: inviteRateLimit })
 	@GlobalScope('user:create')
 	async inviteUser(
 		req: AuthenticatedRequest,
@@ -157,9 +167,8 @@ export class InvitationController {
 	 */
 	@Post('/accept', {
 		skipAuth: true,
-		// Two layered rate limit to ensure multiple users can accept an invitation from
-		// the same IP address but aggressive per inviteeId limit.
-		ipRateLimit: { limit: 100, windowMs: 1 * Time.minutes.toMilliseconds },
+		// Higher limit on a short window so multiple users behind one IP can accept.
+		ipRateLimit: acceptRateLimit,
 	})
 	async acceptInvitationWithToken(
 		req: AuthlessRequest,
