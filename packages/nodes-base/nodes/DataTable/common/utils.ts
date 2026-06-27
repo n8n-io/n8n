@@ -18,6 +18,34 @@ import { DATA_TABLE_ID_FIELD, DRY_RUN } from './fields';
 
 type DateLike = { toISOString: () => string };
 
+/**
+ * Recursively converts Date objects to ISO strings in an object.
+ * Ensures node output data is JSON-compatible for downstream nodes.
+ */
+export function convertDatesToIsoStrings<T>(obj: T): T {
+	if (obj === null || obj === undefined) {
+		return obj;
+	}
+
+	if (obj instanceof Date) {
+		return obj.toISOString() as T;
+	}
+
+	if (Array.isArray(obj)) {
+		return obj.map(convertDatesToIsoStrings) as T;
+	}
+
+	if (typeof obj === 'object') {
+		const converted: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(obj)) {
+			converted[key] = convertDatesToIsoStrings(value);
+		}
+		return converted as T;
+	}
+
+	return obj;
+}
+
 function isDateLike(v: unknown): v is DateLike {
 	return (
 		v !== null && typeof v === 'object' && 'toISOString' in v && typeof v.toISOString === 'function'
