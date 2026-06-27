@@ -88,31 +88,37 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 		const toolCallId =
 			existingToolCallId ?? extractToolCallId(step.action.toolCallId, step.action.tool);
 
-		// Use existing AIMessage or create a synthetic one
-		const aiMessage =
-			existingAIMessage ??
-			new AIMessage({
-				content: `Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
-				tool_calls: [
-					{
-						id: toolCallId,
-						name: step.action.tool,
-						args: step.action.toolInput,
-						type: 'tool_call',
-					},
-				],
-			});
+		// Parallel tool calls share one AIMessage on the first step (with all tool_calls)
+		// and leave an empty messageLog on the rest. Emit the AIMessage when present;
+		// continuation steps (empty messageLog, i > 0) get only a ToolMessage to avoid
+		// splitting one model turn into several consecutive AI messages. Synthesize an
+		// AIMessage only for a first step lacking one, so its ToolMessage isn't orphaned.
+		if (existingAIMessage) {
+			messages.push(existingAIMessage);
+		} else if (i === 0) {
+			messages.push(
+				new AIMessage({
+					content: `Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
+					tool_calls: [
+						{
+							id: toolCallId,
+							name: step.action.tool,
+							args: step.action.toolInput,
+							type: 'tool_call',
+						},
+					],
+				}),
+			);
+		}
 
 		// Create ToolMessage with the observation result
-		const toolMessage = new ToolMessage({
-			content: step.observation,
-			tool_call_id: toolCallId,
-			name: step.action.tool,
-		});
-
-		// Add both messages
-		messages.push(aiMessage);
-		messages.push(toolMessage);
+		messages.push(
+			new ToolMessage({
+				content: step.observation,
+				tool_call_id: toolCallId,
+				name: step.action.tool,
+			}),
+		);
 	}
 
 	return messages;
