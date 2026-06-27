@@ -22,7 +22,6 @@ describe('finalizeResult', () => {
 			json: {
 				output: 'Test output',
 			},
-			pairedItem: { item: 0 },
 		});
 	});
 
@@ -76,14 +75,14 @@ describe('finalizeResult', () => {
 		expect(finalized.json.output).toEqual({ result: 'direct result' });
 	});
 
-	it('should set correct pairedItem index', () => {
+	it('should omit pairedItem from returned execution data', () => {
 		const result = {
 			output: 'Test output',
 		};
 
 		const finalized = finalizeResult(result, 5, undefined, undefined);
 
-		expect(finalized.pairedItem).toEqual({ item: 5 });
+		expect(finalized).not.toHaveProperty('pairedItem');
 	});
 
 	it('should preserve intermediate steps when present', () => {

@@ -3043,6 +3043,15 @@ export interface ITaskMetadata {
 	 * @see AI-1414
 	 */
 	nodeWasResumed?: boolean;
+	/**
+	 * Preserves the original paired item index for resumed agent executions so their output
+	 * items keep pointing at the same upstream item after the tool-call round-trip.
+	 */
+	originalPairedItemIndex?: number;
+	/**
+	 * Preserves the original paired item indices for resumed agent executions (batch mode).
+	 */
+	originalPairedItemIndices?: number[];
 
 	/**
 	 * Time saved by this workflow execution in minutes. Used by SavedTime nodes to track
