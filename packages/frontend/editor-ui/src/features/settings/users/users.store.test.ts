@@ -1,4 +1,5 @@
 import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
+import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { useUsersStore } from './users.store';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -37,7 +38,7 @@ const mockUser: CurrentUserResponse = {
 
 describe('users.store', () => {
 	beforeEach(() => {
-		vi.restoreAllMocks();
+		vi.clearAllMocks();
 		setActivePinia(createPinia());
 	});
 
@@ -201,6 +202,61 @@ describe('users.store', () => {
 			expect(errorAsyncHook).toHaveBeenCalled();
 			expect(successAsyncHook).toHaveBeenCalled();
 			expect(successHook).toHaveBeenCalled();
+		});
+	});
+
+	describe('logout', () => {
+		it('should call the logout API by default', async () => {
+			const usersStore = useUsersStore();
+
+			await usersStore.logout();
+
+			expect(logout).toHaveBeenCalledTimes(1);
+		});
+
+		it('should call the logout API when skipApiCall is false', async () => {
+			const usersStore = useUsersStore();
+
+			await usersStore.logout({ skipApiCall: false });
+
+			expect(logout).toHaveBeenCalledTimes(1);
+		});
+
+		it('should skip the logout API call when skipApiCall is true', async () => {
+			const usersStore = useUsersStore();
+
+			await usersStore.logout({ skipApiCall: true });
+
+			expect(logout).not.toHaveBeenCalled();
+		});
+
+		it('should clear the current user and browser id when skipping the API call', async () => {
+			const usersStore = useUsersStore();
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+			localStorage.setItem(BROWSER_ID_STORAGE_KEY, 'test-browser-id');
+
+			await usersStore.logout({ skipApiCall: true });
+
+			expect(usersStore.currentUser).toBeNull();
+			expect(localStorage.getItem(BROWSER_ID_STORAGE_KEY)).toBeNull();
+		});
+
+		it('should still run logout hooks when skipping the API call', async () => {
+			const usersStore = useUsersStore();
+			const hook = vi.fn();
+
+			usersStore.registerLogoutHook(hook);
+
+			await usersStore.logout({ skipApiCall: true });
+
+			expect(logout).not.toHaveBeenCalled();
+			expect(hook).toHaveBeenCalled();
 		});
 	});
 
