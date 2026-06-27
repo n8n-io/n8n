@@ -163,7 +163,11 @@ export class Sort implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		let returnData = [...items];
+		// let returnData = [...items];
+		let returnData = items.map((item) => ({
+			...item,
+			json: JSON.parse(JSON.stringify(item.json)),
+		}));
 		const type = this.getNodeParameter('type', 0) as string;
 		const disableDotNotation = this.getNodeParameter(
 			'options.disableDotNotation',
