@@ -98,19 +98,17 @@ export class TestRunRepository extends Repository<TestRun> {
 	}
 
 	async getMany(workflowId: string, options: ListQuery.Options) {
-		// FIXME: optimize fetching final result of each test run
-		const findManyOptions: FindManyOptions<TestRun> = {
-			where: { workflow: { id: workflowId } },
-			order: { createdAt: 'DESC' },
-			relations: ['testCaseExecutions'],
-		};
+		const qb = this.createQueryBuilder('testRun')
+			.leftJoin('testRun.testCaseExecutions', 'testCaseExecutions')
+			.select(['testRun', 'testCaseExecutions.id', 'testCaseExecutions.status'])
+			.where('testRun.workflowId = :workflowId', { workflowId })
+			.orderBy('testRun.createdAt', 'DESC');
 
 		if (options?.take) {
-			findManyOptions.skip = options.skip;
-			findManyOptions.take = options.take;
+			qb.skip(options.skip).take(options.take);
 		}
 
-		const testRuns = await this.find(findManyOptions);
+		const testRuns = await qb.getMany();
 
 		return testRuns.map(({ testCaseExecutions, ...testRun }) => {
 			const finalResult =
@@ -125,9 +123,9 @@ export class TestRunRepository extends Repository<TestRun> {
 	 * E.g. Test Run is considered successful if all test case executions are successful.
 	 * Test Run is considered failed if at least one test case execution is failed.
 	 */
-	async getTestRunSummaryById(testRunId: string): Promise<TestRunSummary> {
+	async getTestRunSummary(testRunId: string, workflowId?: string): Promise<TestRunSummary> {
 		const testRun = await this.findOne({
-			where: { id: testRunId },
+			where: { id: testRunId, ...(workflowId ? { workflow: { id: workflowId } } : {}) },
 			relations: ['testCaseExecutions'],
 		});
 

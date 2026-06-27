@@ -22,7 +22,7 @@ describe('TestRunRepository', () => {
 		await testDb.terminate();
 	});
 
-	describe('getTestRunSummaryById', () => {
+	describe('getTestRunSummary', () => {
 		let workflow: IWorkflowDb & WorkflowEntity;
 
 		beforeAll(async () => {
@@ -46,7 +46,7 @@ describe('TestRunRepository', () => {
 				}),
 			]);
 
-			const result = await testRunRepository.getTestRunSummaryById(testRun.id);
+			const result = await testRunRepository.getTestRunSummary(testRun.id);
 
 			expect(result).toEqual(
 				expect.objectContaining({
