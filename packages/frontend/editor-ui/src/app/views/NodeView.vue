@@ -15,6 +15,7 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
+import { shouldStopRenamePromptSpacePropagation } from './NodeView.utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
@@ -710,7 +711,7 @@ async function onOpenRenameNodeModal(id: string) {
 		// Stop propagation for space key to prevent VueFlow from intercepting it
 		// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === ' ') {
+			if (shouldStopRenamePromptSpacePropagation(e)) {
 				e.stopPropagation();
 			}
 		};
