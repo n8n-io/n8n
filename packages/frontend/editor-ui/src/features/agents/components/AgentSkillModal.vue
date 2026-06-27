@@ -8,7 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
-import AgentSkillViewer from './AgentSkillViewer.vue';
+import AgentSkillViewer, { type AgentSkillAllowedToolOption } from './AgentSkillViewer.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -17,6 +17,7 @@ export type AgentSkillModalData = {
 	agentId: string;
 	skill?: AgentSkill;
 	skillId?: string;
+	availableTools?: AgentSkillAllowedToolOption[];
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
 	onRemove?: (id: string) => void;
 };
@@ -30,24 +31,26 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
 
-const skill = ref<AgentSkill>({
-	name: props.data.skill?.name ?? '',
-	description: props.data.skill?.description ?? '',
-	instructions: props.data.skill?.instructions ?? '',
-	...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
-	...(props.data.skill?.recommendedTools
-		? { recommendedTools: props.data.skill.recommendedTools }
-		: {}),
-	...(props.data.skill?.interface ? { interface: props.data.skill.interface } : {}),
-	...(props.data.skill?.policy ? { policy: props.data.skill.policy } : {}),
-	...(props.data.skill?.dependencies ? { dependencies: props.data.skill.dependencies } : {}),
-	...(props.data.skill?.version ? { version: props.data.skill.version } : {}),
-	...(props.data.skill?.license ? { license: props.data.skill.license } : {}),
-	...(props.data.skill?.compatibility ? { compatibility: props.data.skill.compatibility } : {}),
-	...(props.data.skill?.platforms ? { platforms: props.data.skill.platforms } : {}),
-	...(props.data.skill?.metadata ? { metadata: props.data.skill.metadata } : {}),
-	...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
-});
+const skill = ref<AgentSkill>(
+	filterSkillAllowedTools({
+		name: props.data.skill?.name ?? '',
+		description: props.data.skill?.description ?? '',
+		instructions: props.data.skill?.instructions ?? '',
+		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
+		...(props.data.skill?.recommendedTools
+			? { recommendedTools: props.data.skill.recommendedTools }
+			: {}),
+		...(props.data.skill?.interface ? { interface: props.data.skill.interface } : {}),
+		...(props.data.skill?.policy ? { policy: props.data.skill.policy } : {}),
+		...(props.data.skill?.dependencies ? { dependencies: props.data.skill.dependencies } : {}),
+		...(props.data.skill?.version ? { version: props.data.skill.version } : {}),
+		...(props.data.skill?.license ? { license: props.data.skill.license } : {}),
+		...(props.data.skill?.compatibility ? { compatibility: props.data.skill.compatibility } : {}),
+		...(props.data.skill?.platforms ? { platforms: props.data.skill.platforms } : {}),
+		...(props.data.skill?.metadata ? { metadata: props.data.skill.metadata } : {}),
+		...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
+	}),
+);
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
@@ -86,13 +89,21 @@ const visibleErrors = computed(() => (submitted.value ? validationErrors.value :
 const canSave = computed(() => formIsValid.value);
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
-	skill.value = { ...skill.value, ...updates };
+	skill.value = filterSkillAllowedTools({ ...skill.value, ...updates });
 	if (
 		selectedPath.value !== SKILL_FILE &&
 		!skill.value.references?.some((reference) => reference.path === selectedPath.value)
 	) {
 		selectedPath.value = SKILL_FILE;
 	}
+}
+
+function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
+	if (props.data.availableTools === undefined || !skill.allowedTools?.length) return skill;
+	const availableToolNames = new Set(props.data.availableTools.map((tool) => tool.name));
+	const allowedTools = skill.allowedTools.filter((toolName) => availableToolNames.has(toolName));
+	const { allowedTools: _allowedTools, ...skillWithoutAllowedTools } = skill;
+	return allowedTools.length > 0 ? { ...skill, allowedTools } : skillWithoutAllowedTools;
 }
 
 function onAddReference() {
@@ -201,6 +212,7 @@ function onRemove() {
 				/>
 				<AgentSkillViewer
 					:skill="skill"
+					:available-tools="props.data.availableTools ?? []"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:scrollable="false"

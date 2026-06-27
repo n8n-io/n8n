@@ -7,31 +7,51 @@ import {
 } from '@n8n/api-types';
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nFormInput,
 	N8nIcon,
 	N8nInputLabel,
 	N8nMarkdownEditor,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/components/N8nIcon';
 import type { IValidator, Validatable } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import { AgentSkillImportError, useAgentSkillImport } from '../composables/useAgentSkillImport';
 import type { AgentSkill, AgentSkillReference } from '../types';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import AgentChipButton from './AgentChipButton.vue';
 
 const SKILL_FILE = 'SKILL.md';
+
+export type AgentSkillAllowedToolOption = {
+	name: string;
+	label: string;
+	icon?: IconName;
+};
 
 const props = withDefaults(
 	defineProps<{
 		skill: AgentSkill;
+		availableTools?: AgentSkillAllowedToolOption[];
 		disabled?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
 		selectedPath?: string;
 		scrollable?: boolean;
 		showValidationWarnings?: boolean;
 	}>(),
-	{ disabled: false, selectedPath: SKILL_FILE, scrollable: true, showValidationWarnings: false },
+	{
+		availableTools: () => [],
+		disabled: false,
+		selectedPath: SKILL_FILE,
+		scrollable: true,
+		showValidationWarnings: false,
+	},
 );
 
 const emit = defineEmits<{
@@ -56,6 +76,7 @@ const name = ref(props.skill.name);
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
 const fileError = ref('');
+const addToolDialogOpen = ref(false);
 const formValidation = reactive({
 	name: false,
 	description: false,
@@ -127,7 +148,24 @@ const isSkillFileSelected = computed(() => props.selectedPath === SKILL_FILE);
 const selectedReference = computed(() =>
 	(props.skill.references ?? []).find((reference) => reference.path === props.selectedPath),
 );
-const allowedToolsText = computed(() => props.skill.allowedTools?.join(', ') ?? '');
+const availableToolsByName = computed(
+	() => new Map(props.availableTools.map((tool) => [tool.name, tool])),
+);
+const selectedAllowedTools = computed(() =>
+	(props.skill.allowedTools ?? []).map((toolName) => {
+		const availableTool = availableToolsByName.value.get(toolName);
+		return {
+			name: toolName,
+			label: availableTool?.label || formatToolNameForDisplay(toolName) || toolName,
+			icon: availableTool?.icon ?? 'wrench',
+		};
+	}),
+);
+const hasAllowedTools = computed(() => selectedAllowedTools.value.length > 0);
+const addableAllowedTools = computed(() => {
+	const selected = new Set(props.skill.allowedTools ?? []);
+	return props.availableTools.filter((tool) => !selected.has(tool.name));
+});
 const selectedReferenceCharacterCount = computed(() =>
 	i18n.baseText('agents.builder.skills.references.characterCount', {
 		interpolate: {
@@ -179,13 +217,20 @@ function onInstructionsInput(value: string) {
 	emit('update:skill', { instructions: value });
 }
 
-function onAllowedToolsInput(value: string | number | boolean | null | undefined) {
-	const next = typeof value === 'string' ? value : String(value ?? '');
-	const allowedTools = next
-		.split(',')
-		.map((tool) => tool.trim())
-		.filter(Boolean);
+function updateAllowedTools(allowedTools: string[]) {
 	emit('update:skill', { allowedTools: allowedTools.length > 0 ? allowedTools : undefined });
+}
+
+function onAddAllowedTool(toolName: string) {
+	const allowedTools = props.skill.allowedTools ?? [];
+	if (!allowedTools.includes(toolName)) {
+		updateAllowedTools([...allowedTools, toolName]);
+	}
+	addToolDialogOpen.value = false;
+}
+
+function onRemoveAllowedTool(toolName: string) {
+	updateAllowedTools((props.skill.allowedTools ?? []).filter((name) => name !== toolName));
 }
 
 function openSkillFilePicker() {
@@ -421,16 +466,60 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 			</div>
 
 			<div :class="$style.field">
-				<N8nFormInput
-					:model-value="allowedToolsText"
+				<N8nInputLabel
 					:label="i18n.baseText('agents.builder.skills.allowedTools.label')"
-					name="skill-allowed-tools"
-					label-size="small"
-					:placeholder="i18n.baseText('agents.builder.skills.allowedTools.placeholder')"
-					:disabled="props.disabled"
-					data-testid="agent-skill-allowed-tools-input"
-					@update:model-value="onAllowedToolsInput"
-				/>
+					size="small"
+				>
+					<div :class="$style.allowedTools" data-testid="agent-skill-allowed-tools">
+						<span
+							v-for="tool in selectedAllowedTools"
+							:key="tool.name"
+							:class="$style.allowedToolChip"
+							data-testid="agent-skill-allowed-tool-chip"
+						>
+							<N8nIcon :icon="tool.icon" :size="16" color="text-light" />
+							<N8nText size="small" color="text-dark" :class="$style.allowedToolLabel">
+								{{ tool.label }}
+							</N8nText>
+							<N8nButton
+								:class="$style.allowedToolRemove"
+								variant="ghost"
+								size="xsmall"
+								icon-only
+								icon="x"
+								:disabled="props.disabled"
+								:aria-label="
+									i18n.baseText('agents.builder.skills.allowedTools.remove' as BaseTextKey, {
+										interpolate: { tool: tool.label },
+									})
+								"
+								data-testid="agent-skill-allowed-tool-remove"
+								@click="onRemoveAllowedTool(tool.name)"
+							/>
+						</span>
+						<N8nTooltip
+							:disabled="!hasAllowedTools"
+							:content="i18n.baseText('agents.builder.tools.add' as BaseTextKey)"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								:icon-only="hasAllowedTools"
+								:disabled="props.disabled"
+								data-testid="agent-skill-add-allowed-tool"
+								@click="addToolDialogOpen = true"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+								<template v-if="!hasAllowedTools">
+									{{ i18n.baseText('agents.builder.tools.add' as BaseTextKey) }}
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+				</N8nInputLabel>
 			</div>
 
 			<div :class="[$style.field, $style.instructionsField]">
@@ -506,6 +595,34 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				</div>
 			</N8nInputLabel>
 		</div>
+
+		<N8nDialog :open="addToolDialogOpen" size="small" @update:open="addToolDialogOpen = $event">
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{ i18n.baseText('agents.builder.skills.allowedTools.addModal.title' as BaseTextKey) }}
+				</N8nDialogTitle>
+			</N8nDialogHeader>
+			<div :class="$style.allowedToolOptions">
+				<N8nText v-if="props.availableTools.length === 0" size="small" color="text-light">
+					{{ i18n.baseText('agents.builder.skills.allowedTools.addModal.empty' as BaseTextKey) }}
+				</N8nText>
+				<N8nText v-else-if="addableAllowedTools.length === 0" size="small" color="text-light">
+					{{
+						i18n.baseText('agents.builder.skills.allowedTools.addModal.allSelected' as BaseTextKey)
+					}}
+				</N8nText>
+				<AgentChipButton
+					v-for="tool in addableAllowedTools"
+					:key="tool.name"
+					:icon="tool.icon"
+					:class="$style.allowedToolOption"
+					data-testid="agent-skill-allowed-tool-option"
+					@click="onAddAllowedTool(tool.name)"
+				>
+					{{ tool.label }}
+				</AgentChipButton>
+			</div>
+		</N8nDialog>
 	</div>
 </template>
 
@@ -550,6 +667,51 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 .editor {
 	flex: 1;
 	min-height: 0;
+}
+
+.allowedTools {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--5xs);
+}
+
+.allowedToolChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	height: var(--height--md);
+	max-width: min(12rem, 100%);
+	padding: var(--spacing--xs) var(--spacing--4xs) var(--spacing--xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	background: light-dark(var(--background--surface), var(--background--subtle));
+	box-shadow: var(--shadow--xs);
+}
+
+.allowedToolLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: var(--font-weight--medium);
+}
+
+.allowedToolRemove {
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+}
+
+.allowedToolOptions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
+}
+
+.allowedToolOption {
+	max-width: min(12rem, 100%);
 }
 
 .fullHeightEditor {

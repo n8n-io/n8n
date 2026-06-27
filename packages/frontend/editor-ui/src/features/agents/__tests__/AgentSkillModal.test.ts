@@ -36,7 +36,27 @@ const SkillViewerStub = defineComponent({
 	setup(props, { emit }) {
 		const valid = ref(true);
 		onMounted(() => emit('update:valid', valid.value));
-		return () => h('div', { 'data-testid': 'agent-skill-viewer-stub' }, props.selectedPath);
+		return () =>
+			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [
+				h('span', props.selectedPath),
+				h(
+					'span',
+					{ 'data-testid': 'agent-skill-allowed-tools-stub' },
+					props.skill.allowedTools?.join(','),
+				),
+				h(
+					'button',
+					{
+						'data-testid': 'agent-skill-import-stub',
+						onClick: () =>
+							emit('update:skill', {
+								...props.skill,
+								allowedTools: ['load_workflow', 'missing_tool'],
+							}),
+					},
+					'Import',
+				),
+			]);
 	},
 });
 
@@ -45,9 +65,11 @@ const MODAL_NAME = 'AgentSkillModal';
 function renderModal({
 	onConfirm = vi.fn(),
 	skill,
+	availableTools,
 }: {
 	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
 	skill?: AgentSkill;
+	availableTools?: Array<{ name: string; label: string }>;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -71,6 +93,7 @@ function renderModal({
 				projectId: 'p1',
 				agentId: 'a1',
 				skill,
+				availableTools,
 				onConfirm,
 			},
 		},
@@ -181,5 +204,24 @@ describe('AgentSkillModal', () => {
 		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
 			'SKILL.md',
 		);
+	});
+
+	it('strips imported allowed tools that are not attached to the agent', async () => {
+		const { container } = renderModal({
+			availableTools: [{ name: 'load_workflow', label: 'Load workflow' }],
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+			},
+		});
+
+		await fireEvent.click(
+			container.querySelector('[data-testid="agent-skill-import-stub"]') as Element,
+		);
+
+		expect(
+			container.querySelector('[data-testid="agent-skill-allowed-tools-stub"]'),
+		).toHaveTextContent('load_workflow');
 	});
 });

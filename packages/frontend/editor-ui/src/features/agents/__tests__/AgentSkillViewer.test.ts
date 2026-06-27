@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { defineComponent, h, onMounted } from 'vue';
+import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AgentSkillViewer from '../components/AgentSkillViewer.vue';
@@ -56,12 +57,16 @@ describe('AgentSkillViewer', () => {
 				stubs: {
 					N8nButton: {
 						template:
-							'<button type="button" @click="$emit(\'click\')"><slot name="prefix" /><slot /></button>',
+							'<button type="button" v-bind="$attrs" @click="$emit(\'click\')"><slot name="prefix" /><slot name="icon" /><slot /></button>',
 						emits: ['click'],
 					},
+					N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
+					N8nDialogHeader: { template: '<div><slot /></div>' },
+					N8nDialogTitle: { template: '<h3><slot /></h3>' },
 					N8nFormInput: N8nFormInputStub,
 					N8nIcon: { template: '<i />' },
 					N8nText: { template: '<span><slot /></span>' },
+					N8nTooltip: { template: '<span><slot /></span>' },
 					// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
 					MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
 				},
@@ -217,6 +222,48 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('update:skill')?.length ?? 0).toBe(initialUpdateCount);
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
+
+	it('removes allowed tools from chips', async () => {
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				allowedTools: ['load_workflow'],
+			},
+			availableTools: [{ name: 'load_workflow', label: 'Load workflow', icon: 'workflow' }],
+		});
+
+		expect(wrapper.find('[data-testid="agent-skill-allowed-tool-chip"]').text()).toContain(
+			'Load workflow',
+		);
+
+		await wrapper.find('[data-testid="agent-skill-allowed-tool-remove"]').trigger('click');
+
+		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: undefined }]);
+	});
+
+	it('adds allowed tools from the attached tool picker', async () => {
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+			},
+			availableTools: [{ name: 'load_workflow', label: 'Load workflow', icon: 'workflow' }],
+		});
+
+		await wrapper.find('[data-testid="agent-skill-add-allowed-tool"]').trigger('click');
+		await flushPromises();
+		await nextTick();
+
+		const option = document.querySelector('[data-testid="agent-skill-allowed-tool-option"]');
+		expect(option).toBeInTheDocument();
+		await (option as HTMLElement).click();
+		await nextTick();
+
+		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: ['load_workflow'] }]);
+	});
 });
 
 function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {
@@ -233,12 +280,16 @@ function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$prop
 			stubs: {
 				N8nButton: {
 					template:
-						'<button type="button" @click="$emit(\'click\')"><slot name="prefix" /><slot /></button>',
+						'<button type="button" v-bind="$attrs" @click="$emit(\'click\')"><slot name="prefix" /><slot name="icon" /><slot /></button>',
 					emits: ['click'],
 				},
+				N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
+				N8nDialogHeader: { template: '<div><slot /></div>' },
+				N8nDialogTitle: { template: '<h3><slot /></h3>' },
 				N8nFormInput: N8nFormInputStub,
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
+				N8nTooltip: { template: '<span><slot /></span>' },
 				MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
 			},
 		},
