@@ -202,7 +202,11 @@ export async function createRequest(
 			textConfig.format = removeEmptyProperties(textConfig.format);
 		}
 
-		body.text = textConfig;
+		const cleanedTextConfig =
+			removeEmptyProperties<OpenAIClient.Responses.ResponseTextConfig>(textConfig);
+		if (!isObjectEmpty(cleanedTextConfig)) {
+			body.text = cleanedTextConfig;
+		}
 	}
 
 	if (builtInTools) {
