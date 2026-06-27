@@ -30,6 +30,9 @@ import type {
 	JobFailedMessage,
 } from './scaling.types';
 
+const JOB_RESULT_WAIT_TIMEOUT_MS = 24 * 60 * Time.minutes.toMilliseconds;
+const JOB_RESULT_WAIT_POLL_INTERVAL_MS = 250;
+
 @Service()
 export class ScalingService {
 	private queue: JobQueue;
@@ -204,6 +207,61 @@ export class ScalingService {
 		const result = this.jobResults.get(executionId);
 		this.jobResults.delete(executionId);
 		return result;
+	}
+
+	/**
+	 * Polls for the job result in the internal Map.
+	 * On success, the result is **deleted** from the Map and returned.
+	 * On error (timeout / abort), the caller **must** call `popJobResult`
+	 * to clean up any result that might arrive later.
+	 */
+	async waitForJobResult(
+		executionId: string,
+		timeoutMs = JOB_RESULT_WAIT_TIMEOUT_MS,
+		pollIntervalMs = JOB_RESULT_WAIT_POLL_INTERVAL_MS,
+		abortSignal?: AbortSignal,
+	): Promise<JobFinishedProps> {
+		const result = this.jobResults.get(executionId);
+		if (result) {
+			this.jobResults.delete(executionId);
+			return result;
+		}
+
+		return await new Promise<JobFinishedProps>((resolve, reject) => {
+			if (abortSignal?.aborted) {
+				reject(new Error(`Waiting for job result for execution ${executionId} was cancelled`));
+				return;
+			}
+
+			const start = Date.now();
+
+			const interval = setInterval(() => {
+				const result = this.jobResults.get(executionId);
+				if (result) {
+					this.jobResults.delete(executionId);
+					cleanup();
+					resolve(result);
+					return;
+				}
+
+				if (timeoutMs > 0 && Date.now() - start >= timeoutMs) {
+					cleanup();
+					reject(new Error(`Timeout waiting for job result for execution ${executionId}`));
+				}
+			}, pollIntervalMs);
+
+			const cleanup = () => {
+				clearInterval(interval);
+				abortSignal?.removeEventListener('abort', abort);
+			};
+
+			const abort = () => {
+				cleanup();
+				reject(new Error(`Waiting for job result for execution ${executionId} was cancelled`));
+			};
+
+			abortSignal?.addEventListener('abort', abort, { once: true });
+		});
 	}
 
 	async getPendingJobCounts() {
