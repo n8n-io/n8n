@@ -69,7 +69,7 @@ describe('AgentCustomToolsService', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			id: expect.stringMatching(/^tool_[A-Za-z0-9]{16}$/),
+			id: 'lookup_customer',
 			descriptor,
 		});
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });

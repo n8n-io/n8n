@@ -33,6 +33,7 @@
 		"multi-request"
 	],
 	"triggerType": "schedule",
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",

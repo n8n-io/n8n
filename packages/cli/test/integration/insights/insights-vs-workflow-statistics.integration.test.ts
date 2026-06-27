@@ -15,7 +15,6 @@ import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
 
 import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 import { InsightsCollectionService } from '@/modules/insights/insights-collection.service';
 import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -69,7 +68,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	let insightsCollectionService: InsightsCollectionService;
 	let insightsCompactionService: InsightsCompactionService;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
-	let insightsRawRepository: InsightsRawRepository;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 	let workflowRunner: WorkflowRunner;
 	let executionRepository: ExecutionRepository;
@@ -89,7 +87,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		insightsCollectionService = Container.get(InsightsCollectionService);
 		insightsCompactionService = Container.get(InsightsCompactionService);
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		insightsRawRepository = Container.get(InsightsRawRepository);
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 		workflowRunner = Container.get(WorkflowRunner);
 		executionRepository = Container.get(ExecutionRepository);
@@ -168,14 +165,20 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	}
 
 	/**
-	 * Helper to wait for insights to be compacted (raw insights cleared and compacted data available)
+	 * Helper to wait for insights to be compacted.
+	 *
+	 * Polls until the compacted success count reaches the expected total. Waiting on the
+	 * terminal count (rather than "some compacted data exists and raw is drained") avoids a
+	 * race where events still buffered in the collection service haven't been flushed to
+	 * InsightsRaw yet, so compaction runs on a partial set and the count comes up short.
 	 */
-	async function waitForCompaction(workflowId: string, timeout = 10000): Promise<void> {
+	async function waitForCompaction(
+		workflowId: string,
+		expectedSuccessCount: number,
+		timeout = 20000,
+	): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
-			// Check if raw insights have been compacted (should be low or zero)
-			const rawInsights = await insightsRawRepository.find();
-			// Check if compacted insights exist for this workflow
 			const compactedInsights = await insightsByPeriodRepository.find({
 				where: {
 					metadata: { workflowId },
@@ -183,13 +186,18 @@ describe('Insights vs Workflow Statistics Integration', () => {
 				relations: ['metadata'],
 			});
 
-			// Compaction is done if we have compacted data and few/no raw insights
-			if (compactedInsights.length > 0 && rawInsights.length < 10) {
+			const successCount = compactedInsights
+				.filter((insight) => insight.type === 'success')
+				.reduce((sum, insight) => sum + insight.value, 0);
+
+			if (successCount >= expectedSuccessCount) {
 				return;
 			}
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
-		throw new Error(`Insights compaction did not complete within ${timeout}ms`);
+		throw new Error(
+			`Insights compaction did not reach ${expectedSuccessCount} successes within ${timeout}ms`,
+		);
 	}
 
 	/**
@@ -230,7 +238,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		await waitForStatistics(workflow.id, 10);
 
 		// Wait for automatic compaction to complete
-		await waitForCompaction(workflow.id);
+		await waitForCompaction(workflow.id, 10);
 
 		// ============================================================
 		// ASSERT: Query workflow statistics

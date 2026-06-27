@@ -4,6 +4,7 @@ import type { LookupAddress } from 'node:dns';
 import { mock } from 'vitest-mock-extended';
 
 import type { DnsResolver } from '../../dns';
+import { SsrfBlockedHostnameError } from '../ssrf-blocked-hostname.error';
 import { SsrfBlockedIpError } from '../ssrf-blocked-ip.error';
 import { SsrfProtectionService } from '../ssrf-protection.service';
 
@@ -41,6 +42,13 @@ const expectBlocked = (result: unknown) => {
 const expectAllowed = (result: unknown) => {
 	expect(result).toEqual({ ok: true, result: undefined });
 };
+
+const expectBlockedHostname = (result: unknown) => {
+	expect(result).toEqual({ ok: false, error: expect.any(SsrfBlockedHostnameError) as Error });
+};
+
+const asHostnames = (values: string[]) =>
+	values as unknown as SsrfProtectionConfig['blockedHostnames'];
 
 describe('SsrfProtectionService', () => {
 	beforeEach(() => {
@@ -523,6 +531,168 @@ describe('SsrfProtectionService', () => {
 			expect(error).toBeTruthy();
 			expect(addresses).toEqual([]);
 			expect(family).toBeUndefined();
+		});
+	});
+
+	describe('blocked hostnames', () => {
+		it('should block a request whose hostname is on the deny-list', async () => {
+			const dnsResolver = createMockDnsResolver();
+			const { service } = createService(
+				{ blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+
+			const result = await service.validateUrl('http://exfil.example.com/data');
+
+			expectBlockedHostname(result);
+		});
+
+		it('should deny by name before DNS resolution runs', async () => {
+			const dnsResolver = createMockDnsResolver();
+			const { service } = createService(
+				{ blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+
+			await service.validateUrl('http://exfil.example.com/data');
+
+			expect(dnsResolver.lookup).not.toHaveBeenCalled();
+		});
+
+		it('should deny even when the hostname resolves to a public IP', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+			const { service } = createService(
+				{ blockedHostnames: asHostnames(['exfil.example.com']) },
+				dnsResolver,
+			);
+
+			expectBlockedHostname(await service.validateUrl('http://exfil.example.com/data'));
+		});
+
+		it('should match the deny-list case-insensitively', async () => {
+			const { service } = createService({
+				blockedHostnames: asHostnames(['EXFIL.Example.COM']),
+			});
+
+			expectBlockedHostname(await service.validateUrl('http://exfil.example.com/data'));
+		});
+
+		describe('wildcard patterns', () => {
+			it('should block subdomains of a wildcard pattern', async () => {
+				const { service } = createService({
+					blockedHostnames: asHostnames(['*.tracker.example']),
+				});
+
+				expectBlockedHostname(await service.validateUrl('http://a.tracker.example/'));
+			});
+
+			it('should not block the bare domain of a wildcard pattern', async () => {
+				const dnsResolver = createMockDnsResolver();
+				dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+				const { service } = createService(
+					{ blockedHostnames: asHostnames(['*.tracker.example']) },
+					dnsResolver,
+				);
+
+				expectAllowed(await service.validateUrl('http://tracker.example/'));
+			});
+		});
+
+		describe('allow-list wins over deny-list', () => {
+			it('should allow a hostname present in both lists', async () => {
+				const dnsResolver = createMockDnsResolver();
+				dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+				const { service } = createService(
+					{
+						allowedHostnames: asHostnames(['api.example.com']),
+						blockedHostnames: asHostnames(['*.example.com']),
+					},
+					dnsResolver,
+				);
+
+				expectAllowed(await service.validateUrl('http://api.example.com/'));
+			});
+
+			it('should still block siblings not carved out by the allow-list', async () => {
+				const { service } = createService({
+					allowedHostnames: asHostnames(['api.example.com']),
+					blockedHostnames: asHostnames(['*.example.com']),
+				});
+
+				expectBlockedHostname(await service.validateUrl('http://other.example.com/'));
+			});
+		});
+
+		describe('connect-time secure lookup', () => {
+			it('should reject a deny-listed hostname during lookup', async () => {
+				const dnsResolver = createMockDnsResolver();
+				dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+				const { service } = createService(
+					{ blockedHostnames: asHostnames(['exfil.example.com']) },
+					dnsResolver,
+				);
+				const lookup = service.createSecureLookup();
+
+				const error = await new Promise<Error | null>((resolve) =>
+					lookup('exfil.example.com', { all: false }, (lookupError) => resolve(lookupError)),
+				);
+
+				expect(error).toBeInstanceOf(SsrfBlockedHostnameError);
+				// Denied by name before DNS resolution, even on the TOCTOU-critical path.
+				expect(dnsResolver.lookup).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('redirects', () => {
+			it('should block a redirect to a deny-listed hostname', () => {
+				const { service } = createService({
+					blockedHostnames: asHostnames(['exfil.example.com']),
+				});
+
+				expect(() => service.validateRedirectSync('http://exfil.example.com/data')).toThrow(
+					SsrfBlockedHostnameError,
+				);
+			});
+
+			it('should allow a redirect to a hostname carved out by the allow-list', () => {
+				const { service } = createService({
+					allowedHostnames: asHostnames(['api.example.com']),
+					blockedHostnames: asHostnames(['*.example.com']),
+				});
+
+				expect(() => service.validateRedirectSync('http://api.example.com/')).not.toThrow();
+			});
+		});
+
+		describe('events', () => {
+			it('should emit ssrf.blocked with reason blocked_hostname on pre-flight', async () => {
+				const { service } = createService({
+					blockedHostnames: asHostnames(['exfil.example.com']),
+				});
+				const blocked = vi.fn();
+				service.events.on('ssrf.blocked', blocked);
+
+				await service.validateUrl('http://exfil.example.com/data');
+
+				expect(blocked).toHaveBeenCalledWith(
+					expect.objectContaining({ phase: 'pre_flight', reason: 'blocked_hostname' }),
+				);
+			});
+
+			it('should emit ssrf.blocked with reason blocked_hostname on redirect', () => {
+				const { service } = createService({
+					blockedHostnames: asHostnames(['exfil.example.com']),
+				});
+				const blocked = vi.fn();
+				service.events.on('ssrf.blocked', blocked);
+
+				expect(() => service.validateRedirectSync('http://exfil.example.com/')).toThrow();
+
+				expect(blocked).toHaveBeenCalledWith(
+					expect.objectContaining({ phase: 'redirect', reason: 'blocked_hostname' }),
+				);
+			});
 		});
 	});
 

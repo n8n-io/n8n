@@ -85,12 +85,15 @@
     "dist"
   ],
   "devDependencies": {
-    "@types/json-schema": "^7.0.15",
+    "@types/json-schema": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "@types/mime-types": "catalog:",
+    "@types/lodash": "catalog:",
+    "@types/proxy-from-env": "catalog:",
+    "fast-glob": "catalog:",
     "tsx": "catalog:",
     "axios": "catalog:",
     "nock": "catalog:"

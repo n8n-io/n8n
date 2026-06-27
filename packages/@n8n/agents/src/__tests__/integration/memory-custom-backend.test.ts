@@ -65,8 +65,21 @@ class CustomMapMemory implements BuiltMemory {
 		resourceId?: string;
 		messages: AgentDbMessage[];
 	}): Promise<void> {
+		// Upsert by id (per the BuiltMemory contract): replace an existing message in place,
+		// append new ones. The runtime persists a turn's input eagerly and again at end of
+		// turn, so an append-only store would duplicate it.
 		const existing = this.messages.get(args.threadId) ?? [];
-		this.messages.set(args.threadId, [...existing, ...args.messages]);
+		const indexById = new Map(existing.map((m, i) => [m.id, i]));
+		for (const msg of args.messages) {
+			const idx = indexById.get(msg.id);
+			if (idx !== undefined) {
+				existing[idx] = msg;
+			} else {
+				indexById.set(msg.id, existing.length);
+				existing.push(msg);
+			}
+		}
+		this.messages.set(args.threadId, existing);
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {

@@ -37,6 +37,20 @@ export class SourceControlScopedService {
 		}
 	}
 
+	async ensureIsAllowedToGetStatus(req: AuthenticatedRequest) {
+		if (
+			hasGlobalScope(req.user, ['sourceControl:pull', 'sourceControl:push', 'sourceControl:manage'])
+		) {
+			return;
+		}
+
+		const ctx = await this.sourceControlContextFactory.createContext(req.user);
+
+		if (ctx.authorizedProjects.length === 0) {
+			throw new ForbiddenError('You do not have permission to read source control status');
+		}
+	}
+
 	async getWorkflowsInAdminProjectsFromContext(
 		context: SourceControlContext,
 		id?: string,

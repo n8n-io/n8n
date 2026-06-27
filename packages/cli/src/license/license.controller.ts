@@ -41,6 +41,7 @@ export class LicenseController {
 	}
 
 	@Post('/enterprise/community-registered')
+	@GlobalScope('license:manage')
 	async registerCommunityEdition(
 		req: AuthenticatedRequest,
 		_res: Response,

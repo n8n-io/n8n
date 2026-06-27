@@ -41,10 +41,12 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/turndown": "^5.0.6",
-    "@types/ws": "^8.18.1",
+    "@types/jsdom": "catalog:",
+    "@types/turndown": "catalog:",
+    "@types/ws": "catalog:",
     "@types/yargs-parser": "21.0.0",
     "@vitest/coverage-v8": "catalog:",
+    "tsx": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

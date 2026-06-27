@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	continueInstanceAiTraceContext,
+	orchestratorAgentId,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
 	type InstanceAiTraceContext,
@@ -24,8 +25,6 @@ import {
 } from '../run-trace-metadata';
 import type { DbSnapshotStorage } from '../storage/db-snapshot-storage';
 import { TraceReplayState } from '../trace-replay-state';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
 // (key, responseId) pair twice produces the same feedback UUID so LangSmith
@@ -202,7 +201,7 @@ export class InstanceAiTracingService {
 			proxyConfig: options.proxyConfig ?? baseTracing?.proxyConfig,
 			metadata: {
 				resume_reason: options.resumeReason,
-				agent_id: ORCHESTRATOR_AGENT_ID,
+				agent_id: orchestratorAgentId(options.runId),
 				...options.metadata,
 			},
 			n8nVersion: N8N_VERSION,

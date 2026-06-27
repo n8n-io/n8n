@@ -10,6 +10,7 @@ jest.mock('openid-client', () => ({
 }));
 
 import type { OidcConfigDto, ProvisioningConfigDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, getProjectRoleForUser, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
@@ -20,10 +21,12 @@ const real_odic_client = jest.requireActual('openid-client');
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { JwtService } from '@/services/jwt.service';
+import { createCustomRoleWithScopes, createScope } from '@test-integration/db/roles';
 import { createUser } from '@test-integration/db/users';
 
 beforeAll(async () => {
@@ -1154,6 +1157,62 @@ describe('OIDC service', () => {
 						relations: ['role'],
 					});
 					expect(userFromDB!.role.slug).toEqual('global:admin');
+				});
+
+				it('should provision a custom global role with its scopes via expression mapping', async () => {
+					const provisioningService = Container.get(ProvisioningService);
+					// @ts-expect-error - provisioningConfig is private
+					provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+					// Custom roles are license-gated when assigned via provisioning.
+					const licenseState = Container.get(LicenseState);
+					licenseState.setLicenseProvider(Container.get(License));
+					const customRolesLicensed = jest
+						.spyOn(licenseState, 'isCustomRolesLicensed')
+						.mockReturnValue(true);
+
+					// Custom global role with a scope, targeted by an instance rule.
+					const auditScope = await createScope();
+					const customRole = await createCustomRoleWithScopes([auditScope], {
+						slug: 'global:test-auditor',
+						displayName: 'Auditor',
+						roleType: 'global',
+					});
+					await roleMappingRuleRepository.save(
+						roleMappingRuleRepository.create({
+							expression: "{{ $claims.department === 'audit' }}",
+							role: customRole,
+							type: 'instance',
+							order: 0,
+						}),
+					);
+
+					const state = oidcService.generateState();
+					const nonce = oidcService.generateNonce();
+					const callbackUrl = new URL(
+						`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+					);
+
+					const mockTokens = createProvisioningMockTokens('oidc-expr-custom-role-sub', {
+						department: 'audit',
+					});
+					authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+					fetchUserInfoMock.mockResolvedValueOnce({
+						email_verified: true,
+						email: 'oidc-expr-custom-role@example.com',
+					});
+
+					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					expect(user).toBeDefined();
+
+					const userFromDB = await userRepository.findOne({
+						where: { id: user.id },
+						relations: ['role', 'role.scopes'],
+					});
+					expect(userFromDB!.role.slug).toEqual('global:test-auditor');
+					expect(userFromDB!.role.scopes.map((s) => s.slug)).toContain(auditScope.slug);
+
+					customRolesLicensed.mockRestore();
 				});
 
 				it('should provision project role via expression mapping', async () => {

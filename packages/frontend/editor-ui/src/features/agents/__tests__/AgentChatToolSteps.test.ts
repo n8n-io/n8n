@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
-import type { ToolCall } from '../composables/agentChatMessages';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
@@ -62,7 +62,7 @@ function mountSteps(toolCalls: ToolCall[]) {
 }
 
 describe('AgentChatToolSteps', () => {
-	it('does not make generic tool steps expandable', () => {
+	it('makes generic tool steps with output data expandable', async () => {
 		const wrapper = mountSteps([
 			{
 				tool: 'search_nodes',
@@ -74,8 +74,23 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('[data-testid="tool-step-summary"]').exists()).toBe(false);
+		expect(wrapper.find('button').exists()).toBe(true);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('Slack');
+	});
+
+	it('does not make generic tool steps without data expandable', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-2',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('button').exists()).toBe(false);
-		expect(wrapper.find('[data-test-id="tool-step-details"]').exists()).toBe(false);
 	});
 
 	it('shows incomplete task count in write_todos summary', async () => {

@@ -8,7 +8,9 @@
     "dev": "storybook dev -p 6006",
     "build": "storybook build",
     "build:unchecked": "pnpm run build",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@n8n/chat": "workspace:*",
@@ -17,6 +19,7 @@
     "@n8n/i18n": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "element-plus": "catalog:frontend",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
@@ -24,13 +27,16 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:storybook",
+    "@iconify-json/lucide": "catalog:",
+    "@iconify-json/mdi": "catalog:",
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@storybook/addon-a11y": "catalog:storybook",
     "@storybook/addon-docs": "catalog:storybook",
     "@storybook/addon-themes": "catalog:storybook",
     "@storybook/addon-vitest": "catalog:storybook",
+    "@storybook/vue3": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",
-    "storybook-addon-vue-mdx": "3.0.0",
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/browser-playwright": "^4.0.16",
@@ -38,19 +44,16 @@
     "@vue/tsconfig": "catalog:frontend",
     "eslint-plugin-storybook": "catalog:storybook",
     "playwright": "catalog:e2e",
+    "prettier": "catalog:",
+    "remark-gfm": "^4.0.1",
     "storybook": "catalog:storybook",
+    "storybook-addon-vue-mdx": "3.0.0",
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",
-    "remark-gfm": "^4.0.1",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
-  },
-  "eslintConfig": {
-    "extends": [
-      "plugin:storybook/recommended"
-    ]
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

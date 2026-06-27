@@ -215,11 +215,12 @@ export class InstanceAiMemoryService {
 		}
 
 		// Surface the in-flight messages from any suspended checkpoint. The
-		// SDK only commits messages to memory after a successful turn, so
-		// during HITL suspension the user's prompt and intermediate assistant
-		// responses live only inside the checkpoint blob. Without merging
-		// them in, a thread that's waiting on a confirmation renders without
-		// the original user message after a page reload.
+		// user's prompt is persisted to memory on receipt, but the intermediate
+		// assistant responses and pending tool-call from a turn suspended at HITL
+		// are only committed after the turn completes, so until then they live
+		// only inside the checkpoint blob. Without merging them in, a thread
+		// waiting on a confirmation renders without those in-flight artifacts
+		// after a page reload.
 		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 

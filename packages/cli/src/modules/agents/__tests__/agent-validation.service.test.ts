@@ -6,6 +6,7 @@ import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AiService } from '@/services/ai.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -34,15 +35,20 @@ function makeCredentialProvider(credentials: Array<{ id: string; type: string }>
 	} as unknown as CredentialProvider;
 }
 
-function makeService() {
+function makeAiService(proxyEnabled = false) {
+	return { isProxyEnabled: jest.fn().mockReturnValue(proxyEnabled) } as unknown as AiService;
+}
+
+function makeService(aiService = makeAiService()) {
 	const agentRepository = mock<AgentRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
 	agentSkillsService.getMissingSkillIds.mockReturnValue([]);
 
 	return {
-		service: new AgentValidationService(agentRepository, agentSkillsService),
+		service: new AgentValidationService(agentRepository, agentSkillsService, aiService),
 		agentRepository,
 		agentSkillsService,
+		aiService,
 	};
 }
 
@@ -163,7 +169,7 @@ describe('AgentValidationService', () => {
 		});
 	});
 
-	it('reports malformed episodic memory credentials without skipping worker model checks', async () => {
+	it('reports missing episodic memory credentials without skipping worker model checks', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -173,7 +179,7 @@ describe('AgentValidationService', () => {
 					storage: 'n8n',
 					episodicMemory: {
 						enabled: true,
-						credential: { id: 'not-a-string' } as unknown as string,
+						credential: null as unknown as string,
 						extractorModel: { model: 'openai/gpt-4o', credential: 'missing-extractor' },
 					},
 				},
@@ -192,5 +198,56 @@ describe('AgentValidationService', () => {
 				'memory.episodicMemory.extractorModel.credential',
 			]),
 		);
+	});
+
+	it('accepts managed episodic memory credential when the assistant proxy is enabled', async () => {
+		const { service, agentRepository } = makeService(makeAiService(true));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: 'managed',
+					},
+				},
+			} as AgentJsonConfig),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).not.toContain('credential');
+		expect(result.missing).not.toContain('episodicMemory.credential');
+	});
+
+	it('rejects managed episodic memory credential when the assistant proxy is disabled', async () => {
+		const { service, agentRepository } = makeService(makeAiService(false));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: 'managed',
+					},
+				},
+			} as AgentJsonConfig),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).toContain('episodicMemory.credential');
 	});
 });

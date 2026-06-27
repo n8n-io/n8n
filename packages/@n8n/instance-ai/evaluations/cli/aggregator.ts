@@ -1,3 +1,4 @@
+import { collectExpectations } from '../build-expectations/collect';
 import type {
 	WorkflowTestCaseResult,
 	MultiRunEvaluation,
@@ -96,7 +97,7 @@ export function aggregateResults(
 
 		// Aggregate each build expectation as a measured unit alongside scenarios.
 		// `incomplete` verdicts are excluded from the count (denominator = evaluated runs).
-		const buildExpectations: BuildExpectationAggregation[] = (testCase.buildExpectations ?? []).map(
+		const buildExpectations: BuildExpectationAggregation[] = collectExpectations(testCase).map(
 			(expectation) => {
 				const expRuns = runs
 					.map((r) => (r.buildExpectationResults ?? []).find((e) => e.expectation === expectation))

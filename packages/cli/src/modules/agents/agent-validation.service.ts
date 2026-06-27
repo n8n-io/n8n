@@ -1,6 +1,7 @@
 import { type CredentialProvider } from '@n8n/agents';
 import {
 	AgentModelSchema,
+	MANAGED_CREDENTIAL_TOKEN,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
@@ -10,12 +11,14 @@ import { AgentSkillsService } from './agent-skills.service';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { getProviderPrefix } from './json-config/model-id';
 import { AgentRepository } from './repositories/agent.repository';
+import { AiService } from '@/services/ai.service';
 
 @Service()
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentSkillsService: AgentSkillsService,
+		private readonly aiService: AiService,
 	) {}
 
 	/**
@@ -53,6 +56,7 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 		const credentialExists = async (credentialId: string) => {
+			if (!credentialId || credentialId === MANAGED_CREDENTIAL_TOKEN) return false;
 			return (await findCredential(credentialId)) !== undefined;
 		};
 
@@ -83,9 +87,10 @@ export class AgentValidationService {
 					missing,
 				);
 				if (episodicMemory?.enabled === true) {
-					const episodicCredentialId =
-						typeof episodicMemory.credential === 'string' ? episodicMemory.credential.trim() : '';
-					if (!episodicCredentialId || !(await credentialExists(episodicCredentialId))) {
+					const episodicCredentialId = episodicMemory.credential?.trim();
+					const isManagedEmbeddingCredential =
+						episodicCredentialId === MANAGED_CREDENTIAL_TOKEN && this.aiService.isProxyEnabled();
+					if (!isManagedEmbeddingCredential && !(await credentialExists(episodicCredentialId))) {
 						missing.push('episodicMemory.credential');
 					}
 					await this.validateMemoryWorkerModel(

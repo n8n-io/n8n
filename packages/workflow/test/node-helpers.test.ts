@@ -27,6 +27,7 @@ import {
 	isHitlToolType,
 	getNodeOutputs,
 	nodeIssuesToString,
+	isTriggerNodeType,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -6905,6 +6906,456 @@ describe('NodeHelpers', () => {
 					},
 					conditions: [],
 				},
+			});
+		});
+	});
+
+	describe('isTriggerNodeType', () => {
+		// Membership in TRIGGER_NODE_TYPES: each legacy/special type is matched by
+		// identity, not by the generic "contains trigger" heuristic.
+		test.each([
+			'n8n-nodes-base.webhook',
+			'n8n-nodes-base.cron',
+			'n8n-nodes-base.emailReadImap',
+			'n8n-nodes-base.telegramBot',
+			'n8n-nodes-base.start',
+		])('recognises the explicitly-listed trigger type %s', (type) => {
+			expect(isTriggerNodeType(type)).toBe(true);
+		});
+
+		it('recognises any type whose name contains "trigger"', () => {
+			expect(isTriggerNodeType('n8n-nodes-base.scheduleTrigger')).toBe(true);
+			expect(isTriggerNodeType('n8n-nodes-base.manualTrigger')).toBe(true);
+		});
+
+		it('matches "trigger" case-insensitively', () => {
+			// Guards the `.toLowerCase()` normalisation: without it these would miss.
+			expect(isTriggerNodeType('CustomTrigger')).toBe(true);
+			expect(isTriggerNodeType('SOMETRIGGERNODE')).toBe(true);
+		});
+
+		it('returns false for non-trigger types not in the set', () => {
+			expect(isTriggerNodeType('n8n-nodes-base.set')).toBe(false);
+			expect(isTriggerNodeType('n8n-nodes-base.httpRequest')).toBe(false);
+			expect(isTriggerNodeType('')).toBe(false);
+		});
+	});
+
+	describe('getParameterIssues - validation paths', () => {
+		const testNode: INode = {
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters: {},
+		};
+
+		describe('resourceLocator regex validation', () => {
+			const resourceLocatorProperties: INodeProperties = {
+				displayName: 'Document',
+				name: 'documentId',
+				type: 'resourceLocator',
+				default: { mode: 'id', value: '' },
+				modes: [
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[0-9]+',
+									errorMessage: 'Document ID must be numeric',
+								},
+							},
+						],
+					},
+				],
+			};
+
+			it('reports the configured error when the value fails the mode regex', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({
+					parameters: { documentId: ['Document ID must be numeric'] },
+				});
+			});
+
+			it('returns no issues when the value matches the mode regex', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: '123' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('skips validation for expression values (starting with "=")', () => {
+				// Metamorphic: an expression is resolved at runtime, so static
+				// validation must never flag it regardless of the regex.
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: '={{ $json.id }}' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('returns no issues when the value mode has no matching mode definition', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'url', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('applies regex validation to workflowSelector values too', () => {
+				// workflowSelector shares the resource-locator validation branch.
+				const workflowSelectorProperties: INodeProperties = {
+					...resourceLocatorProperties,
+					name: 'workflowId',
+					type: 'workflowSelector',
+				};
+				const result = getParameterIssues(
+					workflowSelectorProperties,
+					{ workflowId: { __rl: true, mode: 'id', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({
+					parameters: { workflowId: ['Document ID must be numeric'] },
+				});
+			});
+		});
+
+		describe('resourceMapper required-field validation', () => {
+			const resourceMapperProperties: INodeProperties = {
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'resourceMapper',
+				default: {},
+				typeOptions: {
+					resourceMapper: {
+						// `add` mode is the only one that runs the required-field check.
+						mode: 'add',
+						resourceMapperMethod: 'getFields',
+						fieldWords: { singular: 'field', plural: 'fields' },
+					},
+				},
+			};
+
+			it('reports required schema fields that are missing in add mode', () => {
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { providedField: 'x' },
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.requiredField']).toContain(
+					'Field "requiredField" is required',
+				);
+			});
+
+			it('skips the required-field check outside add mode', () => {
+				// Only `add` mode validates required fields; update/upsert/map map onto
+				// existing rows where missing fields are legitimate.
+				const updateModeProperties: INodeProperties = {
+					...resourceMapperProperties,
+					typeOptions: {
+						resourceMapper: {
+							mode: 'update',
+							resourceMapperMethod: 'getFields',
+							fieldWords: { singular: 'field', plural: 'fields' },
+						},
+					},
+				};
+				const result = getParameterIssues(
+					updateModeProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { providedField: 'x' },
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.requiredField']).toBeUndefined();
+			});
+
+			it('reports a type mismatch for a provided field value', () => {
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { numField: 'not-a-number' },
+							schema: [
+								{
+									id: 'numField',
+									displayName: 'numField',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.numField']).toBeDefined();
+				expect(result.parameters?.['columns.numField']?.length).toBeGreaterThan(0);
+			});
+
+			it('skips type validation for expression field values', () => {
+				// Metamorphic: an expression value is resolved at runtime, so a static
+				// type mismatch must not be reported.
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { numField: '={{ $json.n }}' },
+							schema: [
+								{
+									id: 'numField',
+									displayName: 'numField',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('does not validate in automatic mapping mode', () => {
+				// Metamorphic: autoMapInputData has no user-entered values to validate,
+				// so it must never produce issues regardless of the schema.
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'autoMapInputData',
+							value: null,
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+		});
+
+		describe('validateType', () => {
+			const numberProperties: INodeProperties = {
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 0,
+				validateType: 'number',
+			};
+
+			it('reports an issue when the value does not match validateType', () => {
+				const result = getParameterIssues(
+					numberProperties,
+					{ limit: 'not-a-number' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.limit).toHaveLength(1);
+			});
+
+			it('returns no issues when the value matches validateType', () => {
+				const result = getParameterIssues(numberProperties, { limit: 5 }, '', testNode, null);
+
+				expect(result).toEqual({});
+			});
+
+			it('skips validateType for expression values (starting with "=")', () => {
+				const result = getParameterIssues(
+					numberProperties,
+					{ limit: '={{ $json.count }}' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+		});
+
+		describe('required parameter emptiness by type', () => {
+			const requiredOf = (overrides: Partial<INodeProperties>): INodeProperties => ({
+				displayName: 'Field',
+				name: 'field',
+				type: 'string',
+				default: '',
+				required: true,
+				...overrides,
+			});
+
+			it('flags a required string that is an empty string', () => {
+				const result = getParameterIssues(requiredOf({}), { field: '' }, '', testNode, null);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required string that is undefined', () => {
+				const result = getParameterIssues(requiredOf({}), { field: undefined }, '', testNode, null);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required multiOptions with an empty array', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'multiOptions', options: [], default: [] }),
+					{ field: [] },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required options parameter that is an empty string', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'options', options: [] }),
+					{ field: '' },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required resourceLocator with an empty value', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'resourceLocator', default: { mode: 'id', value: '' } }),
+					{ field: { __rl: true, mode: 'id', value: '' } },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('does not flag a required string that has a value', () => {
+				const result = getParameterIssues(requiredOf({}), { field: 'present' }, '', testNode, null);
+				expect(result).toEqual({});
+			});
+
+			it('checks each entry of a required multipleValues parameter', () => {
+				const result = getParameterIssues(
+					requiredOf({ typeOptions: { multipleValues: true }, default: [] }),
+					{ field: ['ok', ''] },
+					'',
+					testNode,
+					null,
+				);
+				// Only the empty entry is flagged.
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+		});
+
+		it('recurses into collection children and validates required sub-fields', () => {
+			const collectionProperties: INodeProperties = {
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Required Field',
+						name: 'reqField',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+			};
+
+			const result = getParameterIssues(collectionProperties, { reqField: '' }, '', testNode, null);
+
+			expect(result).toEqual({
+				parameters: { reqField: ['Parameter "Required Field" is required.'] },
 			});
 		});
 	});

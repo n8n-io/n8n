@@ -2,6 +2,7 @@
 jest.mock('@n8n/instance-ai', () => {
 	const { z } = jest.requireActual('zod');
 	return {
+		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
@@ -46,6 +47,15 @@ jest.mock('@n8n/instance-ai', () => {
 		),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
+		createOrchestratorRunControl: jest.fn(() => ({
+			state: undefined,
+			getStopSignal: jest.fn(() => undefined),
+		})),
+		createOrchestratorRunControlForState: jest.fn(() => ({
+			state: undefined,
+			getStopSignal: jest.fn(() => undefined),
+			shouldEmitTerminalOutcome: jest.fn(() => true),
+		})),
 		WorkflowTaskCoordinator: class {},
 		WorkflowLoopStorage: class {},
 		ThreadTaskStorage: class {},
@@ -387,10 +397,6 @@ type StartRunServiceInternals = {
 		setTimeZone: jest.MockedFunction<(threadId: string, timeZone: string) => void>;
 	};
 	threadPushRef: Map<string, string>;
-	userMessagePersistenceByRun: Map<
-		string,
-		{ userId: string; message: { id: string; text: string } }
-	>;
 	executeRun: jest.Mock;
 	trackInFlightExecution: jest.Mock;
 };
@@ -409,7 +415,6 @@ function createStartRunService(): StartRunServiceInternals {
 		setTimeZone: jest.fn(),
 	};
 	service.threadPushRef = new Map();
-	service.userMessagePersistenceByRun = new Map();
 	service.executeRun = jest.fn();
 	service.trackInFlightExecution = jest.fn();
 	return service;
@@ -520,6 +525,7 @@ type ShutdownServiceInternals = {
 	};
 	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: jest.MockedFunction<() => void> };
+	browserSessionService: { shutdown: jest.MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: jest.MockedFunction<() => void> };
 	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
@@ -754,7 +760,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
-			gatewayService: { findGateway: jest.Mock };
+			gatewayService: { findGateway: jest.Mock; applyToolPolicy: jest.Mock };
 			aiService: { isProxyEnabled: jest.Mock };
 			adapterService: {
 				createContext: jest.Mock;
@@ -782,6 +788,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			schedulePlannedTasks: jest.Mock;
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
+			browserSessionService: { findMcpServer: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: jest.Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -797,7 +804,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
-		service.gatewayService = { findGateway: jest.fn(() => undefined) };
+		service.gatewayService = { findGateway: jest.fn(() => undefined), applyToolPolicy: jest.fn() };
 		service.aiService = { isProxyEnabled: jest.fn(() => false) };
 		service.adapterService = {
 			createContext: jest.fn(() => ({})),
@@ -833,6 +840,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
 		service.domainAccessTrackersByThread = new Map();
+		service.browserSessionService = { findMcpServer: jest.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: jest.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
@@ -970,6 +978,7 @@ describe('InstanceAiService — shutdown', () => {
 		};
 		service.gatewayService = { disconnectAll: jest.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: jest.fn() };
+		service.browserSessionService = { shutdown: jest.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
 		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
@@ -1096,6 +1105,33 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
+	});
+
+	it('passes handoff context into executeRun', () => {
+		const service = createStartRunService();
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		service.startRun(fakeUser, 'thread-a', 'How do I set this up?', undefined, context);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'How do I set this up?',
+			expect.any(AbortController),
+			undefined,
+			context,
+			'group-1',
+			undefined,
+		);
 	});
 });
 
@@ -1523,6 +1559,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			threadId: 'thread-a',
 			user: fakeUser,
 			toolCallId: 'tool-call-1',
+			toolName: 'workflows',
+			suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
 			abortController: new AbortController(),
 			tracing: undefined,
 			modelId: undefined,
@@ -1878,7 +1916,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
 
 		expect(plannedTaskService.markRunning).toHaveBeenCalledWith('thread-a', 'wf-1', {
-			agentId: 'agent-001',
+			agentId: 'orchestrator-plan-run-1',
 		});
 		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith('build-workflow', graph, {
 			buildTask,
@@ -1967,7 +2005,11 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.objectContaining({ approved: true }),
-			expect.objectContaining({ user: freshUser }),
+			expect.objectContaining({
+				user: freshUser,
+				toolName: 'workflows',
+				suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
+			}),
 		);
 	});
 });
@@ -2137,6 +2179,13 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
 		});
+		// user_id must be present so the heartbeat event reaches PostHog
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'completed',
+			user_id: 'user-1',
+		});
 	});
 
 	it('rebinds resumed agents to resume trace telemetry', async () => {
@@ -2284,6 +2333,16 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		runState: { getMessageGroupId: jest.Mock };
 		startInternalFollowUpRun: jest.Mock;
 		trackWorkflowVerificationObligation: jest.Mock;
+		logger: { warn: jest.Mock };
+		getWorkflowSetupSuspensionWorkflowId: (
+			toolName: string | undefined,
+			suspendPayload: Record<string, unknown> | undefined,
+		) => string | undefined;
+		markWorkflowSetupHandled: (
+			threadId: string,
+			workflowId: string,
+			runId?: string,
+		) => Promise<boolean>;
 		maybeStartWorkflowSetupFollowUp: (user: User, threadId: string) => Promise<boolean>;
 	};
 
@@ -2305,6 +2364,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		state: {
 			workItemId: string;
 			threadId: string;
+			runId?: string;
 			workflowId?: string;
 			plannedTaskId?: string;
 			setupRoutedAt?: string;
@@ -2326,6 +2386,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			state: {
 				workItemId: 'wi-1',
 				threadId: 'thread-a',
+				runId: 'run-1',
 				workflowId: 'wf-1',
 				setupRoutedAt: undefined as string | undefined,
 				...overrides.state,
@@ -2341,6 +2402,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		return {
 			workItemId: record.state.workItemId,
 			threadId: 'thread-a',
+			runId: record.lastBuildOutcome.runId,
 			workflowId: record.lastBuildOutcome.workflowId,
 			source: 'direct',
 			policy: 'required',
@@ -2415,6 +2477,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		service.runState = { getMessageGroupId: jest.fn(() => 'group-1') };
 		service.startInternalFollowUpRun = jest.fn(async () => 'setup-run');
 		service.trackWorkflowVerificationObligation = jest.fn();
+		service.logger = { warn: jest.fn() };
 		return service;
 	}
 
@@ -2508,6 +2571,105 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'setup-claim-1',
 		);
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+	});
+
+	it('marks setup handled after the original setup card completes', async () => {
+		const records = { 'wi-1': makeRecord() };
+		const service = createSetupFollowUpService(records);
+
+		const marked = await service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1');
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(marked).toBe(true);
+		expect(records['wi-1'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(started).toBe(false);
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-1' }),
+			'setup_completed_by_tool',
+		);
+	});
+
+	it('keeps setup for other workflows routable after one workflow setup completes', async () => {
+		const records = {
+			'wi-1': makeRecord(),
+			'wi-2': makeRecord({
+				state: { workItemId: 'wi-2', workflowId: 'wf-2' },
+				outcome: { workItemId: 'wi-2', workflowId: 'wf-2' },
+			}),
+		};
+		const service = createSetupFollowUpService(records);
+
+		const marked = await service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1');
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(marked).toBe(true);
+		expect(records['wi-1'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(records['wi-2'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(started).toBe(true);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledTimes(1);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-1' }),
+			'setup_completed_by_tool',
+		);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-2', workItemId: 'wi-2' }),
+			'setup_follow_up_started',
+		);
+	});
+
+	it('keeps later setup for the same workflow routable after one setup completes', async () => {
+		const records = {
+			'wi-old': makeRecord({
+				state: { workItemId: 'wi-old', runId: 'run-old' },
+				outcome: { workItemId: 'wi-old', runId: 'run-old' },
+			}),
+			'wi-latest': makeRecord({
+				state: { workItemId: 'wi-latest', runId: 'run-latest' },
+				outcome: { workItemId: 'wi-latest', runId: 'run-latest' },
+			}),
+		};
+		const service = createSetupFollowUpService(records);
+
+		const marked = await service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-old');
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(marked).toBe(true);
+		expect(records['wi-old'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(records['wi-latest'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(started).toBe(true);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledTimes(1);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-old' }),
+			'setup_completed_by_tool',
+		);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-latest' }),
+			'setup_follow_up_started',
+		);
+	});
+
+	it('extracts workflow setup suspension ids only from workflow setup cards', () => {
+		const service = createSetupFollowUpService({});
+
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
+				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
+				workflowId: 'wf-1',
+				message: 'Publish workflow?',
+			}),
+		).toBeUndefined();
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
+				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBeUndefined();
 	});
 });
 

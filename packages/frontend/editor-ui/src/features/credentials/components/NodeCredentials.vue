@@ -7,7 +7,7 @@ import type {
 	INodeCredentialsDetails,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -27,7 +27,7 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -100,6 +100,7 @@ const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
 const instanceAiCapability = useInstanceAiEditorCapability();
 const { instanceAi } = useEditorContext();
+const isToolContext = inject(ChatHubToolContextKey, false);
 
 // The host's credential-help behavior, handed to the (teleported) credential
 // modal that can't inject it. Undefined when Instance AI is off in this editor or
@@ -129,6 +130,7 @@ const {
 const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields } = useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
 	() =>
@@ -459,7 +461,7 @@ function createNewCredential(
 		props.node.name,
 		props.node,
 		{
-			hideAskAssistant: props.hideAskAssistant,
+			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
 		},
@@ -663,7 +665,7 @@ function editCredential(credentialType: string): void {
 	assert(credential?.id);
 
 	uiStore.openExistingCredential(credential.id, {
-		hideAskAssistant: props.hideAskAssistant,
+		hideAskAssistant: hideAskAssistant.value,
 		instanceAiCredentialHelp: instanceAiCredentialHelp(),
 	});
 

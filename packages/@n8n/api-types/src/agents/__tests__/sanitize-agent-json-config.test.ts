@@ -50,7 +50,13 @@ describe('sanitizeAgentJsonConfig', () => {
 			...baseConfig,
 			subAgents: {
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2', legacyLabel: 'Research' }],
+				agents: [
+					{
+						agentId: 'agent-2',
+						useWhen: 'Use for research tasks.',
+						legacyLabel: 'Research',
+					},
+				],
 				legacyBudget: 99,
 			},
 			config: {
@@ -65,7 +71,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			...baseConfig,
 			subAgents: {
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }],
 			},
 			config: {
 				toolCallConcurrency: 2,
@@ -372,7 +378,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			...baseConfig,
 			subAgents: {
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing questions.' }],
 			},
 		});
 		const parsed = AgentJsonConfigSchema.safeParse(sanitized);
@@ -380,6 +386,35 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(parsed.success).toBe(true);
 		if (!parsed.success) return;
 		expect(parsed.data.subAgents?.maxChildren).toBe(3);
+		expect(parsed.data.subAgents?.agents?.[0]?.useWhen).toBe('Use for billing questions.');
+	});
+
+	it.each(['', '   ', 'Too short'])('accepts optional sub-agent useWhen value %p', (useWhen) => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen }],
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen }],
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('rejects sub-agent useWhen values over 512 characters', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({
+				...baseConfig,
+				subAgents: {
+					agents: [{ agentId: 'agent-2', useWhen: 'a'.repeat(513) }],
+				},
+			}).success,
+		).toBe(false);
 	});
 
 	it.each([SUB_AGENT_MAX_CHILDREN_MIN, SUB_AGENT_MAX_CHILDREN_MAX])(
@@ -411,7 +446,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			...baseConfig,
 			subAgents: {
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
 					medium: { model: 'anthropic/claude-haiku-4-5', credential: 'cred-anthropic' },
@@ -533,7 +568,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			...baseConfig,
 			subAgents: {
 				maxChildren: 4,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for support escalation.' }],
 				modelsByDifficulty: {
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
 				},
@@ -544,7 +579,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			...baseConfig,
 			subAgents: {
 				maxChildren: 4,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for support escalation.' }],
 				modelsByDifficulty: {
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
 				},

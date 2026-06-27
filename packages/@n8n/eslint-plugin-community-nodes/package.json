@@ -42,6 +42,7 @@
     "eslint-plugin-eslint-plugin": "^7.0.0",
     "rimraf": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
