@@ -778,6 +778,25 @@ describe('Salesforce -> GenericFunctions', () => {
 				);
 			});
 
+			it('merges extra option headers without dropping the Content-Type header', async () => {
+				mockRequest.mockResolvedValue({ records: [] });
+
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT Id FROM Account' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
+				);
+
+				expect(mockRequest.mock.calls[0][1].headers).toEqual({
+					'Content-Type': 'application/json',
+					'Sforce-Query-Options': 'batchSize=200',
+				});
+			});
+
 			it('omits an empty body', async () => {
 				mockRequest.mockResolvedValue({});
 
