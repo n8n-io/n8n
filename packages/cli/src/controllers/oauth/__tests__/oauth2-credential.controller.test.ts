@@ -148,6 +148,65 @@ describe('OAuth2CredentialController', () => {
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', expect.any(Array));
 		});
 
+		it('should not request openid during token exchange when the credential has no scope', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetToken = jest.fn().mockResolvedValue({
+				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getToken: mockGetToken,
+						},
+					}) as any,
+			);
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					grantType: 'authorizationCode',
+					authentication: 'header',
+				},
+				mockState,
+				{ csrfSecret: 'csrf-secret' },
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: validState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(ClientOAuth2).toHaveBeenCalledWith(expect.objectContaining({ scopes: undefined }));
+			expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				expect.objectContaining({
+					oauthTokenData: { access_token: 'new_token', refresh_token: 'refresh_token' },
+				}),
+			);
+		});
+
 		it('should pass state resource to token exchange and store it for static credentials', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = jest.fn().mockResolvedValue({

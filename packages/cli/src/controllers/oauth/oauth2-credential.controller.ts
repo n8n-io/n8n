@@ -164,6 +164,12 @@ export class OAuth2CredentialController {
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
+		const scopes = credential.scope
+			? split(credential.scope, ',')
+					.map((scope) => scope.trim())
+					.filter(Boolean)
+			: undefined;
+
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
 			clientSecret: credential.clientSecret ?? '',
@@ -171,7 +177,7 @@ export class OAuth2CredentialController {
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`,
-			scopes: split(credential.scope ?? 'openid', ','),
+			scopes,
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,

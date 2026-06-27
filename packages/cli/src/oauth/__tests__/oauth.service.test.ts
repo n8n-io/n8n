@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { OAuth2CredentialData } from '@n8n/client-oauth2';
+import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
@@ -2190,6 +2190,64 @@ describe('OauthService', () => {
 					codeVerifier: 'code_verifier',
 				}),
 				expect.any(Number),
+			);
+		});
+
+		it('should omit scope for dynamic client registration when metadata does not advertise scopes', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+
+			let capturedOptions: ClientOAuth2Options | undefined;
+			jest.mocked(ClientOAuth2).mockImplementation((options) => {
+				capturedOptions = options;
+				return {
+					code: {
+						getUri: () => ({
+							toString: () =>
+								'https://calendly.example/oauth/authorize?client_id=registered_client_id&response_type=code&state=state',
+						}),
+					},
+				} as any;
+			});
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://mcp.calendly.com',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(httpClientMock.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://calendly.example/oauth/authorize',
+					token_endpoint: 'https://calendly.example/oauth/token',
+					registration_endpoint: 'https://calendly.example/oauth/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+				},
+			} as any);
+			jest.mocked(httpClientMock.post).mockResolvedValue({
+				data: {
+					client_id: 'registered_client_id',
+					client_secret: 'registered_client_secret',
+				},
+			} as any);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const authUri = await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(authUri).not.toContain('scope=');
+			expect(capturedOptions?.scopes).toBeUndefined();
+			expect(httpClientMock.post).toHaveBeenCalledWith(
+				'https://calendly.example/oauth/register',
+				expect.not.objectContaining({ scope: expect.anything() }),
+			);
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(
+				credential,
+				expect.not.objectContaining({ scope: expect.anything() }),
 			);
 		});
 
