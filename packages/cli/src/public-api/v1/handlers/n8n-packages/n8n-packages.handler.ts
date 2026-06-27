@@ -13,7 +13,11 @@ import type { PackageRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
-type ExportWorkflowsRequest = AuthenticatedRequest<{}, {}, { workflowIds: string[] }>;
+type ExportWorkflowsRequest = AuthenticatedRequest<
+	{},
+	{},
+	{ workflowIds?: string[]; folderIds?: string[] }
+>;
 
 type ImportPackageRequest = PackageRequest.Import & {
 	files?: Express.Multer.File[];
@@ -39,7 +43,8 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 
 			const stream = await Container.get(N8nPackagesService).exportWorkflows({
 				user: req.user,
-				workflowIds: payload.data.workflowIds,
+				workflowIds: payload.data.workflowIds ?? [],
+				folderIds: payload.data.folderIds,
 			});
 
 			res.setHeader('Content-Type', 'application/gzip');

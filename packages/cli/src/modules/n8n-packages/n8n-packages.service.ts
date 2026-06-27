@@ -5,6 +5,7 @@ import type { Readable } from 'node:stream';
 import { N8N_VERSION } from '@/constants';
 
 import { CredentialExporter } from './entities/credential/credential.exporter';
+import { FolderExporter } from './entities/folder/folder.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { ImportPipeline } from './engine/import-pipeline';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
@@ -21,6 +22,7 @@ export class N8nPackagesService {
 	constructor(
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly credentialExporter: CredentialExporter,
+		private readonly folderExporter: FolderExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly importPipeline: ImportPipeline,
 	) {}
@@ -42,12 +44,19 @@ export class N8nPackagesService {
 				writer,
 			});
 
+		const { entries: folderEntries } = await this.folderExporter.export({
+			user: request.user,
+			folderIds: request.folderIds ?? [],
+			writer,
+		});
+
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
 			exportedAt: new Date().toISOString(),
 			sourceN8nVersion: N8N_VERSION,
 			sourceId: this.instanceSettings.instanceId,
 			workflows: workflowEntries,
+			...(folderEntries.length > 0 ? { folders: folderEntries } : {}),
 			...(credentialEntries.length > 0 ? { credentials: credentialEntries } : {}),
 			...(credentialRequirements.length > 0
 				? { requirements: { credentials: credentialRequirements } }

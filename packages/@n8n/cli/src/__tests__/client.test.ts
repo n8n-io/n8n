@@ -55,6 +55,24 @@ describe('N8nClient packages', () => {
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a', 'b'] }));
 		});
+
+		it('includes folderIds in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage(['a'], ['f1']);
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], folderIds: ['f1'] }));
+		});
+
+		it('omits an empty collection from the body', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage([], ['f1']);
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ folderIds: ['f1'] }));
+		});
 	});
 
 	describe('importPackage', () => {

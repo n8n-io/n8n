@@ -21,7 +21,8 @@ export class N8nPackagesController {
 
 		return await this.packagesService.exportWorkflows({
 			user: req.user,
-			workflowIds: body.workflowIds,
+			workflowIds: body.workflowIds ?? [],
+			folderIds: body.folderIds,
 		});
 	}
 }
