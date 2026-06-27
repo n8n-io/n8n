@@ -303,6 +303,102 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
+		test('should run the entire workflow when no destination node is given and there is no pinned trigger', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+
+			const trigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+			};
+
+			const workflowData: IWorkflowBase = {
+				id: 'abc',
+				name: 'test',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				pinData: undefined,
+				nodes: [trigger, hackerNewsNode],
+				connections: { ...createMainConnection(hackerNewsNode.name, trigger.name) },
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {};
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith({
+				destinationNode: undefined,
+				executionMode: 'manual',
+				pinData: undefined,
+				pushRef: undefined,
+				workflowData,
+				userId,
+				agentRequest: undefined,
+				triggerToStartFrom: undefined,
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
+			});
+			expect(result).toEqual({ executionId });
+		});
+
+		test('should start from the first pinned trigger when no destination node is given', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+
+			const pinnedTrigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'pinned',
+				type: 'n8n-nodes-base.airtableTrigger',
+			};
+
+			const workflowData: IWorkflowBase = {
+				id: 'abc',
+				name: 'test',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				pinData: { [pinnedTrigger.name]: [{ json: {} }] },
+				nodes: [pinnedTrigger, hackerNewsNode],
+				connections: { ...createMainConnection(hackerNewsNode.name, pinnedTrigger.name) },
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {};
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith({
+				destinationNode: undefined,
+				executionMode: 'manual',
+				pinData: workflowData.pinData,
+				pushRef: undefined,
+				workflowData,
+				userId,
+				agentRequest: undefined,
+				triggerToStartFrom: { name: pinnedTrigger.name },
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
+			});
+			expect(result).toEqual({ executionId });
+		});
+
 		test('should ignore pinned trigger and start from unexecuted trigger', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';

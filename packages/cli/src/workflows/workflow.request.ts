@@ -44,7 +44,7 @@ export declare namespace WorkflowRequest {
 	type FullManualExecutionFromUnknownTriggerPayload = {
 		agentRequest?: AiAgentRequest;
 
-		destinationNode: IDestinationNode;
+		destinationNode?: IDestinationNode;
 	};
 
 	// 3. Partial Manual Execution to Destination
