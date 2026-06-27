@@ -1042,6 +1042,8 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	:global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
 	}
 
 	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
