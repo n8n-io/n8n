@@ -520,6 +520,18 @@ describe('CodeBuilderGetTool', () => {
 				const trickyPath = path.join(baseDir, 'package', '..', '..', '..', 'etc', 'passwd');
 				expect(validatePathWithinBase(path.resolve(trickyPath), baseDir)).toBe(false);
 			});
+
+			it('should use the OS-specific path separator (regression for #29902)', () => {
+				// Simulate Windows resolve+sep using path.win32 since path.resolve on
+				// POSIX won't produce Windows paths.
+				const winBase = path.win32.resolve('C:\\users\\foo\\nodes');
+				const winChild = path.win32.resolve(
+					'C:\\users\\foo\\nodes\\n8n-nodes-base\\httpRequest\\v1.ts',
+				);
+
+				expect(winChild.startsWith(winBase + path.win32.sep)).toBe(true);
+				expect(winChild.startsWith(winBase + '/')).toBe(false);
+			});
 		});
 
 		describe('tool invocation with malicious inputs', () => {
