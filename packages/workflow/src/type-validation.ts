@@ -1,7 +1,8 @@
+import { ApplicationError } from '@n8n/errors';
 import isObject from 'lodash/isObject';
 import { DateTime } from 'luxon';
 
-import { ApplicationError, BaseError, UserError } from './errors';
+import { BaseError, UserError } from './errors';
 import type {
 	FieldType,
 	FormFieldsParameter,

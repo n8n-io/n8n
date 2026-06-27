@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import { ApplicationError } from '@n8n/errors';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/core';
 import { AxiosError } from 'axios';
-import { ApplicationError, BaseError, ExpressionError, NodeOperationError } from 'n8n-workflow';
+import { BaseError, ExpressionError, NodeOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';

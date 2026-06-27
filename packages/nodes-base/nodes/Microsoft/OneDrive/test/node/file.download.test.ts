@@ -1,7 +1,8 @@
+import { ApplicationError } from '@n8n/errors';
 import type { IncomingMessage } from 'http';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { type IHttpRequestMethods, type IExecuteFunctions, ApplicationError } from 'n8n-workflow';
+import { type IHttpRequestMethods, type IExecuteFunctions } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';

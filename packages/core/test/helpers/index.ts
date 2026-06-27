@@ -1,3 +1,4 @@
+import { ApplicationError } from '@n8n/errors';
 import { readdirSync, readFileSync } from 'fs';
 import type {
 	IDataObject,
@@ -12,7 +13,7 @@ import type {
 	WorkflowTestData,
 	INodeTypeData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
