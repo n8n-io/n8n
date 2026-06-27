@@ -2966,6 +2966,9 @@ importers:
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
+      ibm_db:
+        specifier: ^4.0.1
+        version: 4.0.1
       ignore:
         specifier: ^5.2.0
         version: 5.3.2
@@ -15902,6 +15905,10 @@ packages:
     resolution: {integrity: sha512-ot6sGHAvSnd/ZSU4ZFn+m7i+xcFo3pmA3qm2JmEndDkMsuNR8HLdUeJ5iBbmkUfCGbf2ccTu/GvoJgFetyO6XA==}
     engines: {node: '>=20'}
 
+  ibm_db@4.0.1:
+    resolution: {integrity: sha512-0fO1fyaDm3jqaydObwKZw1aUNh6SbfHKxtrSfadWHoFsrnmBhQfp1oMFm6cWJSRNjE9pHyQw7zUNteuLRObwSg==}
+    engines: {node: '>=6.0'}
+
   iconv-corefoundation@1.1.7:
     resolution: {integrity: sha512-T10qvkw0zz4wnm560lOEg0PovVqUXuOFhhHAkixw8/sycy7TJt7v/RrkEKEQnAw2viPSJu6iAkErxnzR0g8PpQ==}
     engines: {node: ^8.11.2 || >=10}
@@ -18060,6 +18067,9 @@ packages:
   node-addon-api@7.1.0:
     resolution: {integrity: sha512-mNcltoe1R8o7STTegSOHdnJNN7s5EUvhoS7ShnTHDyOSd+8H+UdWODq6qSv67PjC8Zc5JRT8+oLAMCr0SIXw7g==}
     engines: {node: ^16 || ^18 || >= 20}
+
+  node-addon-api@7.1.1:
+    resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
   node-addon-api@8.3.0:
     resolution: {integrity: sha512-8VOpLHFrOQlAH+qA0ZzuGRlALRA6/LVh8QJldbrC4DY0hXoMP0l4Acq8TzFC018HztWiRqyCEj2aTWY2UvnJUg==}
@@ -20578,6 +20588,9 @@ packages:
   tar@7.5.16:
     resolution: {integrity: sha512-56adEpPMouktRlBLXiaYFFzZ/3+JXa8P9n7WbR+ibIjtviN55mEaOkiysCnPnWm+7kkui1Dn8J9l+g6zV8731w==}
     engines: {node: '>=18'}
+
+  targz@1.0.1:
+    resolution: {integrity: sha512-6q4tP9U55mZnRuMTBqnqc3nwYQY3kv+QthCFZuMk+Tn1qYUnMPmL/JZ/mzgXINzFpSqfU+242IFmFU9VPvqaQw==}
 
   tarn@3.0.2:
     resolution: {integrity: sha512-51LAVKUSZSVfI05vjPESNc5vwqqZpbXCsU+/+wxlOrUjk2SnFTt97v9ZgQrD4YmxYW1Px6w2KjaDitCfkvgxMQ==}
@@ -34338,6 +34351,20 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  ibm_db@4.0.1:
+    dependencies:
+      adm-zip: 0.5.16
+      axios: 1.16.1(debug@4.4.3)
+      big-integer: 1.6.52
+      bindings: 1.5.0
+      fs-extra: 11.3.5
+      lodash: 4.18.1
+      node-addon-api: 7.1.1
+      targz: 1.0.1
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   iconv-corefoundation@1.1.7:
     dependencies:
       cli-truncate: 2.1.0
@@ -37029,6 +37056,8 @@ snapshots:
     optional: true
 
   node-addon-api@7.1.0: {}
+
+  node-addon-api@7.1.1: {}
 
   node-addon-api@8.3.0: {}
 
@@ -40091,6 +40120,10 @@ snapshots:
       minipass: 7.1.3
       minizlib: 3.1.0
       yallist: 5.0.0
+
+  targz@1.0.1:
+    dependencies:
+      tar-fs: 2.1.4
 
   tarn@3.0.2: {}
 

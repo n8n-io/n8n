@@ -37,7 +37,8 @@
     "watch": "tsc-watch -p tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "postinstall": "node -e \"try { require('child_process').execSync('npm rebuild ibm_db', {stdio: 'inherit'}); } catch (e) { console.warn('Warning: Failed to rebuild ibm_db. If you encounter issues with Db2 Vector Store, run: pnpm rebuild ibm_db'); }\""
   },
   "files": [
     "dist"
@@ -55,6 +56,7 @@
       "dist/credentials/ChromaCloudApi.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
       "dist/credentials/DaytonaApi.credentials.js",
+      "dist/credentials/Db2Api.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",
@@ -204,6 +206,7 @@
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.js",
+      "dist/nodes/vector_store/VectorStoreDb2/VectorStoreDb2.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js",
       "dist/nodes/Guardrails/Guardrails.node.js"
@@ -293,6 +296,7 @@
     "cheerio": "catalog:",
     "chromadb": "^3.0.15",
     "cohere-ai": "7.14.0",
+    "ibm_db": "^4.0.1",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
     "express": "catalog:",
