@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { computed, provide, useTemplateRef } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useI18n } from '@n8n/i18n';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
+import TabBar from '@/app/components/MainHeader/TabBar.vue';
 import {
 	EditorEnabledFeaturesKey,
 	type EditorEnabledFeatures,
@@ -16,6 +18,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import ExecutionPreviewHost from '@/features/execution/executions/components/workflow/ExecutionPreviewHost.vue';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
@@ -44,6 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
+const i18n = useI18n();
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
@@ -107,6 +111,45 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 	reportWorkflowFailures,
 });
 
+// === Editor / Executions view toggle ===
+// The artifact can show either the embedded editor or the latest agent run in a
+// full executions view. The Executions tab only appears once there's a run to show.
+const ARTIFACT_WORKFLOW_VIEWS = {
+	EDITOR: 'editor',
+	EXECUTIONS: 'executions',
+} as const;
+type ArtifactWorkflowView = (typeof ARTIFACT_WORKFLOW_VIEWS)[keyof typeof ARTIFACT_WORKFLOW_VIEWS];
+
+const activeWorkflowView = ref<ArtifactWorkflowView>(ARTIFACT_WORKFLOW_VIEWS.EDITOR);
+const latestExecutionId = computed(() => props.executionResult?.executionId);
+const workflowViewOptions = computed(() => {
+	const options: Array<{ value: ArtifactWorkflowView; label: string }> = [
+		{
+			value: ARTIFACT_WORKFLOW_VIEWS.EDITOR,
+			label: i18n.baseText('generic.editor'),
+		},
+	];
+	if (latestExecutionId.value) {
+		options.push({
+			value: ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS,
+			label: i18n.baseText('generic.executions'),
+		});
+	}
+	return options;
+});
+
+function setActiveWorkflowView(view: string) {
+	if (view === ARTIFACT_WORKFLOW_VIEWS.EDITOR || view === ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS) {
+		activeWorkflowView.value = view;
+	}
+}
+
+watch(latestExecutionId, (executionId) => {
+	if (!executionId && activeWorkflowView.value === ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS) {
+		activeWorkflowView.value = ARTIFACT_WORKFLOW_VIEWS.EDITOR;
+	}
+});
+
 // === Editing lock ===
 // Lock the artifact's editor while the agent is actively mutating THIS
 // workflow, so the user can't drag nodes into a mid-stream conflict.
@@ -168,14 +211,30 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 
 <template>
 	<div :class="$style.content">
-		<WorkflowCanvasHost
-			ref="host"
-			:workflow-id="workflowId"
-			:refresh-key="refreshKey"
-			:initial-workflow="initialWorkflow"
-			:initial-execution="initialExecution"
-			@workflow-loaded="restoreExecutionResult"
-		/>
+		<div :class="$style.viewContent">
+			<div v-if="workflowViewOptions.length > 1" :class="$style.tabBarAnchor">
+				<TabBar
+					:items="workflowViewOptions"
+					:model-value="activeWorkflowView"
+					data-test-id="instance-ai-workflow-view-tabs"
+					@update:model-value="setActiveWorkflowView"
+				/>
+			</div>
+			<WorkflowCanvasHost
+				v-show="activeWorkflowView === ARTIFACT_WORKFLOW_VIEWS.EDITOR"
+				ref="host"
+				:workflow-id="workflowId"
+				:refresh-key="refreshKey"
+				:initial-workflow="initialWorkflow"
+				:initial-execution="initialExecution"
+				@workflow-loaded="restoreExecutionResult"
+			/>
+			<ExecutionPreviewHost
+				v-if="activeWorkflowView === ARTIFACT_WORKFLOW_VIEWS.EXECUTIONS && latestExecutionId"
+				:workflow-id="workflowId"
+				:execution-id="latestExecutionId"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -183,7 +242,25 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 .content {
 	flex: 1;
 	min-height: 0;
-	position: relative;
 	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.viewContent {
+	flex: 1;
+	min-height: 0;
+	position: relative;
+}
+
+/* Zero-height anchor at the workflow header's bottom edge so TabBar straddles it,
+   floating onto the canvas exactly like the normal canvas tabs. */
+.tabBarAnchor {
+	position: absolute;
+	top: var(--navbar--height);
+	left: 0;
+	right: 0;
+	height: 0;
+	z-index: 100;
 }
 </style>
