@@ -256,5 +256,27 @@ describe('search-workflows MCP tool', () => {
 				availableInMCP: true,
 			});
 		});
+
+		// Regression test for https://github.com/n8n-io/n8n/issues/31677
+		// SQLite returns datetime columns as strings, not Date objects.
+		// Calling .toISOString() on a string throws — new Date(value) is idempotent.
+		test('handles SQLite string datetime values without throwing', async () => {
+			const workflows = [
+				{
+					...createWorkflow({ id: 'sqlite-wf', activeVersionId: 'v1' }),
+					// Simulate SQLite projected-select returning strings instead of Date objects
+					createdAt: '2024-01-01T00:00:00.000Z' as unknown as Date,
+					updatedAt: '2024-01-02T00:00:00.000Z' as unknown as Date,
+				},
+			];
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
+			});
+
+			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
+
+			expect(result.data[0].createdAt).toBe('2024-01-01T00:00:00.000Z');
+			expect(result.data[0].updatedAt).toBe('2024-01-02T00:00:00.000Z');
+		});
 	});
 });

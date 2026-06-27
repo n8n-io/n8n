@@ -150,4 +150,35 @@ describe('search_data_tables MCP tool', () => {
 			}),
 		);
 	});
+
+	// Regression test for https://github.com/n8n-io/n8n/issues/31677
+	// SQLite returns datetime columns as strings, not Date objects.
+	// Calling .toISOString() on a string throws — new Date(value) is idempotent.
+	test('handles SQLite string datetime values without throwing', async () => {
+		const data = [
+			{
+				id: 'dt-sqlite',
+				name: 'Users',
+				projectId: 'proj-1',
+				// Simulate SQLite projected-select returning strings instead of Date objects
+				createdAt: '2025-01-01T00:00:00.000Z' as unknown as Date,
+				updatedAt: '2025-01-02T00:00:00.000Z' as unknown as Date,
+				columns: [],
+			},
+		];
+		const { dataTableOps, telemetry } = createMocks({ data });
+		const tool = createSearchDataTablesTool(user, dataTableOps, telemetry);
+
+		const result = await callHandler(tool, {});
+
+		expect(result.isError).toBeUndefined();
+		expect(result.structuredContent).toMatchObject({
+			data: [
+				expect.objectContaining({
+					createdAt: '2025-01-01T00:00:00.000Z',
+					updatedAt: '2025-01-02T00:00:00.000Z',
+				}),
+			],
+		});
+	});
 });
