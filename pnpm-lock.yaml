@@ -2317,9 +2317,6 @@ importers:
       '@langchain/anthropic':
         specifier: 'catalog:'
         version: 1.3.27(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0

@@ -83,35 +83,30 @@ function applyCaseSelection(
 	return matched;
 }
 
-/** Pull test cases from a lang-tracer suite over its MCP endpoint. */
+/** Pull test cases from a lang-tracer suite over its REST API. */
 export async function loadTestCasesFromLangTracer(
 	opts: LangTracerLoadOptions,
 ): Promise<WorkflowTestCaseWithFile[]> {
 	const client = new LangTracerClient(resolveLangTracerConfig());
-	await client.connect();
-	try {
-		const suites = await client.listSuites();
-		const match = suites.find((s) => s.slug === opts.suite || String(s.id) === opts.suite);
-		if (!match) {
-			const known = suites
-				.map((s) => s.slug)
-				.sort()
-				.join(', ');
-			throw new Error(
-				`lang-tracer suite "${opts.suite}" not found. Available suites: ${known || '(none)'}.`,
-			);
-		}
-
-		opts.logger.info(`lang-tracer: exporting suite "${match.slug}" (#${String(match.id)})`);
-		const exported = await client.exportSuite(match.id);
-		opts.logger.info(
-			`lang-tracer: received ${String(Object.keys(exported.files).length)} case file(s)`,
+	const suites = await client.listSuites();
+	const match = suites.find((s) => s.slug === opts.suite || String(s.id) === opts.suite);
+	if (!match) {
+		const known = suites
+			.map((s) => s.slug)
+			.sort()
+			.join(', ');
+		throw new Error(
+			`lang-tracer suite "${opts.suite}" not found. Available suites: ${known || '(none)'}.`,
 		);
-
-		const cases = casesFromExportedFiles(exported.files, { ...opts, suite: match.slug });
-		opts.logger.info(`lang-tracer: ${String(cases.length)} case(s) after selection`);
-		return cases;
-	} finally {
-		await client.close();
 	}
+
+	opts.logger.info(`lang-tracer: exporting suite "${match.slug}" (#${String(match.id)})`);
+	const exported = await client.exportSuite(match.id);
+	opts.logger.info(
+		`lang-tracer: received ${String(Object.keys(exported.files).length)} case file(s)`,
+	);
+
+	const cases = casesFromExportedFiles(exported.files, { ...opts, suite: match.slug });
+	opts.logger.info(`lang-tracer: ${String(cases.length)} case(s) after selection`);
+	return cases;
 }

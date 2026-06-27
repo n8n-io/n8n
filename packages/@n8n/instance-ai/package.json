@@ -55,7 +55,6 @@
     "@daytona/sdk": "catalog:",
     "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/anthropic": "catalog:",
-    "@modelcontextprotocol/sdk": "catalog:",
     "@mozilla/readability": "catalog:",
     "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",

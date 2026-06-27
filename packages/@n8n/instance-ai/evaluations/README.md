@@ -145,7 +145,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
-| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/`; `langtracer` pulls a suite from LangTracer over MCP — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
+| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
 
 **pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
@@ -165,14 +165,14 @@ A case can belong to multiple groupings — e.g. PR-tier cases declare `"dataset
 
 ### Sourcing test cases from LangTracer
 
-By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its MCP endpoint (`export_suite`), validated through the same `WorkflowTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
+By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its REST API (`GET /api/v1/suites/:id/export`), validated through the same `WorkflowTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
 
 Set these in `.env.local`:
 
 | Var | What |
 |------|------|
-| `LANGTRACER_URL` | LangTracer base URL (the MCP endpoint is `${LANGTRACER_URL}/api/mcp`) |
-| `LANGTRACER_API_KEY` | MCP bearer key (`lt_…`), minted in LangTracer's MCP-keys UI |
+| `LANGTRACER_URL` | LangTracer base URL (the API base is `${LANGTRACER_URL}/api/v1`) |
+| `LANGTRACER_API_KEY` | Bearer key (`lt_…`), minted in LangTracer's API-keys UI (one key works for MCP + REST) |
 
 ```
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
