@@ -1,3 +1,4 @@
+import { CHAT_CDN_VERSION } from '../constants';
 import {
 	createPage,
 	escapeForScriptContext,
@@ -606,6 +607,30 @@ describe('ChatTrigger Templates Security', () => {
 			expect(result.count).toBe('123');
 			expect(result.enabled).toBe('');
 			expect(result.obj).toBe('');
+		});
+	});
+
+	describe('@n8n/chat CDN version pinning', () => {
+		it('should load the @n8n/chat stylesheet from a pinned version', () => {
+			const result = createPage(defaultParams);
+
+			expect(result).toContain(
+				`https://cdn.jsdelivr.net/npm/@n8n/chat@${CHAT_CDN_VERSION}/dist/style.css`,
+			);
+		});
+
+		it('should import the @n8n/chat bundle from a pinned version', () => {
+			const result = createPage(defaultParams);
+
+			expect(result).toContain(
+				`https://cdn.jsdelivr.net/npm/@n8n/chat@${CHAT_CDN_VERSION}/dist/chat.bundle.es.js`,
+			);
+		});
+
+		it('should not reference @n8n/chat without a version (would resolve to @latest)', () => {
+			const result = createPage(defaultParams);
+
+			expect(result).not.toContain('npm/@n8n/chat/dist/');
 		});
 	});
 });
