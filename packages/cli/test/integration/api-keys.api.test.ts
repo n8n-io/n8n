@@ -104,6 +104,14 @@ describe('Owner shell', () => {
 			.expect(400);
 	});
 
+	test('POST /api-keys should accept sourceControl:push scope', async () => {
+		await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'Backup key', expiresAt: null, scopes: ['sourceControl:push'] })
+			.expect(200);
+	});
+
 	test('POST /api-keys should create an api key with expiration', async () => {
 		const expiresAt = Date.now() + 1000;
 

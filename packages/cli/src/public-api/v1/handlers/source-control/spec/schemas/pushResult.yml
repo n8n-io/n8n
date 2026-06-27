@@ -1,0 +1,27 @@
+type: object
+required:
+  - files
+properties:
+  files:
+    type: array
+    description: Files that were included in the push operation.
+    items:
+      $ref: './sourceControlledFile.yml'
+  commit:
+    nullable: true
+    description: Git commit information, or null when nothing was committed (e.g. conflicts detected).
+    type: object
+    required:
+      - hash
+      - message
+      - branch
+    properties:
+      hash:
+        type: string
+        description: Full SHA of the resulting commit.
+      message:
+        type: string
+        description: Commit message used.
+      branch:
+        type: string
+        description: Branch the commit was pushed to.

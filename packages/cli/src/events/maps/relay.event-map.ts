@@ -631,6 +631,13 @@ export type RelayEventMap = {
 		forced: boolean;
 	};
 
+	'source-control-user-pushed-api': {
+		workflowsPushed: number;
+		credsPushed: number;
+		variablesPushed: number;
+		forced: boolean;
+	};
+
 	'source-control-user-started-push-ui': {
 		userId?: string;
 		workflowsEligible: number;

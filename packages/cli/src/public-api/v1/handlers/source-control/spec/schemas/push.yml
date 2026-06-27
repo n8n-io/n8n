@@ -1,0 +1,17 @@
+type: object
+properties:
+  force:
+    type: boolean
+    description: Force push even when conflicts are detected.
+    example: false
+  commitMessage:
+    type: string
+    description: Commit message for the push. Defaults to "Updated Workfolder".
+    example: 'Daily automated n8n workflow backup – 2026-06-23'
+  fileNames:
+    type: array
+    description: |
+      List of specific files to push. When omitted or empty, all eligible
+      local changes are pushed.
+    items:
+      $ref: './sourceControlledFile.yml'
