@@ -126,7 +126,7 @@ export class Rocketchat implements INodeType {
 					{
 						name: 'Mark As Read',
 						value: 'read',
-						description: 'Mark a message as read',
+						description: 'Mark the subscription as read.',
 						action: 'Mark As Read',
 					},
 				],
