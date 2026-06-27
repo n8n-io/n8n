@@ -1,8 +1,15 @@
 import FormData from 'form-data';
+import { sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import type * as nWorkflow from 'n8n-workflow';
 
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
 import type { Mock } from 'vitest';
+
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof nWorkflow>('n8n-workflow')),
+	sleep: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe('HttpRequestV3', () => {
 	let node: HttpRequestV3;
@@ -1207,6 +1214,72 @@ describe('HttpRequestV3', () => {
 			expect(result[0][0].json.error).toBeDefined();
 			// Item 1 → valid response, no crash
 			expect(result[0][1].json.ok).toBe(true);
+		});
+	});
+
+	describe('batch interval default', () => {
+		// Runs `itemCount` items through the node. Omit `batch` to simulate Batching never being added.
+		const setupBatchingItems = (
+			itemCount: number,
+			batch?: { batchSize?: number; batchInterval?: number },
+		) => {
+			const items = Array.from({ length: itemCount }, () => ({ json: {} }));
+			(executeFunctions.getInputData as Mock).mockReturnValue(items);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return batch ? { batching: { batch } } : {};
+					default:
+						return undefined;
+				}
+			});
+			// fresh object per call: the node deletes headers off the response between items
+			(executeFunctions.helpers.request as Mock).mockImplementation(async () => ({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			}));
+		};
+
+		beforeEach(() => {
+			vi.mocked(sleep).mockClear();
+		});
+
+		it('falls back to the 1000ms UI default when Batching is enabled but the interval is unset', async () => {
+			setupBatchingItems(2, { batchSize: 1 });
+
+			await node.execute.call(executeFunctions);
+
+			expect(sleep).toHaveBeenCalledWith(1000);
+		});
+
+		it('does not delay when the Batching option was never added', async () => {
+			setupBatchingItems(2);
+
+			await node.execute.call(executeFunctions);
+
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('does not delay when the batch interval is explicitly set to 0', async () => {
+			setupBatchingItems(2, { batchSize: 1, batchInterval: 0 });
+
+			await node.execute.call(executeFunctions);
+
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('honours an explicit batch interval', async () => {
+			setupBatchingItems(2, { batchSize: 1, batchInterval: 500 });
+
+			await node.execute.call(executeFunctions);
+
+			expect(sleep).toHaveBeenCalledWith(500);
 		});
 	});
 });
