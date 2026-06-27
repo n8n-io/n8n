@@ -242,99 +242,104 @@ export class Snowflake implements INodeType {
 
 		await connect(connection);
 
-		// Render non-finite numbers (NaN, Infinity) in VARIANT/OBJECT/ARRAY columns as
-		// null so the column output is always valid JSON for the parser above.
-		await execute(connection, 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE', []);
+		// Ensure the connection is always destroyed, even if a statement fails, so its
+		// session/transaction and any table locks it holds are released (NODE-5163).
+		try {
+			// Render non-finite numbers (NaN, Infinity) in VARIANT/OBJECT/ARRAY columns as
+			// null so the column output is always valid JSON for the parser above.
+			await execute(connection, 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE', []);
 
-		let returnData: INodeExecutionData[] = [];
-		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0);
+			let returnData: INodeExecutionData[] = [];
+			const items = this.getInputData();
+			const operation = this.getNodeParameter('operation', 0);
 
-		if (operation === 'executeQuery') {
-			// ----------------------------------
-			//         executeQuery
-			// ----------------------------------
+			if (operation === 'executeQuery') {
+				// ----------------------------------
+				//         executeQuery
+				// ----------------------------------
 
-			for (let i = 0; i < items.length; i++) {
-				let query = this.getNodeParameter('query', i) as string;
+				for (let i = 0; i < items.length; i++) {
+					let query = this.getNodeParameter('query', i) as string;
 
-				for (const resolvable of getResolvables(query)) {
-					query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+					for (const resolvable of getResolvables(query)) {
+						query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+					}
+
+					const responseData = await execute(connection, query, []);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData = returnData.concat(executionData);
+				}
+			}
+
+			if (operation === 'insert') {
+				// ----------------------------------
+				//         insert
+				// ----------------------------------
+
+				const table = this.getNodeParameter('table', 0) as string;
+				const columnString = this.getNodeParameter('columns', 0) as string;
+				const columns = columnString.split(',').map((column) => column.trim());
+				const quotedTable = escapeSnowflakeObjectIdentifier(table);
+				const quotedColumns = columns.map(escapeSnowflakeIdentifier);
+				const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
+				const data = this.helpers.copyInputItems(items, columns);
+				const binds = data.map((element) => [...Object.values(element)]);
+				await execute(connection, query, binds as unknown as snowflake.InsertBinds);
+				data.forEach((d, i) => {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(d),
+						{ itemData: { item: i } },
+					);
+					returnData = returnData.concat(executionData);
+				});
+			}
+
+			if (operation === 'update') {
+				// ----------------------------------
+				//         update
+				// ----------------------------------
+
+				const table = this.getNodeParameter('table', 0) as string;
+				const updateKey = this.getNodeParameter('updateKey', 0) as string;
+				const columnString = this.getNodeParameter('columns', 0) as string;
+				const columns = columnString.split(',').map((column) => column.trim());
+
+				if (!columns.includes(updateKey)) {
+					columns.unshift(updateKey);
 				}
 
-				const responseData = await execute(connection, query, []);
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: i } },
-				);
-				returnData = returnData.concat(executionData);
-			}
-		}
-
-		if (operation === 'insert') {
-			// ----------------------------------
-			//         insert
-			// ----------------------------------
-
-			const table = this.getNodeParameter('table', 0) as string;
-			const columnString = this.getNodeParameter('columns', 0) as string;
-			const columns = columnString.split(',').map((column) => column.trim());
-			const quotedTable = escapeSnowflakeObjectIdentifier(table);
-			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
-			const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
-			const data = this.helpers.copyInputItems(items, columns);
-			const binds = data.map((element) => [...Object.values(element)]);
-			await execute(connection, query, binds as unknown as snowflake.InsertBinds);
-			data.forEach((d, i) => {
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(d),
-					{ itemData: { item: i } },
-				);
-				returnData = returnData.concat(executionData);
-			});
-		}
-
-		if (operation === 'update') {
-			// ----------------------------------
-			//         update
-			// ----------------------------------
-
-			const table = this.getNodeParameter('table', 0) as string;
-			const updateKey = this.getNodeParameter('updateKey', 0) as string;
-			const columnString = this.getNodeParameter('columns', 0) as string;
-			const columns = columnString.split(',').map((column) => column.trim());
-
-			if (!columns.includes(updateKey)) {
-				columns.unshift(updateKey);
-			}
-
-			const quotedTable = escapeSnowflakeObjectIdentifier(table);
-			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
-			const quotedUpdateKey = escapeSnowflakeIdentifier(updateKey);
-			const query = `UPDATE ${quotedTable} SET ${quotedColumns.map((col) => `${col} = ?`).join(',')} WHERE ${quotedUpdateKey} = ?;`;
-			const data = this.helpers.copyInputItems(items, columns);
-			const binds = data.map((element) => {
-				const values = Object.values(element);
-				const rowBinds: unknown[] = [];
-				columns.forEach((_col, idx) => {
-					rowBinds.push(values[idx]);
+				const quotedTable = escapeSnowflakeObjectIdentifier(table);
+				const quotedColumns = columns.map(escapeSnowflakeIdentifier);
+				const quotedUpdateKey = escapeSnowflakeIdentifier(updateKey);
+				const query = `UPDATE ${quotedTable} SET ${quotedColumns.map((col) => `${col} = ?`).join(',')} WHERE ${quotedUpdateKey} = ?;`;
+				const data = this.helpers.copyInputItems(items, columns);
+				const binds = data.map((element) => {
+					const values = Object.values(element);
+					const rowBinds: unknown[] = [];
+					columns.forEach((_col, idx) => {
+						rowBinds.push(values[idx]);
+					});
+					rowBinds.push(element[updateKey]);
+					return rowBinds;
 				});
-				rowBinds.push(element[updateKey]);
-				return rowBinds;
-			});
-			for (let i = 0; i < binds.length; i++) {
-				await execute(connection, query, binds[i] as unknown as snowflake.InsertBinds);
+				for (let i = 0; i < binds.length; i++) {
+					await execute(connection, query, binds[i] as unknown as snowflake.InsertBinds);
+				}
+				data.forEach((d, i) => {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(d),
+						{ itemData: { item: i } },
+					);
+					returnData = returnData.concat(executionData);
+				});
 			}
-			data.forEach((d, i) => {
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(d),
-					{ itemData: { item: i } },
-				);
-				returnData = returnData.concat(executionData);
-			});
-		}
 
-		await destroy(connection);
-		return [returnData];
+			return [returnData];
+		} finally {
+			await destroy(connection);
+		}
 	}
 }
