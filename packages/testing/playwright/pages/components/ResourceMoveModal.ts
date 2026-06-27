@@ -26,6 +26,11 @@ export class ResourceMoveModal extends FloatingUiHelper {
 		return this.page.getByTestId('move-to-folder-dropdown');
 	}
 
+	getFolderOption(folderName: string): Locator {
+		// move-to-folder options teleport out of the modal root (el-select popper), so resolve page-scoped
+		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+	}
+
 	async openProjectSelect(): Promise<void> {
 		await this.getProjectSelectCredential().locator('input').click();
 	}
