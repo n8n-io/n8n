@@ -51,7 +51,15 @@ watch(
 		/>
 
 		<template v-for="message in messages" :key="message.id">
-			<Message ref="messageComponents" :message="message">
+			<Message
+				v-if="
+					message.sender === 'user' ||
+					(message.type === 'text' && message.text) ||
+					message.type !== 'text'
+				"
+				ref="messageComponents"
+				:message="message"
+			>
 				<template #beforeMessage="{ message }">
 					<slot name="beforeMessage" v-bind="{ message }" />
 				</template>
