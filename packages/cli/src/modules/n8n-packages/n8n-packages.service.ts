@@ -7,8 +7,12 @@ import { N8N_VERSION } from '@/constants';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { ImportPipeline } from './engine/import-pipeline';
+import type { PackageWriter } from './io/package-writer';
+import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
+import { PackageImportConfig } from './n8n-packages.config';
 import type {
+	BlockingIssue,
 	ExportWorkflowsRequest,
 	ImportPackageRequest,
 	ImportResult,
@@ -23,11 +27,21 @@ export class N8nPackagesService {
 		private readonly credentialExporter: CredentialExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly importPipeline: ImportPipeline,
+		private readonly packageImportConfig: PackageImportConfig,
 	) {}
 
 	async exportWorkflows(request: ExportWorkflowsRequest): Promise<Readable> {
 		const writer = new TarPackageWriter();
+		await this.exportToWriter(request, writer);
+		return writer.finalize();
+	}
 
+	/**
+	 * Export into an explicit {@link PackageWriter}. `exportWorkflows` uses a
+	 * TarPackageWriter; the instance-pull "raise review" flow passes a
+	 * FilesystemPackageWriter to write the exploded tree into a git working dir.
+	 */
+	async exportToWriter(request: ExportWorkflowsRequest, writer: PackageWriter): Promise<void> {
 		const { entries: workflowEntries, requirements: workflowRequirements } =
 			await this.workflowExporter.export({
 				user: request.user,
@@ -55,10 +69,23 @@ export class N8nPackagesService {
 		});
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
-		return writer.finalize();
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		return await this.importPipeline.run(request);
+	}
+
+	/**
+	 * Side-effect-free dry run of an import: returns the blocking issues without
+	 * writing anything. Powers the `n8n deploy --dry-run` gate.
+	 */
+	async validatePackage(request: ImportPackageRequest): Promise<BlockingIssue[]> {
+		const context = await this.importPipeline.resolveContext(
+			request.user,
+			request.projectId,
+			request.folderId,
+		);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		return await this.importPipeline.validate(reader, context, request);
 	}
 }

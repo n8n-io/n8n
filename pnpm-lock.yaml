@@ -1533,6 +1533,9 @@ importers:
       '@oclif/core':
         specifier: ^4.5.2
         version: 4.5.2
+      tar:
+        specifier: ^7.5.16
+        version: 7.5.16
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*

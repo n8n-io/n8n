@@ -59,6 +59,7 @@ export class ModuleRegistry {
 		'encryption-key-manager',
 		'oauth-jwe',
 		'n8n-packages',
+		'instance-pull',
 		'runtime-credentials',
 		'mcp-registry',
 	];

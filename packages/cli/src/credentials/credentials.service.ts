@@ -10,7 +10,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import type { ListQueryDb, SlimProject, User, ICredentialsDb, ScopesField } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
@@ -50,6 +50,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { InstancePullConfig } from '@/modules/instance-pull.ee/instance-pull.config';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
@@ -1441,8 +1442,16 @@ export class CredentialsService {
 				'create',
 			);
 		}
+		// Honour a preset id only under the instance-pull demo flag (lets prd create a
+		// credential whose id matches the dev source id). Auto-generated otherwise.
+		const presetId = Container.get(InstancePullConfig).enabled && opts.id ? opts.id : null;
+		// Defense in depth: a preset id may only INSERT a brand-new credential, never
+		// overwrite an existing one (a colliding id would otherwise UPDATE that row on save).
+		if (presetId && (await this.credentialsRepository.existsBy({ id: presetId }))) {
+			throw new BadRequestError(`A credential with id "${presetId}" already exists`);
+		}
 		const encryptedCredential = await this.createEncryptedData({
-			id: null,
+			id: presetId,
 			name: opts.name,
 			type: opts.type,
 			data: opts.data as ICredentialDataDecryptedObject,

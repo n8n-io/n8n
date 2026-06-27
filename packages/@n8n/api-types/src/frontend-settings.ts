@@ -253,6 +253,11 @@ export interface FrontendSettings {
 	evaluation: {
 		quota: number;
 	};
+	/** Git-backed release demo (instance-pull): present only when N8N_INSTANCE_PULL_DEMO=true. */
+	instancePull?: {
+		enabled: boolean;
+		role: 'dev' | 'prd';
+	};
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];

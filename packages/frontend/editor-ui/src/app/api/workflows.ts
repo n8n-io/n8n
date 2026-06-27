@@ -190,3 +190,10 @@ export async function deactivateWorkflow(
 		{ expectedChecksum },
 	);
 }
+
+export async function raiseReview(
+	context: IRestApiContext,
+	data: { workflowIds: string[] },
+): Promise<{ prUrl: string; prNumber: number }> {
+	return await makeRestApiRequest(context, 'POST', '/instance-pull/raise-review', data);
+}

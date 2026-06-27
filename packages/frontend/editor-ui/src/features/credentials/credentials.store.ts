@@ -361,6 +361,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			uiContext,
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
+			// Preset id (instance-pull demo); honoured server-side only when the demo flag is on.
+			...(data.id ? { id: data.id } : {}),
 		});
 
 		if (data?.homeProject && !credential.homeProject) {

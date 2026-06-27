@@ -8,6 +8,7 @@ import CredentialGet from './commands/credential/get';
 import CredentialList from './commands/credential/list';
 import CredentialSchema from './commands/credential/schema';
 import CredentialTransfer from './commands/credential/transfer';
+import Deploy from './commands/deploy';
 import DataTableAddRows from './commands/data-table/add-rows';
 import DataTableCreate from './commands/data-table/create';
 import DataTableDelete from './commands/data-table/delete';
@@ -125,6 +126,8 @@ export const commands = {
 
 	'package:export': PackageExport,
 	'package:import': PackageImport,
+
+	deploy: Deploy,
 
 	audit: Audit,
 };

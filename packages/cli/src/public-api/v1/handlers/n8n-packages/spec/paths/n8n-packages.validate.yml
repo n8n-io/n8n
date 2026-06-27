@@ -1,0 +1,98 @@
+post:
+  x-eov-operation-id: validatePackage
+  x-required-scope: workflow:import
+  x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
+  tags:
+    - N8nPackage
+  summary: 'Beta: Validate (dry-run) an n8n package against a target instance'
+  description: |
+    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
+    instance to enable this endpoint. While disabled, requests return `404`.
+
+    Side-effect-free dry run of an import: parses a gzip-compressed tar package
+    (`.n8np`, multipart field `package`) and returns the blocking issues that
+    would prevent it from importing into the target project — without writing
+    anything. Powers the `n8n deploy --dry-run` CI gate.
+
+    The required `pr` query parameter keys an instance-side credential-binding
+    session, so the returned `bindingUrl` is stable across pushes to the same PR.
+    The gate always evaluates credential resolution under `must-preexist` (a
+    missing credential is always reported as blocking), regardless of the
+    instance's import default. Other body fields mirror the import endpoint.
+  parameters:
+    - name: pr
+      in: query
+      required: true
+      description: GitHub pull request number; keys the credential-binding session.
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - package
+            - workflowConflictPolicy
+          properties:
+            package:
+              type: string
+              format: binary
+              description: Gzip-compressed tar package (`.n8np`).
+            projectId:
+              type: string
+              description: Target project id. Omit or send empty for the caller's personal project.
+            folderId:
+              type: string
+              description: Optional folder within the target project.
+            credentialMatchingMode:
+              type: string
+              enum:
+                - id-only
+              default: id-only
+            credentialBindings:
+              type: string
+              default: '{}'
+              description: JSON object mapping package credential ids to target credential ids.
+            workflowConflictPolicy:
+              type: string
+              enum:
+                - new-version
+                - fail
+                - skip
+            workflowIdPolicy:
+              type: string
+              enum:
+                - new
+                - source
+              default: new
+  responses:
+    '200':
+      description: >
+        Validation ran. `issues` is empty when the package can be safely imported;
+        otherwise it lists every blocking issue. `bindingUrl` points to the
+        credential-binding screen for this PR on the target instance.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - issues
+              - bindingUrl
+            properties:
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
+              bindingUrl:
+                type: string
+                description: Stable `/credential-binding/<pr>` link on the target instance.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

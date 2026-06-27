@@ -1,0 +1,72 @@
+# Copy this into the PRODUCTION-WORKFLOWS repo at .github/workflows/deploy-dry-run.yml
+# It gates every PR: it dry-runs the package against the prd n8n instance and fails
+# (blocking merge) when a credential is missing, posting a sticky comment with the
+# binding link. Make this a REQUIRED status check in the repo's branch protection.
+#
+# Repo secrets required:
+#   PRD_URL      e.g. https://n8n.prd.example.com   (must be reachable from the runner)
+#   PRD_API_KEY  a prd API key with the workflow:import scope
+#
+# Place tasks/demo/n8n-deploy.mjs from the n8n repo at scripts/n8n-deploy.mjs here.
+
+name: Deploy dry-run (gate)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Allow a re-run to update the same sticky comment.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: n8n deploy --dry-run
+        id: deploy
+        continue-on-error: true
+        env:
+          N8N_URL: ${{ secrets.PRD_URL }}
+          N8N_API_KEY: ${{ secrets.PRD_API_KEY }}
+        run: node scripts/n8n-deploy.mjs --dry-run --pr "${{ github.event.pull_request.number }}" .
+
+      - name: Upsert binding comment
+        if: always()
+        uses: actions/github-script@v7
+        # Pass step outputs via env (NOT ${{ }} interpolation into the script body)
+        # so they can never break out of the string / inject code into the runner.
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          BINDING_URL: ${{ steps.deploy.outputs.binding_url }}
+        with:
+          script: |
+            const ok = process.env.DEPLOY_OUTCOME === 'success';
+            const bindingUrl = process.env.BINDING_URL || '';
+            const marker = '<!-- n8n-deploy-dry-run -->';
+            const body = ok
+              ? `${marker}\n✅ **Deploy dry-run passed** — this PR can be safely imported into production.`
+              : `${marker}\n❌ **Deploy dry-run blocked** — production is missing one or more credentials.\n\n` +
+                (bindingUrl
+                  ? `👉 Resolve them here, then re-run this job:\n${bindingUrl}`
+                  : `See the job log for the required credentials.`);
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Fail the check if the dry-run was blocked
+        if: always()
+        run: test "${{ steps.deploy.outcome }}" = "success"
