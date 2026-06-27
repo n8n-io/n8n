@@ -32,6 +32,15 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 describe(useFloatingUiOffsets, () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));

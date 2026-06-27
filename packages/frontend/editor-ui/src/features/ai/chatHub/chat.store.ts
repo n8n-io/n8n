@@ -37,7 +37,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
@@ -111,6 +111,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
+	const routeWorkflowId = useRouteWorkflowId();
 
 	const agents = ref<ChatModelsResponse | null>(null);
 	let pendingAgentsFetch: Promise<ChatModelsResponse> | null = null;
@@ -565,11 +566,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 * node results (makes nodes turn green during manual execution).
 	 */
 	function initManualExecutionScaffold(workflowId: string) {
-		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(routeWorkflowId.value),
 		).setWorkflowExecutionData({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
@@ -587,7 +587,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
 		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(routeWorkflowId.value),
 		).setActiveExecutionId(null);
 	}
 
