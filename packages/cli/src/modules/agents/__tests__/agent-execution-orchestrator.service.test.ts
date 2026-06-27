@@ -374,7 +374,13 @@ describe('AgentExecutionOrchestratorService', () => {
 		const { service, executionService } = makeService();
 		executionService.getThreadDetail.mockResolvedValue({
 			thread: { id: 'thread-1' },
-			executions: [{ id: 'execution-1', userMessage: 'Hi', assistantResponse: 'Hello' }],
+			executions: [
+				{
+					id: 'execution-1',
+					userMessage: 'Hi',
+					timeline: [{ type: 'text', content: 'Hello', timestamp: 100 }],
+				},
+			],
 		} as never);
 
 		await expect(
@@ -432,7 +438,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				threadId: 'thread-1',
-				userMessage: '',
+				userMessage: null,
 				hitlStatus: 'resumed',
 				telemetry: {
 					runType: 'production',
@@ -471,7 +477,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ threadId: 'thread-1', userMessage: '', hitlStatus: 'suspended' }),
+			expect.objectContaining({ threadId: 'thread-1', userMessage: null, hitlStatus: 'suspended' }),
 		);
 	});
 
