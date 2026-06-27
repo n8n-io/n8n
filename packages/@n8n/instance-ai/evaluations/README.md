@@ -259,6 +259,16 @@ When `LANGSMITH_API_KEY` is set, every eval run automatically compares its resul
 
 The CI PR-comment step uses `eval-pr-comment.md` as the entire comment body (no jq assembly in the workflow). The console output uses a separate aligned-text formatter — same data, no markdown noise in the terminal.
 
+### Re-running on a PR
+
+Evals auto-run when a PR is **opened / reopened / marked ready** (path-filtered), but **not on new pushes** — `synchronize` is intentionally off (full runs are expensive). To exercise the latest push, re-run against the PR head on demand:
+
+```bash
+gh workflow run ci-instance-ai-evals.yml -f pr=<number>
+```
+
+…or use the **Run workflow** button on the **CI: Instance AI Evals** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so the prebuilt docker image cache is reused; otherwise it rebuilds from the head), runs the eval against it, and posts results back to the PR. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
+
 ### Refreshing the baseline
 
 There is no auto-refresh — refresh explicitly when you want a new reference point, ideally with high N for low noise:
