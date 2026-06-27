@@ -41,6 +41,24 @@ export function applyLargeNumbersReceive(e: {
 	}
 }
 
+// Must stay at module scope. Pools outlive the execution in pg-promise's global
+// registry, so an inline handler would pin the whole execution context via `this`.
+export function createReceiveHandler(largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput']) {
+	return (e: unknown) => {
+		if (largeNumbersOutput !== 'numbers') return;
+		applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
+	};
+}
+
+export function parseDateToISO(value: string) {
+	const parsedDate = new Date(value);
+
+	if (isNaN(parsedDate.getTime())) {
+		return value;
+	}
+	return parsedDate.toISOString();
+}
+
 const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,
 	options: PostgresNodeOptions = {},
@@ -113,24 +131,13 @@ export async function configurePostgres(
 			noWarnings: true,
 			// Use per-instance receive event instead of pgp.pg.types.setTypeParser, which mutates
 			// global pg state and would affect all pools regardless of their largeNumbersOutput setting
-			receive(e) {
-				if (options.largeNumbersOutput !== 'numbers') return;
-				applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
-			},
+			receive: createReceiveHandler(options.largeNumbersOutput),
 		});
 
 		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 			// Always return dates as ISO strings
 			[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
-				pgp.pg.types.setTypeParser(type, (value: string) => {
-					const parsedDate = new Date(value);
-
-					if (isNaN(parsedDate.getTime())) {
-						return value;
-					}
-
-					return parsedDate.toISOString();
-				});
+				pgp.pg.types.setTypeParser(type, parseDateToISO);
 			});
 		}
 
