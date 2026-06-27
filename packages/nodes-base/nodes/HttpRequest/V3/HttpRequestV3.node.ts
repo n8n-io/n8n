@@ -47,7 +47,6 @@ import {
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
-
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
 
 function toText<T>(data: T) {
@@ -63,6 +62,168 @@ function isEmptyResponseBody(body: unknown): body is string {
 
 function isPaginationRequestType(value: string): value is 'body' | 'headers' | 'qs' {
 	return value === 'body' || value === 'headers' || value === 'qs';
+}
+
+async function createRequestPromise(
+	context: IExecuteFunctions,
+	requestOptions: IRequestOptions,
+	authentication: string,
+	pagination: any,
+	oAuth1Api: any,
+	oAuth2Api: any,
+	nodeCredentialType: string | undefined,
+	genericCredentialType: string | undefined,
+	itemIndex: number,
+	authDataKeys: IAuthDataSanitizeKeys,
+	responseFormat: string,
+	response?: any,
+): Promise<any> {
+	if (pagination && pagination.paginationMode !== 'off') {
+		let continueExpression = '={{false}}';
+		if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
+			// Split out comma separated list of status codes into array
+			const statusCodesWhenCompleted = pagination.statusCodesWhenComplete
+				.split(',')
+				.map((item: string) => parseInt(item.trim(), 10));
+
+			continueExpression = `={{ !${JSON.stringify(
+				statusCodesWhenCompleted,
+			)}.includes($response.statusCode) }}`;
+		} else if (pagination.paginationCompleteWhen === 'responseIsEmpty') {
+			continueExpression =
+				'={{ Array.isArray($response.body) ? $response.body.length : !!$response.body }}';
+		} else {
+			// Other
+			if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
+				throw new NodeOperationError(context.getNode(), 'Invalid or empty Complete Expression');
+			}
+			const completionExpression = pagination.completeExpression.trim().slice(3, -2);
+			if (response?.response?.neverError) {
+				continueExpression = `={{ !(${completionExpression}) }}`;
+			} else {
+				// In paginated mode, non-2xx responses are surfaced as errors via the helper when
+				// another request is requested. For "other", force that error path unless Never Error is enabled.
+				continueExpression = `={{ !(${completionExpression}) || ($response.statusCode < 200 || $response.statusCode >= 300) }}`;
+			}
+		}
+
+		const paginationData: PaginationOptions = {
+			continue: continueExpression,
+			request: Object.create(null) as Record<string, unknown>,
+			requestInterval: pagination.requestInterval,
+		};
+
+		if (pagination.paginationMode === 'updateAParameterInEachRequest') {
+			// Iterate over all parameters and add them to the request
+			const { parameters } = pagination.parameters;
+			if (parameters.length === 1 && parameters[0].name === '' && parameters[0].value === '') {
+				throw new NodeOperationError(
+					context.getNode(),
+					"At least one entry with 'Name' and 'Value' filled must be included in 'Parameters' to use 'Update a Parameter in Each Request' mode ",
+				);
+			}
+			pagination.parameters.parameters.forEach((parameter: any, index: number) => {
+				const parameterName = parameter.name;
+				if (parameterName === '') {
+					throw new NodeOperationError(
+						context.getNode(),
+						`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
+					);
+				}
+
+				const paramType: string = parameter.type;
+				if (!isPaginationRequestType(paramType)) {
+					throw new NodeOperationError(
+						context.getNode(),
+						`Parameter type must be one of: body, headers, qs for parameter [${
+							index + 1
+						}] in pagination settings`,
+					);
+				}
+
+				paginationData.request[paramType] ??= Object.create(null);
+
+				const parameterValue = parameter.value;
+				if (parameterValue === '') {
+					throw new NodeOperationError(
+						context.getNode(),
+						`Some value must be provided for parameter [${
+							index + 1
+						}] in pagination settings, omitting it will result in an infinite loop`,
+					);
+				}
+
+				setSafeObjectProperty(paginationData.request[paramType]!, parameterName, parameterValue);
+			});
+		} else if (pagination.paginationMode === 'responseContainsNextURL') {
+			paginationData.request.url = pagination.nextURL;
+		}
+
+		if (pagination.limitPagesFetched) {
+			paginationData.maxRequests = pagination.maxRequests;
+		}
+
+		if (responseFormat === 'file') {
+			paginationData.binaryResult = true;
+		}
+
+		const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
+		return await context.helpers.requestWithAuthenticationPaginated
+			.call(
+				context,
+				requestOptions,
+				itemIndex,
+				paginationData,
+				nodeCredentialType ?? genericCredentialType,
+				undefined,
+				sanitizedRequest,
+			)
+			.catch((error) => {
+				if (error instanceof NodeOperationError && error.type === 'invalid_url') {
+					const urlParameterName =
+						pagination.paginationMode === 'responseContainsNextURL' ? 'Next URL' : 'URL';
+					throw new NodeOperationError(context.getNode(), error.message, {
+						description: `Make sure the "${urlParameterName}" parameter evaluates to a valid URL.`,
+					});
+				}
+
+				throw error;
+			});
+	} else if (authentication === 'genericCredentialType' || authentication === 'none') {
+		if (oAuth1Api) {
+			const promise = context.helpers.requestOAuth1.call(context, 'oAuth1Api', requestOptions);
+			promise.catch(() => {});
+			return await promise;
+		} else if (oAuth2Api) {
+			const promise = context.helpers.requestOAuth2.call(context, 'oAuth2Api', requestOptions, {
+				tokenType: 'Bearer',
+			});
+			promise.catch(() => {});
+			return await promise;
+		} else {
+			// bearerAuth, queryAuth, headerAuth, digestAuth, none
+			const promise = context.helpers.request(requestOptions);
+			promise.catch(() => {});
+			return await promise;
+		}
+	} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
+		const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
+
+		// service-specific cred: OAuth1, OAuth2, plain
+
+		const promise = context.helpers.requestWithAuthentication.call(
+			context,
+			nodeCredentialType,
+			requestOptions,
+			additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+			itemIndex,
+		);
+		promise.catch(() => {});
+		return await promise;
+	}
+
+	return undefined;
 }
 
 export class HttpRequestV3 implements INodeType {
@@ -117,7 +278,6 @@ export class HttpRequestV3 implements INodeType {
 				| 'genericCredentialType'
 				| 'none';
 		} catch {}
-
 		let httpBasicAuth;
 		let httpBearerAuth;
 		let httpDigestAuth;
@@ -173,6 +333,18 @@ export class HttpRequestV3 implements INodeType {
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
+
+		const sequentialExecution = this.getNodeParameter(
+			'options.sequentialExecution',
+			0,
+			false,
+		) as boolean;
+		const sequentialDelay = sequentialExecution
+			? (this.getNodeParameter('options.sequentialDelay', 0, 0) as number)
+			: 0;
+
+		const sequentialResults: Array<PromiseSettledResult<any>> = [];
+		const sanitizedRequests: IDataObject[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
@@ -621,171 +793,64 @@ export class HttpRequestV3 implements INodeType {
 					responseFileName,
 				});
 
-				if (pagination && pagination.paginationMode !== 'off') {
-					let continueExpression = '={{false}}';
-					if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
-						// Split out comma separated list of status codes into array
-						const statusCodesWhenCompleted = pagination.statusCodesWhenComplete
-							.split(',')
-							.map((item) => parseInt(item.trim()));
+				const requestPromise = createRequestPromise(
+					this,
+					requestOptions,
+					authentication ?? 'none',
+					pagination,
+					oAuth1Api,
+					oAuth2Api,
+					nodeCredentialType,
+					genericCredentialType,
+					itemIndex,
+					authDataKeys,
+					responseFormat,
+					response,
+				);
 
-						continueExpression = `={{ !${JSON.stringify(
-							statusCodesWhenCompleted,
-						)}.includes($response.statusCode) }}`;
-					} else if (pagination.paginationCompleteWhen === 'responseIsEmpty') {
-						continueExpression =
-							'={{ Array.isArray($response.body) ? $response.body.length : !!$response.body }}';
-					} else {
-						// Other
-						if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
-							throw new NodeOperationError(this.getNode(), 'Invalid or empty Complete Expression');
-						}
-						const completionExpression = pagination.completeExpression.trim().slice(3, -2);
-						if (response?.response?.neverError) {
-							continueExpression = `={{ !(${completionExpression}) }}`;
-						} else {
-							// In paginated mode, non-2xx responses are surfaced as errors via the helper when
-							// another request is requested. For "other", force that error path unless Never Error is enabled.
-							continueExpression = `={{ !(${completionExpression}) || ($response.statusCode < 200 || $response.statusCode >= 300) }}`;
-						}
+				if (sequentialExecution) {
+					try {
+						const response = await requestPromise;
+						sequentialResults.push({ status: 'fulfilled', value: response });
+					} catch (requestError) {
+						sequentialResults.push({ status: 'rejected', reason: requestError });
 					}
 
-					const paginationData: PaginationOptions = {
-						continue: continueExpression,
-						request: Object.create(null) as Record<string, unknown>,
-						requestInterval: pagination.requestInterval,
-					};
+					// NOTE: we process every item even when a request fails to match the
+					// Promise.allSettled behavior of concurrent mode. Early-exit would
+					// change error semantics for users switching from concurrent to
+					// sequential. If the team wants a "stop on first error" option later
+					// it can be added as a separate, opt‑in feature.
 
-					if (pagination.paginationMode === 'updateAParameterInEachRequest') {
-						// Iterate over all parameters and add them to the request
-						const { parameters } = pagination.parameters;
-						if (
-							parameters.length === 1 &&
-							parameters[0].name === '' &&
-							parameters[0].value === ''
-						) {
-							throw new NodeOperationError(
-								this.getNode(),
-								"At least one entry with 'Name' and 'Value' filled must be included in 'Parameters' to use 'Update a Parameter in Each Request' mode ",
-							);
-						}
-						pagination.parameters.parameters.forEach((parameter, index) => {
-							const parameterName = parameter.name;
-							if (parameterName === '') {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
-								);
+					// Sanitization runs for both success and failure (matches .finally() in concurrent path)
+					if (!errorItems[itemIndex]) {
+						try {
+							const { options, authKeys, credentialType } = requests[itemIndex];
+							let secrets: string[] = [];
+							if (credentialType) {
+								const credentials = await this.getCredentials(credentialType, itemIndex);
+								secrets = getSecrets(credentials);
 							}
-
-							if (!isPaginationRequestType(parameter.type)) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Parameter type must be one of: body, headers, qs for parameter [${
-										index + 1
-									}] in pagination settings`,
-								);
-							}
-
-							paginationData.request[parameter.type] ??= Object.create(null);
-
-							const parameterValue = parameter.value;
-							if (parameterValue === '') {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Some value must be provided for parameter [${
-										index + 1
-									}] in pagination settings, omitting it will result in an infinite loop`,
-								);
-							}
-
-							setSafeObjectProperty(
-								paginationData.request[parameter.type]!,
-								parameterName,
-								parameterValue,
-							);
-						});
-					} else if (pagination.paginationMode === 'responseContainsNextURL') {
-						paginationData.request.url = pagination.nextURL;
+							const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
+							sanitizedRequests.push(sanitizedRequestOptions);
+							this.sendMessageToUI(sanitizedRequestOptions);
+						} catch (e) {}
 					}
 
-					if (pagination.limitPagesFetched) {
-						paginationData.maxRequests = pagination.maxRequests;
+					if (sequentialDelay > 0 && itemIndex < items.length - 1) {
+						await sleep(sequentialDelay);
 					}
-
-					if (responseFormat === 'file') {
-						paginationData.binaryResult = true;
-					}
-
-					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
-
-					const requestPromise = this.helpers.requestWithAuthenticationPaginated
-						.call(
-							this,
-							requestOptions,
-							itemIndex,
-							paginationData,
-							nodeCredentialType ?? genericCredentialType,
-							undefined,
-							sanitizedRequest,
-						)
-						.catch((error) => {
-							if (error instanceof NodeOperationError && error.type === 'invalid_url') {
-								const urlParameterName =
-									pagination.paginationMode === 'responseContainsNextURL' ? 'Next URL' : 'URL';
-								throw new NodeOperationError(this.getNode(), error.message, {
-									description: `Make sure the "${urlParameterName}" parameter evaluates to a valid URL.`,
-								});
-							}
-
-							throw error;
-						});
+				} else {
 					requestPromises.push(requestPromise);
-				} else if (authentication === 'genericCredentialType' || authentication === 'none') {
-					if (oAuth1Api) {
-						const requestOAuth1 = this.helpers.requestOAuth1.call(
-							this,
-							'oAuth1Api',
-							requestOptions,
-						);
-						requestOAuth1.catch(() => {});
-						requestPromises.push(requestOAuth1);
-					} else if (oAuth2Api) {
-						const requestOAuth2 = this.helpers.requestOAuth2.call(
-							this,
-							'oAuth2Api',
-							requestOptions,
-							{
-								tokenType: 'Bearer',
-							},
-						);
-						requestOAuth2.catch(() => {});
-						requestPromises.push(requestOAuth2);
-					} else {
-						// bearerAuth, queryAuth, headerAuth, digestAuth, none
-						const request = this.helpers.request(requestOptions);
-						request.catch(() => {});
-						requestPromises.push(request);
-					}
-				} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
-					const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
-
-					// service-specific cred: OAuth1, OAuth2, plain
-
-					const requestWithAuthentication = this.helpers.requestWithAuthentication.call(
-						this,
-						nodeCredentialType,
-						requestOptions,
-						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
-						itemIndex,
-					);
-					requestWithAuthentication.catch(() => {});
-					requestPromises.push(requestWithAuthentication);
 				}
 			} catch (error) {
 				if (!this.continueOnFail()) throw error;
 
-				requestPromises.push(Promise.reject(error).catch(() => {}));
+				if (sequentialExecution) {
+					sequentialResults.push({ status: 'rejected', reason: error });
+				} else {
+					requestPromises.push(Promise.reject(error).catch(() => {}));
+				}
 
 				errorItems[itemIndex] = error.message;
 
@@ -805,30 +870,35 @@ export class HttpRequestV3 implements INodeType {
 			}
 		}
 
-		const sanitizedRequests: IDataObject[] = [];
-		const promisesResponses = await Promise.allSettled(
-			requestPromises.map(
-				async (requestPromise, itemIndex) =>
-					await requestPromise
-						.then((response) => response)
-						.finally(async () => {
-							if (errorItems[itemIndex]) return;
-							try {
-								// Secrets need to be read after the request because secrets could have changed
-								// For example: OAuth token refresh, preAuthentication
-								const { options, authKeys, credentialType } = requests[itemIndex];
-								let secrets: string[] = [];
-								if (credentialType) {
-									const credentials = await this.getCredentials(credentialType, itemIndex);
-									secrets = getSecrets(credentials);
-								}
-								const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
-								sanitizedRequests.push(sanitizedRequestOptions);
-								this.sendMessageToUI(sanitizedRequestOptions);
-							} catch (e) {}
-						}),
-			),
-		);
+		let promisesResponses: Array<PromiseSettledResult<any>>;
+
+		if (sequentialExecution) {
+			promisesResponses = sequentialResults;
+		} else {
+			promisesResponses = await Promise.allSettled(
+				requestPromises.map(
+					async (requestPromise, itemIndex) =>
+						await requestPromise
+							.then((response) => response)
+							.finally(async () => {
+								if (errorItems[itemIndex]) return;
+								try {
+									// Secrets need to be read after the request because secrets could have changed
+									// For example: OAuth token refresh, preAuthentication
+									const { options, authKeys, credentialType } = requests[itemIndex];
+									let secrets: string[] = [];
+									if (credentialType) {
+										const credentials = await this.getCredentials(credentialType, itemIndex);
+										secrets = getSecrets(credentials);
+									}
+									const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
+									sanitizedRequests.push(sanitizedRequestOptions);
+									this.sendMessageToUI(sanitizedRequestOptions);
+								} catch (e) {}
+							}),
+				),
+			);
+		}
 
 		let responseData: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {

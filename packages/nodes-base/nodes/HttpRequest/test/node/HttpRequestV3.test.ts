@@ -1,6 +1,7 @@
 import FormData from 'form-data';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
-
+import { NodeApiError } from 'n8n-workflow';
+import * as workflow from 'n8n-workflow';
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
 import type { Mock } from 'vitest';
 
@@ -1207,6 +1208,576 @@ describe('HttpRequestV3', () => {
 			expect(result[0][0].json.error).toBeDefined();
 			// Item 1 → valid response, no crash
 			expect(result[0][1].json.ok).toBe(true);
+		});
+	});
+
+	describe('Sequential Execution', () => {
+		let node: HttpRequestV3;
+		let executeFunctions: IExecuteFunctions;
+		let sleepSpy: Mock;
+
+		const baseUrl = 'http://example.com';
+
+		function makeResponse(
+			body: object | string,
+			contentType = 'application/json',
+			statusCode = 200,
+		) {
+			return {
+				statusCode,
+				headers: { 'content-type': contentType },
+				body: typeof body === 'string' ? Buffer.from(body) : Buffer.from(JSON.stringify(body)),
+			};
+		}
+
+		beforeEach(() => {
+			sleepSpy = vi.spyOn(workflow, 'sleep').mockResolvedValue(undefined);
+			const baseDescription: INodeTypeBaseDescription = {
+				displayName: 'HTTP Request',
+				name: 'httpRequest',
+				description: 'Makes an HTTP request and returns the response data',
+				group: [],
+			};
+			node = new HttpRequestV3(baseDescription);
+			executeFunctions = {
+				getInputData: vi.fn(),
+				getNodeParameter: vi.fn(),
+				getNode: vi.fn(() => ({
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 3,
+				})),
+				getCredentials: vi.fn(),
+				helpers: {
+					request: vi.fn(),
+					requestOAuth1: vi.fn(),
+					requestOAuth2: vi.fn(),
+					requestWithAuthentication: vi.fn(),
+					requestWithAuthenticationPaginated: vi.fn(),
+					assertBinaryData: vi.fn(),
+					getBinaryStream: vi.fn(),
+					getBinaryMetadata: vi.fn(),
+					binaryToString: vi.fn((buffer: Buffer) => buffer.toString()),
+					prepareBinaryData: vi.fn(),
+				},
+				getContext: vi.fn(),
+				sendMessageToUI: vi.fn(),
+				continueOnFail: vi.fn(),
+				getMode: vi.fn(),
+			} as unknown as IExecuteFunctions;
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+			sleepSpy.mockClear();
+		});
+
+		function setupNodeParams(overrides: Record<string, any> = {}) {
+			return (paramName: string, itemIndex?: number) => {
+				const defaults: Record<string, any> = {
+					method: 'GET',
+					url: `${baseUrl}/${(itemIndex ?? 0) + 1}`,
+					authentication: 'none',
+					genericAuthType: undefined,
+					nodeCredentialType: undefined,
+					sendHeaders: false,
+					sendQuery: false,
+					sendBody: false,
+					contentType: 'json',
+					rawContentType: '',
+					specifyBody: 'keypair',
+					bodyParameters: { parameters: [] },
+					jsonBody: '',
+					binaryContentType: '',
+					binaryContent: '',
+					binaryPropertyName: '',
+					binaryRename: '',
+					binaryOutputData: false,
+					options: {
+						batching: { batch: { batchSize: 1, batchInterval: 0 } },
+						redirect: '',
+						proxy: '',
+						timeout: '',
+						allowUnauthorizedCerts: false,
+						queryParameterArrays: '',
+						lowercaseHeaders: true,
+						response: {
+							responseFormat: 'json',
+							outputPropertyName: 'data',
+							fullResponse: false,
+							neverError: false,
+						},
+					},
+					'options.sequentialExecution': false,
+					'options.sequentialDelay': 0,
+				};
+				return overrides[paramName] ?? defaults[paramName] ?? undefined;
+			};
+		}
+
+		it('should run requests concurrently by default', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(setupNodeParams());
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ r: '1' }))
+				.mockResolvedValueOnce(makeResponse({ r: '2' }))
+				.mockResolvedValueOnce(makeResponse({ r: '3' }));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(3);
+			expect(result[0][0].json).toEqual({ r: '1' });
+			expect(result[0][1].json).toEqual({ r: '2' });
+			expect(result[0][2].json).toEqual({ r: '3' });
+		});
+
+		it('should execute requests sequentially when enabled', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ r: '1' }))
+				.mockResolvedValueOnce(makeResponse({ r: '2' }))
+				.mockResolvedValueOnce(makeResponse({ r: '3' }));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(3);
+			expect(result[0][0].json).toEqual({ r: '1' });
+			expect(result[0][1].json).toEqual({ r: '2' });
+			expect(result[0][2].json).toEqual({ r: '3' });
+			expect(sleepSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not delay for a single item', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true, 'options.sequentialDelay': 100 }),
+			);
+
+			(executeFunctions.helpers.request as Mock).mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			await node.execute.call(executeFunctions);
+
+			expect(sleepSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return empty array for zero items', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[]]);
+			expect(executeFunctions.helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('should process all items before throwing on request error with continueOnFail false', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(false);
+
+			const error401 = new NodeApiError(
+				executeFunctions.getNode(),
+				{ message: 'Unauthorized' },
+				{ itemIndex: 1 },
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockRejectedValueOnce(error401)
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeApiError);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(3);
+		});
+
+		it('should continue after request error with continueOnFail true', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+
+			const error401 = new NodeApiError(
+				executeFunctions.getNode(),
+				{ message: 'Unauthorized' },
+				{ itemIndex: 1 },
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockRejectedValueOnce(error401)
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0]).toHaveLength(3);
+			expect(result[0][0].json).toEqual({ ok: true });
+			expect(result[0][1].json.error).toBeDefined();
+			expect(result[0][2].json).toEqual({ ok: true });
+		});
+
+		it('should throw 429 hint for rate limit errors', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(false);
+
+			const error429 = new NodeApiError(
+				executeFunctions.getNode(),
+				{ message: 'Too Many Requests', statusCode: 429 },
+				{ itemIndex: 1 },
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockRejectedValueOnce(error429);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeApiError);
+		});
+
+		it('should handle build errors and continue with continueOnFail true', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex?: number) => {
+					if (paramName === 'url' && itemIndex === 1) {
+						return '={{ $invalid.property }}';
+					}
+					return setupNodeParams({ 'options.sequentialExecution': true })(paramName, itemIndex);
+				},
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0]).toHaveLength(3);
+			expect(result[0][0].json).toEqual({ ok: true });
+			expect(result[0][1].json.error).toBeDefined();
+			expect(result[0][2].json).toEqual({ ok: true });
+		});
+
+		it('should throw immediately on build error with continueOnFail false', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex?: number) => {
+					if (paramName === 'url' && itemIndex === 1) {
+						return '={{ $invalid.property }}';
+					}
+					return setupNodeParams({ 'options.sequentialExecution': true })(paramName, itemIndex);
+				},
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow();
+		});
+
+		it('should call sendMessageToUI for each item in sequential mode', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.sendMessageToUI).toHaveBeenCalledTimes(3);
+		});
+
+		it('should call sendMessageToUI for failed requests too', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+
+			const error = new NodeApiError(
+				executeFunctions.getNode(),
+				{ message: 'Unauthorized' },
+				{ itemIndex: 1 },
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockRejectedValueOnce(error)
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.sendMessageToUI).toHaveBeenCalledTimes(3);
+		});
+
+		it('should skip sendMessageToUI for build errors', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex?: number) => {
+					if (paramName === 'url' && itemIndex === 1) {
+						return '={{ $invalid.property }}';
+					}
+					return setupNodeParams({ 'options.sequentialExecution': true })(paramName, itemIndex);
+				},
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.sendMessageToUI).toHaveBeenCalledTimes(2);
+		});
+
+		it('should use correct auth helper for each auth type', async () => {
+			const authTypes = [
+				{ auth: 'none', helper: 'request' },
+				{ auth: 'genericCredentialType', genericAuthType: 'oAuth1Api', helper: 'requestOAuth1' },
+				{ auth: 'genericCredentialType', genericAuthType: 'oAuth2Api', helper: 'requestOAuth2' },
+				{
+					auth: 'predefinedCredentialType',
+					nodeCredentialType: 'httpApi',
+					helper: 'requestWithAuthentication',
+				},
+			];
+
+			for (const { auth, genericAuthType, nodeCredentialType, helper } of authTypes) {
+				vi.clearAllMocks();
+
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+					const overrides: Record<string, any> = {
+						authentication: auth,
+						'options.sequentialExecution': true,
+					};
+					if (genericAuthType) overrides.genericAuthType = genericAuthType;
+					if (nodeCredentialType) overrides.nodeCredentialType = nodeCredentialType;
+					return setupNodeParams(overrides)(paramName);
+				});
+				(executeFunctions.getCredentials as Mock).mockResolvedValue({});
+
+				const response = makeResponse({ ok: true });
+
+				if (helper === 'requestOAuth1') {
+					(executeFunctions.helpers.requestOAuth1 as Mock).mockResolvedValue(response);
+				} else if (helper === 'requestOAuth2') {
+					(executeFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(response);
+				} else if (helper === 'requestWithAuthentication') {
+					(executeFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(response);
+				} else {
+					(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+				}
+
+				await node.execute.call(executeFunctions);
+
+				if (helper === 'requestOAuth1') {
+					expect(executeFunctions.helpers.requestOAuth1).toHaveBeenCalled();
+				} else if (helper === 'requestOAuth2') {
+					expect(executeFunctions.helpers.requestOAuth2).toHaveBeenCalled();
+				} else if (helper === 'requestWithAuthentication') {
+					expect(executeFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
+				} else {
+					expect(executeFunctions.helpers.request).toHaveBeenCalled();
+				}
+			}
+		});
+
+		it('should produce identical output for sequential and concurrent modes', async () => {
+			const testData = [{ json: {} }, { json: {} }, { json: {} }];
+
+			const error = new NodeApiError(
+				executeFunctions.getNode(),
+				{ message: 'Unauthorized' },
+				{ itemIndex: 1 },
+			);
+
+			// Concurrent
+			vi.clearAllMocks();
+			(executeFunctions.getInputData as Mock).mockReturnValue(testData);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': false }),
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockRejectedValueOnce(error)
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			const concurrentResult = await node.execute.call(executeFunctions);
+
+			// Sequential
+			vi.clearAllMocks();
+			(executeFunctions.getInputData as Mock).mockReturnValue(testData);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({ 'options.sequentialExecution': true }),
+			);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ ok: true }))
+				.mockRejectedValueOnce(error)
+				.mockResolvedValueOnce(makeResponse({ ok: true }));
+
+			const sequentialResult = await node.execute.call(executeFunctions);
+
+			expect(concurrentResult[0]).toHaveLength(3);
+			expect(sequentialResult[0]).toHaveLength(3);
+
+			expect(concurrentResult[0][0].json).toEqual(sequentialResult[0][0].json);
+			expect(concurrentResult[0][1].json.error).toBeDefined();
+			expect(sequentialResult[0][1].json.error).toBeDefined();
+			expect(concurrentResult[0][2].json).toEqual(sequentialResult[0][2].json);
+		});
+
+		it('should await pagination per item before starting next', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				const overrides: Record<string, any> = {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'httpApi',
+					'options.sequentialExecution': true,
+					'options.pagination.pagination': {
+						paginationMode: 'updateAParameterInEachRequest',
+						parameters: {
+							parameters: [{ type: 'qs', name: 'Page', value: '1' }],
+						},
+						paginationCompleteWhen: 'responseIsEmpty',
+						statusCodesWhenComplete: '',
+						completeExpression: '',
+						limitPagesFetched: false,
+						maxRequests: 0,
+						requestInterval: 0,
+					},
+				};
+				return setupNodeParams(overrides)(paramName);
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({});
+
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+				.mockResolvedValueOnce([makeResponse({ data: [] })])
+				.mockResolvedValueOnce([makeResponse({ data: [] })]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(2);
+			expect(result[0]).toHaveLength(2);
+		});
+
+		it('should apply sequentialDelay between items', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({
+					'options.sequentialExecution': true,
+					'options.sequentialDelay': 100,
+				}),
+			);
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ r: '1' }))
+				.mockResolvedValueOnce(makeResponse({ r: '2' }))
+				.mockResolvedValueOnce(makeResponse({ r: '3' }));
+
+			await node.execute.call(executeFunctions);
+
+			expect(sleepSpy).toHaveBeenCalledTimes(2); // After item 0, after item 1
+			expect(sleepSpy).toHaveBeenCalledWith(100);
+		});
+
+		it('should fire both sequential delay and batch interval sleeps independently', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				setupNodeParams({
+					'options.sequentialExecution': true,
+					'options.sequentialDelay': 50,
+					// Override the whole options object so batching values reach the code
+					options: {
+						batching: { batch: { batchSize: 2, batchInterval: 100 } },
+						redirect: '',
+						proxy: '',
+						timeout: '',
+						allowUnauthorizedCerts: false,
+						queryParameterArrays: '',
+						lowercaseHeaders: true,
+						response: {
+							responseFormat: 'json',
+							outputPropertyName: 'data',
+							fullResponse: false,
+							neverError: false,
+						},
+					},
+				}),
+			);
+
+			(executeFunctions.helpers.request as Mock)
+				.mockResolvedValueOnce(makeResponse({ r: '1' }))
+				.mockResolvedValueOnce(makeResponse({ r: '2' }))
+				.mockResolvedValueOnce(makeResponse({ r: '3' }));
+
+			await node.execute.call(executeFunctions);
+
+			// 3 items, batchSize=2: items 0-1 in batch 1, item 2 in batch 2.
+			// Batch interval fires once after batch 1 completes (100ms).
+			// Sequential delay fires after items 0 and 1, not after the last item.
+			expect(sleepSpy).toHaveBeenCalledTimes(3);
+			expect(sleepSpy).toHaveBeenCalledWith(50); // sequential delay
+			expect(sleepSpy).toHaveBeenCalledWith(100); // batch interval
 		});
 	});
 });
