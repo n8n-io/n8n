@@ -66,6 +66,15 @@ function keepFieldsContaining(value: object, extraArgs: string[]): object {
 }
 
 export function compact(value: object): object {
+	if (Array.isArray(value)) {
+		return value
+			.filter((v) => v !== null && v !== undefined && v !== 'nil' && v !== '')
+			.filter((v) => {
+				if (typeof v === 'object' && v !== null && Object.keys(v).length === 0) return false;
+				return true;
+			})
+			.map((v) => (typeof v === 'object' && v !== null ? compact(v) : v)) as unknown as object;
+	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const newObj: any = {};
 	for (const [key, val] of Object.entries(value)) {
