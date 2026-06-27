@@ -42,6 +42,14 @@ export const test = base.extend<ChatHubFixtures>({
 			await services.proxy.clearAllExpectations();
 			await services.proxy.loadExpectations('chat-hub', { strictBodyMatching: true });
 
+			// In replay (CI), make unmatched LLM calls fail loud with a clear
+			// message instead of silently forwarding to the real Anthropic API
+			// (which surfaces as a cryptic "invalid x-api-key"). Skip when
+			// recording (!CI), which needs fall-through to capture live responses.
+			if (process.env.CI) {
+				await services.proxy.failOnUnmatched(['/v1/messages']);
+			}
+
 			await use(undefined);
 
 			// Teardown
