@@ -8,7 +8,7 @@ import { useAvailableProjectSearch } from '@/features/collaboration/projects/pro
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -115,11 +115,21 @@ const minimumValue = shallowRef(
 	maxDate.copy().subtract({ days: timeRangeMappings[maxLicensedDate] }),
 );
 
+function getDefaultRangeStart(): DateValue {
+	const sevenDaysAgo = maxDate.copy().subtract({ days: 7 });
+	if (insightsStore.earliestDataDate) {
+		const earliestDate = parseDate(insightsStore.earliestDataDate.substring(0, 10));
+		// If data only starts within the last 7 days, begin from first data point
+		return earliestDate.compare(sevenDaysAgo) > 0 ? earliestDate : sevenDaysAgo;
+	}
+	return sevenDaysAgo;
+}
+
 const range = shallowRef<{
 	start: DateValue;
 	end: DateValue;
 }>({
-	start: maxDate.copy().subtract({ days: 7 }),
+	start: getDefaultRangeStart(),
 	end: maxDate.copy(),
 });
 
