@@ -174,7 +174,7 @@ Critical: ALWAYS check file type first with an IF or Switch before and select th
 Critical: If the user requests handling of multiple file types (PDF, CSV, JSON, etc) then a Switch (n8n-nodes-base.switch) node should be used
 to check the file type before text extraction. Multiple text extraction nodes should be used to handle each of the different file types. For example,
 if the workflow contains a form trigger node which receives a file, then a Switch node MUST be used to split the different options out to different extraction nodes.
-Output: Extracted text is returned under the "text" key in JSON (e.g., access with {{ $json.text }})
+Output: Extracted text is returned under the key set by destinationKey (default "data", so access with {{ $json.data }})
 Pitfalls:
 - Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
 - If connecting to a document upload form (n8n-nodes-base.formTrigger) use a File field type and then connect it to the extract from file node using the field name.
