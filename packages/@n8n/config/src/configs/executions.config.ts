@@ -83,6 +83,10 @@ const executionModeSchema = z.enum(['regular', 'queue']);
 
 export type ExecutionMode = z.infer<typeof executionModeSchema>;
 
+const compressionSchema = z.enum(['none', 'gzip']);
+
+export type CompressionMode = z.infer<typeof compressionSchema>;
+
 @Config
 export class ExecutionsConfig {
 	/** Whether to run executions in regular mode (in-process) or scaling mode (in workers). */
@@ -163,4 +167,8 @@ export class ExecutionsConfig {
 	 */
 	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
 	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
+
+	/** Whether to compress execution data payloads stored in the DB/FS. */
+	@Env('EXECUTIONS_DATA_COMPRESSION', compressionSchema)
+	compression: CompressionMode = 'none';
 }
