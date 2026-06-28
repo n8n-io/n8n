@@ -12,11 +12,17 @@ export class AgentFileRepository extends Repository<AgentFile> {
 	async findByAgentId(agentId: string): Promise<AgentFile[]> {
 		return await this.find({
 			where: { agentId },
-			order: { createdAt: 'DESC' },
+			// Secondary id sort keeps pagination stable when batch uploads
+			// share the same createdAt timestamp.
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 	}
 
+	async hasFilesForAgent(agentId: string): Promise<boolean> {
+		return await this.existsBy({ agentId });
+	}
+
 	async findByIdAndAgentId(fileId: string, agentId: string): Promise<AgentFile | null> {
-		return await this.findOne({ where: { id: fileId, agentId } });
+		return await this.findOneBy({ id: fileId, agentId });
 	}
 }

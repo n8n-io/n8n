@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import axios from 'axios';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
@@ -30,7 +30,6 @@ import { executeNpmCommand } from '../npm-utils';
 
 jest.mock('node:fs/promises');
 jest.mock('node:child_process');
-jest.mock('axios');
 jest.mock('../community-node-types-utils', () => ({
 	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
 }));
@@ -69,6 +68,10 @@ describe('CommunityPackagesService', () => {
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
 
+	const request = jest.fn();
+	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const outboundHttp = mock<OutboundHttp>({ requests });
+
 	const communityPackagesService = new CommunityPackagesService(
 		instanceSettings,
 		logger,
@@ -77,6 +80,7 @@ describe('CommunityPackagesService', () => {
 		publisher,
 		license,
 		config,
+		outboundHttp,
 	);
 
 	beforeEach(() => {
@@ -268,14 +272,20 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('checkNpmPackageStatus()', () => {
-		test('should call axios.post', async () => {
-			await communityPackagesService.checkNpmPackageStatus(mockPackageName());
+		test('should POST the package name to the n8n backend', async () => {
+			const packageName = mockPackageName();
+			await communityPackagesService.checkNpmPackageStatus(packageName);
 
-			expect(axios.post).toHaveBeenCalled();
+			expect(request).toHaveBeenCalledWith({
+				url: 'https://api.n8n.io/api/package',
+				method: 'POST',
+				body: { name: packageName },
+				json: true,
+			});
 		});
 
 		test('should not fail if request fails', async () => {
-			mocked(axios.post).mockImplementation(() => {
+			request.mockImplementation(() => {
 				throw new Error('Something went wrong');
 			});
 
@@ -285,7 +295,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should warn if package is banned', async () => {
-			mocked(axios.post).mockResolvedValue({ data: { status: 'Banned', reason: 'Not good' } });
+			request.mockResolvedValue({ status: 'Banned', reason: 'Not good' });
 
 			const result = (await communityPackagesService.checkNpmPackageStatus(
 				mockPackageName(),

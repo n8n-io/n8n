@@ -128,16 +128,50 @@ describe('ClientOAuth2', () => {
 				contentType: 'text/plain',
 				body: 'Hello, world!',
 			},
-		])('should reject content type $contentType', async ({ contentType, body }) => {
+		])(
+			'should report a body preview for non-JSON content type $contentType',
+			async ({ contentType, body }) => {
+				mockTokenResponse({
+					status: 200,
+					headers: { 'Content-Type': contentType },
+					body,
+				});
+
+				const result = await makeTokenCall().catch((err) => err);
+				expect(result).toBeInstanceOf(ResponseError);
+				expect(result.message).toContain('Expected JSON response from OAuth2 token endpoint');
+				expect(result.message).toContain(`(content-type: ${contentType})`);
+			},
+		);
+
+		it('should parse a JSON body served with a non-JSON content type', async () => {
 			mockTokenResponse({
 				status: 200,
-				headers: { 'Content-Type': contentType },
-				body,
+				headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+				body: JSON.stringify({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				}),
+			});
+
+			const response = await makeTokenCall();
+
+			expect(response).toEqual({
+				access_token: config.accessToken,
+				refresh_token: config.refreshToken,
+			});
+		});
+
+		it('should surface auth errors served with a non-JSON content type', async () => {
+			mockTokenResponse({
+				status: 400,
+				headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+				body: JSON.stringify({ error: 'invalid_grant' }),
 			});
 
 			const result = await makeTokenCall().catch((err) => err);
-			expect(result).toBeInstanceOf(Error);
-			expect(result.message).toEqual(`Unsupported content type: ${contentType}`);
+			expect(result).toBeInstanceOf(AuthError);
+			expect(result.body).toEqual({ error: 'invalid_grant' });
 		});
 
 		it('should throw ResponseError when application/json response contains invalid JSON', async () => {
@@ -152,9 +186,8 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(ResponseError);
 			expect(result.status).toBe(200);
 			expect(result.body).toBe(htmlBody);
-			expect(result.message).toContain(
-				'Expected JSON response from OAuth2 token endpoint but received:',
-			);
+			expect(result.message).toContain('Expected JSON response from OAuth2 token endpoint');
+			expect(result.message).toContain('(content-type: application/json)');
 			expect(result.message).toContain('<!DOCTYPE html>');
 		});
 
@@ -196,6 +229,136 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(ResponseError);
 			expect(result.message).toEqual('HTTP status 302');
 			expect(result.body).toEqual('Redirected');
+		});
+	});
+
+	describe('RFC 8707 resource parameter', () => {
+		const resource = 'https://mcp.example.com/resource';
+
+		afterEach(() => {
+			nock.cleanAll();
+			vi.restoreAllMocks();
+		});
+
+		const makeClient = (overrides: Partial<ConstructorParameters<typeof ClientOAuth2>[0]> = {}) =>
+			new ClientOAuth2({
+				clientId: config.clientId,
+				clientSecret: config.clientSecret,
+				accessTokenUri: config.accessTokenUri,
+				authorizationUri: config.authorizationUri,
+				redirectUri: config.redirectUri,
+				authentication: 'header',
+				state: config.state,
+				...overrides,
+			});
+
+		const parseBody = (body: unknown) =>
+			new URLSearchParams(typeof body === 'string' ? body : (body as Record<string, string>));
+
+		const expectPostBody = (expected: Record<string, string>) =>
+			nock(config.baseUrl)
+				.post('/login/oauth/access_token', (body) => {
+					const params = parseBody(body);
+					return Object.entries(expected).every(([key, value]) => params.get(key) === value);
+				})
+				.reply(
+					200,
+					JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+					{ 'Content-Type': 'application/json' },
+				);
+
+		it('should include resource in authorization URI when configured', () => {
+			const uri = makeClient({ resource }).code.getUri();
+
+			expect(new URL(uri).searchParams.get('resource')).toBe(resource);
+		});
+
+		it('should omit resource from authorization URI when not configured', () => {
+			const uri = makeClient().code.getUri();
+
+			expect(new URL(uri).searchParams.has('resource')).toBe(false);
+		});
+
+		it('should include resource in authorization code token request body when configured', async () => {
+			const scope = expectPostBody({
+				code: config.code,
+				grant_type: 'authorization_code',
+				redirect_uri: config.redirectUri,
+				resource,
+			});
+
+			await makeClient({ resource }).code.getToken(
+				`${config.redirectUri}?code=${config.code}&state=${config.state}`,
+			);
+
+			scope.done();
+		});
+
+		it('should omit resource from authorization code token request body when not configured', async () => {
+			const scope = nock(config.baseUrl)
+				.post('/login/oauth/access_token', (body) => {
+					const params = parseBody(body);
+					return !params.has('resource');
+				})
+				.reply(
+					200,
+					JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+					{ 'Content-Type': 'application/json' },
+				);
+
+			await makeClient().code.getToken(
+				`${config.redirectUri}?code=${config.code}&state=${config.state}`,
+			);
+
+			scope.done();
+		});
+
+		it('should include resource in refresh token request body when configured', async () => {
+			const scope = expectPostBody({
+				refresh_token: config.refreshToken,
+				grant_type: 'refresh_token',
+				resource,
+			});
+
+			await makeClient({ resource })
+				.createToken({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				})
+				.refresh();
+
+			scope.done();
+		});
+
+		it('should omit resource from refresh token request body when not configured', async () => {
+			const scope = nock(config.baseUrl)
+				.post('/login/oauth/access_token', (body) => {
+					const params = parseBody(body);
+					return !params.has('resource');
+				})
+				.reply(
+					200,
+					JSON.stringify({
+						access_token: config.refreshedAccessToken,
+						refresh_token: config.refreshedRefreshToken,
+					}),
+					{ 'Content-Type': 'application/json' },
+				);
+
+			await makeClient()
+				.createToken({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				})
+				.refresh();
+
+			scope.done();
 		});
 	});
 });

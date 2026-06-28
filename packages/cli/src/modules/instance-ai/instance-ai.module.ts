@@ -35,15 +35,18 @@ export class InstanceAiModule implements ModuleInterface {
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = settingsService.isAgentEnabled();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
+		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
 		return {
 			enabled,
 			localGatewayDisabled,
+			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
 			sandboxEnabled: sandboxStatus.enabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
+			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 		};
 	}
 
@@ -67,6 +70,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiMcpRegistryConnection } = await import(
 			'./entities/instance-ai-mcp-registry-connection.entity'
 		);
+		const { InstanceAiThreadGrant } = await import('./entities/instance-ai-thread-grant.entity');
 
 		return [
 			InstanceAiThread,
@@ -80,6 +84,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiObservationCursor,
 			InstanceAiObservationLock,
 			InstanceAiMcpRegistryConnection,
+			InstanceAiThreadGrant,
 		];
 	}
 

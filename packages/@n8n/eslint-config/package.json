@@ -51,9 +51,11 @@
     "globals": "^16.2.0",
     "typescript": "catalog:",
     "typescript-eslint": "^8.35.0",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
     "eslint": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -5,6 +5,13 @@ import OpenAI from 'openai';
 
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
+const mockLogger = {
+	info: jest.fn(),
+	warn: jest.fn(),
+	error: jest.fn(),
+	debug: jest.fn(),
+} as unknown as Logger;
+
 async function postChatCompletion(url: string, path: string, body: unknown): Promise<Response> {
 	return await fetch(`${url}${path}`, {
 		method: 'POST',
@@ -33,7 +40,7 @@ describe('LlmWireServer', () => {
 
 	describe('lifecycle', () => {
 		beforeEach(() => {
-			server = new LlmWireServer();
+			server = new LlmWireServer({ logger: mockLogger });
 		});
 
 		it('binds to 127.0.0.1 on an OS-assigned port', async () => {
@@ -57,7 +64,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('binds two independent instances to different ports', async () => {
-			const second = new LlmWireServer();
+			const second = new LlmWireServer({ logger: mockLogger });
 			try {
 				const urlA = await server.start();
 				const urlB = await second.start();
@@ -83,7 +90,7 @@ describe('LlmWireServer', () => {
 
 	describe('POST /eval/:root/v1/chat/completions — stub fallback', () => {
 		beforeEach(() => {
-			server = new LlmWireServer();
+			server = new LlmWireServer({ logger: mockLogger });
 		});
 
 		it('returns a chat.completion envelope when no mock handler is attached', async () => {
@@ -127,6 +134,7 @@ describe('LlmWireServer', () => {
 					statusCode: 200,
 				});
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -155,6 +163,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -182,6 +191,7 @@ describe('LlmWireServer', () => {
 			}) as unknown as EvalLlmMockHandler;
 
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['LLM Chain', subNode]]),
 				onIntercept: (t) => intercepts.push(t),
@@ -246,6 +256,7 @@ describe('LlmWireServer', () => {
 			}) as unknown as EvalLlmMockHandler;
 
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 				onIntercept: (t) => intercepts.push(t),
@@ -338,6 +349,7 @@ describe('LlmWireServer', () => {
 			}) as unknown as EvalLlmMockHandler;
 			const rootName = 'My Agent/v1 (special)';
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([[rootName, subNode]]),
 			});
@@ -364,6 +376,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([[rootName, subNode]]),
 			});
@@ -386,7 +399,7 @@ describe('LlmWireServer', () => {
 
 	describe('POST /v1/chat/completions — unrouted prefix', () => {
 		beforeEach(() => {
-			server = new LlmWireServer();
+			server = new LlmWireServer({ logger: mockLogger });
 		});
 
 		it('returns 500 with an OpenAI error envelope explaining the misconfiguration', async () => {
@@ -432,6 +445,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -455,6 +469,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -490,6 +505,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -535,6 +551,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 				onIntercept: (t) => intercepts.push(t),
@@ -552,7 +569,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('uses the no-handler stub for streaming when no mock handler is attached', async () => {
-			server = new LlmWireServer();
+			server = new LlmWireServer({ logger: mockLogger });
 			const url = await server.start();
 
 			const { response, frames } = await readSseChunks(url, '/eval/Agent/v1/chat/completions', {
@@ -597,6 +614,7 @@ describe('LlmWireServer', () => {
 					statusCode: 200,
 				}) as unknown as EvalLlmMockHandler;
 				server = new LlmWireServer({
+					logger: mockLogger,
 					mockHandler,
 					rootToSubNode: new Map([['Agent', subNode]]),
 				});
@@ -620,6 +638,7 @@ describe('LlmWireServer', () => {
 					statusCode: 200,
 				}) as unknown as EvalLlmMockHandler;
 				server = new LlmWireServer({
+					logger: mockLogger,
 					mockHandler,
 					rootToSubNode: new Map([['Agent', subNode]]),
 				});
@@ -668,6 +687,7 @@ describe('LlmWireServer', () => {
 					statusCode: 200,
 				}) as unknown as EvalLlmMockHandler;
 				server = new LlmWireServer({
+					logger: mockLogger,
 					mockHandler,
 					rootToSubNode: new Map([['Agent', subNode]]),
 				});
@@ -718,6 +738,7 @@ describe('LlmWireServer', () => {
 				.fn()
 				.mockRejectedValue(new Error('LLM offline')) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -752,6 +773,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -803,6 +825,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -840,6 +863,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -867,6 +891,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['Agent', subNode]]),
 			});
@@ -905,6 +930,7 @@ describe('LlmWireServer', () => {
 				statusCode: 200,
 			}) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
+				logger: mockLogger,
 				mockHandler,
 				rootToSubNode: new Map([['My Agent', subNode]]),
 				onIntercept: (t) => intercepts.push(t),
@@ -924,7 +950,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('returns the loud-fail error envelope when no /eval/<root>/ prefix is used', async () => {
-			server = new LlmWireServer();
+			server = new LlmWireServer({ logger: mockLogger });
 			const url = await server.start();
 
 			const response = await postChatCompletion(url, '/v1/responses', {
@@ -937,7 +963,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('uses the stub envelope when no mock handler is attached', async () => {
-			server = new LlmWireServer();
+			server = new LlmWireServer({ logger: mockLogger });
 			const url = await server.start();
 
 			const response = await postChatCompletion(url, '/eval/Agent/v1/responses', {

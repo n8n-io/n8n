@@ -1,6 +1,6 @@
-import type { Logger } from '@n8n/backend-common';
+import { LicenseState, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	FolderRepository,
@@ -29,6 +29,7 @@ import {
 
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService } from '../mcp.service';
 import { NodeCatalogService } from '@/node-catalog';
 
@@ -39,13 +40,17 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('McpService', () => {
@@ -62,6 +67,7 @@ describe('McpService', () => {
 		});
 		instanceSettings = mockInstance(InstanceSettings, {
 			hostId: 'test-host-id',
+			instanceId: 'test-instance-id',
 		});
 		logger = mockLogger();
 
@@ -91,7 +97,13 @@ describe('McpService', () => {
 			mockInstance(ExecutionService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
+			mockInstance(NodeResourceExplorerService),
+			mockInstance(TagService),
+			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
+			mockInstance(WorkflowsConfig),
+			mockInstance(WorkflowPublishedDataService),
+			mockInstance(SubworkflowPolicyChecker),
 		);
 	});
 
@@ -132,7 +144,13 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -326,7 +344,13 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				opts.postHogClient,
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -428,7 +452,13 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			const server = await service.getServer(user, false);
@@ -471,7 +501,13 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
+				mockInstance(SubworkflowPolicyChecker),
 			);
 
 			const server = await service.getServer(user, false);
@@ -487,30 +523,44 @@ describe('McpService', () => {
 			// the boolean and focus on `getServer`'s tool-registration behavior.
 			type BuildServiceOpts = {
 				builderEnabled?: boolean;
+				diagnosticsEnabled?: boolean;
+				instanceBaseUrl?: string;
 				postHogClient?: jest.Mocked<PostHogClient>;
+				telemetry?: jest.Mocked<Telemetry>;
 			};
 
 			const buildService = ({
 				builderEnabled = true,
+				diagnosticsEnabled = true,
+				instanceBaseUrl = 'https://n8n.test',
 				postHogClient = mockInstance(PostHogClient),
-			}: BuildServiceOpts = {}) =>
-				new McpService(
+				telemetry = mockInstance(Telemetry),
+			}: BuildServiceOpts = {}) => {
+				const urlService = mockInstance(UrlService);
+				(urlService.getInstanceBaseUrl as jest.Mock).mockReturnValue(instanceBaseUrl);
+
+				return new McpService(
 					mockLogger(),
 					executionsConfig,
 					instanceSettings,
 					mockInstance(WorkflowFinderService),
 					mockInstance(WorkflowService),
-					mockInstance(UrlService),
+					urlService,
 					mockInstance(CredentialsService),
 					activeExecutions,
 					mockInstance(GlobalConfig, {
 						endpoints: {
 							webhook: '/webhook',
 							webhookTest: '/webhook-test',
+							rest: 'rest',
 							mcpBuilderEnabled: builderEnabled,
 						},
+						diagnostics: {
+							enabled: diagnosticsEnabled,
+							frontendConfig: 'test-key;https://telemetry.n8n.io',
+						},
 					}),
-					mockInstance(Telemetry),
+					telemetry,
 					mockInstance(WorkflowRunner),
 					mockInstance(RoleService),
 					mockInstance(ProjectService),
@@ -524,8 +574,15 @@ describe('McpService', () => {
 					mockInstance(ExecutionService),
 					mockInstance(DataTableProxyService),
 					mockInstance(CollaborationService),
+					mockInstance(NodeResourceExplorerService),
+					mockInstance(TagService),
+					mockInstance(LicenseState),
 					postHogClient,
+					mockInstance(WorkflowsConfig),
+					mockInstance(WorkflowPublishedDataService),
+					mockInstance(SubworkflowPolicyChecker),
 				);
+			};
 
 			beforeEach(() => {
 				(registerWorkflowPreviewApp as jest.Mock).mockClear();
@@ -543,6 +600,32 @@ describe('McpService', () => {
 				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
 				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
 
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{
+						instanceOrigin: string;
+						telemetry: {
+							enabled: boolean;
+							writeKey: string;
+							dataPlaneUrl: string;
+							configUrl: string;
+							instanceId: string;
+							versionCli: string;
+						};
+					},
+				];
+				expect(appOptions.instanceOrigin).toBe('https://n8n.test');
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: true,
+						writeKey: 'test-key',
+						dataPlaneUrl: 'https://n8n.test/rest/telemetry/proxy',
+						configUrl: 'https://n8n.test/rest/telemetry/rudderstack',
+						instanceId: 'test-instance-id',
+						versionCli: expect.any(String),
+					}),
+				);
+
 				const [, toolName, toolConfig] = (registerMcpAppTool as jest.Mock).mock.calls[0];
 				expect(typeof toolName).toBe('string');
 				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
@@ -550,6 +633,84 @@ describe('McpService', () => {
 
 				// The service trusts the caller's resolution and never falls back to PostHog.
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('does not inject write key or telemetry URLs when diagnostics are disabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const service = buildService({ diagnosticsEnabled: false });
+
+				await service.getServer(user, true);
+
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{
+						instanceOrigin?: string;
+						telemetry: {
+							enabled: boolean;
+							writeKey: string;
+							dataPlaneUrl: string;
+							configUrl: string;
+						};
+					},
+				];
+				expect(appOptions.instanceOrigin).toBeUndefined();
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: false,
+						writeKey: '',
+						dataPlaneUrl: '',
+						configUrl: '',
+					}),
+				);
+			});
+
+			it('disables app telemetry when the telemetry proxy URL is invalid', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const service = buildService({ instanceBaseUrl: 'not-a-url' });
+
+				await expect(service.getServer(user, true)).resolves.toBeDefined();
+
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{
+						instanceOrigin?: string;
+						telemetry: {
+							enabled: boolean;
+							writeKey: string;
+							dataPlaneUrl: string;
+							configUrl: string;
+						};
+					},
+				];
+				expect(appOptions.instanceOrigin).toBeUndefined();
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: false,
+						writeKey: '',
+						dataPlaneUrl: '',
+						configUrl: '',
+					}),
+				);
+			});
+
+			it('tracks render requested when the preview resource is read', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const telemetry = mockInstance(Telemetry);
+
+				const service = buildService({ telemetry });
+				await service.getServer(user, true, { name: 'Claude Desktop', version: '1.2.3' });
+
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{ onResourceRead: () => void },
+				];
+				appOptions.onResourceRead();
+
+				expect(telemetry.track).toHaveBeenCalledWith(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
+					user_id: 'user-1',
+					client_name: 'Claude Desktop',
+					client_version: '1.2.3',
+				});
 			});
 
 			it('does not register MCP apps when `mcpAppsEnabled` is false', async () => {

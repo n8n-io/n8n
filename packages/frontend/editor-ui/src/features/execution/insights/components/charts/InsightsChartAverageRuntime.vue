@@ -9,7 +9,7 @@ import {
 	INSIGHTS_UNIT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
 import { transformInsightsAverageRunTime } from '@/features/execution/insights/insights.utils';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
 import { computed } from 'vue';
 import { Line } from 'vue-chartjs';

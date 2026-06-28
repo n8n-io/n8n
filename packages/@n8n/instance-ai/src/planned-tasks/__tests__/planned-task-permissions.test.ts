@@ -8,12 +8,14 @@ function makeContext(
 ): InstanceAiContext {
 	return {
 		userId: 'user-1',
+		projectId: 'project-1',
 		permissions: { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...permissionOverrides },
 		workflowService: {} as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
 		credentialService: {} as InstanceAiContext['credentialService'],
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 }
 
@@ -85,5 +87,12 @@ describe('applyPlannedTaskPermissions', () => {
 		expect(result.dataTableService).toBe(context.dataTableService);
 		expect(result.workflowService).toBe(context.workflowService);
 		expect(result.userId).toBe(context.userId);
+	});
+
+	it('should preserve the bound projectId so sub-agents stay scoped to the thread project', () => {
+		const context = makeContext();
+		const result = applyPlannedTaskPermissions(context, 'build-workflow');
+
+		expect(result.projectId).toBe(context.projectId);
 	});
 });

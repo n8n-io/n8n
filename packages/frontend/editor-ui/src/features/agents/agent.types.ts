@@ -23,7 +23,6 @@ export type AgentVersion = AgentVersionDto;
 export type Agent = {
 	id: string;
 	name: string;
-	description: string | null;
 	projectId: string;
 	isCompiled: boolean;
 	isRunnable?: boolean;
