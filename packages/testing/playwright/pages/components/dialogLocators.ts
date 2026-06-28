@@ -16,3 +16,11 @@ export function dialogRootIn(scope: Page | Locator): Locator {
 export function dialogCloseIconIn(scope: Page | Locator): Locator {
 	return scope.locator('.el-dialog__close').first();
 }
+
+/** Click the dialog close (X) icon within `scope`, but only if it's currently visible. */
+export async function closeDialogIfOpen(scope: Page | Locator): Promise<void> {
+	const closeBtn = dialogCloseIconIn(scope);
+	if (await closeBtn.isVisible()) {
+		await closeBtn.click();
+	}
+}
