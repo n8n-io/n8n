@@ -253,8 +253,6 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 	position: relative;
 }
 
-/* Zero-height anchor at the workflow header's bottom edge so TabBar straddles it,
-   floating onto the canvas exactly like the normal canvas tabs. */
 .tabBarAnchor {
 	position: absolute;
 	top: var(--navbar--height);
