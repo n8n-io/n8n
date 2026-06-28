@@ -1,0 +1,21 @@
+.code-health-baseline.json
+  s_e10fd469482272::t_baea860e8bdaed 4
+  s_e10fd469482272::t_5862d5de055a93 550-551
+  s_e10fd469482272::t_5ed0831f88854e 566-575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "274cf42ac932fe365c56d01dd389ede4bf9a79e0",
+  "prompts": {},
+  "sessions": {
+    "s_e10fd469482272": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aba543b3-07d6-4030-875e-4bc72a725517",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
