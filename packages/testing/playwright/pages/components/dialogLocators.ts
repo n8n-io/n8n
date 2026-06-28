@@ -20,7 +20,14 @@ export function dialogCloseIconIn(scope: Page | Locator): Locator {
 /** Click the dialog close (X) icon within `scope`, but only if it's currently visible. */
 export async function closeDialogIfOpen(scope: Page | Locator): Promise<void> {
 	const closeBtn = dialogCloseIconIn(scope);
-	if (await closeBtn.isVisible()) {
-		await closeBtn.click();
+	if (!(await closeBtn.isVisible())) return;
+
+	// A teleported overlay (e.g. an open el-select popper) can sit over the close
+	// icon and intercept the click. Try a normal click first, then fall back to a
+	// forced click that bypasses the pointer-interception check.
+	try {
+		await closeBtn.click({ timeout: 5_000 });
+	} catch {
+		await closeBtn.click({ force: true });
 	}
 }
