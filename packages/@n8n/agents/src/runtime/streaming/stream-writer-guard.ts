@@ -1,4 +1,5 @@
 import type { FinishReason, StreamChunk } from '../../types';
+import type { TokenUsage } from '../../types/sdk/agent';
 
 /**
  * Wraps a stream writer so the runtime has a single, idempotent shutdown path.
@@ -47,11 +48,18 @@ export class StreamWriterGuard {
 	/**
 	 * Terminate the stream with an error: emit an `error` chunk and a terminal
 	 * `finish` chunk, then close. Idempotent — a no-op if already closed.
+	 *
+	 * `finish` enriches the terminal chunk with usage/model so an aborted run
+	 * still carries the tokens consumed before the stop.
 	 */
-	async fail(error: unknown, finishReason: FinishReason = 'error'): Promise<void> {
+	async fail(
+		error: unknown,
+		finishReason: FinishReason = 'error',
+		finish?: { usage?: TokenUsage; model?: string },
+	): Promise<void> {
 		if (this.closed) return;
 		await this.write({ type: 'error', error });
-		await this.write({ type: 'finish', finishReason });
+		await this.write({ type: 'finish', finishReason, ...finish });
 		await this.close();
 	}
 }

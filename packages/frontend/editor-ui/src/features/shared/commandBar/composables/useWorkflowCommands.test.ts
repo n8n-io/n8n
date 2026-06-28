@@ -33,7 +33,7 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.workflowId}` })),
 	}),
-	useRoute: () => ({}),
+	useRoute: () => ({ params: {} }),
 	RouterLink: vi.fn(),
 }));
 vi.mock('@n8n/i18n', async (importOriginal) => ({

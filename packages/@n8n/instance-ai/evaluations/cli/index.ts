@@ -17,7 +17,7 @@ import { traceable } from 'langsmith/traceable';
 import { join } from 'path';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
-import { parseCliArgs } from './args';
+import { parseCliArgs, partialIsolationWarning } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
@@ -28,6 +28,7 @@ import {
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
+import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
 import {
@@ -39,7 +40,8 @@ import {
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
-import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
+import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
+import { cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
@@ -74,6 +76,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt, conversationUserTurnsAsText } from '../utils/conversation-text';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
@@ -87,7 +90,8 @@ interface Lane {
 	baseUrl: string;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
-	seedResult: { seededTypes: string[]; credentialIds: string[] };
+	/** Credentials created for test cases on this lane; cleaned up after the run. */
+	createdCredentialIds: Set<string>;
 }
 
 interface RunConfig {
@@ -146,10 +150,6 @@ async function main(): Promise<void> {
 			await client.login(args.email, args.password);
 			logger.success(`Authenticated${tag}`);
 
-			logger.info(`Seeding credentials...${tag}`);
-			const seedResult = await seedCredentials(client, undefined, logger);
-			logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)${tag}`);
-
 			logger.info(`Seeding MCP registry...${tag}`);
 			const mcpSeedResult = await seedMcpRegistry(client, logger);
 			if (mcpSeedResult.seeded) {
@@ -160,7 +160,8 @@ async function main(): Promise<void> {
 
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
-			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, seedResult };
+			const createdCredentialIds = new Set<string>();
+			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, createdCredentialIds };
 		}),
 	);
 
@@ -203,6 +204,8 @@ async function main(): Promise<void> {
 
 		const totalDuration = Date.now() - startTime;
 		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+		// Gated tiers report an absolute green verdict in place of the baseline comparison.
+		const gate = isGatedTier(args.tier) ? evaluateGate(evaluation, { slugByTestCase }) : undefined;
 		const { jsonPath, prCommentPath } = writeEvalResults(
 			evaluation,
 			totalDuration,
@@ -212,6 +215,7 @@ async function main(): Promise<void> {
 			commitSha,
 			slugByTestCase,
 			ciRunUrl(),
+			gate,
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -221,7 +225,7 @@ async function main(): Promise<void> {
 		const debugHtmlPath = writeRunDebugReport(reportResults);
 		console.log(`LLM debug:  ${debugHtmlPath}`);
 		console.log(
-			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
+			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 	} finally {
 		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
@@ -229,7 +233,7 @@ async function main(): Promise<void> {
 		}
 		await Promise.all(
 			lanes.map(async (lane) => {
-				await cleanupCredentials(lane.client, lane.seedResult.credentialIds).catch(() => {});
+				await cleanupCredentials(lane.client, [...lane.createdCredentialIds]).catch(() => {});
 			}),
 		);
 	}
@@ -242,7 +246,7 @@ async function main(): Promise<void> {
 async function runWithLangSmith(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	experimentName: string;
-	outcome: ComparisonOutcome;
+	outcome: ComparisonOutcome | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
 	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
@@ -258,47 +262,57 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	}
 
+	// A dedicated dataset and baseline prefix are the two halves of cohort
+	// isolation; overriding only one silently touches shared Instance AI data.
+	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
+	if (isolationWarning) logger.warn(isolationWarning);
+
 	const lsClient = new Client();
-	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
+	const datasetName = await syncDataset(
+		lsClient,
+		args.dataset,
+		logger,
+		args.filter,
+		args.exclude,
+		args.tier,
+	);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
 	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
-	// Build-expectation verdicts, judged once per build and merged the same way —
-	// fired during getOrBuild, awaited before reshapeLangSmithRuns.
-	const buildExpectationsByThreadId = new Map<string, Promise<BuildExpectationResult[]>>();
+	// Build-expectation verdicts, judged once per build and merged by the build-cache
+	// key (`iteration:fileSlug`) rather than threadId — so prebuilt/MCP builds, which
+	// have no threadId, still get their outcome expectations judged and counted.
+	// Fired during getOrBuild, awaited before reshapeLangSmithRuns.
+	const buildExpectationsByKey = new Map<string, Promise<BuildExpectationResult[]>>();
 	const runDebugByThreadId = new Map<string, Promise<InstanceAiRunDebugResponse[]>>();
 
-	// LangSmith dataset rows carry only per-scenario fields. The conversation and
-	// build expectations for the build are sourced locally, keyed by fileSlug.
-	const conversationByFileSlug = new Map<
-		string,
-		{
-			conversation: WorkflowTestCase['conversation'];
-			messageBudget?: number;
-			buildExpectations?: string[];
-		}
-	>();
+	// LangSmith dataset rows carry only per-scenario fields. The build-side
+	// fields (conversation, expectations, declared credentials) are sourced
+	// locally, keyed by fileSlug.
+	const testCaseByFileSlug = new Map<string, WorkflowTestCase>();
 	for (const { testCase, fileSlug } of testCasesWithFiles) {
-		conversationByFileSlug.set(fileSlug, {
-			conversation: testCase.conversation,
-			messageBudget: testCase.messageBudget,
-			buildExpectations: testCase.buildExpectations,
-		});
+		testCaseByFileSlug.set(fileSlug, testCase);
 	}
 
 	// LaneState carries the allocator-managed counters (activeBuilds,
 	// inflightKeys) plus the lane's traced LangSmith wrappers. `runner` is
 	// the underlying Lane (n8n client, credential state) — named distinctly so
 	// it doesn't shadow the iteration variable `lane` in lanes.map().
+	type BuildArgs = Pick<
+		WorkflowTestCase,
+		| 'conversation'
+		| 'messageBudget'
+		| 'credentials'
+		| 'seedFile'
+		| 'priorConversation'
+		| 'seedThread'
+	>;
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
 		inflightKeys: Set<string>;
-		tracedBuild: (buildArgs: {
-			conversation: WorkflowTestCase['conversation'];
-			messageBudget?: number;
-		}) => Promise<BuildResult>;
+		tracedBuild: (buildArgs: BuildArgs) => Promise<BuildResult>;
 		tracedExecute: (execArgs: {
 			workflowId: string;
 			scenario: ExecutionScenario;
@@ -315,14 +329,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			activeBuilds: 0,
 			inflightKeys: new Set<string>(),
 			tracedBuild: traceable(
-				async (buildArgs: {
-					conversation: WorkflowTestCase['conversation'];
-					messageBudget?: number;
-				}) =>
+				async (buildArgs: BuildArgs) =>
 					await buildWorkflow({
 						client: lane.client,
 						conversation: buildArgs.conversation,
 						messageBudget: buildArgs.messageBudget,
+						credentials: buildArgs.credentials,
+						seedFile: buildArgs.seedFile,
+						priorConversation: buildArgs.priorConversation,
+						seedThread: buildArgs.seedThread,
+						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: args.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
@@ -398,13 +414,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build, true);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
-					// No transcript in prebuilt mode — checks run with empty prompt context.
+					// No transcript in prebuilt mode, but the authored conversation still
+					// carries the user's request — feed it so prompt-aware checks (e.g.
+					// fulfills_user_request) grade against real intent instead of "".
+					const conversation = testCaseByFileSlug.get(fileSlug)?.conversation ?? [];
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: '',
+						prompt: conversationUserTurnsAsText(conversation),
 						agentText: undefined,
 						logger,
 					});
@@ -414,18 +433,22 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
 			// the build cache dedupes scenarios within one file.
 			const lane = await allocator.acquire(fileSlug);
-			const entry = conversationByFileSlug.get(fileSlug);
+			const entry = testCaseByFileSlug.get(fileSlug);
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
 			try {
 				const start = Date.now();
 				const build = await lane.tracedBuild({
 					conversation: entry.conversation,
 					messageBudget: entry.messageBudget,
+					credentials: entry.credentials,
+					seedFile: entry.seedFile,
+					priorConversation: entry.priorConversation,
+					seedThread: entry.seedThread,
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(fileSlug, build);
+				stashBuildExpectations(key, fileSlug, build, false);
 				stashRunDebug(lane.runner.client, build);
 				return { build, lane, buildDurationMs };
 			} finally {
@@ -447,19 +470,31 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		runDebugByThreadId.set(build.threadId, captureThreadRunDebug(client, build.threadId, logger));
 	}
 
-	// Judge build expectations once per build (off the scenario critical path);
-	// reshapeLangSmithRuns awaits and merges the verdicts by threadId.
-	function stashBuildExpectations(fileSlug: string, build: BuildResult): void {
-		const expectations = conversationByFileSlug.get(fileSlug)?.buildExpectations;
-		// Judge whenever there's a transcript — even on build failure, matching the
-		// direct-loop runner; the judge prompt handles the "no workflow produced" case.
-		if (!build.threadId || !expectations?.length || !build.transcript?.length) {
-			return;
-		}
-		buildExpectationsByThreadId.set(
-			build.threadId,
+	// Judge author expectations once per build (off the scenario critical path);
+	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key.
+	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
+	// builds (no transcript) judge only outcome expectations against the workflow,
+	// with the authored conversation as request context — mirroring the direct loop.
+	function stashBuildExpectations(
+		key: string,
+		fileSlug: string,
+		build: BuildResult,
+		isPrebuilt: boolean,
+	): void {
+		const testCase = testCaseByFileSlug.get(fileSlug);
+		if (!testCase) return;
+		const { expectations, transcript } = selectAuthorExpectations({
+			testCase,
+			transcript: build.transcript,
+			buildSucceeded: build.success,
+			isPrebuilt,
+			logger,
+		});
+		if (expectations.length === 0) return;
+		buildExpectationsByKey.set(
+			key,
 			verifyBuildExpectations(expectations, {
-				transcript: build.transcript,
+				transcript,
 				workflowJson: build.workflowJsons[0],
 				metrics: build.conversationMetrics,
 			}).catch((error: unknown) =>
@@ -492,7 +527,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				failureCategory: 'build_failure',
+				// Seeding failures are a harness setup problem, not an agent build
+				// failure — keep them out of the agent's build_failure bucket.
+				failureCategory: build.seedingFailed ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				execDurationMs: 0,
@@ -662,7 +699,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			metadata: {
 				filter: args.filter ?? 'all',
 				exclude: args.exclude ?? null,
+				tier: args.tier ?? null,
 				prebuilt: prebuiltManifest !== undefined,
+				baselinePrefix: args.baselinePrefix,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
@@ -676,8 +715,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		await lsClient.awaitPendingTraceBatches();
 
 		const buildExpectationsResolved = new Map<string, BuildExpectationResult[]>();
-		for (const [threadId, verdictsPromise] of buildExpectationsByThreadId) {
-			buildExpectationsResolved.set(threadId, await verdictsPromise);
+		for (const [key, verdictsPromise] of buildExpectationsByKey) {
+			buildExpectationsResolved.set(key, await verdictsPromise);
 		}
 		const runDebugResolved = new Map<string, InstanceAiRunDebugResponse[]>();
 		for (const [threadId, runDebugPromise] of runDebugByThreadId) {
@@ -710,13 +749,18 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			logger,
 		});
 
-		const outcome = await tryRunComparison({
-			lsClient,
-			prExperimentName: experimentResults.experimentName,
-			evaluation,
-			testCasesWithFiles,
-			logger,
-		});
+		// Gated tiers (e.g. `pr`) assert an absolute green bar instead of comparing
+		// to a baseline — skip the comparison entirely.
+		const outcome = isGatedTier(args.tier)
+			? undefined
+			: await tryRunComparison({
+					lsClient,
+					prExperimentName: experimentResults.experimentName,
+					evaluation,
+					testCasesWithFiles,
+					baselinePrefix: args.baselinePrefix,
+					logger,
+				});
 
 		const slugByTestCase = new Map<WorkflowTestCase, string>(
 			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
@@ -939,7 +983,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								baseUrl: lane.baseUrl,
 								testCase: tc.testCase,
 								timeoutMs: args.timeoutMs,
-								seededCredentialTypes: lane.seedResult.seededTypes,
+								createdCredentialIds: lane.createdCredentialIds,
 								preRunWorkflowIds: lane.preRunWorkflowIds,
 								claimedWorkflowIds: lane.claimedWorkflowIds,
 								logger,
@@ -989,6 +1033,9 @@ function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseR
 	}
 	return evaluation.testCases.flatMap((tc) =>
 		tc.runs.map((run, iter) => {
+			// seedThread cases carry no authored conversation (the live turn comes
+			// from the trace) — nothing to relabel.
+			if (!run.testCase.conversation?.length) return run;
 			const [opening, ...rest] = run.testCase.conversation;
 			return {
 				...run,
@@ -1095,6 +1142,7 @@ function writeEvalResults(
 	commitSha: string | undefined,
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
 	runUrl: string | undefined,
+	gate: GateResult | undefined,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1130,8 +1178,10 @@ function writeEvalResults(
 			: undefined,
 		comparisonStatus: outcome?.kind ?? 'not_attempted',
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
+		// Absolute green-gate verdict for curated tiers (undefined for baseline-compared runs).
+		gate,
 		testCases: testCases.map((tc) => ({
-			name: tc.testCase.conversation[0].text.slice(0, 70),
+			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
@@ -1178,7 +1228,7 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl }),
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl, gate }),
 	);
 
 	return { jsonPath, prCommentPath };
@@ -1223,16 +1273,20 @@ async function tryRunComparison(config: {
 	prExperimentName: string;
 	evaluation: MultiRunEvaluation;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
+	baselinePrefix: string;
 	logger: EvalLogger;
 }): Promise<ComparisonOutcome> {
-	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
+	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, baselinePrefix, logger } =
+		config;
 
 	try {
-		const baselineName = await findLatestBaseline(lsClient);
+		const baselineName = await findLatestBaseline(lsClient, baselinePrefix);
 		if (!baselineName) {
+			// Strip the trailing hyphen so the hint names the experiment, not the lookup prefix.
+			const baselineExperimentName = baselinePrefix.replace(/-$/, '');
 			logger.verbose(
 				'No baseline experiment found — skipping comparison. ' +
-					'Run with --experiment-name instance-ai-baseline to create one.',
+					`Run with --experiment-name ${baselineExperimentName} to create one.`,
 			);
 			return { kind: 'no_baseline' };
 		}
@@ -1275,7 +1329,7 @@ function bucketFromEvaluation(
 		const fileSlug = slugByTestCase.get(tc.testCase);
 		if (!fileSlug) {
 			throw new Error(
-				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.conversation[0].text.slice(0, 60)}"`,
+				`bucketFromEvaluation: no fileSlug for test case "${caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 60)}"`,
 			);
 		}
 		const total = tc.runs.length;

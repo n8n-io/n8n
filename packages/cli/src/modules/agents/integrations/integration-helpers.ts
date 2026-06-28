@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils';
+
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
 export interface IntegrationErrorResponse {
@@ -40,10 +42,6 @@ export function normalizePlatformId(platform: string, id: string): string {
 	return id.includes(':') ? id : `${platform}:${id}`;
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 export function stringValue(value: unknown): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
@@ -82,4 +80,29 @@ export function removeUndefinedValues<T extends Record<string, unknown>>(
 
 export function isDefined<T>(value: T | undefined): value is T {
 	return value !== undefined;
+}
+
+export function hasUpdateIssueField(input: {
+	issueId: string;
+	teamId?: string | null;
+	title?: string;
+	description?: string | null;
+	assigneeId?: string | null;
+	projectId?: string | null;
+	labelIds?: string[];
+	priority?: number | null;
+	stateId?: string | null;
+	parentId?: string | null;
+}): boolean {
+	return (
+		input.teamId !== undefined ||
+		input.title !== undefined ||
+		input.description !== undefined ||
+		input.assigneeId !== undefined ||
+		input.projectId !== undefined ||
+		input.labelIds !== undefined ||
+		input.priority !== undefined ||
+		input.stateId !== undefined ||
+		input.parentId !== undefined
+	);
 }

@@ -1,13 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import axios from 'axios';
 import { mock } from 'jest-mock-extended';
 
 import { DynamicTemplatesService, REQUEST_TIMEOUT_MS } from '@/services/dynamic-templates.service';
-
-jest.mock('axios');
-
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 const MOCK_DYNAMIC_TEMPLATES_HOST = 'https://dynamic-templates.n8n.io/templates';
 
@@ -16,11 +12,23 @@ describe('DynamicTemplatesService', () => {
 	const mockGlobalConfig = mock<GlobalConfig>({
 		templates: { dynamicTemplatesHost: MOCK_DYNAMIC_TEMPLATES_HOST },
 	});
+	const request = jest.fn();
+	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const outboundHttp = mock<OutboundHttp>({ requests });
 	let dynamicTemplatesService: DynamicTemplatesService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		dynamicTemplatesService = new DynamicTemplatesService(mockLogger, mockGlobalConfig);
+		requests.mockReturnValue(mock<HttpRequestClient>({ request }));
+		dynamicTemplatesService = new DynamicTemplatesService(
+			mockLogger,
+			mockGlobalConfig,
+			outboundHttp,
+		);
+	});
+
+	it('should create the request client with SSRF disabled for the fixed host', () => {
+		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: REQUEST_TIMEOUT_MS });
 	});
 
 	describe('fetchDynamicTemplates', () => {
@@ -30,23 +38,21 @@ describe('DynamicTemplatesService', () => {
 				{ id: 2, name: 'Template 2' },
 			];
 
-			mockedAxios.get.mockResolvedValue({
-				data: { templates: mockTemplates },
-			});
+			request.mockResolvedValue({ templates: mockTemplates });
 
 			const result = await dynamicTemplatesService.fetchDynamicTemplates();
 
 			expect(result).toEqual(mockTemplates);
-			expect(mockedAxios.get).toHaveBeenCalledWith(MOCK_DYNAMIC_TEMPLATES_HOST, {
+			expect(request).toHaveBeenCalledWith({
+				url: MOCK_DYNAMIC_TEMPLATES_HOST,
+				method: 'GET',
 				headers: { 'Content-Type': 'application/json' },
-				timeout: REQUEST_TIMEOUT_MS,
+				json: true,
 			});
 		});
 
 		it('should return empty array when API returns empty templates', async () => {
-			mockedAxios.get.mockResolvedValue({
-				data: { templates: [] },
-			});
+			request.mockResolvedValue({ templates: [] });
 
 			const result = await dynamicTemplatesService.fetchDynamicTemplates();
 
@@ -55,7 +61,7 @@ describe('DynamicTemplatesService', () => {
 
 		it('should log error and throw when API call fails', async () => {
 			const mockError = new Error('Network error');
-			mockedAxios.get.mockRejectedValue(mockError);
+			request.mockRejectedValue(mockError);
 
 			await expect(dynamicTemplatesService.fetchDynamicTemplates()).rejects.toThrow(
 				'Network error',
@@ -67,7 +73,7 @@ describe('DynamicTemplatesService', () => {
 
 		it('should throw on timeout', async () => {
 			const timeoutError = new Error(`timeout of ${REQUEST_TIMEOUT_MS}ms exceeded`);
-			mockedAxios.get.mockRejectedValue(timeoutError);
+			request.mockRejectedValue(timeoutError);
 
 			await expect(dynamicTemplatesService.fetchDynamicTemplates()).rejects.toThrow(
 				`timeout of ${REQUEST_TIMEOUT_MS}ms exceeded`,

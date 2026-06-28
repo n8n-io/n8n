@@ -29,6 +29,7 @@ jest.mock('../esm-loader', () => ({
 }));
 
 import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
@@ -43,6 +44,7 @@ import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -68,7 +70,12 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'telegram';
 
-	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'divider',
+		'fields',
+	];
 
 	readonly needsShortCallbackData = true;
 
@@ -80,7 +87,7 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(new SlackIntegration());
-	registry.register(new LinearIntegration(mock<Logger>()));
+	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }
 
