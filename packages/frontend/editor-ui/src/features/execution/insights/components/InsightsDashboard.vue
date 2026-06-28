@@ -252,6 +252,7 @@ onBeforeMount(async () => {
 				class="mt-s"
 				:earliest-data-date="insightsStore.earliestDataDate"
 				:range-start="range.start"
+				:range-end="range.end"
 			/>
 
 			<InsightsSummary

@@ -22,6 +22,7 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: null,
 				rangeStart: new CalendarDate(2026, 6, 1),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 
@@ -33,6 +34,7 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: '2026-06-11T00:00:00.000Z',
 				rangeStart: new CalendarDate(2026, 6, 11),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 
@@ -44,6 +46,7 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: '2026-06-11T00:00:00.000Z',
 				rangeStart: new CalendarDate(2026, 6, 15),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 
@@ -55,6 +58,7 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: '2026-06-11T00:00:00.000Z',
 				rangeStart: new CalendarDate(2026, 6, 9),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 
@@ -66,6 +70,7 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: '2026-06-11T00:00:00.000Z',
 				rangeStart: new CalendarDate(2026, 6, 9),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 
@@ -77,6 +82,7 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: '2026-06-11T00:00:00.000Z',
 				rangeStart: new CalendarDate(2026, 6, 10),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 
@@ -88,10 +94,25 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: '2026-06-11T00:00:00.000Z',
 				rangeStart: new CalendarDate(2026, 6, 9),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 
 		expect(getByTestId('insights-date-range-alert').textContent).toContain('2 earlier days');
+	});
+
+	it('shows no-data description when the entire range is before the earliest data date', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				earliestDataDate: '2026-06-25T00:00:00.000Z',
+				rangeStart: new CalendarDate(2026, 6, 1),
+				rangeEnd: new CalendarDate(2026, 6, 10),
+			},
+		});
+
+		expect(getByTestId('insights-date-range-alert').textContent).toContain(
+			'Your selected range does not have any data available.',
+		);
 	});
 
 	it('hides the alert and emits dismiss when the dismiss button is clicked', async () => {
@@ -99,6 +120,7 @@ describe('InsightsDateRangeAlert', () => {
 			props: {
 				earliestDataDate: '2026-06-11T00:00:00.000Z',
 				rangeStart: new CalendarDate(2026, 6, 9),
+				rangeEnd: new CalendarDate(2026, 6, 30),
 			},
 		});
 

@@ -5742,6 +5742,7 @@
 	"insights.dashboard.search.placeholder": "All projects",
 	"insights.dashboard.dataRangeAlert.title": "Your selected range goes back further than your data",
 	"insights.dashboard.dataRangeAlert.description": "Insights started collecting data on {date}. The 1 earlier day in your range does not have any data available. | Insights started collecting data on {date}. The {days} earlier days in your range do not have any data available.",
+	"insights.dashboard.dataRangeAlert.descriptionNoData": "Insights started collecting data on {date}. Your selected range does not have any data available.",
 	"insights.dashboard.dataRangeAlert.dismiss": "Dismiss",
 	"insights.dashboard.paywall.title": "Upgrade to access more detailed insights",
 	"insights.dashboard.paywall.description": "Gain access to more granular, per-workflow insights and visual breakdown of production executions over different time periods.",

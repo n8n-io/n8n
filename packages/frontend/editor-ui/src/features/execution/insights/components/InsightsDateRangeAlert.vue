@@ -8,6 +8,7 @@ import { computed, ref } from 'vue';
 const props = defineProps<{
 	earliestDataDate: string | null;
 	rangeStart: DateValue;
+	rangeEnd: DateValue;
 }>();
 
 const emit = defineEmits<{ dismiss: [] }>();
@@ -22,8 +23,12 @@ const alertInfo = computed(() => {
 	const earliestCalendarDate = parseDate(props.earliestDataDate.substring(0, 10));
 	if (props.rangeStart.compare(earliestCalendarDate) >= 0) return null;
 
+	if (props.rangeEnd.compare(earliestCalendarDate) < 0) {
+		return { earliestCalendarDate, daysWithoutData: 0, noData: true as const };
+	}
+
 	const daysWithoutData = earliestCalendarDate.compare(props.rangeStart);
-	return { earliestCalendarDate, daysWithoutData };
+	return { earliestCalendarDate, daysWithoutData, noData: false as const };
 });
 
 const formattedDate = computed(() => {
@@ -47,7 +52,7 @@ function dismiss() {
 		v-if="alertInfo && !isDismissed"
 		type="info"
 		:show-icon="false"
-		data-testid="insights-date-range-alert"
+		data-test-id="insights-date-range-alert"
 	>
 		<template #icon>
 			<N8nText color="text-dark">
@@ -61,10 +66,14 @@ function dismiss() {
 		</template>
 		<N8nText color="text-dark">
 			{{
-				i18n.baseText('insights.dashboard.dataRangeAlert.description', {
-					interpolate: { date: formattedDate, days: alertInfo.daysWithoutData },
-					adjustToNumber: alertInfo.daysWithoutData,
-				})
+				alertInfo.noData
+					? i18n.baseText('insights.dashboard.dataRangeAlert.descriptionNoData', {
+							interpolate: { date: formattedDate },
+						})
+					: i18n.baseText('insights.dashboard.dataRangeAlert.description', {
+							interpolate: { date: formattedDate, days: alertInfo.daysWithoutData },
+							adjustToNumber: alertInfo.daysWithoutData,
+						})
 			}}
 		</N8nText>
 		<template #aside>
@@ -73,7 +82,7 @@ function dismiss() {
 				size="small"
 				variant="subtle"
 				:label="i18n.baseText('insights.dashboard.dataRangeAlert.dismiss')"
-				data-testid="insights-date-range-alert-dismiss"
+				data-test-id="insights-date-range-alert-dismiss"
 				@click="dismiss"
 			/>
 		</template>
