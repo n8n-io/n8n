@@ -98,7 +98,8 @@ function extractSkillScriptPath(command: string): string | undefined {
 export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'book-open';
+	if (toolName === 'list_skills' || toolName === 'load_skill' || toolName === 'n8n-docs')
+		return 'book-open';
 	if (toolName === 'data-tables') return 'table';
 	if (
 		toolName === 'workflows' ||

@@ -89,6 +89,7 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
+	browserUseEnabled?: boolean;
 }
 
 @Service()
@@ -190,6 +191,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
+			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
 	}
 
@@ -232,6 +234,7 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
+		if (update.browserUseEnabled !== undefined) c.browserUseEnabled = update.browserUseEnabled;
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
@@ -446,6 +449,10 @@ export class InstanceAiSettingsService {
 		return this.config.localGatewayDisabled;
 	}
 
+	isBrowserUseEnabled(): boolean {
+		return this.config.browserUseEnabled;
+	}
+
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
 		const provider = normalizeSandboxProvider(this.config.sandboxProvider);
@@ -652,6 +659,8 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
+		if (persisted.browserUseEnabled !== undefined)
+			c.browserUseEnabled = persisted.browserUseEnabled;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -674,6 +683,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
+			browserUseEnabled: c.browserUseEnabled,
 		};
 
 		await this.settingsRepository.upsert(

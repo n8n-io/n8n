@@ -12,6 +12,7 @@ export const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const AGENT_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const HTTP_REQUEST_TYPE = 'n8n-nodes-base.httpRequest';
+export const GOOGLE_SHEETS_TYPE = 'n8n-nodes-base.googleSheets';
 
 // ---------------------------------------------------------------------------
 // Trigger detection

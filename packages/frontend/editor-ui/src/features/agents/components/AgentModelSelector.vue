@@ -8,6 +8,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
 import type {
 	AiModelSelectorMenuItem,
@@ -27,11 +28,13 @@ import {
 const MAX_MODEL_NAME_CHARS = 45;
 const MAX_SELECTED_NAME_CHARS = 30;
 const MAX_SEARCH_RESULTS_PER_PROVIDER = 10;
+const FREE_OPENAI_CREDITS_PROVIDER = 'openai';
+const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
 type MenuItemData = AiModelSelectorMenuItemData & {
 	provider?: AgentModelProvider;
 	credentialType?: string;
-	leadingIcon?: 'settings';
+	leadingIcon?: 'settings' | 'sparkles';
 };
 
 type MenuItem = AiModelSelectorMenuItem<MenuItemData>;
@@ -71,6 +74,13 @@ const searchQuery = ref('');
 const selectedCredentialId = computed(() =>
 	selectedModel ? credentials?.[selectedModel.provider] : undefined,
 );
+
+const projectHasOpenAiCredential = computed(() =>
+	Boolean(credentials?.[FREE_OPENAI_CREDITS_PROVIDER]),
+);
+
+const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCreditsAndGetCredential } =
+	useFreeAiCredits({ hasOpenAiCredential: projectHasOpenAiCredential });
 
 const selectedCredential = computed(() =>
 	selectedCredentialId.value
@@ -143,6 +153,20 @@ function configureCredentialItemId(provider: AgentModelProvider, credentialType:
 	return `${provider}::configure::${encodeURIComponent(credentialType)}`;
 }
 
+function freeOpenAiCreditsItemId(): string {
+	return `${FREE_OPENAI_CREDITS_PROVIDER}::freeCredits::${encodeURIComponent(FREE_OPENAI_CREDITS_MODEL)}`;
+}
+
+const canUseFreeOpenAiCredits = computed(
+	() => credentials !== null && canCreateCredentials.value && userCanClaimOpenAiCredits.value,
+);
+
+const freeOpenAiCreditsDescription = computed(() =>
+	i18n.baseText('agents.modelSelector.freeCredits.description', {
+		interpolate: { credits: aiCreditsQuota.value },
+	}),
+);
+
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
 	const credentialOptions = getCredentialsForProvider(provider);
@@ -189,6 +213,25 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				]
 		: [];
 
+	const freeOpenAiCreditsItems: MenuItem[] =
+		provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
+			? [
+					{
+						id: freeOpenAiCreditsItemId(),
+						icon: { type: 'icon', value: 'sparkles' },
+						label: i18n.baseText('agents.modelSelector.freeCredits.label'),
+						disabled: claimingCredits.value,
+						data: {
+							provider,
+							credentialType: credentialTypes[0],
+							leadingIcon: 'sparkles',
+							description: freeOpenAiCreditsDescription.value,
+							descriptionTooltipTeleported: false,
+						},
+					},
+				]
+			: [];
+
 	const modelItems = hasProviderCredential
 		? models.map<MenuItem>((model, index) => ({
 				id: modelItemId(provider, model.model),
@@ -198,6 +241,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				data: {
 					provider,
 					description: model.description ?? undefined,
+					descriptionTooltipTeleported: false,
 					fullName: `${model.name} ${model.model}`,
 					credentialType: credentialTypes[0],
 				},
@@ -228,8 +272,21 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	return {
 		id: provider,
 		label: definition.displayName,
-		data: { provider, credentialType: credentialTypes[0] },
-		children: [...configureCredentialItems, ...credentialItems, ...modelItems, ...statusItems],
+		data: {
+			provider,
+			credentialType: credentialTypes[0],
+			badgeLabel:
+				provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
+					? i18n.baseText('agents.modelSelector.freeCredits.badge')
+					: undefined,
+		},
+		children: [
+			...freeOpenAiCreditsItems,
+			...configureCredentialItems,
+			...credentialItems,
+			...modelItems,
+			...statusItems,
+		],
 	};
 }
 
@@ -253,11 +310,11 @@ const menu = computed(() => {
 	});
 });
 
-function isSearchableModelItem(item: MenuItem): boolean {
-	return item.id.includes('::model::') && !item.disabled;
+function isSearchableItem(item: MenuItem): boolean {
+	return (item.id.includes('::model::') || item.id.includes('::freeCredits::')) && !item.disabled;
 }
 
-function collectMatchingModelItems(
+function collectMatchingItems(
 	item: MenuItem,
 	query: string,
 	parts: string[],
@@ -270,19 +327,19 @@ function collectMatchingModelItems(
 
 	if (children.length === 0) {
 		const searchText = `${item.data?.fullName ?? item.label}`.toLowerCase();
-		if (!isSearchableModelItem(item) || (!isMatched && !searchText.includes(query))) return [];
+		if (!isSearchableItem(item) || (!isMatched && !searchText.includes(query))) return [];
 		return [
 			{
 				...item,
 				divided: false,
-				data: item.data ? { ...item.data, parts: currentParts } : undefined,
+				data: item.data
+					? { ...item.data, parts: currentParts, descriptionTooltipTeleported: true }
+					: undefined,
 			},
 		];
 	}
 
-	return children.flatMap((child) =>
-		collectMatchingModelItems(child, query, currentParts, isMatched),
-	);
+	return children.flatMap((child) => collectMatchingItems(child, query, currentParts, isMatched));
 }
 
 const filteredMenu = computed(() => {
@@ -290,7 +347,7 @@ const filteredMenu = computed(() => {
 	if (!query) return menu.value;
 
 	return menu.value.flatMap<MenuItem>((providerItem) => {
-		const results = collectMatchingModelItems(providerItem, query, []);
+		const results = collectMatchingItems(providerItem, query, []);
 		if (results.length <= MAX_SEARCH_RESULTS_PER_PROVIDER) return results;
 
 		return [
@@ -322,7 +379,7 @@ function openNewCredential(credentialType: string) {
 	}
 }
 
-function onSelect(id: string) {
+async function onSelect(id: string) {
 	if (disabled) return;
 
 	const [providerId, action, rawValue] = id.split('::');
@@ -336,6 +393,21 @@ function onSelect(id: string) {
 
 	if (action === 'configure') {
 		openNewCredential(value);
+		return;
+	}
+
+	if (action === 'freeCredits' && providerId === FREE_OPENAI_CREDITS_PROVIDER) {
+		if (!canUseFreeOpenAiCredits.value) return;
+
+		const credential = await claimCreditsAndGetCredential(
+			'agentBuilderModelSelector',
+			createCredentialProjectId.value,
+		);
+
+		if (!credential) return;
+
+		emit('selectCredential', providerId, credential.id);
+		emit('change', { provider: providerId, model: value });
 		return;
 	}
 

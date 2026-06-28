@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
@@ -181,7 +182,7 @@ type SeedStepInterpreter = (call: SeedToolCall) => TranscriptStep | null;
 
 const interpretAskUser: SeedStepInterpreter = (call) => {
 	const questions = call.input?.questions;
-	if (call.toolName !== 'ask-user' || !Array.isArray(questions)) return null;
+	if (call.toolName !== DOMAIN_TOOL_IDS.ASK_USER || !Array.isArray(questions)) return null;
 	const parsed = extractAskUserQuestions(questions);
 	if (parsed.length === 0) return null;
 	// The kept (resume) block carries the user's answers in its output.
@@ -193,7 +194,7 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 
 const interpretPlan: SeedStepInterpreter = (call) => {
 	const tasks = call.input?.tasks;
-	if (call.toolName !== 'create-tasks' || !Array.isArray(tasks)) return null;
+	if (call.toolName !== ORCHESTRATION_TOOL_IDS.CREATE_TASKS || !Array.isArray(tasks)) return null;
 	const parsed = extractPlanTasks(tasks);
 	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
 };
@@ -219,11 +220,36 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
+// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, …):
+// the request is in the resume block's input, the decision in its output.
+const interpretConfirmation: SeedStepInterpreter = (call) => {
+	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
+	const resumeReason = typeof reasonRaw === 'string' ? reasonRaw : undefined;
+	if (!resumeReason || resumeReason === 'questions' || Array.isArray(call.input?.setupRequests)) {
+		return null;
+	}
+	const toolNameRaw = call.input?.toolName;
+	const messageRaw = call.input?.message;
+	const approvedRaw = call.output?.approved;
+	const feedbackRaw = call.output?.feedback;
+	return {
+		kind: 'confirmation',
+		toolName: typeof toolNameRaw === 'string' ? toolNameRaw : call.toolName,
+		resumeReason,
+		approved: typeof approvedRaw === 'boolean' ? approvedRaw : undefined,
+		// Plan-review prompts are boilerplate; the plan renders separately.
+		message:
+			resumeReason === 'plan-review' || typeof messageRaw !== 'string' ? undefined : messageRaw,
+		feedback: typeof feedbackRaw === 'string' ? feedbackRaw : undefined,
+	};
+};
+
 const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretAskUser,
 	interpretPlan,
 	interpretSetupWizard,
 	interpretSetupCard,
+	interpretConfirmation,
 ];
 
 /** Map a seeded tool-call block to a transcript step (special interpreters above,
