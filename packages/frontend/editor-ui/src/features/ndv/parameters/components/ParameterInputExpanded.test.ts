@@ -123,6 +123,36 @@ describe('ParameterInputExpanded.vue', () => {
 			expect(getByTestId('fixed-collection-wrapper')).toBeInTheDocument();
 		});
 
+		it('should render credential fixedCollection fields with credential expression context', async () => {
+			const nodeValues = {
+				headers: {
+					values: [{ name: 'X-Test-Header', value: '={{ $secrets.testVault.testKey }}' }],
+				},
+			};
+			const { getByTestId } = renderComponent({
+				props: {
+					parameter: fixedCollectionParameter,
+					value: nodeValues.headers,
+					nodeValues,
+				},
+				global: {
+					stubs: {
+						LazyFixedCollectionParameter: {
+							props: ['isForCredential'],
+							template:
+								'<div data-test-id="fixed-collection-credential-context" :data-is-for-credential="String(isForCredential)" />',
+						},
+					},
+				},
+			});
+			await vi.dynamicImportSettled();
+
+			expect(getByTestId('fixed-collection-credential-context')).toHaveAttribute(
+				'data-is-for-credential',
+				'true',
+			);
+		});
+
 		it('should update the value when the user types', async () => {
 			const nodeValues = {
 				headers: { values: [{ name: 'Content-', value: '' }] },

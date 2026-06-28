@@ -89,6 +89,12 @@ describe('Expression', () => {
 			expect(evaluate('={{unescape}}')).toEqual({});
 		});
 
+		it('should stringify objects with a null constructor without throwing', () => {
+			const value = { constructor: null };
+
+			expect(expression.convertObjectValueToString(value)).toBe('[Object: {"constructor": null}]');
+		});
+
 		it('should be able to use global built-ins from allowlist', () => {
 			expect(evaluate('={{new Date()}}')).toBeInstanceOf(Date);
 			expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(
