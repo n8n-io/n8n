@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -9,8 +10,10 @@ import { NodeCatalogService } from '../node-catalog.service';
 const MockNodeTypeParser = jest.fn();
 const mockSetSchemaBaseDirs = jest.fn();
 const mockSearchCodeBuilderNodes = jest.fn();
-const mockGetNodeTypes = jest.fn().mockReturnValue('get-result');
+const mockGetNodeTypes = jest.fn().mockReturnValue('# TypeScript Type Definitions\n\nget-result');
 const mockGetSuggestedNodes = jest.fn().mockReturnValue('suggest-result');
+const mockGenerateNodeTypeFile = jest.fn().mockReturnValue('synthesized-result');
+const mockFsAccess = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('@n8n/ai-utilities/node-catalog', () => ({
 	NodeTypeParser: MockNodeTypeParser,
@@ -21,6 +24,11 @@ jest.mock('@n8n/ai-utilities/node-catalog', () => ({
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	setSchemaBaseDirs: (...args: unknown[]) => mockSetSchemaBaseDirs(...(args as [string[]])),
+	generateNodeTypeFile: (...args: unknown[]) => mockGenerateNodeTypeFile(...args),
+}));
+
+jest.mock('node:fs/promises', () => ({
+	access: (...args: unknown[]) => mockFsAccess(...args),
 }));
 
 jest.mock('fs', () => ({
@@ -239,8 +247,8 @@ describe('NodeCatalogService', () => {
 			const result1 = await service.getNodeTypes(['n8n-nodes-base.set']);
 			const result2 = await service.getNodeTypes(['n8n-nodes-base.set']);
 
-			expect(result1).toBe('get-result');
-			expect(result2).toBe('get-result');
+			expect(result1).toBe('# TypeScript Type Definitions\n\nget-result');
+			expect(result2).toBe('# TypeScript Type Definitions\n\nget-result');
 			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
 		});
 
@@ -260,7 +268,111 @@ describe('NodeCatalogService', () => {
 			await service.getNodeTypes(['n8n-nodes-base.gmail', 'n8n-nodes-base.slack']);
 			await service.getNodeTypes(['n8n-nodes-base.slack', 'n8n-nodes-base.gmail']);
 
-			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
+			// Per-node resolution calls the SDK once per unique ID. The second
+			// service.getNodeTypes(...) invocation hits the outer cache, so we
+			// see 2 SDK calls total (gmail + slack) rather than 4.
+			expect(mockGetNodeTypes).toHaveBeenCalledTimes(2);
+		});
+
+		test('resolves community package directories via loadNodesAndCredentials.loaders', async () => {
+			loadNodesAndCredentials.loaders = {
+				'n8n-nodes-resend': {
+					packageName: 'n8n-nodes-resend',
+					directory: '/path/to/custom/n8n-nodes-resend',
+				} as any,
+			};
+
+			await service.initialize();
+
+			expect(service.getNodeDefinitionDirs()).toContain(
+				path.join('/path/to/custom/n8n-nodes-resend', 'dist', 'node-definitions'),
+			);
+		});
+
+		test('uses fallback synthesis when static file returns errors', async () => {
+			mockGetNodeTypes.mockReturnValueOnce(
+				"\n\n# Errors\n\nNode type 'n8n-nodes-resend.resend' not found.",
+			);
+			// nodeDescriptions is keyed by the short name (`name` on the description),
+			// while MCP clients send fully qualified IDs. Both names must resolve.
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [{ name: 'resend', properties: [] }],
+			} as any);
+
+			await service.initialize();
+			const result = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+
+			expect(result).toContain('# TypeScript Type Definitions');
+			expect(result).toContain('// Synthesized type for n8n-nodes-resend.resend');
+			expect(result).toContain('synthesized-result');
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalled();
+		});
+
+		test('returns unavailable error if synthesis fails', async () => {
+			mockGetNodeTypes.mockReturnValueOnce(
+				"\n\n# Errors\n\nNode type 'n8n-nodes-resend.resend' not found.",
+			);
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [{ name: 'resend', properties: [] }],
+			} as any);
+			mockGenerateNodeTypeFile.mockImplementationOnce(() => {
+				throw new Error('Synthesis failed');
+			});
+
+			await service.initialize();
+			const result = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+
+			expect(result).toContain('# Errors');
+			expect(result).toContain('type definitions could not be generated. Use validate_node_config');
+		});
+
+		test('returns not found error if node is missing in registry', async () => {
+			mockGetNodeTypes.mockReturnValueOnce(
+				"\n\n# Errors\n\nNode type 'n8n-nodes-resend.resend' not found.",
+			);
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [],
+			} as any);
+
+			await service.initialize();
+			const result = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+
+			expect(result).toContain('# Errors');
+			expect(result).toContain("Node type 'n8n-nodes-resend.resend' not found. Use search_node");
+		});
+
+		test('returns empty string when called with no nodeIds', async () => {
+			await service.initialize();
+			const result = await service.getNodeTypes([]);
+			expect(result).toBe('');
+			// No SDK calls should happen for an empty request.
+			expect(mockGetNodeTypes).not.toHaveBeenCalled();
+		});
+
+		test('invalidates directory and description caches on refreshNodeTypes', async () => {
+			loadNodesAndCredentials.loaders = {
+				'n8n-nodes-resend': {
+					packageName: 'n8n-nodes-resend',
+					directory: '/path/to/custom/n8n-nodes-resend',
+				} as any,
+			};
+
+			await service.initialize();
+			expect(service.getNodeDefinitionDirs().length).toBeGreaterThan(1);
+
+			// Modify loaders to be empty
+			loadNodesAndCredentials.loaders = {};
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [{ name: 'n8n-nodes-base.webhook' }],
+			} as any);
+
+			// Trigger refresh callback
+			expect(postProcessorCallback).toBeDefined();
+			await postProcessorCallback!();
+
+			// Should have re-resolved and not contain resend since loader was removed
+			const dirs = service.getNodeDefinitionDirs();
+			expect(dirs.some((d) => d.includes('n8n-nodes-resend'))).toBe(false);
 		});
 	});
 
@@ -301,6 +413,156 @@ describe('NodeCatalogService', () => {
 			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(4);
 			expect(mockGetNodeTypes).toHaveBeenCalledTimes(2);
 			expect(mockGetSuggestedNodes).toHaveBeenCalledTimes(2);
+		});
+
+		test('a previously failed lookup succeeds after refresh once the loader arrives', async () => {
+			// First init: the node isn't installed yet, so the registry returns an error.
+			loadNodesAndCredentials.loaders = {
+				'n8n-nodes-resend': {
+					packageName: 'n8n-nodes-resend',
+					directory: '/path/to/custom/n8n-nodes-resend',
+				} as any,
+			};
+			mockGetNodeTypes.mockReturnValue(
+				"\n\n# Errors\n\nNode type 'n8n-nodes-resend.resend' not found.",
+			);
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [],
+			} as any);
+
+			await service.initialize();
+			const firstResult = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+			expect(firstResult).toContain('not found');
+			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
+
+			// Now simulate installing the package: the next collectTypes returns
+			// the description, and the SDK's getNodeTypes still has no static file.
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [{ name: 'resend', properties: [] }],
+			} as any);
+
+			expect(postProcessorCallback).toBeDefined();
+			await postProcessorCallback!();
+
+			// The stale "not found" entry must have been evicted; synthesis should now run.
+			mockGenerateNodeTypeFile.mockClear();
+			const secondResult = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+			expect(secondResult).toContain('Synthesized type');
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledTimes(1);
+		});
+
+		test('concurrent getNodeTypes during refresh sees consistent (old or new) state', async () => {
+			// Initial state: no resend node available.
+			mockGetNodeTypes.mockReturnValue(
+				"\n\n# Errors\n\nNode type 'n8n-nodes-resend.resend' not found.",
+			);
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [{ name: 'n8n-nodes-base.set' }],
+			} as any);
+
+			await service.initialize();
+			const initialResult = await service.getNodeTypes(['n8n-nodes-base.set']);
+			expect(initialResult).toContain('# TypeScript Type Definitions');
+
+			// Build a "stuck" deferred promise that lets us pause collectTypes
+			// mid-refresh while another getNodeTypes runs concurrently.
+			let resolveCollect!: (value: { nodes: unknown[]; credentials: unknown[] }) => void;
+			const collectPromise = new Promise<{ nodes: unknown[]; credentials: unknown[] }>(
+				(resolve) => {
+					resolveCollect = resolve;
+				},
+			);
+
+			loadNodesAndCredentials.collectTypes.mockReturnValueOnce(collectPromise as never);
+
+			// Start refresh; it should pause awaiting collectTypes.
+			const refreshPromise = postProcessorCallback!();
+
+			// While the refresh is paused, the old snapshot is still published.
+			// Reading a *new* ID must work against the OLD snapshot, not crash
+			// or return a half-built state. The SDK still returns the same static
+			// result for the old node, so the response stays coherent.
+			mockGetNodeTypes.mockClear();
+			mockGetNodeTypes.mockReturnValue(
+				'# TypeScript Type Definitions\n\n## n8n-nodes-base.httpRequest\n\nold-content',
+			);
+			const concurrentResult = await service.getNodeTypes(['n8n-nodes-base.httpRequest']);
+			expect(concurrentResult).toContain('old-content');
+
+			// Now release the refresh: resend becomes available.
+			resolveCollect({
+				nodes: [{ name: 'n8n-nodes-base.set' }, { name: 'resend' }],
+				credentials: [],
+			});
+			await refreshPromise;
+
+			// After refresh completes, the new snapshot is published atomically.
+			// (nodeDescriptions is now keyed by short "resend".)
+			mockGetNodeTypes.mockClear();
+			mockGetNodeTypes.mockReturnValue(
+				"\n\n# Errors\n\nNode type 'n8n-nodes-resend.resend' not found.",
+			);
+			const postResult = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+			expect(postResult).toContain('Synthesized type');
+		});
+	});
+
+	describe('canonical name extraction', () => {
+		test('resolves fully qualified node IDs through the short-name registry', async () => {
+			// nodeDescriptions are keyed by short name, but callers send
+			// fully qualified IDs like "n8n-nodes-resend.resend".
+			mockGetNodeTypes.mockReturnValue(
+				"\n\n# Errors\n\nNode type 'n8n-nodes-resend.resend' not found.",
+			);
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [{ name: 'resend', properties: [] }],
+			} as any);
+
+			await service.initialize();
+			const result = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledTimes(1);
+			// The synthesized block keeps the original qualified ID in the header.
+			expect(result).toContain('// Synthesized type for n8n-nodes-resend.resend');
+		});
+
+		test('uses the original ID when there is no dot (no package prefix)', async () => {
+			mockGetNodeTypes.mockReturnValueOnce("\n\n# Errors\n\nNode type 'resend' not found.");
+			loadNodesAndCredentials.collectTypes.mockResolvedValueOnce({
+				nodes: [{ name: 'resend', properties: [] }],
+			} as any);
+
+			await service.initialize();
+			const result = await service.getNodeTypes(['resend']);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledTimes(1);
+			expect(result).toContain('// Synthesized type for resend');
+		});
+	});
+
+	describe('resolveBuiltinNodeDefinitionDirs error tolerance', () => {
+		test('does not throw when fs.access rejects with EACCES', async () => {
+			loadNodesAndCredentials.loaders = {
+				'permission-locked': {
+					packageName: 'permission-locked',
+					directory: '/locked/community/node',
+				} as any,
+			};
+
+			// Simulate EACCES for the community loader path only; built-in dirs
+			// keep succeeding.
+			mockFsAccess.mockImplementation(async (p: unknown) => {
+				if (typeof p === 'string' && p.includes('locked/community/node')) {
+					const err = new Error('permission denied') as NodeJS.ErrnoException;
+					err.code = 'EACCES';
+					throw err;
+				}
+			});
+
+			await service.initialize();
+
+			const dirs = service.getNodeDefinitionDirs();
+			expect(dirs.every((d) => !d.includes('locked/community/node'))).toBe(true);
 		});
 	});
 });
