@@ -170,12 +170,12 @@ export class DiscordTrigger implements INodeType {
 							"Drop events from members who have any of these roles. Only applies to events that carry the member's roles (new/edited messages, reaction added, member added/updated); ignored where the event has no role data (message-deleted, reaction-removed, member-left).",
 					},
 					{
-						displayName: 'Ignore Bot Messages',
+						displayName: 'Ignore Bot Actions',
 						name: 'ignoreBots',
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to ignore messages sent by bots (including this one) for the "Message Created" event',
+							"Whether to ignore events triggered by bots (including this one). Applies wherever the actor is known: new/edited messages, reaction added, and member added/removed/updated. Can't apply to reaction-removed or message-deleted, which don't carry the actor in the payload.",
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options

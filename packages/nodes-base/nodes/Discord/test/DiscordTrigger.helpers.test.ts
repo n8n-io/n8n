@@ -143,14 +143,78 @@ describe('DiscordTrigger helpers', () => {
 			expect(buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1' }, filters)).toBeNull();
 		});
 
-		it('ignores bot messages for messageCreate when ignoreBots is set', () => {
-			const filters = { ...baseFilters, ignoreBots: true };
-			expect(
-				buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1', author: { bot: true } }, filters),
-			).toBeNull();
-			expect(
-				buildEventItems('MESSAGE_CREATE', { guild_id: 'guild-1', author: { bot: false } }, filters),
-			).not.toBeNull();
+		describe('ignoreBots (Ignore Bot Actions)', () => {
+			const botFilters = { ...baseFilters, ignoreBots: true };
+
+			it('drops bot messages and keeps human messages for messageCreate', () => {
+				expect(
+					buildEventItems(
+						'MESSAGE_CREATE',
+						{ guild_id: 'guild-1', author: { bot: true } },
+						botFilters,
+					),
+				).toBeNull();
+				expect(
+					buildEventItems(
+						'MESSAGE_CREATE',
+						{ guild_id: 'guild-1', author: { bot: false } },
+						botFilters,
+					),
+				).not.toBeNull();
+			});
+
+			it('drops a bot reaction and keeps a human reaction for reactionAdd', () => {
+				const filters = { ...botFilters, selectedEvents: ['reactionAdd'] };
+				expect(
+					buildEventItems(
+						'MESSAGE_REACTION_ADD',
+						{ guild_id: 'guild-1', member: { user: { bot: true } } },
+						filters,
+					),
+				).toBeNull();
+				expect(
+					buildEventItems(
+						'MESSAGE_REACTION_ADD',
+						{ guild_id: 'guild-1', member: { user: { bot: false } } },
+						filters,
+					),
+				).not.toBeNull();
+			});
+
+			it('drops a bot joining and keeps a human joining for memberAdd', () => {
+				const filters = { ...botFilters, selectedEvents: ['memberAdd'] };
+				expect(
+					buildEventItems(
+						'GUILD_MEMBER_ADD',
+						{ guild_id: 'guild-1', user: { bot: true } },
+						filters,
+					),
+				).toBeNull();
+				expect(
+					buildEventItems(
+						'GUILD_MEMBER_ADD',
+						{ guild_id: 'guild-1', user: { bot: false } },
+						filters,
+					),
+				).not.toBeNull();
+			});
+
+			it('passes through events whose actor is unknown (reaction-removed, message-deleted)', () => {
+				expect(
+					buildEventItems(
+						'MESSAGE_REACTION_REMOVE',
+						{ guild_id: 'guild-1', user_id: 'someone' },
+						{ ...botFilters, selectedEvents: ['reactionRemove'] },
+					),
+				).not.toBeNull();
+				expect(
+					buildEventItems(
+						'MESSAGE_DELETE',
+						{ guild_id: 'guild-1' },
+						{ ...botFilters, selectedEvents: ['messageDelete'] },
+					),
+				).not.toBeNull();
+			});
 		});
 
 		it('matches reaction-removed and member left/updated events', () => {

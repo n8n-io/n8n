@@ -85,6 +85,7 @@ export interface EventFilters {
 	guildId: string;
 	/** Channel ids to listen to. Empty = all channels. */
 	channelIds: string[];
+	/** Drop events triggered by any bot (incl. this one), where the actor is known. */
 	ignoreBots: boolean;
 	/** Drop events triggered by this bot's own user (messages & reactions). */
 	excludeSelf: boolean;
@@ -121,6 +122,31 @@ function mimeMatches(contentType: string, pattern: string): boolean {
 	const subOk =
 		patternSub === undefined || patternSub === '' || patternSub === '*' || patternSub === sub;
 	return typeOk && subOk;
+}
+
+/**
+ * Whether the actor that triggered the event is a bot, when the payload tells us.
+ * Returns `undefined` when the actor's bot status isn't in the payload
+ * (reaction-removed and message-deleted carry no actor user object) - callers
+ * treat that as pass-through.
+ */
+function getActorBotFlag(eventValue: string, data: IDataObject): boolean | undefined {
+	if (eventValue === 'messageCreate' || eventValue === 'messageUpdate') {
+		return (data.author as { bot?: boolean } | undefined)?.bot;
+	}
+	// A guild reaction-add embeds the reacting member, whose user carries the flag.
+	if (eventValue === 'reactionAdd') {
+		return (data.member as { user?: { bot?: boolean } } | undefined)?.user?.bot;
+	}
+	// Member events are (or carry) a guild member object with the user.
+	if (
+		eventValue === 'memberAdd' ||
+		eventValue === 'memberRemove' ||
+		eventValue === 'memberUpdate'
+	) {
+		return (data.user as { bot?: boolean } | undefined)?.bot;
+	}
+	return undefined;
 }
 
 /** The id of the user that triggered the event (messages & reactions only). */
@@ -174,9 +200,11 @@ export function buildEventItems(
 		if (!eventChannelId || !filters.channelIds.includes(eventChannelId)) return null;
 	}
 
-	if (filters.ignoreBots && def.value === 'messageCreate') {
-		const author = data.author as { bot?: boolean } | undefined;
-		if (author?.bot) return null;
+	// Drop events triggered by bots (any bot, including this one), wherever the
+	// actor's bot status is known. Unknown (reaction-removed, message-deleted)
+	// passes through.
+	if (filters.ignoreBots && getActorBotFlag(def.value, data)) {
+		return null;
 	}
 
 	// Drop this bot's own messages/reactions (loop prevention).
