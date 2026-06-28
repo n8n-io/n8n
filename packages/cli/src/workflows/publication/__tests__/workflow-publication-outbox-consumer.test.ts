@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
@@ -18,6 +18,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const applier = mock<WorkflowPublicationApplier>();
 	const reporter = mock<PublicationStatusReporter>();
+	const tracing = mock<Tracing>();
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
@@ -37,6 +38,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			reporter,
 			mock<InstanceSettings>({ isLeader }),
 			new WorkflowPublicationLifecycleLock(),
+			tracing,
 		);
 	}
 
@@ -58,6 +60,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
+		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
 		applier.apply.mockResolvedValue({ type: 'completed' });
 		reporter.report.mockResolvedValue(undefined);
@@ -273,6 +276,32 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
 			expect(applier.apply).not.toHaveBeenCalled();
 			expect(reporter.report).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('wakeUp', () => {
+		test('starts polling and drains all pending records', async () => {
+			const first = makeRecord({ id: 1 });
+			const second = makeRecord({ id: 2 });
+			outboxRepository.claimNextPendingRecord
+				.mockResolvedValueOnce(first)
+				.mockResolvedValueOnce(second)
+				.mockResolvedValue(null);
+
+			await consumer.wakeUp();
+
+			expect(applier.apply).toHaveBeenCalledTimes(2);
+			expect(reporter.report).toHaveBeenCalledTimes(2);
+			expect(jest.getTimerCount()).toBe(1);
+		});
+
+		test('does nothing when the feature flag is off', async () => {
+			consumer = createConsumer(false);
+
+			await consumer.wakeUp();
+
+			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
+			expect(jest.getTimerCount()).toBe(0);
 		});
 	});
 

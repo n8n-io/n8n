@@ -97,7 +97,7 @@ describe('createParseFileTool', () => {
 		it('returns error', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64('a,b\n1,2'), mimeType: 'text/csv', fileName: 'test.csv' },
+					{ type: 'file', data: toBase64('a,b\n1,2'), mimeType: 'text/csv', fileName: 'test.csv' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -117,7 +117,7 @@ describe('createParseFileTool', () => {
 			const csv = 'name,age\nAlice,30\nBob,25';
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(csv), mimeType: 'text/csv', fileName: 'people.csv' },
+					{ type: 'file', data: toBase64(csv), mimeType: 'text/csv', fileName: 'people.csv' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -142,7 +142,12 @@ describe('createParseFileTool', () => {
 			const json = JSON.stringify([{ name: 'Alice', active: true }]);
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(json), mimeType: 'application/json', fileName: 'data.json' },
+					{
+						type: 'file',
+						data: toBase64(json),
+						mimeType: 'application/json',
+						fileName: 'data.json',
+					},
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -165,7 +170,7 @@ describe('createParseFileTool', () => {
 				'<html><head><title>Release</title></head><body><p>Launch codeword: amber-otter</p></body></html>';
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(html), mimeType: 'text/html', fileName: 'release.html' },
+					{ type: 'file', data: toBase64(html), mimeType: 'text/html', fileName: 'release.html' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -187,7 +192,7 @@ describe('createParseFileTool', () => {
 		it('returns error gracefully', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64('pixels'), mimeType: 'image/png', fileName: 'photo.png' },
+					{ type: 'file', data: toBase64('pixels'), mimeType: 'image/png', fileName: 'photo.png' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -207,7 +212,12 @@ describe('createParseFileTool', () => {
 		it('reports the detected format in the error result', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64('not json'), mimeType: 'application/json', fileName: 'data.json' },
+					{
+						type: 'file',
+						data: toBase64('not json'),
+						mimeType: 'application/json',
+						fileName: 'data.json',
+					},
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -227,7 +237,7 @@ describe('createParseFileTool', () => {
 		it('handles gracefully', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(''), mimeType: 'text/csv', fileName: 'empty.csv' },
+					{ type: 'file', data: toBase64(''), mimeType: 'text/csv', fileName: 'empty.csv' },
 				],
 			});
 			const tool = createParseFileTool(context);

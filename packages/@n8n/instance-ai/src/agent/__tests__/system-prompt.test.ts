@@ -44,6 +44,23 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('clarifying questions', () => {
+		it('routes clarifying questions through ask-user instead of plain text', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('need clarification');
+			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
+		});
+
+		it('does not route missing workflow setup values through ask-user before build', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('use `ask-user` only for choices that change the workflow intent');
+			expect(prompt).toContain('Do not use `ask-user` before the first build');
+			expect(prompt).toContain('leave them for post-build workflow setup');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
@@ -128,6 +145,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
+			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
@@ -180,6 +198,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`debugging-executions`');
 		});
 
+		it('routes n8n docs and credential setup help through the docs skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**n8n docs/product guidance**');
+			expect(prompt).toContain('credential setup');
+			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('`n8n-docs`');
+		});
+
 		it('keeps replan stall prevention in the core follow-up triggers', () => {
 			const prompt = getSystemPrompt({});
 
@@ -214,7 +241,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).toContain('knowledge-base/templates/');
+			expect(prompt).toContain('never load `templates/index.json` wholesale');
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');

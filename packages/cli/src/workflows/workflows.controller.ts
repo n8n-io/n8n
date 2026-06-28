@@ -5,19 +5,19 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
-	ROLE,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import {
-	SharedWorkflow,
-	WorkflowEntity,
+	AuthenticatedRequest,
 	ProjectRelationRepository,
 	ProjectRepository,
+	SharedWorkflow,
+	WorkflowEntity,
 	WorkflowRepository,
-	AuthenticatedRequest,
 } from '@n8n/db';
 import {
 	Body,
@@ -32,37 +32,36 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import axios, { type AxiosRequestConfig } from 'axios';
 import express from 'express';
 import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
-import { CollaborationService } from '../collaboration/collaboration.service';
 
+import { CollaborationService } from '../collaboration/collaboration.service';
 import { WorkflowCreationService } from './workflow-creation.service';
+import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 
+import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import type { IWorkflowResponse } from '@/interfaces';
+import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { AuthService } from '@/auth/auth.service';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-import { SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -87,6 +86,7 @@ export class WorkflowsController {
 		private readonly collaborationService: CollaborationService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	@Post('/')
@@ -98,12 +98,7 @@ export class WorkflowsController {
 			}
 		}
 
-		const newWorkflow = new WorkflowEntity();
-
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in CreateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, etc. are never set from user input
-		Object.assign(newWorkflow, body);
+		const newWorkflow = createWorkflowEntityFromPayload(body);
 
 		const savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
 			tagIds: body.tags,
@@ -303,7 +298,6 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		const updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
 
 		// Validate timeSavedMode if present
@@ -314,10 +308,7 @@ export class WorkflowsController {
 			throw new BadRequestError('Invalid timeSavedMode');
 		}
 
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in UpdateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, active, activeVersionId, etc. are never set from user input
-		Object.assign(updateData, rest);
+		const updateData = createWorkflowEntityFromPayload(rest);
 
 		// Credential tamper protection is enforced centrally in WorkflowService.update
 		const isSharingEnabled = this.license.isSharingEnabled();
@@ -670,7 +661,7 @@ export class WorkflowsController {
 	@Post('/with-node-types')
 	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
 		try {
-			const hasPermission = req.user.role.slug === ROLE.Owner || req.user.role.slug === ROLE.Admin;
+			const hasPermission = hasGlobalScope(req.user, ['workflow:read']);
 
 			if (!hasPermission) {
 				res.json({ data: [], count: 0 });
@@ -695,25 +686,13 @@ export class WorkflowsController {
 	}
 
 	private async fetchWorkflowFromUrl(url: string) {
+		const client = this.outboundHttp.requests({
+			// user-supplied URL
+			ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
+		});
+
 		try {
-			if (!this.ssrfConfig.enabled) {
-				const { data } = await axios.get<IWorkflowResponse>(url);
-
-				return data;
-			}
-
-			const result = await this.ssrfProtectionService.validateUrl(url);
-			if (!result.ok) throw result.error;
-
-			const config: AxiosRequestConfig = {
-				lookup: this.ssrfProtectionService.createSecureLookup() as AxiosRequestConfig['lookup'],
-				beforeRedirect: (redirectedRequest: Record<string, string>) => {
-					this.ssrfProtectionService.validateRedirectSync(redirectedRequest.href);
-				},
-			};
-
-			const { data } = await axios.get<IWorkflowResponse>(url, config);
-			return data;
+			return await client.request<IWorkflowResponse>({ method: 'GET', url });
 		} catch (error) {
 			const blockedError = this.findSsrfBlockedError(error);
 			if (blockedError) throw blockedError;

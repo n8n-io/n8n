@@ -19,8 +19,8 @@ discovery with normal domain tools, then calls `create-tasks` with
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
 scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder` plus `build-workflow` directly. The plan is shown to the
-user for approval before execution starts.
+use `workflow-builder`, workspace file tools, and `build-workflow` directly.
+The plan is shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -37,7 +37,7 @@ user for approval before execution starts.
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
-  workflowId?: string; // Existing workflow ID to modify (build-workflow tasks only)
+  workflowId?: string; // Existing workflow ID for the builder to hydrate before saving
   isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
 }
 ```
@@ -196,9 +196,9 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 **Returns**: `{ updatedNodes: string[] }`
 
-## Workflow Tools (9–13)
+## Workflow Tools (10–14)
 
-Core count is 9; up to 4 more are conditionally registered based on license.
+Core count is 10; up to 4 more are conditionally registered based on license.
 
 ### `list-workflows`
 
@@ -228,8 +228,11 @@ Get full workflow definition including nodes, connections, and settings.
 
 ### `get-workflow-as-code`
 
-Get a workflow as TypeScript SDK code. Used by the builder agent to load an
-existing workflow for modification.
+Get a workflow as TypeScript SDK code. Used by the builder agent to inspect an
+existing workflow when no workspace source file is already available. Existing
+workflow modifications should write the returned code to a workspace source file
+and call `build-workflow` with both `filePath` and the real n8n `workflowId`
+once; subsequent repairs can reuse only `filePath`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -239,19 +242,30 @@ existing workflow for modification.
 
 ### `build-workflow`
 
-Submit workflow code (TypeScript SDK) for parsing, validation, and saving. Two
-modes: full code submission or `str_replace` patches against the last-submitted
-code.
+Compile, validate, and save a workspace workflow source file. Inline source and
+string patches are not accepted; edit the workspace file first and then call
+this tool with `filePath`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `code` | string | conditional | Full TypeScript SDK code |
-| `patches` | array | conditional | `str_replace` patches against last-submitted code |
+| `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
+| `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
+| `projectId` | string | no | Project ID to create the workflow in |
+| `name` | string | no | Workflow name override for new workflows |
+| `workItemId` | string | no | Work item hint for workflow-loop reporting |
+| `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
 
-**Returns**: `{ workflowId, nodes, errors? }`
+**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
 
-**Behavior**: Validates TypeScript SDK code via `parseAndValidate()`, generates
-workflow JSON, applies layout engine positioning, resolves credentials.
+**Behavior**: Reads the source file from the runtime workspace, compiles
+TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
+directly, validates the resulting workflow JSON server-side, resolves
+credentials, saves by the workflow ID bound to the source file, and persists the
+latest source hash and workflow version in thread metadata. If the file has no
+saved workflow ID, the build creates a new workflow unless `workflowId` is
+provided to bind the file to an existing workflow. If the bound workflow no
+longer exists, the tool returns blocked remediation rather than creating a
+replacement.
 
 ### `delete-workflow`
 
@@ -710,7 +724,7 @@ everything; sub-agents receive only what they need.
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
 | Web research tools | ✅ | ✅ (via delegate) | ❌ |
 | Knowledge base (best practices & templates via workspace) | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
+| Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ✅ (via delegate) | ✅ (builder) |
 | MCP tools | ✅ | ❌ | ❌ |
 | Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |
 

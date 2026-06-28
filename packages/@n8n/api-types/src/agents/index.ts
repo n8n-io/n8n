@@ -6,6 +6,7 @@ export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
 export * from './provider-capabilities';
+export * from './rich-card.schema';
 export * from './sub-agent.schema';
 export * from './types';
 export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from '../agent-sse';
@@ -16,6 +17,7 @@ export {
 export {
 	ASK_LLM_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	interactiveToolNameSchema,
@@ -23,6 +25,7 @@ export {
 	askLlmResumeSchema,
 	askCredentialInputSchema,
 	askCredentialResumeSchema,
+	askEmbeddingCredentialResumeSchema,
 	askQuestionOptionSchema,
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
@@ -33,6 +36,7 @@ export {
 	type AskLlmResume,
 	type AskCredentialInput,
 	type AskCredentialResume,
+	type AskEmbeddingCredentialResume,
 	type AskQuestionOption,
 	type AskQuestionInput,
 	type AskQuestionResume,

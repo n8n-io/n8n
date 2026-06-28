@@ -1,6 +1,8 @@
 // Inferred typing for CredentialsService.getOne() is a bit too broad, so we need custom type guards
 // to ensure that the decrypted data has the expected structure without changing the service code.
 
+import { isRecord } from '@n8n/utils';
+
 import type { JSONRPCRequest } from './mcp.types';
 
 type UnknownRecord = Record<string, unknown>;
@@ -11,10 +13,6 @@ export type HttpHeaderAuthDecryptedData = {
 };
 
 export type WithDecryptedData<T> = UnknownRecord & { data: T };
-
-export function isRecord(value: unknown): value is UnknownRecord {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /**
  * Narrows down credentials to those that have decrypted data of type HttpHeaderAuthDecryptedData.

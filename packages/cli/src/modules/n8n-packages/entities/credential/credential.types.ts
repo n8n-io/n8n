@@ -1,5 +1,3 @@
-import type { Project, User } from '@n8n/db';
-
 import type {
 	ImportBindingMap,
 	CredentialMatchingMode,
@@ -23,6 +21,8 @@ export type CredentialResolutionFailureKind =
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
 	sourceId: string;
+	name?: string;
+	type?: string;
 	targetId?: string;
 	/** For `type_mismatch`: the credential type the package's workflow node requires. */
 	expectedType?: string;
@@ -36,13 +36,17 @@ export interface CredentialResolution {
 	failures: CredentialResolutionFailure[];
 }
 
+export interface CredentialApplyResult {
+	bindings: ImportBindingMap;
+	matched: string[];
+	stubbed: string[];
+}
+
 export interface CredentialBindingRequest {
 	requirements: PackageCredentialRequirement[] | undefined;
 	matchingMode: CredentialMatchingMode;
 	missingMode: CredentialMissingMode;
 	credentialBindings?: ImportBindingMap;
-	targetProject: Project;
-	user: User;
 }
 
 export function createFailure(
@@ -52,6 +56,8 @@ export function createFailure(
 	return {
 		kind,
 		sourceId: reference.id,
+		name: reference.name,
+		type: reference.type,
 		usedByWorkflows: [...reference.usedByWorkflows].sort(),
 	};
 }

@@ -25,6 +25,7 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteData,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
 	VersionedNodeType,
@@ -203,35 +204,38 @@ export class CredentialsTester {
 		}
 
 		let credentialsDataSecretKeys: string[] = [];
-		if (credentialsDecrypted.data) {
-			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase({
-					userId,
-					projectId: credentialsDecrypted.homeProject?.id,
-				});
+		let baseAdditionalData: IWorkflowExecuteAdditionalData;
+		try {
+			baseAdditionalData = await WorkflowExecuteAdditionalData.getBase({
+				userId,
+				projectId: credentialsDecrypted.homeProject?.id,
+			});
 
+			if (credentialsDecrypted.data) {
 				// Keep all credentials data keys which have a secret value
 				credentialsDataSecretKeys = getExternalSecretExpressionPaths(credentialsDecrypted.data);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
-					additionalData,
+					baseAdditionalData,
 					credentialsDecrypted.data,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,
 					undefined,
 				);
-			} catch (error) {
-				this.logger.debug('Credential test failed', error);
-				return {
-					status: 'Error',
-					message: error.message.toString(),
-				};
 			}
+		} catch (error) {
+			this.logger.debug('Credential test failed', error);
+			return {
+				status: 'Error',
+				message: error.message.toString(),
+			};
 		}
 
 		if (typeof credentialTestFunction === 'function') {
-			// The credentials get tested via a function that is defined on the node
-			const context = new CredentialTestContext();
+			// The credentials get tested via a function that is defined on the node.
+			// Pass the base additional data so the test's HTTP requests honour the
+			// egress policy carried by its SSRF bridge.
+			const context = new CredentialTestContext(baseAdditionalData);
 			const functionResult = credentialTestFunction.call(context, credentialsDecrypted);
 			if (functionResult instanceof Promise) {
 				const result = await functionResult;
