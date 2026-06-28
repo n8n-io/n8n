@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-26T15:21:58.281Z",
-	"totalViolations": 108,
+	"generated": "2026-06-27T08:19:29.728Z",
+	"totalViolations": 101,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -31,6 +31,12 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 85,
+				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 109,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
 			},
@@ -163,80 +169,6 @@
 				"line": 15,
 				"message": "WorkflowSharingModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "32955f46012b"
-			}
-		],
-		"composables/WorkflowComposer.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 136,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('move-to-folder-option').getByT...",
-				"hash": "976ff11703b6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 136,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('move-to-folder-option')",
-				"hash": "abb175fbdb8c"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 20,
-				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
-				"hash": "652001b1476b"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 136,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "8fce14c01c57"
-			}
-		],
-		"tests/e2e/ai/assistant-credential-help.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 34,
-				"message": "Chained locator call in test: n8n.aiAssistant .getCredentialEditAssistantButton() .loca...",
-				"hash": "d1b161d562a8"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 61,
-				"message": "Chained locator call in test: n8n.aiAssistant .getCredentialEditAssistantButton() .loca...",
-				"hash": "d1b161d562a8"
-			},
-			{
-				"rule": "api-purity",
-				"line": 84,
-				"message": "Raw API call detected: fetch(",
-				"hash": "eb977c9c5bb7"
-			},
-			{
-				"rule": "api-purity",
-				"line": 126,
-				"message": "Raw API call detected: fetch(",
-				"hash": "eb977c9c5bb7"
-			}
-		],
-		"tests/e2e/ai/hitl-for-tools.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 88,
-				"message": "Direct page locator call: n8n.page.getByTestId('add-connection-button')",
-				"hash": "dd2f0028a100"
-			}
-		],
-		"tests/e2e/ai/workflow-builder.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 86,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Execute and refine' })",
-				"hash": "c6ba18da37ea"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 117,
-				"message": "Direct page locator call: n8n.page.getByText('Task aborted')",
-				"hash": "6ee85a61151a"
 			}
 		],
 		"tests/e2e/app-config/security-notifications.spec.ts": [
@@ -523,6 +455,28 @@
 				"hash": "786c6592ceb9"
 			}
 		],
+		"composables/WorkflowComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 20,
+				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
+				"hash": "652001b1476b"
+			}
+		],
+		"tests/e2e/ai/assistant-credential-help.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 80,
+				"message": "Raw API call detected: fetch(",
+				"hash": "eb977c9c5bb7"
+			},
+			{
+				"rule": "api-purity",
+				"line": 122,
+				"message": "Raw API call detected: fetch(",
+				"hash": "eb977c9c5bb7"
+			}
+		],
 		"tests/e2e/app-config/nps-survey.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -656,7 +610,7 @@
 		"pages/WorkflowsPage.ts": [
 			{
 				"rule": "deduplication",
-				"line": 38,
+				"line": 40,
 				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
 				"hash": "206b89bd1594"
 			}
