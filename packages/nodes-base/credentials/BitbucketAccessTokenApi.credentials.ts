@@ -11,7 +11,7 @@ export class BitbucketAccessTokenApi implements ICredentialType {
 
 	displayName = 'Bitbucket Access Token API';
 
-	documentationUrl = 'bitbuckettokenapi';
+	documentationUrl = 'bitbucket';
 
 	properties: INodeProperties[] = [
 		{

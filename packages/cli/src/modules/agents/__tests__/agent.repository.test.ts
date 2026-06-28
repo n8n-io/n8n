@@ -19,7 +19,7 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findByIdAndProjectId', () => {
-		it('calls findOne with id, projectId, and the publishedVersion relation', async () => {
+		it('calls findOne with id, projectId, and the activeVersion relation', async () => {
 			const agent = mock<Agent>({ id: 'agent-1', projectId: 'project-1' });
 			jest.spyOn(repository, 'findOne').mockResolvedValue(agent);
 
@@ -27,7 +27,7 @@ describe('AgentRepository', () => {
 
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: 'agent-1', projectId: 'project-1' },
-				relations: { publishedVersion: true },
+				relations: { activeVersion: true },
 			});
 			expect(result).toBe(agent);
 		});
@@ -42,7 +42,7 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findByProjectId', () => {
-		it('calls find ordered by updatedAt descending with the publishedVersion relation', async () => {
+		it('calls find ordered by updatedAt descending with the activeVersion relation', async () => {
 			const agents = [mock<Agent>(), mock<Agent>()];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);
 
@@ -50,7 +50,7 @@ describe('AgentRepository', () => {
 
 			expect(repository.find).toHaveBeenCalledWith({
 				where: { projectId: 'project-1' },
-				relations: { publishedVersion: true },
+				relations: { activeVersion: true },
 				order: { updatedAt: 'DESC' },
 			});
 			expect(result).toBe(agents);
@@ -62,6 +62,69 @@ describe('AgentRepository', () => {
 			const result = await repository.findByProjectId('project-1');
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('findByProjectIdsPaginated', () => {
+		it('returns { count: 0, data: [] } immediately when projectIds is empty', async () => {
+			const result = await repository.findByProjectIdsPaginated([], {
+				skip: 0,
+				take: 10,
+			} as never);
+
+			expect(result).toEqual({ count: 0, data: [] });
+		});
+
+		it('builds the expected query for a single project id', async () => {
+			const agents = [mock<Agent>()];
+			const mockQb = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([agents, 1]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			const result = await repository.findByProjectIdsPaginated(['project-1'], {
+				skip: 0,
+				take: 25,
+				sortBy: 'name:asc',
+			} as never);
+
+			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+				projectIds: ['project-1'],
+			});
+			expect(mockQb.skip).toHaveBeenCalledWith(0);
+			expect(mockQb.take).toHaveBeenCalledWith(25);
+			expect(result).toEqual({ count: 1, data: agents });
+		});
+
+		it('applies the name search filter', async () => {
+			const mockQb = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				skip: jest.fn().mockReturnThis(),
+				take: jest.fn().mockReturnThis(),
+				getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1', 'p2'], {
+				skip: 0,
+				take: 10,
+				filter: { query: 'support' },
+			} as never);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
+				query: '%support%',
+			});
 		});
 	});
 
@@ -124,16 +187,9 @@ describe('AgentRepository', () => {
 			expect(result.map((a) => a.id)).toEqual(['agent-a']);
 		});
 
-		it('ignores schedule integrations when matching on credentialId', async () => {
+		it('ignores integrations with a non-matching credentialId', async () => {
 			const agents = [
-				makeAgent('agent-schedule', [
-					{
-						type: 'schedule',
-						active: true,
-						cronExpression: '* * * * *',
-						wakeUpPrompt: 'Automated message',
-					},
-				]),
+				makeAgent('agent-other', [{ type: 'slack', credentialId: 'cred-other' }]),
 				makeAgent('agent-match', [{ type: 'telegram', credentialId: 'cred-1' }]),
 			];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);

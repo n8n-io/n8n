@@ -1,12 +1,13 @@
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, ExecuteAgentData } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
+import type { IExecuteFunctions, ExecuteAgentData, NodeParameterValueType } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { MessageAnAgent } from '../MessageAnAgent.node';
+import type { Mocked } from 'vitest';
 
 describe('MessageAnAgent Node', () => {
 	let node: MessageAnAgent;
-	let executeFunctions: jest.Mocked<IExecuteFunctions>;
+	let executeFunctions: Mocked<IExecuteFunctions>;
 
 	const mockSession = {
 		agentId: 'agent-1',
@@ -30,7 +31,7 @@ describe('MessageAnAgent Node', () => {
 	beforeEach(() => {
 		node = new MessageAnAgent();
 		executeFunctions = mockDeep<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeFunctions.getNode.mockReturnValue({
 			id: 'test-node-id',
@@ -51,7 +52,8 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello agent';
 				if (param === 'advanced') return fallback ?? {};
-				return undefined;
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
 			},
 		);
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
@@ -59,7 +61,12 @@ describe('MessageAnAgent Node', () => {
 		const result = await node.execute.call(executeFunctions);
 
 		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-			{ agentId: 'agent-1', sessionId: undefined },
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				inputDataScope: 'item',
+				exposeWorkflowData: false,
+			},
 			'Hello agent',
 			'exec-123',
 			0,
@@ -83,18 +90,26 @@ describe('MessageAnAgent Node', () => {
 
 	it('should forward a user-supplied sessionId from the Advanced collection', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation((param: string) => {
-			if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-			if (param === 'message') return 'Hello agent';
-			if (param === 'advanced') return { sessionId: '  thread-42  ' };
-			return undefined as unknown as string;
-		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return { sessionId: '  thread-42  ' };
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
+			},
+		);
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 		await node.execute.call(executeFunctions);
 
 		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-			{ agentId: 'agent-1', sessionId: 'thread-42' },
+			{
+				agentId: 'agent-1',
+				sessionId: 'thread-42',
+				inputDataScope: 'item',
+				exposeWorkflowData: false,
+			},
 			'Hello agent',
 			'exec-123',
 			0,
@@ -103,18 +118,26 @@ describe('MessageAnAgent Node', () => {
 
 	it('should treat a whitespace-only sessionId as no override', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation((param: string) => {
-			if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-			if (param === 'message') return 'Hello agent';
-			if (param === 'advanced') return { sessionId: '   ' };
-			return undefined as unknown as string;
-		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return { sessionId: '   ' };
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
+			},
+		);
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 		await node.execute.call(executeFunctions);
 
 		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-			{ agentId: 'agent-1', sessionId: undefined },
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				inputDataScope: 'item',
+				exposeWorkflowData: false,
+			},
 			'Hello agent',
 			'exec-123',
 			0,
@@ -128,7 +151,8 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return '   ';
 				if (param === 'advanced') return fallback ?? {};
-				return undefined;
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
 			},
 		);
 		executeFunctions.continueOnFail.mockReturnValue(false);
@@ -144,7 +168,8 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: `agent-${(itemIndex ?? 0) + 1}` };
 				if (param === 'message') return `Message ${(itemIndex ?? 0) + 1}`;
 				if (param === 'advanced') return fallback ?? {};
-				return undefined;
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
 			},
 		);
 
@@ -165,13 +190,23 @@ describe('MessageAnAgent Node', () => {
 
 		expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(2);
 		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-			{ agentId: 'agent-1', sessionId: undefined },
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				inputDataScope: 'item',
+				exposeWorkflowData: false,
+			},
 			'Message 1',
 			'exec-123',
 			0,
 		);
 		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-			{ agentId: 'agent-2', sessionId: undefined },
+			{
+				agentId: 'agent-2',
+				sessionId: undefined,
+				inputDataScope: 'item',
+				exposeWorkflowData: false,
+			},
 			'Message 2',
 			'exec-123',
 			1,
@@ -190,7 +225,8 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello';
 				if (param === 'advanced') return fallback ?? {};
-				return undefined;
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
 			},
 		);
 		executeFunctions.continueOnFail.mockReturnValue(true);
@@ -221,7 +257,8 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'list', value: 'agent-1' };
 				if (param === 'message') return 'Structured query';
 				if (param === 'advanced') return fallback ?? {};
-				return undefined;
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
 			},
 		);
 		executeFunctions.executeAgent.mockResolvedValue(structuredResult);
@@ -235,5 +272,242 @@ describe('MessageAnAgent Node', () => {
 		expect(result[0][0].json.toolCalls).toEqual([
 			{ toolName: 'search', input: { query: 'test' }, result: { found: true } },
 		]);
+	});
+
+	it('should forward the parsed output schema when structured output is enabled', async () => {
+		const schemaString = JSON.stringify({
+			type: 'object',
+			properties: { result: { type: 'string' } },
+			required: ['result'],
+		});
+
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return schemaString;
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				outputSchema: {
+					type: 'object',
+					properties: { result: { type: 'string' } },
+					required: ['result'],
+				},
+				inputDataScope: 'item',
+				exposeWorkflowData: false,
+			},
+			'Hello agent',
+			'exec-123',
+			0,
+		);
+	});
+
+	it('should throw NodeOperationError when the output schema is not valid JSON', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return '{ not valid json';
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.continueOnFail.mockReturnValue(false);
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeOperationError);
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+			'Output schema is not valid JSON',
+		);
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+	});
+
+	it('should throw NodeOperationError when structured output is enabled with an empty schema', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return '   ';
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.continueOnFail.mockReturnValue(false);
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow('Output schema is empty');
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+	});
+
+	it('forwards an already-parsed object schema (e.g. from an expression) without calling .trim()', async () => {
+		// A `type: "json"` parameter backed by an expression like
+		// `={{ $json.outputSchema }}` resolves to an object, not a string.
+		const schemaObject = {
+			type: 'object',
+			properties: { result: { type: 'string' } },
+			required: ['result'],
+		};
+
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return schemaObject;
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				outputSchema: schemaObject,
+				inputDataScope: 'item',
+				exposeWorkflowData: false,
+			},
+			'Hello agent',
+			'exec-123',
+			0,
+		);
+	});
+
+	it('throws NodeOperationError when the output schema resolves to an array', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return [{ type: 'object' }];
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.continueOnFail.mockReturnValue(false);
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+			'Output schema must be a JSON Schema object',
+		);
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+	});
+
+	it('throws NodeOperationError when the output schema resolves to a non-object, non-string value', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return 42;
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.continueOnFail.mockReturnValue(false);
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+			'Output schema is not valid JSON',
+		);
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+	});
+
+	it('invokes the agent once with all-items scope in "Once for All Items" mode', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: { i: 0 } }, { json: { i: 1 } }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Summarize all items';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'allItems';
+				if (param === 'allowOtherNodesData') return false;
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(1);
+		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				inputDataScope: 'all',
+				exposeWorkflowData: false,
+			},
+			'Summarize all items',
+			'exec-123',
+			0,
+		);
+		expect(result[0]).toHaveLength(1);
+	});
+
+	it('passes exposeWorkflowData when "Allow agent to access other nodes data" is on', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello';
+				if (param === 'advanced') return { allowOtherNodesData: true };
+				if (param === 'invokeMode') return 'perItem';
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				inputDataScope: 'item',
+				exposeWorkflowData: true,
+			},
+			'Hello',
+			'exec-123',
+			0,
+		);
+	});
+
+	it('does not invoke the agent in "Once for All Items" mode with no input items', async () => {
+		executeFunctions.getInputData.mockReturnValue([]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Summarize all items';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'invokeMode') return 'allItems';
+				return fallback as NodeParameterValueType;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+		expect(result[0]).toHaveLength(0);
 	});
 });

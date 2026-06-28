@@ -26,22 +26,31 @@ import {
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
+import type { GateCriterion, GateResult, GateUnit } from './gate';
+import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS } from '../binaryChecks/types';
 import type {
 	MultiRunEvaluation,
 	TestCaseAggregation,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 interface FormatOptions {
-	/** Optional commit SHA to include in the heading. Truncated to 8 chars. */
+	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
 	commitSha?: string;
+	/** GitHub Actions run URL; when set, the comment leads with a re-run link. */
+	runUrl?: string;
 	/** Maps each test-case reference to its file slug. When provided, the
 	 *  per-scenario failure breakdown looks up failed runs by
 	 *  `${fileSlug}/${scenarioName}` — deterministic across collisions like
 	 *  multiple `happy-path` scenarios. When omitted, the breakdown is
 	 *  skipped (no name-only fallback — that lookup was wrong on real data). */
 	slugByTestCase?: Map<WorkflowTestCase, string>;
+	/** Absolute green-gate verdict for curated tiers. When set, the comment renders
+	 *  the gate verdict in place of the baseline comparison. */
+	gate?: GateResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,14 +63,23 @@ export function formatComparisonMarkdown(
 	options: FormatOptions = {},
 ): string {
 	const lines: string[] = [];
-	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
+	const gate = options.gate;
+	const comparison = !gate && outcome?.kind === 'ok' ? outcome.result : undefined;
 
-	lines.push(formatHeading(options.commitSha));
+	lines.push(formatHeading());
 	lines.push('');
-	lines.push(formatTopAlert(outcome));
+	lines.push(renderRerunCallout(options.runUrl));
 	lines.push('');
-	lines.push(formatAggregateBlock(evaluation, comparison));
-	lines.push('');
+	if (gate) {
+		lines.push(formatGateAlertMarkdown(gate));
+		lines.push('');
+		lines.push(...renderGateSummaryMarkdown(gate));
+	} else {
+		lines.push(formatTopAlert(outcome));
+		lines.push('');
+		lines.push(formatAggregateBlock(evaluation, comparison));
+		lines.push('');
+	}
 
 	if (comparison) {
 		const hard = hardRegressions(comparison);
@@ -126,6 +144,9 @@ export function formatComparisonMarkdown(
 
 	lines.push(...renderPerTestCaseDetails(evaluation, options.slugByTestCase));
 
+	const workflowChecksSection = renderWorkflowChecksSection(evaluation);
+	if (workflowChecksSection.length > 0) lines.push(...workflowChecksSection);
+
 	if (comparison) {
 		const otherFindings = renderOtherFindings(comparison);
 		if (otherFindings.length > 0) lines.push(...otherFindings);
@@ -137,9 +158,186 @@ export function formatComparisonMarkdown(
 	return lines.join('\n');
 }
 
-function formatHeading(commitSha?: string): string {
-	const sha = commitSha ? ` — \`${commitSha.slice(0, 8)}\`` : '';
-	return `### Instance AI Workflow Eval${sha}`;
+// ---------------------------------------------------------------------------
+// Absolute green-gate verdict (curated tiers, no baseline)
+// ---------------------------------------------------------------------------
+
+function gateCriterionLabel(criterion: GateCriterion): string {
+	switch (criterion.kind) {
+		case 'passAtK':
+			return 'pass@k = 100% (every unit passes at least once across k runs)';
+		case 'minAggregatePassRate':
+			return `aggregate pass rate ≥ ${Math.round(criterion.minRate * 100)}%`;
+	}
+}
+
+function gateFailuresCell(unit: GateUnit): string {
+	if (!unit.failureCategories) return '';
+	return Object.entries(unit.failureCategories)
+		.sort((a, b) => b[1] - a[1])
+		.map(([cat, n]) => `${n}× ${cat}`)
+		.join(', ');
+}
+
+// Units that pass@k but failed at least one run (e.g. 2/3) — green, but worth surfacing.
+function degradedUnits(gate: GateResult): GateUnit[] {
+	return gate.units.filter((u) => u.green && u.passCount < u.total);
+}
+
+function formatGateAlertMarkdown(gate: GateResult): string {
+	const n = gate.units.length;
+	const k = gate.totalRuns;
+	const over = `over ${k} run${k === 1 ? '' : 's'}`;
+	// Key off failing, not gate.green: under minAggregatePassRate gate.green can be
+	// true via the pooled rate while individual units fail.
+	if (gate.failing.length > 0) {
+		return [
+			'> [!CAUTION]',
+			`> 🔴 ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} not green ${over}.`,
+		].join('\n');
+	}
+	// All units pass@k. Distinguish a clean sweep from green-but-flaky so a 2/3 stays visible.
+	const degraded = degradedUnits(gate);
+	if (degraded.length > 0) {
+		return [
+			'> [!WARNING]',
+			`> 🟡 All ${n} unit${n === 1 ? '' : 's'} green ${over}, but ${degraded.length} had a failing run — see below.`,
+		].join('\n');
+	}
+	return ['> [!TIP]', `> 🟢 All ${n} unit${n === 1 ? '' : 's'} green ${over} (clean).`].join('\n');
+}
+
+function renderGateSummaryMarkdown(gate: GateResult): string[] {
+	const lines: string[] = [];
+	const { passed, total, rate } = gate.aggregate;
+	lines.push(
+		`**Gate**: ${gateCriterionLabel(gate.criterion)} — ${(rate * 100).toFixed(1)}% pass (${passed}/${total} trials over ${gate.units.length} units · k=${gate.totalRuns})`,
+	);
+	if (gate.excluded.length > 0) {
+		lines.push(`_${gate.excluded.length} unit(s) not gated (no judge verdict)._`);
+	}
+	lines.push('');
+	const unitTable = (heading: string, units: GateUnit[]): void => {
+		if (units.length === 0) return;
+		lines.push(`#### ${heading}`, '', '| Unit | Pass | Failures |', '|---|---|---|');
+		for (const u of units) {
+			const rateU = u.total > 0 ? Math.round(u.passRate * 100) : 0;
+			lines.push(
+				`| \`${u.slug}\` | ${u.passCount}/${u.total} (${rateU}%) | ${gateFailuresCell(u)} |`,
+			);
+		}
+		lines.push('');
+	};
+	unitTable('Not green', gate.failing);
+	unitTable('Passed with failures', degradedUnits(gate));
+	return lines;
+}
+
+function formatTerminalGateLine(gate: GateResult): string {
+	const n = gate.units.length;
+	const k = gate.totalRuns;
+	const over = `over ${k} run${k === 1 ? '' : 's'}`;
+	if (gate.failing.length > 0) {
+		return `▶ GATE: ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} NOT green ${over}`;
+	}
+	const degraded = degradedUnits(gate).length;
+	if (degraded > 0) {
+		return `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green ${over}, ${degraded} with a failing run`;
+	}
+	return `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green ${over} (clean)`;
+}
+
+function formatTerminalGateSummary(gate: GateResult): string[] {
+	const lines: string[] = [];
+	const { passed, total, rate } = gate.aggregate;
+	lines.push(TERMINAL_INDENT + `gate: ${gateCriterionLabel(gate.criterion)}`);
+	lines.push(
+		TERMINAL_INDENT +
+			`aggregate: ${(rate * 100).toFixed(1)}% (${passed}/${total} trials, ${gate.units.length} units, k=${gate.totalRuns})`,
+	);
+	if (gate.excluded.length > 0) {
+		lines.push(TERMINAL_INDENT + `${gate.excluded.length} not gated (no judge verdict)`);
+	}
+	for (const u of gate.failing) {
+		const cats = u.failureCategories ? `  [${gateFailuresCell(u)}]` : '';
+		lines.push(TERMINAL_INDENT + `  NOT GREEN  ${u.slug}  ${u.passCount}/${u.total}${cats}`);
+	}
+	for (const u of degradedUnits(gate)) {
+		const cats = u.failureCategories ? `  [${gateFailuresCell(u)}]` : '';
+		lines.push(TERMINAL_INDENT + `  FLAKY      ${u.slug}  ${u.passCount}/${u.total}${cats}`);
+	}
+	return lines;
+}
+
+// Evals fire on PR open/ready, not on push — lead with a one-click re-run prompt.
+function renderRerunCallout(runUrl?: string): string {
+	const cta = runUrl
+		? `[▶ Re-run this eval](${runUrl}) (then **Re-run jobs**)`
+		: 'Re-run it from the **Checks** tab (**Re-run jobs**)';
+	return [
+		'> [!IMPORTANT]',
+		`> **This eval does not re-run on new commits** — ${cta} when you're ready to merge.`,
+	].join('\n');
+}
+
+function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
+	const aggregate = aggregateWorkflowChecks(evaluation);
+	if (!aggregate) return [];
+
+	const names = Object.keys(aggregate.perCheck).sort();
+	const rowByName: Record<string, { dimension: string; row: string; failed: boolean }> = {};
+	let failingChecks = 0;
+	for (const name of names) {
+		const entry = aggregate.perCheck[name];
+		const scored = entry.passes + entry.fails;
+		const rate = scored > 0 ? `${String(Math.round((entry.passes / scored) * 100))}%` : '—';
+		if (entry.fails > 0) failingChecks++;
+		rowByName[name] = {
+			dimension: entry.dimension,
+			failed: entry.fails > 0,
+			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+		};
+	}
+
+	const header = [
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
+		'|---|---|---|---|---|---|---|',
+	];
+	const rowsWhere = (keep: (name: string) => boolean): string[] => {
+		const byDimension: Record<string, string[]> = {};
+		for (const name of names) {
+			if (keep(name)) (byDimension[rowByName[name].dimension] ??= []).push(rowByName[name].row);
+		}
+		return CHECK_DIMENSIONS.flatMap((dim) => byDimension[dim] ?? []);
+	};
+
+	const lines: string[] = [
+		'#### Workflow checks',
+		'',
+		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		'',
+	];
+
+	// Failing checks render inline (the only rows that usually carry signal); the
+	// full, mostly-100% table collapses into <details> so an all-green run is a
+	// one-line summary instead of a ~30-row wall.
+	const failingRows = rowsWhere((name) => rowByName[name].failed);
+	if (failingRows.length > 0) lines.push(...header, ...failingRows, '');
+
+	lines.push(
+		`<details><summary>All workflow checks (${String(failingChecks)} failing of ${String(names.length)} checks)</summary>`,
+		'',
+		...header,
+		...rowsWhere(() => true),
+		'',
+		'</details>',
+		'',
+	);
+	return lines;
+}
+
+function formatHeading(): string {
+	return '### Instance AI Workflow Eval';
 }
 
 function formatTopAlert(outcome?: ComparisonOutcome): string {
@@ -177,7 +375,7 @@ function formatTopAlert(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
-	const passRateText = `pass rate ${aggDeltaText} vs master`;
+	const passRateText = `pass rate ${aggDeltaText} vs baseline`;
 
 	// Two-line summary: regression-tier counts on top, positives/neutrals on the
 	// bottom. The pass-rate delta tails whichever line matches its sign so the
@@ -221,7 +419,7 @@ function formatAggregateBlock(
 	comparison?: ComparisonResult,
 ): string {
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
 		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
 		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
@@ -371,23 +569,23 @@ function renderPerTestCaseDetails(
 	lines.push('');
 	const renderName = (tc: TestCaseAggregation): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ? `\`${slug}\`` : `\`${tc.testCase.prompt.slice(0, 70)}\``;
+		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
-			const meanPassAtK = tc.scenarios.length
+			const meanPassAtK = tc.executionScenarios.length
 				? Math.round(
-						(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-							tc.scenarios.length) *
+						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
+							tc.executionScenarios.length) *
 							100,
 					)
 				: 0;
-			const meanPassHatK = tc.scenarios.length
+			const meanPassHatK = tc.executionScenarios.length
 				? Math.round(
-						(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-							tc.scenarios.length) *
+						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
+							tc.executionScenarios.length) *
 							100,
 					)
 				: 0;
@@ -400,8 +598,8 @@ function renderPerTestCaseDetails(
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
 			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const passed = tc.scenarios.filter((sa) => sa.runs[0]?.success).length;
-			const total = tc.scenarios.length;
+			const passed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
+			const total = tc.executionScenarios.length;
 			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
 		}
 	}
@@ -476,7 +674,7 @@ function renderFailureDetails(
 	}> = [];
 	for (const tc of evaluation.testCases) {
 		const fileSlug = slugByTestCase?.get(tc.testCase);
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const failedRuns = sa.runs
 				.filter((r) => !r.success)
 				.map((r) => ({ category: r.failureCategory, reasoning: r.reasoning }));
@@ -493,11 +691,14 @@ function renderFailureDetails(
 	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
 		const slug = fileSlug
 			? `${fileSlug}/${scenarioName}`
-			: `${tc.testCase.prompt.slice(0, 50).trim()} / ${scenarioName}`;
+			: `${caseDisplayPrompt(tc.testCase).slice(0, 50).trim()} / ${scenarioName}`;
 		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
 		for (const fr of failedRuns) {
 			const tag = fr.category ? ` [${fr.category}]` : '';
-			lines.push(`> Run${tag}: ${fr.reasoning.slice(0, 200)}`);
+			// Show the full reasoning (generous cap for pathological cases); keep any
+			// newlines inside the blockquote so the detail stays readable.
+			const reason = fr.reasoning.length > 1500 ? `${fr.reasoning.slice(0, 1500)}…` : fr.reasoning;
+			lines.push(`> Run${tag}: ${reason.replace(/\n+/g, '\n> ')}`);
 		}
 		lines.push('');
 	}
@@ -534,7 +735,7 @@ function buildFailedRunsIndex(
 	for (const tc of evaluation.testCases) {
 		const fileSlug = slugByTestCase.get(tc.testCase);
 		if (!fileSlug) continue; // testCase not in the slug map — skip rather than misattribute
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const failedRuns: FailedRunDetail[] = [];
 			sa.runs.forEach((r, i) => {
 				if (!r.success) {
@@ -626,18 +827,25 @@ export function formatComparisonTerminal(
 	options: FormatOptions = {},
 ): string {
 	const lines: string[] = [];
-	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
+	const gate = options.gate;
+	const comparison = !gate && outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const titleSuffix = options.commitSha ? ` — ${options.commitSha.slice(0, 8)}` : '';
 	const title = `Instance AI Workflow Eval${titleSuffix}`;
 	lines.push(title);
 	lines.push('═'.repeat(title.length));
 
-	lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(outcome));
-	lines.push('');
-
-	lines.push(...formatTerminalAggregate(evaluation, comparison));
-	lines.push('');
+	if (gate) {
+		lines.push(TERMINAL_INDENT + formatTerminalGateLine(gate));
+		lines.push('');
+		lines.push(...formatTerminalGateSummary(gate));
+		lines.push('');
+	} else {
+		lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(outcome));
+		lines.push('');
+		lines.push(...formatTerminalAggregate(evaluation, comparison));
+		lines.push('');
+	}
 
 	lines.push(...formatTerminalPerTestCase(evaluation, options.slugByTestCase));
 
@@ -722,7 +930,7 @@ function formatTerminalVerdictLine(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
-	const passRateText = `pass rate ${aggDeltaText} vs master`;
+	const passRateText = `pass rate ${aggDeltaText} vs baseline`;
 
 	const concernsParts = [
 		`${hard} regression${hard === 1 ? '' : 's'}`,
@@ -748,7 +956,7 @@ function formatTerminalAggregate(
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
 		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
 		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
@@ -803,24 +1011,28 @@ function formatTerminalPerTestCase(
 
 	const nameOf = (tc: TestCaseAggregation, max: number): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ?? tc.testCase.prompt.slice(0, max);
+		return slug ?? caseDisplayPrompt(tc.testCase).slice(0, max);
 	};
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
+			const units = [
+				...tc.executionScenarios,
+				...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
+			];
 			const meanPassAtK =
-				tc.scenarios.length > 0
+				units.length > 0
 					? Math.round(
-							(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-								tc.scenarios.length) *
+							(units.reduce((sum, u) => sum + (u.passAtK[u.passAtK.length - 1] ?? 0), 0) /
+								units.length) *
 								100,
 						)
 					: 0;
 			const meanPassHatK =
-				tc.scenarios.length > 0
+				units.length > 0
 					? Math.round(
-							(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-								tc.scenarios.length) *
+							(units.reduce((sum, u) => sum + (u.passHatK[u.passHatK.length - 1] ?? 0), 0) /
+								units.length) *
 								100,
 						)
 					: 0;
@@ -871,7 +1083,7 @@ function formatTerminalPerTestCase(
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
 			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
-			for (const sa of tc.scenarios) {
+			for (const sa of tc.executionScenarios) {
 				const sr = sa.runs[0];
 				const status = sr.success ? 'PASS' : 'FAIL';
 				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
@@ -882,6 +1094,15 @@ function formatTerminalPerTestCase(
 						lines.push(TERMINAL_INDENT + `        error: ${errs.join('; ').slice(0, 200)}`);
 					}
 					lines.push(TERMINAL_INDENT + `        diagnosis: ${sr.reasoning.slice(0, 200)}`);
+				}
+			}
+			for (const ea of tc.buildExpectations) {
+				const er = ea.runs[0];
+				if (!er) continue;
+				const status = er.incomplete ? 'SKIP' : er.pass ? 'PASS' : 'FAIL';
+				lines.push(TERMINAL_INDENT + `  ${status}  expectation: ${ea.expectation.slice(0, 80)}`);
+				if (status === 'FAIL') {
+					lines.push(TERMINAL_INDENT + `        ${er.reason.slice(0, 200)}`);
 				}
 			}
 		}

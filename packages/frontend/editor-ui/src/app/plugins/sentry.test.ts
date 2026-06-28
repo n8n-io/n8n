@@ -26,6 +26,12 @@ describe('beforeSend', () => {
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
+	it('should return null for missing AI assistant sessions', () => {
+		const event = createErrorEvent();
+		const hint = { originalException: new ResponseError('Session not found') };
+		expect(beforeSend(event, hint)).toBeNull();
+	});
+
 	it('should return null when originalException matches ignoredErrors by instance only', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new AxiosError() };
@@ -35,6 +41,16 @@ describe('beforeSend', () => {
 	it('should return null when originalException matches ignoredErrors by instance and message regex (ResizeObserver)', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new Error('ResizeObserver loop limit exceeded') };
+		expect(beforeSend(event, hint)).toBeNull();
+	});
+
+	it.each([
+		'Failed to fetch dynamically imported module: https://example.com/assets/RunDataSearch-abc.js',
+		'error loading dynamically imported module: https://example.com/assets/RunDataSearch-abc.js',
+		'Importing a module script failed.',
+	])('should return null for stale-chunk preload TypeError: %s', (message) => {
+		const event = createErrorEvent();
+		const hint = { originalException: new TypeError(message) };
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 

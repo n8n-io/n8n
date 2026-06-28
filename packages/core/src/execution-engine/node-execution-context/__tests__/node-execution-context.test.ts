@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	INodeType,
@@ -12,6 +11,7 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -49,7 +49,7 @@ describe('NodeExecutionContext', () => {
 	let testContext: TestContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		testContext = new TestContext(workflow, node, additionalData, mode);
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	});
@@ -218,14 +218,15 @@ describe('NodeExecutionContext', () => {
 
 			let capturedExecutionContext: unknown;
 			const mockCredentialsHelper = {
-				getDecrypted: jest
+				getDecrypted: vi
 					.fn()
 					.mockImplementation(async (additionalData: IWorkflowExecuteAdditionalData) => {
 						// Capture the executionContext value at the moment getDecrypted is called
 						capturedExecutionContext = additionalData.executionContext;
 						return { token: 'test-token' };
 					}),
-				getCredentialsProperties: jest.fn(),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
 			};
 
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
@@ -261,12 +262,12 @@ describe('NodeExecutionContext', () => {
 			const testNode = mock<INode>({ type: 'n8n-nodes-base.graphql' });
 			testNode.credentials = { httpHeaderAuth: { id: 'cred1', name: 'Header' } };
 
-			const getCredentialsProperties = jest
+			const getCredentialsProperties = vi
 				.fn()
 				.mockReturnValue([{ displayName: 'JSON', name: 'json', type: 'json', default: '' }]);
 			const evalAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper: mock({ getCredentialsProperties }),
-				evalLlmMockHandler: jest.fn(),
+				evalLlmMockHandler: vi.fn(),
 				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
@@ -280,6 +281,59 @@ describe('NodeExecutionContext', () => {
 				return;
 			}
 			expect(resolved).toBeUndefined();
+		});
+
+		it('refuses to decrypt a restricted credential for a node not in supportedNodes', async () => {
+			const credentialDetails = { id: 'cred-r1', name: 'Restricted creds' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { restrictedApi: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn(),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(false),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('restrictedApi')).rejects.toThrow(
+				/restricted to specific nodes/i,
+			);
+			expect(mockCredentialsHelper.isCredentialUsableByNode).toHaveBeenCalledWith(
+				'restrictedApi',
+				'n8n-nodes-base.httpRequest',
+			);
+			expect(mockCredentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+
+		it('proceeds with decryption when the credential is usable by the node', async () => {
+			// The restriction policy itself (which credentials are usable by which
+			// nodes) is exercised in the CredentialsHelper unit tests. Here we only
+			// verify that when the helper says "yes", _getCredentials calls through
+			// to getDecrypted — including on httpRequest nodes (fullAccess=true).
+			const credentialDetails = { id: 'cred-x', name: 'Some Cred' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { someCred: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
 		});
 	});
 
@@ -458,7 +512,7 @@ describe('NodeExecutionContext', () => {
 
 	describe('getSignedResumeUrl', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			testContext = new TestContext(
 				workflow,
 				mock<INode>({

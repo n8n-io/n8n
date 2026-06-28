@@ -75,7 +75,8 @@ beforeEach(() => {
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
-		injectNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => ({ value: mockNdvState })),
+		injectNDVStoreIfProvided: vi.fn(() => ({ value: mockNdvState })),
 	};
 });
 
@@ -102,6 +103,15 @@ vi.mock('vue-router', () => {
 		}),
 		useRoute: () => ({}),
 		RouterLink: vi.fn(),
+	};
+});
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
 	};
 });
 

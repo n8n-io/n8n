@@ -36,6 +36,7 @@ import {
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -65,6 +66,7 @@ export function useWorkflowSaving({
 	const saveStore = useWorkflowSaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
 	const settingsStore = useSettingsStore();
+	const workflowId = useWorkflowId();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -77,7 +79,7 @@ export function useWorkflowSaving({
 		} = {},
 	) {
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 
 		if (
@@ -124,7 +126,7 @@ export function useWorkflowSaving({
 				return;
 			case MODAL_CLOSE:
 				// For new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+				if (workflowsStore.isWorkflowSaved[workflowId.value]) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -137,7 +139,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { workflowId: workflowsStore.workflowId },
+				params: { workflowId: workflowId.value },
 			}),
 		);
 	}
@@ -161,7 +163,7 @@ export function useWorkflowSaving({
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'workflowId');
+		const currentWorkflow = id ?? workflowId.value;
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
@@ -387,7 +389,7 @@ export function useWorkflowSaving({
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const currentDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+				createWorkflowDocumentId(workflowId.value),
 			);
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
 			const changedNodes = {} as IDataObject;
@@ -397,11 +399,20 @@ export function useWorkflowSaving({
 			}
 
 			if (resetNodeIds) {
+				const nodeIdMap = new Map<string, string>();
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
+					const oldId = node.id;
 					nodeHelpers.assignNodeId(node);
-
+					if (oldId) nodeIdMap.set(oldId, node.id);
 					return node;
 				});
+
+				if (workflowDataRequest.nodeGroups?.length) {
+					workflowDataRequest.nodeGroups = workflowDataRequest.nodeGroups.map((group) => ({
+						...group,
+						nodeIds: group.nodeIds.map((id) => nodeIdMap.get(id) ?? id),
+					}));
+				}
 			}
 
 			if (resetWebhookUrls) {

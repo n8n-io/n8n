@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
+	type IExecuteSingleFunctions,
 	type ILoadOptionsFunctions,
 	type ICredentialTestFunctions,
 	type IDataObject,
@@ -13,7 +14,7 @@ import {
 
 import { formatPrivateKey } from '@utils/utilities';
 
-const googleServiceAccountScopes = {
+export const googleServiceAccountScopes = {
 	bigquery: ['https://www.googleapis.com/auth/bigquery'],
 	books: ['https://www.googleapis.com/auth/books'],
 	chat: ['https://www.googleapis.com/auth/chat.bot'],
@@ -45,6 +46,12 @@ const googleServiceAccountScopes = {
 		'https://www.googleapis.com/auth/spreadsheets',
 		'https://www.googleapis.com/auth/drive.metadata',
 	],
+	sheetV2Trigger: [
+		'https://www.googleapis.com/auth/spreadsheets',
+		'https://www.googleapis.com/auth/drive.file',
+		'https://www.googleapis.com/auth/drive.metadata',
+		'https://www.googleapis.com/auth/drive.readonly',
+	],
 	slides: [
 		'https://www.googleapis.com/auth/drive.file',
 		'https://www.googleapis.com/auth/presentations',
@@ -57,13 +64,22 @@ const googleServiceAccountScopes = {
 		'https://www.googleapis.com/auth/datastore',
 		'https://www.googleapis.com/auth/firebase',
 	],
+	cloudStorage: [
+		'https://www.googleapis.com/auth/devstorage.full_control',
+		'https://www.googleapis.com/auth/cloud-platform',
+	],
 	vertex: ['https://www.googleapis.com/auth/cloud-platform'],
-};
+} as const;
 
-type GoogleServiceAccount = keyof typeof googleServiceAccountScopes;
+export type GoogleServiceAccount = keyof typeof googleServiceAccountScopes;
 
 export async function getGoogleAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions | ICredentialTestFunctions | IPollFunctions,
+	this:
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| ICredentialTestFunctions
+		| IPollFunctions,
 	credentials: IDataObject,
 	service: GoogleServiceAccount,
 ): Promise<IDataObject> {

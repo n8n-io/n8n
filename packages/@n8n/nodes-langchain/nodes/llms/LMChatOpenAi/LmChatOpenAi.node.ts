@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
 import pick from 'lodash/pick';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeProperties,
 	type IDataObject,
@@ -10,7 +11,6 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { mergeCustomHeaders } from '@utils/helpers';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -759,7 +759,13 @@ export class LmChatOpenAi implements INodeType {
 		};
 
 		if (options.baseURL) {
-			checkDomainRestrictions(this, credentials, options.baseURL);
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData: credentials,
+				url: options.baseURL,
+				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
+				surface: 'OpenAI',
+			});
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;

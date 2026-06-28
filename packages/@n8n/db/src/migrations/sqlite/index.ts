@@ -52,6 +52,11 @@ import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdFo
 import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
+import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
+import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddScopeColumnToOAuthTables';
+import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStoredAt';
+import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -175,7 +180,30 @@ import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/17840000
 import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/1784000000004-AddInsightsRawTimestampIdIndex';
 import { CreateMcpRegistryServerTable1784000000005 } from '../common/1784000000005-CreateMcpRegistryServerTable';
 import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
+import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
+import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
+import { CreateAgentMemoryEntryTables1784000000009 } from '../common/1784000000009-CreateAgentMemoryEntryTables';
+import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
+import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
+import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
+import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
+import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
+import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
+import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
+import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
+import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
+import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
+import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
+import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
+import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
+import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
+import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
+import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
+import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
+import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
+import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -355,6 +383,34 @@ const sqliteMigrations: Migration[] = [
 	AddInsightsRawTimestampIdIndex1784000000004,
 	CreateMcpRegistryServerTable1784000000005,
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
+	CreateInstanceAiCheckpointTable1784000000007,
+	ResetInstanceAiNativePersistence1784000000008,
+	CreateAgentMemoryEntryTables1784000000009,
+	RefactorAgentObservationScope1784000000010,
+	CreateAgentHistoryTable1784000000011,
+	CreateInstanceAiObservationTables1784000000012,
+	SplitRedactionScopeInCustomRoles1784000000013,
+	PersistInstanceAiPendingConfirmations1784000000014,
+	AddSourceWorkflowIdToWorkflow1784000000015,
+	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	AddLastUsedAtToApiKey1784000000017,
+	CreateAgentFilesTable1784000000018,
+	AddCustomTelemetryTagsToProject1784000000019,
+	CreateAgentTaskDefinitionTable1784000000021,
+	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
+	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
+	AddResourceToOAuthAuthorizationCodes1784000000024,
+	MigrateRedactionEnforcementToFloor1784000000025,
+	AddScopeColumnToOAuthTables1784000000026,
+	CreateWorkflowPublicationOutboxTable1784000000027,
+	AddProjectIdToInstanceAiThread1784000000028,
+	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
+	CreateAgentChatSubscriptions1784000000030,
+	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
+	AllowAzureStoredAt1784000000034,
+	AddUniqueAgentFileNames1784000000035,
+	CreateInstanceAiThreadGrantTable1784000000036,
+	DropAgentDescriptionFromAgents1784000000037,
 ];
 
 export { sqliteMigrations };

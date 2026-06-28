@@ -58,11 +58,30 @@ vi.mock('../instanceAi.api', () => ({
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
+type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
+
+function makeModuleSettings(
+	overrides: Partial<InstanceAiModuleSettings> = {},
+): InstanceAiModuleSettings {
+	return {
+		enabled: true,
+		localGatewayDisabled: false,
+		browserUseEnabled: true,
+		proxyEnabled: false,
+		cloudManaged: false,
+		sandboxEnabled: true,
+		workflowBuilderAvailable: true,
+		sandboxUnavailableReason: null,
+		runDebugEnabled: false,
+		...overrides,
+	};
+}
+
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
-	instanceAi: FrontendModuleSettings['instance-ai'],
+	instanceAi: Partial<InstanceAiModuleSettings>,
 ) {
-	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
+	settingsStore.moduleSettings = { 'instance-ai': makeModuleSettings(instanceAi) };
 }
 
 function setUserPreference(
@@ -227,6 +246,32 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('workflow builder availability', () => {
+		it('returns false when the module settings mark the builder unavailable', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: null,
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(false);
+			expect(store.sandboxUnavailableReason).toBeNull();
+		});
+
+		it('exposes the sandbox unavailable reason from module settings', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: true,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(true);
+			expect(store.sandboxUnavailableReason).toBe('N8N_SANDBOX_SERVICE_URL is required.');
+		});
+	});
+
 	describe('refreshModuleSettings', () => {
 		it('fetches preferences when they are not loaded yet', async () => {
 			const prefsResponse = {
@@ -274,15 +319,11 @@ describe('useInstanceAiSettingsStore', () => {
 
 			const adminResponse = {
 				enabled: true,
-				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
 				subAgentMaxSteps: 10,
-				browserMcp: false,
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,
@@ -301,11 +342,14 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.cloudManaged).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
+			expect(ms?.sandboxEnabled).toBe(false);
+			expect(ms?.workflowBuilderAvailable).toBe(false);
+			expect(ms?.sandboxUnavailableReason).toBeNull();
 		});
 	});
 
 	describe('connections', () => {
-		it('is empty when the gateway is disabled for the user', () => {
+		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: true,
@@ -313,10 +357,14 @@ describe('useInstanceAiSettingsStore', () => {
 				cloudManaged: false,
 			});
 
-			expect(store.connections).toEqual([]);
+			expect(store.connections).toHaveLength(1);
+			expect(store.connections[0]).toMatchObject({
+				type: 'browser-use',
+				status: 'disconnected',
+			});
 		});
 
-		it('shows a disconnected Computer Use row when enabled but not paired', () => {
+		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -325,9 +373,13 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 			setUserPreference(store, { localGatewayDisabled: false });
 
-			expect(store.connections).toHaveLength(1);
+			expect(store.connections).toHaveLength(2);
 			expect(store.connections[0]).toMatchObject({
 				type: 'computer-use',
+				status: 'disconnected',
+			});
+			expect(store.connections[1]).toMatchObject({
+				type: 'browser-use',
 				status: 'disconnected',
 			});
 		});
@@ -360,7 +412,7 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 		});
 
-		it('omits the Browser Use row when connected without a browser tool category', async () => {
+		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -376,8 +428,9 @@ describe('useInstanceAiSettingsStore', () => {
 			setUserPreference(store, { localGatewayDisabled: false });
 			await store.fetchGatewayStatus();
 
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0].type).toBe('computer-use');
+			expect(store.connections).toHaveLength(2);
+			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
+			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
 		});
 	});
 

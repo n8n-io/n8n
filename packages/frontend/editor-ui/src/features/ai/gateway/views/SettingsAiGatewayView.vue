@@ -62,7 +62,7 @@ const tableHeaders = ref<Array<TableHeader<AiGatewayUsageEntry>>>([
 		resize: false,
 	},
 	{
-		title: i18n.baseText('settings.n8nConnect.usage.col.model'),
+		title: i18n.baseText('settings.n8nConnect.usage.col.resource'),
 		key: 'model',
 		width: 220,
 		disableSort: true,

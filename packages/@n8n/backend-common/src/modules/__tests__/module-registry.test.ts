@@ -24,6 +24,7 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
 			'provisioning',
 			'breaking-changes',
@@ -44,7 +45,8 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
-			'inbound-secrets',
+			'n8n-packages',
+			'runtime-credentials',
 			'mcp-registry',
 		]);
 	});
@@ -56,6 +58,7 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
 			'provisioning',
 			'breaking-changes',
@@ -76,7 +79,8 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
-			'inbound-secrets',
+			'n8n-packages',
+			'runtime-credentials',
 			'mcp-registry',
 			'instance-ai',
 		]);

@@ -193,6 +193,67 @@ describe('MigrationTimestampRule', () => {
 		});
 	});
 
+	describe('dialect overrides', () => {
+		it('allows common/<ts>-<name>.ts paired with sqlite/<ts>-<name>.ts', async () => {
+			// SQLite override pattern: same timestamp + same suffix means same
+			// TypeORM class — the postgres index imports the common version,
+			// the sqlite index imports its own. One logical migration, two
+			// dialect-specific files. Both should be accepted as the head.
+			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Pre-existing.ts');
+			const commonHead = writeMigration(
+				tmpDir,
+				COMMON_DIR,
+				'1777000000000-CreateAgentHistoryTable.ts',
+			);
+			const sqliteOverride = writeMigration(
+				tmpDir,
+				SQLITE_DIR,
+				'1777000000000-CreateAgentHistoryTable.ts',
+			);
+
+			const violations = await rule.analyze(context([commonHead, sqliteOverride]));
+
+			expect(violations).toEqual([]);
+		});
+
+		it('allows common/<ts>-<name>.ts paired with postgresdb/<ts>-<name>.ts', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Pre-existing.ts');
+			const commonHead = writeMigration(tmpDir, COMMON_DIR, '1777000000000-NewTable.ts');
+			const postgresOverride = writeMigration(tmpDir, POSTGRES_DIR, '1777000000000-NewTable.ts');
+
+			const violations = await rule.analyze(context([commonHead, postgresOverride]));
+
+			expect(violations).toEqual([]);
+		});
+
+		it('still flags two unrelated migrations colliding on the same timestamp', async () => {
+			// Same timestamp + DIFFERENT suffix = genuine collision. Override
+			// pairing must be by filename, not just by timestamp.
+			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Pre-existing.ts');
+			const commonHead = writeMigration(tmpDir, COMMON_DIR, '1777000000000-Foo.ts');
+			const collision = writeMigration(tmpDir, SQLITE_DIR, '1777000000000-Bar.ts');
+
+			const violations = await rule.analyze(context([commonHead, collision]));
+
+			const files = violations.map((v) => path.basename(v.file)).sort();
+			expect(files).toEqual(['1777000000000-Bar.ts', '1777000000000-Foo.ts']);
+		});
+
+		it('still flags a sub-floor override file', async () => {
+			// An override pair below the head is still out of order — the
+			// floor is computed from non-self slots, so the pair shares one
+			// slot at the override timestamp but is still below the head.
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
+			const commonLate = writeMigration(tmpDir, COMMON_DIR, '1700000000000-Override.ts');
+			const sqliteLate = writeMigration(tmpDir, SQLITE_DIR, '1700000000000-Override.ts');
+
+			const violations = await rule.analyze(context([commonLate, sqliteLate]));
+
+			const files = violations.map((v) => path.basename(v.file)).sort();
+			expect(files).toEqual(['1700000000000-Override.ts', '1700000000000-Override.ts']);
+		});
+	});
+
 	describe('ceiling configuration', () => {
 		it('respects a custom ceilingBufferMs option', async () => {
 			rule.configure({ options: { now: 1_800_000_000_000, ceilingBufferMs: 10 } });

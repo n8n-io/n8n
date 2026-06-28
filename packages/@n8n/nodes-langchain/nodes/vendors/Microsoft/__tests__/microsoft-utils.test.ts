@@ -170,16 +170,17 @@ describe('microsoft-utils', () => {
 				}),
 			);
 
-			expect(result).toBeInstanceOf(AgentApplication);
+			expect(result.agent).toBeInstanceOf(AgentApplication);
 		});
 
-		test('should return AgentApplication instance', () => {
+		test('should return the agent and its auth config', () => {
 			const result = createMicrosoftAgentApplication(mockCredentials);
 
-			expect(result).toBeDefined();
-			expect(result).toHaveProperty('adapter');
-			expect(result).toHaveProperty('storage');
-			expect(result).toHaveProperty('authorization');
+			expect(result.authConfig).toBeDefined();
+			expect(result.agent).toBeDefined();
+			expect(result.agent).toHaveProperty('adapter');
+			expect(result.agent).toHaveProperty('storage');
+			expect(result.agent).toHaveProperty('authorization');
 		});
 	});
 

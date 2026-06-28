@@ -71,6 +71,31 @@ describe('WorkflowHistoryService', () => {
 				authors: 'John Doe',
 				connections: {},
 				nodes: workflow.nodes,
+				nodeGroups: workflow.nodeGroups,
+				versionId: workflow.versionId,
+				workflowId,
+				autosaved: false,
+			});
+		});
+
+		it('should save a new version with nodeGroups when provided', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+			const nodeGroups = [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }];
+
+			// Act
+			await workflowHistoryService.saveVersion(testUser, { ...workflow, nodeGroups }, workflowId);
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
+				authors: 'John Doe',
+				connections: {},
+				nodes: workflow.nodes,
+				nodeGroups,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
@@ -93,6 +118,7 @@ describe('WorkflowHistoryService', () => {
 				authors: 'John Doe',
 				connections: {},
 				nodes: workflow.nodes,
+				nodeGroups: workflow.nodeGroups,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: true,
@@ -115,6 +141,7 @@ describe('WorkflowHistoryService', () => {
 				authors: 'John Doe',
 				connections: {},
 				nodes: workflow.nodes,
+				nodeGroups: workflow.nodeGroups,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
@@ -476,6 +503,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.id = 'wf-1';
 			workflow.versionId = 'wfv-fresh';
 			workflow.connections = {};
+			workflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['uuid-1234'] }];
 			workflowRepository.findOneBy.mockResolvedValueOnce(workflow);
 			// First findOne: no existing history row → insert path.
 			// Second findOne: post-save verification that the row now exists.
@@ -494,6 +522,7 @@ describe('WorkflowHistoryService', () => {
 					workflowId: 'wf-1',
 					nodes: workflow.nodes,
 					connections: workflow.connections,
+					nodeGroups: workflow.nodeGroups,
 				}),
 			);
 		});

@@ -1,5 +1,6 @@
 import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { StoreCleanupService } from '../StoreCleanupService';
 import type { VectorStoreMetadata } from '../types';
@@ -8,7 +9,7 @@ describe('StoreCleanupService', () => {
 	// Setup test data
 	let vectorStores: Map<string, MemoryVectorStore>;
 	let storeMetadata: Map<string, VectorStoreMetadata>;
-	let onCleanupMock: jest.Mock;
+	let onCleanupMock: Mock;
 
 	// Utility to add a test store with given age
 	const addTestStore = (
@@ -31,7 +32,7 @@ describe('StoreCleanupService', () => {
 	beforeEach(() => {
 		vectorStores = new Map();
 		storeMetadata = new Map();
-		onCleanupMock = jest.fn();
+		onCleanupMock = vi.fn();
 	});
 
 	describe('TTL-based cleanup', () => {

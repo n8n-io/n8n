@@ -11,6 +11,7 @@ import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { CHAT_TRIGGER_NODE_TYPE, SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -133,19 +134,24 @@ describe('ExecuteMessage', () => {
 			createWorkflowDocumentId('test-workflow'),
 		);
 		workflowDocumentStore.setConnections({});
-		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
+		const workflowExecutionState = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
+		// The execution watcher reads status from the execution-state store's
+		// `activeExecution`, so drive it through `workflowExecutionDataRef`.
+		Object.defineProperty(workflowExecutionState, 'activeExecution', {
 			get: () => workflowExecutionDataRef,
 		});
-		Object.defineProperty(workflowsStore, 'executionWaitingForWebhook', {
+		Object.defineProperty(workflowExecutionState, 'executionWaitingForWebhook', {
 			get: () => executionWaitingForWebhookRef.value,
 			set: (value: boolean) => {
 				executionWaitingForWebhookRef.value = value;
 			},
 		});
-		Object.defineProperty(workflowsStore, 'selectedTriggerNodeName', {
+		Object.defineProperty(workflowExecutionState, 'selectedTriggerNodeName', {
 			get: () => selectedTriggerNodeNameRef.value,
 		});
-		workflowsStore.setSelectedTriggerNodeName = vi.fn((name: string | undefined) => {
+		workflowExecutionState.setSelectedTriggerNodeName = vi.fn((name: string | undefined) => {
 			selectedTriggerNodeNameRef.value = name;
 		});
 		logsStore.toggleOpen = vi.fn();

@@ -7,9 +7,10 @@
 import { execSync, spawn } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
 import { homedir, tmpdir } from 'os';
-import { basename, join } from 'path';
+import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
+import { DEFAULT_DATASETS, conversationTurnTextSchema } from '../data/workflows/schema';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
 
@@ -31,6 +32,8 @@ interface CliArgs {
 	slugs: string[];
 	maxAttempts: number;
 	mcpTimeoutMs: number;
+	/** When set, only build slugs whose `datasets` array includes this tier (mirrors eval --tier). */
+	tier?: string;
 	/** When set, instructs the model to pass `projectId` to
 	 *  `create_workflow_from_code` so workflows land in a specific n8n project.
 	 *  When unset, workflows go to the user's personal project (MCP default). */
@@ -77,6 +80,9 @@ Flags:
   --mcp-timeout-ms N      MCP_TIMEOUT env passed to claude -p (default: 120000).
   --project-id ID         n8n project to create the workflows in. Defaults
                           to the user's personal project.
+  --tier TIER             Only build test cases whose datasets array includes
+                          TIER (e.g. "mcp"). Mirrors eval:instance-ai --tier.
+                          Applies to discovered and positional slugs alike.
   --workflow-dir DIR      Test-case JSON directory. Defaults to
                           evaluations/data/workflows/ derived from the n8n
                           repo (via git). Set this to run from outside the
@@ -170,6 +176,10 @@ function parseArgs(argv: string[]): ParseResult {
 				result.projectId = nextArg(argv, i, arg);
 				i += 2;
 				break;
+			case '--tier':
+				result.tier = nextArg(argv, i, arg);
+				i += 2;
+				break;
 			case '--workflow-dir':
 				result.workflowDir = nextArg(argv, i, arg);
 				i += 2;
@@ -241,21 +251,30 @@ const claudeConfigSchema = z.object({
 		.optional(),
 });
 
-function stageMcpConfig(serverName: string, repoRoot: string | undefined): string {
+function uniqueProjectScopes(scopes: Array<string | undefined>): string[] {
+	const uniqueScopes: string[] = [];
+	for (const scope of scopes) {
+		if (!scope || uniqueScopes.includes(scope)) continue;
+		uniqueScopes.push(scope);
+	}
+	return uniqueScopes;
+}
+
+function stageMcpConfig(serverName: string, projectScopes: readonly string[]): string {
 	const claudeConfigPath = join(homedir(), '.claude.json');
 	if (!existsSync(claudeConfigPath)) {
 		throw new Error(`${claudeConfigPath} not found`);
 	}
 	const parsed = claudeConfigSchema.parse(readJson(claudeConfigPath, 'Claude Code config'));
 
-	const projectScopedBlock = repoRoot
-		? parsed.projects?.[repoRoot]?.mcpServers?.[serverName]
-		: undefined;
+	const projectScopedBlock = projectScopes
+		.map((scope) => parsed.projects?.[scope]?.mcpServers?.[serverName])
+		.find((block) => block !== undefined);
 	const block = projectScopedBlock ?? parsed.mcpServers?.[serverName];
-	if (!block) {
-		const scope = repoRoot
-			? `project-scope under "${repoRoot}" or global`
-			: 'global (no repo root, project-scope skipped)';
+	if (block === undefined) {
+		const scope = projectScopes.length
+			? `project-scope under ${projectScopes.map((projectScope) => `"${projectScope}"`).join(', ')} or global`
+			: 'global (no project scopes)';
 		throw new Error(`MCP server "${serverName}" not configured in ${claudeConfigPath} (${scope})`);
 	}
 
@@ -358,7 +377,33 @@ interface BuildOutcome {
 	durationMs: number;
 }
 
-const testCaseSchema = z.object({ prompt: z.string() }).passthrough();
+const testCaseSchema = z
+	.object({
+		// Reuse the canonical text normalizer so the array (multi-line) form of a
+		// turn's `text` is accepted and joined here exactly as in the eval harness.
+		conversation: z.array(z.object({ role: z.string(), text: conversationTurnTextSchema })).min(1),
+	})
+	.passthrough();
+
+function buildPromptFromConversation(
+	conversation: z.infer<typeof testCaseSchema>['conversation'],
+): string {
+	const [firstUserTurn, ...remainingUserTurns] = conversation
+		.filter((turn) => turn.role === 'user')
+		.map((turn) => turn.text.trim())
+		.filter((text) => text.length > 0);
+
+	if (!firstUserTurn) return conversation[0].text;
+	if (remainingUserTurns.length === 0) return firstUserTurn;
+
+	return [
+		firstUserTurn,
+		'Additional details from the user:',
+		...remainingUserTurns.map((turn, index) => `${String(index + 1)}. ${turn}`),
+		'',
+		"Use all details above as requirements. Configure all nodes as completely as possible and don't ask me for credentials; I'll set them up later.",
+	].join('\n\n');
+}
 
 function tailWorkflowId(text: string): string | null {
 	const matches = [...text.matchAll(/WORKFLOW_ID=([A-Za-z0-9_-]+)/g)];
@@ -384,7 +429,7 @@ async function buildOne(
 		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${args.projectId}' so the workflow is created in that n8n project.`
 		: '';
 
-	const userMessage = `${testCase.prompt}${projectInstruction}
+	const userMessage = `${buildPromptFromConversation(testCase.conversation)}${projectInstruction}
 
 ---
 After you have created the workflow with create_workflow_from_code, print a final line of the exact form:
@@ -508,6 +553,26 @@ function discoverSlugs(workflowDir: string): string[] {
 		.sort();
 }
 
+const tierDatasetsSchema = z.object({ datasets: z.array(z.string()).optional() }).passthrough();
+
+/** A test case's `datasets`, defaulting to the shared eval default when absent — mirrors the loader schema. */
+function readDatasets(workflowDir: string, slug: string): string[] {
+	const file = join(workflowDir, `${slug}.json`);
+	if (!existsSync(file)) return [];
+	try {
+		return (
+			tierDatasetsSchema.parse(readJson(file, `test case ${slug}`)).datasets ?? DEFAULT_DATASETS
+		);
+	} catch {
+		return DEFAULT_DATASETS;
+	}
+}
+
+/** Keep only slugs whose `datasets` includes `tier`, mirroring eval:instance-ai --tier semantics. */
+function filterSlugsByTier(workflowDir: string, slugs: string[], tier: string): string[] {
+	return slugs.filter((slug) => readDatasets(workflowDir, slug).includes(tier));
+}
+
 async function main(): Promise<void> {
 	const parsed = parseArgs(process.argv.slice(2));
 	if (parsed.helpRequested) {
@@ -554,11 +619,21 @@ async function main(): Promise<void> {
 	if (args.slugs.length === 0) {
 		args.slugs = discoverSlugs(workflowDir);
 	}
+	if (args.tier) {
+		args.slugs = filterSlugsByTier(workflowDir, args.slugs, args.tier);
+	}
 	if (args.slugs.length === 0) {
-		throw new Error('No scenarios to build');
+		throw new Error(
+			args.tier ? `No scenarios match --tier "${args.tier}"` : 'No scenarios to build',
+		);
 	}
 
-	const mcpConfigPath = stageMcpConfig(args.mcpServerName, repoRoot);
+	const projectScopes = uniqueProjectScopes([
+		args.buildCwd ? resolve(args.buildCwd) : undefined,
+		repoRoot,
+		repoRoot ? undefined : process.cwd(),
+	]);
+	const mcpConfigPath = stageMcpConfig(args.mcpServerName, projectScopes);
 	process.on('exit', () => {
 		try {
 			unlinkSync(mcpConfigPath);

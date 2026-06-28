@@ -1,12 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import { ProjectRelationRepository } from '@n8n/db';
+import type { CredentialsEntity } from '@n8n/db';
+import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { StateAdapter } from 'chat';
 
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { UrlService } from '@/services/url.service';
 
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -15,8 +20,10 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
+import type { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
 import { ChatIntegrationService } from '../chat-integration.service';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import * as esmLoader from '../esm-loader';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 /**
  * Test double — exposes the registry without invoking the real Chat SDK
@@ -49,12 +56,13 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		id: 'agent-1',
 		projectId: 'project-1',
 		integrations: [],
-		publishedVersion: null,
+		activeVersionId: null,
+		activeVersion: null,
 		...overrides,
 	} as unknown as Agent;
 }
 
-const slackIntegration: AgentCredentialIntegrationConfig = {
+const slackIntegration: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-1',
 };
@@ -65,15 +73,25 @@ function buildServiceWith(
 		multiMainEnabled?: boolean;
 		registry?: ChatIntegrationRegistry;
 		agentRepository?: ReturnType<typeof mock<AgentRepository>>;
+		credentialsFinderService?: ReturnType<typeof mock<CredentialsFinderService>>;
+		credentialsService?: ReturnType<typeof mock<CredentialsService>>;
 		publisher?: ReturnType<typeof mock<Publisher>>;
 		projectRelationRepository?: ReturnType<typeof mock<ProjectRelationRepository>>;
+		urlService?: ReturnType<typeof mock<UrlService>>;
+		chatSubscriptionStateService?: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	} = {},
 ) {
 	const registry = opts.registry ?? new ChatIntegrationRegistry();
 	const agentRepository = opts.agentRepository ?? mock<AgentRepository>();
+	const credentialsFinderService =
+		opts.credentialsFinderService ?? mock<CredentialsFinderService>();
+	const credentialsService = opts.credentialsService ?? mock<CredentialsService>();
 	const publisher = opts.publisher ?? mock<Publisher>();
 	const projectRelationRepository =
 		opts.projectRelationRepository ?? mock<ProjectRelationRepository>();
+	const urlService = opts.urlService ?? mock<UrlService>();
+	const chatSubscriptionStateService =
+		opts.chatSubscriptionStateService ?? mock<AgentChatSubscriptionStateService>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: opts.isLeader ?? true });
 	const globalConfig = mock<GlobalConfig>({
 		multiMainSetup: { enabled: opts.multiMainEnabled ?? false },
@@ -84,32 +102,45 @@ function buildServiceWith(
 	const service = new ChatIntegrationService(
 		mockLogger(),
 		agentRepository,
-		mock(),
-		mock(),
-		mock(),
+		credentialsService,
+		credentialsFinderService,
+		urlService,
 		registry,
 		instanceSettings,
 		publisher,
 		globalConfig,
+		chatSubscriptionStateService,
 	);
 
-	return { service, registry, agentRepository, publisher, projectRelationRepository };
+	return {
+		service,
+		registry,
+		agentRepository,
+		credentialsFinderService,
+		credentialsService,
+		publisher,
+		projectRelationRepository,
+		urlService,
+		chatSubscriptionStateService,
+	};
 }
 
 describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let service: ChatIntegrationService;
+	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
+	let chatSubscriptionStateService: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	let connectSpy: jest.SpyInstance;
 	let disconnectSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		Container.reset();
-		({ service } = buildServiceWith());
+		({ service, projectRelationRepository, chatSubscriptionStateService } = buildServiceWith());
 		connectSpy = jest.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = jest.spyOn(service, 'disconnect').mockResolvedValue();
 	});
 
 	it('skips connect when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [], [slackIntegration]);
 
@@ -117,11 +148,33 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	});
 
 	it('still disconnects removed integrations even when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [slackIntegration], []);
 
 		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(connectSpy).not.toHaveBeenCalled();
+	});
+
+	it('deletes persisted subscriptions when an integration is removed', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+
+		await service.syncToConfig(agent, [slackIntegration], []);
+
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
+			'agent-1',
+			slackIntegration,
+		);
+	});
+
+	it('does not reconnect an already-live integration when republishing', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1']);
+		const internal = service as unknown as { connections: Map<string, unknown> };
+		internal.connections.set('agent-1:slack:cred-1', {});
+
+		await service.syncToConfig(agent, [], [slackIntegration]);
+
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
 });
@@ -140,7 +193,65 @@ describe('ChatIntegrationService', () => {
 			mock<InstanceSettings>({ isLeader: true }),
 			mock(),
 			mock<GlobalConfig>({ multiMainSetup: { enabled: false } } as Partial<GlobalConfig>),
+			mock<AgentChatSubscriptionStateService>(),
 		);
+
+	it('disconnects subscription state when setup fails before chat initialization starts', async () => {
+		const createAdapter = jest.fn().mockResolvedValue({ name: 'slack' });
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+			createAdapter;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		Container.set(
+			UserRepository,
+			mock<UserRepository>({
+				findOne: jest.fn().mockResolvedValue({ id: 'user-1' }),
+			}),
+		);
+
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({} as CredentialsEntity);
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.decrypt.mockResolvedValue({});
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
+
+		const state = mock<StateAdapter>();
+		state.disconnect.mockResolvedValue(undefined);
+		const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+		chatSubscriptionStateService.createStateAdapter.mockReturnValue(state);
+
+		const loadMemoryStateSpy = jest.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+			createMemoryState: jest.fn(() => mock<StateAdapter>()),
+		} as never);
+		const loadChatSdkSpy = jest.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({
+			Chat: jest.fn(() => {
+				throw new Error('chat construction failed');
+			}),
+		} as never);
+
+		try {
+			const { service } = buildServiceWith({
+				registry,
+				credentialsFinderService,
+				credentialsService,
+				urlService,
+				chatSubscriptionStateService,
+			});
+
+			await expect(
+				service.connect('agent-1', slackIntegration, 'user-1', 'project-1'),
+			).rejects.toThrow('chat construction failed');
+
+			expect(chatSubscriptionStateService.createStateAdapter).toHaveBeenCalledTimes(1);
+			expect(state.disconnect).toHaveBeenCalledTimes(1);
+		} finally {
+			loadMemoryStateSpy.mockRestore();
+			loadChatSdkSpy.mockRestore();
+		}
+	});
 
 	describe('disconnectAll', () => {
 		it('shuts down every active connection and empties the connection map', async () => {
@@ -722,7 +833,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		it('publishes settings alongside a connect broadcast', async () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
-			const integration: AgentCredentialIntegrationConfig = {
+			const integration: AgentIntegrationConfig = {
 				type: 'telegram',
 				credentialId: 'c1',
 				settings: {

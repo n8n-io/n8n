@@ -1,6 +1,9 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
+import { TestCaseExecutionErrorCode } from '@n8n/db';
 import type {
+	EvaluationCollectionRepository,
+	EvaluationConfigRepository,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
@@ -20,6 +23,7 @@ import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+import type { WorkflowCompilerService } from '../workflow-compiler.service';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -64,6 +68,9 @@ describe('TestRunnerService', () => {
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
 	const concurrencyControlService = mock<ConcurrencyControlService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const evaluationCollectionRepository = mock<EvaluationCollectionRepository>();
+	const evaluationConfigRepository = mock<EvaluationConfigRepository>();
+	const workflowCompiler = mock<WorkflowCompilerService>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -87,6 +94,9 @@ describe('TestRunnerService', () => {
 			concurrencyControlService,
 			buildLicenseMock(),
 			workflowHistoryService,
+			evaluationCollectionRepository,
+			evaluationConfigRepository,
+			workflowCompiler,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -532,6 +542,9 @@ describe('TestRunnerService', () => {
 				concurrencyControlService,
 				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -770,6 +783,7 @@ describe('TestRunnerService', () => {
 					},
 					userId: metadata.userId,
 					forceFullExecutionData: true,
+					evaluationRunId: metadata.testRunId,
 					triggerToStartFrom: {
 						name: triggerNodeName,
 					},
@@ -852,6 +866,9 @@ describe('TestRunnerService', () => {
 					concurrencyControlService,
 					buildLicenseMock(),
 					workflowHistoryService,
+					evaluationCollectionRepository,
+					evaluationConfigRepository,
+					workflowCompiler,
 				);
 			});
 
@@ -915,6 +932,7 @@ describe('TestRunnerService', () => {
 							},
 						},
 						userId: metadata.userId,
+						evaluationRunId: metadata.testRunId,
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
@@ -929,6 +947,7 @@ describe('TestRunnerService', () => {
 								},
 								manualData: {
 									userId: metadata.userId,
+									evaluationRunId: metadata.testRunId,
 									triggerToStartFrom: {
 										name: triggerNodeName,
 									},
@@ -2202,6 +2221,45 @@ describe('TestRunnerService', () => {
 			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		});
 
+		test('records executionId on a case that errors after running (so the UI can link to its execution)', async () => {
+			setupHappyPathMocks(2);
+
+			// Case 2's execution completes, but emits a non-numeric metric so
+			// metric extraction throws INVALID_METRICS *after* the execution ran.
+			// Its executionId must still be persisted on the error row.
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return buildDatasetExecution(2);
+				}
+				if (executionId === 'case-exec-2') {
+					return {
+						data: {
+							resultData: {
+								runData: {
+									[METRICS_NODE_NAME]: [
+										{
+											data: {
+												[NodeConnectionTypes.Main]: [[{ json: { score: 'not-a-number' } }]],
+											},
+										},
+									],
+								},
+							},
+						},
+					} as unknown as IRun;
+				}
+				return buildCaseExecution(0.5);
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			const invalidMetricRow = testCaseExecutionRepository.update.mock.calls.find(
+				([, row]) => row.errorCode === TestCaseExecutionErrorCode.INVALID_METRICS,
+			);
+			expect(invalidMetricRow).toBeDefined();
+			expect(invalidMetricRow?.[1].executionId).toBe('case-exec-2');
+		});
+
 		test('throttle is called once per case and release is called once per case', async () => {
 			setupHappyPathMocks(4);
 
@@ -2312,6 +2370,9 @@ describe('TestRunnerService', () => {
 				concurrencyControlService,
 				buildLicenseMock('Community', 4),
 				workflowHistoryService,
+				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 			setupHappyPathMocks(2);
 			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
@@ -2388,6 +2449,9 @@ describe('TestRunnerService', () => {
 				concurrencyControlService,
 				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
@@ -2484,6 +2548,9 @@ describe('TestRunnerService', () => {
 				concurrencyControlService,
 				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 
 			setupHappyPathMocks(4);
@@ -2501,10 +2568,93 @@ describe('TestRunnerService', () => {
 			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
 			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
+
+		// Cache-invalidation hook (TRUST-80). When a run that belongs to an
+		// eval collection finishes successfully, the collection's cached
+		// AI-insights envelope is now stale — the freshly-completed run can
+		// flip the winner / produce new regressions. Bust the cache so the
+		// next `EvalInsightsService.generateInsights` call regenerates.
+		// Skipping `markAsError` / `markAsCancelled` on purpose: those
+		// terminal states still satisfy the service's filter
+		// (`status === 'completed' && metrics`) as false, so a previously
+		// running run that ends in error never contributed to the cache.
+		describe('runTest - collection insights cache invalidation (TRUST-80)', () => {
+			test('busts the insights cache after a collection-tagged run completes', async () => {
+				setupHappyPathMocks(2);
+				// Override the outer beforeEach so the run row carries a
+				// non-null `collectionId`.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-coll', collectionId: 'col-x' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockResolvedValue(undefined as never);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-x',
+					null,
+				);
+			});
+
+			test('does not call updateInsightsCache when the completed run has no collectionId', async () => {
+				setupHappyPathMocks(2);
+				// `mock<TestRun>(...)` returns a deep-mocked proxy where
+				// unset fields evaluate truthy, so we have to spell out the
+				// nullish `collectionId` explicitly to exercise the
+				// non-collection branch of the runner.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-solo', collectionId: null }),
+				);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).not.toHaveBeenCalled();
+			});
+
+			test('keeps the run marked completed when the cache bust fails', async () => {
+				// Failure-isolation guarantee: if `updateInsightsCache` throws
+				// the exception must not escape into the outer try/catch in
+				// `runTest`, which would re-mark the (already-persisted)
+				// completed run as `error`. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which the
+				// user can resolve with `forceRegenerate: true`.
+				setupHappyPathMocks(2);
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-cache-fail', collectionId: 'col-y' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockRejectedValueOnce(
+					new Error('db transient failure'),
+				);
+
+				await expect(
+					testRunnerService.runTest(USER as never, WORKFLOW_ID, 1),
+				).resolves.toBeUndefined();
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				// Crucial: the failure path must not have flipped the row
+				// back to `error` via the outer catch block.
+				expect(testRunRepository.markAsError).not.toHaveBeenCalled();
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-y',
+					null,
+				);
+			});
+		});
 	});
 
 	describe('startTestRun - collection context (TRUST-72)', () => {
 		const USER = mock<{ id: string }>({ id: 'user-1' });
+
+		// Collection-context tests use stub nodes without a `type` field, so the
+		// compile branch's `EVALUATION_TRIGGER_NODE_TYPE` lookup mis-fires. Tell
+		// the config repo to return something and have the compiler passthrough
+		// so these tests can keep asserting only the history-load behaviour.
+		beforeEach(() => {
+			evaluationConfigRepository.findByIdAndWorkflowId.mockResolvedValue({ id: 'cfg-1' } as never);
+			workflowCompiler.compile.mockImplementation((wf) => wf as never);
+		});
 
 		test('loads workflow JSON from WorkflowHistory when workflowVersionId is set', async () => {
 			workflowRepository.findById.mockResolvedValueOnce({
@@ -2637,6 +2787,9 @@ describe('TestRunnerService', () => {
 				concurrencyControlService,
 				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);
@@ -2780,6 +2933,184 @@ describe('TestRunnerService', () => {
 				'tr-just-finished',
 				expect.anything(),
 			);
+		});
+	});
+
+	describe('run_type telemetry', () => {
+		const TRIGGER_NODE_NAME = 'Dataset Trigger';
+		const METRICS_NODE_NAME = 'Set Metrics';
+		const USER_OBJ = mock<{ id: string }>({ id: 'user-telem' });
+		const WORKFLOW_ID = 'wf-telem';
+
+		const buildWorkflow = (): IWorkflowBase =>
+			({
+				id: WORKFLOW_ID,
+				name: 'Eval Workflow',
+				active: false,
+				nodes: [
+					{
+						id: 'trigger',
+						name: TRIGGER_NODE_NAME,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0] as [number, number],
+						parameters: { source: 'dataTable', dataTableId: 'dt-1' },
+					},
+					{
+						id: 'metrics',
+						name: METRICS_NODE_NAME,
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [200, 0] as [number, number],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: { assignments: [{ id: '1', name: 'score', value: 1 }] },
+						},
+					},
+				],
+				connections: {},
+				settings: {},
+			}) as unknown as IWorkflowBase;
+
+		const buildDatasetExecution = (rowCount: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[TRIGGER_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [
+											Array.from({ length: rowCount }, (_, i) => ({
+												json: { caseId: i },
+											})),
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		const buildCaseExecution = (): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[METRICS_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: { score: 1 } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		const setupMocks = (rowCount: number) => {
+			const workflow = buildWorkflow();
+			workflowRepository.findById.mockResolvedValue(workflow as never);
+			concurrencyControlService.throttle.mockResolvedValue(undefined as never);
+			testRunRepository.markAsRunning.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCompleted.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCancelled.mockResolvedValue(undefined as never);
+			testRunRepository.clearInstanceTracking.mockResolvedValue(undefined as never);
+			testRunRepository.isCancellationRequested.mockResolvedValue(false);
+			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
+			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(async (_runId, count) =>
+				Array.from({ length: count }, (_, i) => ({ id: `seeded-case-${i}` }) as never),
+			);
+			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
+			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
+			Object.assign(testRunRepository, {
+				manager: {
+					transaction: jest
+						.fn()
+						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
+				},
+			});
+
+			let runCallIndex = 0;
+			workflowRunner.run.mockImplementation(async () => {
+				const id = runCallIndex === 0 ? 'dataset-exec' : `case-exec-${runCallIndex}`;
+				runCallIndex++;
+				return id;
+			});
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') return buildDatasetExecution(rowCount);
+				return buildCaseExecution();
+			});
+		};
+
+		test('direct run emits run_type: "direct" in both "User ran test" and "Test run finished" events', async () => {
+			setupMocks(2);
+
+			await testRunnerService.runTest(USER_OBJ as never, WORKFLOW_ID, 1);
+
+			const ranTestCall = telemetry.track.mock.calls.find(([e]) => e === 'User ran test')?.[1] as
+				| Record<string, unknown>
+				| undefined;
+			const finishedCall = telemetry.track.mock.calls.find(
+				([e]) => e === 'Test run finished',
+			)?.[1] as Record<string, unknown> | undefined;
+
+			expect(ranTestCall?.run_type).toBe('direct');
+			expect(finishedCall?.run_type).toBe('direct');
+		});
+
+		test('config run emits run_type: "config" in both telemetry events', async () => {
+			setupMocks(2);
+
+			// Build a workflow that already contains eval nodes so the strip logic fires.
+			const workflowWithEvalNodes: IWorkflowBase = {
+				...buildWorkflow(),
+				nodes: [
+					...buildWorkflow().nodes,
+					// Extra pre-existing trigger the strip should remove
+					{
+						id: 'extra-trigger',
+						name: 'Old Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+			};
+			workflowRepository.findById.mockResolvedValue(workflowWithEvalNodes as never);
+
+			// After stripping, compiler gets a clean workflow and returns one with
+			// its own __eval_trigger and metric nodes.  For this telemetry test we
+			// just return the base clean workflow from the compiler mock.
+			const compiledWorkflow = buildWorkflow();
+			workflowCompiler.compile.mockReturnValue(compiledWorkflow as never);
+
+			const evalConfigId = 'cfg-1';
+			const fakeConfig = { id: evalConfigId, workflowId: WORKFLOW_ID } as never;
+			evaluationConfigRepository.findByIdAndWorkflowId.mockResolvedValue(fakeConfig);
+
+			const { finished } = await testRunnerService.startTestRun(USER_OBJ as never, WORKFLOW_ID, 1, {
+				evaluationConfigId: evalConfigId,
+				compileFromConfig: true,
+			});
+
+			// Wait for the detached executeTestRun to complete
+			await finished.catch(() => undefined);
+
+			const ranTestCall = telemetry.track.mock.calls.find(([e]) => e === 'User ran test')?.[1] as
+				| Record<string, unknown>
+				| undefined;
+			const finishedCall = telemetry.track.mock.calls.find(
+				([e]) => e === 'Test run finished',
+			)?.[1] as Record<string, unknown> | undefined;
+
+			expect(ranTestCall?.run_type).toBe('config');
+			expect(finishedCall?.run_type).toBe('config');
 		});
 	});
 

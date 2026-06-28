@@ -72,9 +72,14 @@ onMounted(() => {
 		.then(async () => await settingsStore.ensurePreferencesLoaded())
 		.catch(() => {})
 		.then(() => {
-			if (settingsStore.isLocalGatewayDisabled) return;
+			const browserUseEnabled = settingsStore.isBrowserUseEnabledByAdmin;
+			const computerUseEnabled = !settingsStore.isLocalGatewayDisabledByAdmin;
+			if (!browserUseEnabled && !computerUseEnabled) return;
 			settingsStore.startGatewayPushListener();
-			void settingsStore.fetchGatewayStatus();
+			if (browserUseEnabled) void settingsStore.fetchBrowserStatus();
+			if (computerUseEnabled && !settingsStore.isLocalGatewayDisabled) {
+				void settingsStore.fetchGatewayStatus();
+			}
 		});
 });
 
@@ -83,16 +88,21 @@ watch(
 	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			settingsStore.stopGatewayPushListener();
+			if (
+				settingsStore.isLocalGatewayDisabledByAdmin &&
+				!settingsStore.isBrowserUseEnabledByAdmin
+			) {
+				settingsStore.stopGatewayPushListener();
+			}
 		} else {
 			settingsStore.startGatewayPushListener();
 			void settingsStore.fetchGatewayStatus();
+			void settingsStore.fetchBrowserStatus();
 		}
 	},
 );
 
 onUnmounted(() => {
-	store.disposeRuntimes();
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
 });
@@ -131,14 +141,6 @@ onUnmounted(() => {
 	width: 100%;
 	min-width: 0;
 	overflow: hidden;
-	position: relative;
-	z-index: 0;
-
-	// Drop the stacking context while the workflow preview iframe NDV is
-	// fullscreen so its `z-index` can escape and paint above the sidebar.
-	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
-		z-index: auto;
-	}
 }
 
 .sidebar {

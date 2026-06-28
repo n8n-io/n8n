@@ -124,7 +124,7 @@ describe('ResolversView', () => {
 			const { getByText } = renderComponent({ pinia });
 
 			await waitFor(() => {
-				expect(getByText('Resolve dynamic credentials from user identity')).toBeInTheDocument();
+				expect(getByText('Resolve private credentials from user identity')).toBeInTheDocument();
 			});
 		});
 
@@ -135,7 +135,7 @@ describe('ResolversView', () => {
 
 			// Wait for empty state to be displayed (after loading completes)
 			await waitFor(() => {
-				expect(getByText('Resolve dynamic credentials from user identity')).toBeInTheDocument();
+				expect(getByText('Resolve private credentials from user identity')).toBeInTheDocument();
 			});
 
 			// Now the Add Resolver button should be available

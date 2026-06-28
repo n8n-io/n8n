@@ -1,4 +1,6 @@
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -51,6 +53,13 @@ const attributes: SamlUserAttributes = {
 	lastName: 'User',
 	userPrincipalName: 'upn:test@example.com',
 };
+const rawAttributes = {
+	email: 'test@example.com',
+	givenName: 'Test',
+	surname: 'User',
+	groups: ['admins', 'engineers'],
+};
+const rawAttributesJson = JSON.stringify(rawAttributes, null, 2);
 
 describe('Test views', () => {
 	const RelayState = getServiceProviderConfigTestReturnUrl();
@@ -72,12 +81,16 @@ describe('Test views', () => {
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		});
 
 		await controller.acsPost(req, res, { RelayState });
 
-		expect(res.render).toBeCalledWith('saml-connection-test-success', attributes);
+		expect(res.render).toBeCalledWith('saml-connection-test-success', {
+			...attributes,
+			rawAttributesJson,
+		});
 	});
 
 	test('Should render failure with template', async () => {
@@ -90,12 +103,17 @@ describe('Test views', () => {
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: undefined,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		});
 
 		await controller.acsPost(req, res, { RelayState });
 
-		expect(res.render).toBeCalledWith('saml-connection-test-failed', { message: '', attributes });
+		expect(res.render).toBeCalledWith('saml-connection-test-failed', {
+			message: '',
+			attributes,
+			rawAttributesJson,
+		});
 	});
 
 	test('Should render error with template', async () => {
@@ -127,6 +145,7 @@ describe('Test views', () => {
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		});
 
@@ -134,7 +153,10 @@ describe('Test views', () => {
 
 		expect(samlService.consumePendingTestConfig).toHaveBeenCalledWith(testId);
 		expect(samlService.handleSamlLogin).toHaveBeenCalledWith(req, 'post', metadata);
-		expect(res.render).toBeCalledWith('saml-connection-test-success', attributes);
+		expect(res.render).toBeCalledWith('saml-connection-test-success', {
+			...attributes,
+			rawAttributesJson,
+		});
 	});
 
 	test('Should still call handleSamlLogin without override when no test token in RelayState', async () => {
@@ -147,6 +169,7 @@ describe('Test views', () => {
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		});
 
@@ -229,6 +252,7 @@ describe('SAML Login Flow', () => {
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		});
 
@@ -250,6 +274,7 @@ describe('SAML Login Flow', () => {
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
 			attributes,
+			rawAttributes,
 			onboardingRequired: true,
 		});
 
@@ -268,6 +293,7 @@ describe('SAML Login Flow', () => {
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		});
 
@@ -285,6 +311,7 @@ describe('SAML Login Flow', () => {
 			samlService.handleSamlLogin.mockResolvedValueOnce({
 				authenticatedUser: user,
 				attributes,
+				rawAttributes,
 				onboardingRequired: false,
 			});
 			await controller.acsPost(req, res, { RelayState: '/workflow/123' });
@@ -342,6 +369,7 @@ describe('SAML Login Flow', () => {
 			samlService.handleSamlLogin.mockResolvedValueOnce({
 				authenticatedUser: user,
 				attributes,
+				rawAttributes,
 				onboardingRequired: false,
 			});
 			await controller.acsPost(req, res, { RelayState: blockedUrl });
@@ -377,5 +405,17 @@ describe('SAML env-managed write protection', () => {
 		await expect(
 			envManagedController.toggleEnabledPost(req, res, { loginEnabled: true }),
 		).rejects.toThrow('cannot be modified through the API');
+	});
+
+	describe('route access scopes', () => {
+		test('configGet (read) is gated by saml:manage, matching the write endpoints', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				SamlController as Controller,
+			);
+			expect(metadata.routes.get('configGet')?.accessScope).toEqual({
+				scope: 'saml:manage',
+				globalOnly: true,
+			});
+		});
 	});
 });

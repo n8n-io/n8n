@@ -1,10 +1,13 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import type { InstanceAiLivenessPolicy, InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
+import {
+	orchestratorAgentId,
+	type InstanceAiLivenessPolicy,
+	type InstanceAiLivenessTimeoutReason,
+} from '@n8n/instance-ai';
 
 import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 export const INSTANCE_AI_RUN_TIMEOUT_REASON = 'timeout';
 
@@ -59,6 +62,7 @@ export type InstanceAiLivenessRunState<
 	cancelSuspendedRun: (threadId: string) => TSuspendedRun | undefined;
 	getActiveRunId: (threadId: string) => string | undefined;
 	getPendingConfirmation: (requestId: string) => InstanceAiLivenessPendingConfirmation | undefined;
+	hasPendingConfirmationForThread: (threadId: string) => boolean;
 	rejectPendingConfirmation: (requestId: string) => boolean;
 };
 
@@ -66,17 +70,15 @@ export type InstanceAiLivenessBackgroundTasks = {
 	timeoutTimedOutTasks: (
 		policy: InstanceAiLivenessPolicy,
 		now?: number,
+		options?: {
+			shouldSkipTask?: (task: InstanceAiLivenessTimedOutTask) => boolean;
+		},
 	) => Promise<InstanceAiLivenessTimedOutTask[]>;
 };
 
 export type InstanceAiLivenessEventBus = {
 	getEventsForRun: (threadId: string, runId: string) => Pick<InstanceAiEvent, 'responseId'>[];
 	publish: (threadId: string, event: InstanceAiEvent) => void;
-};
-
-export type InstanceAiLivenessLogger = {
-	debug: (message: string, metadata?: Record<string, unknown>) => void;
-	warn: (message: string, metadata?: Record<string, unknown>) => void;
 };
 
 export type InstanceAiLivenessServiceOptions<
@@ -88,7 +90,8 @@ export type InstanceAiLivenessServiceOptions<
 	backgroundTasks: InstanceAiLivenessBackgroundTasks;
 	eventBus: InstanceAiLivenessEventBus;
 	finalizeCancelledSuspendedRun: (suspended: TSuspendedRun, reason: string) => void;
-	logger: InstanceAiLivenessLogger;
+	onPendingConfirmationRejected?: (requestId: string) => void;
+	logger: Logger;
 };
 
 export class InstanceAiLivenessService<
@@ -183,12 +186,17 @@ export class InstanceAiLivenessService<
 				}
 			}
 			this.options.runState.rejectPendingConfirmation(reqId);
+			this.options.onPendingConfirmationRejected?.(reqId);
 		}
 
 		try {
 			const timedOutTasks = await this.options.backgroundTasks.timeoutTimedOutTasks(
 				this.options.policy,
 				now,
+				{
+					shouldSkipTask: (task) =>
+						this.options.runState.hasPendingConfirmationForThread(task.threadId),
+				},
 			);
 			for (const task of timedOutTasks) {
 				this.options.logger.debug('Timed out background task', {
@@ -234,7 +242,7 @@ export class InstanceAiLivenessService<
 		this.options.eventBus.publish(threadId, {
 			type: 'text-delta',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			responseId,
 			payload: { text: RUN_TIMEOUT_MESSAGE },
 		});

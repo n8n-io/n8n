@@ -1,5 +1,5 @@
 import type {
-	AgentCredentialIntegrationConfig,
+	AgentIntegrationConfig,
 	ChatHubMessageStatus,
 	PushMessage,
 	WorkerStatus,
@@ -35,6 +35,8 @@ export type PubSubCommandMap = {
 
 	'reload-mcp-registry': never;
 
+	'reload-otel-config': never;
+
 	// #region Community packages
 
 	'community-package-install': {
@@ -63,6 +65,20 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// #region Execution control
+
+	/**
+	 * Stop a specific in-memory execution on whichever worker is running it. Used in queue
+	 * mode for subworkflow executions, which run inline in the parent's worker process and
+	 * therefore have no Bull job to abort. Each worker checks its own `ActiveExecutions` and
+	 * cancels the execution if it holds it.
+	 */
+	'stop-execution': {
+		executionId: string;
+	};
+
+	// #endregion
+
 	// #region Multi-main setup
 
 	'add-webhooks-triggers-and-pollers': {
@@ -83,6 +99,11 @@ export type PubSubCommandMap = {
 	'display-workflow-deactivation': {
 		workflowId: string;
 	};
+
+	/** Wake the leader's publication outbox consumer to drain pending records now.
+	 * The consumer polls as a backup, but this lets publication feel fast without frequent polling.
+	 */
+	'workflow-publish-wake-up': never;
 
 	'display-workflow-activation-error': {
 		workflowId: string;
@@ -202,8 +223,25 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		integration: AgentCredentialIntegrationConfig;
+		integration: AgentIntegrationConfig;
 		action: 'connect' | 'disconnect';
+	};
+
+	/**
+	 * Keep per-main thread subscription state in sync across the cluster. The
+	 * originating main persists the subscription change before publishing; peers
+	 * update their local in-memory subscription state so load-balanced follow-up
+	 * messages can route to `onSubscribedMessage` without re-mentioning the bot.
+	 *
+	 * Subscriptions are currently backed by the Vercel Chat SDK memory adapter,
+	 * but this event describes the intent (thread subscription changed) rather
+	 * than that implementation detail.
+	 */
+	'agent-chat-subscription-changed': {
+		agentId: string;
+		integration: AgentIntegrationConfig;
+		threadId: string;
+		action: 'subscribe' | 'unsubscribe';
 	};
 
 	/**
@@ -220,6 +258,31 @@ export type PubSubCommandMap = {
 	'agent-config-changed': {
 		agentId: string;
 	};
+
+	/**
+	 * Reconcile an agent's scheduled task cron jobs across main instances.
+	 * Published by the main that handled a publish/unpublish/delete after the
+	 * change is persisted. Only the leader owns task crons, so every main runs
+	 * the same reconcile but registration is a no-op on followers.
+	 */
+	'agent-tasks-changed': {
+		agentId: string;
+	};
+
+	// #endregion
+
+	// #region Redaction
+
+	/**
+	 * Drop the cached instance redaction floor across main instances.
+	 * Published by the main that handled a redaction-floor update after the new
+	 * value is persisted; every other main clears its local cache key so the next
+	 * read re-loads the current value from the DB.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the originating main already
+	 * updates its own cache synchronously in set().
+	 */
+	'redaction-floor-changed': never;
 
 	// #endregion
 };

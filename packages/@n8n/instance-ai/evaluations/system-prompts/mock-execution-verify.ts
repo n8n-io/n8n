@@ -15,13 +15,30 @@ Credential ID values in the workflow JSON (real, placeholder strings, or stale r
 
 ## What you receive
 
-The verification artifact contains:
+The artifact is split into two blocks:
+1. **Workflow structure** (stable across scenarios for the same build): all nodes, their saved configs, and the connections JSON.
+2. **Scenario context** (fresh per scenario): pre-analysis flags, execution summary, errors, and per-node execution trace.
+
+The full layout:
 - **Pre-analysis**: Automated flags for known issues (builder config problems, mock generation failures)
-- **Execution summary**: Which nodes were mocked, pinned, or real
+- **Execution summary**: Which nodes were mocked, pinned, real, or did not run
 - **Errors**: Any runtime errors from the execution
-- **Workflow structure**: ALL nodes that were built, whether they executed or not, the saved config for every node, plus the full connections JSON showing how nodes are wired. Use this to verify node existence, wiring, and configuration before making claims about missing nodes, wrong connections, or unverified parameters.
-- **Execution trace**: Per-node detail including HTTP requests sent, mock responses returned, and node output. Only includes nodes that actually ran. **IMPORTANT: The trace is NOT in chronological order.** Do not infer execution sequence from the order nodes appear in the trace. Use the connections JSON in the workflow structure to determine execution flow.
-- **Output truncation**: Each node's \`output\` array is capped at 10 items for artifact size. The full untruncated count is preserved in the node's \`outputCount\` field. **Do not treat a smaller \`output\` array as a bug.** If \`outputCount\` > 10, the node emitted more items than are shown — downstream nodes processed the full set. Only flag a count mismatch as a real issue when \`outputCount\` itself is inconsistent with what the mock returned or what the scenario requires.
+- **Workflow structure**: ALL nodes that were built, the saved config for every node, plus the full connections JSON. Use this to verify node existence, wiring, and configuration before making claims about missing nodes, wrong connections, or unverified parameters.
+- **Execution trace**: Per-node detail with HTTP requests sent, mock responses, and node outputs. **NOT in chronological order** — use the connections JSON to determine flow. Per-node header tags include \`ran Nx\` for loop iterations and \`first error at iter K\` when an early iteration errored.
+
+### Reading per-node outputs
+
+Each node's outputs are grouped by **connection type** (\`main\`, \`ai_languageModel\`, \`ai_memory\`, \`ai_tool\`, …) and then by **output port (branch)**:
+- Most nodes have a single \`main\` port: \`Output [main]\`.
+- **Filter / IF**: two \`main\` branches — \`Output [main branch 0]\` (matched / true) and \`Output [main branch 1]\` (unmatched / false). Items go to one branch OR the other, never both.
+- **Switch**: one branch per route — \`Output [main branch 0]\`, \`Output [main branch 1]\`, etc.
+- **AI sub-nodes**: emit via non-main connections such as \`ai_languageModel\`.
+
+Each branch is labelled with the downstream node it connects to (e.g. \`→ Aggregate Posts\`) or \`(no downstream connection)\` when the branch isn't wired up. **Only items in connected branches reach downstream nodes** — items in unconnected branches are correctly excluded from the flow, not a bug.
+
+### Output truncation
+
+Each branch's items are capped at 10 for artifact size. The full untruncated total across all branches is in the node's \`outputCount\` field, and \`truncated: true\` is set when any branch was sliced. **Do not treat a smaller items array as a bug.** Downstream nodes processed the full set; only flag a count mismatch if \`outputCount\` itself contradicts the scenario.
 
 ## How to evaluate
 
@@ -33,21 +50,29 @@ The verification artifact contains:
    - Did a real node crash because a field is missing? → **check the request that was sent**: if the HTTP request (e.g., GraphQL query) didn't ask for that field, the mock correctly omitted it — that's a builder issue (wrong query or wrong node choice), NOT a mock issue. The mock can only return what was requested.
    - Did the mock response have the wrong shape for the endpoint? (e.g., returning a write response for a GET request) → mock issue
    - Did the mock return identical responses for multiple calls to the same endpoint with different request bodies? → mock issue
+   - Did the workflow error with n8n's pagination safety (e.g. "The returned response was identical 5x, so requests got stopped")? → builder_issue: the pagination did not terminate — it failed to stop on the empty page, or never advanced the page parameter. Identical empty pages at end-of-data are the correct stop signal (the builder must detect them), and the mock serving distinct pages in sequence to repeated requests is the testing mechanism working. Only a mock_issue if the mock repeated identical non-empty pages it should have varied.
    - Did the workflow handle an error scenario but the success criteria is ambiguous about what "graceful" means? → evaluate based on whether data was lost or the workflow crashed entirely
+   - Did an IF / Switch / Filter route items so an expected action did not run (or one that should have been skipped ran)? FIRST compare the mock responses feeding the predicate against the scenario's **Data setup**. The pivot is whether the mock honored the scenario: (a) if the mock's values contradict or fall short of the scenario's stated magnitudes/counts — e.g. the scenario states a value the condition is meant to pass but the mock returned one that falls on the other side of the threshold — and a predicate built to the scenario's values would have routed correctly, the mis-route is a mock_issue (the mock failed to reproduce the data it was told to produce); (b) if the mock faithfully matches the scenario yet the outcome is still wrong — a gate is missing entirely, a condition is inverted, or values the scenario clearly satisfies are still excluded — that is a builder_issue. Never blame the builder's predicate without first confirming the mock reproduced the scenario's numbers.
 
    KEY PRINCIPLE: A mock response that faithfully matches the HTTP request is NEVER a mock issue, even if downstream nodes needed different data. If the request didn't ask for a field, the mock shouldn't invent it. The fault lies with whatever built the request (the node choice or its configuration).
+
+   SCENARIO-FIDELITY PRINCIPLE: The mock is instructed to produce responses consistent with the scenario's Data setup. When the Data setup states explicit values (amounts, percentages, counts, thresholds, identifiers) and the mock returned values that contradict them, the resulting downstream behavior is driven by a mock fidelity failure, not a builder mistake — provided the workflow's logic is built correctly for the scenario as written. This is distinct from the principle above: a response can faithfully match the request's shape yet still violate the scenario's stated data. This applies ONLY when the scenario stated an explicit, specific value and the mock's actual returned value (visible in the trace) demonstrably differs from it. When the scenario describes data qualitatively or approximately and the mock returned a reasonable value consistent with that description, the mock was faithful — do not call mock_issue; judge the builder's logic against the scenario's intent instead. If you cannot point to a specific scenario-stated value the mock violated, do not attribute the failure to mock_issue.
+
+   - Did a node fail to resolve a configured resource against a listing/lookup response (e.g. "X not found") even though the mock's response contains an entity whose name/title matches the configured value? Ask: could ANY faithful response have satisfied the lookup? When the node config holds an identifier of the wrong kind — e.g. a human-readable NAME stored in an id/list-mode resource locator value, which the node parses as a number or compares against numeric IDs — no response the real API could ever return would match, and the workflow fails identically against the real service. That is a builder_issue (wrong resource-locator mode / invented identifier), NOT a mock_issue. Conversely, when the configured mode resolves by name/title and a faithful response WOULD have matched the configured value, the failed lookup means the mock's response shape was wrong — that IS a mock_issue.
 
 4. **Be definitive, not speculative.** You have the full execution trace, node configurations, request bodies, mock responses, and node outputs. Use this data to give exact answers. Say "the expression references $json.firstName but the upstream output has the field as firstname (lowercase)" — not "likely references a field that doesn't resolve correctly." If a node errored, quote the exact error. If a field is missing, name it and trace where it should have come from. Never use "likely", "might", "probably", or "possibly" when the data in the artifact gives you a definitive answer.
 5. **Always check the "Workflow structure" section before claiming a node is missing or miswired.** The workflow structure lists ALL nodes that were built AND the connections JSON showing exactly how they are wired. The execution trace only shows nodes that actually ran. Before claiming a branch is wired to the wrong node, verify against the connections JSON. If a node exists in the structure but not in the trace, check why: was an upstream condition met unexpectedly? Was the IF/Switch node's condition misconfigured? Was the input data wrong? Don't assume miswiring — check the connections first.
 6. **Workflows can branch.** Not every node runs in every execution. A crashed or misconfigured node prevents all downstream branches from running. When diagnosing, identify the single root cause (the first node that crashed) rather than listing each unexecuted downstream node as a separate issue.
 7. Check the **success criteria** against the execution trace and node outputs
 8. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
+9. **0 items flowing into a downstream node = that node doesn't run.** This is n8n's default branching behavior, not a defect. When a Filter / IF / Switch routes 0 items to a branch, its downstream nodes simply don't execute — no crash, no side effects. **Do not require an explicit guard (IF count > 0, early-exit branch) unless the success criteria explicitly demands intentional handling.** Verify against what the criteria actually say, not against an implicit "must use a guard" requirement.
+10. **\`pass\` must match your final verdict.** If your reasoning concludes all success criteria are met, set \`pass: true\`. Do not leave \`pass: false\` after talking yourself into a pass.
 
 ## Failure categories
 
 When a checklist item fails, categorize the root cause:
-- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for. Also applies when a filter/code node receives correct input data but produces wrong output — this means the node logic is wrong, not the mock data. **Also applies when the builder produced an empty or trivial workflow (0 nodes, or only a trigger and no action nodes) — even if the build phase appears to have completed.** A "No trigger or start node found" execution error caused by zero nodes in the saved workflow is a builder failure, not a framework failure: the builder is responsible for committing at least a trigger.
-- **mock_issue**: The LLM mock handler returned incorrect or missing data. Evidence: _evalMockError in responses, mock response shape doesn't match what the node expects, mock data missing fields that downstream nodes reference. IMPORTANT: Trace the data flow carefully — if the mock returned correct data but a downstream filter or code node transformed it incorrectly, that is a builder_issue, not a mock_issue.
+- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for. Also applies when the configured identifier could never resolve against any faithful API response (wrong-kind resource-locator value, e.g. "Sheet with ID Reservas not found" — see the lookup bullet in step 3). Also applies when a Code node receives correct input data but its connected downstream branch produces wrong output — that's wrong node logic. **For Filter / IF / Switch: an item appearing in the unmatched branch is NOT wrong output — it's correctly routed there by the predicate. Only flag a builder_issue when items that should have matched the predicate end up in the wrong branch.** When judging whether items matched, evaluate against the scenario's stated data values — if the mock's values contradict the scenario and that is why the predicate routed unexpectedly, it is a mock_issue, not a builder_issue. **Also applies when the builder produced an empty or trivial workflow (0 nodes, or only a trigger and no action nodes) — even if the build phase appears to have completed.** A "No trigger or start node found" execution error caused by zero nodes in the saved workflow is a builder failure, not a framework failure: the builder is responsible for committing at least a trigger.
+- **mock_issue**: The LLM mock handler returned incorrect or missing data. Evidence: _evalMockError in responses, mock response shape doesn't match what the node expects, mock data missing fields that downstream nodes reference. IMPORTANT: Trace the data flow carefully — if the mock returned correct data but a downstream filter or code node transformed it incorrectly, that is a builder_issue, not a mock_issue. Also applies when the mock returned values that contradict the scenario's stated Data setup (wrong magnitude, percentage, or item count), causing a correctly-built gate, filter, or aggregation to produce an unexpected result.
 - **legitimate_failure**: The workflow genuinely doesn't meet the success criteria and neither the builder nor mock is at fault. The test is working as designed — for example, the workflow lacks error handling that the scenario tests for.
 - **framework_issue**: The evaluation framework itself failed delivering input to an otherwise-built workflow. Evidence: a built workflow with at least a trigger node exists, but Phase 1 returned an error or the trigger output is empty (empty JSON object), causing cascading failures. Pre-analysis flags starting with "FRAMEWORK ISSUE", "Phase 1 error" warnings. DOES NOT apply when the workflow is empty (0 nodes) — that is a builder_issue, see above.
 - **verification_gap**: You don't have enough information in the artifact to make a determination.
@@ -57,34 +82,52 @@ NOT failure categories:
 - HTTP responses coming from the LLM mock instead of real APIs — this is expected
 - Trigger nodes having pinned/generated data instead of real events — this is expected
 - Placeholder or unresolved credential ID values in node configs — these are auto-substituted by the framework and never the cause of a failure
+- Unset or placeholder resource IDs (e.g. Google Sheets document ID) when the success criteria explicitly allows deferred setup — not a builder_issue if mappings/structure are correct and the user-facing path still runs. An empty string in a resource-locator \`value\` field (not a placeholder) IS a builder_issue.
+
+## Deferred setup scenarios
+
+When success criteria say document/resource IDs may be unset or placeholder pre-setup:
+- Judge structure, column mappings, and whether the user-facing completion step ran.
+- Do not fail solely because a backend integration node logged config issues for an unset document when mock execution synthesized eval-safe IDs and the scenario's dataSetup steered a successful append.
+- DO fail when \`__rl.value\` is an empty string — that is a builder misconfiguration, not deferred setup.
 
 ## Output format
 
-Return ONLY a JSON array:
+Return ONLY the structured result object with a top-level \`results\` array.
+Every result object must include \`failureCategory\` and \`rootCause\`.
+Use \`null\` for both fields when the checklist item passes.
+
+**Lead with the issue, then show your reasoning.** Reason through the trace, mock responses, and data flow to reach a definitive verdict — that analysis is what keeps you accurate, so keep the insight. Just make it digestible: open \`reasoning\` with one sentence stating what failed and why (the root cause), then back it with the evidence that matters — the relevant trace step, the mock response shape, the exact error and field. Keep \`rootCause\` to a crisp sentence or two naming the culprit node and cause. Stay focused on the single root cause: don't recap how mocking works, re-narrate the whole trace start-to-finish, or list every downstream node that didn't run. A reader should grasp the issue on the first pass and still find the mock/trace detail that backs it.
+
+For passes:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": true,
-    "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
-    "failureCategory": null,
-    "rootCause": null
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": true,
+      "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
+      "failureCategory": null,
+      "rootCause": null
+    }
+  ]
+}
 \`\`\`
 
 For failures:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": false,
-    "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
-    "failureCategory": "mock_issue",
-    "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": false,
+      "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
+      "failureCategory": "mock_issue",
+      "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
+    }
+  ]
+}
 \`\`\`
 `;

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { BinaryColumn, WithTimestamps } from './abstract-entity';
 
-export const SourceTypeSchema = z.enum(['execution', 'chat_message_attachment']);
+export const SourceTypeSchema = z.enum(['execution', 'chat_message_attachment', 'agent_file']);
 
 export type SourceType = z.infer<typeof SourceTypeSchema>;
 

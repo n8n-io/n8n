@@ -1,118 +1,116 @@
-jest.mock('@mastra/core/workspace', () => {
-	class LocalSandbox {
-		readonly type = 'local';
-		constructor(public opts: { workingDirectory: string }) {}
-	}
-	class LocalFilesystem {
-		readonly type = 'local-fs';
-		constructor(public opts: { basePath: string }) {}
-	}
-	class MockWorkspace {
-		constructor(public opts: { sandbox: unknown; filesystem: unknown }) {}
-	}
-	return { LocalSandbox, LocalFilesystem, Workspace: MockWorkspace };
-});
-
-jest.mock('@mastra/daytona', () => {
-	class DaytonaSandbox {
-		readonly type = 'daytona';
-		constructor(public opts: Record<string, unknown>) {}
-	}
-	return { DaytonaSandbox };
-});
-
-jest.mock('../daytona-filesystem', () => {
-	class DaytonaFilesystem {
-		readonly type = 'daytona-fs';
-		constructor(public sandbox: unknown) {}
-	}
-	return { DaytonaFilesystem };
-});
-
-jest.mock('../n8n-sandbox-sandbox', () => {
-	class N8nSandboxServiceSandbox {
-		readonly type = 'n8n-sandbox';
-		constructor(public opts: Record<string, unknown>) {}
-	}
-	return { N8nSandboxServiceSandbox };
-});
-
-jest.mock('../n8n-sandbox-filesystem', () => {
-	class N8nSandboxFilesystem {
-		readonly type = 'n8n-sandbox-fs';
-		constructor(public sandbox: unknown) {}
-	}
-	return { N8nSandboxFilesystem };
-});
-
-// ---------------------------------------------------------------------------
-// Typed mock classes — avoids `any` from jest.requireMock
-// ---------------------------------------------------------------------------
-
-interface MockWithOpts<T> {
-	opts: T;
-}
-
-type MockLocalSandboxCtor = new (opts: {
-	workingDirectory: string;
-}) => MockWithOpts<{ workingDirectory: string }>;
-type MockLocalFilesystemCtor = new (opts: { basePath: string }) => MockWithOpts<{
-	basePath: string;
-}>;
-type MockWorkspaceCtor = new (opts: {
-	sandbox: unknown;
-	filesystem: unknown;
-}) => MockWithOpts<{ sandbox: unknown; filesystem: unknown }>;
-type MockDaytonaSandboxCtor = new (
-	opts: Record<string, unknown>,
-) => MockWithOpts<Record<string, unknown>>;
-type MockDaytonaFilesystemCtor = new (sandbox: unknown) => { sandbox: unknown };
-type MockN8nSandboxCtor = new (
-	opts: Record<string, unknown>,
-) => MockWithOpts<Record<string, unknown>>;
-type MockN8nFilesystemCtor = new (sandbox: unknown) => { sandbox: unknown };
+import { Workspace } from '@n8n/agents';
+import type * as SharedSandboxMod from '@n8n/agents/sandbox';
+import type { SandboxFilesystem, SandboxInstance } from '@n8n/agents/sandbox';
 
 const {
-	LocalSandbox,
-	LocalFilesystem,
-	Workspace: WorkspaceMock,
-}: {
-	LocalSandbox: MockLocalSandboxCtor;
-	LocalFilesystem: MockLocalFilesystemCtor;
-	Workspace: MockWorkspaceCtor;
-} = jest.requireMock('@mastra/core/workspace');
+	mockCreateSharedSandbox,
+	mockCreateFilesystem,
+	mockSnapshotManagerConstructor,
+	mockSnapshotName,
+	mockEnsureImage,
+} = vi.hoisted(() => ({
+	mockCreateSharedSandbox: vi.fn(),
+	mockCreateFilesystem: vi.fn(),
+	mockSnapshotManagerConstructor: vi.fn(),
+	mockSnapshotName: vi.fn(),
+	mockEnsureImage: vi.fn(),
+}));
 
-const { DaytonaSandbox }: { DaytonaSandbox: MockDaytonaSandboxCtor } =
-	jest.requireMock('@mastra/daytona');
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof SharedSandboxMod>()),
+	createSandbox: mockCreateSharedSandbox,
+	createFilesystem: mockCreateFilesystem,
+}));
 
-const { DaytonaFilesystem }: { DaytonaFilesystem: MockDaytonaFilesystemCtor } =
-	jest.requireMock('../daytona-filesystem');
+vi.mock('../snapshot-manager', () => ({
+	SnapshotManager: class {
+		constructor(baseImage: string | undefined, logger: unknown, n8nVersion: string | undefined) {
+			mockSnapshotManagerConstructor(baseImage, logger, n8nVersion);
+		}
 
-const { N8nSandboxServiceSandbox }: { N8nSandboxServiceSandbox: MockN8nSandboxCtor } =
-	jest.requireMock('../n8n-sandbox-sandbox');
+		snapshotName = mockSnapshotName;
+		ensureImage = mockEnsureImage;
+	},
+}));
 
-const { N8nSandboxFilesystem }: { N8nSandboxFilesystem: MockN8nFilesystemCtor } = jest.requireMock(
-	'../n8n-sandbox-filesystem',
-);
+import {
+	type SandboxConfig,
+	type InstanceAiCreateSandboxOptions,
+	createSandbox,
+	createWorkspace,
+} from '../create-workspace';
 
-import { type SandboxConfig, createSandbox, createWorkspace } from '../create-workspace';
+type DaytonaSandboxConfig = Extract<SandboxConfig, { enabled: true; provider: 'daytona' }>;
+
+const sandbox = {
+	id: 'sandbox-1',
+	name: 'Sandbox',
+	provider: 'daytona',
+	status: 'running',
+} satisfies SandboxInstance;
+
+const filesystem = {
+	id: 'filesystem-1',
+	name: 'Filesystem',
+	provider: 'daytona',
+	status: 'ready',
+	readFile: vi.fn(),
+	writeFile: vi.fn(),
+	appendFile: vi.fn(),
+	deleteFile: vi.fn(),
+	copyFile: vi.fn(),
+	moveFile: vi.fn(),
+	mkdir: vi.fn(),
+	rmdir: vi.fn(),
+	readdir: vi.fn(),
+	exists: vi.fn(),
+	stat: vi.fn(),
+} satisfies SandboxFilesystem;
+
+const logger = {
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
+};
+
+const errorReporter = {
+	error: vi.fn(),
+};
 
 describe('createSandbox', () => {
-	const originalEnv = process.env.NODE_ENV;
-
-	afterEach(() => {
-		process.env.NODE_ENV = originalEnv;
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockCreateSharedSandbox.mockResolvedValue(sandbox);
+		mockSnapshotName.mockReturnValue('n8n/instance-ai:1.2.3');
+		mockEnsureImage.mockResolvedValue({ dockerfile: 'FROM node:20' });
 	});
 
-	it('should return undefined when sandbox is disabled', async () => {
-		const config: SandboxConfig = { enabled: false, provider: 'local' };
+	it('returns undefined when sandbox is disabled', async () => {
+		const config: SandboxConfig = { enabled: false, provider: 'n8n-sandbox' };
 
 		const result = await createSandbox(config);
 
 		expect(result).toBeUndefined();
+		expect(mockCreateSharedSandbox).not.toHaveBeenCalled();
 	});
 
-	it('should return a DaytonaSandbox for "daytona" provider', async () => {
+	it('delegates n8n-sandbox config to the shared factory without snapshot fallback', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			apiKey: 'sandbox-key',
+			timeout: 45_000,
+		};
+
+		await expect(createSandbox(config, { logger, errorReporter })).resolves.toBe(sandbox);
+
+		expect(mockSnapshotManagerConstructor).not.toHaveBeenCalled();
+		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(config, { logger, errorReporter });
+	});
+
+	it('delegates Daytona config when snapshot fallback is not requested', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
@@ -122,158 +120,221 @@ describe('createSandbox', () => {
 			timeout: 60_000,
 		};
 
-		const result = await createSandbox(config);
+		await expect(createSandbox(config)).resolves.toBe(sandbox);
 
-		expect(result).toBeInstanceOf(DaytonaSandbox);
-		expect((result as unknown as MockWithOpts<Record<string, unknown>>).opts).toEqual(
-			expect.objectContaining({
-				apiKey: 'test-key',
-				apiUrl: 'https://api.daytona.io',
-				image: 'node:20',
-				language: 'typescript',
-				timeout: 60_000,
-			}),
+		expect(mockSnapshotManagerConstructor).not.toHaveBeenCalled();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.id).toMatch(/^daytona-sandbox-/);
+		expect(sharedConfig).toEqual({
+			...config,
+			id: sharedConfig.id,
+			labels: {
+				'n8n-instance-ai-sandbox-id': sharedConfig.id,
+			},
+		});
+		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(sharedConfig, {
+			logger: undefined,
+			errorReporter: undefined,
+		});
+	});
+
+	it('prepares image in direct Daytona snapshot fallback mode without a versioned snapshot', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'test-key',
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+		};
+		const options: InstanceAiCreateSandboxOptions = {
+			logger,
+			errorReporter,
+			useSnapshotFallback: true,
+		};
+
+		await expect(createSandbox(config, options)).resolves.toBe(sandbox);
+
+		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith('node:20', logger, '1.2.3');
+		expect(mockSnapshotName).not.toHaveBeenCalled();
+		expect(mockEnsureImage).toHaveBeenCalledWith();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
+			{
+				enabled: true,
+				provider: 'daytona',
+				id: sharedConfig.id,
+				daytonaApiUrl: 'https://api.daytona.io',
+				daytonaApiKey: 'test-key',
+				image: { dockerfile: 'FROM node:20' },
+				labels: {
+					'n8n-instance-ai-sandbox-id': sharedConfig.id,
+				},
+			},
+			{ logger, errorReporter },
 		);
 	});
 
-	it('should resolve apiKey via getAuthToken in proxy mode', async () => {
-		const getAuthToken = jest.fn().mockResolvedValue('jwt-token-123');
+	it('uses a no-op logger for snapshot fallback when no logger is provided', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiKey: 'test-key',
+			n8nVersion: '1.2.3',
+		};
+
+		await createSandbox(config, { useSnapshotFallback: true });
+
+		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(
+			undefined,
+			expect.anything(),
+			'1.2.3',
+		);
+	});
+
+	it('does not pass a Daytona image descriptor back into SnapshotManager as a base image', async () => {
+		const image = { dockerfile: 'FROM node:20' } as NonNullable<DaytonaSandboxConfig['image']>;
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiKey: 'test-key',
+			image,
+			n8nVersion: '1.2.3',
+		};
+
+		await createSandbox(config, { logger, useSnapshotFallback: true });
+
+		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(undefined, logger, '1.2.3');
+	});
+
+	it('prepares snapshot and image in Daytona proxy snapshot fallback mode', async () => {
+		const getAuthToken = vi.fn().mockResolvedValue('jwt-token');
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
 			daytonaApiUrl: 'https://proxy.example.com',
 			getAuthToken,
-			timeout: 60_000,
+			image: 'node:20',
+			n8nVersion: '1.2.3',
 		};
 
-		const result = await createSandbox(config);
-
-		expect(getAuthToken).toHaveBeenCalledTimes(1);
-		expect(result).toBeInstanceOf(DaytonaSandbox);
-		expect((result as unknown as MockWithOpts<Record<string, unknown>>).opts).toEqual(
-			expect.objectContaining({
-				apiKey: 'jwt-token-123',
-				apiUrl: 'https://proxy.example.com',
+		await expect(
+			createSandbox(config, {
+				logger,
+				errorReporter,
+				useSnapshotFallback: true,
 			}),
+		).resolves.toBe(sandbox);
+
+		expect(mockSnapshotName).toHaveBeenCalledWith();
+		expect(mockEnsureImage).toHaveBeenCalledWith();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
+			{
+				enabled: true,
+				provider: 'daytona',
+				id: sharedConfig.id,
+				daytonaApiUrl: 'https://proxy.example.com',
+				getAuthToken,
+				image: { dockerfile: 'FROM node:20' },
+				labels: {
+					'n8n-instance-ai-sandbox-id': sharedConfig.id,
+				},
+				snapshot: 'n8n/instance-ai:1.2.3',
+			},
+			{ logger, errorReporter },
 		);
 	});
 
-	it('should use default timeout of 300_000 for "daytona" provider when not specified', async () => {
+	it('uses an explicit snapshot override instead of the version-derived name', async () => {
+		const getAuthToken = vi.fn().mockResolvedValue('jwt-token');
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
+			daytonaApiUrl: 'https://proxy.example.com',
+			getAuthToken,
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+			snapshot: 'n8n/instance-ai:2.27.3',
 		};
 
-		const result = await createSandbox(config);
+		await expect(
+			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+		).resolves.toBe(sandbox);
 
-		expect(result).toBeInstanceOf(DaytonaSandbox);
-		expect((result as unknown as MockWithOpts<Record<string, unknown>>).opts.timeout).toBe(300_000);
+		// The explicit override short-circuits the version-derived default.
+		expect(mockSnapshotName).not.toHaveBeenCalled();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.snapshot).toBe('n8n/instance-ai:2.27.3');
 	});
 
-	it('should not include image in DaytonaSandbox config when not specified', async () => {
+	it('does not leak the snapshot override into direct (non-proxy) mode', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
+			daytonaApiKey: 'test-key',
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+			snapshot: 'n8n/instance-ai:2.27.3',
 		};
 
-		const result = await createSandbox(config);
+		await expect(
+			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+		).resolves.toBe(sandbox);
 
-		expect(result).toBeInstanceOf(DaytonaSandbox);
-		expect((result as unknown as MockWithOpts<Record<string, unknown>>).opts).not.toHaveProperty(
-			'image',
-		);
+		// No auth token => direct mode => the override must not reach the shared factory.
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.snapshot).toBeUndefined();
 	});
 
-	it('should return a LocalSandbox for "local" provider in non-production', async () => {
-		process.env.NODE_ENV = 'development';
-		const config: SandboxConfig = { enabled: true, provider: 'local' };
-
-		const result = await createSandbox(config);
-
-		expect(result).toBeInstanceOf(LocalSandbox);
-		expect((result as unknown as MockWithOpts<{ workingDirectory: string }>).opts).toEqual({
-			workingDirectory: './workspace',
-		});
-	});
-
-	it('should throw in production when provider is "local"', async () => {
-		process.env.NODE_ENV = 'production';
-		const config: SandboxConfig = { enabled: true, provider: 'local' };
-
-		await expect(createSandbox(config)).rejects.toThrow(
-			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
-		);
-	});
-
-	it('should return an N8nSandboxServiceSandbox for "n8n-sandbox" provider', async () => {
+	it('preserves explicit Daytona id and labels when delegating', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
-			provider: 'n8n-sandbox',
-			serviceUrl: 'https://sandbox.example.com',
-			apiKey: 'sandbox-key',
-			timeout: 45_000,
+			provider: 'daytona',
+			id: 'sandbox-id',
+			daytonaApiKey: 'test-key',
+			labels: {
+				team: 'instance-ai',
+			},
 		};
 
-		const result = await createSandbox(config);
+		await createSandbox(config);
 
-		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
-		expect((result as unknown as MockWithOpts<Record<string, unknown>>).opts).toEqual({
-			serviceUrl: 'https://sandbox.example.com',
-			apiKey: 'sandbox-key',
-			timeout: 45_000,
-		});
+		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
+			{
+				...config,
+				labels: {
+					team: 'instance-ai',
+					'n8n-instance-ai-sandbox-id': 'sandbox-id',
+				},
+			},
+			{
+				logger: undefined,
+				errorReporter: undefined,
+			},
+		);
 	});
 });
 
 describe('createWorkspace', () => {
-	it('should return undefined when sandbox is undefined', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockCreateFilesystem.mockReturnValue(filesystem);
+	});
+
+	it('returns undefined when sandbox is undefined', () => {
 		const result = createWorkspace(undefined);
 
 		expect(result).toBeUndefined();
+		expect(mockCreateFilesystem).not.toHaveBeenCalled();
 	});
 
-	it('should wrap LocalSandbox with LocalFilesystem', () => {
-		const sandbox = new LocalSandbox({ workingDirectory: './workspace' });
+	it('wraps a shared sandbox with its shared filesystem', () => {
+		const result = createWorkspace(sandbox);
 
-		const result = createWorkspace(sandbox as unknown as Parameters<typeof createWorkspace>[0]);
-
-		expect(result).toBeDefined();
-		expect(result).toBeInstanceOf(WorkspaceMock);
-		const workspace = result as unknown as MockWithOpts<{
-			sandbox: unknown;
-			filesystem: unknown;
-		}>;
-		expect(workspace.opts.sandbox).toBe(sandbox);
-		expect(workspace.opts.filesystem).toBeInstanceOf(LocalFilesystem);
-	});
-
-	it('should wrap DaytonaSandbox with DaytonaFilesystem', () => {
-		const sandbox = new DaytonaSandbox({ apiKey: 'key' });
-
-		const result = createWorkspace(sandbox as unknown as Parameters<typeof createWorkspace>[0]);
-
-		expect(result).toBeDefined();
-		expect(result).toBeInstanceOf(WorkspaceMock);
-		const workspace = result as unknown as MockWithOpts<{
-			sandbox: unknown;
-			filesystem: unknown;
-		}>;
-		expect(workspace.opts.sandbox).toBe(sandbox);
-		expect(workspace.opts.filesystem).toBeInstanceOf(DaytonaFilesystem);
-	});
-
-	it('should wrap N8nSandboxServiceSandbox with N8nSandboxFilesystem', () => {
-		const sandbox = new N8nSandboxServiceSandbox({ apiKey: 'key' });
-
-		const result = createWorkspace(sandbox as unknown as Parameters<typeof createWorkspace>[0]);
-
-		expect(result).toBeDefined();
-		expect(result).toBeInstanceOf(WorkspaceMock);
-		const workspace = result as unknown as MockWithOpts<{
-			sandbox: unknown;
-			filesystem: unknown;
-		}>;
-		expect(workspace.opts.sandbox).toBe(sandbox);
-		expect(workspace.opts.filesystem).toBeInstanceOf(N8nSandboxFilesystem);
+		expect(result).toBeInstanceOf(Workspace);
+		expect(result?.sandbox).toBe(sandbox);
+		expect(result?.filesystem).toBe(filesystem);
+		expect(mockCreateFilesystem).toHaveBeenCalledWith(sandbox);
 	});
 });

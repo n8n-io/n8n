@@ -1,38 +1,54 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext } from '../types';
+import type { InstanceAiTraceContext, ModelConfig } from '../types';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
+import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
+import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
 	runId: string;
+	threadId: string;
 	abortController: AbortController;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
-	mastraRunId: string;
+	agentRunId: string;
 	agent: unknown;
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
 	/** Set when the suspended run was a planned-task checkpoint follow-up.
 	 *  Preserved across suspend/resume so the resumed run's finalizer can
 	 *  run the deadlock fallback and reschedule. */
 	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
+	/** Set when the suspended run was a planned build-workflow follow-up. */
+	plannedBuild?: {
+		isPlannedBuildFollowUp: true;
+		buildTaskId: string;
+		workItemId: string;
+		isSupportingWorkflowTask?: boolean;
+		savedOutcome?: WorkflowBuildOutcome;
+	};
+	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
+	runHandoff?: OrchestratorRunHandoffState;
 }
 
 /**
- * Flat confirmation payload consumed by Mastra tool `resumeSchema`s and sub-agent HITL.
+ * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
  * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
  * union sent by the frontend — only one subset of fields is populated per call, matching
  * the confirmation kind that was originally requested.
@@ -54,6 +70,11 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
+	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
+	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
 }
 
 export interface PendingConfirmation {
@@ -118,6 +139,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(options.threadId, {
 			runId,
+			threadId: options.threadId,
 			abortController,
 			messageGroupId,
 			startedAt: now,
@@ -141,7 +163,7 @@ export class RunStateRegistry<TUser = unknown> {
 		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
 		if (groupRunIds) groupRunIds.push(runId);
 
-		return { runId, abortController, messageGroupId };
+		return { runId, threadId: options.threadId, abortController, messageGroupId };
 	}
 
 	getThreadStatus(
@@ -204,6 +226,11 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
+	/** Number of runs currently executing (excludes suspended/pending runs). */
+	activeRunCount(): number {
+		return this.activeRuns.size;
+	}
+
 	getActiveRun(threadId: string): ActiveRunState | undefined {
 		return this.activeRuns.get(threadId);
 	}
@@ -218,6 +245,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(threadId, {
 			...activeRun,
+			threadId,
 			tracing,
 		});
 	}
@@ -265,9 +293,11 @@ export class RunStateRegistry<TUser = unknown> {
 		const now = Date.now();
 		this.activeRuns.set(threadId, {
 			runId: suspended.runId,
+			threadId,
 			abortController: suspended.abortController,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
+			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
 		});
@@ -367,9 +397,13 @@ export class RunStateRegistry<TUser = unknown> {
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
 	 * Does NOT mutate state — the caller is responsible for cancelling.
 	 */
+	sweepTimedOut(maxAgeMs: number): {
+		suspendedThreadIds: string[];
+		confirmationRequestIds: string[];
+	};
 	sweepTimedOut(
 		policy: InstanceAiLivenessPolicy,
-		now = Date.now(),
+		now?: number,
 	): {
 		activeThreadIds: string[];
 		suspendedThreadIds: string[];
@@ -377,7 +411,41 @@ export class RunStateRegistry<TUser = unknown> {
 		activeTimeouts: Record<string, RunStateTimeoutDetails>;
 		suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
 		confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
-	} {
+	};
+	sweepTimedOut(
+		policyOrMaxAgeMs: InstanceAiLivenessPolicy | number,
+		now = Date.now(),
+	):
+		| {
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+		  }
+		| {
+				activeThreadIds: string[];
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+				activeTimeouts: Record<string, RunStateTimeoutDetails>;
+				suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
+				confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
+		  } {
+		if (typeof policyOrMaxAgeMs === 'number') {
+			const maxAgeMs = policyOrMaxAgeMs;
+			const suspendedThreadIds: string[] = [];
+			for (const [threadId, run] of this.suspendedRuns) {
+				if (now - run.createdAt >= maxAgeMs) {
+					suspendedThreadIds.push(threadId);
+				}
+			}
+			const confirmationRequestIds: string[] = [];
+			for (const [reqId, pending] of this.pendingConfirmations) {
+				if (now - pending.createdAt >= maxAgeMs) {
+					confirmationRequestIds.push(reqId);
+				}
+			}
+			return { suspendedThreadIds, confirmationRequestIds };
+		}
+
+		const policy = policyOrMaxAgeMs;
 		const activeThreadIds: string[] = [];
 		const activeTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [threadId, run] of this.activeRuns) {
@@ -482,16 +550,36 @@ export class RunStateRegistry<TUser = unknown> {
 		return { ...(active ? { active } : {}), ...(suspended ? { suspended } : {}) };
 	}
 
-	shutdown(cancelledConfirmation: ConfirmationData = { approved: false }): {
+	/**
+	 * Process-wide teardown. Returns the in-flight runs so the service can
+	 * abort them and persist terminal snapshots where appropriate.
+	 *
+	 * Pending confirmations are intentionally NOT resolved — auto-resolving an
+	 * inline HITL (`waitForConfirmation(...)`) with `{ approved: false }`
+	 * causes the awaiting agent tool to run to completion as "denied" before
+	 * the process exits, which then mutates the snapshot tree mid-shutdown
+	 * and clobbers the plan/ask card the user would otherwise see on reload.
+	 * Letting the Promises dangle is safe: the process is exiting, the
+	 * abortController for each active run is aborted next, and the
+	 * `instance_ai_pending_confirmations` row survives so the user can still
+	 * see the confirmation card (and get a clear "lost on restart" error if
+	 * they click confirm — see `handleOrphanedConfirmation`).
+	 *
+	 * `pendingThreadIds` is returned so the service can skip the
+	 * publish-run-finish + terminal-snapshot treatment for runs that are
+	 * only sitting in `activeRuns` because they're waiting on an inline
+	 * confirmation Promise.
+	 */
+	shutdown(): {
 		activeRuns: ActiveRunState[];
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
+		pendingThreadIds: string[];
 	} {
 		const activeRuns = [...this.activeRuns.values()];
 		const suspendedRuns = [...this.suspendedRuns.values()];
-
-		for (const pending of this.pendingConfirmations.values()) {
-			pending.resolve(cancelledConfirmation);
-		}
+		const pendingThreadIds = [
+			...new Set([...this.pendingConfirmations.values()].map((p) => p.threadId)),
+		];
 
 		this.activeRuns.clear();
 		this.suspendedRuns.clear();
@@ -501,6 +589,6 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 
-		return { activeRuns, suspendedRuns };
+		return { activeRuns, suspendedRuns, pendingThreadIds };
 	}
 }

@@ -61,7 +61,6 @@ export interface WorkflowDocumentNodesDeps {
 	getNodeType: (typeName: string, version?: number) => INodeTypeDescription | null;
 	assignNodeId: (node: INodeUi) => string;
 	syncWorkflowObject: (nodes: INodeUi[]) => void;
-	unpinNodeData: (name: string) => void;
 	nodeMetadata: ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 	workflowObject: Ref<Workflow>;
 }
@@ -169,7 +168,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 		deps.syncWorkflowObject(nodes.value);
 		deps.nodeMetadata.removeNodeMetadata(node.name);
-		deps.unpinNodeData(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { name: node.name, id: node.id },
@@ -186,7 +184,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		deps.syncWorkflowObject(nodes.value);
 		if (node) {
 			deps.nodeMetadata.removeNodeMetadata(node.name);
-			deps.unpinNodeData(node.name);
 		}
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
@@ -214,8 +211,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// zero cost on node updates. The structuralComputed handles reactive
 	// re-evaluation (e.g. when workflowObject or node type changes) and
 	// isEqual gates downstream propagation. Exposed to canvas consumers via
-	// useWorkflowDocumentRenderData (a thin grouping façade keyed under
-	// `store.render`).
+	// `useWorkflowDocumentRenderData(documentId)`.
 	const nodeInputsByNodeId = shallowReactive(
 		new Map<string, ComputedRef<CanvasConnectionPort[]>>(),
 	);

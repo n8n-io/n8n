@@ -15,6 +15,14 @@ const props = defineProps<{
 		displayName: string;
 		initialValue: string | null;
 		onSelect: (credentialId: string | null) => void;
+		title?: string;
+		description?: string;
+		cancelLabel?: string;
+		confirmLabel?: string;
+		showDelete?: boolean;
+		hideCreateNew?: boolean;
+		source?: string;
+		pickerDataTestId?: string;
 	};
 }>();
 
@@ -25,6 +33,24 @@ const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
 const displayName = computed(() => props.data.displayName);
+const title = computed(
+	() =>
+		props.data.title ??
+		i18n.baseText('chatHub.credentials.selector.title', {
+			interpolate: {
+				provider: displayName.value,
+			},
+		}),
+);
+const description = computed(
+	() =>
+		props.data.description ??
+		i18n.baseText('chatHub.credentials.selector.chooseOrCreate', {
+			interpolate: {
+				provider: displayName.value,
+			},
+		}),
+);
 
 function onCredentialSelect(credentialId: string) {
 	selectedCredentialId.value = credentialId;
@@ -49,7 +75,7 @@ function onDeleteCredential(credentialId: string) {
 function onCredentialModalOpened(credentialId?: string) {
 	telemetry.track('User opened Credential modal', {
 		credential_type: props.data.credentialType,
-		source: 'chat',
+		source: props.data.source ?? 'chat',
 		new_credential: !credentialId,
 		workflow_id: null,
 	});
@@ -71,6 +97,7 @@ function onCancel() {
 	<Modal
 		:name="modalName"
 		:event-bus="modalBus"
+		:custom-class="$style.credentialSelectorModal"
 		width="50%"
 		:center="true"
 		max-width="460px"
@@ -84,26 +111,14 @@ function onCancel() {
 					:class="$style.icon"
 				/>
 				<N8nHeading size="medium" tag="h2" :class="$style.title">
-					{{
-						i18n.baseText('chatHub.credentials.selector.title', {
-							interpolate: {
-								provider: displayName,
-							},
-						})
-					}}
+					{{ title }}
 				</N8nHeading>
 			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
 				<N8nText size="small" color="text-base">
-					{{
-						i18n.baseText('chatHub.credentials.selector.chooseOrCreate', {
-							interpolate: {
-								provider: displayName,
-							},
-						})
-					}}
+					{{ description }}
 				</N8nText>
 				<div :class="$style.credentialContainer">
 					<CredentialPicker
@@ -111,8 +126,10 @@ function onCancel() {
 						:app-name="displayName"
 						:credential-type="data.credentialType"
 						:selected-credential-id="selectedCredentialId"
-						:show-delete="true"
-						:hide-create-new="true"
+						:show-delete="data.showDelete ?? true"
+						:hide-create-new="data.hideCreateNew ?? true"
+						:data-testid="data.pickerDataTestId"
+						teleported
 						@credential-selected="onCredentialSelect"
 						@credential-deselected="onCredentialDeselect"
 						@credential-deleted="onDeleteCredential"
@@ -124,10 +141,10 @@ function onCancel() {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton variant="subtle" @click="onCancel">
-					{{ i18n.baseText('chatHub.credentials.selector.cancel') }}
+					{{ data.cancelLabel ?? i18n.baseText('chatHub.credentials.selector.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" :disabled="!selectedCredentialId" @click="onConfirm">
-					{{ i18n.baseText('chatHub.credentials.selector.confirm') }}
+					{{ data.confirmLabel ?? i18n.baseText('chatHub.credentials.selector.confirm') }}
 				</N8nButton>
 			</div>
 		</template>
@@ -170,5 +187,12 @@ function onCancel() {
 
 .credentialPicker {
 	width: 100%;
+}
+
+.credentialSelectorModal {
+	:global(.el-dialog__body),
+	:global(.modal-content) {
+		overflow: visible;
+	}
 }
 </style>

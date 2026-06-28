@@ -1,0 +1,26 @@
+{
+	"description": "INS-636: the builder must not block the initial build by asking for setup values such as the rain alert recipient before it saves the workflow.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day at 8am, check the weather in Berlin and send me an email if it's going to rain"
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["behaviour", "setup", "schedule", "weather", "email"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"Before the first `build-workflow` tool call, the agent did not ask the user for the rain alert email recipient or any other missing workflow setup value via `ask-user`, a plan/setup question, or a setup card; it used placeholders and continued building instead.",
+		"After the first successful `build-workflow` call, the agent collected the missing email recipient through post-build setup (e.g. a setup card) rather than blocking the initial build."
+	],
+	"executionScenarios": [
+		{
+			"name": "rain-expected",
+			"description": "Rain in Berlin triggers an email alert",
+			"dataSetup": "The weather API returns a rainy Berlin forecast for today, e.g. precipitation above 0mm or rain=true. The email send node returns success.",
+			"successCriteria": "The workflow executes without errors. It runs daily at 8am, checks Berlin weather, and reaches an email-send step when rain is forecast."
+		}
+	]
+}

@@ -19,9 +19,11 @@ export type ToggleWorkflowsMcpAccessTarget =
 
 export type ToggleWorkflowsMcpAccessResponse = {
 	updatedCount: number;
+	unchangedCount: number;
 	skippedCount: number;
 	failedCount: number;
 	updatedIds?: string[];
+	unchangedIds?: string[];
 };
 
 export async function getMcpSettings(context: IRestApiContext): Promise<McpSettingsResponse> {
@@ -43,6 +45,19 @@ export async function fetchApiKey(context: IRestApiContext): Promise<ApiKey> {
 
 export async function rotateApiKey(context: IRestApiContext): Promise<ApiKey> {
 	return await makeRestApiRequest(context, 'POST', '/mcp/api-key/rotate');
+}
+
+export async function getAllowedRedirectUris(
+	context: IRestApiContext,
+): Promise<{ uris: string[] }> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/oauth/allowed-redirect-uris');
+}
+
+export async function updateAllowedRedirectUris(
+	context: IRestApiContext,
+	uris: string[],
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/oauth/allowed-redirect-uris', { uris });
 }
 
 /**

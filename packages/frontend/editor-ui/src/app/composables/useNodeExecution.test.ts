@@ -10,11 +10,6 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -30,6 +25,7 @@ import {
 
 const {
 	mockWorkflowsStore,
+	mockWorkflowExecutionStateStore,
 	mockNodeTypesStore,
 	mockNdvStore,
 	mockRunWorkflow,
@@ -39,13 +35,18 @@ const {
 	mockNodeHelpers,
 } = vi.hoisted(() => ({
 	mockWorkflowsStore: {
-		isWorkflowRunning: false,
 		executedNode: undefined as string | undefined,
-		executionWaitingForWebhook: false,
 		workflowId: '123',
-		chatPartialExecutionDestinationNode: undefined as string | undefined,
 		getNodeByName: vi.fn(),
 		removeTestWebhook: vi.fn(),
+	},
+	mockWorkflowExecutionStateStore: {
+		isWorkflowRunning: false,
+		executionWaitingForWebhook: false,
+		chatPartialExecutionDestinationNode: undefined as string | undefined,
+		executingNode: {
+			isNodeExecuting: vi.fn().mockReturnValue(false),
+		},
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
@@ -69,6 +70,7 @@ const {
 		confirm: vi.fn(),
 	},
 	mockWorkflowDocumentStore: {
+		workflowId: '123',
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
 		getStartNode: vi.fn(),
@@ -99,12 +101,29 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue(mockWorkflowsStore),
 }));
 
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: vi.fn().mockReturnValue(mockWorkflowExecutionStateStore),
+	injectWorkflowExecutionStateStore: vi.fn(() => ({
+		// Plain accessor so per-test reassignment of the mock fields is always
+		// picked up.
+		get value() {
+			return {
+				...mockWorkflowExecutionStateStore,
+				get activeExecutionExecutedNode() {
+					return mockWorkflowsStore.executedNode;
+				},
+			};
+		},
+	})),
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn().mockReturnValue(mockNodeTypesStore),
 }));
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStore })),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -156,14 +175,6 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 	needsAgentInput: vi.fn().mockReturnValue(false),
 }));
@@ -184,7 +195,6 @@ function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	} as INodeUi;
 }
 
-let workflowState: WorkflowState;
 let uiStore: ReturnType<typeof useUIStore>;
 
 describe('useNodeExecution', () => {
@@ -192,16 +202,16 @@ describe('useNodeExecution', () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
-		workflowState = vi.mocked(useWorkflowState());
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
 		uiStore = useUIStore();
 
 		// Reset store properties to defaults
-		mockWorkflowsStore.isWorkflowRunning = false;
+		mockWorkflowExecutionStateStore.isWorkflowRunning = false;
 		mockWorkflowsStore.executedNode = undefined;
-		mockWorkflowsStore.executionWaitingForWebhook = false;
-		mockWorkflowsStore.chatPartialExecutionDestinationNode = undefined;
+		mockWorkflowExecutionStateStore.executionWaitingForWebhook = false;
+		mockWorkflowExecutionStateStore.chatPartialExecutionDestinationNode = undefined;
+		mockWorkflowExecutionStateStore.executingNode.isNodeExecuting
+			.mockReset()
+			.mockReturnValue(false);
 		mockWorkflowDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
 		mockWorkflowsStore.removeTestWebhook.mockReset();
 		mockWorkflowsStore.getNodeByName.mockReset();
@@ -294,7 +304,7 @@ describe('useNodeExecution', () => {
 	describe('isListening', () => {
 		it('should return true when trigger node is waiting for webhook', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
 			const { isListening } = useNodeExecution(node);
@@ -304,7 +314,7 @@ describe('useNodeExecution', () => {
 
 		it('should return false when node is disabled', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: true }));
 
 			const { isListening } = useNodeExecution(node);
@@ -313,7 +323,7 @@ describe('useNodeExecution', () => {
 		});
 
 		it('should return false when not a trigger node', () => {
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode());
 
 			const { isListening } = useNodeExecution(node);
@@ -332,7 +342,7 @@ describe('useNodeExecution', () => {
 
 		it('should return false when executed node is a different node', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			mockWorkflowsStore.executedNode = 'Other Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -349,7 +359,7 @@ describe('useNodeExecution', () => {
 				name: WEBHOOK_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -364,7 +374,7 @@ describe('useNodeExecution', () => {
 				name: 'n8n-nodes-base.scheduleTrigger',
 				group: ['schedule'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -379,7 +389,7 @@ describe('useNodeExecution', () => {
 				name: MANUAL_TRIGGER_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -391,7 +401,7 @@ describe('useNodeExecution', () => {
 
 	describe('isExecuting', () => {
 		it('should return true when node is running and not listening', () => {
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -412,7 +422,7 @@ describe('useNodeExecution', () => {
 	describe('disabledReason', () => {
 		it('should return empty string when listening', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
 			const { disabledReason } = useNodeExecution(node);
@@ -442,7 +452,7 @@ describe('useNodeExecution', () => {
 		});
 
 		it('should return workflow running message when another node is executing', () => {
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Other Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -463,7 +473,7 @@ describe('useNodeExecution', () => {
 	describe('buttonLabel', () => {
 		it('should return stopListening when isListening', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
 			const { buttonLabel } = useNodeExecution(node);
@@ -557,7 +567,7 @@ describe('useNodeExecution', () => {
 
 		it('should return undefined when listening', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
 			const { buttonIcon } = useNodeExecution(node);
@@ -693,7 +703,7 @@ describe('useNodeExecution', () => {
 
 		it('should stop webhook when listening', async () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
 			const { execute } = useNodeExecution(node);
@@ -709,7 +719,7 @@ describe('useNodeExecution', () => {
 				name: WEBHOOK_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -846,7 +856,7 @@ describe('useNodeExecution', () => {
 	describe('stopExecution', () => {
 		it('should stop webhook when listening', async () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
-			mockWorkflowsStore.executionWaitingForWebhook = true;
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
 			const { stopExecution } = useNodeExecution(node);
@@ -861,7 +871,7 @@ describe('useNodeExecution', () => {
 				name: WEBHOOK_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 

@@ -163,6 +163,91 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['Manual Trigger'].main[0]![0].node).toBe('HTTP Request');
 	});
 
+	it('should preserve node-level execution options when generating and parsing code', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'debug-workflow',
+			name: 'Debug Workflow',
+			nodes: [
+				{
+					id: 'trigger-id',
+					name: 'When clicking Execute workflow',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [-160, 0],
+					parameters: {},
+				},
+				{
+					id: 'debug-id',
+					name: 'DebugHelper',
+					type: 'n8n-nodes-base.debugHelper',
+					typeVersion: 1,
+					position: [208, 0],
+					parameters: {
+						category: 'randomData',
+					},
+					executeOnce: true,
+					alwaysOutputData: true,
+					onError: 'continueErrorOutput',
+					retryOnFail: true,
+					maxTries: 4,
+					waitBetweenTries: 2500,
+					notesInFlow: true,
+					notes: 'Keep execution settings',
+					extendsCredential: 'notionApi',
+				},
+				{
+					id: 'success-id',
+					name: 'Edit Fields Success',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [416, -96],
+					parameters: {
+						options: {},
+					},
+				},
+				{
+					id: 'error-id',
+					name: 'Edit Fields Error',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [416, 96],
+					parameters: {
+						options: {},
+					},
+				},
+			],
+			connections: {
+				'When clicking Execute workflow': {
+					main: [[{ node: 'DebugHelper', type: 'main', index: 0 }]],
+				},
+				DebugHelper: {
+					main: [
+						[{ node: 'Edit Fields Success', type: 'main', index: 0 }],
+						[{ node: 'Edit Fields Error', type: 'main', index: 0 }],
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+		const debugNode = parsedJson.nodes.find((node) => node.name === 'DebugHelper');
+
+		expect(debugNode).toEqual(
+			expect.objectContaining({
+				executeOnce: true,
+				alwaysOutputData: true,
+				onError: 'continueErrorOutput',
+				retryOnFail: true,
+				maxTries: 4,
+				waitBetweenTries: 2500,
+				notesInFlow: true,
+				notes: 'Keep execution settings',
+				extendsCredential: 'notionApi',
+			}),
+		);
+	});
+
 	it('should round-trip non-ASCII characters (em-dash, en-dash, curly quotes, ellipsis) in workflow name, node names, and string parameters', () => {
 		const originalJson: WorkflowJSON = {
 			id: 'unicode-test',
@@ -1032,6 +1117,85 @@ export default workflow('test-id', 'Test Workflow')
 			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
 			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
 				"={{ $('Node A').item.json.a + $('Node B').item.json.b }}",
+			);
+		});
+
+		it('should escape single-quoted bracket-access keys in expressions', () => {
+			// AI emits an expression with bracket access using single quotes, e.g.
+			// $('Settings').item.json['my key'] — the inner ['my key'] quotes must be
+			// escaped too, not just the $('...') ones, or the outer string breaks.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Settings').item.json['my key'] }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Settings').item.json['my key'] }}",
+			);
+		});
+
+		it('should escape apostrophes inside single-quoted bracket-access keys', () => {
+			// A bracket key can itself contain an apostrophe (e.g. ['it's a key']).
+			// Only the quote before the closing ] terminates the key; the inner one
+			// must be escaped, mirroring the $('...') handling.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Settings').item.json['it's a key'] }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Settings').item.json['it's a key'] }}",
+			);
+		});
+
+		it('should fail loudly on an unterminated bracket key instead of swallowing the rest', () => {
+			// A ['... with no closing '] is malformed. The fixer must not run to
+			// end-of-code consuming everything; it stops at the bare quote and lets
+			// the outer logic resume, which surfaces a clear syntax error.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $json['unterminated }}'
+    }
+  } }))
+`;
+			expect(() => parseWorkflowCode(code)).toThrow(/Failed to parse workflow code/);
+		});
+
+		it('should escape apostrophes inside node names in $() references', () => {
+			// A node name containing an apostrophe (e.g. "Bob's Node") has an inner
+			// quote that is not the closing quote — it must be escaped too.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Bob's Node').item.json.x }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Bob's Node').item.json.x }}",
 			);
 		});
 	});
@@ -2415,20 +2579,23 @@ export default workflow('same-name-agents', 'Same Name Agents')
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {
-	// Download fixtures if needed (runs once before all tests in this file)
+	// Extract fixtures from the committed zip if needed (runs once before all
+	// tests in this file). Unpacking ~2000 workflow files is IO-bound and can
+	// take well over the default 10s hook timeout on a contended CI runner, so
+	// give it a generous budget to avoid flaky "Hook timed out" failures.
 	beforeAll(() => {
 		try {
 			ensureFixtures();
 		} catch (error) {
 			if (error instanceof FixtureDownloadError) {
 				throw new Error(
-					`Failed to download test fixtures from n8n.io API: ${error.message}. ` +
-						'Check your network connection and ensure the API is accessible.',
+					`Failed to prepare test fixtures: ${error.message}. ` +
+						'Ensure public_published_templates.zip is committed to test-fixtures/real-workflows/.',
 				);
 			}
 			throw error;
 		}
-	});
+	}, 60_000);
 
 	if (workflows.length === 0) {
 		it('should have fixtures available (run tests again after download)', () => {
@@ -2658,6 +2825,22 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					// Verify settings
 					if (json.settings && Object.keys(json.settings).length > 0) {
 						expect(parsedJson.settings).toEqual(json.settings);
+					}
+
+					// Verify node groups survive the roundtrip. Node and group ids are
+					// regenerated deterministically on parse, so compare each group by name
+					// and the names of its member nodes rather than by raw id.
+					if (json.nodeGroups && json.nodeGroups.length > 0) {
+						const groupsByMemberName = (wf: WorkflowJSON) => {
+							const nameById = new Map(wf.nodes.map((n) => [n.id, n.name]));
+							return (wf.nodeGroups ?? [])
+								.map((g) => ({
+									name: g.name,
+									members: g.nodeIds.flatMap((id) => nameById.get(id) ?? []).sort(),
+								}))
+								.sort((a, b) => a.name.localeCompare(b.name));
+						};
+						expect(groupsByMemberName(parsedJson)).toEqual(groupsByMemberName(json));
 					}
 
 					// Filter connections from non-existent nodes (orphaned connections in original workflow)

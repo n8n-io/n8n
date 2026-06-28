@@ -71,8 +71,10 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.shared',
 	'n8n.audit.user.credentials.updated',
 	'n8n.audit.user.credentials.deleted',
+	'n8n.audit.user.credentials.userDisconnected',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
+	'n8n.audit.user.api.rotated',
 	'n8n.audit.user.mfa.enabled',
 	'n8n.audit.user.mfa.disabled',
 	'n8n.audit.user.execution.deleted',
@@ -80,6 +82,7 @@ export const eventNamesAudit = [
 	'n8n.audit.package.installed',
 	'n8n.audit.package.updated',
 	'n8n.audit.package.deleted',
+	'n8n.audit.n8n-package.imported',
 	'n8n.audit.workflow.created',
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
@@ -106,6 +109,7 @@ export const eventNamesAudit = [
 	'n8n.audit.personal-sharing-restricted.disabled',
 	'n8n.audit.2fa-enforcement.enabled',
 	'n8n.audit.2fa-enforcement.disabled',
+	'n8n.audit.redaction-enforcement.updated',
 	'n8n.audit.execution.data.revealed',
 	'n8n.audit.execution.data.reveal_failure',
 	'n8n.audit.token-exchange.succeeded',
@@ -113,6 +117,7 @@ export const eventNamesAudit = [
 	'n8n.audit.token-exchange.embed-login',
 	'n8n.audit.token-exchange.embed-login-failed',
 	'n8n.audit.token-exchange.identity-linked',
+	'n8n.audit.token-exchange.identity-rebound',
 	'n8n.audit.token-exchange.user-provisioned',
 	'n8n.audit.token-exchange.role-updated',
 	'n8n.audit.role-mapping.roles-resolved',
@@ -128,6 +133,7 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.split-brain.resolved',
 	'n8n.audit.cluster.instance-joined',
 	'n8n.audit.cluster.instance-left',
+	'n8n.audit.oauth.callback.binding.rejected',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

@@ -1,7 +1,8 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BaseModal } from './BaseModal';
+import { dialogCloseIconIn } from './dialogLocators';
 
 /**
  * Credential modal component for canvas and credentials interactions.
@@ -16,6 +17,10 @@ import { BaseModal } from './BaseModal';
 export class CredentialModal extends BaseModal {
 	constructor(private root: Locator) {
 		super(root.page());
+	}
+
+	static fromPage(page: Page): CredentialModal {
+		return new CredentialModal(page.getByTestId('editCredential-modal'));
 	}
 
 	getModal(): Locator {
@@ -92,7 +97,8 @@ export class CredentialModal extends BaseModal {
 	/**
 	 * Wait for save to fully complete.
 	 * After saving (and optional credential testing), the button either shows a
-	 * "Saved" label or settles back to a disabled "Save" state.
+	 * "Saved" label, settles back to a disabled "Save" state, or the credential
+	 * modal closes.
 	 */
 	async waitForSaveComplete(): Promise<void> {
 		const saveCompleted = this.root.getByText('Saved', { exact: true }).or(
@@ -101,7 +107,10 @@ export class CredentialModal extends BaseModal {
 				.filter({ hasText: /^Save$/ }),
 		);
 
-		await expect(saveCompleted).toBeVisible({ timeout: 20_000 });
+		await Promise.any([
+			saveCompleted.waitFor({ state: 'visible', timeout: 20_000 }),
+			this.root.waitFor({ state: 'hidden', timeout: 20_000 }),
+		]);
 	}
 
 	async save(): Promise<void> {
@@ -110,7 +119,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	async close(): Promise<void> {
-		const closeBtn = this.root.locator('.el-dialog__close').first();
+		const closeBtn = dialogCloseIconIn(this.root);
 		if (await closeBtn.isVisible()) {
 			await closeBtn.click();
 		}
@@ -213,6 +222,28 @@ export class CredentialModal extends BaseModal {
 	 */
 	getVisibleDropdown(): Locator {
 		return this.root.page().locator('.el-popper[aria-hidden="false"]');
+	}
+
+	/**
+	 * Get an option by its text within the currently visible dropdown popper
+	 * (e.g. the sharing user select or the credential picker dropdown).
+	 */
+	getVisibleDropdownOption(text: string): Locator {
+		return this.getVisibleDropdown().getByText(text);
+	}
+
+	/**
+	 * Get a credential sharing-list item by the name it displays in the Sharing tab.
+	 */
+	getSharingListItem(name: string): Locator {
+		return this.getModal().getByTestId('project-sharing-list-item').filter({ hasText: name });
+	}
+
+	/**
+	 * Remove a user (or "All users") from the credential sharing list.
+	 */
+	async removeUserFromSharing(name: string): Promise<void> {
+		await this.getSharingListItem(name).getByTestId('project-sharing-remove').click();
 	}
 
 	/**

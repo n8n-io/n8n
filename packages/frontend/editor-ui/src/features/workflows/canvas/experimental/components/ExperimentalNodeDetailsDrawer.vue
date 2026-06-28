@@ -34,7 +34,7 @@ const nodeSettingsViewKey = computed(() => [node.id, ndvCloseTimes.value].join('
 
 // Track closing NDV
 watch(
-	() => ndvStore.activeNodeName,
+	() => ndvStore.value.activeNodeName,
 	(name, oldName) => {
 		if (name === null && oldName !== null) {
 			ndvCloseTimes.value += 1;

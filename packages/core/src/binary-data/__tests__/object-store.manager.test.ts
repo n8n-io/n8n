@@ -1,13 +1,13 @@
-import { mock } from 'jest-mock-extended';
 import fs from 'node:fs/promises';
 import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
 import type { MetadataResponseHeaders } from '@/binary-data/object-store/types';
 import { ObjectStoreManager } from '@/binary-data/object-store.manager';
 import { mockInstance, toFileId, toStream } from '@test/utils';
 
-jest.mock('fs/promises');
+vi.mock('fs/promises');
 
 const objectStoreService = mockInstance(ObjectStoreService);
 const objectStoreManager = new ObjectStoreManager(objectStoreService);
@@ -26,8 +26,8 @@ const otherFileId = toFileId(otherWorkflowId, otherExecutionId, otherFileUuid);
 const mockBuffer = Buffer.from('Test data');
 const mockStream = toStream(mockBuffer);
 
-beforeAll(() => {
-	jest.restoreAllMocks();
+beforeEach(() => {
+	vi.resetAllMocks();
 });
 
 describe('store()', () => {
@@ -72,7 +72,22 @@ describe('getAsStream()', () => {
 		const stream = await objectStoreManager.getAsStream(fileId);
 
 		expect(stream).toBeInstanceOf(Readable);
-		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'stream' });
+		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, {
+			mode: 'stream',
+			chunkSize: undefined,
+		});
+	});
+
+	it('should forward chunkSize to the service', async () => {
+		objectStoreService.get.mockResolvedValue(mockStream);
+
+		const providedChunkSize = 5 * 1024 * 1024;
+		await objectStoreManager.getAsStream(fileId, providedChunkSize);
+
+		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, {
+			mode: 'stream',
+			chunkSize: providedChunkSize,
+		});
 	});
 });
 
@@ -97,14 +112,27 @@ describe('getMetadata()', () => {
 });
 
 describe('copyByFileId()', () => {
-	it('should copy by file ID and return the file ID', async () => {
+	it('should copy by file ID, forwarding source metadata, and return the file ID', async () => {
+		const mimeType = 'text/plain';
+		const fileName = 'file.txt';
+		objectStoreService.getMetadata.mockResolvedValue(
+			mock<MetadataResponseHeaders>({
+				'content-length': String(mockBuffer.length),
+				'content-type': mimeType,
+				'x-amz-meta-filename': fileName,
+			}),
+		);
+
 		const targetFileId = await objectStoreManager.copyByFileId(
 			{ type: 'execution', workflowId, executionId },
 			fileId,
 		);
 
+		const lastPutCall = objectStoreService.put.mock.lastCall;
 		expect(targetFileId.startsWith(prefix)).toBe(true);
 		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'buffer' });
+		expect(lastPutCall?.[0]).toBe(targetFileId);
+		expect(lastPutCall?.[2]).toEqual(expect.objectContaining({ mimeType, fileName }));
 	});
 });
 
@@ -113,7 +141,7 @@ describe('copyByFilePath()', () => {
 		const sourceFilePath = 'path/to/file/in/filesystem';
 		const metadata = { mimeType: 'text/plain' };
 
-		fs.readFile = jest.fn().mockResolvedValue(mockBuffer);
+		fs.readFile = vi.fn().mockResolvedValue(mockBuffer);
 
 		const result = await objectStoreManager.copyByFilePath(
 			{ type: 'execution', workflowId, executionId },
@@ -128,13 +156,26 @@ describe('copyByFilePath()', () => {
 });
 
 describe('rename()', () => {
-	it('should rename a file', async () => {
+	it('should rename a file, forwarding the original metadata', async () => {
+		const mimeType = 'text/plain';
+		const fileName = 'file.txt';
+		objectStoreService.getMetadata.mockResolvedValue(
+			mock<MetadataResponseHeaders>({
+				'content-length': String(mockBuffer.length),
+				'content-type': mimeType,
+				'x-amz-meta-filename': fileName,
+			}),
+		);
+
 		const promise = objectStoreManager.rename(fileId, otherFileId);
 
 		await expect(promise).resolves.not.toThrow();
 
+		const lastPutCall = objectStoreService.put.mock.lastCall;
 		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'buffer' });
 		expect(objectStoreService.getMetadata).toHaveBeenCalledWith(fileId);
+		expect(lastPutCall?.[0]).toBe(otherFileId);
+		expect(lastPutCall?.[2]).toEqual(expect.objectContaining({ mimeType, fileName }));
 		expect(objectStoreService.deleteOne).toHaveBeenCalledWith(fileId);
 	});
 });

@@ -5,7 +5,7 @@ import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -58,8 +58,12 @@ const emit = defineEmits<{
 }>();
 
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+
+const lastSuccessfulExecution = computed(
+	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
+);
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -75,7 +79,7 @@ const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
 const outputRenderMode = ref<'text' | 'html' | 'markdown'>('text');
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
@@ -93,7 +97,7 @@ const rootNode = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return workflowDocumentStore?.value?.getParentNodesByDepth(rootNode.value) ?? [];
+	return workflowDocumentStore.value.getParentNodesByDepth(rootNode.value) ?? [];
 });
 
 watch(
@@ -112,9 +116,9 @@ watch(
 			const telemetryPayload = createExpressionTelemetryPayload(
 				segments.value,
 				props.modelValue.toString(),
-				workflowsStore.workflowId,
-				ndvStore.pushRef,
-				ndvStore.activeNode?.type ?? '',
+				workflowDocumentStore.value.workflowId,
+				ndvStore.value.pushRef,
+				ndvStore.value.activeNode?.type ?? '',
 			);
 
 			telemetry.track('User closed Expression Editor', telemetryPayload);
@@ -193,7 +197,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
-						:preview-execution="workflowsStore.lastSuccessfulExecution"
+						:preview-execution="lastSuccessfulExecution"
 						pane-type="input"
 					/>
 				</div>
