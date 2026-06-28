@@ -24,6 +24,7 @@ import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
+import InsightsDateRangeAlert from './InsightsDateRangeAlert.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
@@ -235,6 +236,13 @@ onBeforeMount(async () => {
 					:presets
 				/>
 			</div>
+
+			<InsightsDateRangeAlert
+				:key="range.start.toString()"
+				class="mt-s"
+				:earliest-data-date="insightsStore.earliestDataDate"
+				:range-start="range.start"
+			/>
 
 			<InsightsSummary
 				v-if="insightsStore.isSummaryEnabled"
