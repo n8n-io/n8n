@@ -166,6 +166,32 @@ export const ALL_INSTANCE_SCOPES: Scope[] = [
 export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
 
 /**
+ * Declares when one option is visually superseded by another within the same
+ * resource group. If the superseding option is fully checked, the superseded
+ * option is implied — it should render as disabled ✔︎ with an explanatory
+ * tooltip rather than as an independently active selection.
+ */
+export const SUPERSEDED_BY: Partial<Record<string, string>> = {
+	'Manage own': 'Manage all',
+};
+
+/**
+ * Returns true when another option in the same group is fully checked and
+ * supersedes this option. The caller should render implied options as disabled
+ * with a tooltip explaining they are included in the superseding option.
+ */
+export function isOptionImplied(
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+	roleScopes: readonly string[],
+): boolean {
+	const supersededByKey = SUPERSEDED_BY[option.key];
+	if (!supersededByKey) return false;
+	const superseding = groupOptions.find((o) => o.key === supersededByKey);
+	return !!superseding && getOptionState(roleScopes, superseding.scopes) === 'checked';
+}
+
+/**
  * Resolve how an option should render against a saved flat scope list.
  * - all of the option's scopes present -> checked
  * - some but not all present          -> indeterminate (e.g. system-role presets
@@ -180,6 +206,43 @@ export function getOptionState(
 	if (present === 0) return 'unchecked';
 	if (present === optionScopes.length) return 'checked';
 	return 'indeterminate';
+}
+
+/**
+ * When option A is a strict superset of option B (B is superseded by A), and B
+ * is fully checked, A will appear indeterminate via raw scope arithmetic because
+ * B's scopes are already present. That indeterminate is misleading — the user
+ * selected B only, not A. This function returns 'unchecked' in that case.
+ *
+ * The guard only fires when a sub-option is *fully* checked, so genuine partial
+ * selections (e.g. API-created roles with an arbitrary subset) still show
+ * indeterminate correctly.
+ */
+export function resolveOptionState(
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+	roleScopes: readonly string[],
+): OptionState {
+	const base = getOptionState(roleScopes, option.scopes);
+	if (base !== 'indeterminate') return base;
+
+	// Collect scopes that belong to fully-checked sub-options of this option.
+	const fullyCheckedSubScopes = new Set(
+		groupOptions
+			.filter(
+				(other) =>
+					SUPERSEDED_BY[other.key] === option.key &&
+					getOptionState(roleScopes, other.scopes) === 'checked',
+			)
+			.flatMap((o) => o.scopes),
+	);
+
+	if (fullyCheckedSubScopes.size === 0) return base;
+
+	// If every present scope in this option is already accounted for by a
+	// fully-checked sub-option, the indeterminate is an artifact — show unchecked.
+	const presentScopes = option.scopes.filter((s) => roleScopes.includes(s));
+	return presentScopes.every((s) => fullyCheckedSubScopes.has(s)) ? 'unchecked' : base;
 }
 
 /**

@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { N8nCheckbox, N8nLoading } from '@n8n/design-system';
+import { N8nCheckbox, N8nLoading, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
+	INSTANCE_OPTION_LABEL_KEYS,
 	INSTANCE_SCOPE_GROUP_LIST,
-	getOptionState,
+	SUPERSEDED_BY,
+	isOptionImplied,
+	resolveOptionState,
 	toggleOption,
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
@@ -30,8 +33,18 @@ function optionTestId(resource: string, option: InstanceScopeOption): string {
 	return `scope-option-${resource}-${slug}`;
 }
 
-function onToggle(option: InstanceScopeOption) {
+function impliedTooltip(option: InstanceScopeOption): string {
+	const supersededByKey = SUPERSEDED_BY[option.key];
+	if (!supersededByKey) return '';
+	const labelKey = INSTANCE_OPTION_LABEL_KEYS[supersededByKey];
+	return i18n.baseText('instanceRoles.option.includedIn', {
+		interpolate: { option: i18n.baseText(labelKey) },
+	});
+}
+
+function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]) {
 	if (props.readonly) return;
+	if (isOptionImplied(option, groupOptions, props.modelValue)) return;
 	emit('update:modelValue', toggleOption(props.modelValue, option.scopes));
 }
 </script>
@@ -45,17 +58,25 @@ function onToggle(option: InstanceScopeOption) {
 			<div :class="$style.optionList">
 				<N8nLoading v-if="loading" :rows="group.options.length" :shrink-last="false" />
 				<template v-else>
-					<N8nCheckbox
+					<N8nTooltip
 						v-for="option in group.options"
 						:key="option.key"
-						:data-test-id="optionTestId(group.resource, option)"
-						:label="i18n.baseText(option.labelKey)"
-						:model-value="getOptionState(modelValue, option.scopes) === 'checked'"
-						:indeterminate="getOptionState(modelValue, option.scopes) === 'indeterminate'"
-						:disabled="readonly"
-						:class="$style.checkbox"
-						@update:model-value="onToggle(option)"
-					/>
+						:content="impliedTooltip(option)"
+						:disabled="!isOptionImplied(option, group.options, modelValue)"
+						placement="top"
+					>
+						<N8nCheckbox
+							:data-test-id="optionTestId(group.resource, option)"
+							:label="i18n.baseText(option.labelKey)"
+							:model-value="resolveOptionState(option, group.options, modelValue) === 'checked'"
+							:indeterminate="
+								resolveOptionState(option, group.options, modelValue) === 'indeterminate'
+							"
+							:disabled="readonly || isOptionImplied(option, group.options, modelValue)"
+							:class="$style.checkbox"
+							@update:model-value="onToggle(option, group.options)"
+						/>
+					</N8nTooltip>
 				</template>
 			</div>
 		</div>
