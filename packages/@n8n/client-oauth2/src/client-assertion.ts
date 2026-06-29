@@ -1,6 +1,5 @@
+import { formatPemBlock } from '@n8n/utils';
 import { createPrivateKey, createSign, randomUUID, X509Certificate } from 'node:crypto';
-
-import { formatPrivateKey } from './format-private-key';
 
 // private_key_jwt (RFC 7521/7523): the client proves its identity with a JWT
 // signed by its private key instead of a shared secret. The `x5t` header (SHA-1
@@ -14,9 +13,7 @@ function base64url(input: Buffer | string): string {
 }
 
 function certificateThumbprint(certificate: string): string {
-	// `formatPrivateKey` also normalizes CERTIFICATE PEMs; the name-vs-usage
-	// mismatch is resolved by the shared-helper rename tracked in ENT-114.
-	const fingerprint = new X509Certificate(formatPrivateKey(certificate)).fingerprint;
+	const fingerprint = new X509Certificate(formatPemBlock(certificate)).fingerprint;
 	return Buffer.from(fingerprint.replace(/:/g, ''), 'hex').toString('base64url');
 }
 
@@ -44,7 +41,7 @@ export function buildClientAssertion(options: BuildClientAssertionOptions): stri
 
 	// `createSign('RSA-SHA256')` also signs EC/Ed25519 keys, producing a signature
 	// that contradicts the pinned `alg: RS256` header. Reject non-RSA keys up front.
-	const privateKey = createPrivateKey(formatPrivateKey(options.privateKey));
+	const privateKey = createPrivateKey(formatPemBlock(options.privateKey));
 	if (privateKey.asymmetricKeyType !== 'rsa') {
 		throw new Error('Certificate authentication requires an RSA private key');
 	}
