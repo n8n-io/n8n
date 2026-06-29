@@ -8,6 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type {
 	CredentialResolutionResult,
@@ -17,6 +18,8 @@ import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
+import { SYSTEM_RESOLVER_TYPE } from '../../constants';
+import { IdentifierValidationError } from '../../credential-resolvers/identifiers/identifier-interface';
 import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
@@ -24,33 +27,31 @@ import { CredentialResolutionError } from '../../errors/credential-resolution.er
 import { CredentialResolverNotConfiguredError } from '../../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../../errors/missing-execution-context.error';
-import { IdentifierValidationError } from '../../credential-resolvers/identifiers/identifier-interface';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
-import { SYSTEM_RESOLVER_TYPE } from '../../constants';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
-	let mockResolverRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
-	let mockResolverRepository: jest.Mocked<DynamicCredentialResolverRepository>;
-	let mockLoadNodesAndCredentials: jest.Mocked<LoadNodesAndCredentials>;
-	let mockCipher: jest.Mocked<Cipher>;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
-	let mockDynamicCredentialConfig: jest.Mocked<DynamicCredentialsConfig>;
-	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
+	let mockResolverRegistry: Mocked<DynamicCredentialResolverRegistry>;
+	let mockResolverRepository: Mocked<DynamicCredentialResolverRepository>;
+	let mockLoadNodesAndCredentials: Mocked<LoadNodesAndCredentials>;
+	let mockCipher: Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockExpressionService: Mocked<ResolverConfigExpressionService>;
+	let mockDynamicCredentialConfig: Mocked<DynamicCredentialsConfig>;
+	let mockDynamicCredentialsProxy: Mocked<DynamicCredentialsProxy>;
 
 	beforeEach(() => {
 		mockDynamicCredentialConfig = {
 			endpointAuthToken: 'test-token',
-		} as unknown as jest.Mocked<DynamicCredentialsConfig>;
+		} as unknown as Mocked<DynamicCredentialsConfig>;
 		mockDynamicCredentialsProxy = {
-			getSystemResolverId: jest.fn().mockReturnValue(null),
+			getSystemResolverId: vi.fn().mockReturnValue(null),
 			// Default to the real semantics with no system resolver seeded:
 			// pass through the workflow override if any, otherwise null.
-			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
-		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
+			getEffectiveResolverId: vi.fn((settings) => settings?.credentialResolverId ?? null),
+		} as unknown as Mocked<DynamicCredentialsProxy>;
 	});
 
 	const createMockCredentialsMetadata = (overrides: Partial<CredentialResolveMetadata> = {}) =>
@@ -77,12 +78,12 @@ describe('DynamicCredentialService', () => {
 		shouldSucceed = true,
 		shouldThrowDataNotFound = false,
 		customData?: ICredentialDataDecryptedObject,
-	): jest.Mocked<ICredentialResolver> => ({
+	): Mocked<ICredentialResolver> => ({
 		metadata: {
 			name: 'test-resolver-1.0',
 			description: 'Test resolver',
 		},
-		getSecret: jest.fn().mockImplementation(async () => {
+		getSecret: vi.fn().mockImplementation(async () => {
 			if (shouldThrowDataNotFound) {
 				throw new CredentialResolverDataNotFoundError();
 			}
@@ -91,8 +92,8 @@ describe('DynamicCredentialService', () => {
 			}
 			return customData ?? { token: 'dynamic-token', apiKey: 'dynamic-key' };
 		}),
-		setSecret: jest.fn(),
-		validateOptions: jest.fn(),
+		setSecret: vi.fn(),
+		validateOptions: vi.fn(),
 	});
 
 	const createMockExecutionContext = (credentials?: string): IExecutionContext => ({
@@ -133,38 +134,38 @@ describe('DynamicCredentialService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockResolverRegistry = {
-			getResolverByTypename: jest.fn(),
-			getAllResolvers: jest.fn(),
-			init: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
+			getResolverByTypename: vi.fn(),
+			getAllResolvers: vi.fn(),
+			init: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialResolverRegistry>;
 
 		mockResolverRepository = {
-			findOneBy: jest.fn(),
-			save: jest.fn(),
-			find: jest.fn(),
-			findOne: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
+			findOneBy: vi.fn(),
+			save: vi.fn(),
+			find: vi.fn(),
+			findOne: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialResolverRepository>;
 
 		mockCipher = {
-			encryptV2: jest.fn(),
-			decryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			encryptV2: vi.fn(),
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 
 		mockLoadNodesAndCredentials = {
-			getCredential: jest.fn(),
-			loadCredentials: jest.fn(),
-			loadAllCredentials: jest.fn(),
-		} as unknown as jest.Mocked<LoadNodesAndCredentials>;
+			getCredential: vi.fn(),
+			loadCredentials: vi.fn(),
+			loadAllCredentials: vi.fn(),
+		} as unknown as Mocked<LoadNodesAndCredentials>;
 
 		mockLoadNodesAndCredentials.getCredential.mockReturnValue({
 			sourcePath: 'credentials/Test Credential',
@@ -172,7 +173,7 @@ describe('DynamicCredentialService', () => {
 		});
 
 		mockExpressionService = {
-			resolve: jest.fn(async (config) => {
+			resolve: vi.fn(async (config) => {
 				// Simple mock that resolves expressions using global data only (vars, secrets)
 				// Not using runtime data like $execution.id or $execution.mode
 				const resolveValue = (value: unknown): unknown => {
@@ -213,7 +214,7 @@ describe('DynamicCredentialService', () => {
 
 				return await Promise.resolve(resolveConfig(config));
 			}),
-		} as unknown as jest.Mocked<ResolverConfigExpressionService>;
+		} as unknown as Mocked<ResolverConfigExpressionService>;
 
 		service = new DynamicCredentialService(
 			mockDynamicCredentialConfig,
@@ -324,7 +325,7 @@ describe('DynamicCredentialService', () => {
 
 					mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 					mockResolverRegistry.getResolverByTypename.mockReturnValue(
-						resolver as jest.Mocked<ICredentialResolver>,
+						resolver as Mocked<ICredentialResolver>,
 					);
 					mockCipher.decryptV2
 						.mockResolvedValueOnce(JSON.stringify(credentialContext))
@@ -336,7 +337,7 @@ describe('DynamicCredentialService', () => {
 				it('surfaces the owning user id from a resolver that maps to an n8n user', async () => {
 					const resolver = {
 						...createMockResolver(),
-						resolveOwningUserId: jest.fn().mockResolvedValue('user-789'),
+						resolveOwningUserId: vi.fn().mockResolvedValue('user-789'),
 					};
 					const { credentialsEntity, executionContext } = setupDynamicResolution(resolver);
 
@@ -370,7 +371,7 @@ describe('DynamicCredentialService', () => {
 				it('still resolves when owning-user lookup throws (best-effort)', async () => {
 					const resolver = {
 						...createMockResolver(),
-						resolveOwningUserId: jest.fn().mockRejectedValue(new Error('token expired')),
+						resolveOwningUserId: vi.fn().mockRejectedValue(new Error('token expired')),
 					};
 					const { credentialsEntity, executionContext } = setupDynamicResolution(resolver);
 
@@ -586,13 +587,13 @@ describe('DynamicCredentialService', () => {
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
 				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
-				const mockResolver: jest.Mocked<ICredentialResolver> = {
+				const mockResolver: Mocked<ICredentialResolver> = {
 					metadata: { name: 'test-resolver-1.0', description: 'Test resolver' },
-					getSecret: jest
+					getSecret: vi
 						.fn()
 						.mockRejectedValue(new IdentifierValidationError('Token is not active')),
-					setSecret: jest.fn(),
-					validateOptions: jest.fn(),
+					setSecret: vi.fn(),
+					validateOptions: vi.fn(),
 				};
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
@@ -1156,10 +1157,10 @@ describe('DynamicCredentialService', () => {
 					cookies: {},
 				} as AuthenticatedRequest;
 				const mockRes = {
-					status: jest.fn().mockReturnThis(),
-					json: jest.fn(),
+					status: vi.fn().mockReturnThis(),
+					json: vi.fn(),
 				} as unknown as Response;
-				const mockNext = jest.fn();
+				const mockNext = vi.fn();
 
 				middleware(mockReq, mockRes, mockNext);
 
@@ -1171,7 +1172,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('should call the static auth middleware with the correct token', () => {
-				const getStaticAuthMiddlewareSpy = jest.spyOn(StaticAuthService, 'getStaticAuthMiddleware');
+				const getStaticAuthMiddlewareSpy = vi.spyOn(StaticAuthService, 'getStaticAuthMiddleware');
 				mockDynamicCredentialConfig.endpointAuthToken = 'test-token';
 				service = new DynamicCredentialService(
 					mockDynamicCredentialConfig,
@@ -1211,11 +1212,11 @@ describe('DynamicCredentialService', () => {
 					} as AuthenticatedRequest;
 
 					const mockRes = {
-						status: jest.fn().mockReturnThis(),
-						json: jest.fn(),
+						status: vi.fn().mockReturnThis(),
+						json: vi.fn(),
 					} as unknown as Response;
 
-					const mockNext = jest.fn();
+					const mockNext = vi.fn();
 
 					middleware(mockReq, mockRes, mockNext);
 
@@ -1246,11 +1247,11 @@ describe('DynamicCredentialService', () => {
 					} as AuthenticatedRequest;
 
 					const mockRes = {
-						status: jest.fn().mockReturnThis(),
-						json: jest.fn(),
+						status: vi.fn().mockReturnThis(),
+						json: vi.fn(),
 					} as unknown as Response;
 
-					const mockNext = jest.fn();
+					const mockNext = vi.fn();
 
 					middleware(mockReq, mockRes, mockNext);
 

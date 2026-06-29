@@ -1,6 +1,5 @@
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	IConnections,
 	INode,
@@ -9,6 +8,8 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeTypes } from '@/node-types';
@@ -21,13 +22,12 @@ import { extractResolvedNodeParameters } from '../extract-resolved-node-paramete
 
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeResolutionExecution>,
-): jest.Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
+): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
 	const executionPersistence = mock<ExecutionPersistence>();
 	executionPersistence.findSingleExecution.mockResolvedValue(execution as never);
-	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
-
+	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence as never);
 	return {
-		findSingleExecution: jest.fn().mockResolvedValue(execution),
+		findSingleExecution: vi.fn().mockResolvedValue(execution),
 	};
 }
 

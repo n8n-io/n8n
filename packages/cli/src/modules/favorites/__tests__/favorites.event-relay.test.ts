@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -11,7 +11,7 @@ describe('FavoritesEventRelay', () => {
 	const favoritesService = mock<FavoritesService>();
 	new FavoritesEventRelay(eventService, favoritesService).init();
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('workflow-deleted', () => {
 		it('should delete favorites for the deleted workflow', async () => {

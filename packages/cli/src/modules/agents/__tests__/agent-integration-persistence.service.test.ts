@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -45,7 +45,7 @@ function makeService() {
 
 describe('AgentIntegrationPersistenceService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('lists public descriptor metadata from the integration registry', () => {

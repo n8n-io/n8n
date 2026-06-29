@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
@@ -75,58 +76,58 @@ const createMockNode = (overrides: Partial<INode> = {}): INode => {
 
 describe('CredentialResolverWorkflowService', () => {
 	let service: CredentialResolverWorkflowService;
-	let mockWorkflowRepository: jest.Mocked<WorkflowRepository>;
-	let mockCredentialRepository: jest.Mocked<CredentialsRepository>;
-	let mockResolverRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
-	let mockResolverRepository: jest.Mocked<DynamicCredentialResolverRepository>;
-	let mockCipher: jest.Mocked<Cipher>;
-	let mockResolverImplementation: jest.Mocked<ICredentialResolver>;
-	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
-	let mockWorkflowFinderService: jest.Mocked<WorkflowFinderService>;
+	let mockWorkflowRepository: Mocked<WorkflowRepository>;
+	let mockCredentialRepository: Mocked<CredentialsRepository>;
+	let mockResolverRegistry: Mocked<DynamicCredentialResolverRegistry>;
+	let mockResolverRepository: Mocked<DynamicCredentialResolverRepository>;
+	let mockCipher: Mocked<Cipher>;
+	let mockResolverImplementation: Mocked<ICredentialResolver>;
+	let mockDynamicCredentialsProxy: Mocked<DynamicCredentialsProxy>;
+	let mockWorkflowFinderService: Mocked<WorkflowFinderService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWorkflowRepository = {
-			get: jest.fn(),
-		} as unknown as jest.Mocked<WorkflowRepository>;
+			get: vi.fn(),
+		} as unknown as Mocked<WorkflowRepository>;
 
 		mockCredentialRepository = {
-			find: jest.fn(),
-		} as unknown as jest.Mocked<CredentialsRepository>;
+			find: vi.fn(),
+		} as unknown as Mocked<CredentialsRepository>;
 
 		mockResolverRegistry = {
-			getResolverByTypename: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
+			getResolverByTypename: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialResolverRegistry>;
 
 		mockResolverRepository = {
-			findOneBy: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
+			findOneBy: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialResolverRepository>;
 
 		mockCipher = {
-			decryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 
 		mockResolverImplementation = {
 			metadata: {
 				name: 'test.resolver',
 				description: 'A test resolver',
 			},
-			getSecret: jest.fn(),
-			setSecret: jest.fn(),
-			validateOptions: jest.fn(),
+			getSecret: vi.fn(),
+			setSecret: vi.fn(),
+			validateOptions: vi.fn(),
 		};
 
 		mockDynamicCredentialsProxy = {
-			getSystemResolverId: jest.fn().mockReturnValue(null),
+			getSystemResolverId: vi.fn().mockReturnValue(null),
 			// Default to the real semantics with no system resolver seeded:
 			// pass through the workflow override if any, otherwise null.
-			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
-		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
+			getEffectiveResolverId: vi.fn((settings) => settings?.credentialResolverId ?? null),
+		} as unknown as Mocked<DynamicCredentialsProxy>;
 
 		mockWorkflowFinderService = {
-			findWorkflowForUser: jest.fn(),
-		} as unknown as jest.Mocked<WorkflowFinderService>;
+			findWorkflowForUser: vi.fn(),
+		} as unknown as Mocked<WorkflowFinderService>;
 
 		service = new CredentialResolverWorkflowService(
 			mockWorkflowRepository,

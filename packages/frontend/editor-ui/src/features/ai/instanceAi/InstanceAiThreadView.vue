@@ -98,6 +98,9 @@ watch(
 	{ immediate: true },
 );
 
+// Show the input disclaimer only once the AI has produced a visible response.
+const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
+
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap
 // between the input and the floating confirmation panel.
@@ -805,7 +808,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 												/>
 											</Transition>
 										</div>
-										<p :class="$style.disclaimer">
+										<p v-if="hasAssistantResponse" :class="$style.disclaimer">
 											{{ i18n.baseText('instanceAi.input.disclaimer') }}
 										</p>
 									</div>
@@ -1042,6 +1045,8 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	:global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
 	}
 
 	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {

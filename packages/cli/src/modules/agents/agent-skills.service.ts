@@ -5,25 +5,21 @@ import {
 	type AgentSkillMutationResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { generateAgentResourceId } from './utils/agent-resource-id';
-
-type AgentSkillEntries = Agent['skills'];
 
 @Service()
 export class AgentSkillsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
@@ -50,12 +46,13 @@ export class AgentSkillsService {
 		if (!entity) throw new NotFoundError('Agent not found');
 
 		this.validateSkill(skill);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, skill.name);
 
 		const skillId = this.addSkill(entity, skill);
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
 
@@ -72,13 +69,14 @@ export class AgentSkillsService {
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		this.validateSkill(skill);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, skill.name);
 
 		const skillId = this.addSkill(entity, skill);
 		this.attachSkillRef(entity, skillId);
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
 
@@ -99,6 +97,7 @@ export class AgentSkillsService {
 
 		const updated = { ...existing, ...updates };
 		this.validateSkill(updated);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, updated.name, skillId);
 
 		entity.skills = {
 			...(entity.skills ?? {}),
@@ -107,7 +106,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
@@ -130,7 +129,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		await this.agentRepository.save(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.clearRuntimes(agentId);
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
@@ -147,38 +146,6 @@ export class AgentSkillsService {
 			delete skills[id];
 		}
 		entity.skills = skills;
-	}
-
-	getMissingSkillIds(config: AgentJsonConfig | null, skills: AgentSkillEntries): string[] {
-		const refs = config?.skills ?? [];
-		const seen = new Set<string>();
-		const missing: string[] = [];
-
-		for (const ref of refs) {
-			if (seen.has(ref.id)) continue;
-			seen.add(ref.id);
-			if (!skills[ref.id]) missing.push(ref.id);
-		}
-
-		return missing;
-	}
-
-	snapshotConfiguredSkills(
-		config: AgentJsonConfig | null,
-		skills: AgentSkillEntries,
-	): AgentSkillEntries | null {
-		if (!config) return null;
-		const missing = this.getMissingSkillIds(config, skills);
-		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
-		}
-
-		const snapshot: AgentSkillEntries = {};
-		for (const ref of config.skills ?? []) {
-			const skill = skills[ref.id];
-			if (skill) snapshot[ref.id] = { ...skill };
-		}
-		return snapshot;
 	}
 
 	private validateSkill(skill: AgentSkill): void {
@@ -201,6 +168,25 @@ export class AgentSkillsService {
 		return skillId;
 	}
 
+	private assertSkillNameIsUnique(
+		existing: Record<string, AgentSkill>,
+		name: string,
+		currentSkillId?: string,
+	): void {
+		const normalizedName = this.normalizeSkillName(name);
+		const duplicate = Object.entries(existing ?? {}).find(
+			([id, skill]) =>
+				id !== currentSkillId && this.normalizeSkillName(skill.name) === normalizedName,
+		);
+		if (duplicate) {
+			throw new UserError(`Agent already has a skill named "${name.trim()}".`);
+		}
+	}
+
+	private normalizeSkillName(name: string): string {
+		return name.trim().toLowerCase();
+	}
+
 	private attachSkillRef(entity: Agent, skillId: string): void {
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
@@ -208,5 +194,10 @@ export class AgentSkillsService {
 			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
 			{ type: 'skill', id: skillId },
 		];
+	}
+
+	private async clearRuntimes(agentId: string): Promise<void> {
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
+		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
 	}
 }

@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { SharedWorkflowRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import {
 	type ILoadOptions,
 	type INodeParameters,
@@ -9,17 +10,17 @@ import {
 	type ResourceMapperFields,
 	Expression,
 } from 'n8n-workflow';
-
-import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
-import { WorkflowLoaderService } from '../workflow-loader.service';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
-import { SharedWorkflowRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
+
+import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
+import { WorkflowLoaderService } from '../workflow-loader.service';
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);
@@ -36,12 +37,12 @@ describe('DynamicNodeParametersService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getResourceMappingFields', () => {
 		it('should remove duplicate resource mapping fields', async () => {
-			const resourceMappingMethod = jest.fn();
+			const resourceMappingMethod = vi.fn();
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: {
@@ -88,16 +89,16 @@ describe('DynamicNodeParametersService', () => {
 	});
 
 	describe('expression isolate lifecycle', () => {
-		let acquireSpy: jest.SpyInstance;
-		let releaseSpy: jest.SpyInstance;
+		let acquireSpy: MockInstance;
+		let releaseSpy: MockInstance;
 
 		beforeEach(() => {
-			acquireSpy = jest.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
-			releaseSpy = jest.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 		});
 
 		it('should acquire and release isolate around getOptionsViaMethodName', async () => {
-			const loadOptionsMethod = jest.fn().mockResolvedValue([{ name: 'opt', value: 'v' }]);
+			const loadOptionsMethod = vi.fn().mockResolvedValue([{ name: 'opt', value: 'v' }]);
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: { properties: [] },
@@ -118,7 +119,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should release isolate even when the inner method throws', async () => {
-			const loadOptionsMethod = jest.fn().mockRejectedValue(new Error('boom'));
+			const loadOptionsMethod = vi.fn().mockRejectedValue(new Error('boom'));
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: { properties: [] },
@@ -141,9 +142,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should acquire and release isolate around getResourceLocatorResults', async () => {
-			const listSearchMethod = jest
-				.fn()
-				.mockResolvedValue({ results: [{ name: 'r', value: 'v' }] });
+			const listSearchMethod = vi.fn().mockResolvedValue({ results: [{ name: 'r', value: 'v' }] });
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: { properties: [] },
@@ -164,7 +163,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should acquire and release isolate around getResourceMappingFields', async () => {
-			const resourceMappingMethod = jest.fn().mockResolvedValue({
+			const resourceMappingMethod = vi.fn().mockResolvedValue({
 				fields: [{ id: '1', displayName: 'F', defaultMatch: false, required: true, display: true }],
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(
@@ -187,7 +186,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should acquire and release isolate around getActionResult', async () => {
-			const actionHandler = jest.fn().mockResolvedValue({ key: 'value' });
+			const actionHandler = vi.fn().mockResolvedValue({ key: 'value' });
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: { properties: [] },
@@ -246,7 +245,7 @@ describe('DynamicNodeParametersService', () => {
 					outputs: [],
 					properties: [],
 				},
-				methods: { loadOptions: { someOther: jest.fn() } },
+				methods: { loadOptions: { someOther: vi.fn() } },
 			} as unknown as INodeType);
 
 			await expect(
@@ -263,7 +262,7 @@ describe('DynamicNodeParametersService', () => {
 
 	describe('getLocalResourceMappingFields', () => {
 		it('should remove duplicate resource mapping fields', async () => {
-			const resourceMappingMethod = jest.fn();
+			const resourceMappingMethod = vi.fn();
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: {
@@ -312,12 +311,12 @@ describe('DynamicNodeParametersService', () => {
 		const user = mock<User>();
 
 		beforeEach(() => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should not call findCredentialIdsWithScopeForUser when no credentials provided', async () => {
