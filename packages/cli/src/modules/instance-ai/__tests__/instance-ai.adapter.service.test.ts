@@ -25,6 +25,7 @@ import type {
 	IConnections,
 	INode,
 	INodeParameters,
+	IPinData,
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
@@ -65,6 +66,7 @@ function makeExecution(
 		startedAt?: Date;
 		stoppedAt?: Date;
 		runData?: Record<string, ITaskData[]>;
+		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
 		workflowNodes?: Array<{ name: string; type: string }>;
 	} = {},
@@ -81,6 +83,7 @@ function makeExecution(
 		data: {
 			resultData: {
 				runData,
+				pinData: overrides.pinData,
 				error: overrides.error,
 			},
 		} as unknown as IRunExecutionData,
@@ -2561,7 +2564,13 @@ function createRunAdapterForTests(
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
 
-	return { adapter, mockActiveExecutions, mockTelemetry, mockWorkflowRunner };
+	return {
+		adapter,
+		mockActiveExecutions,
+		mockExecutionPersistence,
+		mockTelemetry,
+		mockWorkflowRunner,
+	};
 }
 
 describe('createExecutionAdapter run()', () => {
@@ -2631,7 +2640,7 @@ describe('createExecutionAdapter run()', () => {
 			'wf-1',
 			{ id: 'input' },
 			{
-				pinData: {
+				verificationPinData: {
 					Mocked: [{ id: 'mocked' }],
 				},
 			},
@@ -2642,6 +2651,56 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.source).toBe('instance_ai');
 		expect(runData.telemetryMetadata).toEqual({
 			mockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
+		});
+	});
+
+	it('removes unreached verification pin data from persisted executions without deleting workflow pins', async () => {
+		const workflowPinData = {
+			'User Pinned Node': [{ json: { source: 'workflow' } }],
+			'Shared Pin Node': [{ json: { source: 'workflow' } }],
+		};
+		const executionPinData = {
+			'Get Berlin Forecast': [{ json: { daily: { precipitation_sum: [0] } } }],
+			'Send Rain Alert': [{ json: {} }],
+			'User Pinned Node': [{ json: { source: 'workflow' } }],
+			'Shared Pin Node': [{ json: { source: 'verification' } }],
+		};
+		const { adapter, mockExecutionPersistence } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+				pinData: workflowPinData,
+			},
+			{
+				execution: makeExecution({
+					status: 'success',
+					runData: {
+						'Get Berlin Forecast': [makeTaskData([{ daily: { precipitation_sum: [0] } }])],
+					},
+					pinData: executionPinData,
+				}),
+			},
+		);
+
+		await adapter.run('wf-1', undefined, {
+			verificationPinData: {
+				'Get Berlin Forecast': [{ daily: { precipitation_sum: [0] } }],
+				'Send Rain Alert': [{}],
+				'Shared Pin Node': [{ source: 'verification' }],
+			},
+		});
+
+		expect(mockExecutionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		expect(mockExecutionPersistence.updateExistingExecution).toHaveBeenCalledWith('exec-1', {
+			data: expect.objectContaining({
+				resultData: expect.objectContaining({
+					pinData: {
+						'Get Berlin Forecast': [{ json: { daily: { precipitation_sum: [0] } } }],
+						'User Pinned Node': [{ json: { source: 'workflow' } }],
+						'Shared Pin Node': [{ json: { source: 'workflow' } }],
+					},
+				}),
+			}),
 		});
 	});
 
@@ -2688,6 +2747,7 @@ describe('createExecutionAdapter run()', () => {
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
+				error: 'boom',
 			}),
 		);
 	});
@@ -2715,6 +2775,33 @@ describe('createExecutionAdapter run()', () => {
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
+				error: expect.stringContaining('timed out'),
+			}),
+		);
+	});
+
+	it('tracks error status when an execution fails to launch', async () => {
+		const { adapter, mockTelemetry, mockWorkflowRunner } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				threadId: 'thread-1',
+			},
+		);
+
+		const launchError = new Error('Failed to run workflow due to missing execution data');
+		mockWorkflowRunner.run.mockRejectedValueOnce(launchError);
+
+		await expect(adapter.run('wf-1')).rejects.toThrow(launchError);
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+				error: 'Failed to run workflow due to missing execution data',
 			}),
 		);
 	});

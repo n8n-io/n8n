@@ -32,6 +32,10 @@ vi.mock('../nodes.tool', () => ({
 	})),
 }));
 
+vi.mock('../n8n-docs.tool', () => ({
+	createN8nDocsTool: vi.fn(() => ({ id: 'n8n-docs' })),
+}));
+
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -129,6 +133,7 @@ describe('domain tool construction', () => {
 			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
+			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
@@ -148,6 +153,7 @@ describe('domain tool construction', () => {
 			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
+			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },

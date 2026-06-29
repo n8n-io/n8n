@@ -30,9 +30,9 @@ function normalizeTab(value: unknown): RolesTab {
 const activeTab = ref<RolesTab>(normalizeTab(route.query.tab));
 
 function addRole() {
-	if (activeTab.value === 'project') {
-		void router.push({ name: VIEWS.PROJECT_NEW_ROLE });
-	}
+	void router.push({
+		name: activeTab.value === 'project' ? VIEWS.PROJECT_NEW_ROLE : VIEWS.INSTANCE_NEW_ROLE,
+	});
 }
 
 const tabOptions = computed<Array<TabOptions<RolesTab>>>(() => [

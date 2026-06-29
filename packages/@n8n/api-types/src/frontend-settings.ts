@@ -106,7 +106,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
@@ -272,6 +272,7 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		earliestDataDate: string | null;
 	};
 
 	/**
@@ -300,6 +301,7 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
+		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
 		sandboxEnabled: boolean;
