@@ -54,14 +54,21 @@ function reparentChildSpans(
 }
 
 /**
- * Filters noisy auto-instrumentation child spans before Sentry sends a transaction:
- * - Express middleware/router/handler spans wholesale.
- * - Fast, non-errored `db`/`http.client` spans (below `slowSpanThresholdMs`).
+ * Filters noise before Sentry sends a transaction:
+ * - Drops transactions rooted on a `db` operation wholesale (DB queries/pool connects
+ *   that became roots outside any request/job span — high volume, no signal).
+ * - Express middleware/router/handler child spans wholesale.
+ * - Fast, non-errored `db`/`http.client` child spans (below `slowSpanThresholdMs`).
  *
- * Kept descendants of dropped spans are reparented.
+ * Kept descendants of dropped child spans are reparented.
  */
 export function buildBeforeSendTransaction(slowSpanThresholdMs: number) {
-	return (event: TransactionEvent): TransactionEvent => {
+	return (event: TransactionEvent): TransactionEvent | null => {
+		// DB operations (queries, pool connects) get op `db`. A `db`-rooted transaction
+		// ran outside any request/job span — high volume, no signal. Child db spans under
+		// real transactions keep a non-`db` root op, so they are untouched.
+		if (event.contexts?.trace?.op === 'db') return null;
+
 		if (event.spans) {
 			const spans = event.spans;
 			event.spans = spans.filter((span) => {

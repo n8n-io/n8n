@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useChatStore } from './chat.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import * as chatApi from './chat.api';
 import type { ChatHubToolDto, ChatHubAgentDto, ChatHubSessionDto } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
@@ -422,5 +423,41 @@ describe('chat.store - tool methods', () => {
 				expect(store.getCustomAgent('nonexistent')).toBeUndefined();
 			});
 		});
+	});
+});
+
+describe('chat.store - setChatEnabled', () => {
+	let store: ReturnType<typeof useChatStore>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		setActivePinia(createPinia());
+		store = useChatStore();
+	});
+
+	it('should call the api and refresh module settings when enabling', async () => {
+		const updateSpy = vi
+			.spyOn(chatApi, 'updateChatEnabledApi')
+			.mockResolvedValue({ enabled: true });
+		const settingsStore = useSettingsStore();
+		const refreshSpy = vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue();
+
+		await store.setChatEnabled(true);
+
+		expect(updateSpy).toHaveBeenCalledWith(expect.anything(), true);
+		expect(refreshSpy).toHaveBeenCalled();
+	});
+
+	it('should call the api and refresh module settings when disabling', async () => {
+		const updateSpy = vi
+			.spyOn(chatApi, 'updateChatEnabledApi')
+			.mockResolvedValue({ enabled: false });
+		const settingsStore = useSettingsStore();
+		const refreshSpy = vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue();
+
+		await store.setChatEnabled(false);
+
+		expect(updateSpy).toHaveBeenCalledWith(expect.anything(), false);
+		expect(refreshSpy).toHaveBeenCalled();
 	});
 });
