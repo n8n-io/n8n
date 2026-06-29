@@ -1316,6 +1316,7 @@ export class InstanceAiService {
 		// and surface as `DriverAlreadyReleasedError` otherwise. Bounded so
 		// a hung agent can't block n8n's own graceful-shutdown deadline.
 		await this.drainInFlightExecutions(INSTANCE_AI_SHUTDOWN_DRAIN_TIMEOUT_MS);
+		this.instanceAiErrorReporter.endAllRuns();
 
 		const threadsWithTraces = new Set(this.tracing.getTrackedThreadIds());
 		for (const threadId of threadsWithTraces) {
@@ -2787,6 +2788,8 @@ export class InstanceAiService {
 		let messageId = '';
 
 		try {
+			this.instanceAiErrorReporter.beginRun(runId);
+
 			messageId = nanoid();
 			const traceInput: Record<string, unknown> = {
 				message,
@@ -3512,6 +3515,7 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
 				await this.maybeStartWorkflowSetupFollowUp(user, threadId);
 			}
+			this.instanceAiErrorReporter.endRun(runId);
 		}
 	}
 
@@ -4047,6 +4051,8 @@ export class InstanceAiService {
 		let completedSetupWorkflowId: string | undefined;
 
 		try {
+			this.instanceAiErrorReporter.beginRun(opts.runId);
+
 			if (opts.tracing?.getTelemetry && isTelemetryConfigurableAgent(agent)) {
 				try {
 					agent.telemetry(
@@ -4425,6 +4431,7 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 				await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
 			}
+			this.instanceAiErrorReporter.endRun(opts.runId);
 		}
 	}
 

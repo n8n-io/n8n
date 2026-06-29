@@ -13,7 +13,7 @@ export type InstanceAiErrorReportContext = { component: string } & InstanceAiObs
 export class InstanceAiErrorReporterService {
 	private readonly logger: Logger;
 
-	private readonly reportedErrors = new WeakSet<object>();
+	private readonly reportedErrorsByRun = new Map<string, WeakSet<object>>();
 
 	constructor(
 		logger: Logger,
@@ -22,11 +22,20 @@ export class InstanceAiErrorReporterService {
 		this.logger = logger.scoped('instance-ai');
 	}
 
+	beginRun(runId: string): void {
+		this.reportedErrorsByRun.set(runId, new WeakSet());
+	}
+
+	endRun(runId: string): void {
+		this.reportedErrorsByRun.delete(runId);
+	}
+
+	endAllRuns(): void {
+		this.reportedErrorsByRun.clear();
+	}
+
 	report(error: unknown, context: InstanceAiErrorReportContext): void {
-		if (typeof error === 'object' && error !== null) {
-			if (this.reportedErrors.has(error)) return;
-			this.reportedErrors.add(error);
-		}
+		if (this.shouldSkipDuplicateReport(error, context.runId)) return;
 
 		const observability = buildInstanceAiObservabilityContext(context);
 
@@ -54,5 +63,23 @@ export class InstanceAiErrorReporterService {
 
 			throw error;
 		}
+	}
+
+	private shouldSkipDuplicateReport(error: unknown, runId?: string): boolean {
+		if (typeof error !== 'object' || error === null || !runId) {
+			return false;
+		}
+
+		const reportedErrors = this.reportedErrorsByRun.get(runId);
+		if (!reportedErrors) {
+			return false;
+		}
+
+		if (reportedErrors.has(error)) {
+			return true;
+		}
+
+		reportedErrors.add(error);
+		return false;
 	}
 }

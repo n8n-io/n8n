@@ -1,13 +1,19 @@
+import type { Mock } from 'vitest';
+
 import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 
 describe('InstanceAiErrorReporterService', () => {
 	function createService(): {
 		service: InstanceAiErrorReporterService;
-		errorReporter: { error: jest.Mock };
-		logger: { error: jest.Mock };
+		errorReporter: { error: Mock };
+		logger: { error: Mock };
 	} {
-		const errorReporter = { error: jest.fn() };
-		const logger = { error: jest.fn(), scoped: jest.fn(() => logger) };
+		const errorReporter = { error: vi.fn() };
+		const logger: { error: Mock; scoped: Mock } = {
+			error: vi.fn(),
+			scoped: vi.fn(),
+		};
+		logger.scoped.mockReturnValue(logger);
 		const service = new InstanceAiErrorReporterService(logger as never, errorReporter as never);
 		return { service, errorReporter, logger };
 	}
@@ -16,6 +22,7 @@ describe('InstanceAiErrorReporterService', () => {
 		const { service, errorReporter } = createService();
 		const error = new Error('boom');
 
+		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-mcp-setup',
 			threadId: 't',
@@ -35,6 +42,7 @@ describe('InstanceAiErrorReporterService', () => {
 		const { service, errorReporter } = createService();
 		const error = new Error('setup failed');
 
+		service.beginRun('r');
 		await expect(
 			service.withBoundary('instance-ai-sandbox-setup', { threadId: 't', runId: 'r' }, async () => {
 				throw error;
@@ -71,5 +79,58 @@ describe('InstanceAiErrorReporterService', () => {
 				projectId: 'project-1',
 			},
 		});
+	});
+
+	it('drops per-run dedup state after endRun', () => {
+		const { service, errorReporter } = createService();
+		const error = new Error('boom');
+
+		service.beginRun('r');
+		service.report(error, {
+			component: 'instance-ai-run',
+			threadId: 't',
+			runId: 'r',
+		});
+		service.endRun('r');
+		service.beginRun('r');
+		service.report(error, {
+			component: 'instance-ai-run',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not dedup run-scoped errors when beginRun was not called', () => {
+		const { service, errorReporter } = createService();
+		const error = new Error('boom');
+
+		service.report(error, {
+			component: 'instance-ai-background-task',
+			threadId: 't',
+			runId: 'r',
+		});
+		service.report(error, {
+			component: 'instance-ai-background-task',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(2);
+	});
+
+	it('endAllRuns clears every active run scope', () => {
+		const { service, errorReporter } = createService();
+		const error = new Error('boom');
+
+		service.beginRun('r1');
+		service.beginRun('r2');
+		service.endAllRuns();
+
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r1' });
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r1' });
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(2);
 	});
 });
