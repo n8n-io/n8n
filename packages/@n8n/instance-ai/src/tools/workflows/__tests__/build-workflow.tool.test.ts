@@ -2,6 +2,8 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { buildWorkflowInputSchema, createBuildWorkflowTool } from '../build-workflow.tool';
+import type { SetupRequest } from '../setup-workflow.schema';
+import { analyzeWorkflow } from '../setup-workflow.service';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
@@ -43,6 +45,7 @@ vi.mock('../resolve-credentials', () => ({
 }));
 
 vi.mock('../setup-workflow.service', () => ({
+	analyzeWorkflow: vi.fn(async () => await Promise.resolve([])),
 	stripStaleCredentialsFromWorkflow: vi.fn(async () => await Promise.resolve()),
 }));
 
@@ -69,6 +72,16 @@ type BuildToolOutput = {
 	workflowId?: string;
 	workflowName?: string;
 	workItemId?: string;
+	verificationReadiness?: {
+		status: string;
+		reason?: string;
+		guidance?: string;
+	};
+	setupRequirement?: {
+		status: string;
+		reason?: string;
+		guidance?: string;
+	};
 	warnings?: string[];
 	errors?: string[];
 	remediation?: {
@@ -151,6 +164,7 @@ describe('createBuildWorkflowTool', () => {
 			errors: [],
 			informational: warnings,
 		}));
+		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {
@@ -181,6 +195,46 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-1',
 			workflowVersionId: 'v-1',
 			sourceHash: hashWorkflowSource(source),
+		});
+	});
+
+	it('keeps pending workflow setup ready for verification', async () => {
+		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
+			{
+				node: {
+					id: 'slack-1',
+					name: 'Send No-Rain Message',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.3,
+					parameters: {
+						channelId: { __rl: true, mode: 'id', value: '' },
+					},
+					position: [0, 0],
+				},
+				parameterIssues: {
+					channelId: ['Not a valid Slack Channel ID or name'],
+				},
+				isTrigger: false,
+				needsAction: true,
+			} as SetupRequest,
+		]);
+		const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			workflowId: 'wf-1',
+			verificationReadiness: {
+				status: 'ready',
+			},
+			setupRequirement: {
+				status: 'required',
+				reason: 'workflow-needs-setup',
+			},
 		});
 	});
 
@@ -215,6 +269,107 @@ describe('createBuildWorkflowTool', () => {
 				save_operation: 'update',
 			}),
 		);
+	});
+
+	it('preserves setup-applied placeholder values before updating an existing workflow', async () => {
+		const rebuiltWorkflow = {
+			name: 'Daily Berlin Rain Alert',
+			nodes: [
+				{
+					id: 'new-email',
+					name: 'Email Rain Alert',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2.1,
+					position: [0, 0] as [number, number],
+					parameters: {
+						resource: 'message',
+						operation: 'send',
+						sendTo: '<__PLACEHOLDER_VALUE__Your email address__>',
+						subject: 'Rain alert',
+					},
+				},
+				{
+					id: 'new-slack',
+					name: 'Slack Sunny Day',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.3,
+					position: [280, 0] as [number, number],
+					parameters: {
+						resource: 'message',
+						operation: 'post',
+						select: 'user',
+						user: {
+							__rl: true,
+							mode: 'username',
+							value: 'oleg',
+							cachedResultName: 'oleg',
+						},
+					},
+				},
+			],
+			connections: {},
+		};
+		const existingWorkflow = {
+			name: 'Daily Berlin Rain Alert',
+			nodes: [
+				{
+					id: 'old-email',
+					name: 'Email Rain Alert',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2.1,
+					position: [0, 0] as [number, number],
+					parameters: {
+						resource: 'message',
+						operation: 'send',
+						sendTo: 'person@example.com',
+						subject: 'Old rain alert',
+					},
+				},
+			],
+			connections: {},
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: rebuiltWorkflow,
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				workflowService: {
+					createFromWorkflowJSON: vi.fn(
+						async () => await Promise.resolve({ id: 'wf-1', versionId: 'v-1' }),
+					),
+					updateFromWorkflowJSON: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
+					),
+					getAsWorkflowJSON: vi.fn(async () => await Promise.resolve(existingWorkflow)),
+					clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+				} as unknown as InstanceAiContext['workflowService'],
+			},
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+			'wf-existing',
+			expect.any(Object),
+			undefined,
+		);
+		const savedWorkflow = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock
+			.calls[0]?.[1];
+		const emailNode = savedWorkflow?.nodes.find((node) => node.name === 'Email Rain Alert');
+		const slackNode = savedWorkflow?.nodes.find((node) => node.name === 'Slack Sunny Day');
+		expect(emailNode?.parameters).toMatchObject({
+			sendTo: 'person@example.com',
+			subject: 'Rain alert',
+		});
+		expect(slackNode?.parameters?.user).toMatchObject({ value: 'oleg' });
 	});
 
 	it('updates an existing workflow from a WorkflowJSON workspace source file', async () => {

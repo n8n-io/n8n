@@ -135,6 +135,15 @@ export function useCanvasMapping({
 		return dimensionsById;
 	});
 
+	function getVisiblePinDataByNodeId(id: string) {
+		const rd = renderData.value;
+		const nodeName = nodeNameById.value.get(id);
+		if (rd.isExecutionDataDisplayed) {
+			return nodeName ? rd.executionPinDataByNodeName[nodeName] : undefined;
+		}
+		return rd.pinnedDataByNodeId.get(id)?.value;
+	}
+
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
@@ -209,10 +218,7 @@ export function useCanvasMapping({
 	function getConnectionStatus(connection: Connection): CanvasConnectionData['status'] {
 		const rd = renderData.value;
 		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-		const sourceName = nodeNameById.value.get(connection.source);
-		const hasSimulatedSourceOutput = Boolean(
-			sourceName && rd.executionSimulationByNodeName[sourceName],
-		);
+		const hasPinnedSourceOutput = Boolean(getVisiblePinDataByNodeId(connection.source));
 
 		const runData = rd.executionRunDataOutputMapByNodeId.get(connection.source)?.[type]?.[index];
 		const runDataTotal = runData?.total ?? 0;
@@ -232,10 +238,7 @@ export function useCanvasMapping({
 		const matches: Record<(typeof CONNECTION_STATUS_PRIORITY)[number], boolean> = {
 			running:
 				(rd.executionRunningByNodeId.get(connection.source)?.value ?? false) && runDataTotal === 0,
-			pinned: Boolean(
-				(rd.pinnedDataByNodeId.get(connection.source)?.value || hasSimulatedSourceOutput) &&
-					sourceTasks,
-			),
+			pinned: Boolean(hasPinnedSourceOutput && sourceTasks),
 			error: rd.hasIssuesByNodeId.get(connection.source)?.value ?? false,
 			success: runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled' && targetExecuted,
 		};
@@ -287,7 +290,7 @@ export function useCanvasMapping({
 			sourceHandle,
 		} = connection.data?.canonicals?.[0] ?? connection;
 
-		const pinned = rd.pinnedDataByNodeId.get(sourceId)?.value;
+		const pinned = getVisiblePinDataByNodeId(sourceId);
 		if (pinned) {
 			const pinnedDataCount = pinned.length;
 			return pinnedDataCount > 0
