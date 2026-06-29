@@ -1,5 +1,5 @@
 import { SharedCredentialsRepository } from '@n8n/db';
-import type { Project, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialTypes } from '@/credential-types';
@@ -34,7 +34,7 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 
 		const bindings = context.credentialBindings;
 		const usableTypesById = await this.findUsableCredentialTypesById(
-			context.targetProject,
+			context.projectId,
 			context.user,
 		);
 
@@ -50,12 +50,12 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 
 	/** Maps each credential the user can use in the target project to its type. */
 	private async findUsableCredentialTypesById(
-		targetProject: Project,
+		projectId: string,
 		user: User,
 	): Promise<Map<string, string>> {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId: targetProject.id },
+			{ projectId },
 		);
 
 		return new Map(usableCredentials.map((credential) => [credential.id, credential.type]));

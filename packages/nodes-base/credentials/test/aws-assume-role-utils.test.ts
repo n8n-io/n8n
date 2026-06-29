@@ -2,6 +2,21 @@ import { assumeRole } from '@credentials/common/aws/utils';
 import type { AwsAssumeRoleCredentialsType } from '@credentials/common/aws/types';
 import { UserError } from 'n8n-workflow';
 
+// `assumeRole` sends via @n8n/backend-network/transport's asCustomFetch(), not the
+// global fetch. Proxy/NO_PROXY resolution is delegated to the transport (`proxy: 'env'`),
+// so we mock the transport and assert on the delegation rather than on a dispatcher.
+const { mockFetch, createDispatcherTransportMock } = vi.hoisted(() => {
+	const mockFetch = vi.fn();
+	return {
+		mockFetch,
+		createDispatcherTransportMock: vi.fn(() => ({ asCustomFetch: () => mockFetch })),
+	};
+});
+
+vi.mock('@n8n/backend-network/transport', () => ({
+	createDispatcherTransport: createDispatcherTransportMock,
+}));
+
 function baseCredentials(
 	overrides: Partial<AwsAssumeRoleCredentialsType> = {},
 ): AwsAssumeRoleCredentialsType {
@@ -56,63 +71,34 @@ describe('assumeRole() — centralized validation', () => {
 	});
 });
 
-// Mock global fetch so we can inspect dispatcher behavior without hitting the network.
-const fetchMock = vi.fn();
-beforeEach(() => {
-	fetchMock.mockReset();
-	// Return a minimal STS-success XML so assumeRole() completes.
-	fetchMock.mockResolvedValue({
-		ok: true,
-		text: async () =>
-			'<AssumeRoleResponse><AssumeRoleResult><Credentials>' +
-			'<AccessKeyId>ASIATEST</AccessKeyId>' +
-			'<SecretAccessKey>SECRET</SecretAccessKey>' +
-			'<SessionToken>TOKEN</SessionToken>' +
-			'</Credentials></AssumeRoleResult></AssumeRoleResponse>',
-	});
-	(globalThis as { fetch: unknown }).fetch = fetchMock as unknown as typeof fetch;
-});
-
 describe('assumeRole() — proxy-aware transport', () => {
-	const originalEnv = { ...process.env };
-	afterEach(() => {
-		process.env = { ...originalEnv };
+	beforeEach(() => {
+		createDispatcherTransportMock.mockClear();
+		mockFetch.mockReset();
+		// Return a minimal STS-success XML so assumeRole() completes.
+		mockFetch.mockResolvedValue({
+			ok: true,
+			text: async () =>
+				'<AssumeRoleResponse><AssumeRoleResult><Credentials>' +
+				'<AccessKeyId>ASIATEST</AccessKeyId>' +
+				'<SecretAccessKey>SECRET</SecretAccessKey>' +
+				'<SessionToken>TOKEN</SessionToken>' +
+				'</Credentials></AssumeRoleResult></AssumeRoleResponse>',
+		});
 	});
 
-	it('passes an undici ProxyAgent dispatcher when HTTPS_PROXY is set', async () => {
-		process.env.HTTPS_PROXY = 'http://proxy.example.com:3128';
-		delete process.env.NO_PROXY;
-
+	it('routes the STS request through the centralized proxy-aware transport', async () => {
 		await assumeRole(baseCredentials(), 'us-east-1');
 
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit & { dispatcher?: unknown }];
-		expect(init.dispatcher).toBeDefined();
-		expect((init.dispatcher as { constructor: { name: string } }).constructor.name).toBe(
-			'ProxyAgent',
+		// Proxy/NO_PROXY resolution is delegated to the transport via `proxy: 'env'`.
+		expect(createDispatcherTransportMock).toHaveBeenCalledWith({ proxy: 'env' });
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		expect(mockFetch).toHaveBeenCalledWith(
+			'https://sts.us-east-1.amazonaws.com',
+			expect.objectContaining({
+				method: 'POST',
+				body: expect.stringContaining('Action=AssumeRole'),
+			}),
 		);
-	});
-
-	it('does not pass a dispatcher when no proxy env var resolves', async () => {
-		delete process.env.HTTPS_PROXY;
-		delete process.env.HTTP_PROXY;
-		delete process.env.NO_PROXY;
-
-		await assumeRole(baseCredentials(), 'us-east-1');
-
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit & { dispatcher?: unknown }];
-		expect(init.dispatcher).toBeUndefined();
-	});
-
-	it('honors NO_PROXY for the STS host', async () => {
-		process.env.HTTPS_PROXY = 'http://proxy.example.com:3128';
-		process.env.NO_PROXY = '.amazonaws.com';
-
-		await assumeRole(baseCredentials(), 'us-east-1');
-
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit & { dispatcher?: unknown }];
-		expect(init.dispatcher).toBeUndefined();
 	});
 });

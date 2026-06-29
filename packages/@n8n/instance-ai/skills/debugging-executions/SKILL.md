@@ -2,8 +2,9 @@
 name: debugging-executions
 description: >-
   Debug failed or wrong-output workflow executions using executions tools. Load
-  when the user reports execution failures, unexpected node output, or empty
-  parameter values after a successful run.
+  when the user reports execution failures, unexpected node output, empty
+  parameter values after a successful run, or a node showing a red or failed
+  expression error.
 recommended_tools:
   - executions
   - workflows
@@ -13,6 +14,18 @@ recommended_tools:
 
 Use this skill when debugging workflow execution failures or successful runs
 with wrong or empty values.
+
+## When the user reports it still fails
+
+Re-run the failing path with `executions(action="run")` (or
+`verify-built-workflow`) and inspect the real result before responding. Do not
+restate that the workflow is "fixed", "verified", or "working", and do not
+attribute the reported failure to a test-harness artifact, stale state, or "it
+works in production" without a re-run against the failing path. Treat live
+signals as real: an execution error, partial coverage (`nodesNotReached`), an
+empty node, or a missing node is a real defect to investigate, not something to
+explain away. If you genuinely cannot re-run the failing path, say so plainly and
+name what is unconfirmed instead of repeating a success claim.
 
 ## Testing event-triggered workflows
 

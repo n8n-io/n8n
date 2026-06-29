@@ -152,11 +152,15 @@ describe('OauthService', () => {
 	});
 
 	describe('constructor', () => {
-		it('builds its HTTP client with the injected SSRF protection service', () => {
+		it('builds its HTTP client with the injected SSRF protection service and a default timeout', () => {
 			// Guards the intent that outbound OAuth calls run with SSRF protection
 			// enabled per the configured env vars, rather than relying on the implicit
-			// `requests()` default.
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
+			// `requests()` default, and that the shared request timeout is applied once
+			// on the client instead of being repeated per call.
+			expect(outboundHttp.requests).toHaveBeenCalledWith({
+				ssrf: ssrfProtectionService,
+				timeout: expect.any(Number),
+			});
 		});
 	});
 
@@ -195,7 +199,7 @@ describe('OauthService', () => {
 		});
 	});
 
-	describe('getCredential', () => {
+	describe('getCredentialForAuthFlow', () => {
 		it('should throw BadRequestError when credential ID is missing', async () => {
 			const req = {
 				query: {},
@@ -208,7 +212,7 @@ describe('OauthService', () => {
 				enumerable: true,
 			});
 
-			const promise = service.getCredentialForUpdate(req);
+			const promise = service.getCredentialForAuthFlow(req);
 			await expect(promise).rejects.toThrow(BadRequestError);
 			await expect(promise).rejects.toThrow('Required credential ID is missing');
 		});
@@ -221,29 +225,52 @@ describe('OauthService', () => {
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await expect(service.getCredentialForUpdate(req)).rejects.toThrow(NotFoundError);
+			await expect(service.getCredentialForAuthFlow(req)).rejects.toThrow(NotFoundError);
 			expect(logger.error).toHaveBeenCalledWith(
 				'OAuth credential authorization failed because the current user does not have the correct permissions',
 				{ userId: '123', credentialId: 'credential-id' },
 			);
 		});
 
-		it('should return credential when found', async () => {
+		it('should require credential:update scope for shared/static credentials', async () => {
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
 				query: { id: 'credential-id' },
 				user: mock<User>({ id: '123' }),
 			});
 
+			credentialsFinderService.findCredentialById.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'credential-id', isResolvable: false }),
+			);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 
-			const result = await service.getCredentialForUpdate(req);
+			const result = await service.getCredentialForAuthFlow(req);
 
 			expect(result).toBe(mockCredential);
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				'credential-id',
 				req.user,
 				['credential:update'],
+			);
+		});
+
+		it('should require credential:connect scope for private (resolvable) credentials', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id', isResolvable: true });
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+				query: { id: 'credential-id' },
+				user: mock<User>({ id: '123' }),
+			});
+
+			credentialsFinderService.findCredentialById.mockResolvedValue(mockCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
+
+			const result = await service.getCredentialForAuthFlow(req);
+
+			expect(result).toBe(mockCredential);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-id',
+				req.user,
+				['credential:connect'],
 			);
 		});
 	});
@@ -1578,6 +1605,84 @@ describe('OauthService', () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'wordpressOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope for googleSheetsOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'googleSheetsOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope for googleCalendarOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'googleCalendarOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope for googleCloudStorageOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'googleCloudStorageOAuth2Api',
 				isManaged: false,
 			});
 			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
@@ -4139,7 +4244,7 @@ describe('OauthService', () => {
 		});
 
 		describe('outbound request mapping and SSRF (factory migration)', () => {
-			it('maps protected-resource discovery to a GET with JSON, full response and a timeout', async () => {
+			it('maps protected-resource discovery to a GET with JSON and full response', async () => {
 				httpClientMock.get.mockResolvedValueOnce({
 					data: { authorization_servers: ['https://auth.example.com'] },
 				});
@@ -4152,7 +4257,6 @@ describe('OauthService', () => {
 						method: 'GET',
 						json: true,
 						returnFullResponse: true,
-						timeout: expect.any(Number),
 					}),
 				);
 			});

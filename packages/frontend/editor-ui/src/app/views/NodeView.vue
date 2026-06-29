@@ -45,6 +45,7 @@ import type {
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
+	GroupExpansionMode,
 	ViewportBoundaries,
 } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -84,6 +85,7 @@ import type {
 	ExecutionSummary,
 	IConnection,
 	INodeParameters,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -304,7 +306,7 @@ const isNDVV2 = computed(() => true);
 
 // Per-editor host overrides (AI features + read-only). The artifact host marks
 // the canvas read-only while a workflow-builder agent mutates the workflow.
-const { readOnly: externalReadOnly } = useEditorContext();
+const { readOnly: externalReadOnly, expandGroups: externalExpandGroups } = useEditorContext();
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -316,6 +318,10 @@ const isCanvasReadOnly = computed(() => {
 		(builderStore.streaming && !builderStore.isHelpStreaming) ||
 		externalReadOnly.value
 	);
+});
+
+const groupExpansionMode = computed<GroupExpansionMode | undefined>(() => {
+	return isDemoRoute.value ? 'all' : externalExpandGroups.value;
 });
 
 const canExecuteOnCanvas = computed(() => {
@@ -482,6 +488,18 @@ function onDeleteNodes(ids: string[]) {
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
 	revertDeleteNode(node);
+}
+
+function onRevertAddNodeGroup({ group }: { group: IWorkflowGroup }) {
+	workflowDocumentStore.value.deleteGroup(group.id);
+}
+
+function onRevertRemoveNodeGroup({ group }: { group: IWorkflowGroup }) {
+	workflowDocumentStore.value.restoreGroup(group);
+}
+
+function onRevertUpdateNodeGroup({ group }: { group: IWorkflowGroup }) {
+	workflowDocumentStore.value.restoreGroup(group);
 }
 
 function onToggleNodeDisabled(id: string) {
@@ -1396,6 +1414,9 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertRenameNode', onRevertRenameNode);
 	historyBus.on('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
+	historyBus.on('revertAddNodeGroup', onRevertAddNodeGroup);
+	historyBus.on('revertRemoveNodeGroup', onRevertRemoveNodeGroup);
+	historyBus.on('revertUpdateNodeGroup', onRevertUpdateNodeGroup);
 }
 
 function removeUndoRedoEventBindings() {
@@ -1407,6 +1428,9 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertRenameNode', onRevertRenameNode);
 	historyBus.off('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
+	historyBus.off('revertAddNodeGroup', onRevertAddNodeGroup);
+	historyBus.off('revertRemoveNodeGroup', onRevertRemoveNodeGroup);
+	historyBus.off('revertUpdateNodeGroup', onRevertUpdateNodeGroup);
 }
 
 /**
@@ -1634,8 +1658,11 @@ function unregisterCustomActions() {
 
 function showAddFirstStepIfEnabled() {
 	if (uiStore.addFirstStepOnLoad) {
-		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+		void onOpenNodeCreatorForTriggerNodes(
+			uiStore.addFirstStepOnLoadSource ?? NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
+		);
 		uiStore.addFirstStepOnLoad = false;
+		uiStore.addFirstStepOnLoadSource = undefined;
 	}
 }
 
@@ -1951,6 +1978,7 @@ onBeforeUnmount(() => {
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
 			:read-only="isCanvasReadOnly"
+			:group-expansion-mode="groupExpansionMode"
 			:can-execute="canExecuteOnCanvas"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"

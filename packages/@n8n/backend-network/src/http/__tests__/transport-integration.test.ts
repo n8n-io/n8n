@@ -75,7 +75,7 @@ describe('outbound transport integration', () => {
 			const config: AxiosRequestConfig = { url: `${target.url}/x`, method: 'GET', proxy: false };
 			setAxiosAgents(config, undefined, proxy.url);
 
-			const res = await axios(config);
+			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('proxied');
 			expect(proxy.captured.length).toBeGreaterThan(0);
@@ -91,7 +91,7 @@ describe('outbound transport integration', () => {
 			};
 			setAxiosAgents(config, undefined, undefined);
 
-			const res = await axios(config);
+			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('proxied');
 			expect(proxy.captured.length).toBeGreaterThan(0);
@@ -101,7 +101,7 @@ describe('outbound transport integration', () => {
 			const config: AxiosRequestConfig = { url: `${target.url}/x`, method: 'GET', proxy: false };
 			setAxiosAgents(config, undefined, undefined);
 
-			const res = await axios(config);
+			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('direct');
 			expect(proxy.captured).toHaveLength(0);
@@ -113,7 +113,7 @@ describe('outbound transport integration', () => {
 			const config: AxiosRequestConfig = { url: `${target.url}/x`, method: 'GET', proxy: false };
 			setAxiosAgents(config, undefined, undefined);
 
-			const res = await axios(config);
+			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('direct');
 			expect(proxy.captured).toHaveLength(0);
@@ -136,7 +136,7 @@ describe('outbound transport integration', () => {
 			};
 			setAxiosAgents(config, undefined, undefined, bridge);
 
-			const res = await axios(config);
+			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('direct');
 			expect(lookupSpy).toHaveBeenCalledWith('localhost', expect.anything(), expect.anything());
@@ -158,7 +158,7 @@ describe('outbound transport integration', () => {
 			};
 			setAxiosAgents(config, undefined, undefined, bridge);
 
-			const res = await axios(config);
+			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('proxied');
 			// The proxy host is an IP (no lookup) and the proxy resolves the final
@@ -193,7 +193,7 @@ describe('outbound transport integration', () => {
 			config.beforeRedirect = getBeforeRedirectFn({}, config, undefined, true);
 			setAxiosAgents(config, {}, undefined);
 
-			const res = await axios(config);
+			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('final');
 		});

@@ -128,8 +128,10 @@ contains successful `outcome.verification` tool evidence (`attempted: true`,
 persisted-workflow inspection agrees the requested outcome is present, use that
 evidence without re-running verification. Otherwise execute
 `checkpoint.instructions` using your tools — typically `verify-built-workflow`
-with the work item ID from the build outcome, or `executions(action="run")` for a
-built workflow with real credentials and a testable trigger. If verification
+with the workflow ID and, when available, the work item ID from the build
+outcome. Use `fixtureOverrides` for alternate deterministic scenarios. Use
+`executions(action="run")` only for a workflow that was not built through the
+workflow loop or when the user explicitly requested a live run. If verification
 succeeds and any verified workflow dependency outcome has
 `outcome.setupRequirement.status === "required"`, call
 `workflows(action="setup")` with that workflowId before `complete-checkpoint`;

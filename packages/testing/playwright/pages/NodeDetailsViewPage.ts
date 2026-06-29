@@ -4,8 +4,11 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { ActionToggle } from './components/ActionToggle';
+import { CodeNodeEditor } from './components/CodeNodeEditor';
 import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
+import { NodeCreator } from './components/NodeCreator';
 import { NodeCredentials } from './components/NodeCredentials';
 import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { ResourceLocator } from './components/ResourceLocator';
@@ -21,6 +24,9 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly credentials = new NodeCredentials(this.container);
 	readonly inlineExpressionEditor = new InlineExpressionEditor(this.container);
 	readonly resourceLocator = new ResourceLocator(this.container);
+	readonly codeNodeEditor = new CodeNodeEditor(this.container);
+	readonly nodeCreator = new NodeCreator(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
 
 	constructor(page: Page) {
 		super(page);
@@ -291,55 +297,55 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickAskAiTab() {
-		await this.container.locator('#tab-ask-ai').click();
+		await this.codeNodeEditor.clickAskAiTab();
 	}
 
 	getAskAiTabPanel() {
-		return this.container.getByTestId('code-node-tab-ai');
+		return this.codeNodeEditor.getAskAiTabPanel();
 	}
 
 	getAskAiCtaButton() {
-		return this.container.getByTestId('ask-ai-cta');
+		return this.codeNodeEditor.getAskAiCtaButton();
 	}
 
 	getAskAiPromptInput() {
-		return this.container.getByTestId('ask-ai-prompt-input');
+		return this.codeNodeEditor.getAskAiPromptInput();
 	}
 
 	getAskAiPromptCounter() {
-		return this.container.getByTestId('ask-ai-prompt-counter');
+		return this.codeNodeEditor.getAskAiPromptCounter();
 	}
 
 	getAskAiCtaTooltipNoInputData() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-no-input-data');
+		return this.codeNodeEditor.getAskAiCtaTooltipNoInputData();
 	}
 
 	getAskAiCtaTooltipNoPrompt() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-no-prompt');
+		return this.codeNodeEditor.getAskAiCtaTooltipNoPrompt();
 	}
 
 	getAskAiCtaTooltipPromptTooShort() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-prompt-too-short');
+		return this.codeNodeEditor.getAskAiCtaTooltipPromptTooShort();
 	}
 
 	getCodeTabPanel() {
-		return this.container.getByTestId('code-node-tab-code');
+		return this.codeNodeEditor.getCodeTabPanel();
 	}
 
 	getCodeTab() {
-		return this.container.locator('#tab-code');
+		return this.codeNodeEditor.getCodeTab();
 	}
 
 	getCodeEditor() {
-		return this.getParameterInput('jsCode').locator('.cm-content');
+		return this.codeNodeEditor.getCodeEditor();
 	}
 
 	getLintErrors() {
-		return this.getParameterInput('jsCode').locator('.cm-lintRange-error');
+		return this.codeNodeEditor.getLintErrors();
 	}
 
 	getLintTooltip() {
-		return this.page.locator('.cm-tooltip-lint');
+		return this.codeNodeEditor.getLintTooltip();
 	}
 
 	getPlaceholderText(text: string) {
@@ -347,15 +353,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getHeyAiText() {
-		return this.page.locator('text=Hey AI, generate JavaScript');
+		return this.codeNodeEditor.getHeyAiText();
 	}
 
 	getCodeGenerationCompletedText() {
-		return this.page.locator('text=Code generation completed');
+		return this.codeNodeEditor.getCodeGenerationCompletedText();
 	}
 
 	getErrorMessageText(message: string) {
-		return this.page.locator(`text=${message}`);
+		return this.codeNodeEditor.getErrorMessageText(message);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
@@ -423,15 +429,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
-		return this.page.getByTestId('action-removeAllFields');
+		return this.actionToggle.getAction('removeAllFields');
 	}
 
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').getByRole('button').click();
-		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
-		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
+		await this.actionToggle.open(selectColumn);
+		await expect(this.actionToggle.getAction('refreshFieldList')).toBeVisible();
+		await this.actionToggle.getAction('refreshFieldList').click();
 	}
 
 	getAddValueButton() {
@@ -448,6 +454,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getInlineExpressionEditorContent() {
 		return this.inlineExpressionEditor.getContent();
+	}
+
+	getInlineExpressionEditorLine(index: number) {
+		return this.inlineExpressionEditor.getLine(index);
 	}
 
 	getInlineExpressionEditorOutput() {
@@ -611,11 +621,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async openCodeEditorFullscreen() {
-		await this.container.getByTestId('code-editor-fullscreen-button').click();
+		await this.codeNodeEditor.openFullscreen();
 	}
 
 	getCodeEditorFullscreen() {
-		return this.page.getByTestId('code-editor-fullscreen').locator('.cm-content');
+		return this.codeNodeEditor.getFullscreenEditor();
 	}
 
 	getCodeEditorDialog() {
@@ -726,7 +736,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async connectAISubNode(connectionType: string, nodeName: string, index: number = 0) {
 		await this.getAddSubNodeButton(connectionType, index).click();
-		await this.page.getByText(nodeName).click();
+		await this.nodeCreator.selectItem(nodeName);
 		await this.getFloatingNode().click();
 	}
 
@@ -845,7 +855,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickNodeCreatorInsertOneButton() {
-		await this.page.getByText('Insert one').click();
+		await this.nodeCreator.clickInsertOneLink();
 	}
 
 	getInputSelect() {
@@ -858,6 +868,14 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAiOutputModeToggle() {
 		return this.container.getByTestId('ai-output-mode-select');
+	}
+
+	getAiOutputModeRadios() {
+		return this.getAiOutputModeToggle().locator('[role="radio"]');
+	}
+
+	getWebhookUrlsContainer() {
+		return this.container.getByText('Webhook URLs').locator('..');
 	}
 
 	getCredentialLabel(credentialType: string) {

@@ -5,6 +5,7 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
+import { orchestratorAgentId } from '@n8n/instance-ai';
 import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
 import { z } from 'zod';
 
@@ -212,13 +213,14 @@ function buildTimeline(
  * Used when no snapshot is available for a given run.
  */
 function buildFlatAgentTree(
+	runId: string,
 	textContent: string,
 	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
 ): InstanceAiAgentNode {
 	return {
-		agentId: 'agent-001',
+		agentId: orchestratorAgentId(runId),
 		role: 'orchestrator',
 		status: 'completed',
 		textContent,
@@ -384,7 +386,7 @@ export function parseStoredMessages(
 			const agentTree =
 				snapshot?.tree ??
 				(toolCalls.length > 0 || text
-					? buildFlatAgentTree(text, reasoning, toolCalls, parts)
+					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts)
 					: undefined);
 
 			const assistantMessage: InstanceAiMessage = {
