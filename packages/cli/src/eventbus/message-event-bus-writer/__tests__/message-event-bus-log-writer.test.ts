@@ -9,6 +9,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { EventMessageTypes } from '../../event-message-classes';
+import { EventMessageAiNode } from '../../event-message-classes/event-message-ai-node';
+import { EventMessageAudit } from '../../event-message-classes/event-message-audit';
+import { EventMessageExecution } from '../../event-message-classes/event-message-execution';
+import { EventMessageGeneric } from '../../event-message-classes/event-message-generic';
+import { EventMessageNode } from '../../event-message-classes/event-message-node';
+import { EventMessageQueue } from '../../event-message-classes/event-message-queue';
+import { EventMessageRunner } from '../../event-message-classes/event-message-runner';
+import { EventMessageWorkflow } from '../../event-message-classes/event-message-workflow';
 import { MessageEventBusLogWriter } from '../message-event-bus-log-writer';
 
 jest.unmock('node:fs');
@@ -346,5 +354,119 @@ describe('MessageEventBusLogWriter.getInstance path resolution', () => {
 		await MessageEventBusLogWriter.getInstance(resolvedPath ? { resolvedPath } : undefined);
 
 		expect(MessageEventBusLogWriter.options.logFullBasePath).toBe(expected());
+	});
+});
+
+describe('MessageEventBusLogWriter.getEventMessageObjectByType round-trip', () => {
+	let tempDir: string;
+	let writer: MessageEventBusLogWriter;
+
+	beforeEach(() => {
+		tempDir = mkdtempSync(join(tmpdir(), 'eventbus-log-writer-roundtrip-'));
+		Container.set(Logger, mock<Logger>());
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				eventBus: {
+					logWriter: {
+						maxMessagesPerParse: 1000,
+						maxTotalMessagesPerFile: 500_000,
+						keepLogCount: 3,
+					},
+				},
+			}),
+		);
+		MessageEventBusLogWriter.options = {
+			logFullBasePath: join(tempDir, 'eventlog'),
+			keepNumberOfFiles: 3,
+			maxFileSizeInKB: 10240,
+		};
+		writer = new MessageEventBusLogWriter();
+	});
+
+	afterEach(() => {
+		rmSync(tempDir, { recursive: true, force: true });
+		Container.reset();
+	});
+
+	// One representative instance per persisted message class. These cover every
+	// member of `EventMessageTypeNames` (n8n-workflow) that `send()` can persist –
+	// i.e. every member except `confirm`. Each must survive the
+	// serialize -> persist -> deserialize round-trip without being dropped to null.
+	const sampleMessages: Array<{ label: string; message: () => EventMessageTypes }> = [
+		{
+			label: EventMessageTypeNames.generic,
+			message: () => new EventMessageGeneric({ eventName: 'n8n.worker.started' }),
+		},
+		{
+			label: EventMessageTypeNames.workflow,
+			message: () =>
+				new EventMessageWorkflow({
+					eventName: 'n8n.workflow.started',
+					payload: { executionId: 'e1' },
+				}),
+		},
+		{
+			label: EventMessageTypeNames.audit,
+			message: () => new EventMessageAudit({ eventName: 'n8n.audit.user.login.success' }),
+		},
+		{
+			label: EventMessageTypeNames.node,
+			message: () =>
+				new EventMessageNode({
+					eventName: 'n8n.node.started',
+					payload: { executionId: 'e1', nodeName: 'Set', workflowName: 'wf' },
+				}),
+		},
+		{
+			label: EventMessageTypeNames.execution,
+			message: () =>
+				new EventMessageExecution({
+					eventName: 'n8n.execution.throttled',
+					payload: { executionId: 'e1', type: 'production' },
+				}),
+		},
+		{
+			label: EventMessageTypeNames.aiNode,
+			message: () =>
+				new EventMessageAiNode({
+					eventName: 'n8n.ai.tool.called',
+					payload: { executionId: 'e1', nodeName: 'Agent', workflowName: 'wf' },
+				}),
+		},
+		{
+			label: EventMessageTypeNames.runner,
+			message: () => new EventMessageRunner({ eventName: 'n8n.runner.task.requested' }),
+		},
+		{
+			label: EventMessageTypeNames.queue,
+			message: () => new EventMessageQueue({ eventName: 'n8n.queue.job.enqueued' }),
+		},
+	];
+
+	it.each(sampleMessages)(
+		'reconstructs a non-null instance for persisted message $label',
+		({ message }) => {
+			const original = message();
+
+			const reconstructed = writer.getEventMessageObjectByType(original.serialize());
+
+			expect(reconstructed).not.toBeNull();
+			expect(reconstructed?.eventName).toBe(original.eventName);
+		},
+	);
+
+	it('returns a persisted execution message as unsent when no confirm line exists', async () => {
+		const message = new EventMessageExecution({
+			eventName: 'n8n.execution.throttled',
+			payload: { executionId: 'e1', type: 'production' },
+		});
+		writeFileSync(writer.getLogFileName(), JSON.stringify(message.serialize()) + '\n');
+
+		const unsent = await writer.getMessagesUnsent();
+
+		expect(unsent).toHaveLength(1);
+		expect(unsent[0]).toBeInstanceOf(EventMessageExecution);
+		expect(unsent[0].payload?.executionId).toBe('e1');
 	});
 });
