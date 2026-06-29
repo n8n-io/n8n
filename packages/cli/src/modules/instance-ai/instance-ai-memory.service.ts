@@ -319,6 +319,16 @@ export class InstanceAiMemoryService {
 		await this.agentMemory.deleteThread(threadId);
 	}
 
+	/**
+	 * Remove every thread owned by a user, the sub-agent threads spawned under
+	 * them, and their working-memory resources. Invoked on user deletion to
+	 * avoid orphaning Instance AI data. Returns the number of owner threads
+	 * deleted.
+	 */
+	async deleteThreadsForUser(userId: string): Promise<number> {
+		return await this.agentMemory.deleteThreadsByResourceId(userId);
+	}
+
 	async renameThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
 		return await this.updateThread(threadId, { title });
 	}

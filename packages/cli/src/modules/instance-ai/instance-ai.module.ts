@@ -21,6 +21,11 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller');
 		await import('./mcp/instance-ai-mcp-connection.controller');
 
+		// Instantiating the relay registers its `user-deleted` listener, which
+		// cleans up Instance AI data owned by the deleted user.
+		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service');
+		Container.get(InstanceAiEventRelay);
+
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller');
 		}
