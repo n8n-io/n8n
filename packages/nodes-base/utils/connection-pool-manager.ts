@@ -40,8 +40,6 @@ type Registration<Pool> = {
 
 	abortController: AbortController;
 
-	wasUsed: (pool: Pool) => void;
-
 	isIdle?: (pool: Pool) => boolean;
 	/** We keep this timestamp to check if a pool hasn't been used in a while, and if it needs to be closed */
 	lastUsed: number;
@@ -119,7 +117,6 @@ export class ConnectionPoolManager {
 			pool: await options.fallBackHandler(abortController),
 			abortController,
 			isIdle: options.isIdle,
-			wasUsed: options.wasUsed,
 		} as Registration<unknown>;
 
 		// It's possible that `options.fallBackHandler` already called the abort
