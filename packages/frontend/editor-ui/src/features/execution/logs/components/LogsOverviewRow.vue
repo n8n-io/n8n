@@ -15,7 +15,7 @@ import {
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
 
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
@@ -192,33 +192,43 @@ watch(
 			icon="triangle-alert"
 			:class="$style.compactErrorIcon"
 		/>
-		<N8nIconButton
-			variant="ghost"
+		<N8nTooltip
 			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
-			size="small"
-			icon="square-pen"
-			icon-size="medium"
-			:style="{
-				visibility: props.data.isSubExecution ? 'hidden' : undefined,
-			}"
-			:disabled="props.latestInfo?.deleted"
-			:class="$style.openNdvButton"
-			:aria-label="locale.baseText('logs.overview.body.open')"
-			@click.stop="emit('openNdv')"
-		/>
-		<N8nIconButton
-			variant="ghost"
+			:content="locale.baseText('logs.overview.body.openTooltip')"
+			as-child
+		>
+			<N8nIconButton
+				variant="ghost"
+				size="small"
+				icon="square-pen"
+				icon-size="medium"
+				:style="{
+					visibility: props.data.isSubExecution ? 'hidden' : undefined,
+				}"
+				:disabled="props.latestInfo?.deleted"
+				:class="$style.openNdvButton"
+				:aria-label="locale.baseText('logs.overview.body.open')"
+				@click.stop="emit('openNdv')"
+			/>
+		</N8nTooltip>
+		<N8nTooltip
 			v-if="
 				!isCompact ||
 				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
 			"
-			size="small"
-			icon="play"
-			:aria-label="locale.baseText('logs.overview.body.run')"
-			:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
-			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
-			@click.stop="emit('triggerPartialExecution')"
-		/>
+			:content="locale.baseText('logs.overview.body.run')"
+			as-child
+		>
+			<N8nIconButton
+				variant="ghost"
+				size="small"
+				icon="play"
+				:aria-label="locale.baseText('logs.overview.body.run')"
+				:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
+				:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
+				@click.stop="emit('triggerPartialExecution')"
+			/>
+		</N8nTooltip>
 		<template v-if="isCompact && !hasChildren">
 			<AnimatedSpinner v-if="isRunning" :class="$style.statusIcon" />
 			<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusIcon" />
