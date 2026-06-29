@@ -68,6 +68,22 @@ async def manager_with_env_access_allowed(broker):
     await manager.stop()
 
 
+@pytest_asyncio.fixture
+async def manager_with_env_allowlist(broker):
+    manager = TaskRunnerManager(
+        task_broker_url=broker.get_url(),
+        custom_env={
+            "N8N_RUNNERS_STDLIB_ALLOW": "os",
+            "N8N_BLOCK_RUNNER_ENV_ACCESS": "true",
+            "N8N_RUNNER_ENV_ALLOW": "N8N_TEST_ALLOWED_VAR",
+            "N8N_TEST_ALLOWED_VAR": "preserved-value",
+        },
+    )
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
 def create_task_settings(
     code: str,
     node_mode: str,
