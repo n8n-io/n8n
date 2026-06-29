@@ -1,12 +1,13 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
-import { createPinia, setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import { VIEWS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { TOTAL_PROJECT_PERMISSIONS } from '@/features/roles/project/projectRoleScopes';
 
@@ -70,11 +71,14 @@ const renderComponent = createComponentRenderer(RoleHoverPopover, {
 
 describe('RoleHoverPopover', () => {
 	let usersStore: MockedStore<typeof useUsersStore>;
+	let settingsStore: MockedStore<typeof useSettingsStore>;
 
 	beforeEach(() => {
-		setActivePinia(createPinia());
-		usersStore = mockedStore(useUsersStore);
 		vi.clearAllMocks();
+		createTestingPinia();
+		usersStore = mockedStore(useUsersStore);
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isCustomRolesFeatureEnabled = true;
 	});
 
 	describe('Rendering', () => {
@@ -197,6 +201,34 @@ describe('RoleHoverPopover', () => {
 				params: { roleSlug: 'project:admin' },
 				query: { from: VIEWS.PROJECT_SETTINGS },
 			});
+		});
+	});
+
+	describe('Upgrade modal (no enterprise license)', () => {
+		beforeEach(() => {
+			settingsStore.isCustomRolesFeatureEnabled = false;
+			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
+			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
+		});
+
+		it('should show upgrade modal instead of navigating when clicking on a custom role', async () => {
+			const { getByText } = renderComponent({
+				props: { role: mockCustomRole },
+			});
+
+			await userEvent.click(getByText('View and edit role'));
+
+			expect(mockPush).not.toHaveBeenCalled();
+		});
+
+		it('should show upgrade modal instead of navigating when clicking "view role details" on a system role', async () => {
+			const { getByText } = renderComponent({
+				props: { role: mockSystemRole },
+			});
+
+			await userEvent.click(getByText('View role'));
+
+			expect(mockPush).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -20,7 +20,7 @@
 import type { JSONReport, JSONReportSuite } from '@playwright/test/reporter';
 import { readdirSync, readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 const CURRENTS_API = 'https://api.currents.dev/v1';
 
@@ -244,41 +244,44 @@ function findFiles(root: string, match: (path: string) => boolean): string[] {
 	return found.sort();
 }
 
-function findRunReports(root: string): string[] {
+export function findRunReports(root: string): string[] {
 	return findFiles(root, (p) => p.endsWith('.json') && p.includes('run-report'));
 }
 
-/** Decodes every `run-report.json` attachment in a Playwright JSON report. */
-function collectRunReportBodies(suites: JSONReportSuite[]): string[] {
-	const bodies: string[] = [];
-	const walk = (suite: JSONReportSuite): void => {
+/** Decodes every `run-report.json` attachment, paired with its source spec file. */
+function collectRunReports(suites: JSONReportSuite[]): Array<{ body: string; specFile: string }> {
+	const found: Array<{ body: string; specFile: string }> = [];
+	const walk = (suite: JSONReportSuite, inheritedFile: string): void => {
+		const suiteFile = suite.file ?? inheritedFile;
 		for (const spec of suite.specs ?? []) {
+			const specFile = spec.file ?? suiteFile;
 			for (const test of spec.tests ?? []) {
 				for (const result of test.results ?? []) {
 					for (const attachment of result.attachments ?? []) {
 						if (attachment.name === RUN_REPORT_ATTACHMENT && attachment.body) {
-							bodies.push(Buffer.from(attachment.body, 'base64').toString('utf8'));
+							found.push({
+								body: Buffer.from(attachment.body, 'base64').toString('utf8'),
+								specFile,
+							});
 						}
 					}
 				}
 			}
 		}
-		for (const child of suite.suites ?? []) walk(child);
+		for (const child of suite.suites ?? []) walk(child, suiteFile);
 	};
-	for (const suite of suites) walk(suite);
-	return bodies;
+	for (const suite of suites) walk(suite, '');
+	return found;
 }
 
 /**
- * Each benchmark lane uploads its Playwright `test-results.json`, which carries
- * the run-report as an inline base64 attachment (from
- * `testInfo.attach('run-report.json', { body })`) rather than as a loose file.
- * The filesystem scan in `findRunReports` only sees loose files, so decode each
- * inline attachment to a loose `run-report.*.json` next to its source report
- * first. Returns the number of reports written. Idempotent across re-runs.
+ * Decodes the inline `run-report.json` attachments from each lane's
+ * `test-results.json` into loose files (all `findRunReports` scans). Names each
+ * by its spec-file path, not the lane: the cell mapping matches on the spec-file
+ * stem, so a lane-named file would never map. Returns the count.
  */
 export function extractInlineRunReports(root: string): number {
-	let extracted = 0;
+	let index = 0;
 	for (const file of findFiles(root, (p) => basename(p) === 'test-results.json')) {
 		let report: JSONReport;
 		try {
@@ -287,18 +290,17 @@ export function extractInlineRunReports(root: string): number {
 			console.warn(`[sizing-matrix] Failed to parse ${file}: ${(error as Error).message}`);
 			continue;
 		}
-		const bodies = collectRunReportBodies(report.suites ?? []);
 		const laneDir = dirname(file);
-		const label = sanitiseFilename(relative(root, laneDir) || 'lane');
-		bodies.forEach((body, index) => {
-			writeFileSync(join(laneDir, `${label}.run-report.${index}.json`), body);
-			extracted++;
-		});
+		for (const { body, specFile } of collectRunReports(report.suites ?? [])) {
+			const stem = sanitiseFilename(specFile || `lane-${index}`);
+			writeFileSync(join(laneDir, `${stem}.run-report.${index}.json`), body);
+			index++;
+		}
 	}
-	return extracted;
+	return index;
 }
 
-function loadReport(path: string): { path: string; report: RunReport } | undefined {
+export function loadReport(path: string): { path: string; report: RunReport } | undefined {
 	try {
 		const report = JSON.parse(readFileSync(path, 'utf8')) as RunReport;
 		if (report.schemaVersion !== 1) {
@@ -353,6 +355,13 @@ async function main(): Promise<void> {
 		runDate: new Date().toISOString(),
 	};
 	const matrix = aggregate(input);
+
+	if (matrix.cells.length === 0) {
+		throw new Error(
+			`Aggregated 0 cells from ${reports.length} run-report(s) — every report failed to map to a sizing cell. ` +
+				'Extracted report filenames must carry the spec-file stem the mapping matches on.',
+		);
+	}
 
 	mkdirSync(dirname(args.out), { recursive: true });
 	writeFileSync(args.out, JSON.stringify(matrix, null, 2));

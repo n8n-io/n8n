@@ -140,3 +140,37 @@ describe('partialIsolationWarning', () => {
 		);
 	});
 });
+
+describe('parseCliArgs --source langtracer dataset isolation', () => {
+	it('derives a suite-scoped dataset + baseline prefix by default', () => {
+		const args = parseCliArgs(['--source', 'langtracer', '--suite', 'n8n-workflows']);
+		expect(args.dataset).toBe('instance-ai-langtracer-n8n-workflows');
+		expect(args.baselinePrefix).toBe('instance-ai-langtracer-n8n-workflows-baseline-');
+	});
+
+	it('does not derive in disk mode (defaults stay the shared cohort)', () => {
+		const args = parseCliArgs([]);
+		expect(args.dataset).toBe('instance-ai-workflow-evals');
+		expect(args.baselinePrefix).toBe('instance-ai-baseline-');
+	});
+
+	it('lets explicit --dataset / --baseline-prefix win', () => {
+		const args = parseCliArgs([
+			'--source',
+			'langtracer',
+			'--suite',
+			'n8n-workflows',
+			'--dataset',
+			'custom-ds',
+			'--baseline-prefix',
+			'custom-base-',
+		]);
+		expect(args.dataset).toBe('custom-ds');
+		expect(args.baselinePrefix).toBe('custom-base-');
+	});
+
+	it('sanitizes the suite into the dataset name', () => {
+		const args = parseCliArgs(['--source', 'langtracer', '--suite', 'My Suite!']);
+		expect(args.dataset).toBe('instance-ai-langtracer-my-suite');
+	});
+});
