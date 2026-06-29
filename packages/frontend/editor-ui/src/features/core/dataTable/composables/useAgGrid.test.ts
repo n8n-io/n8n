@@ -723,6 +723,34 @@ describe('useAgGrid', () => {
 
 			// No assertion needed, just ensuring no error is thrown
 		});
+
+		it('should not paste when cell is not editable (e.g. read-only grid)', () => {
+			const { onGridReady } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			const mockColumn = {
+				getColId: () => 'name',
+				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => false,
+			} as unknown as Column;
+
+			const mockRow = { setDataValue: vi.fn() };
+
+			mockGridApi.getFocusedCell = vi.fn(() => ({
+				rowIndex: 0,
+				column: mockColumn,
+				rowPinned: null,
+			}));
+			mockGridApi.getEditingCells = vi.fn(() => []);
+			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+
+			const mockUseClipboard = vi.mocked(useClipboard);
+			const onPasteCallback =
+				mockUseClipboard.mock.calls[mockUseClipboard.mock.calls.length - 1]?.[0]?.onPaste;
+			onPasteCallback?.('some data');
+
+			expect(mockRow.setDataValue).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('onCellClicked', () => {
