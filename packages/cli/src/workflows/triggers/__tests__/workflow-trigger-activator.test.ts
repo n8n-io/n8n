@@ -189,9 +189,9 @@ describe('WorkflowTriggerActivator', () => {
 		vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
 			callOrder.push('release');
 		});
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const workflowRepository = mock<WorkflowRepository>();
 		workflowRepository.updateWorkflowTriggerCount.mockImplementation(async () => {
@@ -269,9 +269,9 @@ describe('WorkflowTriggerActivator', () => {
 		vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
 			callOrder.push('release');
 		});
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		webhookTriggerRegistrar.getWebhookTriggers.mockImplementation(() => {
@@ -311,9 +311,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('deactivates webhook and non-webhook triggers concurrently and waits for all deregistrations', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const callOrder: string[] = [];
 		const deregisterA = createDeferredPromise();
@@ -385,9 +385,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('waits for both concurrent deactivation phases before surfacing a phase error', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const callOrder: string[] = [];
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
@@ -424,9 +424,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('isolates failures across the concurrent webhook and non-webhook phases', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		const webhookOk = mock<IWebhookData>({ node: 'Webhook OK' });
@@ -470,9 +470,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('isolates a webhook node that exhausts its retry budget, leaving other webhook nodes running', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		const webhookA = mock<IWebhookData>({ node: 'Webhook A' });
@@ -520,9 +520,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('activates a webhook node that recovers within its retry budget', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		const webhook = mock<IWebhookData>({ node: 'Webhook A' });
@@ -549,9 +549,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('records a deterministic webhook conflict as a failure without retry, keeping survivors', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const workflowRepository = mock<WorkflowRepository>();
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
@@ -605,9 +605,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('records a node failure when one of its webhooks exhausts its retries, leaving the rest', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		const firstWebhook = mock<IWebhookData>({ node: 'Webhook' });
@@ -642,9 +642,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('isolates a failing non-webhook trigger, leaving the others running', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
@@ -682,9 +682,9 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	test('activates a non-webhook trigger that recovers within its retry budget', async () => {
-		vi
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
@@ -725,9 +725,9 @@ describe('WorkflowTriggerActivator', () => {
 		}) {
 			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
 			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
-			vi
-				.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-				.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
 
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);

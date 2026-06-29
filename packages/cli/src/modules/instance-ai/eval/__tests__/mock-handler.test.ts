@@ -122,7 +122,7 @@ function reapplyMockImplementations() {
 	vi.mocked(fetchApiDocs).mockResolvedValue('');
 	vi.mocked(extractNodeConfig).mockReturnValue('{}');
 	vi.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
-	vi.mocked(Tool).mockImplementation((function (name: string) {
+	vi.mocked(Tool).mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
 			description: vi.fn().mockReturnThis(),
@@ -134,7 +134,7 @@ function reapplyMockImplementations() {
 			build: vi.fn(() => built),
 		};
 		return builder;
-	}) as never);
+	} as never);
 	mockAgent.tool.mockImplementation(function (
 		this: MockAgent,
 		builtTool: { _name?: string; _handler?: unknown },
@@ -154,7 +154,9 @@ function reapplyMockImplementations() {
 		}
 		return { messages: [], finishReason: 'tool-calls' };
 	});
-	mockExtractText.mockImplementation(function (result: { _text?: string }) { return result._text ?? ''; });
+	mockExtractText.mockImplementation(function (result: { _text?: string }) {
+		return result._text ?? '';
+	});
 }
 
 // ---------------------------------------------------------------------------

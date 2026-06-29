@@ -156,7 +156,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			const result = await generator.next();
@@ -195,7 +197,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -243,7 +247,9 @@ describe('WorkflowBuilderService', () => {
 			(mockAiService.chat as Mock)
 				.mockReturnValueOnce(mockChatGenerator1)
 				.mockReturnValueOnce(mockChatGenerator2);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// First call
 			const generator1 = service.chat(mockPayload, mockUser);
@@ -271,7 +277,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser, abortController.signal);
 			await generator.next();
@@ -298,7 +306,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const result = await service.getSessions('workflow-123', mockUser);
 
@@ -312,7 +322,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const result = await service.getSessions(undefined, mockUser);
 
@@ -325,7 +337,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			await service.getSessions('workflow-123', mockUser, true);
 
@@ -352,13 +366,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -401,13 +415,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -462,13 +476,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -509,13 +523,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -554,13 +568,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation((function (...args: any[]) {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -592,7 +606,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -615,7 +631,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// Capture the callback passed to onCertRefresh
 			let capturedCallback: ((cert: string) => void) | undefined;
@@ -653,7 +671,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -677,7 +697,9 @@ describe('WorkflowBuilderService', () => {
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
 			(mockAiService.updateNodeTypes as Mock).mockImplementation(() => {});
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// First call - creates the service
 			const generator1 = service.chat(mockPayload, mockUser);
@@ -740,7 +762,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getBuilderInstanceCredits as Mock).mockResolvedValue(expectedCredits);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const result = await service.getBuilderInstanceCredits(mockUser);
 
@@ -757,7 +781,9 @@ describe('WorkflowBuilderService', () => {
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getBuilderInstanceCredits as Mock).mockResolvedValue(expectedCredits);
-			MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// Call twice to test service reuse
 			await service.getBuilderInstanceCredits(mockUser);
@@ -849,7 +875,9 @@ describe('WorkflowBuilderService - node type loading', () => {
 				yield { messages: ['response'] };
 			})(),
 		);
-		MockedAiWorkflowBuilderService.mockImplementation(function () { return mockAiService; });
+		MockedAiWorkflowBuilderService.mockImplementation(function () {
+			return mockAiService;
+		});
 
 		const outboundHttp = mock<OutboundHttp>();
 		const transport = mock<HttpTransport>();

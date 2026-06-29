@@ -183,9 +183,9 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			};
 
-			vi
-				.mocked(nodeTypes.getByNameAndVersion)
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -219,9 +219,9 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			};
 
-			vi
-				.mocked(nodeTypes.getByNameAndVersion)
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: ['trigger'] } }));
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReturnValueOnce(
+				mock<INodeType>({ description: { group: ['trigger'] } }),
+			);
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -752,9 +752,9 @@ describe('WorkflowExecutionService', () => {
 			};
 			const connections = { ...createMainConnection(hackerNewsNode.name, webhookNode.name) };
 
-			vi
-				.mocked(nodeTypes.getByNameAndVersion)
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
 
 			// ACT
 			const workflowData = mock<IWorkflowBase>({

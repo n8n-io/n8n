@@ -13,13 +13,11 @@ describe('TriggerCountService', () => {
 	});
 
 	test('counts triggers, pollers, and unique webhook nodes while excluding internal triggers', () => {
-		vi
-			.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-			.mockReturnValue([
-				mock<IWebhookData>({ node: 'Webhook A' }),
-				mock<IWebhookData>({ node: 'Webhook A' }),
-				mock<IWebhookData>({ node: 'Webhook B' }),
-			]);
+		vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+			mock<IWebhookData>({ node: 'Webhook A' }),
+			mock<IWebhookData>({ node: 'Webhook A' }),
+			mock<IWebhookData>({ node: 'Webhook B' }),
+		]);
 		const workflow = createWorkflow([
 			node('trigger', 'trigger'),
 			node('manual', 'manual'),

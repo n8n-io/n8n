@@ -1108,12 +1108,10 @@ describe('WorkflowService', () => {
 
 			externalHooksMock.run.mockResolvedValue(undefined);
 
-			vi
-				.spyOn(
-					workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
-					'_addToActiveWorkflowManager',
-				)
-				.mockResolvedValue(undefined);
+			vi.spyOn(
+				workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+				'_addToActiveWorkflowManager',
+			).mockResolvedValue(undefined);
 
 			const user = mock<User>();
 

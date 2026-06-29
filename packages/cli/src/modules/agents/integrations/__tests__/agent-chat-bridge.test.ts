@@ -508,9 +508,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: vi.fn(() =>
-					toStream([{ type: 'finish', finishReason: 'stop' }]),
-				),
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
@@ -821,9 +819,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: vi.fn(() =>
-					toStream([{ type: 'finish', finishReason: 'stop' }]),
-				),
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Approved ' },

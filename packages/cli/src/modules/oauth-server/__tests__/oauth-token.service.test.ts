@@ -42,12 +42,8 @@ describe('OAuthTokenService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
 		userRepository = mockInstance(UserRepository);
-		accessTokenRepository = mockInstance(
-			AccessTokenRepository,
-		) as Mocked<AccessTokenRepository>;
-		refreshTokenRepository = mockInstance(
-			RefreshTokenRepository,
-		) as Mocked<RefreshTokenRepository>;
+		accessTokenRepository = mockInstance(AccessTokenRepository) as Mocked<AccessTokenRepository>;
+		refreshTokenRepository = mockInstance(RefreshTokenRepository) as Mocked<RefreshTokenRepository>;
 
 		mockTransactionManager = {
 			insert: vi.fn().mockResolvedValue(mock()),

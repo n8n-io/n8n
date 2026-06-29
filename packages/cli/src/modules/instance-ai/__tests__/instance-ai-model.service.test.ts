@@ -12,12 +12,8 @@ const fakeUser = { id: 'user-1' } as User;
 
 function createClient() {
 	return {
-		getBuilderApiProxyToken: vi
-			.fn()
-			.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
-		getBuilderInstanceCredits: vi
-			.fn()
-			.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
+		getBuilderApiProxyToken: vi.fn().mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
+		getBuilderInstanceCredits: vi.fn().mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
 	};
 }
 

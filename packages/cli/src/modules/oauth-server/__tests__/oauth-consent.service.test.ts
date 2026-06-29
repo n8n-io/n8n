@@ -30,12 +30,8 @@ describe('OAuthConsentService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
 		oauthSessionService = mockInstance(OAuthSessionService) as Mocked<OAuthSessionService>;
-		oauthClientRepository = mockInstance(
-			OAuthClientRepository,
-		) as Mocked<OAuthClientRepository>;
-		userConsentRepository = mockInstance(
-			UserConsentRepository,
-		) as Mocked<UserConsentRepository>;
+		oauthClientRepository = mockInstance(OAuthClientRepository) as Mocked<OAuthClientRepository>;
+		userConsentRepository = mockInstance(UserConsentRepository) as Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		protectedResourceRegistry = mockInstance(
 			ProtectedResourceRegistry,

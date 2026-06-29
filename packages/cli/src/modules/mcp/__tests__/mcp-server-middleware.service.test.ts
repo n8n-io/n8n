@@ -34,12 +34,8 @@ let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
 	beforeAll(() => {
-		mcpServerApiKeyService = mockInstance(
-			McpServerApiKeyService,
-		) as Mocked<McpServerApiKeyService>;
-		oauthTokenVerifier = mockInstance(
-			OAuthTokenVerifierProxy,
-		) as Mocked<OAuthTokenVerifierProxy>;
+		mcpServerApiKeyService = mockInstance(McpServerApiKeyService) as Mocked<McpServerApiKeyService>;
+		oauthTokenVerifier = mockInstance(OAuthTokenVerifierProxy) as Mocked<OAuthTokenVerifierProxy>;
 		mcpProtectedResource = mockInstance(McpProtectedResource) as Mocked<McpProtectedResource>;
 		telemetry = mockInstance(Telemetry);
 

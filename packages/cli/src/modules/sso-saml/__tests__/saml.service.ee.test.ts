@@ -223,9 +223,9 @@ describe('SamlService', () => {
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: httpRequest }));
 
-		vi
-			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
-			.mockImplementation(async () => await Promise.resolve());
+		vi.spyOn(ssoHelpers, 'reloadAuthenticationMethod').mockImplementation(
+			async () => await Promise.resolve(),
+		);
 		vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
 
 		samlService = new SamlService(
@@ -280,18 +280,16 @@ describe('SamlService', () => {
 	describe('getAttributesFromLoginResponse', () => {
 		test('throws when any attribute is missing', async () => {
 			// ARRANGE
-			vi
-				.spyOn(samlService, 'getIdentityProviderInstance')
-				.mockReturnValue(mock<IdentityProviderInstance>());
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(
+				mock<IdentityProviderInstance>(),
+			);
 
 			const serviceProviderInstance = mock<ServiceProviderInstance>();
 			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
 				samlContent: '',
 				extract: {},
 			});
-			vi
-				.spyOn(samlService, 'getServiceProviderInstance')
-				.mockReturnValue(serviceProviderInstance);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(serviceProviderInstance);
 
 			vi.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
 				attributes: {} as never,
@@ -313,17 +311,15 @@ describe('SamlService', () => {
 		});
 
 		test('returns the attributes when they are present', async () => {
-			vi
-				.spyOn(samlService, 'getIdentityProviderInstance')
-				.mockReturnValue(mock<IdentityProviderInstance>());
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(
+				mock<IdentityProviderInstance>(),
+			);
 			const serviceProviderInstance = mock<ServiceProviderInstance>();
 			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
 				samlContent: '',
 				extract: {},
 			});
-			vi
-				.spyOn(samlService, 'getServiceProviderInstance')
-				.mockReturnValue(serviceProviderInstance);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(serviceProviderInstance);
 
 			vi.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
 				attributes: {
@@ -360,9 +356,9 @@ describe('SamlService', () => {
 	describe('init', () => {
 		test('calls `reset` if an InvalidSamlMetadataUrlError is thrown', async () => {
 			// ARRANGE
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new InvalidSamlMetadataUrlError('https://www.google.com'));
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(
+				new InvalidSamlMetadataUrlError('https://www.google.com'),
+			);
 			vi.spyOn(samlService, 'reset');
 
 			// ACT
@@ -374,9 +370,9 @@ describe('SamlService', () => {
 
 		test('calls `reset` if an InvalidSamlMetadataError is thrown', async () => {
 			// ARRANGE
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new InvalidSamlMetadataError());
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(
+				new InvalidSamlMetadataError(),
+			);
 			vi.spyOn(samlService, 'reset');
 
 			// ACT
@@ -388,9 +384,9 @@ describe('SamlService', () => {
 
 		test('calls `reset` if a SyntaxError is thrown', async () => {
 			// ARRANGE
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new SyntaxError());
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(
+				new SyntaxError(),
+			);
 			vi.spyOn(samlService, 'reset');
 
 			// ACT
@@ -402,9 +398,7 @@ describe('SamlService', () => {
 
 		test('does not call reset and rethrows if another error is thrown', async () => {
 			// ARRANGE
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new TypeError());
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(new TypeError());
 			vi.spyOn(samlService, 'reset');
 
 			// ACT & ASSERT
@@ -695,9 +689,9 @@ describe('SamlService', () => {
 
 		test('does throw `InvalidSamlMetadataError` when invalid SAML url and no saml metadata is available', async () => {
 			// ARRANGE
-			vi
-				.mocked(settingsRepository.findOne)
-				.mockResolvedValue(SamlSettingWithInvalidUrlAndInvalidMetadataXML);
+			vi.mocked(settingsRepository.findOne).mockResolvedValue(
+				SamlSettingWithInvalidUrlAndInvalidMetadataXML,
+			);
 
 			// ACT && ASSERT
 			await expect(samlService.loadFromDbAndApplySamlPreferences(true, false)).rejects.toThrowError(
@@ -716,11 +710,9 @@ describe('SamlService', () => {
 		test('does not throw an error when the metadata url is valid', async () => {
 			// ARRANGE
 			vi.mocked(settingsRepository.findOne).mockResolvedValue(SamlSettingWithValidUrl);
-			vi
-				.spyOn(samlService, 'fetchMetadataFromUrl')
-				.mockResolvedValue(
-					'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
-				);
+			vi.spyOn(samlService, 'fetchMetadataFromUrl').mockResolvedValue(
+				'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+			);
 
 			// ACT && ASSERT
 			await samlService.loadFromDbAndApplySamlPreferences(true, false);
@@ -843,13 +835,13 @@ describe('SamlService', () => {
 			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
 			vi.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
 			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			vi
-				.spyOn(samlService, 'saveSamlPreferencesToDb')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 			vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
-			vi
-				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
-				.mockResolvedValue(undefined);
+			vi.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand').mockResolvedValue(
+				undefined,
+			);
 		});
 
 		describe('feature flag gate', () => {
@@ -1080,9 +1072,9 @@ describe('SamlService', () => {
 				// Mock methods needed for setSamlPreferences and loadFromDbAndApplySamlPreferences
 				vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
 				vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-				vi
-					.spyOn(samlService, 'saveSamlPreferencesToDb')
-					.mockResolvedValue(mockSamlConfig as SamlPreferences);
+				vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+					mockSamlConfig as SamlPreferences,
+				);
 
 				// Step 1: Save preferences with a valid PEM key+cert (simulating API call)
 				await samlService.setSamlPreferences({
@@ -1360,9 +1352,9 @@ describe('SamlService', () => {
 			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
 			vi.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
 			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			vi
-				.spyOn(samlService, 'saveSamlPreferencesToDb')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 			// Mock SAML login as disabled to avoid metadata validation
 			vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 		});
@@ -1409,9 +1401,9 @@ describe('SamlService', () => {
 	describe('reload', () => {
 		test('should reload SAML configuration from database', async () => {
 			settingsRepository.findOne = vi.fn().mockResolvedValue(mockConfigFromDB);
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 
 			await samlService.reload();
 
@@ -1424,9 +1416,9 @@ describe('SamlService', () => {
 		});
 
 		test('should prevent concurrent reloads with isReloading flag', async () => {
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 
 			// Start first reload without awaiting
 			const firstReload = samlService.reload();
@@ -1452,18 +1444,18 @@ describe('SamlService', () => {
 			);
 			// Should reset isReloading flag even on error
 			// Test by calling reload again - should not be blocked
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 
 			await samlService.reload();
 			expect(samlService.loadFromDbAndApplySamlPreferences).toHaveBeenCalledTimes(2);
 		});
 
 		test('should update GlobalConfig with login status', async () => {
-			vi
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 			// Mock SAML as disabled
 			vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 
@@ -1479,12 +1471,12 @@ describe('SamlService', () => {
 			// Mock required methods to avoid complex initialization
 			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
 			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			vi
-				.spyOn(samlService, 'saveSamlPreferencesToDb')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
-			vi
-				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
-				.mockResolvedValue(undefined);
+			vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
+			vi.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand').mockResolvedValue(
+				undefined,
+			);
 			vi.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
 		});
 
@@ -1637,9 +1629,7 @@ describe('SamlService', () => {
 				samlContent: '',
 				extract: {},
 			});
-			vi
-				.spyOn(samlService, 'getServiceProviderInstance')
-				.mockReturnValue(serviceProviderInstance);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(serviceProviderInstance);
 
 			vi.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
 				attributes: {

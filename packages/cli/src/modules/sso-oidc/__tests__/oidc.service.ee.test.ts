@@ -85,9 +85,9 @@ describe('OidcService', () => {
 		outboundHttp.transport.mockReturnValue(
 			mock<HttpTransport>({ asCustomFetch: () => customFetch }),
 		);
-		vi
-			.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod')
-			.mockImplementation(async () => await Promise.resolve());
+		vi.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod').mockImplementation(
+			async () => await Promise.resolve(),
+		);
 
 		oidcService = new OidcService(
 			settingsRepository,
@@ -367,9 +367,9 @@ describe('OidcService', () => {
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
 			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
-			vi
-				.spyOn(client, 'authorizationCodeGrant')
-				.mockRejectedValue(new Error('Authorization code grant failed'));
+			vi.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(
+				new Error('Authorization code grant failed'),
+			);
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -513,9 +513,10 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'invalid-email' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'invalid-email',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -543,9 +544,10 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -580,9 +582,10 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -619,9 +622,10 @@ describe('OidcService', () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			vi
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -779,12 +783,12 @@ describe('OidcService', () => {
 
 		it('routes openid-client fetches through a real HTTP socket', async () => {
 			let factoryFetch: client.CustomFetch | undefined;
-			vi
-				.spyOn(client, 'discovery')
-				.mockImplementation(async (_server, _clientId, _metadata, _auth, options) => {
+			vi.spyOn(client, 'discovery').mockImplementation(
+				async (_server, _clientId, _metadata, _auth, options) => {
 					factoryFetch = options?.[client.customFetch];
 					return {} as client.Configuration;
-				});
+				},
+			);
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 			await (realOidcService as any).createProxyAwareConfiguration(

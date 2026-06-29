@@ -362,9 +362,7 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
-			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
-				makeSnapshot(),
-			]);
+			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
@@ -391,9 +389,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('registers nothing when the agent is unpublished', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makeAgent({ activeVersionId: null }),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
@@ -405,9 +401,7 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
-			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
-				makeSnapshot(),
-			]);
+			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 
 			await follower.registerEnabledForAgent(AGENT_ID);
 
@@ -418,9 +412,7 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
-			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
-				makeSnapshot(),
-			]);
+			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			agentTaskScheduler.getTargetIds.mockReturnValue(['task-1', 'stale-task']);
 			agentTaskScheduler.hasTarget.mockImplementation((_group, taskId) => taskId === 'stale-task');
 
@@ -447,12 +439,8 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
-			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
-				makeSnapshot(),
-			]);
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot(),
-			);
+			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			taskRunLockRepository.acquire
 				.mockResolvedValueOnce(makeRunLock())
@@ -498,12 +486,8 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
-			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
-				makeSnapshot(),
-			]);
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot(),
-			);
+			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			taskRunLockRepository.acquire
 				.mockResolvedValueOnce(makeRunLock({ holderId: 'old-leader' }))
@@ -536,9 +520,7 @@ describe('AgentTaskService', () => {
 	describe('requestReconcile', () => {
 		it('broadcasts a task reconcile in multi-main mode', async () => {
 			setMultiMain(true);
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makeAgent({ activeVersionId: null }),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 
 			await service.requestReconcile(AGENT_ID);
 
@@ -549,9 +531,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('does not broadcast in single-main mode', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makeAgent({ activeVersionId: null }),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 
 			await service.requestReconcile(AGENT_ID);
 
@@ -564,9 +544,7 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
-			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
-				makeSnapshot(),
-			]);
+			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 
 			await service.handleTasksChanged({ agentId: AGENT_ID });
 
@@ -618,9 +596,7 @@ describe('AgentTaskService', () => {
 
 		it('runs the published agent with the objective', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot(),
-			);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
@@ -663,9 +639,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('skips when the agent is unpublished', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makeAgent({ activeVersionId: null }),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 
 			await runTaskOf(service, AGENT_ID, 'task-1');
 
@@ -674,9 +648,7 @@ describe('AgentTaskService', () => {
 
 		it('skips when no project member is available', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot(),
-			);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue([]);
 
 			await runTaskOf(service, AGENT_ID, 'task-1');
@@ -698,9 +670,7 @@ describe('AgentTaskService', () => {
 
 		it('logs when execution throws', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot(),
-			);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),
@@ -717,9 +687,7 @@ describe('AgentTaskService', () => {
 
 		it('allows a later scheduled run after a failed execution completes', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot(),
-			);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock)
 				.mockReturnValueOnce(throwingStream())
@@ -743,12 +711,8 @@ describe('AgentTaskService', () => {
 					});
 				}
 				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-					makeSnapshot(),
-				);
-				(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue([
-					'user-1',
-				]);
+				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+				(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 					blockingStream(),
 				);
@@ -784,12 +748,8 @@ describe('AgentTaskService', () => {
 	describe('runNow', () => {
 		it('runs the task immediately as the requesting user even when unpublished', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(makeTask());
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makeAgent({ activeVersionId: null }),
-			);
-			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(
-				emptyStream(),
-			);
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
+			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(emptyStream());
 
 			await service.runNow(AGENT_ID, 'task-1', 'user-9');
 
@@ -815,9 +775,7 @@ describe('AgentTaskService', () => {
 		it('does not write the task row after a manual run', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(makeTask());
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent());
-			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(
-				emptyStream(),
-			);
+			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(emptyStream());
 
 			await service.runNow(AGENT_ID, 'task-1', 'user-9');
 			await new Promise((resolve) => setImmediate(resolve));

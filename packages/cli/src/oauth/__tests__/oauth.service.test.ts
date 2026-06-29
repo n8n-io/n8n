@@ -109,9 +109,9 @@ describe('OauthService', () => {
 
 		globalConfig.endpoints = { rest: 'rest' } as any;
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
-		vi
-			.mocked(WorkflowExecuteAdditionalData.getBase)
-			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
 		externalHooks.run.mockResolvedValue(undefined);
 
 		// Reset the per-verb HTTP mocks (impl + return values) so nothing leaks
@@ -1856,11 +1856,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/oauth2/auth?client_id=client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
@@ -1935,11 +1937,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/oauth2/auth?client_id=client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid&code_challenge=code_challenge&code_challenge_method=S256',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
@@ -1980,11 +1984,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/oauth2/auth?client_id=client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid&custom_param=value',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
@@ -2099,11 +2105,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/oauth2/auth?client_id=registered_client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid profile',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
@@ -2212,7 +2220,9 @@ describe('OauthService', () => {
 
 		it('should throw BadRequestError when client registration response is invalid', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
@@ -2258,11 +2268,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/oauth2/auth?client_id=registered_client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
@@ -2313,11 +2325,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/oauth2/auth?client_id=client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
@@ -2332,9 +2346,11 @@ describe('OauthService', () => {
 
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-			vi
-				.spyOn(service, 'createCsrfState')
-				.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+			vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+				'csrf-secret',
+				'base64-state',
+				'state-token',
+			]);
 			const storeOauthFlowState = vi
 				.spyOn(service, 'storeOauthFlowState')
 				.mockResolvedValue(undefined);
@@ -2366,9 +2382,11 @@ describe('OauthService', () => {
 
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				vi
-					.spyOn(service, 'createCsrfState')
-					.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+				vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+					'csrf-secret',
+					'base64-state',
+					'state-token',
+				]);
 				browserBindingService.isEnabled.mockReturnValue(true);
 
 				const csrfData: CreateCsrfStateData = {
@@ -2391,9 +2409,11 @@ describe('OauthService', () => {
 
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				vi
-					.spyOn(service, 'createCsrfState')
-					.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+				vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+					'csrf-secret',
+					'base64-state',
+					'state-token',
+				]);
 				browserBindingService.isEnabled.mockReturnValue(false);
 
 				const csrfData: CreateCsrfStateData = {
@@ -2418,9 +2438,11 @@ describe('OauthService', () => {
 
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				vi
-					.spyOn(service, 'createCsrfState')
-					.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+				vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+					'csrf-secret',
+					'base64-state',
+					'state-token',
+				]);
 				browserBindingService.isEnabled.mockReturnValue(true);
 				browserBindingService.ensureBindingCookie.mockReturnValue('nonce-value');
 				browserBindingService.computeHash.mockReturnValue('hash-value');
@@ -2447,11 +2469,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/authorize?client_id=registered_client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2500,11 +2524,13 @@ describe('OauthService', () => {
 				toString: () =>
 					'https://example.domain/authorize?client_id=test_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2551,11 +2577,13 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2599,11 +2627,13 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://oauth.example.com/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2647,11 +2677,13 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2663,8 +2695,7 @@ describe('OauthService', () => {
 
 			// Protected resource discovery fails (both calls)
 			// Then RFC 8414 fails, OpenID Connect succeeds
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource path-specific
 				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource root
 				.mockRejectedValueOnce(new Error('404 Not Found')) // RFC 8414
@@ -2710,11 +2741,13 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: mockGetUri,
+					},
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2725,8 +2758,7 @@ describe('OauthService', () => {
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
 			// Protected resource discovery fails, then RFC 8414 and OpenID Connect path insertion fail, path appending succeeds
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource path-specific
 				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource root
 				.mockRejectedValueOnce(new Error('404 Not Found')) // RFC 8414
@@ -2778,9 +2810,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://mcp.atlassian.com/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
 			const oauthCredentials = {
@@ -2790,8 +2824,7 @@ describe('OauthService', () => {
 
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404')) // protected resource path-specific
 				.mockRejectedValueOnce(new Error('404')) // protected resource root
 				.mockRejectedValueOnce(new Error('404')) // RFC 8414 path insertion
@@ -2880,9 +2913,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://auth.example.com/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2893,8 +2928,7 @@ describe('OauthService', () => {
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
 			// Protected resource discovery (path-specific fails, root succeeds)
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404')) // path-specific protected resource
 				.mockResolvedValueOnce({
 					data: {
@@ -2950,9 +2984,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -2963,8 +2999,7 @@ describe('OauthService', () => {
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
 			// Protected resource discovery fails (both path-specific and root)
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404')) // path-specific protected resource
 				.mockRejectedValueOnce(new Error('404')) // root protected resource
 				// Fall back to direct authorization server discovery
@@ -3021,9 +3056,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -3036,8 +3073,7 @@ describe('OauthService', () => {
 			// Protected resource discovery resolves with non-200 responses (e.g. a 204
 			// or 404 body that didn't throw) - the loop must treat these as misses and
 			// fall through, exactly like the rejected case.
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockResolvedValueOnce({ statusCode: 204, data: { ignored: true } } as any) // path-specific protected resource
 				.mockResolvedValueOnce({ statusCode: 404, data: { ignored: true } } as any) // root protected resource
 				// Fall back to direct authorization server discovery (200 succeeds)
@@ -3088,9 +3124,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://auth.smithery.ai/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
 			const oauthCredentials = {
@@ -3101,8 +3139,7 @@ describe('OauthService', () => {
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
 			// Path-specific protected resource discovery succeeds
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockResolvedValueOnce({
 					data: {
 						authorization_servers: ['https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp'],
@@ -3155,9 +3192,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://mcp.notion.com/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
 			const oauthCredentials = {
@@ -3168,8 +3207,7 @@ describe('OauthService', () => {
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
 			// Path-specific fails, root protected resource discovery succeeds
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404')) // path-specific
 				.mockResolvedValueOnce({
 					data: {
@@ -3229,9 +3267,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://www.veed.io/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -3242,8 +3282,7 @@ describe('OauthService', () => {
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
 			// Protected resource discovery fails (not an MCP server)
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404')) // path-specific protected resource
 				.mockRejectedValueOnce(new Error('404')) // root protected resource
 				// Fallback to authorization server discovery (RFC 8414 succeeds)
@@ -3326,9 +3365,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://login.commonroom.io/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
@@ -3338,8 +3379,7 @@ describe('OauthService', () => {
 
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			// Server metadata omits refresh_token from grant_types_supported (Common Room pattern)
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404')) // protected resource path-specific
 				.mockRejectedValueOnce(new Error('404')) // protected resource root
 				.mockResolvedValueOnce({
@@ -3380,9 +3420,11 @@ describe('OauthService', () => {
 			const mockGetUri = vi.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: { getUri: mockGetUri },
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: mockGetUri },
+				} as any;
+			});
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			// Simulate the fallback path where serverUrl itself is the MCP server URL,
@@ -3397,8 +3439,7 @@ describe('OauthService', () => {
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 
 			// Protected resource discovery fails (both)
-			vi
-				.mocked(httpClientMock.get)
+			vi.mocked(httpClientMock.get)
 				.mockRejectedValueOnce(new Error('404')) // protected resource path-specific
 				.mockRejectedValueOnce(new Error('404')) // protected resource root
 				.mockResolvedValueOnce({
@@ -3476,13 +3517,15 @@ describe('OauthService', () => {
 			} as any);
 
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			vi.mocked(ClientOAuth2).mockImplementation(function () { return ({
-						code: {
-							getUri: vi.fn().mockReturnValue({
-								toString: () => 'https://example.domain/oauth2/auth?state=state',
-							}),
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: vi.fn().mockReturnValue({
+							toString: () => 'https://example.domain/oauth2/auth?state=state',
+						}),
+					},
+				} as any;
+			});
 
 			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 		});
@@ -3599,18 +3642,20 @@ describe('OauthService', () => {
 
 		const mockClientOAuth2UriFromOptions = async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			vi.mocked(ClientOAuth2).mockImplementation(function (options) { return ({
-						code: {
-							getUri: () => ({
-								toString: () => {
-									const url = new URL(options.authorizationUri ?? '');
-									if (options.resource) url.searchParams.set('resource', options.resource);
-									if (options.state) url.searchParams.set('state', options.state);
-									return url.toString();
-								},
-							}),
-						},
-					}) as any; });
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				return {
+					code: {
+						getUri: () => ({
+							toString: () => {
+								const url = new URL(options.authorizationUri ?? '');
+								if (options.resource) url.searchParams.set('resource', options.resource);
+								if (options.state) url.searchParams.set('state', options.state);
+								return url.toString();
+							},
+						}),
+					},
+				} as any;
+			});
 		};
 
 		const mockSuccessfulAuthorizationServerDiscovery = () => {
@@ -3754,8 +3799,7 @@ describe('OauthService', () => {
 				const oauthCredentials = makeDcrCredentials();
 				const toUpdate = {};
 
-				vi
-					.mocked(httpClientMock.get)
+				vi.mocked(httpClientMock.get)
 					.mockRejectedValueOnce(new Error('404'))
 					.mockResolvedValueOnce({ data: makeMetadata() });
 				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
@@ -4947,9 +4991,9 @@ describe('OauthService', () => {
 				accessToken: 'new-token',
 			};
 			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
-			vi
-				.mocked(ClientOAuth2)
-				.mockImplementation(function () { return ({ createToken: vi.fn().mockReturnValue(mockToken) }) as never; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
 
 			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
@@ -4978,9 +5022,9 @@ describe('OauthService', () => {
 			const refreshed = { data: refreshedData, accessToken: 'new-token' };
 			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
 			const credential = makeCredential({ isGlobal: true });
-			vi
-				.mocked(ClientOAuth2)
-				.mockImplementation(function () { return ({ createToken: vi.fn().mockReturnValue(mockToken) }) as never; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
 
 			credentialsRepository.findOne.mockResolvedValue(credential as never);
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
@@ -5005,9 +5049,9 @@ describe('OauthService', () => {
 			const refreshed = { data: { access_token: 'cc-token' }, accessToken: 'cc-token' };
 			const getToken = vi.fn().mockResolvedValue(refreshed);
 			const mockToken = { refresh: vi.fn(), client: { credentials: { getToken } } };
-			vi
-				.mocked(ClientOAuth2)
-				.mockImplementation(function () { return ({ createToken: vi.fn().mockReturnValue(mockToken) }) as never; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
 
 			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
@@ -5033,9 +5077,9 @@ describe('OauthService', () => {
 				refresh: vi.fn().mockRejectedValue(new Error('network timeout')),
 				client: {},
 			};
-			vi
-				.mocked(ClientOAuth2)
-				.mockImplementation(function () { return ({ createToken: vi.fn().mockReturnValue(mockToken) }) as never; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
 
 			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
@@ -5060,9 +5104,9 @@ describe('OauthService', () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const refreshed = { data: { access_token: 'new-token' }, accessToken: 'new-token' };
 			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
-			vi
-				.mocked(ClientOAuth2)
-				.mockImplementation(function () { return ({ createToken: vi.fn().mockReturnValue(mockToken) }) as never; });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
 
 			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({

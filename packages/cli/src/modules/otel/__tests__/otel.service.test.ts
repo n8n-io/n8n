@@ -30,22 +30,28 @@ const mockStartSpan = vi.fn();
 const mockGetTracer = vi.fn();
 
 vi.mock('@opentelemetry/sdk-node', () => ({
-	NodeSDK: vi.fn().mockImplementation(function () { return ({
-		start,
-		shutdown,
-	}); }),
+	NodeSDK: vi.fn().mockImplementation(function () {
+		return {
+			start,
+			shutdown,
+		};
+	}),
 }));
 
 vi.mock('@opentelemetry/exporter-trace-otlp-proto', () => ({
-	OTLPTraceExporter: vi.fn().mockImplementation(function () { return ({
-		export: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) =>
-			mockExportImpl(spans, resultCallback),
-		shutdown: mockExporterShutdown,
-	}); }),
+	OTLPTraceExporter: vi.fn().mockImplementation(function () {
+		return {
+			export: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) =>
+				mockExportImpl(spans, resultCallback),
+			shutdown: mockExporterShutdown,
+		};
+	}),
 }));
 
 vi.mock('@opentelemetry/sdk-trace-base', () => ({
-	BasicTracerProvider: vi.fn().mockImplementation(function (config: { spanProcessors?: unknown[] }) {
+	BasicTracerProvider: vi.fn().mockImplementation(function (config: {
+		spanProcessors?: unknown[];
+	}) {
 		const processors = (config.spanProcessors ?? []) as Array<{ onEnd: (span: unknown) => void }>;
 		mockSpanEnd.mockImplementation(() => {
 			for (const processor of processors) processor.onEnd({ name: 'n8n.test_trace' });
@@ -61,7 +67,9 @@ vi.mock('@opentelemetry/resources', () => ({
 }));
 
 vi.mock('@opentelemetry/sdk-trace-node', () => ({
-	TraceIdRatioBasedSampler: vi.fn().mockImplementation(function () { return ({}); }),
+	TraceIdRatioBasedSampler: vi.fn().mockImplementation(function () {
+		return {};
+	}),
 }));
 
 vi.mock('@opentelemetry/api', async () => ({

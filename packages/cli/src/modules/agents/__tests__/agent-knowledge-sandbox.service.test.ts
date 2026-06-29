@@ -22,11 +22,13 @@ interface MockFilesystem {
 }
 
 interface MockProcess {
-	executeCommand: Mock<(...args: [string, string | undefined, Record<string, string> | undefined, number]) => Promise<{
+	executeCommand: Mock<
+		(...args: [string, string | undefined, Record<string, string> | undefined, number]) => Promise<{
 			exitCode: number;
 			result?: string;
 			artifacts?: { stdout?: string; stderr?: string };
-		}>>;
+		}>
+	>;
 }
 
 interface MockSandbox {
@@ -53,8 +55,14 @@ class DaytonaNotFoundError extends Error {
 	}
 }
 
-const listMock = vi.fn<(...args: [{ labels?: Record<string, string>; limit?: number }?]) => AsyncIterableIterator<MockSandbox>>();
-const createMock = vi.fn<(...args: [Record<string, unknown>, { timeout?: number }?]) => Promise<MockSandbox>>();
+const listMock =
+	vi.fn<
+		(
+			...args: [{ labels?: Record<string, string>; limit?: number }?]
+		) => AsyncIterableIterator<MockSandbox>
+	>();
+const createMock =
+	vi.fn<(...args: [Record<string, unknown>, { timeout?: number }?]) => Promise<MockSandbox>>();
 const getMock = vi.fn<(...args: [string]) => Promise<MockSandbox>>();
 const daytonaInstances: MockDaytona[] = [];
 
@@ -137,9 +145,9 @@ function makeService(
 
 function makeFilesystem(): MockFilesystem {
 	return {
-		uploadFiles: vi.fn<(...args: [Array<{ source: Buffer | string; destination: string }>]) => Promise<void>>(
-			async () => {},
-		),
+		uploadFiles: vi.fn<
+			(...args: [Array<{ source: Buffer | string; destination: string }>]) => Promise<void>
+		>(async () => {}),
 		createFolder: vi.fn<(...args: [string, string]) => Promise<void>>(async () => {}),
 		deleteFile: vi.fn<(...args: [string, boolean?]) => Promise<void>>(async () => {}),
 	};
@@ -159,11 +167,15 @@ function makeSandbox(
 		delete: vi.fn<(...args: [number]) => Promise<void>>(async () => {}),
 		fs: makeFilesystem(),
 		process: {
-			executeCommand: vi.fn<(...args: [string, string | undefined, Record<string, string> | undefined, number]) => Promise<{
+			executeCommand: vi.fn<
+				(
+					...args: [string, string | undefined, Record<string, string> | undefined, number]
+				) => Promise<{
 					exitCode: number;
 					result?: string;
 					artifacts?: { stdout?: string; stderr?: string };
-				}>>(async () => ({
+				}>
+			>(async () => ({
 				exitCode: 0,
 				artifacts: { stdout: '', stderr: '' },
 			})),

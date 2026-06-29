@@ -21,9 +21,7 @@ vi.mock('../../esm-loader', () => ({
 	loadTelegramAdapter: vi.fn(),
 }));
 
-const mockedLoadTelegramAdapter = loadTelegramAdapter as MockedFunction<
-	typeof loadTelegramAdapter
->;
+const mockedLoadTelegramAdapter = loadTelegramAdapter as MockedFunction<typeof loadTelegramAdapter>;
 
 const expectedSecret = (encryptionKey: string, agentId: string, credentialId: string) =>
 	createHmac('sha256', encryptionKey).update(`telegram:${agentId}:${credentialId}`).digest('hex');

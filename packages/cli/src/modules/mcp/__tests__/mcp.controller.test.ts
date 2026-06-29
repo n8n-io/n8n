@@ -30,10 +30,12 @@ import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
-	const StreamableHTTPServerTransport = vi.fn().mockImplementation(function (_opts) { return ({
-		handleRequest: mockHandleRequest,
-		close: vi.fn().mockResolvedValue(undefined),
-	}); });
+	const StreamableHTTPServerTransport = vi.fn().mockImplementation(function (_opts) {
+		return {
+			handleRequest: mockHandleRequest,
+			close: vi.fn().mockResolvedValue(undefined),
+		};
+	});
 	return { StreamableHTTPServerTransport };
 });
 

@@ -25,9 +25,11 @@ vi.unmock('node:fs/promises');
 
 const loadMock = vi.fn();
 vi.mock('@n8n/ai-utilities', () => ({
-	N8nPdfLoader: vi.fn().mockImplementation(function () { return ({
-		load: loadMock,
-	}); }),
+	N8nPdfLoader: vi.fn().mockImplementation(function () {
+		return {
+			load: loadMock,
+		};
+	}),
 }));
 
 const agentId = 'agent-1';

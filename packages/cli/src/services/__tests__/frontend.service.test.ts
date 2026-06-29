@@ -149,9 +149,7 @@ describe('FrontendService', () => {
 	const urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
 		getWebhookBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
-		getInstanceJwksUri: vi
-			.fn()
-			.mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
+		getInstanceJwksUri: vi.fn().mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
 	});
 
 	const securityConfig = mock<SecurityConfig>({

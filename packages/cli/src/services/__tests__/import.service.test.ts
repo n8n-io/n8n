@@ -264,8 +264,7 @@ describe('ImportService', () => {
 			const mockFiles = ['user.jsonl', 'workflowentity.jsonl', 'migrations.jsonl'];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi
-				.mocked(safeJoinPath)
+			vi.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/workflowentity.jsonl');
 
@@ -285,8 +284,7 @@ describe('ImportService', () => {
 			const mockFiles = ['user.jsonl', 'user.2.jsonl', 'user.3.jsonl'];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi
-				.mocked(safeJoinPath)
+			vi.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/user.2.jsonl')
 				.mockReturnValueOnce('/test/input/user.3.jsonl');
@@ -369,8 +367,7 @@ describe('ImportService', () => {
 			];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi
-				.mocked(safeJoinPath)
+			vi.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/data_table_user_abc.jsonl')
 				.mockReturnValueOnce('/test/input/data_table_user_abc.2.jsonl')
@@ -690,9 +687,7 @@ describe('ImportService', () => {
 
 	describe('validateMigrations', () => {
 		beforeEach(() => {
-			vi
-				.mocked(readFile)
-				.mockResolvedValue('{"id":"1","timestamp":"123","name":"TestMigration"}');
+			vi.mocked(readFile).mockResolvedValue('{"id":"1","timestamp":"123","name":"TestMigration"}');
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.options = { type: 'sqlite' };
 		});
@@ -1105,8 +1100,7 @@ describe('ImportService', () => {
 
 			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
 
-			const dropCallOrder = (mockDataTableDDLService.dropTable as Mock).mock
-				.invocationCallOrder[0];
+			const dropCallOrder = (mockDataTableDDLService.dropTable as Mock).mock.invocationCallOrder[0];
 			const createCallOrder = (mockDataTableDDLService.createTableWithColumns as Mock).mock
 				.invocationCallOrder[0];
 			expect(dropCallOrder).toBeLessThan(createCallOrder);

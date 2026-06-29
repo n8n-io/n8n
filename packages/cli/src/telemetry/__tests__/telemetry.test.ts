@@ -12,7 +12,9 @@ import { Telemetry } from '@/telemetry';
 vi.unmock('@/telemetry');
 vi.mock('@/posthog');
 
-const rudderStackConstructor = vi.fn().mockImplementation(function () { return mock<RudderStack>(); });
+const rudderStackConstructor = vi.fn().mockImplementation(function () {
+	return mock<RudderStack>();
+});
 vi.mock('@rudderstack/rudder-sdk-node', () => ({
 	__esModule: true,
 	default: rudderStackConstructor,

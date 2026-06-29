@@ -1528,9 +1528,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		update: vi.fn().mockResolvedValue(undefined),
 		manager: {
 			transaction: vi.fn(
-				async (
-					fn: (transactionManager: { save: Mock }) => Promise<unknown>,
-				): Promise<unknown> => {
+				async (fn: (transactionManager: { save: Mock }) => Promise<unknown>): Promise<unknown> => {
 					return await fn({
 						save: vi.fn().mockResolvedValue(savedWorkflow),
 					});

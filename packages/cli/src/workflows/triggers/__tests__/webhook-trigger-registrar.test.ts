@@ -260,9 +260,9 @@ describe('WebhookTriggerRegistrar', () => {
 
 		test('returns empty when every desired webhook has a registered row', async () => {
 			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
-			vi
-				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' })]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' }),
+			]);
 			webhookService.getRegisteredWebhooks.mockResolvedValue([
 				{ node: 'Webhook', method: 'GET', webhookPath: 'users' } as WebhookEntity,
 			]);
@@ -279,9 +279,9 @@ describe('WebhookTriggerRegistrar', () => {
 
 		test('returns a node that has no registered rows at all', async () => {
 			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
-			vi
-				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' })]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' }),
+			]);
 			webhookService.getRegisteredWebhooks.mockResolvedValue([]);
 
 			const result = await registrar.getNodesWithUnregisteredWebhooks(
@@ -296,12 +296,10 @@ describe('WebhookTriggerRegistrar', () => {
 		test('returns a node that is only partially registered', async () => {
 			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
 			// One node, two webhooks; only the first is present in storage.
-			vi
-				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([
-					desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' }),
-					desiredWebhook({ node: 'Webhook', httpMethod: 'POST', path: 'users/action' }),
-				]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' }),
+				desiredWebhook({ node: 'Webhook', httpMethod: 'POST', path: 'users/action' }),
+			]);
 			webhookService.getRegisteredWebhooks.mockResolvedValue([
 				{ node: 'Webhook', method: 'GET', webhookPath: 'users' } as WebhookEntity,
 			]);
@@ -320,11 +318,9 @@ describe('WebhookTriggerRegistrar', () => {
 				node('webhook-node', 'webhook', { name: 'Webhook', webhookId: 'hook-id' }),
 			]);
 			// Desired path has surrounding slashes; the stored row is already normalized.
-			vi
-				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([
-					desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: '/team/:id/' }),
-				]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: '/team/:id/' }),
+			]);
 			webhookService.getRegisteredWebhooks.mockResolvedValue([
 				{ node: 'Webhook', method: 'GET', webhookPath: 'team/:id' } as WebhookEntity,
 			]);
@@ -343,9 +339,9 @@ describe('WebhookTriggerRegistrar', () => {
 				node('webhook-node', 'webhook', { name: 'Webhook' }),
 				node('other-node', 'webhook', { name: 'Other' }),
 			]);
-			vi
-				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([desiredWebhook({ node: 'Other', httpMethod: 'GET', path: 'other' })]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				desiredWebhook({ node: 'Other', httpMethod: 'GET', path: 'other' }),
+			]);
 			webhookService.getRegisteredWebhooks.mockResolvedValue([]);
 
 			const result = await registrar.getNodesWithUnregisteredWebhooks(

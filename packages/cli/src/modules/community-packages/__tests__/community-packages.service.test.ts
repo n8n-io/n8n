@@ -570,9 +570,9 @@ describe('CommunityPackagesService', () => {
 		});
 
 		beforeEach(() => {
-			vi
-				.spyOn(communityPackagesService, 'installPackage')
-				.mockResolvedValue({} as InstalledPackages);
+			vi.spyOn(communityPackagesService, 'installPackage').mockResolvedValue(
+				{} as InstalledPackages,
+			);
 			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
 		});
 

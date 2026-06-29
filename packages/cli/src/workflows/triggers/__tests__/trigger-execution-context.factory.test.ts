@@ -226,7 +226,8 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('emitError', () => {
 			test('delegates to the injected onTriggerFailure callback', () => {
-				const onTriggerFailure = vi.fn<(...args: Parameters<TriggerFailureHandler>) => () => void>();
+				const onTriggerFailure =
+					vi.fn<(...args: Parameters<TriggerFailureHandler>) => () => void>();
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const mode: WorkflowExecuteMode = 'trigger';

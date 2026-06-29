@@ -680,16 +680,12 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			afterEach(() => {
 				// Restore module-scoped defaults so later suites aren't polluted.
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue(
-					[],
-				);
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
 				(credentialsService.getOne as Mock).mockReset();
 			});
 
 			test('rejects a credential id that belongs to another project', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue(
-					[],
-				);
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
 				(credentialsService.getOne as Mock).mockResolvedValue({
 					id: '6CoUMkVOJRNsbmr2',
 					name: 'GitHub account',
@@ -715,9 +711,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 
 			test('rejects a credential id that does not exist', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue(
-					[],
-				);
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
 				(credentialsService.getOne as Mock).mockRejectedValue(
 					new NotFoundError('Credential with ID "ghost" could not be found.'),
 				);

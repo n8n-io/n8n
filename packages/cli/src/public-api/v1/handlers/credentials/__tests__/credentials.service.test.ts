@@ -587,9 +587,9 @@ describe('CredentialsService', () => {
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
 				// Mock credential that already has secret expression
-				vi
-					.mocked(credentialsService.decrypt)
-					.mockResolvedValue({ apiKey: '{{ $secrets.vault.oldKey }}' });
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({
+					apiKey: '{{ $secrets.vault.oldKey }}',
+				});
 
 				await expect(
 					updateCredential(existingCredential, memberUser, {
@@ -615,9 +615,9 @@ describe('CredentialsService', () => {
 				vi.mocked(credentialsService.decrypt).mockResolvedValue({
 					apiKey: 'currentPlainTextValue',
 				});
-				vi
-					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
-					.mockResolvedValue(false);
+				vi.mocked(
+					mockSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).mockResolvedValue(false);
 				mockExternalSecretsConfig.externalSecretsForProjects = true;
 
 				await expect(
@@ -642,9 +642,9 @@ describe('CredentialsService', () => {
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
 				// Mock credential that has existing secret expression
-				vi
-					.mocked(credentialsService.decrypt)
-					.mockResolvedValue({ apiKey: '{{ $secrets.vault.myKey }}' });
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({
+					apiKey: '{{ $secrets.vault.myKey }}',
+				});
 
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
@@ -687,9 +687,9 @@ describe('CredentialsService', () => {
 				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 				vi.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
-				vi
-					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
-					.mockResolvedValue(true);
+				vi.mocked(
+					mockSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).mockResolvedValue(true);
 				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
 
 				await updateCredential(existingCredential, ownerUser, {

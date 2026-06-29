@@ -35,7 +35,9 @@ vi.mock('@n8n/backend-common', async () => ({
 }));
 
 vi.mock('../source-control-helper.ee', async () => ({
-	...(await vi.importActual<typeof import('../source-control-helper.ee')>('../source-control-helper.ee')),
+	...(await vi.importActual<typeof import('../source-control-helper.ee')>(
+		'../source-control-helper.ee',
+	)),
 	sourceControlFoldersExistCheck: vi.fn(() => true),
 }));
 
@@ -782,9 +784,9 @@ describe('SourceControlService', () => {
 
 		it('should throw an error if the user does not have access to the project', async () => {
 			const user = globalMemberUserWithId;
-			vi
-				.mocked(sourceControlScopedService.getWorkflowsInAdminProjectsFromContext)
-				.mockResolvedValue([]);
+			vi.mocked(
+				sourceControlScopedService.getWorkflowsInAdminProjectsFromContext,
+			).mockResolvedValue([]);
 
 			await expect(
 				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
@@ -793,9 +795,9 @@ describe('SourceControlService', () => {
 
 		it('should return content for an authorized workflow', async () => {
 			const user = globalMemberUserWithId;
-			vi
-				.mocked(sourceControlScopedService.getWorkflowsInAdminProjectsFromContext)
-				.mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
+			vi.mocked(
+				sourceControlScopedService.getWorkflowsInAdminProjectsFromContext,
+			).mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
 			vi.mocked(gitService.getFileContent).mockResolvedValue('{}');
 			const result = await sourceControlService.getRemoteFileEntity({
 				user,

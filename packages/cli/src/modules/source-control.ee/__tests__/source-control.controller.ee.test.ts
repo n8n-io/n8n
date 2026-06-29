@@ -243,9 +243,7 @@ describe('SourceControlController', () => {
 			mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1', ...user }) });
 
 		beforeEach(() => {
-			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue(
-				fullPreferences,
-			);
+			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue(fullPreferences);
 		});
 
 		it('should return full preferences (including public key) for users with sourceControl:manage', async () => {
