@@ -10,7 +10,7 @@ import type { WorkflowTestCaseWithFile } from '../workflows';
 const AGENT_INTENT_CLASSIFICATION_INSTRUCTION = [
 	'This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.',
 	'I only want you to classify the intent of this hypothetical request:',
-	'Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why.',
+	'Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.',
 ].join('\n');
 
 function prependIntentClassificationPrompt(testCase: WorkflowTestCase): void {
