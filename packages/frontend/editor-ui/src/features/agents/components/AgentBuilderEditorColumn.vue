@@ -5,6 +5,11 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import type {
+	AiqCollection,
+	AiqDocument,
+	AiqHealthStatus,
+} from '../composables/useAiqKnowledgeApi';
 import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
@@ -30,6 +35,17 @@ const props = defineProps<{
 	agentFilesUploading: boolean;
 	knowledgeBaseEnabled: boolean;
 	deletingAgentFileId?: string | null;
+	aiqBaseUrl?: string | null;
+	aiqCollections?: AiqCollection[];
+	selectedAiqCollectionName?: string | null;
+	aiqDocuments?: AiqDocument[];
+	aiqHealthStatus?: AiqHealthStatus;
+	aiqCollectionsLoading?: boolean;
+	aiqDocumentsLoading?: boolean;
+	aiqUploading?: boolean;
+	aiqDeletingCollectionName?: string | null;
+	aiqDeletingDocumentIds?: string[];
+	aiqError?: string;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	isBuildChatStreaming: boolean;
@@ -49,8 +65,15 @@ const emit = defineEmits<{
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'add-aiq-connection': [];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
+	'create-aiq-collection': [name: string];
+	'select-aiq-collection': [name: string];
+	'delete-aiq-collection': [name: string];
+	'upload-aiq-documents': [files: File[]];
+	'delete-aiq-documents': [fileIds: string[]];
+	'refresh-aiq': [];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
@@ -151,9 +174,27 @@ const i18n = useI18n();
 							:loading="agentFilesLoading"
 							:uploading="agentFilesUploading"
 							:deleting-file-id="deletingAgentFileId"
+							:aiq-base-url="aiqBaseUrl"
+							:aiq-collections="aiqCollections"
+							:selected-aiq-collection-name="selectedAiqCollectionName"
+							:aiq-documents="aiqDocuments"
+							:aiq-health-status="aiqHealthStatus"
+							:aiq-collections-loading="aiqCollectionsLoading"
+							:aiq-documents-loading="aiqDocumentsLoading"
+							:aiq-uploading="aiqUploading"
+							:aiq-deleting-collection-name="aiqDeletingCollectionName"
+							:aiq-deleting-document-ids="aiqDeletingDocumentIds"
+							:aiq-error="aiqError"
 							data-testid="agent-files-card"
+							@add-connection="emit('add-aiq-connection')"
 							@upload-files="emit('upload-files', $event)"
 							@delete-file="emit('delete-file', $event)"
+							@create-aiq-collection="emit('create-aiq-collection', $event)"
+							@select-aiq-collection="emit('select-aiq-collection', $event)"
+							@delete-aiq-collection="emit('delete-aiq-collection', $event)"
+							@upload-aiq-documents="emit('upload-aiq-documents', $event)"
+							@delete-aiq-documents="emit('delete-aiq-documents', $event)"
+							@refresh-aiq="emit('refresh-aiq')"
 						/>
 					</N8nCard>
 

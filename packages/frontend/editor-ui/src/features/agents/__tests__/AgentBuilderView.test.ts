@@ -96,6 +96,14 @@ const fetchConfigMock = vi.fn();
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
+const getAiqHealthMock = vi.fn().mockResolvedValue({});
+const listAiqCollectionsMock = vi.fn().mockResolvedValue([]);
+const listAiqDocumentsMock = vi.fn().mockResolvedValue([]);
+const createAiqCollectionMock = vi.fn().mockResolvedValue({});
+const deleteAiqCollectionMock = vi.fn().mockResolvedValue(undefined);
+const uploadAiqDocumentsMock = vi.fn().mockResolvedValue({ job_id: 'job-1', file_ids: ['file-1'] });
+const getAiqJobStatusMock = vi.fn().mockResolvedValue({ status: 'completed' });
+const deleteAiqDocumentsMock = vi.fn().mockResolvedValue(undefined);
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -111,6 +119,25 @@ vi.mock('../composables/useAgentApi', () => ({
 	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
+}));
+
+vi.mock('../composables/useAiqKnowledgeApi', () => ({
+	AiqKnowledgeApiError: class AiqKnowledgeApiError extends Error {
+		constructor(
+			message: string,
+			readonly status?: number,
+		) {
+			super(message);
+		}
+	},
+	createAiqCollection: createAiqCollectionMock,
+	deleteAiqCollection: deleteAiqCollectionMock,
+	deleteAiqDocuments: deleteAiqDocumentsMock,
+	getAiqHealth: getAiqHealthMock,
+	getAiqJobStatus: getAiqJobStatusMock,
+	listAiqCollections: listAiqCollectionsMock,
+	listAiqDocuments: listAiqDocumentsMock,
+	uploadAiqDocuments: uploadAiqDocumentsMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -147,6 +174,7 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	knowledge?: { aiq?: { baseUrl: string } };
 }
 
 const defaultLlmConfig = {
@@ -463,6 +491,22 @@ describe('AgentBuilderView — preview routing', () => {
 		uploadAgentFilesMock.mockReset();
 		uploadAgentFilesMock.mockResolvedValue([]);
 		warmAgentKnowledgeSandboxMock.mockClear();
+		getAiqHealthMock.mockReset();
+		getAiqHealthMock.mockResolvedValue({});
+		listAiqCollectionsMock.mockReset();
+		listAiqCollectionsMock.mockResolvedValue([]);
+		listAiqDocumentsMock.mockReset();
+		listAiqDocumentsMock.mockResolvedValue([]);
+		createAiqCollectionMock.mockReset();
+		createAiqCollectionMock.mockResolvedValue({});
+		deleteAiqCollectionMock.mockReset();
+		deleteAiqCollectionMock.mockResolvedValue(undefined);
+		uploadAiqDocumentsMock.mockReset();
+		uploadAiqDocumentsMock.mockResolvedValue({ job_id: 'job-1', file_ids: ['file-1'] });
+		getAiqJobStatusMock.mockReset();
+		getAiqJobStatusMock.mockResolvedValue({ status: 'completed' });
+		deleteAiqDocumentsMock.mockReset();
+		deleteAiqDocumentsMock.mockResolvedValue(undefined);
 		showErrorMock.mockReset();
 		fetchConfigMock.mockClear();
 		showErrorMock.mockReset();
@@ -708,6 +752,75 @@ describe('AgentBuilderView — preview routing', () => {
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
 		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+	});
+
+	it('persists the AI-Q base URL from the knowledge connection modal', async () => {
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('add-aiq-connection');
+		await nextTick();
+
+		const modalData = openModalWithDataMock.mock.calls.at(-1)?.[0] as {
+			name: string;
+			data: { onConfirm: (payload: { baseUrl: string }) => void };
+		};
+		expect(modalData.name).toBe('agentKnowledgeConnectionModal');
+
+		modalData.data.onConfirm({ baseUrl: 'https://aiq.example.test' });
+		await nextTick();
+
+		const vm = wrapper.vm as unknown as { localConfig: TestAgentConfig };
+		expect(vm.localConfig.knowledge?.aiq?.baseUrl).toBe('https://aiq.example.test');
+	});
+
+	it('keeps a locally confirmed AI-Q connection when the save echo omits knowledge config', async () => {
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('add-aiq-connection');
+		await nextTick();
+
+		const modalData = openModalWithDataMock.mock.calls.at(-1)?.[0] as {
+			data: { onConfirm: (payload: { baseUrl: string }) => void };
+		};
+		modalData.data.onConfirm({ baseUrl: 'http://localhost:8000' });
+		await nextTick();
+
+		mockConfig.value = withDefaultLlm({
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+		});
+		await nextTick();
+
+		const vm = wrapper.vm as unknown as { localConfig: TestAgentConfig };
+		expect(vm.localConfig.knowledge?.aiq?.baseUrl).toBe('http://localhost:8000');
+	});
+
+	it('polls AI-Q upload status before refreshing collection documents', async () => {
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			knowledge: { aiq: { baseUrl: 'https://aiq.example.test' } },
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		listAiqCollectionsMock.mockResolvedValue([{ name: 'docs' }]);
+		listAiqDocumentsMock.mockResolvedValue([]);
+		getAiqJobStatusMock.mockResolvedValue({ status: 'completed' });
+
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+		await flushPromises();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('upload-aiq-documents', [new File(['hello'], 'hello.txt')]);
+		await flushPromises();
+
+		expect(uploadAiqDocumentsMock).toHaveBeenCalledWith(
+			'https://aiq.example.test',
+			'docs',
+			expect.any(Array),
+		);
+		expect(getAiqJobStatusMock).toHaveBeenCalledWith('https://aiq.example.test', 'job-1');
+		expect(listAiqDocumentsMock).toHaveBeenLastCalledWith('https://aiq.example.test', 'docs');
 	});
 });
 

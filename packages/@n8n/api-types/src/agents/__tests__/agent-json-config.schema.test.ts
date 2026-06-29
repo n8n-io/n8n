@@ -118,3 +118,33 @@ describe('AgentJsonConfigSchema — skills', () => {
 		}
 	});
 });
+
+describe('AgentJsonConfigSchema — knowledge', () => {
+	it('accepts and normalizes an NVIDIA AI-Q base URL', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			knowledge: {
+				aiq: {
+					baseUrl: 'https://aiq.example.test///',
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.knowledge?.aiq?.baseUrl).toBe('https://aiq.example.test');
+	});
+
+	it('rejects an invalid NVIDIA AI-Q base URL', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			knowledge: {
+				aiq: {
+					baseUrl: 'not-a-url',
+				},
+			},
+		});
+
+		expect(result.success).toBe(false);
+	});
+});

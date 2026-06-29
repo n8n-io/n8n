@@ -45,6 +45,29 @@ describe('sanitizeAgentJsonConfig', () => {
 		).toEqual(baseConfig);
 	});
 
+	it('preserves NVIDIA AI-Q knowledge config and strips unknown nested AI-Q keys', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			knowledge: {
+				aiq: {
+					baseUrl: 'https://aiq.example.test',
+					token: 'not-persisted',
+				},
+				legacyProvider: true,
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			knowledge: {
+				aiq: {
+					baseUrl: 'https://aiq.example.test',
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
 	it('strips unknown nested object keys before validation', () => {
 		const sanitized = sanitizeAgentJsonConfig({
 			...baseConfig,

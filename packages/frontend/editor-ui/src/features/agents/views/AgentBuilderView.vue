@@ -34,6 +34,20 @@ import {
 	updateAgentSkill,
 	createAgentSkill,
 } from '../composables/useAgentApi';
+import {
+	AiqKnowledgeApiError,
+	type AiqCollection,
+	type AiqDocument,
+	type AiqHealthStatus,
+	createAiqCollection,
+	deleteAiqCollection,
+	deleteAiqDocuments,
+	getAiqHealth,
+	getAiqJobStatus,
+	listAiqCollections,
+	listAiqDocuments,
+	uploadAiqDocuments,
+} from '../composables/useAiqKnowledgeApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type {
 	AgentResource,
@@ -60,6 +74,7 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
+	AGENT_KNOWLEDGE_CONNECTION_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -130,6 +145,27 @@ const agentFilesLoading = ref(false);
 const agentFilesUploading = ref(false);
 const deletingAgentFileId = ref<string | null>(null);
 const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
+const aiqHealthStatus = ref<AiqHealthStatus>('idle');
+const aiqCollections = ref<AiqCollection[]>([]);
+const selectedAiqCollectionName = ref<string | null>(null);
+const aiqDocumentsByCollection = ref<Record<string, AiqDocument[]>>({});
+const aiqCollectionsLoading = ref(false);
+const aiqDocumentsLoading = ref(false);
+const aiqUploading = ref(false);
+const aiqDeletingCollectionName = ref<string | null>(null);
+const aiqDeletingDocumentIds = ref<string[]>([]);
+const aiqError = ref('');
+const aiqPollTimers = new Set<{
+	timer: ReturnType<typeof setTimeout>;
+	resolve: () => void;
+}>();
+
+const aiqBaseUrl = computed(() => localConfig.value?.knowledge?.aiq?.baseUrl ?? null);
+const selectedAiqDocuments = computed(() =>
+	selectedAiqCollectionName.value
+		? (aiqDocumentsByCollection.value[selectedAiqCollectionName.value] ?? [])
+		: [],
+);
 
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
@@ -213,8 +249,13 @@ watch(
 	config,
 	(c) => {
 		if (c) {
-			localConfig.value = deepCopy(c);
-			syncAgentIdentityFromConfig(c);
+			const pendingAiq = localConfig.value?.knowledge?.aiq;
+			const nextConfig =
+				pendingAiq && !c.knowledge?.aiq
+					? { ...c, knowledge: { ...(c.knowledge ?? {}), aiq: pendingAiq } }
+					: c;
+			localConfig.value = deepCopy(nextConfig);
+			syncAgentIdentityFromConfig(nextConfig);
 		}
 	},
 	{ immediate: true },
@@ -296,6 +337,244 @@ async function fetchAgentFiles(
 		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
 			agentFilesLoading.value = false;
 		}
+	}
+}
+
+function clearAiqPollTimers() {
+	for (const entry of aiqPollTimers) {
+		clearTimeout(entry.timer);
+		entry.resolve();
+	}
+	aiqPollTimers.clear();
+}
+
+function resetAiqState() {
+	clearAiqPollTimers();
+	aiqHealthStatus.value = 'idle';
+	aiqCollections.value = [];
+	selectedAiqCollectionName.value = null;
+	aiqDocumentsByCollection.value = {};
+	aiqCollectionsLoading.value = false;
+	aiqDocumentsLoading.value = false;
+	aiqUploading.value = false;
+	aiqDeletingCollectionName.value = null;
+	aiqDeletingDocumentIds.value = [];
+	aiqError.value = '';
+}
+
+function aiqErrorCopy(error: unknown): string {
+	if (error instanceof AiqKnowledgeApiError) {
+		if (error.status === 503)
+			return locale.baseText('agents.builder.aiq.errors.unavailable' as BaseTextKey);
+		if (error.status === 404)
+			return locale.baseText('agents.builder.aiq.errors.notFound' as BaseTextKey);
+		if (error.status === undefined)
+			return locale.baseText('agents.builder.aiq.errors.connectionFailed' as BaseTextKey);
+	}
+	return locale.baseText('agents.builder.aiq.errors.generic' as BaseTextKey);
+}
+
+function waitForAiqPollInterval() {
+	return new Promise<void>((resolve) => {
+		let entry: { timer: ReturnType<typeof setTimeout>; resolve: () => void };
+		const timer = setTimeout(() => {
+			aiqPollTimers.delete(entry);
+			resolve();
+		}, 2000);
+		entry = { timer, resolve };
+		aiqPollTimers.add(entry);
+	});
+}
+
+async function refreshAiqDocuments(collectionName: string, baseUrl = aiqBaseUrl.value) {
+	if (!baseUrl) return;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	aiqDocumentsLoading.value = true;
+	try {
+		const documents = await listAiqDocuments(baseUrl, collectionName);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		aiqDocumentsByCollection.value = {
+			...aiqDocumentsByCollection.value,
+			[collectionName]: documents,
+		};
+	} catch (error) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		aiqError.value = aiqErrorCopy(error);
+		if (error instanceof AiqKnowledgeApiError && error.status === 404) {
+			await refreshAiqCollections(baseUrl);
+		}
+	} finally {
+		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+			aiqDocumentsLoading.value = false;
+		}
+	}
+}
+
+async function refreshAiqCollections(baseUrl = aiqBaseUrl.value) {
+	if (!baseUrl) return;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	aiqCollectionsLoading.value = true;
+	try {
+		const collections = await listAiqCollections(baseUrl);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		aiqCollections.value = collections;
+		const selectedStillExists = collections.some(
+			(collection) => collection.name === selectedAiqCollectionName.value,
+		);
+		selectedAiqCollectionName.value = selectedStillExists
+			? selectedAiqCollectionName.value
+			: (collections[0]?.name ?? null);
+		aiqError.value = '';
+		if (selectedAiqCollectionName.value) {
+			await refreshAiqDocuments(selectedAiqCollectionName.value, baseUrl);
+		}
+	} catch (error) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		aiqError.value = aiqErrorCopy(error);
+		if (error instanceof AiqKnowledgeApiError && error.status === 503) {
+			aiqHealthStatus.value = 'unavailable';
+		}
+	} finally {
+		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+			aiqCollectionsLoading.value = false;
+		}
+	}
+}
+
+async function loadAiqConnection(baseUrl: string) {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	aiqHealthStatus.value = 'checking';
+	aiqError.value = '';
+	try {
+		await getAiqHealth(baseUrl);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		aiqHealthStatus.value = 'available';
+		await refreshAiqCollections(baseUrl);
+	} catch (error) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		aiqHealthStatus.value = 'unavailable';
+		aiqError.value = aiqErrorCopy(error);
+	}
+}
+
+function onSelectAiqCollection(name: string) {
+	selectedAiqCollectionName.value = name;
+	void refreshAiqDocuments(name);
+}
+
+async function onCreateAiqCollection(name: string) {
+	if (!aiqBaseUrl.value) return;
+	try {
+		await createAiqCollection(aiqBaseUrl.value, { name });
+		selectedAiqCollectionName.value = name;
+		await refreshAiqCollections();
+	} catch (error) {
+		aiqError.value = aiqErrorCopy(error);
+	}
+}
+
+async function onDeleteAiqCollection(name: string) {
+	if (!aiqBaseUrl.value || aiqDeletingCollectionName.value) return;
+	const confirmed = await openAgentConfirmationModal({
+		title: locale.baseText('agents.builder.aiq.collections.deleteModal.title' as BaseTextKey, {
+			interpolate: { name },
+		}),
+		description: locale.baseText(
+			'agents.builder.aiq.collections.deleteModal.description' as BaseTextKey,
+			{
+				interpolate: { name },
+			},
+		),
+		confirmButtonText: locale.baseText(
+			'agents.builder.aiq.collections.deleteModal.button.delete' as BaseTextKey,
+		),
+		cancelButtonText: locale.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	aiqDeletingCollectionName.value = name;
+	try {
+		await deleteAiqCollection(aiqBaseUrl.value, name);
+		delete aiqDocumentsByCollection.value[name];
+		await refreshAiqCollections();
+	} catch (error) {
+		aiqError.value = aiqErrorCopy(error);
+		if (error instanceof AiqKnowledgeApiError && error.status === 404) {
+			await refreshAiqCollections();
+		}
+	} finally {
+		aiqDeletingCollectionName.value = null;
+	}
+}
+
+async function pollAiqUploadJob(
+	baseUrl: string,
+	jobId: string,
+	targetProjectId: string,
+	targetAgentId: string,
+) {
+	const startedAt = Date.now();
+	while (Date.now() - startedAt < 120_000) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+		const jobStatus = await getAiqJobStatus(baseUrl, jobId);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+		if (jobStatus.status === 'completed') return true;
+		if (jobStatus.status === 'failed') {
+			throw new Error(
+				jobStatus.error ??
+					jobStatus.message ??
+					locale.baseText('agents.builder.aiq.errors.uploadFailed' as BaseTextKey),
+			);
+		}
+		await waitForAiqPollInterval();
+	}
+	throw new Error(locale.baseText('agents.builder.aiq.errors.uploadTimedOut' as BaseTextKey));
+}
+
+async function onUploadAiqDocuments(files: File[]) {
+	if (!aiqBaseUrl.value || !selectedAiqCollectionName.value || files.length === 0) return;
+	const collectionName = selectedAiqCollectionName.value;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	aiqUploading.value = true;
+	try {
+		const upload = await uploadAiqDocuments(aiqBaseUrl.value, collectionName, files);
+		const completed = await pollAiqUploadJob(
+			aiqBaseUrl.value,
+			upload.job_id,
+			targetProjectId,
+			targetAgentId,
+		);
+		if (!completed || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		await refreshAiqDocuments(collectionName);
+		showMessage({
+			title: locale.baseText('agents.builder.aiq.documents.uploaded' as BaseTextKey),
+			type: 'success',
+		});
+	} catch (error) {
+		aiqError.value = aiqErrorCopy(error);
+	} finally {
+		aiqUploading.value = false;
+	}
+}
+
+async function onDeleteAiqDocuments(fileIds: string[]) {
+	if (!aiqBaseUrl.value || !selectedAiqCollectionName.value || fileIds.length === 0) return;
+	const collectionName = selectedAiqCollectionName.value;
+	aiqDeletingDocumentIds.value = fileIds;
+	try {
+		await deleteAiqDocuments(aiqBaseUrl.value, collectionName, fileIds);
+		await refreshAiqDocuments(collectionName);
+	} catch (error) {
+		aiqError.value = aiqErrorCopy(error);
+		if (error instanceof AiqKnowledgeApiError && error.status === 404) {
+			await refreshAiqCollections();
+		}
+	} finally {
+		aiqDeletingDocumentIds.value = [];
 	}
 }
 
@@ -797,6 +1076,7 @@ async function initialize() {
 		agentFilesLoading.value = false;
 		agentFilesUploading.value = false;
 		deletingAgentFileId.value = null;
+		resetAiqState();
 
 		// Refresh builder readiness so the empty-state CTA reflects the latest
 		// admin configuration. Never blocks the rest of the load.
@@ -857,9 +1137,17 @@ async function initialize() {
 	}
 }
 
+watch(aiqBaseUrl, (baseUrl) => {
+	resetAiqState();
+	if (baseUrl) {
+		void loadAiqConnection(baseUrl);
+	}
+});
+
 watch(agentId, initialize, { immediate: true });
 
 onBeforeUnmount(() => {
+	clearAiqPollTimers();
 	sessionsStore.stopAutoRefresh();
 });
 
@@ -1102,6 +1390,23 @@ function onToggleTask(payload: { id: string; enabled: boolean }) {
 	onConfigFieldUpdate({ tasks: nextTasks });
 }
 
+function onOpenAiqConnectionModal() {
+	uiStore.openModalWithData({
+		name: AGENT_KNOWLEDGE_CONNECTION_MODAL_KEY,
+		data: {
+			baseUrl: aiqBaseUrl.value ?? '',
+			onConfirm: ({ baseUrl }: { baseUrl: string }) => {
+				onConfigFieldUpdate({
+					knowledge: {
+						...(localConfig.value?.knowledge ?? {}),
+						aiq: { baseUrl },
+					},
+				});
+			},
+		},
+	});
+}
+
 function onOpenAddSkillModal() {
 	builderTelemetry.trackOpenedAddSkillModal();
 	uiStore.openModalWithData({
@@ -1326,6 +1631,17 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:agent-files-uploading="agentFilesUploading"
 					:knowledge-base-enabled="isKnowledgeBaseEnabled"
 					:deleting-agent-file-id="deletingAgentFileId"
+					:aiq-base-url="aiqBaseUrl"
+					:aiq-collections="aiqCollections"
+					:selected-aiq-collection-name="selectedAiqCollectionName"
+					:aiq-documents="selectedAiqDocuments"
+					:aiq-health-status="aiqHealthStatus"
+					:aiq-collections-loading="aiqCollectionsLoading"
+					:aiq-documents-loading="aiqDocumentsLoading"
+					:aiq-uploading="aiqUploading"
+					:aiq-deleting-collection-name="aiqDeletingCollectionName"
+					:aiq-deleting-document-ids="aiqDeletingDocumentIds"
+					:aiq-error="aiqError"
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
 					:is-build-chat-streaming="isBuildChatStreaming"
@@ -1338,8 +1654,15 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@open-skill="onOpenSkillFromList"
 					@add-tool="onOpenAddToolModal"
 					@add-skill="onOpenAddSkillModal"
+					@add-aiq-connection="onOpenAiqConnectionModal"
 					@upload-files="onUploadAgentFiles"
 					@delete-file="onDeleteAgentFile"
+					@create-aiq-collection="onCreateAiqCollection"
+					@select-aiq-collection="onSelectAiqCollection"
+					@delete-aiq-collection="onDeleteAiqCollection"
+					@upload-aiq-documents="onUploadAiqDocuments"
+					@delete-aiq-documents="onDeleteAiqDocuments"
+					@refresh-aiq="refreshAiqCollections()"
 					@remove-tool="onRemoveTool"
 					@remove-skill="onRemoveSkill"
 					@update:connected-triggers="onConnectedTriggersUpdate"

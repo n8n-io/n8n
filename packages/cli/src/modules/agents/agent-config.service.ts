@@ -143,6 +143,7 @@ export class AgentConfigService {
 		const providerToolsProvided = result.config.providerTools !== undefined;
 		const configBlockProvided = result.config.config !== undefined;
 		const mcpServersProvided = result.config.mcpServers !== undefined;
+		const knowledgeProvided = result.config.knowledge !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
 			decomposeJsonConfig(result.config);
@@ -163,6 +164,7 @@ export class AgentConfigService {
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
+			...(knowledgeProvided ? { knowledge: decomposedSchema.knowledge } : {}),
 		};
 
 		entity.schema = nextSchema;

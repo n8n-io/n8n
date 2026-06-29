@@ -1,5 +1,6 @@
 import type { BaseResource } from '@/Interface';
 import type {
+	AgentJsonConfig as ApiAgentJsonConfig,
 	AgentJsonToolConfig,
 	AgentSkill as ApiAgentSkill,
 	AgentSkillReference,
@@ -10,6 +11,14 @@ export type { ToolDescriptor, CustomToolEntry, AgentSkillReference };
 
 export type AgentSkill = ApiAgentSkill & {
 	scripts?: AgentSkillReference[];
+};
+
+export type AgentJsonConfig = ApiAgentJsonConfig & {
+	knowledge?: {
+		aiq?: {
+			baseUrl: string;
+		};
+	};
 };
 
 /**
@@ -126,7 +135,6 @@ export type {
 	AgentJsonToolConfig,
 	AgentJsonToolConfig as AgentJsonToolRef,
 	AgentJsonSkillConfig as AgentJsonSkillRef,
-	AgentJsonConfig as AgentJsonConfigRef,
 	AgentJsonMcpServerConfig,
-	AgentJsonConfig,
 } from '@n8n/api-types';
+export type AgentJsonConfigRef = AgentJsonConfig;

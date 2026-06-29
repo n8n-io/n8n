@@ -173,6 +173,28 @@ describe('AgentConfigService', () => {
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
+		it('persists AI-Q knowledge connection config', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			mockAccessibleCredentials(credentialsService, []);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				knowledge: {
+					aiq: {
+						baseUrl: 'http://localhost:8000',
+					},
+				},
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.knowledge).toEqual({
+				aiq: {
+					baseUrl: 'http://localhost:8000',
+				},
+			});
+		});
+
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
 			const {
 				service,

@@ -2,6 +2,7 @@
 import { computed, useTemplateRef } from 'vue';
 import {
 	N8nActionBox,
+	N8nButton,
 	N8nCard,
 	N8nIcon,
 	N8nIconButton,
@@ -18,6 +19,12 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	type AgentFileDto,
 } from '@n8n/api-types';
+import type {
+	AiqCollection,
+	AiqDocument,
+	AiqHealthStatus,
+} from '../composables/useAiqKnowledgeApi';
+import AgentAiqKnowledgePanel from './AgentAiqKnowledgePanel.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -26,18 +33,47 @@ const props = withDefaults(
 		loading?: boolean;
 		uploading?: boolean;
 		deletingFileId?: string | null;
+		aiqBaseUrl?: string | null;
+		aiqCollections?: AiqCollection[];
+		selectedAiqCollectionName?: string | null;
+		aiqDocuments?: AiqDocument[];
+		aiqHealthStatus?: AiqHealthStatus;
+		aiqCollectionsLoading?: boolean;
+		aiqDocumentsLoading?: boolean;
+		aiqUploading?: boolean;
+		aiqDeletingCollectionName?: string | null;
+		aiqDeletingDocumentIds?: string[];
+		aiqError?: string;
 	}>(),
 	{
 		disabled: false,
 		loading: false,
 		uploading: false,
 		deletingFileId: null,
+		aiqBaseUrl: null,
+		aiqCollections: () => [],
+		selectedAiqCollectionName: null,
+		aiqDocuments: () => [],
+		aiqHealthStatus: 'idle',
+		aiqCollectionsLoading: false,
+		aiqDocumentsLoading: false,
+		aiqUploading: false,
+		aiqDeletingCollectionName: null,
+		aiqDeletingDocumentIds: () => [],
+		aiqError: '',
 	},
 );
 
 const emit = defineEmits<{
+	'add-connection': [];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
+	'create-aiq-collection': [name: string];
+	'select-aiq-collection': [name: string];
+	'delete-aiq-collection': [name: string];
+	'upload-aiq-documents': [files: File[]];
+	'delete-aiq-documents': [fileIds: string[]];
+	'refresh-aiq': [];
 }>();
 
 const i18n = useI18n();
@@ -117,18 +153,29 @@ function onFilesSelected(event: Event) {
 				<N8nText tag="h3" :bold="true">
 					{{ i18n.baseText('agents.builder.files.title') }}
 				</N8nText>
-				<N8nTooltip :content="i18n.baseText('agents.builder.files.upload')" placement="top">
-					<N8nIconButton
-						icon="plus"
+				<div :class="$style.headerActions">
+					<N8nButton
 						variant="subtle"
 						size="small"
-						icon-size="medium"
-						:disabled="isUploadDisabled"
-						:aria-label="i18n.baseText('agents.builder.files.upload')"
-						data-testid="agent-files-upload"
-						@click="openFilePicker"
-					/>
-				</N8nTooltip>
+						:disabled="props.disabled"
+						data-testid="agent-files-add-connection"
+						@click="emit('add-connection')"
+					>
+						{{ i18n.baseText('agents.builder.files.addConnection') }}
+					</N8nButton>
+					<N8nTooltip :content="i18n.baseText('agents.builder.files.upload')" placement="top">
+						<N8nIconButton
+							icon="plus"
+							variant="subtle"
+							size="small"
+							icon-size="medium"
+							:disabled="isUploadDisabled"
+							:aria-label="i18n.baseText('agents.builder.files.upload')"
+							data-testid="agent-files-upload"
+							@click="openFilePicker"
+						/>
+					</N8nTooltip>
+				</div>
 			</div>
 			<N8nText size="small" color="text-light">
 				{{ description }}
@@ -205,6 +252,29 @@ function onFilesSelected(event: Event) {
 				})
 			}}
 		</N8nText>
+
+		<template v-if="props.aiqBaseUrl">
+			<div :class="$style.divider" />
+			<AgentAiqKnowledgePanel
+				:collections="props.aiqCollections"
+				:selected-collection-name="props.selectedAiqCollectionName"
+				:documents="props.aiqDocuments"
+				:health-status="props.aiqHealthStatus"
+				:collections-loading="props.aiqCollectionsLoading"
+				:documents-loading="props.aiqDocumentsLoading"
+				:uploading="props.aiqUploading"
+				:deleting-collection-name="props.aiqDeletingCollectionName"
+				:deleting-document-ids="props.aiqDeletingDocumentIds"
+				:error="props.aiqError"
+				:disabled="props.disabled"
+				@create-collection="emit('create-aiq-collection', $event)"
+				@select-collection="emit('select-aiq-collection', $event)"
+				@delete-collection="emit('delete-aiq-collection', $event)"
+				@upload-documents="emit('upload-aiq-documents', $event)"
+				@delete-documents="emit('delete-aiq-documents', $event)"
+				@refresh="emit('refresh-aiq')"
+			/>
+		</template>
 	</div>
 </template>
 
@@ -234,6 +304,12 @@ function onFilesSelected(event: Event) {
 	gap: var(--spacing--sm);
 }
 
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .fileInput {
 	display: none;
 }
@@ -251,6 +327,11 @@ function onFilesSelected(event: Event) {
 
 .rows {
 	scrollbar-gutter: stable;
+}
+
+.divider {
+	height: 1px;
+	background-color: var(--border-color-base);
 }
 
 .row {

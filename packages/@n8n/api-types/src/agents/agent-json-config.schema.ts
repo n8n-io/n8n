@@ -82,6 +82,21 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
+const KnowledgeConfigSchema = z
+	.object({
+		aiq: z
+			.object({
+				baseUrl: z
+					.string()
+					.trim()
+					.url()
+					.transform((url) => url.replace(/\/+$/, '')),
+			})
+			.strict()
+			.optional(),
+	})
+	.strict();
+
 export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
 
 const SubAgentConfigSchema = z
@@ -322,6 +337,7 @@ export const AgentJsonConfigSchema = z.object({
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
+	knowledge: KnowledgeConfigSchema.optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
