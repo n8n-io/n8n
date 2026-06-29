@@ -160,7 +160,7 @@ describe('AgentSelectorParameterInput', () => {
 		]);
 	});
 
-	it('hides the create-agent action until creation is wired (AGENT-277)', async () => {
+	it('hides the create-agent action by default', async () => {
 		const { getByTestId, queryByTestId } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
@@ -168,6 +168,22 @@ describe('AgentSelectorParameterInput', () => {
 		await flushPromises();
 
 		expect(queryByTestId('rlc-item-add-resource')).toBeNull();
+	});
+
+	it('shows the create-agent action and emits agentCreateRequested when allowCreate is set', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: makeProps({ allowCreate: true }),
+		});
+		await flushPromises();
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+
+		const createItem = getByTestId('rlc-item-add-resource');
+		expect(createItem).toBeInTheDocument();
+
+		await userEvent.click(createItem);
+		expect(emitted('agentCreateRequested')).toBeTruthy();
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {

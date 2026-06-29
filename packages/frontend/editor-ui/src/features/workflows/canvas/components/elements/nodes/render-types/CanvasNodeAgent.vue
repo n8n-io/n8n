@@ -12,7 +12,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	isAgentModelProvider,
@@ -143,6 +143,13 @@ function onPickAgent(value: INodeParameterResourceLocator) {
 	emit('update', { agentId: value });
 }
 
+function onCreateAgent() {
+	if (!projectId.value) return;
+	// Lightweight create: open the standalone new-agent flow scoped to this
+	// project. The seamless inline-create round-trip back to the node is AGENT-277.
+	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
+}
+
 function onActivate(event: MouseEvent) {
 	emit('activate', id.value, event);
 }
@@ -207,40 +214,44 @@ watch(
 				</N8nTooltip>
 			</header>
 
-			<div :class="$style.body">
-				<template v-if="isConfigured">
-					<N8nText v-if="hasError" size="small" color="danger">
-						{{ i18n.baseText('agentNode.card.loadError') }}
-					</N8nText>
-					<template v-else>
-						<!-- Always render the model row so a configured-but-empty agent (no
+			<div :class="$style.bodyWrap">
+				<div :class="$style.body">
+					<template v-if="isConfigured">
+						<N8nText v-if="hasError" size="small" color="danger">
+							{{ i18n.baseText('agentNode.card.loadError') }}
+						</N8nText>
+						<template v-else>
+							<!-- Always render the model row so a configured-but-empty agent (no
 						model, no capabilities) doesn't collapse to an empty body. -->
-						<div :class="$style.modelRow" data-test-id="canvas-node-agent-model">
-							<CredentialIcon
-								v-if="modelCredentialType"
-								:credential-type-name="modelCredentialType"
-								:size="16"
-							/>
-							<N8nText
-								size="small"
-								:class="[$style.modelName, { [$style.modelPlaceholder]: !modelName }]"
-							>
-								{{ modelName || i18n.baseText('agentNode.card.noModel') }}
-							</N8nText>
-						</div>
-						<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+							<div :class="$style.modelRow" data-test-id="canvas-node-agent-model">
+								<CredentialIcon
+									v-if="modelCredentialType"
+									:credential-type-name="modelCredentialType"
+									:size="16"
+								/>
+								<N8nText
+									size="small"
+									:class="[$style.modelName, { [$style.modelPlaceholder]: !modelName }]"
+								>
+									{{ modelName || i18n.baseText('agentNode.card.noModel') }}
+								</N8nText>
+							</div>
+							<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+						</template>
 					</template>
-				</template>
-				<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">
-					<AgentSelectorParameterInput
-						:parameter="agentSelectorParameter"
-						:model-value="agentResourceLocator"
-						path="parameters.agentId"
-						:is-read-only="isReadOnly"
-						input-size="medium"
-						hide-mode-selector
-						@update:model-value="onPickAgent"
-					/>
+					<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">
+						<AgentSelectorParameterInput
+							:parameter="agentSelectorParameter"
+							:model-value="agentResourceLocator"
+							path="parameters.agentId"
+							:is-read-only="isReadOnly"
+							input-size="medium"
+							hide-mode-selector
+							allow-create
+							@update:model-value="onPickAgent"
+							@agent-create-requested="onCreateAgent"
+						/>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -261,9 +272,12 @@ watch(
 	// the legacy theme globally overrides it to ~2px, which renders square.
 	--agent-card--radius: 12px;
 	position: relative;
+	// Own stacking context so the header/body/glow z-indexes below stay local and
+	// never compete with the connection handles (which must stay on top).
+	isolation: isolate;
 	width: 384px;
-	// Shapes the status/selected ring and the animated running glow on this
-	// (non-clipping) wrapper; the visible card lives in .surface.
+	// Shapes the selected ring on this (non-clipping) wrapper; the visible card
+	// lives in .surface.
 	border-radius: var(--agent-card--radius);
 }
 
@@ -358,15 +372,23 @@ watch(
 	}
 }
 
+// Stacking context that sits above the header (which stays in normal flow, so
+// its arrow button keeps its clicks + hover), and tucks the body up into the
+// header by one radius. The body's run glow resolves into this layer, so it
+// paints over the header's bottom edge → a complete ring around the body.
+.bodyWrap {
+	position: relative;
+	z-index: 1;
+	margin-top: calc(-1 * var(--agent-card--radius));
+}
+
 .body {
+	// Anchor the running/waiting glow `::after` (positioned relative to the body,
+	// but stacked into .bodyWrap's negative layer — behind the body, above header).
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	// Tuck up into the header by one radius so the body's rounded top corners sit
-	// on the dotted header; its sides line up with the header's to read as one
-	// continuous outer border, and the full border keeps the top divider an even
-	// 2px as it curves (no corner thinning).
-	margin-top: calc(-1 * var(--agent-card--radius));
 	padding: var(--spacing--sm);
 	border: 2px solid var(--agent-card--border-color);
 	border-radius: var(--agent-card--radius);
@@ -397,41 +419,44 @@ watch(
 }
 
 .statusIcons {
-	// No z-index: connection handles (z-index 1) must stay above the card, and
-	// the status icons sit in the corner where they never overlap a handle.
+	// Above .bodyWrap (z-index 1) so the status check/spinner shows over the body.
+	// Safe because the card is its own stacking context (the connection handles
+	// sit above the whole card regardless of this local z-index).
 	position: absolute;
+	z-index: 2;
 	bottom: var(--spacing--2xs);
 	right: var(--spacing--2xs);
 }
 
 /**
- * Execution state — mirrors CanvasNodeDefault. Border color carries
- * success/error (composes with the selected ring); running/waiting add the
- * animated glow.
+ * Execution state — mirrors CanvasNodeDefault, but scoped to the body so the
+ * run/state highlight wraps the body only (the selected ring still rings the
+ * whole node). Success/error tint the body border; running/waiting add the
+ * animated glow around the body.
  */
 .selected {
 	box-shadow: 0 0 0 4px var(--canvas--color--selected);
 }
 
-.success {
-	--agent-card--border-color: var(--color--success);
+.success .body {
+	border-color: var(--color--success);
 }
 
-.error {
-	--agent-card--border-color: var(--color--danger);
+.error .body {
+	border-color: var(--color--danger);
 }
 
 /* stylelint-disable */
-.running::after,
-.waiting::after {
+.running .body::after,
+.waiting .body::after {
 	@include styles.status-animated-after;
 	border-radius: var(--agent-card--radius);
 }
 
-.running::after {
+.running .body::after {
 	@include styles.status-running-animation;
 }
-.waiting::after {
+.waiting .body::after {
 	@include styles.status-waiting-animation;
 }
 

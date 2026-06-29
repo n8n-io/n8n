@@ -40,6 +40,11 @@ export interface Props {
 	 * on the canvas card, where the agent is always picked from the list.
 	 */
 	hideModeSelector?: boolean;
+	/**
+	 * Show the "Create agent" action in the dropdown. The consumer handles
+	 * `agentCreateRequested` (e.g. navigates to the new-agent flow).
+	 */
+	allowCreate?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -52,6 +57,7 @@ const props = withDefaults(defineProps<Props>(), {
 	newResourceLabel: '',
 	parameterIssues: () => [],
 	hideModeSelector: false,
+	allowCreate: false,
 });
 
 const emit = defineEmits<{
@@ -150,13 +156,11 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-// The create action is hidden until AGENT-277 wires the eager-create + Agent
-// Builder navigation. The handler (`onAddResourceClicked`) and label stay
-// implemented so re-enabling it is a one-line change.
-const isAgentCreationEnabled = false;
-
+// Opt-in via `allowCreate` (the canvas card enables it and handles the
+// `agentCreateRequested` emit). The seamless inline-create round-trip is
+// AGENT-277; today the consumer navigates to the standalone new-agent flow.
 const newResourceOptions = computed(() =>
-	isAgentCreationEnabled ? { label: getCreateResourceLabel.value } : {},
+	props.allowCreate ? { label: getCreateResourceLabel.value } : {},
 );
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
