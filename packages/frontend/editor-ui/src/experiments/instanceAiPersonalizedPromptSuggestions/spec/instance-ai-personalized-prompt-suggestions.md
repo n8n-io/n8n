@@ -279,6 +279,22 @@ Secondary/diagnostic metrics:
 - Source performance split by `suggestion_source`.
 - Cards vs list performance split by `suggestion_format`.
 
+## Feedback Follow-up
+
+Source: Notion feedback from 2026-06-22.
+
+Must change:
+
+- [x] Align card content to the top instead of vertically centering it.
+- [x] Make the card variant feel more clickable.
+
+Nice to have:
+
+- [x] Replace `Suggested for you` with `Start from an example`.
+- [x] Add helper copy under the header: `Picked for you. Change anything.`
+- [x] Add a typing-state tip when suggestions are hidden: `Tip: Ask me for suggestions if you're not sure what to build`.
+- [x] Add an `AI Assistant` pill near the top so users recognize the feature/icon faster.
+
 ## Implementation TODO
 
 - [x] Create `packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/`.

@@ -56,6 +56,7 @@ const props = withDefaults(
 		suggestionCatalogVersion?: string;
 		suggestionTelemetryPayload?: ITelemetryTrackProperties;
 		placeholderKey?: BaseTextKey;
+		typingTipKey?: BaseTextKey;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -171,6 +172,17 @@ const canShowSuggestions = computed(
 		Boolean(props.suggestions?.length) &&
 		!props.isPlanEditMode &&
 		!isComposerDirty.value &&
+		!isBusy.value &&
+		!isGatedBySetup.value,
+);
+const canShowTypingTip = computed(
+	() =>
+		Boolean(props.typingTipKey) &&
+		Boolean(props.suggestions?.length) &&
+		!props.isPlanEditMode &&
+		hasNonWhitespaceDraftText.value &&
+		!selectedSuggestionDraft.value &&
+		!hasAttachments.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
 );
@@ -497,6 +509,13 @@ const resizable = computed(() => {
 				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>
+		<div
+			v-if="canShowTypingTip && props.typingTipKey"
+			:class="$style.typingTip"
+			data-test-id="instance-ai-typing-tip"
+		>
+			{{ i18n.baseText(props.typingTipKey) }}
+		</div>
 	</div>
 </template>
 
@@ -515,6 +534,15 @@ const resizable = computed(() => {
 
 .suggestions {
 	margin-top: var(--spacing--lg);
+}
+
+.typingTip {
+	margin-top: var(--spacing--xs);
+	padding: 0 var(--spacing--sm);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--md);
 }
 
 .attachments {

@@ -258,6 +258,7 @@ const InstanceAiInputStub = defineComponent({
 		suggestionCatalogVersion: { type: String, required: false },
 		suggestionTelemetryPayload: { type: Object, required: false },
 		placeholderKey: { type: String, required: false },
+		typingTipKey: { type: String, required: false },
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
@@ -312,6 +313,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-fixed-rows' },
 					props.fixedRows == null ? 'unset' : String(props.fixedRows),
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-typing-tip-key' },
+					props.typingTipKey ?? 'unset',
 				),
 				h(
 					'span',
@@ -416,6 +422,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-typing-tip-key')).toHaveTextContent('unset');
 	});
 
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
@@ -430,6 +437,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
 		);
+		expect(getByTestId('instance-ai-input-typing-tip-key')).toHaveTextContent('unset');
 	});
 
 	it('passes personalized card suggestions when the v4 cards treatment resolves metadata', () => {
@@ -455,6 +463,9 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+		);
+		expect(getByTestId('instance-ai-input-typing-tip-key')).toHaveTextContent(
+			'experiments.instanceAiPersonalizedPromptSuggestions.typingTip',
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
 			'"format":"cards"',
@@ -513,6 +524,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
 		);
+		expect(getByTestId('instance-ai-input-typing-tip-key')).toHaveTextContent('unset');
 	});
 
 	it('passes fallback personalized suggestions after the metadata timeout', async () => {
@@ -535,6 +547,9 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
 			'"showSeeMore":false',
+		);
+		expect(getByTestId('instance-ai-input-typing-tip-key')).toHaveTextContent(
+			'experiments.instanceAiPersonalizedPromptSuggestions.typingTip',
 		);
 		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
 			'"metadata_load_state":"timed_out"',

@@ -76,6 +76,8 @@ const INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY: BaseTextKey =
 // locks the composer to a constant height so hovering an example only swaps
 // the placeholder text — the examples list below it never shifts.
 const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
+const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_TYPING_TIP_KEY =
+	'experiments.instanceAiPersonalizedPromptSuggestions.typingTip' as BaseTextKey;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 
 const store = useInstanceAiStore();
@@ -242,6 +244,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 				resolution.telemetryPayload,
 			),
 			placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+			typingTipKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_TYPING_TIP_KEY,
 		};
 	}
 

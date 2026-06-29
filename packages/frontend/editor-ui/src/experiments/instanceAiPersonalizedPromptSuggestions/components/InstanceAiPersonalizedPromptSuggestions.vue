@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 
 import type {
 	PersonalizedPromptDisplaySuggestion,
@@ -122,19 +123,30 @@ function toggleSuggestions() {
 <template>
 	<div :class="$style.suggestions" data-test-id="instance-ai-personalized-prompt-suggestions">
 		<div :class="$style.header">
-			<span :class="$style.heading">
-				{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.heading') }}
+			<span :class="$style.assistantPill" data-test-id="instance-ai-personalized-assistant-pill">
+				<N8nIcon icon="sparkles" size="xsmall" />
+				{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.assistantPill') }}
 			</span>
-			<button
-				v-if="showSeeMore"
-				type="button"
-				:class="$style.seeMoreButton"
-				data-test-id="instance-ai-personalized-see-more"
-				:disabled="props.disabled"
-				@click="toggleSuggestions"
-			>
-				{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.seeMore') }}
-			</button>
+			<div :class="$style.headingRow">
+				<div :class="$style.headingCopy">
+					<span :class="$style.heading">
+						{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.heading') }}
+					</span>
+					<span :class="$style.helper">
+						{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.helper') }}
+					</span>
+				</div>
+				<button
+					v-if="showSeeMore"
+					type="button"
+					:class="$style.seeMoreButton"
+					data-test-id="instance-ai-personalized-see-more"
+					:disabled="props.disabled"
+					@click="toggleSuggestions"
+				>
+					{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.seeMore') }}
+				</button>
+			</div>
 		</div>
 
 		<div
@@ -180,22 +192,58 @@ function toggleSuggestions() {
 
 .header {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-	min-height: var(--spacing--md);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--4xs);
 	/* Inset to align with the card/row text, which is padded by --spacing--sm. */
 	padding: 0 var(--spacing--sm);
 	margin-bottom: var(--spacing--xs);
 }
 
-.heading {
-	color: var(--text-color--subtler);
+.assistantPill {
+	display: inline-flex;
+	align-items: center;
+	align-self: flex-start;
+	gap: var(--spacing--5xs);
+	max-width: 100%;
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	background: var(--background--info);
+	border: 1px solid var(--border-color--info);
+	border-radius: var(--radius--lg);
+}
+
+.headingRow {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	min-width: 0;
+}
+
+.headingCopy {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.heading {
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--lg);
+}
+
+.helper {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--md);
 }
 
 .suggestionList {
@@ -230,6 +278,7 @@ function toggleSuggestions() {
 	transition:
 		color var(--duration--snappy) var(--easing--ease-out),
 		background-color var(--duration--snappy) var(--easing--ease-out),
+		border-color var(--duration--snappy) var(--easing--ease-out),
 		box-shadow var(--duration--snappy) var(--easing--ease-out),
 		transform var(--duration--snappy) var(--easing--ease-out);
 
@@ -274,16 +323,22 @@ function toggleSuggestions() {
 	-webkit-line-clamp: 2;
 }
 
-/* --- Cards: plain text at rest; the surface card materializes on hover/focus. --- */
+/* --- Cards: visible surface at rest, with stronger affordance on hover/focus. --- */
 .cardButton {
-	padding: var(--spacing--xs) var(--spacing--sm);
+	align-items: flex-start;
+	min-height: var(--height--5xl);
+	padding: var(--spacing--sm);
+	background: light-dark(var(--background--surface), var(--background--subtle));
+	border: 1px solid var(--border-color--subtle);
 	border-radius: var(--radius--md);
+	box-shadow: var(--shadow--2xs);
 }
 
 .cardButton:not(:disabled):hover,
 .cardButton:not(:disabled):focus-visible {
-	background: light-dark(var(--background--surface), var(--background--subtle));
-	box-shadow: var(--shadow--sm);
+	background: var(--background--hover);
+	border-color: var(--border-color--strong);
+	box-shadow: var(--shadow--xs);
 	transform: translateY(-2px);
 	outline: none;
 	z-index: 1;
@@ -320,6 +375,7 @@ function toggleSuggestions() {
 .seeMoreButton {
 	flex-shrink: 0;
 	padding: 0;
+	margin-top: var(--spacing--3xs);
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
@@ -350,6 +406,17 @@ function toggleSuggestions() {
 @media (max-width: 600px) {
 	.cardList {
 		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (max-width: 360px) {
+	.headingRow {
+		flex-direction: column;
+		gap: var(--spacing--2xs);
+	}
+
+	.seeMoreButton {
+		margin-top: 0;
 	}
 }
 
