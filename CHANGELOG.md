@@ -1,3 +1,11 @@
+## [2.28.3](https://github.com/n8n-io/n8n/compare/n8n@2.28.2...n8n@2.28.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* **core:** Prevent startup failure from partially-installed community packages ([#33032](https://github.com/n8n-io/n8n/issues/33032)) ([adfc7c7](https://github.com/n8n-io/n8n/commit/adfc7c7d20d1c215e1ffca791eea5999ffaaad26))
+
+
 ## [2.28.2](https://github.com/n8n-io/n8n/compare/n8n@2.28.1...n8n@2.28.2) (2026-06-25)
 
 
