@@ -8,6 +8,7 @@ import { setTimeout as setTimeoutP } from 'timers/promises';
 import type { Mock, MockedFunction } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 
 // The monitor uses `setTimeout` from `timers/promises` for recovery backoff.
@@ -33,6 +34,7 @@ describe('DbConnectionMonitor', () => {
 		connectionAcquisitionTimeoutMs: 30_000,
 	});
 	const logger = mock<Logger>();
+	const dbConnectionMetrics = mock<DbConnectionMetrics>();
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
 
 	beforeEach(() => {
@@ -47,6 +49,7 @@ describe('DbConnectionMonitor', () => {
 			databaseConfig,
 			logger,
 			errorReporter,
+			dbConnectionMetrics,
 		);
 	});
 
@@ -249,6 +252,7 @@ describe('DbConnectionMonitor', () => {
 					mock<DatabaseConfig>({ pingIntervalSeconds: 1, pingTimeoutMs: 5_000 }),
 					logger,
 					errorReporter,
+					dbConnectionMetrics,
 				);
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
@@ -272,6 +276,7 @@ describe('DbConnectionMonitor', () => {
 					mock<DatabaseConfig>({ pingIntervalSeconds: 1, pingTimeoutMs: 5_000 }),
 					logger,
 					errorReporter,
+					dbConnectionMetrics,
 				);
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
@@ -435,6 +440,7 @@ describe('DbConnectionMonitor', () => {
 				misconfigured,
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 
 			// @ts-expect-error readonly property
@@ -635,6 +641,7 @@ describe('DbConnectionMonitor', () => {
 				misconfigured,
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 
 			misconfiguredMonitor.start();
@@ -736,6 +743,7 @@ describe('DbConnectionMonitor', () => {
 				databaseConfig,
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 
 			sqliteMonitor.start();
@@ -922,6 +930,7 @@ describe('DbConnectionMonitor', () => {
 				}),
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 			const noTimeoutInternals = noTimeoutMonitor as unknown as {
 				acquireConnection: (original: () => Promise<unknown>) => Promise<unknown>;
@@ -1018,6 +1027,7 @@ describe('DbConnectionMonitor', () => {
 				databaseConfig,
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
@@ -1046,6 +1056,49 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error private property
 			monitor.setConnected(false);
 			expect(onConnectedChange).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('acquire latency', () => {
+		const buildPostgresMonitor = (metrics: DbConnectionMetrics, obtain: () => Promise<unknown>) => {
+			const driver = { obtainMasterConnection: vi.fn(obtain), master: { on: vi.fn() } };
+			const ds = {
+				options: { type: 'postgres' },
+				isInitialized: true,
+				driver,
+			} as unknown as DataSource;
+			const freshMonitor = new DbConnectionMonitor(
+				ds,
+				vi.fn(),
+				databaseConfig,
+				logger,
+				errorReporter,
+				metrics,
+			);
+			// start() installs the obtainMasterConnection wrapper on the live driver.
+			freshMonitor.start();
+			return { driver };
+		};
+
+		it('records the acquisition duration through the observer', async () => {
+			const metrics = new DbConnectionMetrics();
+			const observed: number[] = [];
+			metrics.acquireDurationObserver = (seconds) => observed.push(seconds);
+
+			const { driver } = buildPostgresMonitor(metrics, async () => 'connection');
+
+			const result = await driver.obtainMasterConnection();
+
+			expect(result).toBe('connection');
+			expect(observed).toHaveLength(1);
+			expect(observed[0]).toBeGreaterThanOrEqual(0);
+		});
+
+		it('acquires without timing when no observer is registered', async () => {
+			const metrics = new DbConnectionMetrics(); // observer left undefined
+			const { driver } = buildPostgresMonitor(metrics, async () => 'connection');
+
+			await expect(driver.obtainMasterConnection()).resolves.toBe('connection');
 		});
 	});
 });

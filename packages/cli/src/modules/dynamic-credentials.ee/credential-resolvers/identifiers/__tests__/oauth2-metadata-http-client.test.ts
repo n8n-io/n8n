@@ -38,7 +38,7 @@ describe('OAuth2MetadataHttpClient', () => {
 		test('builds the client with SSRF disabled when protection is off', () => {
 			buildClient({ enabled: false });
 
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 10_000 });
 		});
 
 		test('builds the client with the SSRF service when protection is on', () => {
@@ -46,7 +46,10 @@ describe('OAuth2MetadataHttpClient', () => {
 
 			buildClient({ enabled: true }, ssrfProtectionService);
 
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({
+				ssrf: ssrfProtectionService,
+				timeout: 10_000,
+			});
 		});
 	});
 

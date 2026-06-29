@@ -30,11 +30,16 @@ import { deepCopy, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 
-// The credential module resolves to nodes-base source, which uses a package-internal
-// path alias not mapped by cli's jest config.
-jest.mock('@utils/utilities', () => ({ formatPrivateKey: (key: string) => key }), {
-	virtual: true,
-});
+jest.mock('@n8n/utils', () => ({ formatPemBlock: (key: string) => key }));
+
+// SalesforceJwtApi.preAuthentication exchanges its signed JWT for a token through the
+// shared outbound HTTP client (`getTokenRequestClient`), not `this.helpers.httpRequest`.
+// Mock that client so the token POST is observable and never hits the network.
+const mockTokenRequest = jest.fn();
+jest.mock('n8n-nodes-base/credentials/common/token-request', () => ({
+	getTokenRequestClient: () => ({ request: mockTokenRequest }),
+	TOKEN_REQUEST_TIMEOUT: 30_000,
+}));
 
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -1569,7 +1574,7 @@ describe('CredentialsHelper', () => {
 		// Proves the framework performs the JWT login only when the cached token is
 		// missing or expired, so chained Salesforce actions reuse one session instead
 		// of authenticating on every request. The login is the credential's
-		// `preAuthentication` hook, which we observe through a counting `httpRequest`.
+		// `preAuthentication` hook, which we observe through a counting token request.
 		const { privateKey } = generateKeyPairSync('rsa', {
 			modulusLength: 2048,
 			publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -1588,8 +1593,7 @@ describe('CredentialsHelper', () => {
 			credentials: { salesforceJwtApi: { id: 'sf-cred', name: 'Salesforce JWT' } },
 		};
 
-		let httpRequest: jest.Mock;
-		let helpers: IHttpRequestHelper;
+		const helpers = mock<IHttpRequestHelper>();
 		let updateSpy: jest.SpyInstance;
 		let credentials: ICredentialDataDecryptedObject;
 
@@ -1601,11 +1605,10 @@ describe('CredentialsHelper', () => {
 
 			let logins = 0;
 			// eslint-disable-next-line @typescript-eslint/require-await
-			httpRequest = jest.fn().mockImplementation(async () => ({
+			mockTokenRequest.mockImplementation(async () => ({
 				access_token: `TOKEN_${++logins}`,
 				instance_url: 'https://acme.my.salesforce.com',
 			}));
-			helpers = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
 
 			// Stub persistence so the test does not touch the DB. The returned token is
 			// what the request helper merges back into the in-memory credentials for the
@@ -1634,8 +1637,8 @@ describe('CredentialsHelper', () => {
 				false,
 			);
 
-			expect(httpRequest).toHaveBeenCalledTimes(1);
-			expect(httpRequest).toHaveBeenCalledWith(
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'POST',
 					url: 'https://login.salesforce.com/services/oauth2/token',
@@ -1671,7 +1674,7 @@ describe('CredentialsHelper', () => {
 			expect(second).toBeUndefined();
 			expect(third).toBeUndefined();
 			// Still only the single login from request 1 across all three requests.
-			expect(httpRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
 		});
 
 		test('re-authenticates when the cached token is reported expired (e.g. after a 401)', async () => {
@@ -1682,7 +1685,7 @@ describe('CredentialsHelper', () => {
 				node,
 				false,
 			);
-			expect(httpRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
 			expect(credentials.accessToken).toBe('TOKEN_1');
 
 			// credentialsExpired = true mirrors the request helper's retry after a 401.
@@ -1694,7 +1697,7 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			expect(httpRequest).toHaveBeenCalledTimes(2);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
 		});
 	});

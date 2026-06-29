@@ -1,0 +1,60 @@
+[
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-4.1-mini",
+			"input": [
+				{
+					"role": "system",
+					"content": "You MUST call the web_search tool before answering. Search for current n8n workflow automation information, then answer in one sentence."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Use web search to find one current fact about n8n."
+						}
+					]
+				}
+			],
+			"include": ["web_search_call.action.sources"],
+			"tools": [
+				{
+					"type": "web_search",
+					"search_context_size": "low"
+				}
+			],
+			"tool_choice": "auto"
+		},
+		"status": 200,
+		"response": "{\n  \"id\": \"resp_07004749fedc2841006a3a79eb7e4c819294b6bcd758e6e6da\",\n  \"object\": \"response\",\n  \"created_at\": 1782217195,\n  \"status\": \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\": \"developer\"\n  },\n  \"completed_at\": 1782217198,\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-4.1-mini-2025-04-14\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"ws_07004749fedc2841006a3a79ecb7e081929fc950b1155bd5eb\",\n      \"type\": \"web_search_call\",\n      \"status\": \"completed\",\n      \"action\": {\n        \"type\": \"search\",\n        \"queries\": [\n          \"current fact about n8n workflow automation\"\n        ],\n        \"query\": \"current fact about n8n workflow automation\",\n        \"sources\": [\n          {\n            \"type\": \"url\",\n            \"url\": \"https://docs.n8n.io/release-notes/?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://blog.n8n.io/introducing-n8n-2-0/?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://blog.n8n.io/security-advisory-20260108/?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://community.n8n.io/t/older-n8n-version-marked-as-latest-on-https-github-com-n8n-io-n8n-releases/216790?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://releases.sh/n8n?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://releases.sh/n8n/n8n?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://github.com/n8n-io/n8n/releases?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://nuevexa.com/resources/automation-intelligence/items/n8n-v2?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://www.skakarh.com/blog/n8n-stable-released-whats-new-for-qa-engineers?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://automationatlas.io/guides/n8n-2026-product-roadmap?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://appv.app/software/n8n?utm_source=openai\"\n          },\n          {\n            \"type\": \"url\",\n            \"url\": \"https://releasealert.dev/npmjs/_/n8n?utm_source=openai\"\n          }\n        ]\n      }\n    },\n    {\n      \"id\": \"msg_07004749fedc2841006a3a79ed7c948192912e845804f33ab0\",\n      \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n          \"type\": \"output_text\",\n          \"annotations\": [\n            {\n              \"type\": \"url_citation\",\n              \"end_index\": 154,\n              \"start_index\": 85,\n              \"title\": \"Release notes | n8n Docs\",\n              \"url\": \"https://docs.n8n.io/release-notes/?utm_source=openai\"\n            }\n          ],\n          \"logprobs\": [],\n          \"text\": \"As of June 16, 2026, n8n's stable version is 2.25.7, and the beta version is 2.26.4. ([docs.n8n.io](https://docs.n8n.io/release-notes/?utm_source=openai)) \"\n        }\n      ],\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n    \"context\": null,\n    \"effort\": null,\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"web_search\",\n      \"return_token_budget\": \"default\",\n      \"search_content_types\": [\n        \"text\"\n      ],\n      \"search_context_size\": \"low\",\n      \"user_location\": {\n        \"type\": \"approximate\",\n        \"city\": null,\n        \"country\": \"US\",\n        \"region\": null,\n        \"timezone\": null\n      }\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 8174,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 80,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 8254\n  },\n  \"user\": null,\n  \"metadata\": {}\n}",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103719e683f5b6c-VIE",
+			"connection": "keep-alive",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:58 GMT",
+			"openai-organization": "n8n-1",
+			"openai-processing-ms": "3004",
+			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"set-cookie": "__cf_bm=IYvT2uCSU_1o31AJNc0bmHhuWnss1dbpqdEM9ysNAHg-1782217195.2669158-1.0.1.1-7HN6rqpom5OPAgl5spw6oTwaIssoKYv10vditzcJKo3v.yPSYmyEFVRBcThaivPqSWpdehuW4fyyH2RcXjg8CSbKiQfid_1aZeRt3ZNt8HfoKkoNctouzCaSIwU6C6Z8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com; Expires=Tue, 23 Jun 2026 12:49:58 GMT",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "30000",
+			"x-ratelimit-limit-tokens": "150000000",
+			"x-ratelimit-remaining-requests": "29999",
+			"x-ratelimit-remaining-tokens": "149999637",
+			"x-ratelimit-reset-requests": "2ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "req_6212c90a337643a6ac692704c2c3e243"
+		},
+		"responseIsBinary": false
+	}
+]

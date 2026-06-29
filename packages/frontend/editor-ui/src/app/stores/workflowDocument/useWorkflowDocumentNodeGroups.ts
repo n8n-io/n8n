@@ -140,6 +140,12 @@ export function useWorkflowDocumentNodeGroups() {
 		applyDeleteGroup(id);
 	}
 
+	// Id-preserving upsert used by undo/redo to restore a group snapshot.
+	function restoreGroup(group: IWorkflowGroup) {
+		const action = groups.value.has(group.id) ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.ADD;
+		applyUpsertGroup({ ...group, nodeIds: [...group.nodeIds] }, action);
+	}
+
 	function addNodesToGroup(id: string, nodeIds: string[]) {
 		const group = groups.value.get(id);
 		if (!group) return;
@@ -201,6 +207,7 @@ export function useWorkflowDocumentNodeGroups() {
 		getNextDefaultName,
 		updateName,
 		deleteGroup,
+		restoreGroup,
 		addNodesToGroup,
 		replaceNodeInGroup,
 		getGroupById,

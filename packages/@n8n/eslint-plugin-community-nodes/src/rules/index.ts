@@ -17,6 +17,7 @@ import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDangerousFunctionsRule } from './no-dangerous-functions.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
+import { NoDuplicateParamOptionsRule } from './no-duplicate-param-options.js';
 import { NoEmojiInOptionsRule } from './no-emoji-in-options.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
@@ -26,6 +27,7 @@ import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NoTemplatePlaceholdersRule } from './no-template-placeholders.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
+import { NodeClassDescriptionNameCamelCaseRule } from './node-class-description-name-camelcase.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeFilenameAgainstConventionRule } from './node-filename-against-convention.js';
 import { NodeOperationErrorItemIndexRule } from './node-operation-error-itemindex.js';
@@ -35,10 +37,13 @@ import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireCommunityNodeKeywordRule } from './require-community-node-keyword.js';
 import { RequireContinueOnFailRule } from './require-continue-on-fail.js';
+import { RequireMitLicenseRule } from './require-mit-license.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
+import { RequireParamDefaultRule } from './require-param-default.js';
 import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
 import { ValidDescriptionRule } from './valid-description.js';
@@ -52,6 +57,7 @@ export const rules = {
 	'credential-password-field': CredentialPasswordFieldRule,
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'no-emoji-in-options': NoEmojiInOptionsRule,
+	'no-duplicate-param-options': NoDuplicateParamOptionsRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'options-sorted-alphabetically': OptionsSortedAlphabeticallyRule,
 	'package-name-convention': PackageNameConventionRule,
@@ -66,8 +72,10 @@ export const rules = {
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
+	'trigger-node-conventions': TriggerNodeConventionsRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
+	'node-class-description-name-camelcase': NodeClassDescriptionNameCamelCaseRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
 	'cred-class-name-field-conventions': CredClassNameFieldConventionsRule,
 	'cred-class-name-suffix': CredClassNameSuffixRule,
@@ -82,8 +90,10 @@ export const rules = {
 	'n8n-object-validation': N8nObjectValidationRule,
 	'require-community-node-keyword': RequireCommunityNodeKeywordRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
+	'require-mit-license': RequireMitLicenseRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
+	'require-param-default': RequireParamDefaultRule,
 	'require-version': RequireVersionRule,
 	'valid-author': ValidAuthorRule,
 	'valid-credential-references': ValidCredentialReferencesRule,

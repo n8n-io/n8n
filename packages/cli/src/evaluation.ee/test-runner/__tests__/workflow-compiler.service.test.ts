@@ -556,4 +556,74 @@ describe('WorkflowCompilerService', () => {
 			expect(endMain[0]?.[0]?.node).toBe('__eval_metric_m-expr');
 		});
 	});
+
+	describe('pre-existing evaluation nodes (TRUST-166)', () => {
+		// A complete workflow (UserTrigger -> Agent) that also gained evaluation
+		// nodes on top: an EvaluationTrigger feeding the entry, a Set Metrics node
+		// after it, and an "Is evaluation run" check node.
+		function workflowWithExistingEvalNodes(): IWorkflowBase {
+			return {
+				...baseWorkflow(),
+				connections: {
+					UserTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Old Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					Agent: { main: [[{ node: 'Old Set Metrics', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					...baseWorkflow().nodes,
+					{
+						id: 'n-old-trigger',
+						name: 'Old Eval Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: 'n-old-metrics',
+						name: 'Old Set Metrics',
+						type: 'n8n-nodes-base.evaluation',
+						typeVersion: 4.7,
+						position: [400, 0],
+						parameters: { operation: 'setMetrics' },
+					},
+					{
+						id: 'n-is-eval',
+						name: 'Is Eval Run',
+						type: 'n8n-nodes-base.evaluation',
+						typeVersion: 4.7,
+						position: [200, 200],
+						parameters: { operation: 'checkIfEvaluating' },
+					},
+				],
+			} as unknown as IWorkflowBase;
+		}
+
+		it('removes a pre-existing EvaluationTrigger and prunes its connections', () => {
+			const compiled = compiler.compile(workflowWithExistingEvalNodes(), baseConfig());
+
+			expect(compiled.nodes.find((n) => n.name === 'Old Eval Trigger')).toBeUndefined();
+			expect(compiled.connections['Old Eval Trigger']).toBeUndefined();
+			// The workflow's own trigger is rewired to __eval_trigger as usual.
+			expect(compiled.connections.__eval_trigger).toEqual({
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			});
+		});
+
+		it('disables Set Metrics nodes instead of removing them (structure preserved)', () => {
+			const compiled = compiler.compile(workflowWithExistingEvalNodes(), baseConfig());
+
+			const oldMetrics = compiled.nodes.find((n) => n.name === 'Old Set Metrics');
+			expect(oldMetrics).toBeDefined();
+			expect(oldMetrics!.disabled).toBe(true);
+		});
+
+		it('leaves "Is evaluation run" (checkIfEvaluating) nodes untouched', () => {
+			const compiled = compiler.compile(workflowWithExistingEvalNodes(), baseConfig());
+
+			const isEval = compiled.nodes.find((n) => n.name === 'Is Eval Run');
+			expect(isEval).toBeDefined();
+			expect(isEval!.disabled).toBeUndefined();
+		});
+	});
 });

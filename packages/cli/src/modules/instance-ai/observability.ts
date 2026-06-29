@@ -19,10 +19,10 @@ export function buildInstanceAiObservabilityContext(
 		source: 'instance-ai',
 		threadId: context.threadId,
 		runId: context.runId,
-		...(context.tracing?.rootRun.otelTraceId
+		...(context.tracing?.rootRun?.otelTraceId
 			? { traceId: context.tracing.rootRun.otelTraceId }
 			: {}),
-		...(context.tracing?.rootRun.traceId
+		...(context.tracing?.rootRun?.traceId
 			? { langsmithTraceId: context.tracing.rootRun.traceId }
 			: {}),
 		...(context.agentId ? { agentId: context.agentId } : {}),
