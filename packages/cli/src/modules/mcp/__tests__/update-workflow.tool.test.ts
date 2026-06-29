@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
@@ -8,9 +7,8 @@ import {
 	type IConnections,
 	type INode,
 } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { z } from 'zod';
-
-import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -25,6 +23,8 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+
 const mockAutoPopulateNodeCredentials = vi.fn();
 vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
@@ -38,9 +38,11 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 		toolName: 'update_workflow',
 		displayTitle: 'Updating workflow',
 	},
-	ParseValidateHandler: vi.fn().mockImplementation(function () { return ({
-		validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
-	}); }),
+	ParseValidateHandler: vi.fn().mockImplementation(function () {
+		return {
+			validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
+		};
+	}),
 }));
 
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
@@ -85,9 +87,9 @@ describe('update-workflow MCP tool', () => {
 	let findByNamesMock: Mock;
 	let globalConfig: GlobalConfig;
 	let subworkflowPolicyChecker: SubworkflowPolicyChecker;
-	let policyCheckMock: jest.Mock;
+	let policyCheckMock: Mock;
 	let workflowPublishedDataService: WorkflowPublishedDataService;
-	let getPublishedWorkflowDataMock: jest.Mock;
+	let getPublishedWorkflowDataMock: Mock;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -117,9 +119,9 @@ describe('update-workflow MCP tool', () => {
 			findWorkflowForUser: findWorkflowMock,
 			findWorkflowHeadForUser: findWorkflowHeadMock,
 		});
-		updateMock = vi
-			.fn()
-			.mockImplementation(async function (_user, workflow, workflowId) { return Object.assign(new WorkflowEntity(), { ...workflow, id: workflowId }); });
+		updateMock = vi.fn().mockImplementation(async function (_user, workflow, workflowId) {
+			return Object.assign(new WorkflowEntity(), { ...workflow, id: workflowId });
+		});
 		workflowService = mockInstance(WorkflowService, { update: updateMock });
 		urlService = mockInstance(UrlService, {
 			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
@@ -162,11 +164,11 @@ describe('update-workflow MCP tool', () => {
 			nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 			workflows: { useWorkflowPublicationService: false },
 		});
-		policyCheckMock = jest.fn().mockResolvedValue(undefined);
+		policyCheckMock = vi.fn().mockResolvedValue(undefined);
 		subworkflowPolicyChecker = mockInstance(SubworkflowPolicyChecker, {
 			check: policyCheckMock,
 		});
-		getPublishedWorkflowDataMock = jest.fn().mockResolvedValue(null);
+		getPublishedWorkflowDataMock = vi.fn().mockResolvedValue(null);
 		workflowPublishedDataService = mockInstance(WorkflowPublishedDataService, {
 			getPublishedWorkflowData: getPublishedWorkflowDataMock,
 		});

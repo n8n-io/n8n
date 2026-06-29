@@ -987,10 +987,10 @@ describe('buildFromJson()', () => {
 
 	it('configures episodic memory with managed proxy embedding credentials', async () => {
 		const credentialProvider = {
-			resolve: jest.fn().mockResolvedValue({ apiKey: 'main-api-key' }),
-			list: jest.fn().mockResolvedValue([]),
+			resolve: vi.fn().mockResolvedValue({ apiKey: 'main-api-key' }),
+			list: vi.fn().mockResolvedValue([]),
 		};
-		const proxyFetch = jest.fn();
+		const proxyFetch = vi.fn();
 		const config = makeConfig({
 			memory: {
 				enabled: true,
@@ -1008,8 +1008,8 @@ describe('buildFromJson()', () => {
 			{
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider,
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
-				resolveManagedEmbeddingProviderOptions: jest.fn().mockResolvedValue({
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				resolveManagedEmbeddingProviderOptions: vi.fn().mockResolvedValue({
 					apiKey: 'proxy-managed',
 					baseURL: 'https://proxy.example/v1/api-proxy/openai/',
 					fetch: proxyFetch,

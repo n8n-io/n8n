@@ -4,7 +4,7 @@ import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { DummyProvider, FailedProvider, MockProviders } from '@test/external-secrets/utils';
+import { DummyProvider, MockProviders } from '@test/external-secrets/utils';
 
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';

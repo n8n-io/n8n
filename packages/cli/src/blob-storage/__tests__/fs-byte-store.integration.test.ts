@@ -10,7 +10,7 @@ import { join } from 'node:path';
 
 import { FsByteStore } from '../fs-byte-store';
 
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs/promises');
 
 let store: FsByteStore;
 let storagePath: string;
@@ -26,14 +26,14 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	jest.mocked(errorReporter.error).mockClear();
+	vi.mocked(errorReporter.error).mockClear();
 	for (const entry of await fs.readdir(storagePath)) {
 		await rm(join(storagePath, entry), { recursive: true, force: true });
 	}
 });
 
 afterEach(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 afterAll(async () => {
@@ -70,7 +70,7 @@ describe('write', () => {
 	});
 
 	it('rethrows on write failure and cleans up the temp file', async () => {
-		jest.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('EACCES: permission denied'));
+		vi.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('EACCES: permission denied'));
 
 		await expect(store.write('a/blob.json', body)).rejects.toThrow('EACCES');
 
@@ -93,7 +93,7 @@ describe('read', () => {
 	it('rethrows a systemic (non-ENOENT) read error', async () => {
 		await store.write('a/blob.json', body);
 		const eacces = Object.assign(new Error('EACCES'), { code: 'EACCES' });
-		jest.spyOn(fs, 'readFile').mockRejectedValueOnce(eacces);
+		vi.spyOn(fs, 'readFile').mockRejectedValueOnce(eacces);
 
 		await expect(store.read('a/blob.json')).rejects.toBe(eacces);
 	});

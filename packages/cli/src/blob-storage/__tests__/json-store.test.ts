@@ -32,7 +32,7 @@ class InMemoryByteStore implements ByteStore {
 const VERSION = 1;
 
 function makeStore(byteStores: Partial<Record<StorageLocation, ByteStore>>) {
-	const reportError = jest.fn();
+	const reportError = vi.fn();
 	const store = new JsonStore<TestRef, TestPayload>({
 		byteStores,
 		version: VERSION,

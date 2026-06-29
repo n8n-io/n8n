@@ -1,17 +1,17 @@
-import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'vitest-mock-extended';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
 
-import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
@@ -574,14 +574,14 @@ describe('AgentExecutionOrchestratorService', () => {
 		const setupRuntimeWithToolSpy = (declaredTools: Array<{ name: string }> = []) => {
 			const { service, agentRepository, reconstructionService } = makeService();
 			const runtime = makeRuntime();
-			const toolFn = jest.fn();
+			const toolFn = vi.fn();
 			Object.assign(runtime.agent, { tool: toolFn, declaredTools });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 			return { service, toolFn };
 		};
 
-		const toolNamesFrom = (toolFn: jest.Mock): string[] => {
+		const toolNamesFrom = (toolFn: Mock): string[] => {
 			const [tools] = toolFn.mock.calls[0] as [Array<{ name: string }>];
 			return tools.map((t) => t.name);
 		};

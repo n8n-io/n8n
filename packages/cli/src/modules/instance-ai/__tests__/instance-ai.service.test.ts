@@ -47,18 +47,18 @@ vi.mock('@n8n/instance-ai', async () => {
 		),
 		createInstanceAgent: vi.fn(),
 		createAllTools: vi.fn(),
-		createOrchestratorRunControl: vi.fn(function() {
+		createOrchestratorRunControl: vi.fn(function () {
 			return {
 				state: undefined,
-				getStopSignal: jest.fn(() => undefined),
-			}
+				getStopSignal: vi.fn(() => undefined),
+			};
 		}),
-		createOrchestratorRunControlForState: vi.fn(function() {
+		createOrchestratorRunControlForState: vi.fn(function () {
 			return {
 				state: undefined,
-				getStopSignal: jest.fn(() => undefined),
-				shouldEmitTerminalOutcome: jest.fn(() => true),
-			}
+				getStopSignal: vi.fn(() => undefined),
+				shouldEmitTerminalOutcome: vi.fn(() => true),
+			};
 		}),
 		WorkflowTaskCoordinator: class {},
 		WorkflowLoopStorage: class {},
@@ -152,8 +152,8 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
-import type { Mock, MockedFunction } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
 	buildAgentTreeFromEvents,
@@ -172,19 +172,16 @@ import {
 	type SpawnManagedBackgroundTaskOptions,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
-
+import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { Mock, MockedFunction } from 'vitest';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
-import { InstanceAiService } from '../instance-ai.service';
 import {
 	InstanceAiTerminalOutcomeService,
 	type InstanceAiTerminalOutcomeServiceOptions,
 } from '../instance-ai-terminal-outcome.service';
-
-import type { InstanceAiConfig } from '@n8n/config';
-import type { ErrorReporter } from 'n8n-core';
-
+import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiSandboxService } from '../sandbox';
 
 type ServiceInternals = {
@@ -243,9 +240,7 @@ type BackgroundTaskFollowUpServiceInternals = {
 		) => Promise<void>
 	>;
 	terminalOutcome: {
-		recordBackgroundTerminalOutcome: MockedFunction<
-			(task: ManagedBackgroundTask) => Promise<void>
-		>;
+		recordBackgroundTerminalOutcome: MockedFunction<(task: ManagedBackgroundTask) => Promise<void>>;
 	};
 	saveAgentTreeSnapshot: MockedFunction<
 		(
@@ -367,9 +362,7 @@ function createBackgroundTaskFollowUpService({
 	service.maybeStartWorkflowVerificationFollowUp = vi.fn(
 		async (_user: User, _task: ManagedBackgroundTask) => false,
 	);
-	service.maybeStartWorkflowSetupFollowUp = vi.fn(
-		async (_user: User, _threadId: string) => false,
-	);
+	service.maybeStartWorkflowSetupFollowUp = vi.fn(async (_user: User, _threadId: string) => false);
 	service.queuePendingCheckpointReentry = vi.fn();
 	service.maybeReenterParentCheckpoint = vi.fn(
 		async (_user: User, _threadId: string, _task: ManagedBackgroundTask) => false,
@@ -975,9 +968,7 @@ describe('InstanceAiService — shutdown', () => {
 			finalizeBackgroundTaskTracing: vi.fn(
 				async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
 			),
-			finalizeRemainingMessageTraceRoots: vi.fn(
-				async (_threadId: string, _options: unknown) => {},
-			),
+			finalizeRemainingMessageTraceRoots: vi.fn(async (_threadId: string, _options: unknown) => {}),
 			getTrackedThreadIds: vi.fn(() => []),
 			clear: vi.fn(),
 		};
