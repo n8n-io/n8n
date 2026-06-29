@@ -125,6 +125,7 @@ import {
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
+import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
@@ -422,8 +423,6 @@ export class InstanceAiService {
 	/** Owns the LangSmith trace-context lifecycle for orchestration runs. */
 	private readonly tracing: InstanceAiTracingService;
 
-	/** Errors already sent to Sentry, so a granular boundary report wins over the outer run catch. */
-	private readonly reportedErrors = new WeakSet<object>();
 	/** Owns the per-thread runtime sandbox/workspace lifecycle. */
 	private readonly sandboxService: InstanceAiSandboxService;
 
@@ -518,6 +517,7 @@ export class InstanceAiService {
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
+		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -773,46 +773,12 @@ export class InstanceAiService {
 	): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error || !event.source) return;
-			this.reportInstanceAiError(event.error, {
+			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
 				threadId,
 				runId,
 			});
 		});
-	}
-
-	private reportInstanceAiError(
-		error: unknown,
-		context: { component: string } & InstanceAiObservabilityContext,
-	): void {
-		if (typeof error === 'object' && error !== null) {
-			if (this.reportedErrors.has(error)) return;
-			this.reportedErrors.add(error);
-		}
-		const observability = buildInstanceAiObservabilityContext(context);
-		this.logger.error(`Instance AI error in ${context.component}`, {
-			error,
-			component: context.component,
-			...observability,
-		});
-		this.errorReporter.error(error, {
-			tags: { component: context.component, ...observability },
-			extra: observability,
-		});
-	}
-
-	/** Reports a setup-step failure with a precise component, then re-throws for the run catch to finalize. */
-	private async withSetupBoundary<T>(
-		component: string,
-		context: InstanceAiObservabilityContext,
-		fn: () => Promise<T>,
-	): Promise<T> {
-		try {
-			return await fn();
-		} catch (error) {
-			this.reportInstanceAiError(error, { component, ...context });
-			throw error;
-		}
 	}
 
 	isRunDebugEnabled(): boolean {
@@ -1897,7 +1863,7 @@ export class InstanceAiService {
 
 		const sandboxStatus = this.settingsService.getSandboxStatus();
 		if (sandboxStatus.workflowBuilderAvailable) {
-			const sandboxConfig = await this.withSetupBoundary(
+			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
 				'instance-ai-sandbox-setup',
 				{ threadId, runId, userId: user.id, messageGroupId },
 				async () => await this.sandboxService.resolveSandboxConfig(user),
@@ -2902,7 +2868,7 @@ export class InstanceAiService {
 
 			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
-				? await this.withSetupBoundary(
+				? await this.instanceAiErrorReporter.withBoundary(
 						'instance-ai-mcp-setup',
 						{
 							threadId,
@@ -3333,16 +3299,19 @@ export class InstanceAiService {
 
 			const outputText = await (result.text ?? Promise.resolve(''));
 			if (result.status === 'errored') {
-				this.reportInstanceAiError(result.error ?? new Error('Instance AI stream errored'), {
-					component: 'instance-ai-stream',
-					threadId,
-					runId,
-					tracing,
-					agentId: orchestratorAgentId(runId),
-					userId: user.id,
-					messageGroupId,
-					messageId,
-				});
+				this.instanceAiErrorReporter.report(
+					result.error ?? new Error('Instance AI stream errored'),
+					{
+						component: 'instance-ai-stream',
+						threadId,
+						runId,
+						tracing,
+						agentId: orchestratorAgentId(runId),
+						userId: user.id,
+						messageGroupId,
+						messageId,
+					},
+				);
 			}
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
@@ -3470,7 +3439,7 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.reportInstanceAiError(error, { component: 'instance-ai-run', ...errCtx });
+			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
 			this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
 				correlationId: messageId,
@@ -4257,7 +4226,7 @@ export class InstanceAiService {
 			const outputText = await (result.text ?? Promise.resolve(''));
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			if (result.status === 'errored') {
-				this.reportInstanceAiError(
+				this.instanceAiErrorReporter.report(
 					result.error ?? new Error('Instance AI resumed stream errored'),
 					{
 						component: 'instance-ai-stream',
@@ -4389,7 +4358,7 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.reportInstanceAiError(error, { component: 'instance-ai-run', ...errCtx });
+			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
 			this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
 				messageGroupId,
 				errorMessage: userFacingErrorMessage,
@@ -4522,16 +4491,19 @@ export class InstanceAiService {
 			},
 			onFailed: async (task) => {
 				await this.tracing.finalizeBackgroundTaskTracing(task, 'failed');
-				this.reportInstanceAiError(new Error(task.error ?? 'Instance AI background task failed'), {
-					component: 'instance-ai-background-task',
-					threadId: opts.threadId,
-					runId,
-					tracing: task.traceContext,
-					agentId: opts.agentId,
-					messageGroupId: task.messageGroupId,
-					taskId: task.taskId,
-					role: task.role,
-				});
+				this.instanceAiErrorReporter.report(
+					new Error(task.error ?? 'Instance AI background task failed'),
+					{
+						component: 'instance-ai-background-task',
+						threadId: opts.threadId,
+						runId,
+						tracing: task.traceContext,
+						agentId: opts.agentId,
+						messageGroupId: task.messageGroupId,
+						taskId: task.taskId,
+						role: task.role,
+					},
+				);
 				this.eventBus.publish(opts.threadId, {
 					type: 'agent-completed',
 					runId,
