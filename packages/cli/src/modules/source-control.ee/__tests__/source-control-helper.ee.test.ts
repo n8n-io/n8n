@@ -1,10 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { accessSync, constants as fsConstants } from 'fs';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 import {
@@ -177,7 +177,7 @@ const license = mock<License>();
 const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
 
 beforeAll(async () => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	license.isSourceControlLicensed.mockReturnValue(true);
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchName: 'main',
@@ -466,8 +466,8 @@ describe('Source Control Helper', () => {
 	describe('readTagAndMappingsFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return default mapping if the file path is not valid', async () => {
@@ -487,8 +487,8 @@ describe('Source Control Helper', () => {
 	describe('readFoldersFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return default folders if the file path is not valid', async () => {
@@ -507,8 +507,8 @@ describe('Source Control Helper', () => {
 	describe('readDataTablesFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return empty array if the file path is not valid (ENOENT)', async () => {
@@ -537,8 +537,8 @@ describe('Source Control Helper', () => {
 			];
 
 			// Mock fsReadFile to return valid JSON
-			jest.doMock('node:fs/promises', () => ({
-				readFile: jest.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
+			vi.doMock('node:fs/promises', () => ({
+				readFile: vi.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
 			}));
 
 			// Import the function after mocking

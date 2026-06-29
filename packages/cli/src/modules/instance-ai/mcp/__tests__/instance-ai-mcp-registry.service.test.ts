@@ -8,7 +8,7 @@ import type {
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -25,7 +25,7 @@ import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.servic
 
 // Stands in for the proxy-aware transport fetch the service builds from its
 // injected `OutboundHttp`.
-const proxyFetchMock = jest.fn();
+const proxyFetchMock = vi.fn();
 const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 function makeRegistryServer(
@@ -71,7 +71,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	};
 
 	function createService() {
-		const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+		const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 		const connectionRepository = mock<InstanceAiMcpRegistryConnectionRepository>();
 		const mcpRegistryService = mock<McpRegistryService>();
 		const credentialsFinderService = mock<CredentialsFinderService>();
@@ -110,7 +110,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		proxyFetchMock.mockReset();
 	});
 

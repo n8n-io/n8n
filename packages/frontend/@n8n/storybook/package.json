@@ -39,7 +39,7 @@
     "@storybook/vue3-vite": "catalog:storybook",
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
-    "@vitest/browser-playwright": "^4.0.16",
+    "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vue/tsconfig": "catalog:frontend",
     "eslint-plugin-storybook": "catalog:storybook",

@@ -1,12 +1,12 @@
-import { UserError } from 'n8n-workflow';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import type { google } from '@google-cloud/secret-manager/build/protos/protos';
-import { mock } from 'jest-mock-extended';
+import { UserError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
 import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
 
-jest.mock('@google-cloud/secret-manager');
+vi.mock('@google-cloud/secret-manager');
 
 type GcpSecretVersionResponse = google.cloud.secretmanager.v1.IAccessSecretVersionResponse;
 
@@ -22,7 +22,7 @@ describe('GCP Secrets Manager', () => {
 	const gcpSecretsManager = new GcpSecretsManager();
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('init validation', () => {
@@ -93,7 +93,7 @@ describe('GCP Secrets Manager', () => {
 			}),
 		);
 
-		const listSpy = jest
+		const listSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
 			// @ts-expect-error Partial mock
 			.mockResolvedValue([
@@ -104,7 +104,7 @@ describe('GCP Secrets Manager', () => {
 				],
 			]);
 
-		const getSpy = jest
+		const getSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
 			.mockImplementation(async ({ name }: { name: string }) => {
 				const secretName = name.split('/')[3];
@@ -157,8 +157,7 @@ describe('GCP Secrets Manager', () => {
 			}),
 		);
 
-		jest
-			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
+		vi.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
 			// @ts-expect-error Partial mock
 			.mockResolvedValue([
 				[
@@ -168,8 +167,7 @@ describe('GCP Secrets Manager', () => {
 				],
 			]);
 
-		jest
-			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
+		vi.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
 			.mockImplementationOnce(() => {
 				throw new Error('test error');
 			})
@@ -210,7 +208,7 @@ describe('GCP Secrets Manager', () => {
 			}),
 		);
 
-		const listSpy = jest
+		const listSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
 			// @ts-expect-error Partial mock
 			.mockResolvedValue([
@@ -221,7 +219,7 @@ describe('GCP Secrets Manager', () => {
 				],
 			]);
 
-		const getSpy = jest
+		const getSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
 			.mockImplementationOnce(() => {
 				const error = new Error('NOT_FOUND') as any;
@@ -278,7 +276,7 @@ describe('GCP Secrets Manager', () => {
 			}),
 		);
 
-		const listSpy = jest
+		const listSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
 			// @ts-expect-error Partial mock
 			.mockResolvedValue([
@@ -289,7 +287,7 @@ describe('GCP Secrets Manager', () => {
 				],
 			]);
 
-		const getSpy = jest
+		const getSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
 			.mockImplementationOnce(() => {
 				const error = new Error('PERMISSION_DENIED') as any;
@@ -346,7 +344,7 @@ describe('GCP Secrets Manager', () => {
 			}),
 		);
 
-		const listSpy = jest
+		const listSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
 			// @ts-expect-error Partial mock
 			.mockResolvedValue([
@@ -357,7 +355,7 @@ describe('GCP Secrets Manager', () => {
 				],
 			]);
 
-		const getSpy = jest
+		const getSpy = vi
 			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
 			.mockImplementationOnce(() => {
 				const error = new Error('PERMISSION_DENIED') as any;

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
@@ -47,7 +47,7 @@ describe('InstanceAiSettingsService', () => {
 	let service: InstanceAiSettingsService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Object.assign(globalConfig.instanceAi, {
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',

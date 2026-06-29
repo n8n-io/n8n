@@ -8,6 +8,18 @@ export function targetTasksSkill(): RuntimeSkill {
 		name: 'Agent Builder Target Tasks',
 		description:
 			'Use when the user wants the target agent to run something on a recurring schedule (a "task"): a daily/weekly/hourly objective the agent carries out on its own with create_task. Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
+		recommendedTools: ['create_task', 'ask_question', 'read_config', 'patch_config'],
+		allowedTools: [
+			'create_task',
+			'ask_question',
+			'read_config',
+			'patch_config',
+			'write_config',
+			'list_workflows',
+			'search_nodes',
+			'get_node_types',
+			'ask_credential',
+		],
 		instructions: `\
 ## Purpose
 

@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { DynamicTemplatesController } from '@/controllers/dynamic-templates.controller';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -11,7 +11,7 @@ describe('DynamicTemplatesController', () => {
 	let mockRequest: AuthenticatedRequest;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		dynamicTemplatesController = new DynamicTemplatesController(mockDynamicTemplatesService);
 		mockRequest = { user: { id: 'user-123' } } as unknown as AuthenticatedRequest;
 	});
@@ -56,7 +56,7 @@ describe('DynamicTemplatesController', () => {
 
 			try {
 				await dynamicTemplatesController.get(mockRequest);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error) {
 				expect(error).toBeInstanceOf(InternalServerError);
 				expect((error as InternalServerError).message).toBe('Failed to fetch dynamic templates');

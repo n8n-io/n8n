@@ -1,6 +1,3 @@
-import { createHash, createPublicKey } from 'node:crypto';
-import type { KeyObject } from 'node:crypto';
-
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { DbLock, DbLockService } from '@n8n/db';
@@ -10,6 +7,8 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
+import type { KeyObject } from 'node:crypto';
+import { createHash, createPublicKey } from 'node:crypto';
 import { z } from 'zod';
 
 import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
