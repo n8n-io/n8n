@@ -44,7 +44,18 @@ export function workspaceDistExternals(): Plugin {
 		resolveId(source) {
 			if (!isWorkspacePkg(source)) return null;
 			try {
-				return { id: req.resolve(source), external: true };
+				let id = req.resolve(source);
+				// `n8n-nodes-base` has no `exports` map, so a deep import like
+				// `n8n-nodes-base/nodes/X/X.node` resolves against the source tree, where
+				// the class (`X.node.ts`) is invisible to Node's resolver and only the
+				// sibling `X.node.json` metadata file is pickable — yielding a module with
+				// no class export (`new X()` -> "not a constructor"). Redirect such
+				// `.node`/`.credentials` imports to the compiled `dist/` copy, where the
+				// `.js` wins over the `.json` sibling.
+				if (source.startsWith('n8n-nodes-base/') && /\.(node|credentials)\.json$/.test(id)) {
+					id = req.resolve(`n8n-nodes-base/dist/${source.slice('n8n-nodes-base/'.length)}`);
+				}
+				return { id, external: true };
 			} catch {
 				// Not resolvable to a built entry (e.g. a types-only subpath) — let the
 				// default resolver handle it.
