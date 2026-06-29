@@ -53,7 +53,7 @@ export const INSTANCE_SCOPE_GROUPS = {
 		],
 	},
 	role: {
-		Manage: ['role:manage'],
+		Manage: ['role:read', 'role:manage'],
 	},
 	apiKey: {
 		'Manage own': ['apiKey:create', 'apiKey:list', 'apiKey:delete', 'apiKey:update'],
@@ -195,4 +195,21 @@ export function toggleOption(scopes: readonly string[], optionScopes: readonly s
 		else next.add(scope);
 	}
 	return [...next];
+}
+
+/** Total number of permission options shown in the instance role editor. */
+export const TOTAL_INSTANCE_PERMISSIONS = INSTANCE_SCOPE_GROUP_LIST.reduce(
+	(sum, group) => sum + group.options.length,
+	0,
+);
+
+/** Count how many permission options a saved flat scope list fully grants. */
+export function countGrantedInstancePermissions(scopes: readonly string[]): number {
+	let count = 0;
+	for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+		for (const option of group.options) {
+			if (getOptionState(scopes, option.scopes) === 'checked') count++;
+		}
+	}
+	return count;
 }

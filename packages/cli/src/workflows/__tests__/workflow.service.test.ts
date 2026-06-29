@@ -507,6 +507,7 @@ describe('WorkflowService', () => {
 				expect.objectContaining({ nodeGroups: existingNodeGroups }),
 				'workflow-1',
 				false,
+				'ui',
 			);
 		});
 

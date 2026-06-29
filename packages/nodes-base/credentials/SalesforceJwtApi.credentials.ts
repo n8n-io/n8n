@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
 import type {
@@ -9,8 +10,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
@@ -99,7 +98,7 @@ export class SalesforceJwtApi implements ICredentialType {
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const now = moment().unix();
 		const authUrl = resolveAuthUrl(credentials);
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const signature = jwt.sign(
 			{
 				iss: credentials.clientId as string,

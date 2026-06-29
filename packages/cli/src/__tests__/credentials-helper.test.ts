@@ -30,11 +30,7 @@ import { deepCopy, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 
-// The credential module resolves to nodes-base source, which uses a package-internal
-// path alias not mapped by cli's jest config.
-jest.mock('@utils/utilities', () => ({ formatPrivateKey: (key: string) => key }), {
-	virtual: true,
-});
+jest.mock('@n8n/utils', () => ({ formatPemBlock: (key: string) => key }));
 
 // SalesforceJwtApi.preAuthentication exchanges its signed JWT for a token through the
 // shared outbound HTTP client (`getTokenRequestClient`), not `this.helpers.httpRequest`.
@@ -103,6 +99,134 @@ describe('CredentialsHelper', () => {
 			await expect(
 				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
 			).rejects.toThrow(errorMessage);
+		});
+	});
+
+	describe('applyDefaultsAndOverwrites', () => {
+		test('omits marked credential fields that cannot resolve without execution context', async () => {
+			const credentialType: ICredentialType = {
+				name: 'openAiApi',
+				displayName: 'OpenAI',
+				properties: [
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'Base URL',
+						name: 'url',
+						type: 'string',
+						default: 'https://api.openai.com/v1',
+					},
+					{
+						displayName: 'Add Custom Header',
+						name: 'header',
+						type: 'boolean',
+						default: false,
+					},
+					{
+						displayName: 'Header Name',
+						name: 'headerName',
+						type: 'string',
+						default: '',
+						typeOptions: {
+							ignoreCredentialExpressionResolveError: true,
+						},
+					},
+					{
+						displayName: 'Header Value',
+						name: 'headerValue',
+						type: 'string',
+						default: '',
+						typeOptions: {
+							ignoreCredentialExpressionResolveError: true,
+						},
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					apiKey: 'test-api-key',
+					url: 'https://custom.example/v1',
+					header: true,
+					headerName: 'X-Workflow-Id',
+					headerValue: '={{$workflow.id}}',
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				apiKey: 'test-api-key',
+				url: 'https://custom.example/v1',
+				header: true,
+				headerName: 'X-Workflow-Id',
+			});
+			expect(result).not.toHaveProperty('headerValue');
+		});
+
+		test('throws when an unmarked credential field cannot resolve without execution context', async () => {
+			const credentialType: ICredentialType = {
+				name: 'openAiApi',
+				displayName: 'OpenAI',
+				properties: [
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			await expect(
+				helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{
+						apiKey: '={{$workflow.id}}',
+					},
+					credentialType.name,
+					'internal',
+				),
+			).rejects.toThrow('save workflow to view');
 		});
 	});
 

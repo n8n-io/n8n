@@ -6,6 +6,7 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
+import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsModule } from '../insights.module';
 import { InsightsService } from '../insights.service';
 
@@ -29,6 +30,7 @@ describe('InsightsModule', () => {
 		Container.set(InstanceSettings, mockInstanceSettings);
 		Container.set(Logger, mockLogger());
 		Container.set(LicenseState, mock<LicenseState>());
+		Container.set(InsightsByPeriodRepository, mock<InsightsByPeriodRepository>());
 		Container.set(
 			InsightsService,
 			new InsightsService(

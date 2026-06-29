@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import { vi } from 'vitest';
-import ProjectRoleContactAdminModal from './ProjectRoleContactAdminModal.vue';
+import RoleContactAdminModal from './RoleContactAdminModal.vue';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -22,7 +22,7 @@ const ElDialogStub = {
 	`,
 };
 
-const renderComponent = createComponentRenderer(ProjectRoleContactAdminModal, {
+const renderComponent = createComponentRenderer(RoleContactAdminModal, {
 	props: {
 		modelValue: true,
 	},
@@ -33,7 +33,7 @@ const renderComponent = createComponentRenderer(ProjectRoleContactAdminModal, {
 	},
 });
 
-describe('ProjectRoleContactAdminModal', () => {
+describe('RoleContactAdminModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());

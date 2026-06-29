@@ -7,6 +7,7 @@ const mockGetThread = jest.fn();
 const mockSaveThread = jest.fn();
 const mockDeleteThread = jest.fn();
 const mockDeleteThreadsByResourceIdPrefix = jest.fn();
+const mockDeleteThreadsByResourceId = jest.fn();
 const mockListThreads = jest.fn();
 const mockSaveThreadWithProject = jest.fn();
 const mockGetThreadProjectId = jest.fn();
@@ -17,6 +18,7 @@ const mockAgentMemory = {
 	saveThread: mockSaveThread,
 	deleteThread: mockDeleteThread,
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
+	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
 	listThreads: mockListThreads,
 	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
@@ -444,6 +446,22 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 		expect(mockDeleteThreadsByResourceIdPrefix.mock.invocationCallOrder[0]).toBeLessThan(
 			mockDeleteThread.mock.invocationCallOrder[0],
 		);
+	});
+});
+
+describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('delegates to the agent memory and returns the number of deleted threads', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+		const service = createService();
+
+		const deleted = await service.deleteThreadsForUser('user-1');
+
+		expect(deleted).toBe(3);
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
 	});
 });
 
