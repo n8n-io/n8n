@@ -13,6 +13,8 @@ import { Worker } from 'worker_threads';
 import type { EventMessageTypes } from '../event-message-classes';
 import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
 import type { AbstractEventMessageOptions } from '../event-message-classes/abstract-event-message-options';
+import type { EventMessageAiNodeOptions } from '../event-message-classes/event-message-ai-node';
+import { EventMessageAiNode } from '../event-message-classes/event-message-ai-node';
 import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit';
 import { EventMessageAudit } from '../event-message-classes/event-message-audit';
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
@@ -20,10 +22,16 @@ import {
 	EventMessageConfirm,
 	isEventMessageConfirm,
 } from '../event-message-classes/event-message-confirm';
+import type { EventMessageExecutionOptions } from '../event-message-classes/event-message-execution';
+import { EventMessageExecution } from '../event-message-classes/event-message-execution';
 import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
 import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
+import type { EventMessageQueueOptions } from '../event-message-classes/event-message-queue';
+import { EventMessageQueue } from '../event-message-classes/event-message-queue';
+import type { EventMessageRunnerOptions } from '../event-message-classes/event-message-runner';
+import { EventMessageRunner } from '../event-message-classes/event-message-runner';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
 import type { EventMessageReturnMode } from '../message-event-bus/message-event-bus';
@@ -440,6 +448,14 @@ export class MessageEventBusLogWriter {
 				return new EventMessageAudit(message as EventMessageAuditOptions);
 			case EventMessageTypeNames.node:
 				return new EventMessageNode(message as EventMessageNodeOptions);
+			case EventMessageTypeNames.execution:
+				return new EventMessageExecution(message as EventMessageExecutionOptions);
+			case EventMessageTypeNames.aiNode:
+				return new EventMessageAiNode(message as EventMessageAiNodeOptions);
+			case EventMessageTypeNames.runner:
+				return new EventMessageRunner(message as EventMessageRunnerOptions);
+			case EventMessageTypeNames.queue:
+				return new EventMessageQueue(message as EventMessageQueueOptions);
 			default:
 				return null;
 		}
