@@ -192,6 +192,32 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).not.toContain('abc12345');
 	});
 
+	it('renders a self-seeded re-run command and button when a rerun hint is given', () => {
+		const md = formatComparisonMarkdown(
+			evalFixture,
+			{ kind: 'no_baseline' },
+			{
+				rerun: {
+					prNumber: '4242',
+					dispatchUrl: 'https://github.com/n8n-io/n8n/actions/workflows/ci-instance-ai-evals.yml',
+				},
+			},
+		);
+		expect(md).toContain('does not re-run on new commits');
+		expect(md).toContain('gh workflow run ci-instance-ai-evals.yml -f pr=4242');
+		expect(md).toContain(
+			'[Run workflow button](https://github.com/n8n-io/n8n/actions/workflows/ci-instance-ai-evals.yml)',
+		);
+		expect(md).toContain('**pr** = `4242`');
+	});
+
+	it('falls back to a generic re-run instruction when no rerun hint is given', () => {
+		const md = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
+		expect(md).toContain('does not re-run on new commits');
+		expect(md).toContain('dispatching the **CI: Instance AI Evals** workflow');
+		expect(md).not.toContain('gh workflow run');
+	});
+
 	it('renders the Workflow checks table when at least one run has outcomes', () => {
 		const withChecks = evaluation({
 			totalRuns: 2,
