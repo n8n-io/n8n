@@ -740,6 +740,31 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('fetchPublicationStatus', () => {
+		it('should call GET /workflows/:id/publication-status and return the payload', async () => {
+			const workflowId = 'workflow-abc';
+			const mockStatus = {
+				status: 'published' as const,
+				liveVersionId: 'pub-1',
+				pendingVersionId: null,
+				triggers: [],
+			};
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockResolvedValue(mockStatus);
+
+			const result = await workflowsStore.fetchPublicationStatus(workflowId);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: '/rest', pushRef: expect.any(String) }),
+				'GET',
+				`/workflows/${workflowId}/publication-status`,
+			);
+			expect(result).toEqual(mockStatus);
+		});
+	});
+
 	describe('fetchLastSuccessfulExecution', () => {
 		beforeEach(() => {
 			// Ensure currentView is set to a non-readonly view (VIEWS.WORKFLOW = 'NodeViewExisting')
