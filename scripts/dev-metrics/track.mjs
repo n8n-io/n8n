@@ -198,6 +198,18 @@ function currentAnonId(state) {
 
 // --- Send -------------------------------------------------------------------
 
+/**
+ * Classify who ran the command from well-known agent/CI env markers, so human
+ * and AI-agent usage can be told apart. Defaults to "human".
+ */
+function detectActor() {
+	if (process.env.CLAUDECODE) return 'claude-code';
+	if (process.env.CURSOR_TRACE_ID) return 'cursor';
+	if (process.env.AIDER_VERSION) return 'aider';
+	if (process.env.GITHUB_ACTIONS || process.env.CI) return 'ci';
+	return 'human';
+}
+
 async function send(payload) {
 	await fetch(`${POSTHOG_HOST}/capture/`, {
 		method: 'POST',
@@ -227,6 +239,7 @@ async function main() {
 			event: customEvent,
 			distinct_id: currentAnonId(state),
 			properties: {
+				actor: detectActor(),
 				os: process.platform,
 				arch: process.arch,
 				node_version: process.versions.node,
@@ -251,6 +264,7 @@ async function main() {
 		event: EVENT_NAME,
 		distinct_id: currentAnonId(state),
 		properties: {
+			actor: detectActor(),
 			binary,
 			binary_version: binaryVersion,
 			command,

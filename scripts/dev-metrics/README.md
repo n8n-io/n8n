@@ -50,6 +50,7 @@ Event `dev:cli_command` with `distinct_id` = the weekly anonymous id, and:
 
 | Property | Example | Notes |
 | --- | --- | --- |
+| `actor` | `human`, `claude-code`, `cursor`, `ci` | Who ran it, inferred from env markers (`CLAUDECODE`, `CURSOR_TRACE_ID`, `AIDER_VERSION`, `CI`/`GITHUB_ACTIONS`); defaults to `human`. |
 | `binary` | `pnpm` | The shadowed CLI. |
 | `binary_version` | `10.32.1` | The CLI's own version, detected at runtime by the tracker via `<bin> --version` (`null` if unknown). |
 | `command` | `build`, `test`, `install` | Allowlisted per binary (for pnpm: root `package.json` scripts + builtins); anything else → `other`. |
@@ -166,5 +167,6 @@ n8n checkout**; `N8N_DEV_TELEMETRY=0` disables sending entirely.
   (optionally filter by `binary`), math = total count.
 - **How many developers:** same event, math = unique `distinct_id` (per week).
 - **Opt-ins:** Trends on `dev:metrics_opt_in`, math = unique `distinct_id`.
+- **Human vs AI agent:** break any of the above down by `actor`.
 - **How long commands take:** Trends on `duration_ms`, math = p50/p90, broken
   down by `command`.
