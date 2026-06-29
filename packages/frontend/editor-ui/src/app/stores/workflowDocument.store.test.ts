@@ -620,6 +620,42 @@ describe('workflowDocument.store orchestration', () => {
 		});
 	});
 
+	describe('publicationStatus', () => {
+		it('defaults to idle status and empty failures', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			expect(store.publicationStatus).toBe('idle');
+			expect(store.publicationFailures).toEqual([]);
+		});
+
+		it('setPublicationStatus updates status and failures', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			store.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'A', errorMessage: 'x' }],
+			});
+
+			expect(store.publicationStatus).toBe('partial');
+			expect(store.publicationFailures).toEqual([
+				{ nodeId: 'n1', nodeName: 'A', errorMessage: 'x' },
+			]);
+		});
+
+		it('clears failures when none are provided', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			store.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'A', errorMessage: 'x' }],
+			});
+			store.setPublicationStatus({ status: 'published' });
+
+			expect(store.publicationStatus).toBe('published');
+			expect(store.publicationFailures).toEqual([]);
+		});
+	});
+
 	describe('reset', () => {
 		it('clears every document-scoped field back to empty defaults', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-reset'));
