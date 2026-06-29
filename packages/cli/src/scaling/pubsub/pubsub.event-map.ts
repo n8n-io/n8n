@@ -1,6 +1,7 @@
 import type {
 	AgentIntegrationConfig,
 	ChatHubMessageStatus,
+	InstanceAiEvent,
 	PushMessage,
 	WorkerStatus,
 } from '@n8n/api-types';
@@ -148,6 +149,19 @@ export type PubSubCommandMap = {
 			status?: ChatHubMessageStatus;
 			error?: string;
 		};
+	};
+
+	/**
+	 * Relay an Instance AI stream event to sibling mains (INS-377).
+	 *
+	 * The agent runs on whichever main received `POST /chat/:threadId` and emits
+	 * events into that main's in-process bus, but the client's `GET /events/:threadId`
+	 * SSE connection may be held by a different main. The producing main relays each
+	 * event; the main holding the SSE subscription re-emits it locally to its client.
+	 */
+	'relay-instance-ai-event': {
+		threadId: string;
+		event: InstanceAiEvent;
 	};
 
 	/**
