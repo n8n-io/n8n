@@ -61,6 +61,17 @@ export class Telemetry {
 			integrations: { All: false },
 			loadIntegration: false,
 			configUrl: sourceConfig,
+			// Batch events and send them via `navigator.sendBeacon` to keep telemetry
+			// network work off the critical path. Falls back to per-event XHR in
+			// browsers without `sendBeacon` support.
+			useBeacon: true,
+			beaconQueueOptions: {
+				// Flush when 10 events are queued (SDK default)
+				maxItems: 10,
+				// Flush at least every 10s. The SDK default (10 minutes) is too lossy:
+				// the queue is in-memory only and is not flushed on page unload.
+				flushQueueInterval: 10_000,
+			},
 		});
 
 		this.identify({ instanceId, userId, versionCli, projectId, userRole });
