@@ -34,12 +34,16 @@ const fetchError = ref<string | null>(null);
 // remounts the grid, which would discard an in-progress cell edit). Hydration
 // counts as busy: right after a reload an in-flight run isn't known until the
 // thread status resolves.
+// Note: a live confirmation keeps the run active (activeRunId stays set →
+// isStreaming), so isStreaming already covers "awaiting confirmation mid-run".
+// isAwaitingConfirmation is deliberately NOT used here — it can linger on
+// confirmations left unresolved by an already-finished run, which would keep
+// the grid locked while no run is active.
 const isAgentWorking = computed(
 	() =>
 		thread.isHydratingThread ||
 		thread.isStreaming ||
 		thread.isSendingMessage ||
-		thread.isAwaitingConfirmation ||
 		collectActiveBuilderAgents(thread.messages).length > 0,
 );
 
