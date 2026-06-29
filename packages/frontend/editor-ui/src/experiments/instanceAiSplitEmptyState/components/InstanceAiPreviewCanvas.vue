@@ -4,7 +4,9 @@ import { useElementSize } from '@vueuse/core';
 import type {
 	PreviewWorkflow,
 	PreviewWorkflowConnection,
+	PreviewWorkflowNode,
 } from '@/experiments/instanceAiWorkflowPreviewSuggestions/workflows/types';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import WorkflowPreviewNode from '@/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewNode.vue';
 
 const NODE_HALF_WIDTH = 48;
@@ -66,10 +68,54 @@ function normalizeIconSrc(src: string): string {
 const props = withDefaults(
 	defineProps<{
 		workflow: PreviewWorkflow;
+		suggestionId: string;
 		animating?: boolean;
 	}>(),
 	{ animating: true },
 );
+
+const SETTLE_MS = 300;
+const telemetry = useTelemetry();
+const hoverStartTimes = new Map<string, number>();
+
+function emitHover(nodeId: string, label: string) {
+	const start = hoverStartTimes.get(nodeId);
+	if (start === undefined) return;
+	hoverStartTimes.delete(nodeId);
+	const elapsedMs = Date.now() - start;
+	if (elapsedMs < SETTLE_MS) return;
+	telemetry.track('AI Assistant preview node hovered', {
+		node_id: nodeId,
+		node_label: label,
+		suggestion_id: props.suggestionId,
+		seconds: Math.round(elapsedMs / 10) / 100,
+	});
+}
+
+function onNodeEnter(node: PreviewWorkflowNode) {
+	hoverStartTimes.set(node.id, Date.now());
+}
+
+function onNodeLeave(node: PreviewWorkflowNode) {
+	emitHover(node.id, node.label);
+}
+
+function onNodeClick(node: PreviewWorkflowNode) {
+	// Flush the open hover first, mirroring the suggestion-button reference.
+	emitHover(node.id, node.label);
+	telemetry.track('AI Assistant preview node clicked', {
+		node_id: node.id,
+		node_label: node.label,
+		suggestion_id: props.suggestionId,
+	});
+}
+
+function flushOpenHovers() {
+	for (const id of [...hoverStartTimes.keys()]) {
+		const node = props.workflow.nodes.find((n) => n.id === id);
+		emitHover(id, node?.label ?? '');
+	}
+}
 
 const canvasRef = ref<HTMLElement | null>(null);
 const { width: canvasRenderedWidth, height: canvasRenderedHeight } = useElementSize(canvasRef);
@@ -175,6 +221,7 @@ onMounted(() => {
 });
 
 onUnmounted(stopAnimation);
+onUnmounted(flushOpenHovers);
 
 const bounds = computed(() => {
 	const nodes = props.workflow.nodes;
@@ -273,6 +320,11 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 					:trigger="triggerNodeIds.has(node.id)"
 					:offset-x="bounds.minX"
 					:offset-y="bounds.minY"
+					interactive
+					:data-test-id="`instance-ai-preview-node-${node.id}`"
+					@mouseenter="onNodeEnter(node)"
+					@mouseleave="onNodeLeave(node)"
+					@click="onNodeClick(node)"
 				/>
 			</div>
 		</div>
