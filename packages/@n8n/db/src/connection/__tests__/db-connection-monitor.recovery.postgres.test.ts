@@ -318,6 +318,7 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				buildDatabaseConfig(destroyTimeoutMs),
 				mock<Logger>(),
 				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
 			);
 			monitor.start();
 
@@ -339,7 +340,10 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				const elapsed = Date.now() - start;
 
 				// destroy() was bounded, the frozen client force-closed, and the pool rebuilt
-				// (through the proxy, which only froze the pre-existing connection).
+				// (through the proxy, which only froze the pre-existing connection). The lower
+				// bound proves recovery actually went through the timeout path rather than a
+				// destroy() that happened to drain on its own.
+				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs);
 				expect(elapsed).toBeLessThan(destroyTimeoutMs + 15_000);
 				expect(dataSource.isInitialized).toBe(true);
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);

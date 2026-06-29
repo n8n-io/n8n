@@ -654,15 +654,29 @@ describe('DbConnectionMonitor', () => {
 			});
 
 		// Builds a driver whose pool has one un-drained client, and a destroy() that only
-		// resolves once that client is force-released — mirroring pg-pool, where
-		// `pool.end()` resolves only after the last client is discarded from `_clients`.
+		// resolves once that client is BOTH released with an error AND has its socket
+		// destroyed — mirroring pg-pool, where neither step alone unblocks `pool.end()`
+		// for a frozen checked-out client. This makes the test red if either force-close
+		// step is dropped, rather than just asserting the calls happened.
 		const setupFrozenPool = () => {
 			let resolveDestroy!: () => void;
 			const destroyPromise = new Promise<void>((resolve) => (resolveDestroy = resolve));
-			const stream: StreamShape = { destroy: vi.fn() };
-			// release(err) is what discards the stuck client and lets end()/destroy() settle.
+			let releasedWithError = false;
+			let socketDestroyed = false;
+			const settleIfForceClosed = () => {
+				if (releasedWithError && socketDestroyed) resolveDestroy();
+			};
+			const stream: StreamShape = {
+				destroy: vi.fn(() => {
+					socketDestroyed = true;
+					settleIfForceClosed();
+				}),
+			};
 			const client: ClientShape = {
-				release: vi.fn(() => resolveDestroy()),
+				release: vi.fn((error?: Error) => {
+					if (error) releasedWithError = true;
+					settleIfForceClosed();
+				}),
 				connection: { stream },
 			};
 			const driver: DriverShape = {
@@ -684,6 +698,7 @@ describe('DbConnectionMonitor', () => {
 				buildPgConfig(10_000),
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 			const { stream, client } = setupFrozenPool();
 			// @ts-expect-error private property
@@ -713,6 +728,7 @@ describe('DbConnectionMonitor', () => {
 				buildPgConfig(10_000),
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 			const { stream, client } = setupFrozenPool();
 			// destroy() resolves on its own this time, before the (never-resolving) timeout arm.
@@ -736,6 +752,7 @@ describe('DbConnectionMonitor', () => {
 				buildPgConfig(0),
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 			const { stream, client } = setupFrozenPool();
 			// destroy never resolves and the timeout is disabled: recovery must stay parked
