@@ -30,6 +30,8 @@ import {
 	openSync,
 	readFileSync,
 	readSync,
+	rmdirSync,
+	rmSync,
 	writeFileSync,
 	writeSync,
 } from 'node:fs';
@@ -299,6 +301,38 @@ function disable() {
 	if (changed) console.log(`  Removed the metrics hook from ${rc}.`);
 }
 
+function removeFile(path) {
+	try {
+		rmSync(path);
+		return true;
+	} catch {
+		return false; // already gone / not removable
+	}
+}
+
+/**
+ * Wipe all local state back to genuine first-run (undecided consent): the rc
+ * block, the consent/id file, and the installed library + shims. Mainly for
+ * testing the install flow from scratch. Unlike --disable, it records no
+ * decision, so the next `pnpm install` prompts again.
+ */
+function reset() {
+	const { rc, changed } = removeHook();
+	const stateRemoved = removeFile(statePath());
+	const binRemoved = ['shadow-binary.sh', ...SHADOWED_BINARIES].filter((name) =>
+		removeFile(join(binDir(), name)),
+	);
+	try {
+		rmdirSync(binDir()); // only succeeds if now empty
+	} catch {
+		// leave a non-empty bin dir alone
+	}
+	console.log('✓ n8n dev metrics reset to first-run state (consent undecided).');
+	console.log(`  rc block:   ${changed ? `removed from ${rc}` : '(none)'}`);
+	console.log(`  state file: ${stateRemoved ? 'removed' : '(none)'}`);
+	console.log(`  ~/.n8n/bin: removed ${binRemoved.length ? binRemoved.join(', ') : '(nothing)'}`);
+}
+
 function status() {
 	const state = readState();
 	const consent = state?.consent ?? '(undecided)';
@@ -388,10 +422,15 @@ function main() {
 	if (flag === '--status') return status();
 	if (flag === '--enable') return enable();
 	if (flag === '--disable') return disable();
+	if (flag === '--reset') return reset();
 	if (flag === '--help' || flag === '-h') {
 		console.log(
-			'Usage: node scripts/dev-metrics/setup.mjs [--status|--enable|--disable]\n' +
-				'  (no args) bootstrap: prompt once for internal developers',
+			'Usage: node scripts/dev-metrics/setup.mjs [--status|--enable|--disable|--reset]\n' +
+				'  --status   show consent and installed hook/shim versions\n' +
+				'  --enable   opt in + install the hook and shims\n' +
+				'  --disable  opt out (records denied) + remove the rc block\n' +
+				'  --reset    wipe all local state back to first-run (for testing)\n' +
+				'  (no args)  bootstrap: prompt once for internal developers',
 		);
 		return;
 	}

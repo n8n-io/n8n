@@ -131,7 +131,8 @@ visible via `setup.mjs --status`):
 ```bash
 node scripts/dev-metrics/setup.mjs --status    # show current consent / paths
 node scripts/dev-metrics/setup.mjs --enable    # opt in + install hook
-node scripts/dev-metrics/setup.mjs --disable   # opt out + remove hook
+node scripts/dev-metrics/setup.mjs --disable   # opt out (records denied) + remove hook
+node scripts/dev-metrics/setup.mjs --reset     # wipe all local state -> first-run (for testing)
 export N8N_DEV_TELEMETRY=0                      # runtime kill switch (no sending)
 ```
 
