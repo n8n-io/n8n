@@ -2,7 +2,7 @@
  * Template usage telemetry for the builder agent.
  *
  * Pattern-detects template-related shell commands (grep on
- * `knowledge-base/templates/index.json`, cat/head/sed on
+ * `knowledge-base/templates/`, cat/head/sed on
  * `knowledge-base/templates/*.ts`) and emits three event types via the existing
  * `context.trackTelemetry?.(name, props)` channel:
  *
@@ -15,14 +15,14 @@
  * calls `observe()` after each command — no caller-side threading required.
  */
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { scrubSecretsInText } from '@n8n/utils';
+import { isRecord, scrubSecretsInText } from '@n8n/utils';
 
 import type { OrchestrationContext } from '../types';
 
 const MAX_QUERY_LENGTH = 200;
 const MAX_USER_REQUEST_LENGTH = 120;
 
-const SEARCH_PATTERN = /\bgrep\b[^|]*\bknowledge-base\/templates\/index\.json\b/;
+const SEARCH_PATTERN = /\bgrep\b[^|]*\bknowledge-base\/templates(?:\/|\s|$)/;
 const READ_COMMAND_HEADS = ['cat', 'head', 'tail', 'sed', 'less', 'more'];
 const READ_FILE_PATTERN = /\bknowledge-base\/templates\/([a-zA-Z0-9._-]+\.ts)\b/;
 
@@ -96,7 +96,7 @@ export function createTemplateTelemetrySession(
 	function observe(command: string, stdout: string): void {
 		if (!open) return;
 
-		// Search detection: any grep at knowledge-base/templates/index.json
+		// Search detection: grep scoped to knowledge-base/templates/
 		if (SEARCH_PATTERN.test(command)) {
 			searchCount++;
 			emit('Builder template search', {
@@ -281,8 +281,4 @@ function extractTypedToolResultText(result: unknown): string | null {
 
 	const { content } = result;
 	return typeof content === 'string' ? content : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
 }

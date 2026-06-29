@@ -3,7 +3,11 @@ import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
-import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
+import {
+	analyzeWorkflow,
+	applyNodeChanges,
+	buildCompletedReport,
+} from '../workflows/setup-workflow.service';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -11,7 +15,7 @@ vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
 	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
-	applyNodeChanges: vi.fn().mockResolvedValue({ failed: [] }),
+	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
 	buildCompletedReport: vi.fn().mockReturnValue([]),
 }));
 
@@ -108,7 +112,7 @@ describe('workflows tool', () => {
 		const builderWorkflowActions = [
 			'list',
 			'get',
-			'get-as-code',
+			'get-json',
 		] as const satisfies readonly WorkflowAction[];
 
 		it('should support get-as-code on full surface', async () => {
@@ -144,7 +148,7 @@ describe('workflows tool', () => {
 		it.each([
 			[{ action: 'list' }],
 			[{ action: 'get', workflowId: 'w1' }],
-			[{ action: 'get-as-code', workflowId: 'w1' }],
+			[{ action: 'get-json', workflowId: 'w1' }],
 		])('should support explicitly allowed action %p', (input) => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, {
@@ -161,6 +165,14 @@ describe('workflows tool', () => {
 			[{ action: 'unpublish', workflowId: 'w1' }],
 			[{ action: 'delete', workflowId: 'w1' }],
 			[{ action: 'unarchive', workflowId: 'w1' }],
+			[{ action: 'get-as-code', workflowId: 'w1' }],
+			[
+				{
+					action: 'update',
+					workflowId: 'w1',
+					workflow: { name: 'WF', nodes: [], connections: {} },
+				},
+			],
 			[{ action: 'list-versions', workflowId: 'w1' }],
 			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
@@ -188,6 +200,22 @@ describe('workflows tool', () => {
 
 			expect(schema.safeParse({ action: 'publish', workflowId: 'w1' }).success).toBe(false);
 			expect(context.workflowService.publish).not.toHaveBeenCalled();
+		});
+
+		it('should allow code inspection but reject raw update on orchestrator surface', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'orchestrator');
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(true);
+			expect(
+				schema.safeParse({
+					action: 'update',
+					workflowId: 'w1',
+					workflow: { name: 'WF', nodes: [], connections: {} },
+				}).success,
+			).toBe(false);
 		});
 	});
 
@@ -926,6 +954,11 @@ describe('workflows tool', () => {
 			expect(applyNodeChanges).toHaveBeenCalledWith(context, 'wf1', undefined, {
 				'HTTP Request': { url: 'https://example.com/api' },
 			});
+			expect(buildCompletedReport).toHaveBeenCalledWith(
+				undefined,
+				{ 'HTTP Request': { url: 'https://example.com/api' } },
+				['HTTP Request'],
+			);
 		});
 	});
 

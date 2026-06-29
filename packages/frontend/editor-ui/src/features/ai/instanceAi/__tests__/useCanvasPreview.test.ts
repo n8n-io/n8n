@@ -222,6 +222,58 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('activeWorkflowExecutionResult', () => {
+		test('returns the latest verification execution for the active workflow', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'verify-built-workflow',
+								args: { workflowId: 'wf-1' },
+								result: { executionId: 'exec-1', status: 'success' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeWorkflowExecutionResult.value).toEqual({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+		});
+
+		test('ignores execution results for inactive workflow tabs', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.openWorkflowPreview('wf-2');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'verify-built-workflow',
+								args: { workflowId: 'wf-1' },
+								result: { executionId: 'exec-1', status: 'success' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeWorkflowExecutionResult.value).toBeUndefined();
+		});
+	});
+
 	describe('openDataTablePreview', () => {
 		test('sets data table state and clears workflow state', () => {
 			const ctx = setup();

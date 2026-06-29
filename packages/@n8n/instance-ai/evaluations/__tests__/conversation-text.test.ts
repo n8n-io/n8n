@@ -1,5 +1,11 @@
-import type { TranscriptTurn } from '../types';
-import { transcriptAsText, userTurnsAsText } from '../utils/conversation-text';
+import type { ConversationTurn, TranscriptTurn } from '../types';
+import {
+	conversationUserTurnsAsText,
+	lastAgentText,
+	perTurnToolCallCounts,
+	transcriptAsText,
+	userTurnsAsText,
+} from '../utils/conversation-text';
 
 describe('userTurnsAsText', () => {
 	it('returns empty string on empty transcript', () => {
@@ -21,6 +27,36 @@ describe('userTurnsAsText', () => {
 			{ userMessage: 'a webhook', steps: [{ kind: 'agent-text', text: 'done' }] },
 		];
 		expect(userTurnsAsText(transcript)).toBe('Turn 1: build it\n\nTurn 2: a webhook');
+	});
+});
+
+describe('conversationUserTurnsAsText', () => {
+	it('returns empty string on empty conversation', () => {
+		expect(conversationUserTurnsAsText([])).toBe('');
+	});
+
+	it('returns empty string when conversation is undefined (seedThread-only case)', () => {
+		expect(conversationUserTurnsAsText(undefined)).toBe('');
+	});
+
+	it('returns the lone user message as plain text on a single user turn', () => {
+		const conversation: ConversationTurn[] = [{ role: 'user', text: 'build a webhook' }];
+		expect(conversationUserTurnsAsText(conversation)).toBe('build a webhook');
+	});
+
+	it('numbers user turns on multi-turn and drops assistant/empty turns', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: 'build it' },
+			{ role: 'assistant', text: 'what kind?' },
+			{ role: 'user', text: '' },
+			{ role: 'user', text: 'a webhook' },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe('Turn 1: build it\n\nTurn 2: a webhook');
+	});
+
+	it('returns empty string when there are no non-empty user turns', () => {
+		const conversation: ConversationTurn[] = [{ role: 'assistant', text: 'hello' }];
+		expect(conversationUserTurnsAsText(conversation)).toBe('');
 	});
 });
 
@@ -99,5 +135,43 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('(rejected)');
 		expect(text).toContain('prompt: Here is the plan, approve?');
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
+	});
+});
+
+describe('perTurnToolCallCounts', () => {
+	it('counts each tool per turn and omits turns with no tool calls', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'go', steps: [{ kind: 'agent-text', text: 'ok' }] },
+			{
+				steps: [
+					{ kind: 'tool-call', toolName: 'build-workflow' },
+					{ kind: 'tool-call', toolName: 'build-workflow' },
+					{ kind: 'tool-call', toolName: 'add-nodes' },
+				],
+			},
+			{ steps: [{ kind: 'tool-call', toolName: 'build-workflow' }] },
+		];
+		expect(perTurnToolCallCounts(transcript)).toBe(
+			'Turn 2: build-workflow×2, add-nodes×1\nTurn 3: build-workflow×1',
+		);
+	});
+
+	it('returns a sentinel when no turn called a tool', () => {
+		expect(perTurnToolCallCounts([{ steps: [{ kind: 'agent-text', text: 'hi' }] }])).toBe(
+			'(no tool calls in any turn)',
+		);
+	});
+});
+
+describe('lastAgentText', () => {
+	it('returns the most recent turn agent narration, skipping trailing turns with none', () => {
+		expect(lastAgentText([])).toBe('');
+		const transcript: TranscriptTurn[] = [
+			{ steps: [{ kind: 'agent-text', text: 'first' }], seeded: true },
+			{ steps: [{ kind: 'agent-text', text: 'latest' }], seeded: true },
+			// Live turn that produced no narration (the no-op fallback case).
+			{ userMessage: 'and now?', steps: [] },
+		];
+		expect(lastAgentText(transcript)).toBe('latest');
 	});
 });

@@ -3,7 +3,7 @@ import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calli
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, isDataContentBlock } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
@@ -218,6 +218,80 @@ describe('extractBinaryMessages', () => {
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: 'samplePdfData',
+			metadata: { filename: 'attachment.pdf' },
+		});
+	});
+
+	it('should produce a valid LangChain standard data content block for PDFs', async () => {
+		// Contract check: the standard `file` block must satisfy isDataContentBlock so
+		// provider converters (Gemini, Anthropic, OpenAI Completions) translate it
+		// instead of rejecting it. The original `file_url` shape failed this check.
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0, {
+			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: true,
+		});
+		expect(isDataContentBlock(humanMsg.content[0] as object)).toBe(true);
+	});
+
+	it('should emit an OpenAI input_file block for PDFs when content format is openai-responses', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(
+			mockContext,
+			0,
+			{ passthroughBinaryImages: true, passthroughBinaryPdfs: true },
+			'openai-responses',
+		);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'input_file',
+			file_data: 'data:application/pdf;base64,samplePdfData',
+			filename: 'report.pdf',
+		});
+	});
+
+	it('should keep images as image_url even for openai-responses format', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				img1: {
+					mimeType: 'image/png',
+					data: 'data:image/png;base64,imageData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(
+			mockContext,
+			0,
+			{ passthroughBinaryImages: true, passthroughBinaryPdfs: true },
+			'openai-responses',
+		);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'image_url',
+			image_url: { url: 'data:image/png;base64,imageData' },
 		});
 	});
 
@@ -256,6 +330,7 @@ describe('extractBinaryMessages', () => {
 					source_type: 'base64',
 					mime_type: 'application/pdf',
 					data: 'pdfData456',
+					metadata: { filename: 'test.pdf' },
 				},
 			]),
 		);
@@ -288,6 +363,7 @@ describe('extractBinaryMessages', () => {
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: Buffer.from('fakepdfdata').toString(BINARY_ENCODING),
+			metadata: { filename: 'attachment.pdf' },
 		});
 	});
 
@@ -321,6 +397,7 @@ describe('extractBinaryMessages', () => {
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: 'pdfData456',
+			metadata: { filename: 'test.pdf' },
 		});
 	});
 
@@ -637,6 +714,39 @@ describe('prepareMessages', () => {
 			(m) => typeof m === 'object' && m instanceof HumanMessage,
 		);
 		expect(hasBinaryMessage).toBe(true);
+	});
+
+	it('should emit input_file for PDFs when the connected model uses the OpenAI Responses API', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					fileName: 'report.pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		// Stand-in for a ChatOpenAI configured against the Responses API.
+		const responsesApiModel = mock<BaseChatModel>();
+		(responsesApiModel as unknown as { _useResponsesApi: () => boolean })._useResponsesApi = () =>
+			true;
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+			model: responsesApiModel,
+		});
+		const binaryMessage = messages.find((m) => m instanceof HumanMessage) as HumanMessage;
+		expect(binaryMessage).toBeDefined();
+		expect(binaryMessage.content[0]).toEqual({
+			type: 'input_file',
+			file_data: 'data:application/pdf;base64,samplePdfData',
+			filename: 'report.pdf',
+		});
 	});
 
 	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {

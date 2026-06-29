@@ -1,5 +1,10 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
+import {
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	normalizeParameterPath,
+} from '@n8n/ai-utilities/node-catalog';
 import {
 	agentSkillSchema,
 	agentTaskSchema,
@@ -10,17 +15,51 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
+import { AiService } from '@/services/ai.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+
+import { AgentConfigService } from '../agent-config.service';
+import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
+import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { BUILDER_TOOLS } from './builder-tool-names';
+import {
+	collectFromAiParameterReferences,
+	hasMatchingFromAiParameterReference,
+	type FromAiParameterReference,
+} from './from-ai-node-parameters';
+import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
+import {
+	buildAskCredentialTool,
+	buildAskEmbeddingCredentialTool,
+	buildAskLlmTool,
+	buildAskQuestionTool,
+	buildResolveLlmTool,
+} from './interactive';
+import type { ModelLookup } from './interactive/resolve-llm.tool';
+import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
+import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
+import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
+import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import {
 	getNativeWebSearchProviderTools,
@@ -28,21 +67,6 @@ import {
 } from '../json-config/native-web-search-provider-tools';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { BuilderModelLookupService } from './builder-model-lookup.service';
-import {
-	buildAskCredentialTool,
-	buildAskLlmTool,
-	buildAskQuestionTool,
-	buildResolveLlmTool,
-} from './interactive';
-import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { BUILDER_TOOLS } from './builder-tool-names';
-import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
-import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
-import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
-import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { OauthService } from '@/oauth/oauth.service';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -93,8 +117,52 @@ function rejectIfUnsupportedNativeWebSearch(
 	};
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
+type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
+
+function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
+	return tool?.type === 'node';
+}
+
+function hasSameNodeType(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return (
+		left.node.nodeType === right.node.nodeType &&
+		left.node.nodeTypeVersion === right.node.nodeTypeVersion
+	);
+}
+
+function hasSameNodeToolIdentity(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return left.name === right.name && hasSameNodeType(left, right);
+}
+
+function findPreviousNodeTool(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+): AgentConfigNodeTool | null {
+	const previousTools = previousConfig?.tools ?? [];
+	const sameIndexTool = previousTools[currentToolIndex];
+	if (isNodeTool(sameIndexTool) && hasSameNodeToolIdentity(sameIndexTool, currentTool)) {
+		return sameIndexTool;
+	}
+
+	const matchingTools = previousTools.filter(
+		(tool): tool is AgentConfigNodeTool =>
+			isNodeTool(tool) && hasSameNodeToolIdentity(tool, currentTool),
+	);
+
+	return matchingTools.length === 1 ? matchingTools[0] : null;
+}
+
+function getPreviousFromAiReferences(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+): FromAiParameterReference[] {
+	const previousTool = findPreviousNodeTool(previousConfig, currentTool, currentToolIndex);
+	if (!previousTool) return [];
+
+	return collectFromAiParameterReferences(previousTool.node.nodeParameters);
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -182,6 +250,10 @@ export interface BuilderTools {
 export class AgentsBuilderToolsService {
 	constructor(
 		private readonly agentsService: AgentsService,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly agentCustomToolsService: AgentCustomToolsService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly agentSkillsService: AgentSkillsService,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
@@ -191,7 +263,84 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly aiService: AiService,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeTypes: NodeTypes,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
+
+	private getDynamicSelectorPath(
+		nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>,
+		parameterPath: string,
+	): string | null {
+		const normalizedPath = normalizeParameterPath(parameterPath);
+		const pathParts = normalizedPath.split('.');
+
+		for (let length = pathParts.length; length > 0; length--) {
+			const candidatePath = pathParts.slice(0, length).join('.');
+			const property = findNodeParameterProperty(
+				nodeTypeDescription.description.properties,
+				candidatePath,
+			);
+			if (!property) continue;
+
+			const lookup = getDynamicNodeParameterLookup(property);
+			if (lookup) return candidatePath;
+		}
+
+		return null;
+	}
+
+	private rejectIfDynamicSelectorUsesFromAi(
+		config: AgentJsonConfig,
+		previousConfig: AgentJsonConfig | null,
+	): { errors: ConfigValidationError[] } | null {
+		const errors: ConfigValidationError[] = [];
+
+		for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
+			if (tool.type !== 'node') continue;
+
+			const fromAiReferences = collectFromAiParameterReferences(tool.node.nodeParameters);
+			if (fromAiReferences.length === 0) continue;
+
+			let nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>;
+			try {
+				nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
+					tool.node.nodeType,
+					tool.node.nodeTypeVersion,
+				);
+			} catch {
+				continue;
+			}
+
+			const previousFromAiReferences = getPreviousFromAiReferences(previousConfig, tool, toolIndex);
+			const reportedDynamicPaths = new Set<string>();
+			for (const fromAiReference of fromAiReferences) {
+				const { parameterPath, jsonPointer } = fromAiReference;
+				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
+				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
+				if (hasMatchingFromAiParameterReference(previousFromAiReferences, fromAiReference)) {
+					continue;
+				}
+
+				reportedDynamicPaths.add(dynamicPath);
+				errors.push({
+					path: `/tools/${toolIndex}/node/nodeParameters/${jsonPointer}`,
+					message:
+						`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
+						'Do not use $fromAI for this value. Load skill agent-builder-resource-locators, ' +
+						'use ask_credential if credentials are missing, then call get_resource_locator_options ' +
+						'and write the returned parameterValue into nodeParameters.',
+				});
+			}
+		}
+
+		if (errors.length === 0) return null;
+
+		return { errors };
+	}
 
 	getTools(
 		agentId: string,
@@ -201,7 +350,7 @@ export class AgentsBuilderToolsService {
 	): BuilderTools {
 		return {
 			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider),
+			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
 
@@ -282,9 +431,16 @@ export class AgentsBuilderToolsService {
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, errors: unsupportedNativeWebSearch.errors };
 					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, errors: dynamicSelectorFromAi.errors };
+					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
-						const result = await this.agentsService.updateConfig(
+						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							normalizedConfig,
@@ -390,10 +546,17 @@ export class AgentsBuilderToolsService {
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
 					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
+					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 
 					try {
-						const result = await this.agentsService.updateConfig(
+						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							normalizedConfig,
@@ -425,14 +588,15 @@ export class AgentsBuilderToolsService {
 					'`credentialType` arg.',
 			)
 			.input(z.object({}))
-			.handler(async () => this.agentsService.listChatIntegrations())
+			.handler(async () => this.agentIntegrationPersistenceService.listChatIntegrations())
 			.build();
 
 		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
 			.description(
 				'List published agents in the same project that can be added to the target agent as subagents. ' +
 					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
-					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`.',
+					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
+					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
 			)
 			.input(z.object({}))
 			.handler(async () => {
@@ -443,7 +607,6 @@ export class AgentsBuilderToolsService {
 						.map((agent) => ({
 							agentId: agent.id,
 							name: agent.name,
-							...(agent.description ? { description: agent.description } : {}),
 						})),
 				};
 			})
@@ -465,12 +628,22 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			}),
+			buildAskEmbeddingCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
+			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
 			buildVerifyMcpServerTool({
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
+				proxyFetch: createAiMcpFetch(
+					this.outboundHttp,
+					this.ssrfConfig,
+					this.ssrfProtectionService,
+				),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];
@@ -482,14 +655,17 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
 				'Compile and store a custom tool. Pass the complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox and saved against the agent, but this does NOT register the tool in the ' +
-					'agent config — follow up with patch_config (or write_config) to add a ' +
-					'`{ type: "custom", id }` entry to `tools` so the agent actually uses it. ' +
+					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
+					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
+					'This does NOT register the tool in the agent config — follow up with ' +
+					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
+					'to `tools`.' +
 					'Returns { ok: true, id, descriptor } or { ok: false, errors }.',
 			)
 			.input(
@@ -502,7 +678,7 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ code }: { code: string }) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
-					const built = await this.agentsService.buildCustomTool(
+					const built = await this.agentCustomToolsService.buildCustomTool(
 						agentId,
 						projectId,
 						code,
@@ -559,7 +735,7 @@ export class AgentsBuilderToolsService {
 					const skill = { name, description, instructions: body };
 
 					try {
-						const created = await this.agentsService.createSkill(agentId, projectId, skill);
+						const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
 						return { ok: true, id: created.id, skill: created.skill };
 					} catch (e) {
 						return {
@@ -695,6 +871,12 @@ export class AgentsBuilderToolsService {
 			createSkillTool,
 			createTaskTool,
 			listWorkflowsTool,
+			buildGetResourceLocatorOptionsTool({
+				dynamicNodeParametersService: this.dynamicNodeParametersService,
+				nodeTypes: this.nodeTypes,
+				user,
+				projectId,
+			}),
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
 				'Read-only inspection of available credentials. Use ask_credential to let the user ' +

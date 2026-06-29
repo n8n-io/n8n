@@ -7,6 +7,8 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getExecutionResultsByWorkflow,
+	type ExecutionResult,
 } from './canvasPreview.utils';
 import type { ThreadRuntime } from './instanceAi.store';
 
@@ -66,9 +68,49 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		return tab?.type === 'data-table' ? (tab.projectId ?? null) : null;
 	});
 
+	const executionResultsByWorkflow = computed(() => {
+		const results = new Map<string, ExecutionResult>();
+		for (const message of thread.messages) {
+			if (!message.agentTree) continue;
+			for (const [workflowId, result] of getExecutionResultsByWorkflow(message.agentTree)) {
+				results.set(workflowId, result);
+			}
+		}
+		return results;
+	});
+
+	const activeWorkflowExecutionResult = computed(() => {
+		const workflowId = activeWorkflowId.value;
+		return workflowId ? executionResultsByWorkflow.value.get(workflowId) : undefined;
+	});
+
 	const dataTableRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
+
+	// --- Workflow attachments (e.g. an editor hand-off) ---
+	// A workflow attached to a message surfaces as an artifact tab via the
+	// resource registry. The first one is opened on arrival. (Its execution, if
+	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
+	const firstAttachedWorkflowId = computed(() => {
+		for (const message of thread.messages) {
+			for (const attachment of message.attachments ?? []) {
+				if (attachment.type === 'workflow') return attachment.id;
+			}
+		}
+		return undefined;
+	});
+
+	// Open the attached workflow on arrival. Only when nothing is open, so it
+	// never steals focus from an agent-driven open or a user selection.
+	watch(
+		firstAttachedWorkflowId,
+		(id) => {
+			if (!id || activeTabId.value !== undefined) return;
+			activeTabId.value = id;
+		},
+		{ immediate: true },
+	);
 
 	// --- Actions ---
 
@@ -304,6 +346,7 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		activeWorkflowId,
 		activeDataTableId,
 		activeDataTableProjectId,
+		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
