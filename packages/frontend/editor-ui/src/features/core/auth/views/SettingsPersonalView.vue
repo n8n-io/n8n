@@ -15,6 +15,7 @@ import {
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
@@ -83,6 +84,7 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -128,36 +130,47 @@ const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
-const roles = computed<Record<Role, RoleContent>>(() => ({
-	[ROLE.Default]: {
-		name: i18n.baseText('auth.roles.default'),
-		description: i18n.baseText('settings.personal.role.tooltip.default'),
-	},
-	[ROLE.Member]: {
-		name: i18n.baseText('auth.roles.member'),
-		description: i18n.baseText('settings.personal.role.tooltip.member'),
-	},
-	[ROLE.ChatUser]: {
-		name: i18n.baseText('auth.roles.chatUser'),
-		description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
-	},
-	[ROLE.Admin]: {
-		name: i18n.baseText('auth.roles.admin'),
-		description: i18n.baseText('settings.personal.role.tooltip.admin'),
-	},
-	[ROLE.Owner]: {
-		name: i18n.baseText('auth.roles.owner'),
-		description: i18n.baseText('settings.personal.role.tooltip.owner', {
-			interpolate: {
-				cloudAccess: cloudPlanStore.hasCloudPlan
-					? i18n.baseText('settings.personal.role.tooltip.cloud')
-					: '',
-			},
-		}),
-	},
-}));
+const currentUserRole = computed<RoleContent>(() => {
+	const knownRoles: Partial<Record<Role, RoleContent>> = {
+		[ROLE.Default]: {
+			name: i18n.baseText('auth.roles.default'),
+			description: i18n.baseText('settings.personal.role.tooltip.default'),
+		},
+		[ROLE.Member]: {
+			name: i18n.baseText('auth.roles.member'),
+			description: i18n.baseText('settings.personal.role.tooltip.member'),
+		},
+		[ROLE.ChatUser]: {
+			name: i18n.baseText('auth.roles.chatUser'),
+			description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
+		},
+		[ROLE.Admin]: {
+			name: i18n.baseText('auth.roles.admin'),
+			description: i18n.baseText('settings.personal.role.tooltip.admin'),
+		},
+		[ROLE.Owner]: {
+			name: i18n.baseText('auth.roles.owner'),
+			description: i18n.baseText('settings.personal.role.tooltip.owner', {
+				interpolate: {
+					cloudAccess: cloudPlanStore.hasCloudPlan
+						? i18n.baseText('settings.personal.role.tooltip.cloud')
+						: '',
+				},
+			}),
+		},
+	};
 
-const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
+	const globalRoleName = usersStore.globalRoleName;
+	const knownRole = knownRoles[globalRoleName as Role];
+	if (knownRole) return knownRole;
+
+	// Custom instance role: show its display name, without a preset tooltip.
+	const customRole = rolesStore.processedInstanceRoles.find((r) => r.slug === globalRoleName);
+	return {
+		name: customRole?.displayName ?? globalRoleName,
+		description: customRole?.description ?? '',
+	};
+});
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
@@ -354,7 +367,7 @@ onBeforeUnmount(() => {
 			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
-					<N8nTooltip placement="bottom">
+					<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
 						<template #content>{{ currentUserRole.description }}</template>
 						<N8nText :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
 							currentUserRole.name

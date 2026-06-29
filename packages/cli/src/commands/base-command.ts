@@ -3,6 +3,7 @@ import {
 	inDevelopment,
 	inTest,
 	LicenseState,
+	LockService,
 	Logger,
 	ModuleRegistry,
 	ModulesConfig,
@@ -95,6 +96,7 @@ export abstract class BaseCommand<F = never> {
 			deploymentName,
 			profilesSampleRate,
 			tracesSampleRate,
+			tracesSlowSpanThresholdMs,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			eventLoopBlockDetectionEnabled,
@@ -110,6 +112,7 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
+			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
@@ -128,6 +131,15 @@ export abstract class BaseCommand<F = never> {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		await Container.get(LoadNodesAndCredentials).init();
+
+		const useRedisForLocking =
+			this.globalConfig.executions.mode === 'queue' ||
+			this.globalConfig.multiMainSetup.enabled ||
+			this.globalConfig.cache.backend === 'redis';
+		if (useRedisForLocking) {
+			const { RedisLockService } = await import('@/scaling/redis-lock.service');
+			Container.get(LockService).setProvider(Container.get(RedisLockService));
+		}
 
 		await this.dbConnection
 			.init()
@@ -251,6 +263,7 @@ export abstract class BaseCommand<F = never> {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const binaryDataService = Container.get(BinaryDataService);
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
+		const isAzureWriteMode = binaryDataConfig.mode === 'azure';
 
 		const { DatabaseManager } = await import('@/binary-data/database.manager');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
@@ -260,6 +273,22 @@ export abstract class BaseCommand<F = never> {
 			if (!isLicensed) {
 				this.logger.error(
 					'S3 binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+		}
+
+		if (isAzureWriteMode) {
+			const isLicensed = Container.get(LicenseState).isBinaryDataAzureLicensed();
+			if (!isLicensed) {
+				this.logger.error(
+					'Azure Blob binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (Container.get(AzureBlobConfig).containerName === '') {
+				this.logger.error(
+					'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
 				);
 				process.exit(1);
 			}
@@ -319,9 +348,13 @@ export abstract class BaseCommand<F = never> {
 		}
 
 		try {
-			await this.initAzureStoreIfConfigured();
+			const azureBlobService = await this.initAzureStoreIfConfigured();
+			if (azureBlobService) {
+				const { AzureBlobManager } = await import('n8n-core/dist/binary-data/azure-blob.manager');
+				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
+			}
 		} catch {
-			if (isExecutionDataAzureMode) {
+			if (isAzureWriteMode || isExecutionDataAzureMode) {
 				this.logger.error(
 					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
 				);
@@ -358,6 +391,8 @@ export abstract class BaseCommand<F = never> {
 
 		const { AzureStore } = await import('@/executions/execution-data/azure-store.ee');
 		Container.get(ExecutionPersistence).setAzStore(Container.get(AzureStore));
+
+		return azureBlobService;
 	}
 
 	protected async initDataDeduplicationService() {

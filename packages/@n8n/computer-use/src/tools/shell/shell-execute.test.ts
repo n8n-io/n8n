@@ -231,6 +231,67 @@ describe('shell_execute tool', () => {
 		expect(spawnOptions?.cwd).toBe('/custom/path');
 	});
 
+	it('resolves a relative cwd against the configured directory before spawning', async () => {
+		const child = makeMockChild();
+		mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
+
+		const resultPromise = shellExecuteTool.execute(
+			{ command: 'pwd', timeout: 5000, cwd: 'custom/path' },
+			DUMMY_CONTEXT,
+		);
+
+		await flushMicrotasks();
+
+		const closeHandler = getCloseHandler(child.on);
+		closeHandler?.(0);
+		await resultPromise;
+
+		const [, , spawnOptions] = mockSpawn.mock.calls[0];
+		expect(spawnOptions?.cwd).toBe('/test/base/custom/path');
+	});
+
+	it('binds the resolved cwd into the permission resource', async () => {
+		const resources = await shellExecuteTool.getAffectedResources(
+			{ command: 'ls', cwd: '/custom/path' },
+			DUMMY_CONTEXT,
+		);
+
+		expect(resources).toEqual([
+			{
+				toolGroup: 'shell',
+				resource: '/custom/path: ls',
+				description: 'Execute shell command: ls in /custom/path',
+			},
+		]);
+	});
+
+	it('binds the configured directory when cwd is omitted', async () => {
+		const resources = await shellExecuteTool.getAffectedResources({ command: 'ls' }, DUMMY_CONTEXT);
+
+		expect(resources).toEqual([
+			{
+				toolGroup: 'shell',
+				resource: '/test/base: ls',
+				description: 'Execute shell command: ls in /test/base',
+			},
+		]);
+	});
+
+	it('does not collide with commands that include cwd-looking suffixes', async () => {
+		const [explicitCwdResource] = await shellExecuteTool.getAffectedResources(
+			{ command: 'cat .env #', cwd: '/tmp' },
+			DUMMY_CONTEXT,
+		);
+		const [commandSuffixResource] = await shellExecuteTool.getAffectedResources(
+			{ command: 'cat .env #(cwd: /tmp)' },
+			DUMMY_CONTEXT,
+		);
+
+		expect(explicitCwdResource.resource).toBe('/tmp: cat .env #');
+		expect(commandSuffixResource.resource).toBe('/test/base: cat .env #(cwd: /tmp)');
+		expect(explicitCwdResource.resource).not.toBe(commandSuffixResource.resource);
+	});
+
 	describe('cross-platform shell selection', () => {
 		it('uses cmd.exe /C on win32', async () => {
 			Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
@@ -400,7 +461,8 @@ describe('getAffectedResources', () => {
 		expect(resources).toHaveLength(1);
 		const [resource] = resources as AffectedResource[];
 		expect(resource.toolGroup).toBe('shell');
-		expect(resource.resource).toBe(buildShellResource('git status'));
+		expect(resource.resource).toBe(buildShellResource('git status', '/tmp'));
 		expect(resource.description).toContain('git status');
+		expect(resource.description).toContain('/tmp');
 	});
 });

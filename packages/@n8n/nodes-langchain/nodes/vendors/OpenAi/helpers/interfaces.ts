@@ -7,13 +7,20 @@ import type {
 	FunctionTool,
 	ResponseInputContent,
 	ResponseInputItem,
+	ResponseOutputText,
 	Tool,
 	WebSearchTool as OpenAIChatWebSearchTool,
 } from 'openai/resources/responses/responses';
 
 export type ChatResponse = OpenAIClient.Responses.Response;
-export type ChatContent = ResponseInputContent[];
-export type ChatInputItem = OpenAIClient.Responses.ResponseInputItem.Message;
+export type ChatContent = Array<ResponseInputContent | ResponseOutputText>;
+export type ChatInputItem = Omit<
+	OpenAIClient.Responses.ResponseInputItem.Message,
+	'content' | 'role'
+> & {
+	role: OpenAIClient.Responses.ResponseInputItem.Message['role'] | 'assistant';
+	content: ChatContent;
+};
 
 // FIXME: remove these overrides, when langchain-openai is updated with the new types
 export type WebSearchTool = Omit<OpenAIChatWebSearchTool, 'type'> & {
@@ -43,7 +50,7 @@ export type ChatResponseRequest = Omit<
 		| {
 				id: string;
 		  };
-	input: ResponseInputItem[];
+	input: Array<ChatInputItem | ResponseInputItem>;
 	top_logprobs?: number;
 	tools?: ChatTool[];
 };

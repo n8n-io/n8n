@@ -1,8 +1,10 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
 import { ResourceCards } from './components/ResourceCards';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 
 export class WorkflowsPage extends BasePage {
 	async goto() {
@@ -11,6 +13,8 @@ export class WorkflowsPage extends BasePage {
 
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
+	readonly resourceMoveModal = new ResourceMoveModal(this.page);
 
 	private async openWorkflowCardActions(workflowItem: Locator) {
 		await workflowItem.getByTestId('workflow-card-actions').getByRole('button').click();
@@ -47,7 +51,7 @@ export class WorkflowsPage extends BasePage {
 
 	async deleteWorkflow(workflowItem: Locator) {
 		await this.openWorkflowCardActions(workflowItem);
-		await this.page.getByTestId('action-delete').click();
+		await this.actionToggle.getAction('delete').click();
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
@@ -118,11 +122,11 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getFolderBreadcrumbsActionToggle() {
-		return this.page.getByTestId('action-toggle-dropdown');
+		return this.actionToggle.root;
 	}
 
 	getFolderBreadcrumbsAction(actionName: string) {
-		return this.getFolderBreadcrumbsActionToggle().getByTestId(`action-${actionName}`);
+		return this.actionToggle.getAction(actionName);
 	}
 
 	// Add region for actions
@@ -165,7 +169,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	transferFolderOption(folderName: string) {
-		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+		return this.resourceMoveModal.getFolderOption(folderName);
 	}
 
 	// Move folder modal methods
@@ -178,7 +182,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	moveFolderOption(folderName: string) {
-		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+		return this.resourceMoveModal.getFolderOption(folderName);
 	}
 
 	moveFolderConfirmButton() {

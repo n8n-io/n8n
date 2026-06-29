@@ -82,7 +82,7 @@ jest.mock('@n8n/di', () => ({
 
 import { Container } from '@n8n/di';
 import { createEvalAgent, Tool } from '@n8n/instance-ai';
-import FileType from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
@@ -230,7 +230,7 @@ describe('createLlmMockHandler', () => {
 		expect(result.statusCode).toBe(200);
 		expect(result.headers['content-type']).toBe('application/pdf');
 		expect(Buffer.isBuffer(result.body)).toBe(true);
-		const sniffed = await FileType.fromBuffer(result.body as Buffer);
+		const sniffed = await fileTypeFromBuffer(result.body as Buffer);
 		expect(sniffed?.mime).toBe('application/pdf');
 		expect(sniffed?.ext).toBe('pdf');
 	});

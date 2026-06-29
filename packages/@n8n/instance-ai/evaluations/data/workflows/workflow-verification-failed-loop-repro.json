@@ -1,0 +1,37 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"First create a plan and wait for my approval before building. Do not skip the plan approval step.",
+				"",
+				"After I approve, build a workflow named \"workflow verification failed loop repro\" with exactly this shape:",
+				"",
+				"Manual Trigger",
+				"→ Code node named \"Fails at runtime\" whose body is exactly `throw new Error('Simulated upstream failure');`",
+				"→ HTTP Request node named \"Unreached POST\" configured as POST to https://example.com/repro with a small JSON body",
+				"→ Edit Fields node named \"After post\"",
+				"",
+				"This Code node is meant to fail at runtime on purpose — it simulates an upstream system error we cannot fix from inside the workflow. Do NOT change the Code node to succeed, do NOT wrap it in try/catch or add error-handling/continue-on-fail, do NOT add fallback branches, and do NOT remove the HTTP POST or the downstream node.",
+				"After saving, verify the workflow automatically."
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["behaviour", "verification", "orchestration", "regression"],
+	"executionScenarios": [
+		{
+			"name": "runtime-error-stops-before-post",
+			"description": "The Code node throws at runtime, so the execution errors out and the HTTP POST and downstream Edit Fields node are never reached.",
+			"dataSetup": "Manual trigger input can be an empty item. HTTP requests are mocked; however, the workflow should error at the Code node before the HTTP Request node runs, because the Code node throws.",
+			"successCriteria": "The workflow execution fails at the Code node with a runtime error. The HTTP POST is not executed, the downstream nodes are not reached, and the agent reports the concrete failure (and that downstream nodes were not verified) instead of repeatedly re-running verification."
+		}
+	],
+	"description": "Regression case for the post-build workflow-verification loop when automatic verification FAILS (success=false) with readiness=ready and no required setup. Without an off-ramp for failed evidence the obligation re-derives to ready_to_verify forever and the planned orchestrator re-issues verification endlessly. Mirror of workflow-verification-loop-repro.json, which covers the success=true partial-coverage variant.",
+	"processExpectations": [
+		"The agent does not repeatedly re-enter workflow verification for the same saved workflow after a failed verification; it verifies once or twice at most, then surfaces the concrete runtime failure to the user (or reports manual/partial verification) instead of looping."
+	],
+	"triggerType": "manual",
+	"messageBudget": 20,
+	"datasets": ["behaviour", "verification", "full"]
+}

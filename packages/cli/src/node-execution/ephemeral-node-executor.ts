@@ -331,9 +331,9 @@ export class EphemeralNodeExecutor {
 		// Validation failures (unknown node type, trigger nodes, blacklisted
 		// operations like send-and-wait) need to surface to the agent as a
 		// tool error rather than crashing silently. Returning the standard
-		// `{ status: 'error', error }` shape lets `run_node_tool` translate
-		// it into a tool-result the LLM sees AND lets the ExecutionRecorder
-		// record it as a failed tool call in the session timeline.
+		// `{ status: 'error', error }` shape lets node tools surface the error
+		// to the LLM and lets the ExecutionRecorder record it as a failed tool
+		// call in the session timeline.
 		try {
 			this.validateNodeForExecution(
 				request.nodeType,
