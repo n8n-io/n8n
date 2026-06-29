@@ -27,8 +27,8 @@ export class WorkflowPublicationStatusService {
 		const pendingVersionId = isPublishing ? latest.publishedVersionId : null;
 
 		// The settled rows ARE the running triggers; if none are activated, nothing is live.
-		const hasActivated = rows.some((r) => r.status === 'activated');
-		const liveVersionId = hasActivated ? rows[0].versionId : null;
+		const activatedRow = rows.find((r) => r.status === 'activated');
+		const liveVersionId = activatedRow?.versionId ?? null;
 
 		const status = this.deriveStatus(isPublishing, rows, latest);
 		return { status, liveVersionId, pendingVersionId, triggers };
