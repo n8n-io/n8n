@@ -90,6 +90,11 @@ describe('EphemeralNodeExecutor', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
 	const logger = mockInstance(Logger);
+	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
+	// `logger.scoped(...)` and registers a `process.on('exit')` shutdown handler. Without a real
+	// return here, `scoped()` is undefined and the handler throws at worker teardown — an uncaught
+	// exception that fails the run even though every test passes.
+	logger.scoped.mockReturnValue(logger);
 
 	const executor = new EphemeralNodeExecutor(
 		nodeTypes,
