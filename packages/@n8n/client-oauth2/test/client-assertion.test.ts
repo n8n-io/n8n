@@ -1,7 +1,7 @@
+import { formatPemBlock } from '@n8n/utils';
 import { createVerify, generateKeyPairSync, X509Certificate } from 'node:crypto';
 
 import { buildClientAssertion } from '@/client-assertion';
-import { formatPrivateKey } from '@/format-private-key';
 
 import * as config from './config';
 
@@ -37,7 +37,7 @@ describe('buildClientAssertion', () => {
 		const verified = createVerify('RSA-SHA256')
 			.update(`${headerSeg}.${payloadSeg}`)
 			.verify(
-				new X509Certificate(formatPrivateKey(config.certificate)).publicKey,
+				new X509Certificate(formatPemBlock(config.certificate)).publicKey,
 				Buffer.from(signatureSeg, 'base64url'),
 			);
 		expect(verified).toBe(true);

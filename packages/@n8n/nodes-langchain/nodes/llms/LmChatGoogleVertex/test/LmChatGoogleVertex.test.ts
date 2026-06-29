@@ -8,8 +8,8 @@ import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
 
 vi.mock('@langchain/google-vertexai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('n8n-nodes-base/dist/utils/utilities', () => ({
-	formatPrivateKey: vi.fn().mockImplementation((key: string) => key),
+vi.mock('@n8n/utils', () => ({
+	formatPemBlock: vi.fn().mockImplementation((key: string) => key),
 }));
 
 const MockedChatVertexAI = vi.mocked(ChatVertexAI);
@@ -96,6 +96,63 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 				temperature: 0.4,
 				maxOutputTokens: 2048,
 			});
+		});
+
+		it('uses the node-level location override, with no endpoint override for global', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'location') return 'global';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatVertexAI.mock.calls[0][0];
+			expect(callArgs?.location).toBe('global');
+			expect(callArgs).not.toHaveProperty('endpoint');
+		});
+
+		it('routes the EU multi-region location through the .rep. data-residency endpoint', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'location') return 'eu';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatVertexAI.mock.calls[0][0];
+			expect(callArgs?.location).toBe('eu');
+			expect(callArgs?.endpoint).toBe('aiplatform.eu.rep.googleapis.com');
+		});
+
+		it('falls back to the credential region when no location override is set', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-2.5-flash';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'location') return '';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatVertexAI.mock.calls[0][0];
+			expect(callArgs?.location).toBe('us-central1');
+			expect(callArgs).not.toHaveProperty('endpoint');
 		});
 
 		it('should include thinkingBudget in model config when specified', async () => {
