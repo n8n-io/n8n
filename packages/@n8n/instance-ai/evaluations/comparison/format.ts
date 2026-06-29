@@ -61,6 +61,7 @@ interface FormatOptions {
 	 *  the gate verdict in place of the baseline comparison. */
 	gate?: GateResult;
 	/** Terminal-only: agents cases are intent checks until Instance AI can build agents. */
+	// TODO: Remove when agent building is supported
 	caseSet?: 'workflows' | 'agents';
 }
 
@@ -865,10 +866,12 @@ export function formatComparisonTerminal(
 	} else {
 		lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(outcome));
 		lines.push('');
+		// TODO: Remove when agent building is supported
 		lines.push(...formatTerminalAggregate(evaluation, comparison, options.caseSet));
 		lines.push('');
 	}
 
+	// TODO: Remove when agent building is supported
 	lines.push(...formatTerminalPerTestCase(evaluation, options.slugByTestCase, options.caseSet));
 
 	if (comparison) {
@@ -975,11 +978,13 @@ function formatTerminalVerdictLine(outcome?: ComparisonOutcome): string {
 function formatTerminalAggregate(
 	evaluation: MultiRunEvaluation,
 	comparison?: ComparisonResult,
+	// TODO: Remove when agent building is supported
 	caseSet: FormatOptions['caseSet'] = 'workflows',
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
 		const units =
+			// TODO: Remove when agent building is supported
 			caseSet === 'agents'
 				? evaluation.testCases.flatMap((tc) => [
 						...tc.executionScenarios,
@@ -992,6 +997,7 @@ function formatTerminalAggregate(
 			0,
 		);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
+		// TODO: Remove when agent building is supported
 		const label = caseSet === 'agents' ? 'checks' : 'scenarios';
 		lines.push(
 			TERMINAL_INDENT +
@@ -1035,6 +1041,7 @@ function formatTerminalAggregate(
 function formatTerminalPerTestCase(
 	evaluation: MultiRunEvaluation,
 	slugByTestCase?: Map<WorkflowTestCase, string>,
+	// TODO: Remove when agent building is supported
 	caseSet: FormatOptions['caseSet'] = 'workflows',
 ): string[] {
 	const { totalRuns, testCases } = evaluation;
@@ -1073,6 +1080,7 @@ function formatTerminalPerTestCase(
 			return {
 				name: nameOf(tc, 60),
 				builds:
+					// TODO: Remove when agent building is supported
 					caseSet === 'agents'
 						? `${tc.runs.filter((run) => (run.buildExpectationResults?.length ?? 0) > 0).length}/${totalRuns}`
 						: `${tc.buildSuccessCount}/${totalRuns}`,
@@ -1080,6 +1088,7 @@ function formatTerminalPerTestCase(
 				passHatK: `${meanPassHatK}%`,
 			};
 		});
+		// TODO: Remove when agent building is supported
 		const statusHeader = caseSet === 'agents' ? 'checks' : 'builds';
 		const nameW = maxWidth(
 			rows.map((r) => r.name),
@@ -1117,10 +1126,12 @@ function formatTerminalPerTestCase(
 		for (const tc of testCases) {
 			const r = tc.runs[0];
 			const buildStatus =
+				// TODO: Remove when agent building is supported
 				caseSet === 'agents' ? 'INTENT CHECKED' : r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
 			lines.push('');
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
+			// TODO: Remove when agent building is supported
 			if (caseSet !== 'agents' && r.buildError) {
 				lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
 			}

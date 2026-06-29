@@ -4,11 +4,8 @@
 		{
 			"role": "user",
 			"text": [
-				"This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.",
-				"I only want you to report the intent you would detect for each part of this hypothetical request:",
 				"1. Every weekday at 9am, send me a Slack message with the weather forecast for Berlin.",
-				"2. Create a support assistant that chats with customers, answers product questions, and decides when to escalate to a human.",
-				"For each part, say whether you would handle it by building a deterministic workflow or by building an agent, and briefly explain why."
+				"2. Create a support assistant that chats with customers, answers product questions, and decides when to escalate to a human."
 			]
 		}
 	],
@@ -16,7 +13,6 @@
 	"tags": ["intent-resolution", "workflow", "agent"],
 	"datasets": ["full"],
 	"processExpectations": [
-		"The agent does not build, execute, or modify any workflow or agent.",
 		"The agent classifies the weekday Berlin weather Slack message as a deterministic workflow.",
 		"The agent classifies the customer support assistant as an agent.",
 		"The agent answers with intent classification and brief reasoning only."

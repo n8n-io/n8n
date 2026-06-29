@@ -97,10 +97,12 @@ describe('parseCliArgs --exclude', () => {
 
 describe('parseCliArgs --case-set', () => {
 	it('defaults to workflows', () => {
+		// TODO: Remove when agent building is supported
 		expect(parseCliArgs([]).caseSet).toBe('workflows');
 	});
 
 	it('accepts the agents case set', () => {
+		// TODO: Remove when agent building is supported
 		expect(parseCliArgs(['--case-set', 'agents']).caseSet).toBe('agents');
 	});
 

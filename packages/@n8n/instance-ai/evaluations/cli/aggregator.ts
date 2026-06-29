@@ -59,6 +59,7 @@ function computePassMetrics(
 export function aggregateResults(
 	allRunResults: WorkflowTestCaseResult[][],
 	totalRuns: number,
+	// TODO: Remove when agent building is supported
 	options: { caseSet?: 'workflows' | 'agents' } = {},
 ): MultiRunEvaluation {
 	const testCaseCount = allRunResults[0].length;
@@ -69,9 +70,9 @@ export function aggregateResults(
 		const testCase = runs[0].testCase;
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
-		// Temporary until Instance AI can build agents: agent-intent cases may only
-		// produce process-expectation verdicts, so do not synthesize workflow build failures.
+		// TODO: Remove when agent building is supported
 		const scenarioIndices =
+			// TODO: Remove when agent building is supported
 			options.caseSet === 'agents'
 				? testCase.executionScenarios
 						.map((_, sIdx) => sIdx)
@@ -82,6 +83,7 @@ export function aggregateResults(
 		for (const sIdx of scenarioIndices) {
 			const scenario = testCase.executionScenarios[sIdx];
 			const scenarioRuns =
+				// TODO: Remove when agent building is supported
 				options.caseSet === 'agents'
 					? runs.flatMap((r) => {
 							const result = r.executionScenarioResults[sIdx];

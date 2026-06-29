@@ -253,6 +253,7 @@ async function main(): Promise<void> {
 					commitSha,
 					slugByTestCase,
 					gate,
+					// TODO: Remove when agent building is supported
 					caseSet: args.caseSet,
 				}),
 		);
@@ -715,6 +716,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			maxConcurrency: args.concurrency,
 			client: lsClient,
 			metadata: {
+				// TODO: Remove when agent building is supported
 				caseSet: args.caseSet,
 				filter: args.filter ?? 'all',
 				exclude: args.exclude ?? null,
@@ -750,7 +752,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			lanes[0]?.baseUrl,
 			runDebugResolved,
 		);
-		const evaluation = aggregateResults(allRunResults, args.iterations, { caseSet: args.caseSet });
+		const evaluation = aggregateResults(allRunResults, args.iterations, {
+			// TODO: Remove when agent building is supported
+			caseSet: args.caseSet,
+		});
 
 		await updateExperimentAggregates({
 			lsClient,
@@ -1024,7 +1029,10 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	);
 
 	return {
-		evaluation: aggregateResults(allRunResults, args.iterations, { caseSet: args.caseSet }),
+		evaluation: aggregateResults(allRunResults, args.iterations, {
+			// TODO: Remove when agent building is supported
+			caseSet: args.caseSet,
+		}),
 		slugByTestCase,
 	};
 }

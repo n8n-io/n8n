@@ -626,7 +626,10 @@ describe('formatComparisonTerminal', () => {
 			],
 		});
 
-		const out = formatComparisonTerminal(agentsEval, undefined, { caseSet: 'agents' });
+		const out = formatComparisonTerminal(agentsEval, undefined, {
+			// TODO: Remove when agent building is supported
+			caseSet: 'agents',
+		});
 
 		expect(out).toMatch(/INTENT CHECKED/);
 		expect(out).not.toMatch(/BUILD FAILED/);
@@ -650,7 +653,10 @@ describe('formatComparisonTerminal', () => {
 			],
 		});
 
-		const out = formatComparisonTerminal(agentsEval, undefined, { caseSet: 'agents' });
+		const out = formatComparisonTerminal(agentsEval, undefined, {
+			// TODO: Remove when agent building is supported
+			caseSet: 'agents',
+		});
 
 		expect(out).toMatch(/Aggregate: 100\.0% pass \(4\/4 trials, 4 checks × N=1\)/);
 	});

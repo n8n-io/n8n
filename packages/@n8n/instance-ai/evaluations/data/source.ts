@@ -22,8 +22,7 @@ export async function loadTestCases(
 		});
 	}
 
-	// Temporary until Instance AI can build agents: keep agent-intent cases in
-	// their own folder, but feed them through the existing workflow eval harness.
+	// TODO: Remove when agent building is supported
 	if (args.caseSet === 'agents') {
 		return loadAgentEvalTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	}
