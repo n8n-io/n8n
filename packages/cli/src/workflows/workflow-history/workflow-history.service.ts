@@ -19,6 +19,7 @@ import { ensureError, UnexpectedError } from 'n8n-workflow';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
 
@@ -176,6 +177,7 @@ export class WorkflowHistoryService {
 		},
 		workflowId: string,
 		autosaved = false,
+		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
 	) {
 		if (!workflow.nodes || !workflow.connections) {
@@ -184,7 +186,8 @@ export class WorkflowHistoryService {
 			);
 		}
 
-		const authors = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
 
 		const repository = transactionManager
 			? transactionManager.getRepository(WorkflowHistory)

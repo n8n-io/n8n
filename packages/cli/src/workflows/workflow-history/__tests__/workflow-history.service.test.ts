@@ -148,6 +148,40 @@ describe('WorkflowHistoryService', () => {
 			});
 		});
 
+		it('should annotate authors with "(via MCP)" when source is n8n-mcp', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false, 'n8n-mcp');
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ authors: 'John Doe (via MCP)' }),
+			);
+		});
+
+		it('should keep the plain author name for non-MCP sources', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false, 'ui');
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ authors: 'John Doe' }),
+			);
+		});
+
 		it('should throw an error when nodes or connections are missing', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });

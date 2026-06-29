@@ -5434,6 +5434,9 @@ importers:
 
   packages/nodes-base:
     dependencies:
+      '@aws-sdk/credential-providers':
+        specifier: 3.808.0
+        version: 3.808.0
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0

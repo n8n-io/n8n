@@ -546,6 +546,7 @@ export class WorkflowService {
 				workflowUpdateData,
 				workflowId,
 				autosaved,
+				source,
 			);
 		}
 
