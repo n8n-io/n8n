@@ -1,0 +1,65 @@
+{
+	"description": "Upwork RSS monitor: poll an Upwork saved-search RSS feed on a schedule, deduplicate against a Data Table of seen job links, and email Gmail notifications for new projects only.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Monitor Upwork RSS feed for new projects, read project details, and notify me via email"
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: Schedule Trigger (every 15 minutes) → RSS Feed Read (Upwork saved-search feed) → loop each job → Data Table lookup by job link → if unseen, record the job and send a Gmail notification with title, snippet, and link; if already seen, skip. Which Upwork RSS URL and recipient email should I wire up, and do you prefer Gmail or another sender?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip.",
+				"Use Gmail and check every 15 minutes. Skip the RSS URL and recipient email for now — leave placeholders I can fill in later."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "I'll wire Schedule Trigger (every 15 min) → Read Upwork RSS → loop jobs → Data Table lookup → new-job check → record seen job + Gmail alert for new items only, with placeholders for the feed URL and recipient email. Ready for me to build it?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, go ahead."
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"schedule",
+		"rss",
+		"data-table",
+		"conditional",
+		"gmail",
+		"upwork",
+		"deduplication"
+	],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The workflow is triggered by a Schedule Trigger node (n8n-nodes-base.scheduleTrigger) configured to poll on a recurring interval (every 15 minutes in the source thread).",
+		"An RSS Feed Read node (n8n-nodes-base.rssFeedRead) fetches Upwork project entries from an RSS feed URL.",
+		"A Data Table is used to track previously seen Upwork job links so the same project is not notified twice.",
+		"The workflow loops over RSS items (e.g. Split In Batches or equivalent) and checks each job link against the Data Table before alerting.",
+		"A decision node (If, Filter, or equivalent) branches on whether the job link is new / not yet recorded.",
+		"When a job is new, the workflow inserts or upserts a row in the Data Table and sends a Gmail notification with project details (title, description/snippet, and link).",
+		"When a job was already seen, the workflow skips the email notification for that item."
+	],
+	"executionScenarios": [
+		{
+			"name": "new-upwork-project",
+			"description": "RSS feed contains a project that has not been seen before",
+			"dataSetup": "The Schedule Trigger fires. RSS Feed Read returns one Upwork project item with title 'Build an n8n automation', link 'https://www.upwork.com/jobs/~0123456789', contentSnippet about the project, and isoDate '2026-06-29T07:00:00.000Z'. The Data Table lookup for that job_link returns no matching row. The new-job decision node routes to the unseen branch. The Data Table insert returns success. The Gmail send node returns success.",
+			"successCriteria": "The workflow executes without errors on the new-project path only: Schedule Trigger → RSS Feed Read → loop item → Data Table lookup → new-job branch → Data Table insert + Gmail notification. A row is written to the Data Table recording the job link/title. A Gmail message is sent about the new Upwork project, including the title and a link to view it. Nodes on the already-seen/skip branch are not executed for this item."
+		},
+		{
+			"name": "already-seen-upwork-project",
+			"description": "RSS feed contains a project whose link is already in the Data Table",
+			"dataSetup": "The Schedule Trigger fires. RSS Feed Read returns one Upwork project item with link 'https://www.upwork.com/jobs/~0123456789'. The Data Table lookup returns an existing row for that job_link (same link already recorded from a prior run). The new-job decision node routes to the already-seen branch. The loop continues without sending email for this item.",
+			"successCriteria": "The workflow executes without errors on the skip path only: Schedule Trigger → RSS Feed Read → loop item → Data Table lookup → already-seen branch. No Gmail notification is sent for the duplicate project. The Data Table insert/record node on the new-project branch is not executed for this item."
+		}
+	]
+}
