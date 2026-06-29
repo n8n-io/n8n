@@ -250,6 +250,45 @@ describe('ProjectSharing', () => {
 		expect(disabledItems).toHaveLength(0);
 	});
 
+	describe('ordering', () => {
+		const unorderedProjects: ProjectListItem[] = [
+			{ ...createProjectListItem('team'), name: 'Charlie' },
+			{ ...createProjectListItem('team'), name: 'Alpha' },
+			{ ...createProjectListItem('team'), name: 'Bravo' },
+		];
+
+		it('should list projects alphabetically by name regardless of input order', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(unorderedProjects),
+					modelValue: [],
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+			const names = Array.from(dropdownItems).map((item) => item.textContent?.trim());
+
+			expect(names).toEqual(['Alpha', 'Bravo', 'Charlie']);
+		});
+
+		it('should keep "All Users" first and sort the remaining projects alphabetically', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(unorderedProjects),
+					modelValue: [],
+					canShareGlobally: true,
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+			const names = Array.from(dropdownItems).map((item) => item.textContent?.trim());
+
+			expect(names).toEqual(['All users and projects', 'Alpha', 'Bravo', 'Charlie']);
+		});
+	});
+
 	describe('global sharing', () => {
 		it('should show "All Users" option when canShareGlobally is true', async () => {
 			const { getByTestId } = renderComponent({
