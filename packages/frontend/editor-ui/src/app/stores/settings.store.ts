@@ -244,6 +244,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const endpointHealth = computed(() => settings.value.endpointHealth);
 
+	const isWorkflowPublicationServiceEnabled = computed(
+		() => settings.value.useWorkflowPublicationService ?? false,
+	);
+
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 
@@ -488,5 +492,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isOtelCustomSpanAttributesEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
+		isWorkflowPublicationServiceEnabled,
 	};
 });

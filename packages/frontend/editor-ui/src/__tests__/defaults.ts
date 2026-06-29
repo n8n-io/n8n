@@ -192,4 +192,5 @@ export const defaultSettings: FrontendSettings = {
 			publishedWorkflowCount: 0,
 		},
 	},
+	useWorkflowPublicationService: false,
 };
