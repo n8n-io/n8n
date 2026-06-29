@@ -2,7 +2,7 @@ import { renderComponent } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import ScopeGroupSelector from './ScopeGroupSelector.vue';
-import { INSTANCE_SCOPE_GROUP_LIST } from '../instanceRoleScopes';
+import { INSTANCE_SCOPE_GROUP_LIST, INSTANCE_SCOPE_GROUPS } from '../instanceRoleScopes';
 
 const totalOptions = INSTANCE_SCOPE_GROUP_LIST.reduce((sum, g) => sum + g.options.length, 0);
 
@@ -86,5 +86,37 @@ describe('ScopeGroupSelector', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
 		expect(getByTestId('scope-option-apiKey-manage-own')).toBeTruthy();
 		expect(getByTestId('scope-option-apiKey-manage-all')).toBeTruthy();
+	});
+
+	describe('apiKey implied-state behaviour', () => {
+		const allScopes = [...INSTANCE_SCOPE_GROUPS.apiKey['Manage all']];
+		const ownScopes = [...INSTANCE_SCOPE_GROUPS.apiKey['Manage own']];
+
+		it('shows "Manage own" as checked and disabled when "Manage all" is selected', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: allScopes },
+			});
+			const manageOwn = getByTestId('scope-option-apiKey-manage-own');
+			expect(manageOwn.getAttribute('aria-checked')).toBe('true');
+			expect(manageOwn.hasAttribute('disabled')).toBe(true);
+		});
+
+		it('shows "Manage all" as checked and not disabled when "Manage all" is selected', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: allScopes },
+			});
+			const manageAll = getByTestId('scope-option-apiKey-manage-all');
+			expect(manageAll.getAttribute('aria-checked')).toBe('true');
+			expect(manageAll.hasAttribute('disabled')).toBe(false);
+		});
+
+		it('shows "Manage all" as unchecked (not indeterminate) when only "Manage own" is selected', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: ownScopes },
+			});
+			expect(getByTestId('scope-option-apiKey-manage-all').getAttribute('aria-checked')).toBe(
+				'false',
+			);
+		});
 	});
 });
