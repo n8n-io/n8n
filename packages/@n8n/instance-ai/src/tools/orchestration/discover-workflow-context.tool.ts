@@ -2,10 +2,12 @@
  * Preconfigured Workflow Discovery Tool
  *
  * Spawns a focused, synchronous sub-agent that inventories the nodes and
- * credentials a build needs and returns the relevant node type definitions
+ * credentials a build needs, gathers relevant knowledge-base techniques (when a
+ * sandbox workspace is attached), and returns the relevant node type definitions
  * verbatim (selection only, no summarizing). Unlike free-form `delegate`, the
  * role, system prompt, and tool subset are fixed here so pre-build discovery is
- * consistent and testable.
+ * consistent and testable. Sandbox `workspace_*` tools attach automatically when
+ * a sandbox exists, giving the sub-agent knowledge-base read access.
  *
  * Runs synchronously: the result is returned to the orchestrator in the same
  * turn, which then loads `workflow-builder` and builds with that context.
@@ -62,7 +64,7 @@ function buildDiscoveryBriefing(input: DiscoverWorkflowContextInput): string {
 	}
 	lines.push(
 		'',
-		'For each service: identify the exact node type(s) with their resource/operation/mode discriminators, record the credential type(s) plus whether a usable credential already exists, and return the relevant node type definitions verbatim. Follow the output contract in your instructions — do not summarize the type definitions.',
+		'For each service: identify the exact node type(s) with their resource/operation/mode discriminators, record the credential type(s) plus whether a usable credential already exists, gather relevant knowledge-base techniques when sandbox workspace tools are attached, and return the relevant node type definitions verbatim. Follow the output contract in your instructions — do not summarize the type definitions.',
 	);
 	return lines.join('\n');
 }
@@ -71,12 +73,15 @@ export function createDiscoverWorkflowContextTool(context: OrchestrationContext)
 	return new Tool(ORCHESTRATION_TOOL_IDS.DISCOVER_WORKFLOW_CONTEXT)
 		.description(
 			'Run pre-build discovery: spawn a focused sub-agent that inventories the ' +
-				'nodes and credentials for the given services and returns the relevant ' +
-				'node type definitions verbatim (it selects the relevant types, it does ' +
-				'not summarize them). Call this BEFORE loading `workflow-builder` for any ' +
-				'build touching external services or unfamiliar nodes, then build with the ' +
-				'returned context. Runs synchronously — act on the result in the same ' +
-				'turn. Does not build, patch, or run workflows.',
+				'nodes and credentials for the given services, gathers relevant ' +
+				'knowledge-base techniques (when a sandbox workspace is attached), and ' +
+				'returns the relevant node type definitions verbatim (it selects the ' +
+				'relevant types, it does not summarize them). This is the single pre-build ' +
+				'discovery route for nodes, credentials, knowledge base, and types — call ' +
+				'it BEFORE loading `workflow-builder` for any build touching external ' +
+				'services or unfamiliar nodes, then build with the returned context. Runs ' +
+				'synchronously — act on the result in the same turn. Does not build, ' +
+				'patch, or run workflows.',
 		)
 		.input(discoverWorkflowContextInputSchema)
 		.output(z.object({ result: z.string() }))

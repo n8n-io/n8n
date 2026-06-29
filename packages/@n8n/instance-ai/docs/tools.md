@@ -89,14 +89,17 @@ fixed taxonomy of sub-agent types.
 
 ### `discover-workflow-context`
 
-Preconfigured pre-build discovery. Spawns a focused, **synchronous** sub-agent
-(fixed role, prompt, and tool subset: `nodes`, `credentials`, `research`) that
-inventories the nodes and credential types a build needs and returns the relevant
-node **type definitions verbatim** — it selects which types are relevant rather
-than summarizing them. Unlike free-form `delegate`, the scout is fixed so
-discovery is consistent and testable. Call before loading `workflow-builder` for
-any build touching external services or unfamiliar nodes; act on the result in
-the same turn. Does not build, patch, or run workflows.
+Preconfigured pre-build discovery — the single discovery route for nodes,
+credentials, knowledge base, and types. Spawns a focused, **synchronous**
+sub-agent (fixed role, prompt, and tool subset: `nodes`, `credentials`,
+`research`, plus sandbox `workspace_*` tools auto-attached when a sandbox exists)
+that inventories the nodes and credential types a build needs, gathers relevant
+knowledge-base techniques, and returns the relevant node **type definitions
+verbatim** — it selects which types are relevant rather than summarizing them.
+Unlike free-form `delegate`, the scout is fixed so discovery is consistent and
+testable. Call before loading `workflow-builder` for any build touching external
+services or unfamiliar nodes; act on the result in the same turn. Does not build,
+patch, or run workflows.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -104,8 +107,9 @@ the same turn. Does not build, patch, or run workflows.
 | `categories` | string[] | no | Workflow technique categories to anchor node suggestions |
 | `conversationContext` | string | no | Build goal and user constraints to scope discovery |
 
-**Returns**: `{ result: string }` — the scout's debrief: brief Nodes and
-Credentials bullets, the relevant node type definitions verbatim, and Gaps.
+**Returns**: `{ result: string }` — the scout's debrief: brief Nodes,
+Credentials, and Knowledge base bullets, the relevant node type definitions
+verbatim, and Gaps.
 
 **Behavior**: Resolves the fixed tool subset from the orchestrator's domain
 tools, runs the sub-agent via the shared synchronous runner (same tracing and

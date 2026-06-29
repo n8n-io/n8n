@@ -119,26 +119,24 @@ When mapping downstream fields from an OpenAI node, read
 ## Pre-build discovery
 
 Before writing code, the orchestrator may have already run pre-build discovery —
-a `discover-workflow-context` call (nodes, credentials, and type definitions) and
-optionally a `delegate` **KB scout** (technique bullets). The discovery debrief
-gives node IDs with discriminators and credential availability as brief bullets,
-plus the relevant node **type definitions verbatim** (selected, not summarized);
-the KB scout returns technique bullets.
+a `discover-workflow-context` call (nodes, credentials, knowledge base, and type
+definitions). The discovery debrief gives node IDs with discriminators, credential
+availability, and knowledge-base technique bullets as brief bullets, plus the
+relevant node **type definitions verbatim** (selected, not summarized).
 
-When debriefings are in context, use them as authoritative discovery output — the
+When a debrief is in context, use it as authoritative discovery output — the
 verbatim type definitions are the real schema, so build from them directly and do
-not repeat the same `nodes`, `credentials`, or workspace reads unless a debriefing
-is missing a fact you still need.
+not repeat the same `nodes` or `credentials` reads unless the debrief is missing a
+fact you still need.
 
-When no discovery debriefings exist, run steps 1–5 of Mandatory Process inline in
+When no discovery debrief exists, run steps 1–5 of Mandatory Process inline in
 this turn — but only for simple single-service builds or edits that reuse an
 existing `.workflow.ts` file. For a build touching external services or unfamiliar
-nodes (especially two or more external services, or work needing 2+ knowledge-base
-guides/templates) with no debriefings in context, the orchestrator skipped
-required discovery: stop and let it run `discover-workflow-context` (and any KB
-`delegate` scout) first, then resume here with their debriefings. Do not call
-`discover-workflow-context` or `delegate` from this skill — pre-build discovery is
-the orchestrator's job before loading `workflow-builder`.
+nodes (especially two or more external services) with no debrief in context, the
+orchestrator skipped required discovery: stop and let it run
+`discover-workflow-context` first, then resume here with the debrief. Do not call
+`discover-workflow-context` from this skill — pre-build discovery is the
+orchestrator's job before loading `workflow-builder`.
 
 ## Workflow-Level Error Workflows
 
