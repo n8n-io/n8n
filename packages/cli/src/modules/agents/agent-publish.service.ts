@@ -21,6 +21,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
@@ -294,7 +295,7 @@ export class AgentPublishService {
 	): Record<string, AgentSkill> | null {
 		if (!config) return null;
 
-		const missing = this.getMissingSkillIds(config, skills);
+		const missing = getMissingSkillIds(config, skills);
 		if (missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
 		}
@@ -306,22 +307,6 @@ export class AgentPublishService {
 		}
 
 		return snapshot;
-	}
-
-	private getMissingSkillIds(
-		config: AgentJsonConfig,
-		skills: Record<string, AgentSkill>,
-	): string[] {
-		const seen = new Set<string>();
-		const missing: string[] = [];
-
-		for (const ref of config.skills ?? []) {
-			if (seen.has(ref.id)) continue;
-			seen.add(ref.id);
-			if (!skills[ref.id]) missing.push(ref.id);
-		}
-
-		return missing;
 	}
 
 	/**

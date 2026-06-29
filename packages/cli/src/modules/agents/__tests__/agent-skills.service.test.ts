@@ -240,20 +240,6 @@ describe('AgentSkillsService', () => {
 		).rejects.toThrow('Agent already has a skill named "Other Skill".');
 	});
 
-	it('reports missing configured skill bodies', () => {
-		expect(
-			service.getMissingSkillIds(
-				{
-					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Be helpful',
-					skills: [{ type: 'skill', id: 'missing_skill' }],
-				},
-				{},
-			),
-		).toEqual(['missing_skill']);
-	});
-
 	it('deletes a skill and removes its config ref', async () => {
 		const agent = makeAgent({
 			skills: { summarize_notes: skill },

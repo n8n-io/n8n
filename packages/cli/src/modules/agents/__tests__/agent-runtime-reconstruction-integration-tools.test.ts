@@ -274,11 +274,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(
-			agentRepository,
-			agentSkillsService,
-			mock<AiService>(),
-		);
+		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,

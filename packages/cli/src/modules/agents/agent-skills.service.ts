@@ -15,8 +15,6 @@ import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
-type AgentSkillEntries = Agent['skills'];
-
 @Service()
 export class AgentSkillsService {
 	constructor(
@@ -150,20 +148,6 @@ export class AgentSkillsService {
 		entity.skills = skills;
 	}
 
-	getMissingSkillIds(config: AgentJsonConfig | null, skills: AgentSkillEntries): string[] {
-		const refs = config?.skills ?? [];
-		const seen = new Set<string>();
-		const missing: string[] = [];
-
-		for (const ref of refs) {
-			if (seen.has(ref.id)) continue;
-			seen.add(ref.id);
-			if (!skills[ref.id]) missing.push(ref.id);
-		}
-
-		return missing;
-	}
-
 	private validateSkill(skill: AgentSkill): void {
 		const result = agentSkillSchema.safeParse(skill);
 		if (!result.success) {
@@ -185,7 +169,7 @@ export class AgentSkillsService {
 	}
 
 	private assertSkillNameIsUnique(
-		existing: AgentSkillEntries,
+		existing: Record<string, AgentSkill>,
 		name: string,
 		currentSkillId?: string,
 	): void {
