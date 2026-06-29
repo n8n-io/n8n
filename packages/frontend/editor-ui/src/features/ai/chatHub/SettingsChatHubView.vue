@@ -43,7 +43,7 @@ const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 const disabled = computed(() => !isOwner.value && !isAdmin.value);
 
-const isChatEnabled = computed(() => settingsStore.moduleSettings['chat-hub']?.enabled !== false);
+const isChatEnabled = computed(() => settingsStore.moduleSettings['chat-hub']?.enabled === true);
 
 async function onToggleEnabled(enabled: boolean) {
 	try {

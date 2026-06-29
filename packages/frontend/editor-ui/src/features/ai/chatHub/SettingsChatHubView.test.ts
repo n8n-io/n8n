@@ -7,7 +7,7 @@ import SettingsChatHubView from './SettingsChatHubView.vue';
 
 const { settingsState, setChatEnabledMock } = vi.hoisted(() => ({
 	settingsState: {
-		enabled: true,
+		enabled: true as boolean | undefined,
 		isChatFeatureEnabled: true,
 	},
 	setChatEnabledMock: vi.fn().mockResolvedValue(undefined),
@@ -107,5 +107,17 @@ describe('SettingsChatHubView', () => {
 		await userEvent.click(getByTestId('chat-hub-enabled-switch'));
 
 		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
+	});
+
+	it('treats an unset enabled value as off (fail closed)', async () => {
+		settingsState.enabled = undefined;
+		settingsState.isChatFeatureEnabled = false;
+
+		const { getByTestId } = renderComponent();
+
+		// Toggle starts off, so flipping it turns Chat on.
+		await userEvent.click(getByTestId('chat-hub-enabled-switch'));
+
+		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
 	});
 });

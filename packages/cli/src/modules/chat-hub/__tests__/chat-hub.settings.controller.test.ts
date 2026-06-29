@@ -38,5 +38,14 @@ describe('ChatHubSettingsController', () => {
 			expect(logger.warn).toHaveBeenCalled();
 			expect(result).toEqual({ enabled: true });
 		});
+
+		it('re-enables chat regardless of the current disabled state', async () => {
+			// The disabled-state gate lives on ChatHubController, not here, so this
+			// endpoint must stay reachable to turn the feature back on.
+			const result = await controller.setEnabled(req, res, { enabled: true });
+
+			expect(settings.setEnabled).toHaveBeenCalledWith(true);
+			expect(result).toEqual({ enabled: true });
+		});
 	});
 });

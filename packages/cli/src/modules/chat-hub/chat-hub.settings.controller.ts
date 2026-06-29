@@ -23,6 +23,17 @@ export class ChatHubSettingsController {
 		this.logger = this.logger.scoped('chat-hub');
 	}
 
+	/** Refresh the cached module settings so changes take effect without a restart. */
+	private async syncModuleSettings() {
+		try {
+			await this.moduleRegistry.refreshModuleSettings('chat-hub');
+		} catch (error) {
+			this.logger.warn('Failed to sync chat settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	@Get('/settings')
 	@GlobalScope('chatHub:manage')
 	async getSettings(_req: AuthenticatedRequest, _res: Response) {
@@ -54,13 +65,7 @@ export class ChatHubSettingsController {
 	) {
 		const { payload } = body;
 		await this.settings.setProviderSettings(payload.provider, payload);
-		try {
-			await this.moduleRegistry.refreshModuleSettings('chat-hub');
-		} catch (error) {
-			this.logger.warn('Failed to sync chat settings to module registry', {
-				cause: error instanceof Error ? error.message : String(error),
-			});
-		}
+		await this.syncModuleSettings();
 
 		return await this.settings.getProviderSettings(payload.provider);
 	}
@@ -73,13 +78,7 @@ export class ChatHubSettingsController {
 		@Body body: UpdateChatEnabledRequest,
 	) {
 		await this.settings.setEnabled(body.enabled);
-		try {
-			await this.moduleRegistry.refreshModuleSettings('chat-hub');
-		} catch (error) {
-			this.logger.warn('Failed to sync chat settings to module registry', {
-				cause: error instanceof Error ? error.message : String(error),
-			});
-		}
+		await this.syncModuleSettings();
 
 		return { enabled: body.enabled };
 	}
@@ -92,12 +91,6 @@ export class ChatHubSettingsController {
 		@Body body: ChatHubSemanticSearchSettings,
 	) {
 		await this.settings.setSemanticSearchSettings(body);
-		try {
-			await this.moduleRegistry.refreshModuleSettings('chat-hub');
-		} catch (error) {
-			this.logger.warn('Failed to sync chat settings to module registry', {
-				cause: error instanceof Error ? error.message : String(error),
-			});
-		}
+		await this.syncModuleSettings();
 	}
 }
