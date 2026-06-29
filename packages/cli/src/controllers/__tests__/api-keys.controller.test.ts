@@ -124,27 +124,30 @@ describe('ApiKeysController', () => {
 	});
 
 	describe('getAPIKeys', () => {
-		it('delegates to the service with the authenticated user, pagination, ownership, label, and sortBy', async () => {
+		it('delegates to the service with the authenticated user, pagination, ownership, label, ownerIds, and sortBy', async () => {
 			publicApiKeyService.getRedactedApiKeys.mockResolvedValue({
 				items: [],
 				counts: { mine: 0, all: 0 },
 				totals: { mine: 0, all: 0 },
+				owners: [],
 			});
 			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
 			await controller.getApiKeys(req, mock(), {
 				take: 10,
 				skip: 5,
-				ownership: 'mine',
+				ownership: 'all',
 				label: 'prod',
+				ownerIds: ['u1', 'u2'],
 				sortBy: 'label:asc',
 			} as never);
 
 			expect(publicApiKeyService.getRedactedApiKeys).toHaveBeenCalledWith(req.user, {
 				take: 10,
 				skip: 5,
-				ownership: 'mine',
+				ownership: 'all',
 				label: 'prod',
+				ownerIds: ['u1', 'u2'],
 				sortBy: 'label:asc',
 			});
 		});

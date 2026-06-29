@@ -100,14 +100,11 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 	 */
 	async findByProjectIdPaginated(
 		projectId: string,
+		agentId: string,
 		limit: number,
 		cursor?: string,
-		agentId?: string,
 	): Promise<AgentExecutionThreadPage> {
-		const where: Record<string, unknown> = { projectId };
-		if (agentId) {
-			where.agentId = agentId;
-		}
+		const where: Record<string, unknown> = { projectId, agentId };
 		if (cursor) {
 			where.updatedAt = LessThan(new Date(cursor));
 		}

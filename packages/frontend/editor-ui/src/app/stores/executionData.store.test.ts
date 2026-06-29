@@ -396,7 +396,6 @@ describe('executionData.store', () => {
 				| { sourceOverwrite?: { previousNode: string } }
 				| undefined;
 			expect(overwrite?.sourceOverwrite?.previousNode).toBe('NewName');
-
 			expect(store.execution?.executedNode).toBe('NewName');
 
 			const workflowData = store.execution?.workflowData;

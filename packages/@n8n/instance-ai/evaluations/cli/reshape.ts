@@ -137,7 +137,9 @@ export function reshapeLangSmithRuns(
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
-	buildExpectationsByThreadId: Map<string, BuildExpectationResult[]>,
+	/** Keyed by the build-cache key (`iteration:fileSlug`), not threadId, so prebuilt
+	 *  builds (no threadId) still attach their outcome-expectation verdicts. */
+	buildExpectationsByKey: Map<string, BuildExpectationResult[]>,
 	n8nBaseUrl: string | undefined,
 	runDebugByThreadId: Map<string, InstanceAiRunDebugResponse[]> = new Map(),
 ): WorkflowTestCaseResult[][] {
@@ -195,9 +197,7 @@ export function reshapeLangSmithRuns(
 			}
 
 			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
-			const buildExpectationResults = threadId
-				? buildExpectationsByThreadId.get(threadId)
-				: undefined;
+			const buildExpectationResults = buildExpectationsByKey.get(`${String(iter)}:${fileSlug}`);
 			runResults.push({
 				testCase,
 				fileSlug,

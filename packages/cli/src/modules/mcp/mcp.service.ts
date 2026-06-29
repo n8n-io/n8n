@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	FolderRepository,
@@ -74,7 +74,9 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type { McpAppsTelemetryVariant, McpClientInfo } from './mcp.types';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
@@ -136,6 +138,9 @@ export class McpService {
 		private readonly tagService: TagService,
 		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
+		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -227,6 +232,8 @@ export class McpService {
 			this.workflowRunner,
 			this.telemetry,
 			this,
+			this.workflowsConfig,
+			this.workflowPublishedDataService,
 		);
 		server.registerTool(
 			executeWorkflowTool.name,
@@ -543,6 +550,8 @@ export class McpService {
 			dataTableOps,
 			this.tagService,
 			this.globalConfig,
+			this.subworkflowPolicyChecker,
+			this.workflowPublishedDataService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

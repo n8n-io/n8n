@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,7 +8,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -31,7 +32,6 @@ import {
 	type OAuth2CredentialData,
 	type OAuth2GrantType,
 } from '@n8n/client-oauth2';
-import axios from 'axios';
 import {
 	oAuthAuthorizationServerMetadataSchema,
 	dynamicClientRegistrationResponseSchema,
@@ -40,7 +40,6 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
-import type { AxiosRequestConfig } from 'axios';
 import { createHmac } from 'crypto';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -58,6 +57,7 @@ import { EventService } from '@/events/event.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { CacheService } from '@/services/cache/cache.service';
+import { Time } from '@n8n/constants';
 
 /**
  * Per-flow OAuth state stored in CacheService, keyed by the CSRF state token.
@@ -65,6 +65,14 @@ import { CacheService } from '@/services/cache/cache.service';
  */
 export type OauthFlowState = {
 	csrfSecret: string;
+	/**
+	 * The CSRF state payload (credential id, origin, user identity, browser
+	 * binding hash, and for dynamic credentials the caller's bearer token).
+	 * Held here instead of encrypted in the `state` URL parameter so the
+	 * authorization URL stays small. Optional so flows started before this
+	 * change (which carried the payload in the URL) still resolve.
+	 */
+	stateData?: CreateCsrfStateData;
 	/** OAuth2 PKCE verifier, needed to exchange the code in the callback. */
 	codeVerifier?: string;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
@@ -72,6 +80,7 @@ export type OauthFlowState = {
 };
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
+const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -113,7 +122,22 @@ export class OauthService {
 		private readonly browserBindingService: OAuthBrowserBindingService,
 		private readonly eventService: EventService,
 		private readonly cacheService: CacheService,
-	) {}
+		outboundHttp: OutboundHttp,
+		ssrfProtectionService: SsrfProtectionService,
+		ssrfProtectionConfig: SsrfProtectionConfig,
+	) {
+		// Unlike most OutboundHttp callsites, here we opt into SSRF protection (when the environment enables it) because the attack risk is higher:
+		// these URLs can be user-, instance- or remote-server-supplied (discovery / dynamic client registration),
+		// so the service can't tell at runtime which are trustworthy.
+		// Self-hosted users with an internal OAuth/MCP server are accommodated via the SSRF allowlist config, not by disabling the guard.
+		// In the future, enabling SSRF "per feature" could be refined through configuration.
+		this.http = outboundHttp.requests({
+			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
+			timeout: OAUTH_REQUEST_TIMEOUT_MS,
+		});
+	}
+
+	private readonly http: HttpRequestClient;
 
 	private oauthFlowCacheKey(token: string): string {
 		return `${OAUTH_FLOW_CACHE_PREFIX}${token}`;
@@ -227,7 +251,7 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredentialForUpdate(
+	async getCredentialForAuthFlow(
 		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
 	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
@@ -236,10 +260,18 @@ export class OauthService {
 			throw new BadRequestError('Required credential ID is missing');
 		}
 
+		// Private credentials are connected per-user, so executing users can authorize
+		// their own account without edit rights. Shared/static credentials store the
+		// token on the shared credential itself, so connecting them still requires edit.
+		const existingCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const requiredScope = existingCredential?.isResolvable
+			? 'credential:connect'
+			: 'credential:update';
+
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:update'],
+			[requiredScope],
 		);
 
 		if (!credential) {
@@ -398,14 +430,19 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	async createCsrfState(data: CreateCsrfStateData): Promise<[string, string, string]> {
+	/**
+	 * Mint a CSRF secret and the matching `state` URL parameter. The state carries
+	 * only the signed token and a timestamp — the rest of the flow payload is stashed
+	 * server-side in the per-flow cache (see {@link storeOauthFlowState}) so the
+	 * authorization URL does not balloon with an encrypted blob.
+	 */
+	async createCsrfState(): Promise<[string, string, string]> {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const stateToken = token.create(csrfSecret);
 		const state: CsrfState = {
 			token: stateToken,
 			createdAt: Date.now(),
-			data: await this.cipher.encryptV2(JSON.stringify(data)),
 		};
 
 		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
@@ -420,6 +457,15 @@ export class OauthService {
 	 */
 	async storeOauthFlowState(stateToken: string, flowState: OauthFlowState): Promise<void> {
 		await this.cacheService.set(this.oauthFlowCacheKey(stateToken), flowState, MAX_CSRF_AGE);
+	}
+
+	/**
+	 * Read the per-flow OAuth state without consuming it. Used while decoding the
+	 * callback `state` to recover the payload that used to live in the URL; the
+	 * entry is still consumed (deleted) later by {@link consumeOauthFlowState}.
+	 */
+	protected async peekOauthFlowState(stateToken: string): Promise<OauthFlowState | undefined> {
+		return await this.cacheService.get<OauthFlowState>(this.oauthFlowCacheKey(stateToken));
 	}
 
 	/**
@@ -444,12 +490,25 @@ export class OauthService {
 			errorMessage,
 		});
 
-		const decryptedState = jsonParse<CreateCsrfStateData>(
-			await this.cipher.decryptV2(decoded.data),
-			{
-				errorMessage,
-			},
-		);
+		// The CSRF state payload now lives server-side in the per-flow cache (keyed
+		// by the state token). Fall back to the encrypted URL blob for flows that
+		// were initiated before this change and are still in flight.
+		const flowState =
+			typeof decoded.token === 'string' ? await this.peekOauthFlowState(decoded.token) : undefined;
+		const decryptedState =
+			flowState?.stateData ??
+			(typeof decoded.data === 'string'
+				? jsonParse<CreateCsrfStateData>(await this.cipher.decryptV2(decoded.data), {
+						errorMessage,
+					})
+				: undefined);
+
+		// A parseable token with no recoverable payload means the per-flow entry is
+		// gone — the flow was already consumed (replay) or expired out of the cache.
+		// Surface that as an invalid callback state rather than a generic format error.
+		if (!decryptedState) {
+			throw new UnexpectedError('The OAuth callback state is invalid!');
+		}
 
 		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
@@ -820,7 +879,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state, stateToken] = await this.createCsrfState(csrfData);
+		const [csrfSecret, state, stateToken] = await this.createCsrfState();
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -833,7 +892,7 @@ export class OauthService {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const flowState: OauthFlowState = { csrfSecret };
+		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData };
 		if (oauthCredentials.grantType === 'pkce') {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -905,10 +964,7 @@ export class OauthService {
 				// Validate each URL before making request (defense-in-depth)
 				this.validateOAuthUrlOrThrow(url);
 
-				const response = await axios.get<unknown>(url, {
-					validateStatus: (status) => status === 200,
-				});
-				data = response.data;
+				data = await this.fetchDiscoveryDocument(url);
 				break; // Success - exit loop
 			} catch (error) {
 				lastError = error as Error;
@@ -950,7 +1006,7 @@ export class OauthService {
 
 		const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
 			metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
-			metadataValidation.data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
+			metadataValidation.data.token_endpoint_auth_methods_supported ?? [],
 			metadataValidation.data.code_challenge_methods_supported ?? [],
 		);
 		oauthCredentials.grantType = grantType;
@@ -979,10 +1035,12 @@ export class OauthService {
 
 		await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
 
-		const { data: registerResult } = await axios.post<unknown>(
-			registration_endpoint,
-			registerPayload,
-		);
+		const registerResult = await this.http.request({
+			url: registration_endpoint,
+			method: 'POST',
+			body: registerPayload,
+			json: true,
+		});
 		const registrationValidation =
 			dynamicClientRegistrationResponseSchema.safeParse(registerResult);
 		if (!registrationValidation.success) {
@@ -1015,7 +1073,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
-		const [csrfSecret, state, stateToken] = await this.createCsrfState(csrfData);
+		const [csrfSecret, state, stateToken] = await this.createCsrfState();
 
 		const signatureMethod = oauthCredentials.signatureMethod;
 
@@ -1048,15 +1106,12 @@ export class OauthService {
 
 		const data = oauth.toHeader(oauth.authorize(options));
 
-		const axiosConfig: AxiosRequestConfig = {
-			method: options.method,
+		const response = await this.http.request({
 			url: options.url,
-			headers: {
-				...data,
-			},
-		};
-
-		const { data: response } = await axios.request(axiosConfig);
+			method: 'POST',
+			headers: { ...data },
+			encoding: 'text',
+		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
 		if (typeof response !== 'string') {
@@ -1083,6 +1138,7 @@ export class OauthService {
 		// concurrent flows by different users don't clobber each other's secret.
 		await this.storeOauthFlowState(stateToken, {
 			csrfSecret,
+			stateData: csrfData,
 			oauthTokenSecret: responseJson.oauth_token_secret ?? '',
 		});
 
@@ -1131,14 +1187,15 @@ export class OauthService {
 		// `oauth_verifier` is part of the signature base string but is not emitted
 		// into the Authorization header by `toHeader`, so it must travel in the
 		// form-encoded body for the server to receive and verify it.
-		const { data: response } = await axios.request<string>({
-			method: 'POST',
+		const response = await this.http.request({
 			url: oauthCredentials.accessTokenUrl,
-			data: new URLSearchParams({ oauth_verifier: params.oauthVerifier }).toString(),
+			method: 'POST',
+			body: new URLSearchParams({ oauth_verifier: params.oauthVerifier }).toString(),
 			headers: {
 				...headers,
 				'content-type': 'application/x-www-form-urlencoded',
 			},
+			encoding: 'text',
 		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
@@ -1180,6 +1237,25 @@ export class OauthService {
 	}
 
 	/**
+	 * Fetches a `.well-known` discovery document and returns its parsed JSON body.
+	 * Only a 200 is accepted (RFC 8414 / RFC 9728 / OpenID Connect discovery endpoints respond with 200).
+	 * Any other status, or a transport/SSRF failure, throws,
+	 * so the discovery loops can uniformly catch and fall through to the next candidate URL.
+	 */
+	private async fetchDiscoveryDocument(url: string): Promise<unknown> {
+		const response = await this.http.request({
+			url,
+			method: 'GET',
+			json: true,
+			returnFullResponse: true,
+		});
+		if (response.statusCode !== 200) {
+			throw new OperationalError(`Request failed with status code ${response.statusCode}`);
+		}
+		return response.body;
+	}
+
+	/**
 	 * Discovers OAuth 2.0 Protected Resource Metadata per RFC 9728.
 	 * This is the first step in MCP-compliant OAuth discovery.
 	 * Returns the authorization_servers array from the metadata.
@@ -1211,34 +1287,32 @@ export class OauthService {
 				// Validate each URL before making request (defense-in-depth)
 				this.validateOAuthUrlOrThrow(discoveryUrl);
 
-				const { data } = await axios.get(discoveryUrl, {
-					validateStatus: (status) => status === 200,
-				});
+				const data = await this.fetchDiscoveryDocument(discoveryUrl);
 
 				// Validate has authorization_servers field per RFC 9728
-				if (
-					data &&
-					Array.isArray(data.authorization_servers) &&
-					data.authorization_servers.length > 0
-				) {
-					const rawResource = (data as Record<string, unknown>).resource;
-					const resource =
-						typeof rawResource === 'string'
-							? this.validateResourceUrlOrThrow(rawResource)
+				if (data && typeof data === 'object') {
+					const record = data as Record<string, unknown>;
+					const authorizationServers = record.authorization_servers;
+					if (Array.isArray(authorizationServers) && authorizationServers.length > 0) {
+						const rawResource = record.resource;
+						const resource =
+							typeof rawResource === 'string'
+								? this.validateResourceUrlOrThrow(rawResource)
+								: undefined;
+						// Per RFC 9728 the protected resource advertises the scopes required to
+						// access it. Some authorization servers (e.g. Atlassian) omit
+						// scopes_supported from their RFC 8414 metadata, so these are the only
+						// scopes available for the request.
+						const rawScopes = record.scopes_supported;
+						const scopes_supported = Array.isArray(rawScopes)
+							? rawScopes.filter((s): s is string => typeof s === 'string')
 							: undefined;
-					// Per RFC 9728 the protected resource advertises the scopes required to
-					// access it. Some authorization servers (e.g. Atlassian) omit
-					// scopes_supported from their RFC 8414 metadata, so these are the only
-					// scopes available for the request.
-					const rawScopes = (data as Record<string, unknown>).scopes_supported;
-					const scopes_supported = Array.isArray(rawScopes)
-						? rawScopes.filter((s): s is string => typeof s === 'string')
-						: undefined;
-					return {
-						authorization_servers: data.authorization_servers,
-						...(resource ? { resource } : {}),
-						...(scopes_supported?.length ? { scopes_supported } : {}),
-					};
+						return {
+							authorization_servers: authorizationServers,
+							...(resource ? { resource } : {}),
+							...(scopes_supported?.length ? { scopes_supported } : {}),
+						};
+					}
 				}
 			} catch (error) {
 				// Continue to next URL
@@ -1255,8 +1329,15 @@ export class OauthService {
 		tokenEndpointAuthMethods: string[],
 		codeChallengeMethods: string[],
 	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
+		const supportsPkce = codeChallengeMethods.includes('S256');
+
 		if (grantTypes.includes('authorization_code')) {
-			if (codeChallengeMethods.includes('S256')) {
+			// Public-client PKCE only when the server allows the 'none' auth method, or
+			// advertises no auth methods at all (servers that expose only PKCE metadata).
+			if (
+				supportsPkce &&
+				(tokenEndpointAuthMethods.length === 0 || tokenEndpointAuthMethods.includes('none'))
+			) {
 				return { grantType: 'pkce' };
 			}
 
@@ -1267,6 +1348,16 @@ export class OauthService {
 			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
 				return { grantType: 'authorizationCode', authentication: 'body' };
 			}
+
+			// S256 advertised alongside only unrecognized methods: fall back to public-client PKCE.
+			if (supportsPkce) {
+				return { grantType: 'pkce' };
+			}
+
+			// Server omitted token_endpoint_auth_methods_supported: default to client_secret_basic (RFC 8414).
+			if (tokenEndpointAuthMethods.length === 0) {
+				return { grantType: 'authorizationCode', authentication: 'header' };
+			}
 		}
 
 		if (grantTypes.includes('client_credentials')) {
@@ -1276,6 +1367,11 @@ export class OauthService {
 
 			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
 				return { grantType: 'clientCredentials', authentication: 'body' };
+			}
+
+			// Server omitted token_endpoint_auth_methods_supported: default to client_secret_basic (RFC 8414).
+			if (tokenEndpointAuthMethods.length === 0) {
+				return { grantType: 'clientCredentials', authentication: 'header' };
 			}
 		}
 

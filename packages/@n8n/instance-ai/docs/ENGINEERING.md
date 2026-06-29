@@ -30,7 +30,7 @@ const data: ExecutionResult = parseExecutionResult(response);
 ### Zod schemas are the source of truth
 
 Every tool has an input schema (what the LLM sends) and an output schema
-(what the tool returns). Mastra uses these schemas to generate tool
+(what the tool returns). `@n8n/agents` uses these schemas to generate tool
 descriptions for the LLM, validate inputs at runtime, and type-check the
 execute function. If the TypeScript type and the Zod schema are defined
 separately, they drift — the LLM sees one contract, the code enforces
@@ -120,7 +120,7 @@ it('should stream tool-call event when agent uses a tool', async () => {
 
 The clean interface boundary (ADR-002) makes each layer testable in
 isolation. Verify the contract at each boundary — not the wiring between
-them. Tools can be tested without Mastra, the reducer without SSE, adapters
+them. Tools can be tested without `@n8n/agents`, the reducer without SSE, adapters
 without the agent.
 
 For each tool, test:
@@ -203,15 +203,15 @@ When backend and frontend both switch on event types with duplicated logic,
 a change to the format requires updating both in lockstep. Extract the
 shared part into `@n8n/api-types` or a shared utility.
 
-## Mastra Patterns
+## Agent SDK Patterns
 
 ### Tool definitions
 
-Mastra uses Zod schemas for both runtime validation and LLM tool
+`@n8n/agents` uses Zod schemas for both runtime validation and LLM tool
 descriptions. The `.describe()` strings on schema fields become the
 parameter descriptions the LLM sees when deciding how to call a tool.
 Missing or vague descriptions lead to bad tool calls. The `outputSchema`
-lets Mastra validate return values and gives the LLM structured expectations.
+lets `@n8n/agents` validate return values and gives the LLM structured expectations.
 
 - Always define both `inputSchema` and `outputSchema`
 - Use `.describe()` on Zod fields — these are the LLM's parameter docs

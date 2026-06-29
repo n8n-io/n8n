@@ -9,9 +9,6 @@ import type {
 	MessageEventBusDestinationOptions,
 	INodeParameters,
 	NodeParameterValueType,
-	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationWebhookOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 import {
@@ -28,8 +25,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
@@ -38,7 +35,7 @@ import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { destinationToFakeINodeUi } from '../logStreaming.utils';
+import { destinationToFakeINodeUi, isDestinationComplete } from '../logStreaming.utils';
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
@@ -83,8 +80,12 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = injectNDVStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+// The log-streaming settings modal can open outside the workflow editor, where
+// no workflow document is provided. Re-provide the resolved document store so
+// the reused NDV parameter components resolve a valid scoped store, and derive
+// this modal's own NDV store from it (it cannot inject what it provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -358,31 +359,10 @@ async function saveDestination() {
 			.replace('$MessageEventBusDestination', '')
 			.toLowerCase();
 
-		const isComplete = () => {
-			if (isTypeWebhook.value) {
-				const webhookDestination = destination as MessageEventBusDestinationWebhookOptions;
-				return webhookDestination.url !== '';
-			} else if (isTypeSentry.value) {
-				const sentryDestination = destination as MessageEventBusDestinationSentryOptions;
-				return sentryDestination.dsn !== '';
-			} else if (isTypeSyslog.value) {
-				const syslogDestination = destination as MessageEventBusDestinationSyslogOptions;
-				return (
-					syslogDestination.host !== '' &&
-					syslogDestination.port !== undefined &&
-					// @ts-expect-error TODO: fix this typing
-					syslogDestination.protocol !== '' &&
-					syslogDestination.facility !== undefined &&
-					syslogDestination.app_name !== ''
-				);
-			}
-			return false;
-		};
-
 		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
-			is_complete: isComplete(),
+			is_complete: isDestinationComplete(nodeParameters.value),
 			is_active: destination.enabled,
 		});
 	}

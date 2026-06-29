@@ -3,7 +3,7 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import type { ServiceIdentifier } from '@n8n/di';
@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
 	ExecutionError,
@@ -36,6 +37,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	OperationalError,
 	UnexpectedError,
 	Workflow,
 	createRunExecutionData,
@@ -62,6 +64,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
@@ -179,6 +182,30 @@ export async function getPublishedWorkflowData(
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
+	// For a workflow loaded from the database, read the published version from the
+	// workflow_published_version table when the publication service is enabled.
+	// (Inline code is returned as-is below.)
+	//
+	// TODO(CAT-3202): clean up the workflow data fetching
+	if (
+		workflowInfo.id !== undefined &&
+		Container.get(WorkflowsConfig).useWorkflowPublicationService
+	) {
+		const publishedData = await Container.get(
+			WorkflowPublishedDataService,
+		).getPublishedWorkflowData(workflowInfo.id);
+		if (publishedData === null) {
+			throw new OperationalError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+			});
+		}
+		return {
+			...publishedData.workflow,
+			nodes: publishedData.publishedVersion.nodes,
+			connections: publishedData.publishedVersion.connections,
+		};
+	}
+
 	const workflowData = await fetchWorkflowData(
 		workflowInfo,
 		parentWorkflowId,
@@ -322,6 +349,7 @@ export async function executeAgent(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executionMode: WorkflowExecuteMode,
 	outputSchema?: JSONSchema7,
+	workflowContext?: ExecuteAgentWorkflowContext,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
 	const telemetryUserId = additionalData.userId;
@@ -352,12 +380,14 @@ export async function executeAgent(
 		);
 	}
 
-	const { AgentsService } = await import('@/modules/agents/agents.service');
-	const agentsService = Container.get(AgentsService);
+	const { AgentExecutionOrchestratorService } = await import(
+		'@/modules/agents/agent-execution-orchestrator.service'
+	);
+	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
-	return await agentsService.executeForWorkflow(
+	return await agentExecutionOrchestratorService.executeForWorkflow(
 		agentId,
 		message,
 		executionId,
@@ -367,6 +397,7 @@ export async function executeAgent(
 		telemetryUserId,
 		useDraftVersion,
 		outputSchema,
+		workflowContext,
 	);
 }
 
@@ -493,6 +524,8 @@ async function startExecution(
 		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
 		additionalDataIntegrated.rootExecutionMode =
 			additionalData.rootExecutionMode ?? options.executionMode;
+		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
+		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}

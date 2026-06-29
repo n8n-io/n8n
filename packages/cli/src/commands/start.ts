@@ -286,20 +286,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
-			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
-			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
-				Container.get(PrometheusMetricsService);
-			}
-
-			// we instantiate `WorkflowPublicationOutboxConsumer` early to register its multi-main event handlers
-			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				const { WorkflowPublicationOutboxConsumer } = await import(
-					'@/workflows/publication/workflow-publication-outbox-consumer'
-				);
-				Container.get(WorkflowPublicationOutboxConsumer);
-			}
-
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 
@@ -420,17 +406,24 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { PublicationStartupEnqueuer } = await import(
-				'@/workflows/publication/publication-startup-enqueuer'
+			const { PublishedWorkflowEnqueuer } = await import(
+				'@/workflows/publication/published-workflow-enqueuer'
 			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer'
 			);
+			const { WorkflowPublicationOutboxCleanupService } = await import(
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+			);
+
+			// Import for its side effect: registering the trigger deactivator's
+			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
+			await import('@/workflows/publication/published-workflow-trigger-deactivator');
 
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain
 			if (this.instanceSettings.isLeader) {
-				await Container.get(PublicationStartupEnqueuer).enqueueActiveWorkflows();
+				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
 			}
 
 			// Don't await: the immediate drain activates every trigger and can take a
@@ -440,6 +433,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				.catch((error) => {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				});
+
+			Container.get(WorkflowPublicationOutboxCleanupService).init();
 		} else {
 			await this.activeWorkflowManager.init();
 		}

@@ -307,7 +307,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(call(entrypoint.generateTitleForRun)).toBe('generated-title');
 		expect(construct(entrypoint.McpClientManager)).toBeInstanceOf(entrypoint.McpClientManager);
 		expect(call(entrypoint.mapAgentChunkToEvent)).toEqual({ type: 'event' });
-		expect(entrypoint.isRecord({ ok: true })).toBe(true);
 		expect(entrypoint.parseSuspension({})).toEqual({
 			toolCallId: 'tool-call-1',
 			requestId: 'request-1',

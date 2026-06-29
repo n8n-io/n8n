@@ -11,7 +11,7 @@ import {
 	getInlineDelegateSubAgentToolOptions,
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRunner,
-} from '../delegate-sub-agent-tool';
+} from '../tools/delegate-sub-agent-tool';
 
 const input = {
 	subAgentId: INLINE_SUB_AGENT_ID,
@@ -86,6 +86,47 @@ describe('createDelegateSubAgentTool', () => {
 		expect(getInlineDelegateSubAgentToolOptions(tool)?.inlineSubAgentModelsByDifficulty).toEqual({
 			high: 'anthropic/claude-sonnet-4-5',
 		});
+	});
+
+	it('renders configured sub-agent useWhen guidance in model-facing instructions', () => {
+		const tool = createDelegateSubAgentTool({
+			availableSubAgents: [
+				{
+					id: 'agent-billing',
+					name: 'Billing Agent',
+					useWhen: 'Use for invoice investigations and payment status checks.',
+				},
+				{
+					id: 'agent-research',
+					name: 'Research Agent',
+					useWhen: 'Use for market and source research.',
+				},
+			],
+		});
+
+		expect(tool.systemInstruction).toContain('name and useWhen guidance');
+		expect(tool.systemInstruction).toContain('- agent-billing: Billing Agent');
+		expect(tool.systemInstruction).toContain(
+			'Use when: Use for invoice investigations and payment status checks.',
+		);
+		expect(tool.systemInstruction).toContain('- agent-research: Research Agent');
+		expect(tool.systemInstruction).toContain('Use when: Use for market and source research.');
+		expect(tool.systemInstruction).not.toContain('name/description');
+	});
+
+	it('preserves available sub-agent useWhen guidance in delegate tool metadata', () => {
+		const availableSubAgents = [
+			{
+				id: 'agent-billing',
+				name: 'Billing Agent',
+				useWhen: 'Use for invoice investigations.',
+			},
+		];
+		const tool = createDelegateSubAgentTool({ availableSubAgents });
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.availableSubAgents).toEqual(
+			availableSubAgents,
+		);
 	});
 
 	it('preserves resolveInlineSubAgentProviderTools in delegate tool metadata', () => {
@@ -544,7 +585,7 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 	});
 
 	it('returns a failed delegate output for delegated child suspension stopgap', async () => {
-		const { failedDelegatedChildSuspendOutput } = await import('../delegate-sub-agent-tool');
+		const { failedDelegatedChildSuspendOutput } = await import('../tools/delegate-sub-agent-tool');
 
 		expect(failedDelegatedChildSuspendOutput('/root/x_0')).toEqual({
 			status: 'failed',

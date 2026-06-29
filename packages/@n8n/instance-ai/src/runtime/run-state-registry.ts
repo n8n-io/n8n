@@ -7,6 +7,7 @@ import type {
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
+import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
@@ -26,6 +27,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
 	/** Set when the suspended run was a planned-task checkpoint follow-up.
@@ -40,6 +43,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 		isSupportingWorkflowTask?: boolean;
 		savedOutcome?: WorkflowBuildOutcome;
 	};
+	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
+	runHandoff?: OrchestratorRunHandoffState;
 }
 
 /**
@@ -67,6 +72,9 @@ export interface ConfirmationData {
 	resourceDecision?: string;
 	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
 	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
 }
 
 export interface PendingConfirmation {
@@ -216,6 +224,11 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getActiveRunId(threadId: string): string | undefined {
 		return this.activeRuns.get(threadId)?.runId;
+	}
+
+	/** Number of runs currently executing (excludes suspended/pending runs). */
+	activeRunCount(): number {
+		return this.activeRuns.size;
 	}
 
 	getActiveRun(threadId: string): ActiveRunState | undefined {

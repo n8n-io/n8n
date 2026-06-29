@@ -1,4 +1,5 @@
 import type { CredentialProvider, McpClient } from '@n8n/agents';
+import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'jest-mock-extended';
 
 import type { OauthService } from '@/oauth/oauth.service';
@@ -26,6 +27,7 @@ function makeDeps() {
 		credentialProvider: mock<CredentialProvider>(),
 		oauthService: mock<OauthService>(),
 		projectId: 'proj-1',
+		proxyFetch: jest.fn() as unknown as CustomFetch,
 	};
 }
 

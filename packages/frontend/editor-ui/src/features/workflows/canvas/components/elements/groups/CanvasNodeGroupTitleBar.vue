@@ -6,15 +6,12 @@ import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
-import {
-	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
-	GROUP_PADDING_Y_BOTTOM as PADDING_Y_BOTTOM,
-	GROUP_PADDING_Y_TOP as PADDING_Y_TOP,
-} from '../../../stores/canvasNodeGroups.constants';
+import { GROUP_HEADER_HEIGHT as HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
+import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	CANVAS_NODE_GROUP_ID_PREFIX,
+	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
 
@@ -75,10 +72,14 @@ const wrapperClasses = computed(() => [
 	},
 ]);
 
-const frameStyle = computed(() => ({
-	top: `${HEADER_HEIGHT}px`,
-	height: `${props.data.nodesRect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM}px`,
-}));
+const frameStyle = computed(() => {
+	// Frame sits below the header, so exclude the header height
+	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
+	return {
+		top: `${HEADER_HEIGHT}px`,
+		height: `${expanded.height - HEADER_HEIGHT}px`,
+	};
+});
 
 const isTitleTruncated = ref(false);
 
@@ -109,6 +110,15 @@ function onUngroupClick() {
 }
 
 function onToggleClick() {
+	emit('toggle', group.value.id);
+}
+
+// Toggle collapse on double clicking
+function onWrapperDblClick(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	// if happened inside an element with its own click behavior, do nothing
+	if (target?.closest('.nodrag')) return;
+
 	emit('toggle', group.value.id);
 }
 
@@ -156,7 +166,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	if (selected.length === 0) return;
 
 	// Multi-select drag that includes this title bar → preserve the selection.
-	const myVueFlowId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.value.id}`;
+	const myVueFlowId = createCanvasGroupNodeId(group.value.id);
 	const isPartOfSelection = selected.some((n) => n.id === myVueFlowId);
 	if (isPartOfSelection) return;
 
@@ -175,6 +185,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
 		@pointerdown="onWrapperPointerDown"
+		@dblclick.stop="onWrapperDblClick"
 	>
 		<div :class="$style.titleBar">
 			<Handle
@@ -237,7 +248,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
 								ref="titleEdit"
-								class="nodrag"
+								:class="['nodrag', $style.inlineEdit]"
 								:model-value="group.name"
 								:read-only="readOnly"
 								:min-width="0"
@@ -371,6 +382,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	max-width: 100%;
 	overflow: clip;
 	overflow-clip-margin: var(--spacing--2xs);
+}
+
+.inlineEdit {
+	width: fit-content;
+	max-width: 100%;
 }
 
 .statusIcons {

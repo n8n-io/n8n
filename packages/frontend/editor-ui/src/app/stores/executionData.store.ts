@@ -12,6 +12,7 @@ import {
 	WAIT_INDEFINITELY,
 	type ExecutionStatus,
 	type INode,
+	type IPinData,
 	type IRunData,
 	type IRunExecutionData,
 	type ITaskData,
@@ -96,6 +97,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		);
 
 		const executedNode = computed(() => execution.value?.executedNode);
+
+		const executionPinDataByNodeName = computed<IPinData>(
+			() => execution.value?.data?.resultData?.pinData ?? {},
+		);
 
 		// Per-node-name execution-issues map with atomic per-name updates.
 		// Each entry is a structuralComputed in its own effectScope, so only
@@ -712,6 +717,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,
+			executionPinDataByNodeName,
 			executionIssuesByNodeName,
 			executionStatusByNodeId,
 			executionRunDataByNodeId,

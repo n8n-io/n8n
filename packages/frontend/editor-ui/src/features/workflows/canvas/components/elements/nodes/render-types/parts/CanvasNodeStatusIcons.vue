@@ -41,7 +41,17 @@ const executionErrors = computed(
 	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
-const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
+const hasPinnedData = computed(
+	() =>
+		!renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.pinnedDataByNodeName[name.value],
+);
+const hasExecutionPinData = computed(
+	() =>
+		renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.executionPinDataByNodeName[name.value],
+);
+const hasVisiblePinData = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const route = useRoute();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
@@ -113,7 +123,9 @@ const groupedExecutionErrors = computed(() => {
 		<!-- Do nothing, unknown means the node never executed -->
 	</div>
 	<div
-		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
+		v-else-if="
+			hasVisiblePinData && (!nodeHelpers.isProductionExecutionPreview.value || hasExecutionPinData)
+		"
 		data-test-id="canvas-node-status-pinned"
 		:class="[...commonClasses, $style.pinnedData]"
 	>
