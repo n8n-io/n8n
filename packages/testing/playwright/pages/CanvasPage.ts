@@ -391,6 +391,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator('.el-select-dropdown:visible');
 	}
 
+	getTagDropdownItems(): Locator {
+		return this.getVisibleDropdown().locator('li');
+	}
+
 	getTagItemsInDropdown(): Locator {
 		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag');
 	}
@@ -646,6 +650,12 @@ export class CanvasPage extends BasePage {
 	connectionToolbarBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
 		return this.page.locator(
 			`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
+		);
+	}
+
+	getAddConnectionButtonBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionToolbarBetweenNodes(sourceNodeName, targetNodeName).getByTestId(
+			'add-connection-button',
 		);
 	}
 
