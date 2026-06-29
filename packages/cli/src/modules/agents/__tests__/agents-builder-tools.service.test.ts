@@ -37,6 +37,7 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
@@ -73,6 +74,8 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -100,6 +103,7 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		aiService,
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
@@ -1059,7 +1063,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns the generated tool id', async () => {
+		it('stores a custom tool and returns the tool name as id', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -1076,7 +1080,7 @@ describe('AgentsBuilderToolsService', () => {
 			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
 			agentsService.buildCustomTool.mockResolvedValue({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 
@@ -1093,7 +1097,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 		});

@@ -56,6 +56,8 @@ import {
 	truncateToTitle,
 	generateTitleForRun,
 	patchThread,
+	createOrchestratorRunControl,
+	createOrchestratorRunControlForState,
 	orchestratorAgentId,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -68,6 +70,8 @@ import {
 	type PlannedTaskRecord,
 	type PlannedTaskService,
 	type PlannedWorkflowVerification,
+	type OrchestratorRunHandoffState,
+	type OrchestratorRunStopSignal,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type ServiceProxyConfig,
@@ -1560,6 +1564,8 @@ export class InstanceAiService {
 				await sync();
 			},
 			getBuildOutcome: async (workItemId) => await workflowTasks.getBuildOutcome(workItemId),
+			getLatestBuildOutcomeForWorkflow: async (workflowId) =>
+				await workflowTasks.getLatestBuildOutcomeForWorkflow(workflowId),
 			getWorkflowLoopState: async (workItemId) =>
 				await workflowTasks.getWorkflowLoopState(workItemId),
 		};
@@ -2305,6 +2311,80 @@ export class InstanceAiService {
 			verificationReadiness: obligation.readiness,
 		};
 		return `<workflow-setup-required>\n${JSON.stringify(payload, null, 2)}\n</workflow-setup-required>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
+	}
+
+	private getWorkflowSetupSuspensionWorkflowId(
+		toolName: string | undefined,
+		suspendPayload: Record<string, unknown> | undefined,
+	): string | undefined {
+		if (toolName !== 'workflows' || !suspendPayload) return undefined;
+		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
+		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
+	}
+
+	private async markWorkflowSetupHandled(
+		threadId: string,
+		workflowId: string,
+		runId?: string,
+	): Promise<boolean> {
+		const records = await this.listWorkflowLoopRecords(threadId);
+		if (records.length === 0) return false;
+
+		const candidates: Array<{
+			record: WorkflowLoopWorkItemRecord;
+			obligation: WorkflowVerificationObligation;
+		}> = [];
+
+		for (const record of records) {
+			if (record.state.setupRoutedAt) continue;
+			if (this.workflowObligations.isPlannedRecord(record)) continue;
+
+			const obligation = this.workflowObligations.obligationFromRecord(threadId, record, {
+				source: 'direct',
+			});
+			if (obligation.workflowId !== workflowId) continue;
+			if (obligation.setupRequirement?.status !== 'required') continue;
+
+			candidates.push({ record, obligation });
+		}
+
+		const sameRunCandidates = runId
+			? candidates.filter(
+					({ obligation, record }) => obligation.runId === runId || record.state.runId === runId,
+				)
+			: [];
+		const fallbackCandidates = candidates.filter(
+			(candidate) => !sameRunCandidates.includes(candidate),
+		);
+
+		for (const { record, obligation } of [...sameRunCandidates, ...fallbackCandidates]) {
+			const claim = await this.claimWorkItemSetupRouting(threadId, record);
+			if (!claim) continue;
+
+			const marked = await this.markWorkItemSetupRouted(
+				threadId,
+				record.state.workItemId,
+				claim.claimId,
+			);
+			if (!marked) {
+				await this.releaseWorkItemSetupRoutingClaim(
+					threadId,
+					record.state.workItemId,
+					claim.claimId,
+				);
+				this.logger.warn('Workflow setup completed but routing marker was not saved', {
+					threadId,
+					workItemId: record.state.workItemId,
+					workflowId,
+				});
+				continue;
+			}
+
+			this.trackWorkflowVerificationObligation(obligation, 'setup_completed_by_tool');
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -3081,6 +3161,9 @@ export class InstanceAiService {
 				tracing.orchestratorRun = actorRun;
 			}
 
+			const runControl = createOrchestratorRunControl(orchestrationContext);
+			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
+
 			const agent = await createInstanceAgent({
 				modelId,
 				context,
@@ -3107,6 +3190,7 @@ export class InstanceAiService {
 							eventBus: this.eventBus,
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
+							stopSignal,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
@@ -3118,6 +3202,7 @@ export class InstanceAiService {
 						eventBus: this.eventBus,
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
+						stopSignal,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 			if (result.status === 'suspended') {
@@ -3129,6 +3214,10 @@ export class InstanceAiService {
 						threadId,
 						user,
 						toolCallId: result.suspension.toolCallId,
+						...(result.suspension.toolName ? { toolName: result.suspension.toolName } : {}),
+						...(result.suspension.suspendPayload
+							? { suspendPayload: result.suspension.suspendPayload }
+							: {}),
 						requestId: result.suspension.requestId,
 						abortController,
 						messageGroupId,
@@ -3137,6 +3226,7 @@ export class InstanceAiService {
 						modelId,
 						checkpoint,
 						plannedBuild,
+						runHandoff: runControl.state,
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -3254,14 +3344,16 @@ export class InstanceAiService {
 					messageId,
 				});
 			}
-			this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
-				messageGroupId,
-				correlationId: messageId,
-				workSummary: result.workSummary,
-				suppressCompletedFallback:
-					checkpoint?.isCheckpointFollowUp === true ||
-					plannedBuild?.isPlannedBuildFollowUp === true,
-			});
+			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
+				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
+					messageGroupId,
+					correlationId: messageId,
+					workSummary: result.workSummary,
+					suppressCompletedFallback:
+						checkpoint?.isCheckpointFollowUp === true ||
+						plannedBuild?.isPlannedBuildFollowUp === true,
+				});
+			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: finalStatus,
@@ -3776,6 +3868,7 @@ export class InstanceAiService {
 		}
 
 		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
 		let agent;
 		try {
 			agent = await createInstanceAgent({
@@ -3813,6 +3906,7 @@ export class InstanceAiService {
 				checkpoint: orphan.checkpointTaskId
 					? { isCheckpointFollowUp: true, checkpointTaskId: orphan.checkpointTaskId }
 					: undefined,
+				runHandoff: runControl.state,
 			},
 		};
 	}
@@ -3857,12 +3951,15 @@ export class InstanceAiService {
 			threadId,
 			user,
 			toolCallId,
+			toolName,
+			suspendPayload,
 			abortController,
 			tracing,
 			modelId,
 			messageGroupId,
 			checkpoint,
 			plannedBuild,
+			runHandoff,
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
@@ -3936,6 +4033,8 @@ export class InstanceAiService {
 			threadId,
 			user: activeUser,
 			toolCallId,
+			toolName,
+			suspendPayload,
 			signal: abortController.signal,
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
@@ -3943,6 +4042,7 @@ export class InstanceAiService {
 			modelId,
 			checkpoint,
 			plannedBuild,
+			runHandoff,
 		});
 		return true;
 	}
@@ -3962,6 +4062,8 @@ export class InstanceAiService {
 			threadId: string;
 			user: User;
 			toolCallId: string;
+			toolName?: string;
+			suspendPayload?: Record<string, unknown>;
 			signal: AbortSignal;
 			abortController: AbortController;
 			snapshotStorage: DbSnapshotStorage;
@@ -3969,9 +4071,11 @@ export class InstanceAiService {
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 			plannedBuild?: PlannedBuildFollowUp;
+			runHandoff?: OrchestratorRunHandoffState;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
+		let completedSetupWorkflowId: string | undefined;
 
 		try {
 			if (opts.tracing?.getTelemetry && isTelemetryConfigurableAgent(agent)) {
@@ -4000,6 +4104,8 @@ export class InstanceAiService {
 				opts.agentRunId,
 				opts.toolCallId,
 			);
+			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
+			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
 			const result = opts.tracing
 				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
@@ -4012,6 +4118,7 @@ export class InstanceAiService {
 							logger: this.logger,
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
+							stopSignal,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						});
 					})
@@ -4024,6 +4131,7 @@ export class InstanceAiService {
 						logger: this.logger,
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
+						stopSignal,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 
@@ -4037,6 +4145,10 @@ export class InstanceAiService {
 						threadId: opts.threadId,
 						user: opts.user,
 						toolCallId: result.suspension.toolCallId,
+						...(result.suspension.toolName ? { toolName: result.suspension.toolName } : {}),
+						...(result.suspension.suspendPayload
+							? { suspendPayload: result.suspension.suspendPayload }
+							: {}),
 						requestId: result.suspension.requestId,
 						abortController: opts.abortController,
 						messageGroupId: resumeMessageGroupId,
@@ -4045,6 +4157,7 @@ export class InstanceAiService {
 						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 						checkpoint: opts.checkpoint,
 						plannedBuild: opts.plannedBuild,
+						runHandoff: runControl.state,
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -4157,13 +4270,15 @@ export class InstanceAiService {
 					},
 				);
 			}
-			this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
-				messageGroupId,
-				workSummary: result.workSummary,
-				suppressCompletedFallback:
-					opts.checkpoint?.isCheckpointFollowUp === true ||
-					opts.plannedBuild?.isPlannedBuildFollowUp === true,
-			});
+			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
+				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
+					messageGroupId,
+					workSummary: result.workSummary,
+					suppressCompletedFallback:
+						opts.checkpoint?.isCheckpointFollowUp === true ||
+						opts.plannedBuild?.isPlannedBuildFollowUp === true,
+				});
+			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,
@@ -4199,6 +4314,10 @@ export class InstanceAiService {
 			);
 
 			if (result.status === 'completed') {
+				completedSetupWorkflowId = this.getWorkflowSetupSuspensionWorkflowId(
+					opts.toolName,
+					opts.suspendPayload,
+				);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,
@@ -4331,6 +4450,9 @@ export class InstanceAiService {
 					await this.schedulePlannedTasks(opts.user, opts.threadId);
 				}
 				await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
+				if (completedSetupWorkflowId) {
+					await this.markWorkflowSetupHandled(opts.threadId, completedSetupWorkflowId, opts.runId);
+				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 				await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
 			}

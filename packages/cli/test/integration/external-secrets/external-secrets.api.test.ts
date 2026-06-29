@@ -10,6 +10,7 @@ import type { EventService } from '@/events/event.service';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviderConnectionManager } from '@/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee';
 import { ExternalSecretsProviderLifecycle } from '@/modules/external-secrets.ee/provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import { ExternalSecretsRetryManager } from '@/modules/external-secrets.ee/retry-manager.service';
@@ -70,6 +71,7 @@ const resetManager = async () => {
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
 	const retryManager = Container.get(ExternalSecretsRetryManager);
+	const providerConnectionManager = Container.get(ExternalSecretsProviderConnectionManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
 	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
 	const cipher = Container.get(Cipher);
@@ -86,6 +88,7 @@ const resetManager = async () => {
 			providerRegistry,
 			providerLifecycle,
 			retryManager,
+			providerConnectionManager,
 			secretsCache,
 			secretsProviderConnectionRepository,
 			cipher,
@@ -141,6 +144,7 @@ beforeAll(async () => {
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
 	const retryManager = Container.get(ExternalSecretsRetryManager);
+	const providerConnectionManager = Container.get(ExternalSecretsProviderConnectionManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
 	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
 	const cipher = Container.get(Cipher);
@@ -157,6 +161,7 @@ beforeAll(async () => {
 			providerRegistry,
 			providerLifecycle,
 			retryManager,
+			providerConnectionManager,
 			secretsCache,
 			secretsProviderConnectionRepository,
 			cipher,

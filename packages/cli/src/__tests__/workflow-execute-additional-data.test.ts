@@ -19,6 +19,8 @@ import type {
 	INode,
 	ITaskData,
 	WorkflowExecuteMode,
+	ExecuteAgentWorkflowContext,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -1069,6 +1071,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'user-1',
 				true,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -1104,6 +1107,46 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'user-1',
 				true,
 				outputSchema,
+				undefined,
+			);
+		});
+
+		it('forwards the workflowContext to executeForWorkflow', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'workflow-1',
+				workflowName: 'My workflow',
+				callingNodeName: 'Message an Agent',
+				nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+
+			await executeAgent(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+				undefined,
+				workflowContext,
+			);
+
+			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'user-1',
+				'project-1',
+				'user-1',
+				true,
+				undefined,
+				workflowContext,
 			);
 		});
 
@@ -1133,6 +1176,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				undefined,
 				true,
+				undefined,
 				undefined,
 			);
 		});
@@ -1189,6 +1233,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					'user-1',
 					true,
 					undefined,
+					undefined,
 				);
 			},
 		);
@@ -1222,6 +1267,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				'user-1',
 				false,
+				undefined,
 				undefined,
 			);
 		});

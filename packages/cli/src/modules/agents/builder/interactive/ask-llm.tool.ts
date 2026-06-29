@@ -12,9 +12,7 @@ export function buildAskLlmTool(): BuiltTool {
 	return new Tool(ASK_LLM_TOOL_NAME)
 		.description(
 			'Show a model + credential picker card in the chat UI and suspend until the user ' +
-				'selects a provider, model and credential. Use only when resolve_llm returns an ' +
-				'ambiguous result, when credentials are missing and the user must choose/configure one, ' +
-				'or when the user explicitly asks to pick/change the model. ' +
+				'selects a provider, model and credential. ' +
 				'After resume: set model = "{provider}/{model}" and credential = credentialId ' +
 				'via write_config or patch_config.',
 		)
