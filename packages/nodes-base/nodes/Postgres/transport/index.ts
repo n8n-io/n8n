@@ -43,7 +43,9 @@ export function applyLargeNumbersReceive(e: {
 
 // Must stay at module scope. Pools outlive the execution in pg-promise's global
 // registry, so an inline handler would pin the whole execution context via `this`.
-export function createReceiveHandler(largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput']) {
+export function createReceiveHandler(
+	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
+) {
 	return (e: unknown) => {
 		if (largeNumbersOutput !== 'numbers') return;
 		applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);

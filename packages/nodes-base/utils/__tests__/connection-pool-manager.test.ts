@@ -332,7 +332,7 @@ describe('wasUsed', () => {
 		expect(wasUsed).toHaveBeenCalledTimes(1);
 	});
 
-	test('uses the current caller\'s `wasUsed`, not the one that created the pool', async () => {
+	test("uses the current caller's `wasUsed`, not the one that created the pool", async () => {
 		// ARRANGE
 		const connectionType = {};
 		const fallBackHandler = vi.fn(async () => connectionType);
