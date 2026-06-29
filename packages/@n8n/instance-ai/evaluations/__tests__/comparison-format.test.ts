@@ -34,6 +34,11 @@ function evaluation(
 		testCases?: Array<{
 			userText?: string;
 			buildSuccessCount?: number;
+			buildError?: string;
+			buildExpectations?: Array<{
+				expectation: string;
+				passes: boolean[];
+			}>;
 			scenarios?: Array<{
 				name: string;
 				passCount: number;
@@ -76,18 +81,42 @@ function evaluation(
 					}),
 				),
 			}));
+			const buildExpectations = (tc.buildExpectations ?? []).map((ea) => {
+				const passCount = ea.passes.filter(Boolean).length;
+				const evaluatedCount = ea.passes.length;
+				return {
+					expectation: ea.expectation,
+					runs: ea.passes.map((pass) => ({
+						expectation: ea.expectation,
+						pass,
+						reason: pass ? 'ok' : 'failed',
+					})),
+					evaluatedCount,
+					passCount,
+					passRate: evaluatedCount > 0 ? passCount / evaluatedCount : 0,
+					passAtK: new Array(evaluatedCount).fill(passCount > 0 ? 1 : 0) as number[],
+					passHatK: new Array(evaluatedCount).fill(
+						passCount === evaluatedCount ? 1 : 0,
+					) as number[],
+				};
+			});
 			return {
 				testCase,
 				workflowBuildSuccess: buildSuccessCount > 0,
 				executionScenarioResults: [],
 				executionScenarios: scenarios,
-				runs: new Array(totalRuns).fill(null).map(() => ({
+				runs: new Array(totalRuns).fill(null).map((_, runIndex) => ({
 					testCase,
 					workflowBuildSuccess: buildSuccessCount > 0,
 					executionScenarioResults: [],
+					buildError: tc.buildError,
+					buildExpectationResults: buildExpectations.flatMap((ea) => {
+						const result = ea.runs[runIndex];
+						return result ? [result] : [];
+					}),
 				})),
 				buildSuccessCount,
-				buildExpectations: [],
+				buildExpectations,
 			};
 		}),
 	};
@@ -583,5 +612,46 @@ describe('formatComparisonTerminal', () => {
 		const base = bucket('master', [s('a', 'happy', 8, 10), s('b', 'happy', 5, 10)]);
 		const out = formatComparisonTerminal(evalFixture, ok(compareBuckets(pr, base)));
 		expect(out).toMatch(/partial: 1 baseline scenarios not run by PR/);
+	});
+
+	it('does not render workflow build failure text for agents intent checks', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'scheduled-weather-workflow',
+					buildSuccessCount: 0,
+					buildError: "Agent response: Here's the intent I'd detect",
+				},
+			],
+		});
+
+		const out = formatComparisonTerminal(agentsEval, undefined, { caseSet: 'agents' });
+
+		expect(out).toMatch(/INTENT CHECKED/);
+		expect(out).not.toMatch(/BUILD FAILED/);
+		expect(out).not.toMatch(/Agent response/);
+	});
+
+	it('counts evaluated expectations in the agents terminal aggregate', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'scheduled-weather-workflow',
+					buildSuccessCount: 0,
+					buildExpectations: [
+						{ expectation: 'does not build', passes: [true] },
+						{ expectation: 'classifies weather as workflow', passes: [true] },
+						{ expectation: 'classifies support as agent', passes: [true] },
+						{ expectation: 'brief reasoning only', passes: [true] },
+					],
+				},
+			],
+		});
+
+		const out = formatComparisonTerminal(agentsEval, undefined, { caseSet: 'agents' });
+
+		expect(out).toMatch(/Aggregate: 100\.0% pass \(4\/4 trials, 4 checks × N=1\)/);
 	});
 });

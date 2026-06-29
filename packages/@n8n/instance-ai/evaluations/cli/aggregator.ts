@@ -59,6 +59,7 @@ function computePassMetrics(
 export function aggregateResults(
 	allRunResults: WorkflowTestCaseResult[][],
 	totalRuns: number,
+	options: { caseSet?: 'workflows' | 'agents' } = {},
 ): MultiRunEvaluation {
 	const testCaseCount = allRunResults[0].length;
 	const testCases: TestCaseAggregation[] = [];
@@ -68,28 +69,41 @@ export function aggregateResults(
 		const testCase = runs[0].testCase;
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
-		const scenarioCount = testCase.executionScenarios.length;
+		// Temporary until Instance AI can build agents: agent-intent cases may only
+		// produce process-expectation verdicts, so do not synthesize workflow build failures.
+		const scenarioIndices =
+			options.caseSet === 'agents'
+				? testCase.executionScenarios
+						.map((_, sIdx) => sIdx)
+						.filter((sIdx) => runs.some((r) => r.executionScenarioResults[sIdx] !== undefined))
+				: testCase.executionScenarios.map((_, sIdx) => sIdx);
 		const executionScenarios: ExecutionScenarioAggregation[] = [];
 
-		for (let sIdx = 0; sIdx < scenarioCount; sIdx++) {
+		for (const sIdx of scenarioIndices) {
 			const scenario = testCase.executionScenarios[sIdx];
-			const scenarioRuns = runs.map(
-				(r) =>
-					r.executionScenarioResults[sIdx] ?? {
-						scenario,
-						success: false,
-						score: 0,
-						reasoning: 'Build failed — scenario not executed',
-					},
-			);
+			const scenarioRuns =
+				options.caseSet === 'agents'
+					? runs.flatMap((r) => {
+							const result = r.executionScenarioResults[sIdx];
+							return result ? [result] : [];
+						})
+					: runs.map(
+							(r) =>
+								r.executionScenarioResults[sIdx] ?? {
+									scenario,
+									success: false,
+									score: 0,
+									reasoning: 'Build failed — scenario not executed',
+								},
+						);
 			const passCount = scenarioRuns.filter((sr) => sr.success).length;
-			const { passAtKValues, passHatKValues } = computePassMetrics(totalRuns, passCount);
+			const { passAtKValues, passHatKValues } = computePassMetrics(scenarioRuns.length, passCount);
 
 			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
 				passCount,
-				passRate: totalRuns > 0 ? passCount / totalRuns : 0,
+				passRate: scenarioRuns.length > 0 ? passCount / scenarioRuns.length : 0,
 				passAtK: passAtKValues,
 				passHatK: passHatKValues,
 			});

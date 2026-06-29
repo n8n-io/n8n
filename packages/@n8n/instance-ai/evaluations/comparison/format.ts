@@ -60,6 +60,8 @@ interface FormatOptions {
 	/** Absolute green-gate verdict for curated tiers. When set, the comment renders
 	 *  the gate verdict in place of the baseline comparison. */
 	gate?: GateResult;
+	/** Terminal-only: agents cases are intent checks until Instance AI can build agents. */
+	caseSet?: 'workflows' | 'agents';
 }
 
 // ---------------------------------------------------------------------------
@@ -863,11 +865,11 @@ export function formatComparisonTerminal(
 	} else {
 		lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(outcome));
 		lines.push('');
-		lines.push(...formatTerminalAggregate(evaluation, comparison));
+		lines.push(...formatTerminalAggregate(evaluation, comparison, options.caseSet));
 		lines.push('');
 	}
 
-	lines.push(...formatTerminalPerTestCase(evaluation, options.slugByTestCase));
+	lines.push(...formatTerminalPerTestCase(evaluation, options.slugByTestCase, options.caseSet));
 
 	if (comparison) {
 		const hard = hardRegressions(comparison);
@@ -973,16 +975,27 @@ function formatTerminalVerdictLine(outcome?: ComparisonOutcome): string {
 function formatTerminalAggregate(
 	evaluation: MultiRunEvaluation,
 	comparison?: ComparisonResult,
+	caseSet: FormatOptions['caseSet'] = 'workflows',
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
-		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
-		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
+		const units =
+			caseSet === 'agents'
+				? evaluation.testCases.flatMap((tc) => [
+						...tc.executionScenarios,
+						...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
+					])
+				: evaluation.testCases.flatMap((tc) => tc.executionScenarios);
+		const passed = units.reduce((sum, unit) => sum + unit.passCount, 0);
+		const total = units.reduce(
+			(sum, unit) => sum + ('evaluatedCount' in unit ? unit.evaluatedCount : unit.runs.length),
+			0,
+		);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
+		const label = caseSet === 'agents' ? 'checks' : 'scenarios';
 		lines.push(
 			TERMINAL_INDENT +
-				`Aggregate: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`,
+				`Aggregate: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${units.length} ${label} × N=${evaluation.totalRuns})`,
 		);
 		return lines;
 	}
@@ -1022,6 +1035,7 @@ function formatTerminalAggregate(
 function formatTerminalPerTestCase(
 	evaluation: MultiRunEvaluation,
 	slugByTestCase?: Map<WorkflowTestCase, string>,
+	caseSet: FormatOptions['caseSet'] = 'workflows',
 ): string[] {
 	const { totalRuns, testCases } = evaluation;
 	if (testCases.length === 0) return [];
@@ -1058,18 +1072,22 @@ function formatTerminalPerTestCase(
 					: 0;
 			return {
 				name: nameOf(tc, 60),
-				builds: `${tc.buildSuccessCount}/${totalRuns}`,
+				builds:
+					caseSet === 'agents'
+						? `${tc.runs.filter((run) => (run.buildExpectationResults?.length ?? 0) > 0).length}/${totalRuns}`
+						: `${tc.buildSuccessCount}/${totalRuns}`,
 				passAtK: `${meanPassAtK}%`,
 				passHatK: `${meanPassHatK}%`,
 			};
 		});
+		const statusHeader = caseSet === 'agents' ? 'checks' : 'builds';
 		const nameW = maxWidth(
 			rows.map((r) => r.name),
 			'workflow',
 		);
 		const buildsW = maxWidth(
 			rows.map((r) => r.builds),
-			'builds',
+			statusHeader,
 		);
 		const atKHeader = `pass@${totalRuns}`;
 		const hatKHeader = `pass^${totalRuns}`;
@@ -1083,7 +1101,7 @@ function formatTerminalPerTestCase(
 		);
 		lines.push(
 			TERMINAL_TABLE_INDENT +
-				`${'workflow'.padEnd(nameW)}  ${'builds'.padEnd(buildsW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
+				`${'workflow'.padEnd(nameW)}  ${statusHeader.padEnd(buildsW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
 		);
 		lines.push(
 			TERMINAL_TABLE_INDENT +
@@ -1098,11 +1116,14 @@ function formatTerminalPerTestCase(
 	} else {
 		for (const tc of testCases) {
 			const r = tc.runs[0];
-			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
+			const buildStatus =
+				caseSet === 'agents' ? 'INTENT CHECKED' : r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
 			lines.push('');
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
-			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
+			if (caseSet !== 'agents' && r.buildError) {
+				lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
+			}
 			for (const sa of tc.executionScenarios) {
 				const sr = sa.runs[0];
 				const status = sr.success ? 'PASS' : 'FAIL';

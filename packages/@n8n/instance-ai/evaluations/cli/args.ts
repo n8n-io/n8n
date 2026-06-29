@@ -72,6 +72,10 @@ export interface CliArgs {
 	/** Test-case source: `disk` (default) reads data/workflows/, `langtracer` pulls a
 	 *  suite over MCP (needs LANGTRACER_URL + LANGTRACER_API_KEY). */
 	source: 'disk' | 'langtracer';
+	/** Disk test-case set to load. Temporary split: agents cases reuse the
+	 *  workflow harness until Instance AI supports building agents directly.
+	 *  Ignored by the langtracer source. */
+	caseSet: 'workflows' | 'agents';
 	/** lang-tracer suite slug (or numeric id) to export when `--source langtracer`. */
 	suite?: string;
 }
@@ -108,6 +112,7 @@ const cliArgsSchema = z.object({
 		.transform((s) => (s.endsWith('-') ? s : `${s}-`))
 		.default(BASELINE_EXPERIMENT_PREFIX),
 	source: z.enum(['disk', 'langtracer']).default('disk'),
+	caseSet: z.enum(['workflows', 'agents']).default('workflows'),
 	suite: z.string().min(1).optional(),
 });
 
@@ -161,6 +166,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		tier: validated.tier,
 		baselinePrefix,
 		source: validated.source,
+		caseSet: validated.caseSet,
 		suite: validated.suite,
 	};
 }
@@ -214,6 +220,7 @@ interface RawArgs {
 	tier?: string;
 	baselinePrefix: string;
 	source: string;
+	caseSet: string;
 	suite?: string;
 	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
 	 *  derives suite-scoped defaults otherwise). */
@@ -236,6 +243,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		pinAiRoots: undefined,
 		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
 		source: 'disk',
+		caseSet: 'workflows',
 		datasetProvided: false,
 		baselineProvided: false,
 	};
@@ -345,6 +353,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--source':
 				result.source = nextArg(argv, i, '--source');
+				i++;
+				break;
+
+			case '--case-set':
+				result.caseSet = nextArg(argv, i, '--case-set');
 				i++;
 				break;
 

@@ -4,9 +4,10 @@
 import { LangTracerClient, type ExportedSuite } from './client';
 import { resolveLangTracerConfig } from './config';
 import { normalizeExportedCase } from './normalize';
-import { parseSubstringList, type WorkflowTestCaseWithFile } from '../data/workflows';
+import { type WorkflowTestCaseWithFile } from '../data/workflows';
 import { WorkflowTestCaseSchema } from '../data/workflows/schema';
 import type { EvalLogger } from '../harness/logger';
+import { parseSubstringList } from '../utils/get-json-files';
 
 export interface LangTracerLoadOptions {
 	/** Suite slug or numeric id. */

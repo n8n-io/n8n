@@ -1,16 +1,11 @@
 import { readFileSync } from 'fs';
 import { basename, dirname, resolve } from 'path';
 
-import { WorkflowTestCaseSchema } from './schema';
+import { AgentEvalTestCaseSchema } from './schema';
 import { loadConversationSeed } from '../../harness/conversation-seed';
 import type { WorkflowTestCase } from '../../types';
 import { getJsonFiles } from '../../utils/get-json-files';
-
-export interface WorkflowTestCaseWithFile {
-	testCase: WorkflowTestCase;
-	/** Filename without extension, e.g. "contact-form-automation" */
-	fileSlug: string;
-}
+import type { WorkflowTestCaseWithFile } from '../workflows';
 
 function parseTestCaseFile(filePath: string): WorkflowTestCase {
 	const content = readFileSync(filePath, 'utf-8');
@@ -20,28 +15,26 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 		raw = JSON.parse(content);
 	} catch (error) {
 		throw new Error(
-			`Failed to parse test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+			`Failed to parse agent eval test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
 
-	const parsed = WorkflowTestCaseSchema.safeParse(raw);
+	const parsed = AgentEvalTestCaseSchema.safeParse(raw);
 	if (!parsed.success) {
 		const issues = parsed.error.issues
 			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
 			.join('\n');
-		throw new Error(`Invalid test case ${filePath}:\n${issues}`);
+		throw new Error(`Invalid agent eval test case ${filePath}:\n${issues}`);
 	}
 
 	const testCase = parsed.data;
 	if (testCase.seedFile) {
-		// Resolve relative to the case file and validate now, so an authoring
-		// typo fails at load time instead of per-build as an agent failure.
 		const resolved = resolve(dirname(filePath), testCase.seedFile);
 		try {
 			loadConversationSeed(resolved);
 		} catch (error) {
 			throw new Error(
-				`Invalid test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+				`Invalid agent eval test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 		testCase.seedFile = resolved;
@@ -49,8 +42,7 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 	return testCase;
 }
 
-/** Load test cases with their file slugs (for LangSmith dataset sync derived IDs). */
-export function loadWorkflowTestCasesWithFiles(
+export function loadAgentEvalTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
 	tier?: string,
@@ -65,7 +57,7 @@ export function loadWorkflowTestCasesWithFiles(
 	if (matched.length === 0) {
 		const known = [...new Set(cases.flatMap(({ testCase }) => testCase.datasets))].sort();
 		throw new Error(
-			`No test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
+			`No agent eval test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
 		);
 	}
 	return matched;

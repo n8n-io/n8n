@@ -1,6 +1,7 @@
 // Test-case source selector — `disk` (default) or `langtracer`, both returning the
 // same WorkflowTestCaseWithFile[] so the rest of the pipeline is source-agnostic.
 
+import { loadAgentEvalTestCasesWithFiles } from './agents';
 import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from './workflows';
 import type { CliArgs } from '../cli/args';
 import type { EvalLogger } from '../harness/logger';
@@ -19,6 +20,12 @@ export async function loadTestCases(
 			tier: args.tier,
 			logger,
 		});
+	}
+
+	// Temporary until Instance AI can build agents: keep agent-intent cases in
+	// their own folder, but feed them through the existing workflow eval harness.
+	if (args.caseSet === 'agents') {
+		return loadAgentEvalTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	}
 
 	return loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
