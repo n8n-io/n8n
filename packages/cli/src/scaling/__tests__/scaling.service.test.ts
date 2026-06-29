@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -342,7 +342,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			const job = mock<Job>({
 				isActive: jest.fn().mockImplementation(() => {
-					throw new ApplicationError('Something went wrong');
+					throw new UnexpectedError('Something went wrong');
 				}),
 			});
 

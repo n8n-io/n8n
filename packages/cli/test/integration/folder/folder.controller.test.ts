@@ -25,7 +25,7 @@ import {
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { DateTime } from 'luxon';
-import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT, UnexpectedError } from 'n8n-workflow';
 
 import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -2613,7 +2613,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		await createActiveWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
 		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
 
-		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
 
 		//
 		// ACT & ASSERT

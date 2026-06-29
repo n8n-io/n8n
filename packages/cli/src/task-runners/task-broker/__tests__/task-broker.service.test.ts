@@ -3,7 +3,7 @@ import type { TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
+import { UnexpectedError, type INodeTypeBaseDescription } from 'n8n-workflow';
 
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -928,7 +928,7 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:taskerror',
 				taskId,
-				error: new ApplicationError(`Task execution timed out after ${config.taskTimeout} seconds`),
+				error: new UnexpectedError(`Task execution timed out after ${config.taskTimeout} seconds`),
 			});
 
 			await Promise.resolve();

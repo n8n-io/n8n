@@ -173,9 +173,10 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
   top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
-- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
-  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
-  `UserError` instead.
+- Don't use the deprecated `ApplicationError` class anywhere — it's a
+  compatibility shim kept only so community nodes keep resolving, and the
+  `no-application-error` lint rule bans creating new instances in-repo.
+  Use `UnexpectedError`, `OperationalError` or `UserError` instead.
 - Import from appropriate error classes in each package
 
 ### Frontend Development
