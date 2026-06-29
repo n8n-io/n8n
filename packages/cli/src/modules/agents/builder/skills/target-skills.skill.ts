@@ -78,9 +78,9 @@ for open-ended) until you can write it. Never create a placeholder or vague skil
   \`references/risk-rubric.md\`"; "Before drafting negotiation copy, load
   \`references/negotiation-playbook.md\`"; "Before asking intake questions, load
   \`references/intake-checklist.md\`".
+- Add \`scripts\` only for Python supporting files under \`scripts/...\`.
 - Omit fields you cannot fill confidently. Do not invent tool names or file paths.
-- Scripts are not supported in this phase. Do not pass scripts or non-markdown
-  linked files to \`create_skill\`.
+- Do not pass non-markdown references or non-Python scripts to \`create_skill\`.
 
 ## Rules
 

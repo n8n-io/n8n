@@ -1,6 +1,16 @@
 import type { Sandbox, SandboxState } from '@daytona/sdk';
-import { redactText } from '@n8n/agents';
-import { loadDaytona } from '@n8n/agents/sandbox';
+import {
+	redactText,
+	Workspace,
+	type CommandResult,
+	type FileContent,
+	type FileEntry,
+	type FileStat,
+	type ProviderStatus,
+	type WorkspaceFilesystem,
+	type WorkspaceSandbox,
+} from '@n8n/agents';
+import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -260,8 +270,14 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	async warmSandbox(projectId: string, agentId: string, userId: string): Promise<void> {
-		this.assertKnowledgeConfiguration(projectId, agentId);
-		await this.acquireSandbox(projectId, agentId, userId);
+		this.assertSandboxConfiguration(projectId, agentId);
+		await this.acquireSandbox(projectId, agentId, userId, undefined, false);
+	}
+
+	async getWorkspace(projectId: string, agentId: string, userId: string): Promise<Workspace> {
+		this.assertSandboxConfiguration(projectId, agentId);
+		const sandbox = await this.acquireSandbox(projectId, agentId, userId, undefined, false);
+		return this.createWorkspaceAdapter(sandbox);
 	}
 
 	async searchKnowledge(
@@ -506,21 +522,35 @@ export class AgentKnowledgeSandboxService {
 		};
 	}
 
+	private createWorkspaceAdapter(sandbox: Sandbox): Workspace {
+		return new Workspace({
+			id: `agent-sandbox-workspace-${sandbox.id}`,
+			name: `Agent sandbox workspace (${sandbox.name})`,
+			filesystem: new DaytonaSdkWorkspaceFilesystem(sandbox),
+			sandbox: new DaytonaSdkWorkspaceSandbox(sandbox, this.agentsConfig.sandboxTimeout),
+		});
+	}
+
 	private async acquireSandbox(
 		projectId: string,
 		agentId: string,
 		ownerUserId: string,
 		sandboxScopeId: string = ownerUserId,
+		withKnowledgeVolume = true,
 	): Promise<Sandbox> {
-		const cacheKey = buildSandboxScopeKey(projectId, agentId, ownerUserId, sandboxScopeId);
+		const cacheKey = `${buildSandboxScopeKey(projectId, agentId, ownerUserId, sandboxScopeId)}:${withKnowledgeVolume ? 'knowledge' : 'workspace'}`;
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
 		if (!pending) {
-			pending = this.acquireSandboxFresh(projectId, agentId, ownerUserId, sandboxScopeId).finally(
-				() => {
-					this.pendingSandboxAcquisitions.delete(cacheKey);
-				},
-			);
+			pending = this.acquireSandboxFresh(
+				projectId,
+				agentId,
+				ownerUserId,
+				sandboxScopeId,
+				withKnowledgeVolume,
+			).finally(() => {
+				this.pendingSandboxAcquisitions.delete(cacheKey);
+			});
 			this.pendingSandboxAcquisitions.set(cacheKey, pending);
 		}
 
@@ -532,6 +562,7 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		ownerUserId: string,
 		sandboxScopeId: string,
+		withKnowledgeVolume: boolean,
 	): Promise<Sandbox> {
 		const { Daytona } = loadDaytona();
 		const connection = await this.resolveDaytonaConnection(ownerUserId);
@@ -541,7 +572,7 @@ export class AgentKnowledgeSandboxService {
 		});
 		const labels = buildScopeLabels(projectId, agentId, ownerUserId, sandboxScopeId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
-		const volumeMount = this.buildVolumeMount(projectId, agentId);
+		const volumeMount = withKnowledgeVolume ? this.buildVolumeMount(projectId, agentId) : undefined;
 		const name = buildSandboxName({
 			instanceId: this.instanceSettings.instanceId,
 			projectId,
@@ -565,7 +596,10 @@ export class AgentKnowledgeSandboxService {
 		// list() is a cursor-paginated async iterator in the Daytona SDK; it transparently fetches
 		// subsequent pages as we iterate.
 		for await (const sandbox of daytona.list({ labels, limit: SANDBOX_LIST_PAGE_SIZE })) {
-			if (!isUsableSandbox(sandbox) || !hasMatchingVolumeMount(sandbox, volumeMount)) {
+			if (
+				!isUsableSandbox(sandbox) ||
+				(volumeMount && !hasMatchingVolumeMount(sandbox, volumeMount))
+			) {
 				continue;
 			}
 
@@ -585,7 +619,7 @@ export class AgentKnowledgeSandboxService {
 			language: 'typescript' as const,
 			ephemeral: this.agentsConfig.sandboxEphemeral,
 			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
-			volumes: [volumeMount],
+			...(volumeMount ? { volumes: [volumeMount] } : {}),
 		};
 
 		let sandbox: Sandbox;
@@ -615,7 +649,7 @@ export class AgentKnowledgeSandboxService {
 				sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
 			}
 		} catch (error) {
-			if (connection.mode === 'proxy' && isVolumeMountFailure(error)) {
+			if (connection.mode === 'proxy' && volumeMount && isVolumeMountFailure(error)) {
 				const message = error instanceof Error ? error.message : String(error);
 				throw new OperationalError(
 					`Agent knowledge sandbox creation failed through the AI Assistant sandbox proxy: ${message}. If the proxy does not support volume mounts, enable them before using the agent knowledge base.`,
@@ -656,7 +690,8 @@ export class AgentKnowledgeSandboxService {
 		};
 	}
 
-	private buildVolumeMount(projectId: string, agentId: string): KnowledgeVolumeMount {
+	private buildVolumeMount(projectId: string, agentId: string): KnowledgeVolumeMount | undefined {
+		if (!this.agentsConfig.daytonaVolumeId.trim()) return undefined;
 		return {
 			volumeId: this.agentsConfig.daytonaVolumeId,
 			mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
@@ -667,7 +702,7 @@ export class AgentKnowledgeSandboxService {
 	private async resolveSandboxByName(
 		daytona: { get: (name: string) => Promise<Sandbox> },
 		name: string,
-		volumeMount: KnowledgeVolumeMount,
+		volumeMount: KnowledgeVolumeMount | undefined,
 		timeoutSeconds: number,
 		connection: AgentKnowledgeDaytonaConnection,
 	): Promise<Sandbox | undefined> {
@@ -686,7 +721,7 @@ export class AgentKnowledgeSandboxService {
 			return undefined;
 		}
 
-		if (!hasMatchingVolumeMount(sandbox, volumeMount)) {
+		if (volumeMount && !hasMatchingVolumeMount(sandbox, volumeMount)) {
 			throw new OperationalError('Agent knowledge sandbox has an unexpected volume mount');
 		}
 
@@ -727,6 +762,13 @@ export class AgentKnowledgeSandboxService {
 		this.assertValidPathSegments(projectId, agentId);
 	}
 
+	private assertSandboxConfiguration(projectId: string, agentId: string): void {
+		if (!this.agentsConfig.sandboxEnabled || this.agentsConfig.sandboxProvider !== 'daytona') {
+			throw new OperationalError('Agent sandbox is not enabled');
+		}
+		this.assertValidPathSegments(projectId, agentId);
+	}
+
 	private assertValidPathSegments(projectId: string, agentId: string): void {
 		try {
 			assertKnowledgePathSegment(this.instanceSettings.instanceId, 'instance id');
@@ -753,6 +795,142 @@ export class AgentKnowledgeSandboxService {
 		}
 
 		throw new OperationalError('Agent knowledge sandbox is not enabled');
+	}
+}
+
+class DaytonaSdkWorkspaceFilesystem implements WorkspaceFilesystem {
+	readonly id: string;
+	readonly name = 'AgentDaytonaFilesystem';
+	readonly provider = 'daytona';
+	readonly basePath = DAYTONA_WORKSPACE_ROOT;
+	status: ProviderStatus = 'ready';
+
+	constructor(private readonly sandbox: Sandbox) {
+		this.id = `agent-daytona-fs-${sandbox.id}`;
+	}
+
+	async readFile(path: string, options?: { encoding?: BufferEncoding }): Promise<string | Buffer> {
+		const buffer = await this.sandbox.fs.downloadFile(path);
+		return options?.encoding ? buffer.toString(options.encoding) : buffer;
+	}
+
+	async writeFile(
+		path: string,
+		content: FileContent,
+		options?: { recursive?: boolean },
+	): Promise<void> {
+		if (options?.recursive) {
+			const dir = path.substring(0, path.lastIndexOf('/'));
+			if (dir) await this.sandbox.fs.createFolder(dir, '755');
+		}
+		const buffer =
+			typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
+		await this.sandbox.fs.uploadFile(buffer, path);
+	}
+
+	async appendFile(path: string, content: FileContent): Promise<void> {
+		let existing: Uint8Array = new Uint8Array();
+		try {
+			existing = await this.sandbox.fs.downloadFile(path);
+		} catch {
+			// Missing file starts empty; provider errors surface on upload.
+		}
+		const append =
+			typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
+		await this.sandbox.fs.uploadFile(Buffer.concat([existing, append]), path);
+	}
+
+	async deleteFile(path: string, options?: { recursive?: boolean }): Promise<void> {
+		await this.sandbox.fs.deleteFile(path, options?.recursive ?? false);
+	}
+
+	async copyFile(src: string, dest: string): Promise<void> {
+		await this.sandbox.fs.uploadFile(await this.sandbox.fs.downloadFile(src), dest);
+	}
+
+	async moveFile(src: string, dest: string): Promise<void> {
+		await this.sandbox.fs.moveFiles(src, dest);
+	}
+
+	async mkdir(path: string): Promise<void> {
+		await this.sandbox.fs.createFolder(path, '755');
+	}
+
+	async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+		await this.sandbox.fs.deleteFile(path, options?.recursive ?? false);
+	}
+
+	async readdir(path: string): Promise<FileEntry[]> {
+		const files = await this.sandbox.fs.listFiles(path);
+		return files.map((file) => ({
+			name: file.name ?? '',
+			type: file.isDir ? 'directory' : 'file',
+			size: file.size,
+		}));
+	}
+
+	async exists(path: string): Promise<boolean> {
+		try {
+			await this.sandbox.fs.getFileDetails(path);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	async stat(path: string): Promise<FileStat> {
+		const file = await this.sandbox.fs.getFileDetails(path);
+		return {
+			name: file.name ?? path.split('/').pop() ?? '',
+			path,
+			type: file.isDir ? 'directory' : 'file',
+			size: file.size ?? 0,
+			createdAt: new Date(file.modTime ?? 0),
+			modifiedAt: new Date(file.modTime ?? 0),
+		};
+	}
+}
+
+class DaytonaSdkWorkspaceSandbox implements WorkspaceSandbox {
+	readonly id: string;
+	readonly name = 'AgentDaytonaSandbox';
+	readonly provider = 'daytona';
+	status: ProviderStatus = 'ready';
+
+	constructor(
+		private readonly sandbox: Sandbox,
+		private readonly timeoutMs: number,
+	) {
+		this.id = `agent-daytona-sandbox-${sandbox.id}`;
+	}
+
+	async executeCommand(
+		command: string,
+		_args: string[] = [],
+		options?: { cwd?: string },
+	): Promise<CommandResult> {
+		const startedAt = Date.now();
+		const result = await this.sandbox.process.executeCommand(
+			command,
+			options?.cwd,
+			undefined,
+			Math.ceil(this.timeoutMs / 1000),
+		);
+		const stdout = result.artifacts?.stdout ?? result.result ?? '';
+		const stderr =
+			result.artifacts &&
+			'stderr' in result.artifacts &&
+			typeof result.artifacts.stderr === 'string'
+				? result.artifacts.stderr
+				: '';
+
+		return {
+			success: result.exitCode === 0,
+			exitCode: result.exitCode,
+			stdout,
+			stderr,
+			executionTimeMs: Date.now() - startedAt,
+		};
 	}
 }
 

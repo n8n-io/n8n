@@ -15,6 +15,7 @@ import { TtlMap } from '@/utils/ttl-map';
 
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import type { AgentRuntimeSkillWorkspaceScope } from './agent-runtime-skill-workspace.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
@@ -211,12 +212,21 @@ export class AgentRuntimeCacheService {
 		}
 
 		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+		const skillWorkspaceScope = this.getSkillWorkspaceScope({
+			agentId,
+			projectId,
+			userId: n8nUserId,
+			agentData,
+			agentEntity,
+			usePublishedVersion,
+		});
 		const { agent: agentInstance, toolRegistry } =
 			await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 				agentData,
 				credentialProvider,
 				n8nUserId,
 				integrationType,
+				skillWorkspaceScope,
 			);
 
 		return {
@@ -225,6 +235,36 @@ export class AgentRuntimeCacheService {
 			toolRegistry,
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+		};
+	}
+
+	private getSkillWorkspaceScope(params: {
+		agentId: string;
+		projectId: string;
+		userId: string;
+		agentData: Agent;
+		agentEntity: Agent;
+		usePublishedVersion?: boolean;
+	}): AgentRuntimeSkillWorkspaceScope {
+		if (!params.usePublishedVersion) {
+			return {
+				kind: 'draft',
+				projectId: params.projectId,
+				agentId: params.agentId,
+				userId: params.userId,
+			};
+		}
+
+		const versionId =
+			params.agentEntity.activeVersionId ??
+			params.agentData.versionId ??
+			params.agentEntity.versionId;
+		return {
+			kind: 'published',
+			projectId: params.projectId,
+			agentId: params.agentId,
+			userId: params.userId,
+			...(versionId ? { versionId } : {}),
 		};
 	}
 }

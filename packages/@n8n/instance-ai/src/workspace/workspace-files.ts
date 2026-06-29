@@ -10,6 +10,7 @@ export interface WorkspaceFileTarget {
 			content: string | Buffer,
 			options?: { recursive?: boolean },
 		) => Promise<void>;
+		rmdir?: (path: string, options?: { recursive?: boolean; force?: boolean }) => Promise<void>;
 	};
 	sandbox?: SandboxWorkspace['sandbox'];
 }
@@ -114,4 +115,37 @@ export async function writeWorkspaceFileMap(
 			await writeWorkspaceFile(workspace, filePath, content, options);
 		}),
 	);
+}
+
+export async function removeWorkspaceDirectory(
+	workspace: WorkspaceFileTarget,
+	dirPath: string,
+	options?: WorkspaceFileOptions,
+): Promise<void> {
+	if (workspace.filesystem?.rmdir) {
+		try {
+			await workspace.filesystem.rmdir(dirPath, { recursive: true, force: true });
+			return;
+		} catch (error) {
+			options?.logger.debug(`${resourceLabel(options)} filesystem remove missed`, {
+				path: dirPath,
+				error: formatErrorForLog(error),
+			});
+		}
+	}
+
+	if (!workspace.sandbox) return;
+
+	const result = await writeRemoveDirectoryCommand(workspace, dirPath);
+	if (result.exitCode !== 0) {
+		throw new Error(
+			`Failed to remove ${resourceLabel(options).toLowerCase()} directory "${dirPath}": ${formatErrorForLog(result.stderr)}`,
+		);
+	}
+}
+
+async function writeRemoveDirectoryCommand(workspace: WorkspaceFileTarget, dirPath: string) {
+	const { runInSandbox } = await import('./sandbox-fs');
+	const escaped = dirPath.replace(/'/g, "'\\''");
+	return await runInSandbox(workspace, `rm -rf '${escaped}'`);
 }

@@ -266,6 +266,8 @@ export const buildRuntimeSkillWorkspaceBundle: typeof MaterializeRuntimeSkillsMo
 	lazyFunction(() => loadMaterializeRuntimeSkills().buildRuntimeSkillWorkspaceBundle);
 export const materializeRuntimeSkillsIntoWorkspace: typeof MaterializeRuntimeSkillsMod.materializeRuntimeSkillsIntoWorkspace =
 	lazyFunction(() => loadMaterializeRuntimeSkills().materializeRuntimeSkillsIntoWorkspace);
+export const clearRuntimeSkillsFromWorkspace: typeof MaterializeRuntimeSkillsMod.clearRuntimeSkillsFromWorkspace =
+	lazyFunction(() => loadMaterializeRuntimeSkills().clearRuntimeSkillsFromWorkspace);
 export const loadPrebakedRuntimeSkillsBundle: typeof MaterializeRuntimeSkillsMod.loadPrebakedRuntimeSkillsBundle =
 	lazyFunction(() => loadMaterializeRuntimeSkills().loadPrebakedRuntimeSkillsBundle);
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;

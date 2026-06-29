@@ -26,6 +26,7 @@ import { AgentSkillImportError, useAgentSkillImport } from '../composables/useAg
 import type { AgentSkill, AgentSkillReference } from '../types';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentSkillScriptViewer from './AgentSkillScriptViewer.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -147,6 +148,9 @@ const instructionsCharacterCount = computed(() =>
 const isSkillFileSelected = computed(() => props.selectedPath === SKILL_FILE);
 const selectedReference = computed(() =>
 	(props.skill.references ?? []).find((reference) => reference.path === props.selectedPath),
+);
+const selectedScript = computed(() =>
+	(props.skill.scripts ?? []).find((script) => script.path === props.selectedPath),
 );
 const availableToolsByName = computed(
 	() => new Map(props.availableTools.map((tool) => [tool.name, tool])),
@@ -593,6 +597,12 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					}}</N8nText>
 					<N8nText size="xsmall" color="text-light">{{ selectedReferenceCharacterCount }}</N8nText>
 				</div>
+			</N8nInputLabel>
+		</div>
+
+		<div v-else-if="selectedScript" :class="[$style.field, $style.instructionsField]">
+			<N8nInputLabel :class="$style.editorLabel" :label="selectedScript.path" size="small">
+				<AgentSkillScriptViewer :class="$style.editor" :code="selectedScript.content" />
 			</N8nInputLabel>
 		</div>
 

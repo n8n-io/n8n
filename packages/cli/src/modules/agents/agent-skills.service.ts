@@ -83,6 +83,12 @@ export class AgentSkillsService {
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
 		await this.clearRuntimes(agentId);
+		await this.syncActiveSkillWorkspaces({
+			projectId,
+			agentId,
+			config: saved.schema,
+			skills: saved.skills ?? {},
+		});
 
 		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
 
@@ -114,6 +120,12 @@ export class AgentSkillsService {
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
 		await this.clearRuntimes(agentId);
+		await this.syncActiveSkillWorkspaces({
+			projectId,
+			agentId,
+			config: saved.schema,
+			skills: saved.skills ?? {},
+		});
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
@@ -135,8 +147,14 @@ export class AgentSkillsService {
 		}
 
 		markAgentDraftDirty(entity);
-		await this.agentRepository.save(entity);
+		const saved = await this.agentRepository.save(entity);
 		await this.clearRuntimes(agentId);
+		await this.syncActiveSkillWorkspaces({
+			projectId,
+			agentId,
+			config: saved.schema,
+			skills: saved.skills ?? {},
+		});
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
@@ -243,5 +261,17 @@ export class AgentSkillsService {
 	private async clearRuntimes(agentId: string): Promise<void> {
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
 		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
+	}
+
+	private async syncActiveSkillWorkspaces(params: {
+		projectId: string;
+		agentId: string;
+		config: AgentJsonConfig | null | undefined;
+		skills: Record<string, AgentSkill>;
+	}): Promise<void> {
+		const { AgentRuntimeSkillWorkspaceService } = await import(
+			'./agent-runtime-skill-workspace.service'
+		);
+		await Container.get(AgentRuntimeSkillWorkspaceService).syncActiveSkillWorkspaces(params);
 	}
 }

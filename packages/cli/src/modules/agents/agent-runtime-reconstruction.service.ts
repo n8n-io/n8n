@@ -67,6 +67,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
+import type { AgentRuntimeSkillWorkspaceScope } from './agent-runtime-skill-workspace.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
@@ -92,6 +93,7 @@ export interface ReconstructAgentRuntimeParams {
 	runtimeProfile: AgentRuntimeProfile;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
 	parentAgentIdForDelegation?: string;
+	skillWorkspaceScope?: AgentRuntimeSkillWorkspaceScope;
 	/** Top-level chat/integration runtimes only. */
 	integrationType?: string;
 	/** Top-level chat/integration runtimes only. */
@@ -153,6 +155,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider,
 		userId: string,
 		integrationType?: string,
+		skillWorkspaceScope?: AgentRuntimeSkillWorkspaceScope,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
 		if (!config) {
@@ -182,6 +185,7 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			runtimeProfile: 'top-level',
 			parentAgentIdForDelegation: agentEntity.id,
+			skillWorkspaceScope,
 			integrationType,
 			credentialIntegrations: agentEntity.integrations ?? [],
 			subAgentDelegation,
@@ -214,6 +218,7 @@ export class AgentRuntimeReconstructionService {
 		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
 		parentAgentIdForDelegation?: string;
+		skillWorkspaceScope?: AgentRuntimeSkillWorkspaceScope;
 		integrationType?: string;
 		credentialIntegrations: AgentIntegrationConfig[];
 		subAgentDelegation: SubAgentDelegationConfig;
@@ -229,6 +234,7 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			runtimeProfile,
 			parentAgentIdForDelegation,
+			skillWorkspaceScope,
 			integrationType,
 			credentialIntegrations,
 			subAgentDelegation,
@@ -254,6 +260,9 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				proxyFetch: aiMcpFetch,
 			});
+		const skillWorkspaceService = skillWorkspaceScope
+			? await getAgentRuntimeSkillWorkspaceService()
+			: undefined;
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
@@ -264,12 +273,24 @@ export class AgentRuntimeReconstructionService {
 				return resolved;
 			},
 			skills,
+			...(skillWorkspaceScope
+				? {
+						wrapSkillSource: (source) =>
+							skillWorkspaceService?.wrapSkillSource(source, skillWorkspaceScope) ?? source,
+					}
+				: {}),
 			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(userId),
 			modelFetch: aiProxyFetch,
 		});
+		const workspace = skillWorkspaceScope
+			? await skillWorkspaceService?.getWorkspace(skillWorkspaceScope)
+			: undefined;
+		if (workspace) {
+			reconstructed.workspace(workspace);
+		}
 
 		await this.injectRuntimeDependencies({
 			agent: reconstructed,
@@ -568,4 +589,11 @@ export class AgentRuntimeReconstructionService {
 			maxChildren: config.subAgents?.maxChildren ?? SUB_AGENT_MAX_CHILDREN_DEFAULT,
 		};
 	}
+}
+
+async function getAgentRuntimeSkillWorkspaceService() {
+	const { AgentRuntimeSkillWorkspaceService } = await import(
+		'./agent-runtime-skill-workspace.service'
+	);
+	return Container.get(AgentRuntimeSkillWorkspaceService);
 }

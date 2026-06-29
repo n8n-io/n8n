@@ -42,6 +42,7 @@ export function useAgentSkillImport() {
 		const skillContent = await readFileText(skillFile.file);
 		const parsed = parseSkillMarkdown(skillContent);
 		const references: AgentSkillReference[] = [];
+		const scripts: AgentSkillReference[] = [];
 		const seenPaths = new Set<string>();
 		let totalReferenceBytes = 0;
 
@@ -51,16 +52,20 @@ export function useAgentSkillImport() {
 			if (!relativePath) continue;
 			if (relativePath === SKILL_FILE_NAME) continue;
 			if (relativePath.startsWith('scripts/')) {
-				throw new AgentSkillImportError('agents.builder.skills.import.scriptsUnsupported');
-			}
-			if (!relativePath.startsWith('references/')) continue;
-			if (!isMarkdownPath(relativePath)) {
-				throw new AgentSkillImportError('agents.builder.skills.import.referenceMarkdownOnly');
+				if (!isScriptPath(relativePath)) {
+					throw new AgentSkillImportError('agents.builder.skills.import.scriptPythonOnly');
+				}
+			} else if (relativePath.startsWith('references/')) {
+				if (!isMarkdownPath(relativePath)) {
+					throw new AgentSkillImportError('agents.builder.skills.import.referenceMarkdownOnly');
+				}
+			} else {
+				continue;
 			}
 			if (seenPaths.has(relativePath)) {
 				throw new AgentSkillImportError('agents.builder.skills.import.duplicateReference');
 			}
-			if (references.length >= AGENT_SKILL_REFERENCE_MAX_COUNT) {
+			if (references.length + scripts.length >= AGENT_SKILL_REFERENCE_MAX_COUNT) {
 				throw new AgentSkillImportError('agents.builder.skills.import.tooManyReferences');
 			}
 			if (entry.file.size > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
@@ -77,18 +82,24 @@ export function useAgentSkillImport() {
 			if (totalReferenceBytes > AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) {
 				throw new AgentSkillImportError('agents.builder.skills.import.referencesTooLarge');
 			}
-			references.push({
+			const linkedFile = {
 				path: relativePath,
 				content,
 				bytes,
 				sha256: await sha256(content),
-			});
+			};
+			if (relativePath.startsWith('scripts/')) {
+				scripts.push(linkedFile);
+			} else {
+				references.push(linkedFile);
+			}
 		}
 
 		return {
 			...parsed,
 			allowedTools: parsed.allowedTools,
 			references: references.length > 0 ? references : undefined,
+			scripts: scripts.length > 0 ? scripts : undefined,
 		};
 	}
 
@@ -181,6 +192,10 @@ function normalizePath(path: string): string {
 
 function isMarkdownPath(path: string): boolean {
 	return path.endsWith('.md') || path.endsWith('.markdown');
+}
+
+function isScriptPath(path: string): boolean {
+	return path.endsWith('.py');
 }
 
 async function sha256(content: string): Promise<string> {

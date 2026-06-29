@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { Agent } from '../entities/agent.entity';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentRuntimeSkillWorkspaceService } from '../agent-runtime-skill-workspace.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -30,6 +31,7 @@ describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let runtimeCacheService: jest.Mocked<AgentRuntimeCacheService>;
+	let skillWorkspaceService: jest.Mocked<AgentRuntimeSkillWorkspaceService>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -43,7 +45,9 @@ describe('AgentSkillsService', () => {
 
 		agentRepository = mock<AgentRepository>();
 		runtimeCacheService = mock<AgentRuntimeCacheService>();
+		skillWorkspaceService = mock<AgentRuntimeSkillWorkspaceService>();
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
+		Container.set(AgentRuntimeSkillWorkspaceService, skillWorkspaceService);
 		agentRepository.save.mockImplementation(async (a) => a as Agent);
 		service = new AgentSkillsService(mockLogger(), agentRepository);
 	});
@@ -71,6 +75,7 @@ describe('AgentSkillsService', () => {
 		});
 		expect(agent.schema?.skills).toEqual([]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(skillWorkspaceService.syncActiveSkillWorkspaces).not.toHaveBeenCalled();
 	});
 
 	it('normalizes reference metadata when creating a skill', async () => {
@@ -130,6 +135,12 @@ describe('AgentSkillsService', () => {
 		});
 		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: result.id }]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(skillWorkspaceService.syncActiveSkillWorkspaces).toHaveBeenCalledWith({
+			projectId,
+			agentId,
+			config: agent.schema,
+			skills: agent.skills,
+		});
 	});
 
 	it('loads one skill from the agent', async () => {
@@ -183,6 +194,12 @@ describe('AgentSkillsService', () => {
 			summarize_notes: result.skill,
 		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(skillWorkspaceService.syncActiveSkillWorkspaces).toHaveBeenCalledWith({
+			projectId,
+			agentId,
+			config: agent.schema,
+			skills: agent.skills,
+		});
 	});
 
 	it('clears references when an update provides an empty reference list', async () => {
@@ -282,5 +299,11 @@ describe('AgentSkillsService', () => {
 		expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(agent.schema?.skills).toEqual([]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(skillWorkspaceService.syncActiveSkillWorkspaces).toHaveBeenCalledWith({
+			projectId,
+			agentId,
+			config: agent.schema,
+			skills: {},
+		});
 	});
 });

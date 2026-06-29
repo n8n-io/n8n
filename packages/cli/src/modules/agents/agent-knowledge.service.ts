@@ -1,11 +1,13 @@
 import {
+	type AgentJsonConfig,
+	type AgentSkill,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	type AgentFileDto,
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils';
 import { unlink } from 'node:fs/promises';
@@ -103,8 +105,15 @@ export class AgentKnowledgeService {
 	}
 
 	async warmSandbox(agentId: string, projectId: string, userId: string): Promise<void> {
-		await this.ensureAgentBelongsToProject(agentId, projectId);
+		const agent = await this.ensureAgentBelongsToProject(agentId, projectId);
 		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId, userId);
+		await this.syncActiveSkillWorkspaces({
+			projectId,
+			agentId,
+			userId,
+			config: agent.schema,
+			skills: agent.skills ?? {},
+		});
 	}
 
 	async deleteFile(
@@ -341,6 +350,20 @@ export class AgentKnowledgeService {
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+		return agent;
+	}
+
+	private async syncActiveSkillWorkspaces(params: {
+		projectId: string;
+		agentId: string;
+		userId: string;
+		config: AgentJsonConfig | null | undefined;
+		skills: Record<string, AgentSkill>;
+	}) {
+		const { AgentRuntimeSkillWorkspaceService } = await import(
+			'./agent-runtime-skill-workspace.service'
+		);
+		await Container.get(AgentRuntimeSkillWorkspaceService).syncActiveSkillWorkspaces(params);
 	}
 
 	private async cleanupUploadTempFiles(files: Express.Multer.File[]) {

@@ -20,6 +20,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const references = computed(() => props.skill.references ?? []);
+const scripts = computed(() => props.skill.scripts ?? []);
 
 function isSelected(path: string) {
 	return props.selectedPath === path;
@@ -98,6 +99,35 @@ function testIdForPath(path: string) {
 					@click="emit('remove-reference', reference.path)"
 				/>
 			</div>
+		</div>
+
+		<div :class="$style.section">
+			<div :class="$style.sectionHeader">
+				<N8nText size="xsmall" color="text-light" :bold="true" :class="$style.sectionTitle">
+					{{ i18n.baseText('agents.builder.skills.scripts.title' as BaseTextKey) }}
+				</N8nText>
+			</div>
+			<N8nText
+				v-if="scripts.length === 0"
+				size="xsmall"
+				color="text-light"
+				:class="$style.sectionTitle"
+			>
+				{{ i18n.baseText('agents.builder.skills.scripts.empty' as BaseTextKey) }}
+			</N8nText>
+			<button
+				v-for="script in scripts"
+				:key="script.path"
+				type="button"
+				:class="[$style.item, $style.reference, isSelected(script.path) && $style.selected]"
+				:aria-current="isSelected(script.path) ? 'page' : undefined"
+				:aria-label="script.path"
+				:data-testid="testIdForPath(script.path)"
+				@click="emit('select', script.path)"
+			>
+				<N8nIcon icon="file-code" :size="16" :class="$style.icon" />
+				<N8nText size="small" :class="$style.path">{{ script.path }}</N8nText>
+			</button>
 		</div>
 	</nav>
 </template>

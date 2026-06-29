@@ -94,6 +94,9 @@ const createSkillInputSchema = z
 			.describe(
 				'Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path.',
 			),
+		scripts: agentSkillSchema.shape.scripts
+			.optional()
+			.describe('Python-only supporting files under scripts/... paths.'),
 	})
 	.strict();
 

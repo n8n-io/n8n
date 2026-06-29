@@ -19,6 +19,7 @@ import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
 } from '../workspace/prebaked-workspace-bundle';
+import { removeWorkspaceDirectory } from '../workspace/workspace-files';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
 import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
@@ -71,6 +72,7 @@ interface MaterializeRuntimeSkillsOptions {
 	root: string;
 	workspaceRoot?: string;
 	logger: Logger;
+	pruneStale?: boolean;
 }
 
 interface LazyWorkspaceRuntimeSkillSourceOptions {
@@ -522,7 +524,9 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 	source,
 	workspace,
 	root,
+	workspaceRoot,
 	logger,
+	pruneStale = false,
 }: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
 	if (source.registry.skills.length === 0) return undefined;
 
@@ -531,9 +535,17 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 		resourceLabel: RUNTIME_SKILL_FILE_LABEL,
 		logger,
 		loadPrebaked: async () =>
-			await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger }),
+			await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, workspaceRoot, logger }),
 		buildBundle: async () => {
-			const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
+			if (pruneStale) {
+				await clearRuntimeSkillsFromWorkspace({ workspace, root, logger });
+			}
+			const bundle = await buildRuntimeSkillWorkspaceBundle({
+				source,
+				root,
+				workspaceRoot,
+				logger,
+			});
 			if (!bundle) {
 				throw new Error('Expected runtime skill bundle after registry validation');
 			}
@@ -547,6 +559,25 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 			skillsHash: bundle.skillsHash,
 			count: bundle.skills.length,
 		}),
+	});
+}
+
+export async function clearRuntimeSkillsFromWorkspace({
+	workspace,
+	root,
+	logger,
+}: Pick<MaterializeRuntimeSkillsOptions, 'workspace' | 'root' | 'logger'>): Promise<void> {
+	const skillsRoot = posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR);
+	if (
+		posixNormalize(skillsRoot) !== skillsRoot ||
+		!skillsRoot.endsWith(SANDBOX_RUNTIME_SKILLS_DIR)
+	) {
+		throw new Error(`Refusing to clear unexpected runtime skills directory: ${skillsRoot}`);
+	}
+
+	await removeWorkspaceDirectory(workspace, skillsRoot, {
+		logger,
+		resourceLabel: RUNTIME_SKILL_FILE_LABEL,
 	});
 }
 

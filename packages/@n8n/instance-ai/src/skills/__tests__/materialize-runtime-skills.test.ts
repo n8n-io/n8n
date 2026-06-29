@@ -17,6 +17,7 @@ import {
 	SANDBOX_RUNTIME_SKILLS_DIR,
 	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
 	buildRuntimeSkillWorkspaceBundle,
+	clearRuntimeSkillsFromWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	materializeRuntimeSkillsIntoWorkspace,
 } from '../materialize-runtime-skills';
@@ -32,6 +33,12 @@ function createMockWorkspace() {
 		const content = writes.get(path);
 		if (content === undefined) throw new Error(`ENOENT: ${path}`);
 		return await Promise.resolve(content);
+	});
+	const rmdir = vi.fn(async (path: string) => {
+		for (const key of [...writes.keys()]) {
+			if (key === path || key.startsWith(`${path}/`)) writes.delete(key);
+		}
+		await Promise.resolve();
 	});
 	const executeCommand = vi.fn<
 		(
@@ -54,10 +61,11 @@ function createMockWorkspace() {
 	return {
 		executeCommand,
 		readFile,
+		rmdir,
 		writeFile,
 		writes,
 		workspace: {
-			filesystem: { readFile, writeFile },
+			filesystem: { readFile, rmdir, writeFile },
 			sandbox,
 		} as unknown as Workspace,
 	};
@@ -323,6 +331,51 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
 		expect(writeFile).toHaveBeenCalled();
 		expect(writes.get(skillPath)).toContain('data-tables');
+	});
+
+	it('prunes stale skill files before materializing mutable runtime skills', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace, writes, rmdir } = createMockWorkspace();
+		const root = '/home/daytona/workspace';
+		const skillsRoot = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`;
+		const manifestPath = `${skillsRoot}/${RUNTIME_SKILL_MANIFEST_FILE}`;
+		const stalePath = `${skillsRoot}/old-skill/SKILL.md`;
+		writes.set(stalePath, 'old content');
+		writes.set(
+			manifestPath,
+			`${JSON.stringify({
+				schemaVersion: RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
+				skillsHash: 'old-hash',
+			})}\n`,
+		);
+
+		await materializeRuntimeSkillsIntoWorkspace({
+			logger: mockLogger,
+			source,
+			workspace,
+			root,
+			pruneStale: true,
+		});
+
+		expect(rmdir).toHaveBeenCalledWith(skillsRoot, { recursive: true, force: true });
+		expect(writes.has(stalePath)).toBe(false);
+		expect(writes.get(`${skillsRoot}/data-table-manager/SKILL.md`)).toContain('data-tables');
+	});
+
+	it('clears the runtime skills root when configured skills are removed', async () => {
+		const { workspace, writes, rmdir } = createMockWorkspace();
+		const root = '/home/daytona/workspace';
+		const skillsRoot = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`;
+		writes.set(`${skillsRoot}/old-skill/SKILL.md`, 'old content');
+
+		await clearRuntimeSkillsFromWorkspace({
+			workspace,
+			root,
+			logger: mockLogger,
+		});
+
+		expect(rmdir).toHaveBeenCalledWith(skillsRoot, { recursive: true, force: true });
+		expect(writes.size).toBe(0);
 	});
 
 	it('falls back to live materialization when the prebaked manifest is invalid', async () => {

@@ -33,6 +33,7 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentRuntimeSkillWorkspaceService } from '../agent-runtime-skill-workspace.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -510,6 +511,49 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 
 		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
 		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
+	});
+});
+
+describe('AgentRuntimeReconstructionService — skill workspace wrapping', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		buildFromJsonMock.mockResolvedValue(builtAgent);
+	});
+
+	it('passes a skill-source wrapper to buildFromJson when a workspace scope is provided', async () => {
+		const skillWorkspaceService = mock<AgentRuntimeSkillWorkspaceService>();
+		const workspace = mock<agents.Workspace>();
+		skillWorkspaceService.getWorkspace.mockResolvedValue(workspace);
+		Container.set(AgentRuntimeSkillWorkspaceService, skillWorkspaceService);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService();
+		const scope = {
+			kind: 'draft' as const,
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			userId: 'user-1',
+		};
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(),
+			credentialProvider,
+			'user-1',
+			undefined,
+			scope,
+		);
+
+		const options = buildFromJsonMock.mock.calls[0][2] as {
+			wrapSkillSource?: (source: agents.RuntimeSkillSource) => agents.RuntimeSkillSource;
+		};
+		expect(options.wrapSkillSource).toBeDefined();
+
+		const source = mock<agents.RuntimeSkillSource>();
+		options.wrapSkillSource?.(source);
+
+		expect(skillWorkspaceService.wrapSkillSource).toHaveBeenCalledWith(source, scope);
+		expect(skillWorkspaceService.getWorkspace).toHaveBeenCalledWith(scope);
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
 	});
 });
 

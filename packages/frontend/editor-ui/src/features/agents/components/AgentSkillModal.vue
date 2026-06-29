@@ -38,6 +38,7 @@ const skill = ref<AgentSkill>(
 		instructions: props.data.skill?.instructions ?? '',
 		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
 		...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
+		...(props.data.skill?.scripts ? { scripts: props.data.skill.scripts } : {}),
 	}),
 );
 const submitted = ref(false);
@@ -81,7 +82,8 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 	skill.value = filterSkillAllowedTools({ ...skill.value, ...updates });
 	if (
 		selectedPath.value !== SKILL_FILE &&
-		!skill.value.references?.some((reference) => reference.path === selectedPath.value)
+		!skill.value.references?.some((reference) => reference.path === selectedPath.value) &&
+		!skill.value.scripts?.some((script) => script.path === selectedPath.value)
 	) {
 		selectedPath.value = SKILL_FILE;
 	}
@@ -155,6 +157,7 @@ function onSave() {
 		instructions: skill.value.instructions,
 		...(skill.value.allowedTools ? { allowedTools: skill.value.allowedTools } : {}),
 		...(skill.value.references ? { references: skill.value.references } : {}),
+		...(skill.value.scripts ? { scripts: skill.value.scripts } : {}),
 	};
 
 	props.data.onConfirm({ id: props.data.skillId, skill: payload });

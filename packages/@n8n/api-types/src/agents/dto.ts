@@ -119,6 +119,40 @@ const agentSkillReferenceSchema = z
 		}
 	});
 
+const agentSkillScriptSchema = z
+	.object({
+		path: z
+			.string()
+			.min(1)
+			.max(512)
+			.refine((path) => {
+				const normalized = path.replaceAll('\\', '/');
+				const segments = normalized.split('/');
+				return (
+					path === normalized &&
+					normalized.startsWith('scripts/') &&
+					normalized.endsWith('.py') &&
+					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+				);
+			}, 'Script path must be a Python file under scripts/'),
+		content: z.string().min(1),
+		bytes: z.number().int().nonnegative().optional(),
+		sha256: z
+			.string()
+			.regex(/^[a-f0-9]{64}$/)
+			.optional(),
+	})
+	.strict()
+	.superRefine((script, ctx) => {
+		if (utf8ByteLength(script.content) > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Script content must be ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES} bytes or fewer`,
+				path: ['content'],
+			});
+		}
+	});
+
 const agentSkillReferencesSchema = z
 	.array(agentSkillReferenceSchema)
 	.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
@@ -144,13 +178,38 @@ const agentSkillReferencesSchema = z
 		}
 	});
 
+const agentSkillScriptsSchema = z
+	.array(agentSkillScriptSchema)
+	.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
+	.superRefine((scripts, ctx) => {
+		const paths = new Set<string>();
+		let totalBytes = 0;
+		for (const [index, script] of scripts.entries()) {
+			totalBytes += utf8ByteLength(script.content);
+			if (paths.has(script.path)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `Duplicate script path "${script.path}"`,
+					path: [index, 'path'],
+				});
+			}
+			paths.add(script.path);
+		}
+		if (totalBytes > AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Script content must total ${AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES} bytes or fewer`,
+			});
+		}
+	});
+
 const agentSkillShape = {
 	name: z.string().min(1).max(128),
 	description: z.string().min(1).max(512),
 	instructions: z.string().min(1).max(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
 	allowedTools: agentSkillStringArraySchema.optional(),
 	references: agentSkillReferencesSchema.optional(),
-	scripts: z.never().optional(),
+	scripts: agentSkillScriptsSchema.optional(),
 	templates: z.never().optional(),
 	assets: z.never().optional(),
 	examples: z.never().optional(),
@@ -165,6 +224,7 @@ const updateAgentSkillShape = {
 	instructions: agentSkillShape.instructions.optional(),
 	allowedTools: agentSkillShape.allowedTools.optional(),
 	references: agentSkillShape.references.optional(),
+	scripts: agentSkillShape.scripts.optional(),
 };
 
 const updateAgentSkillSchema = z.object(updateAgentSkillShape).strict();

@@ -16,8 +16,13 @@ import type { AgentRepository } from '../repositories/agent.repository';
 
 interface MockFilesystem {
 	uploadFiles: jest.Mock;
+	uploadFile: jest.Mock;
+	downloadFile: jest.Mock;
 	createFolder: jest.Mock;
 	deleteFile: jest.Mock;
+	moveFiles: jest.Mock;
+	listFiles: jest.Mock;
+	getFileDetails: jest.Mock;
 }
 
 interface MockProcess {
@@ -77,6 +82,7 @@ class MockDaytona {
 }
 
 jest.mock('@n8n/agents/sandbox', () => ({
+	DAYTONA_WORKSPACE_ROOT: '/home/daytona/workspace',
 	loadDaytona: () => ({
 		Daytona: MockDaytona,
 		DaytonaNotFoundError,
@@ -148,8 +154,18 @@ function makeFilesystem(): MockFilesystem {
 		uploadFiles: jest.fn<Promise<void>, [Array<{ source: Buffer | string; destination: string }>]>(
 			async () => {},
 		),
+		uploadFile: jest.fn<Promise<void>, [Buffer, string]>(async () => {}),
+		downloadFile: jest.fn<Promise<Buffer>, [string]>(async () => Buffer.from('')),
 		createFolder: jest.fn<Promise<void>, [string, string]>(async () => {}),
 		deleteFile: jest.fn<Promise<void>, [string, boolean?]>(async () => {}),
+		moveFiles: jest.fn<Promise<void>, [string, string]>(async () => {}),
+		listFiles: jest.fn<Promise<Array<{ name?: string; isDir?: boolean; size?: number }>>, [string]>(
+			async () => [],
+		),
+		getFileDetails: jest.fn<
+			Promise<{ name?: string; isDir?: boolean; size?: number; modTime?: number }>,
+			[string]
+		>(async () => ({ name: 'file', isDir: false, size: 0 })),
 	};
 }
 
@@ -222,6 +238,18 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
 		expect(params.snapshot).toBeUndefined();
 		expect(options).toEqual({ timeout: 300 });
+	});
+
+	it('creates a shared sandbox workspace without requiring a knowledge volume', async () => {
+		const service = makeService({ daytonaVolumeId: '' });
+
+		const workspace = await service.getWorkspace(projectId, agentId, userId);
+
+		expect(workspace).toBeDefined();
+		expect(createMock).toHaveBeenCalledTimes(1);
+		const [params] = createMock.mock.calls[0];
+		expect(params.name).toBe(buildExpectedSandboxName());
+		expect(params.volumes).toBeUndefined();
 	});
 
 	it('forwards sandboxEphemeral config to Daytona create params', async () => {

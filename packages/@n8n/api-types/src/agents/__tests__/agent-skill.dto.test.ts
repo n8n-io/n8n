@@ -37,6 +37,23 @@ describe('agent skill DTOs', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts Python scripts under scripts', () => {
+		const result = agentSkillSchema.safeParse({
+			...validSkill,
+			scripts: [{ path: 'scripts/run.py', content: 'print("ok")' }],
+		});
+
+		expect(result.success).toBe(true);
+		for (const path of ['scripts/check.ts', 'scripts/readme.md']) {
+			expect(
+				agentSkillSchema.safeParse({
+					...validSkill,
+					scripts: [{ path, content: '# Nope' }],
+				}).success,
+			).toBe(false);
+		}
+	});
+
 	it('rejects removed metadata fields', () => {
 		expect(agentSkillSchema.safeParse({ ...validSkill, recommendedTools: [] }).success).toBe(false);
 		expect(UpdateAgentSkillDto.safeParse({ metadata: {} }).success).toBe(false);

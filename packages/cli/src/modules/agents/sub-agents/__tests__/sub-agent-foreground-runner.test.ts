@@ -161,6 +161,12 @@ describe('SubAgentForegroundRunner', () => {
 			userId,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: undefined,
+			skillWorkspaceScope: {
+				kind: 'draft',
+				projectId,
+				agentId: 'agent-1',
+				userId,
+			},
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 		expect(childAgent.stream).toHaveBeenCalledWith(
@@ -244,6 +250,13 @@ describe('SubAgentForegroundRunner', () => {
 				userId,
 				runtimeProfile: 'sub-agent',
 				parentAgentIdForDelegation: parentAgentId,
+				skillWorkspaceScope: {
+					kind: 'published',
+					projectId,
+					agentId: 'agent-2',
+					userId,
+					versionId: 'version-1',
+				},
 			}),
 		);
 		expect(childAgent.stream).toHaveBeenCalledWith(

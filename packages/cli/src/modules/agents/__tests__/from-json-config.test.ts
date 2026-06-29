@@ -1,5 +1,11 @@
 import * as AgentsRuntime from '@n8n/agents';
-import type { AgentSnapshot, BuiltProviderTool, BuiltTool, ToolDescriptor } from '@n8n/agents';
+import type {
+	AgentSnapshot,
+	BuiltProviderTool,
+	BuiltTool,
+	RuntimeSkillSource,
+	ToolDescriptor,
+} from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
 import {
@@ -300,6 +306,14 @@ describe('buildFromJson()', () => {
 								sha256: 'a'.repeat(64),
 							},
 						],
+						scripts: [
+							{
+								path: 'scripts/run.py',
+								content: 'print("ok")',
+								bytes: 11,
+								sha256: 'b'.repeat(64),
+							},
+						],
 					},
 					unused_skill: {
 						name: 'Unused skill',
@@ -330,6 +344,13 @@ describe('buildFromJson()', () => {
 						sha256: 'a'.repeat(64),
 					},
 				],
+				scripts: [
+					{
+						path: 'scripts/run.py',
+						bytes: 11,
+						sha256: 'b'.repeat(64),
+					},
+				],
 			},
 		});
 
@@ -345,6 +366,18 @@ describe('buildFromJson()', () => {
 			sha256: 'a'.repeat(64),
 		});
 
+		await expect(
+			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'scripts/run.py' }, {}),
+		).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			filePath: 'scripts/run.py',
+			content: 'print("ok")',
+			bytes: 11,
+			sha256: 'b'.repeat(64),
+		});
+
 		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');
 		const listOutput = (await listSkills!.handler?.({}, {})) as {
 			skills: Array<Record<string, unknown>>;
@@ -357,6 +390,62 @@ describe('buildFromJson()', () => {
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
 			ok: false,
 			success: false,
+		});
+	});
+
+	it('allows platform code to wrap the configured skill source', async () => {
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		});
+		const wrapSkillSource = jest.fn(
+			(source: RuntimeSkillSource): RuntimeSkillSource => ({
+				...source,
+				registry: {
+					...source.registry,
+					skills: source.registry.skills.map((skill) => ({
+						...skill,
+						path: `/workspace/skills/${skill.name}/SKILL.md`,
+						directory: `/workspace/skills/${skill.name}`,
+					})),
+				},
+				loadSkill: async (skillId) => {
+					const skill = await source.loadSkill(skillId);
+					return skill
+						? {
+								...skill,
+								path: `/workspace/skills/${skill.name}/SKILL.md`,
+								directory: `/workspace/skills/${skill.name}`,
+							}
+						: null;
+				},
+			}),
+		);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				wrapSkillSource,
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+				},
+			},
+		);
+
+		expect(wrapSkillSource).toHaveBeenCalledTimes(1);
+		const loadSkill = agent.declaredTools.find((t) => t.name === 'load_skill');
+
+		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			success: true,
+			path: '/workspace/skills/Summarize notes/SKILL.md',
+			skillDir: '/workspace/skills/Summarize notes',
 		});
 	});
 

@@ -90,6 +90,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			userId,
 			undefined,
+			{ kind: 'draft', projectId, agentId, userId },
 		);
 	});
 
@@ -121,6 +122,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			userId,
 			'n8n_chat',
+			{ kind: 'draft', projectId, agentId, userId },
 		);
 	});
 
@@ -220,11 +222,15 @@ describe('AgentRuntimeCacheService', () => {
 			tools: { tool: { name: 'Tool' } },
 			skills: { skill: { name: 'Skill' } },
 			publishedById: 'publisher-1',
+			versionId: 'published-version',
 		};
 		const runtime = makeRuntime();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ activeVersion: activeVersion as unknown as Agent['activeVersion'] }),
+			makeAgent({
+				activeVersionId: 'published-version',
+				activeVersion: activeVersion as unknown as Agent['activeVersion'],
+			}),
 		);
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
@@ -244,6 +250,13 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			'publisher-1',
 			'slack',
+			{
+				kind: 'published',
+				projectId,
+				agentId,
+				userId: 'publisher-1',
+				versionId: 'published-version',
+			},
 		);
 	});
 

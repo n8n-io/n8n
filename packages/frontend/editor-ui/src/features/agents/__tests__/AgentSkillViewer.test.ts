@@ -130,13 +130,13 @@ describe('AgentSkillViewer', () => {
 		]);
 	});
 
-	it('rejects scripts in imported folders', async () => {
+	it('imports Python scripts from a folder', async () => {
 		const wrapper = mountViewer();
 		const skillFile = makeFile(
 			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
 			'skill-folder/SKILL.md',
 		);
-		const scriptFile = makeFile('print("no")', 'skill-folder/scripts/run.py');
+		const scriptFile = makeFile('print("ok")', 'skill-folder/scripts/run.py');
 		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
 		Object.defineProperty(input.element, 'files', {
 			value: [skillFile, scriptFile],
@@ -146,7 +146,38 @@ describe('AgentSkillViewer', () => {
 		await input.trigger('change');
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('agents.builder.skills.import.scriptsUnsupported');
+		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([
+			expect.objectContaining({
+				name: 'Research',
+				scripts: [
+					{
+						path: 'scripts/run.py',
+						content: 'print("ok")',
+						bytes: 11,
+						sha256: '01'.repeat(32),
+					},
+				],
+			}),
+		]);
+	});
+
+	it('rejects non-Python scripts in imported folders', async () => {
+		const wrapper = mountViewer();
+		const skillFile = makeFile(
+			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
+			'skill-folder/SKILL.md',
+		);
+		const scriptFile = makeFile('export const ok = true;', 'skill-folder/scripts/run.ts');
+		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
+		Object.defineProperty(input.element, 'files', {
+			value: [skillFile, scriptFile],
+			configurable: true,
+		});
+
+		await input.trigger('change');
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('agents.builder.skills.import.scriptPythonOnly');
 	});
 
 	it('renames the selected reference without changing its directory', async () => {

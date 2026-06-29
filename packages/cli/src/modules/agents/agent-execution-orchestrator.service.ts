@@ -26,6 +26,7 @@ import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import type { AgentRuntimeSkillWorkspaceScope } from './agent-runtime-skill-workspace.service';
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
@@ -516,6 +517,7 @@ export class AgentExecutionOrchestratorService {
 		userId: string,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
+		skillWorkspaceScope?: AgentRuntimeSkillWorkspaceScope,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -527,6 +529,8 @@ export class AgentExecutionOrchestratorService {
 					agentEntity,
 					credentialProvider,
 					userId,
+					undefined,
+					skillWorkspaceScope,
 				);
 			// Apply a per-call structured-output schema before casting to runtime.
 			if (outputSchema) {
@@ -586,6 +590,14 @@ export class AgentExecutionOrchestratorService {
 		if (!useDraftVersion) {
 			agentData = getPublishedAgentSnapshot(agentEntity);
 		}
+		const versionId = agentEntity.activeVersionId ?? agentData.versionId ?? agentEntity.versionId;
+		const skillWorkspaceScope: AgentRuntimeSkillWorkspaceScope = {
+			kind: useDraftVersion ? 'draft' : 'published',
+			projectId,
+			agentId,
+			userId,
+			...(!useDraftVersion && versionId ? { versionId } : {}),
+		};
 		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
 
 		const extraTools: BuiltTool[] = [];
@@ -601,6 +613,7 @@ export class AgentExecutionOrchestratorService {
 			userId,
 			outputSchema,
 			extraTools.length ? extraTools : undefined,
+			skillWorkspaceScope,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);

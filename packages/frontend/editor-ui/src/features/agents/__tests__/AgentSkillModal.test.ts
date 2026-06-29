@@ -141,4 +141,28 @@ describe('AgentSkillModal', () => {
 			'SKILL.md',
 		);
 	});
+
+	it('preserves scripts when saving', async () => {
+		const onConfirm = vi.fn();
+		const { container } = renderModal({
+			onConfirm,
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				scripts: [{ path: 'scripts/run.py', content: 'print("ok")', bytes: 11 }],
+			},
+		});
+
+		await fireEvent.click(
+			container.querySelector('[data-testid="agent-skill-create-save"]') as Element,
+		);
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			id: undefined,
+			skill: expect.objectContaining({
+				scripts: [{ path: 'scripts/run.py', content: 'print("ok")', bytes: 11 }],
+			}),
+		});
+	});
 });

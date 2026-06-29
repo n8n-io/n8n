@@ -106,6 +106,7 @@ export interface AgentSkill {
 	instructions: string;
 	allowedTools?: string[];
 	references?: AgentSkillReference[];
+	scripts?: AgentSkillReference[];
 }
 
 export interface AgentSkillMutationResponse {

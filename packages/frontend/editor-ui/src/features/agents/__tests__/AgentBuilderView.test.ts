@@ -545,8 +545,8 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('warms the knowledge sandbox when the agent page initializes', async () => {
-		await renderView({ knowledgeBaseEnabled: true });
+	it('warms the agent sandbox when the agent page initializes', async () => {
+		await renderView();
 
 		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
 		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(

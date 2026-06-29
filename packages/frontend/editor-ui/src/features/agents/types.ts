@@ -1,8 +1,16 @@
 import type { BaseResource } from '@/Interface';
-import type { AgentJsonToolConfig, AgentSkill, AgentSkillReference } from '@n8n/api-types';
+import type {
+	AgentJsonToolConfig,
+	AgentSkill as ApiAgentSkill,
+	AgentSkillReference,
+} from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
-export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
+export type { ToolDescriptor, CustomToolEntry, AgentSkillReference };
+
+export type AgentSkill = ApiAgentSkill & {
+	scripts?: AgentSkillReference[];
+};
 
 /**
  * Agent resource type definition.

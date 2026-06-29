@@ -534,7 +534,7 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
+	if (!initialized.value) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;

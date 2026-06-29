@@ -94,6 +94,13 @@ export class SubAgentForegroundRunner {
 			userId: context.userId,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: context.parentAgentId,
+			skillWorkspaceScope: {
+				kind: request.source.versionId ? 'published' : 'draft',
+				projectId: context.projectId,
+				agentId: runtimeSource.source.sourceId,
+				userId: context.userId,
+				...(request.source.versionId ? { versionId: request.source.versionId } : {}),
+			},
 		});
 
 		// Abort the child when the parent run is cancelled.

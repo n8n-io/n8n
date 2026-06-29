@@ -34,6 +34,7 @@ import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrat
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import { AgentRuntimeSkillWorkspaceService } from '../agent-runtime-skill-workspace.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -234,6 +235,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
+		const skillWorkspaceService = mock<AgentRuntimeSkillWorkspaceService>();
+		Container.set(AgentRuntimeSkillWorkspaceService, skillWorkspaceService);
 		agentSkillsService = new AgentSkillsService(logger, agentRepository);
 		agentConfigService = new AgentConfigService(
 			logger,

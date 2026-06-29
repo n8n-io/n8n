@@ -1,11 +1,13 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { AgentConfigService } from '../agent-config.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentRuntimeSkillWorkspaceService } from '../agent-runtime-skill-workspace.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -42,6 +44,8 @@ function makeService() {
 	const agentSkillsService = mock<AgentSkillsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
+	const skillWorkspaceService = mock<AgentRuntimeSkillWorkspaceService>();
+	Container.set(AgentRuntimeSkillWorkspaceService, skillWorkspaceService);
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
@@ -70,6 +74,7 @@ function makeService() {
 		agentSkillsService,
 		runtimeCacheService,
 		credentialsService,
+		skillWorkspaceService,
 	};
 }
 
@@ -175,6 +180,7 @@ describe('AgentConfigService', () => {
 				agentTaskRepository,
 				agentSkillsService,
 				runtimeCacheService,
+				skillWorkspaceService,
 			} = makeService();
 			const agent = makeAgent({
 				tools: {
@@ -221,6 +227,12 @@ describe('AgentConfigService', () => {
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+			expect(skillWorkspaceService.syncActiveSkillWorkspaces).toHaveBeenCalledWith({
+				projectId,
+				agentId,
+				config: saved.schema,
+				skills: saved.skills,
+			});
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {
