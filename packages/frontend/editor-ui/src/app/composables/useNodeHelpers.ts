@@ -5,8 +5,7 @@ import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import {
 	NodeHelpers,
 	NodeConnectionTypes,
-	MANUAL_TRIGGER_NODE_TYPES,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	classifyTriggerIdentity,
 	nodeIssuesToString,
 } from 'n8n-workflow';
 import type {
@@ -417,14 +416,16 @@ export function useNodeHelpers() {
 	}
 
 	function workflowHasIncompatibleTrigger(): boolean {
-		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
-		return triggers.some(
-			(trigger) =>
-				!trigger.disabled &&
-				!MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type) &&
-				// Sub-workflows inherit the identity context from the parent execution,
-				// so a private credential resolves as long as the parent provides one.
-				trigger.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
+			(trigger) => !trigger.disabled,
+		);
+		if (triggers.length === 0) return false;
+
+		// Private (self-connected) credentials resolve via the system resolver, which
+		// keys on the n8n user identity. Mirror the backend publish check: the workflow
+		// is compatible as long as at least one trigger establishes that identity.
+		return !triggers.some(
+			(trigger) => classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
 		);
 	}
 

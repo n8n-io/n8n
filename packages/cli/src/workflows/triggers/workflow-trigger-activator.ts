@@ -219,18 +219,22 @@ export class WorkflowTriggerActivator {
 				let triggerCount = 0;
 				await workflow.expression.acquireIsolate();
 				try {
-					await this.registerWebhookTriggers(workflow, additionalData, nodeIds, outcome);
-
 					const resolveWorkflowData = this.createWorkflowDataResolver(dbWorkflow);
 
-					await this.registerNonWebhookTriggers(
-						dbWorkflow,
-						workflow,
-						additionalData,
-						resolveWorkflowData,
-						nodeIds,
-						outcome,
-					);
+					// The two phases share the single isolate acquired here and mutate
+					// `outcome` via synchronous pushes, so overlapping them is safe.
+					const phaseResults = await Promise.allSettled([
+						this.registerWebhookTriggers(workflow, additionalData, nodeIds, outcome),
+						this.registerNonWebhookTriggers(
+							dbWorkflow,
+							workflow,
+							additionalData,
+							resolveWorkflowData,
+							nodeIds,
+							outcome,
+						),
+					]);
+					this.throwRejectedPhaseError(phaseResults);
 
 					triggerCount = this.triggerCountService.count(workflow, additionalData);
 				} finally {
@@ -284,17 +288,19 @@ export class WorkflowTriggerActivator {
 					workflowSettings: dbWorkflow.settings,
 				});
 
-				const removedNodeNames = await this.deregisterWebhookTriggers(
-					workflow,
-					additionalData,
-					nodeIds,
-				);
-				await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
-					dbWorkflow.id,
-					removedNodeNames,
-				);
-
-				await this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds);
+				// The non-webhook phase doesn't touch the expression isolate that the
+				// webhook deregister acquires, so the two phases can overlap.
+				const phaseResults = await Promise.allSettled([
+					this.deregisterWebhookTriggers(workflow, additionalData, nodeIds).then(
+						async (removedNodeNames) =>
+							await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
+								dbWorkflow.id,
+								removedNodeNames,
+							),
+					),
+					this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds),
+				]);
+				this.throwRejectedPhaseError(phaseResults);
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
@@ -578,6 +584,11 @@ export class WorkflowTriggerActivator {
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {
 		return async () =>
 			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
+	}
+
+	private throwRejectedPhaseError(results: Array<PromiseSettledResult<unknown>>): void {
+		const rejected = results.find((result) => result.status === 'rejected');
+		if (rejected) throw ensureError(rejected.reason);
 	}
 
 	/**

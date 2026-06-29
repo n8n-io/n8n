@@ -920,8 +920,34 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'hello',
 			undefined,
+			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
+		);
+	});
+
+	test('sendMessage forwards handoff context to postMessage', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			activeThreadId,
+			'hello',
+			undefined,
+			context,
+			expect.any(String),
+			undefined,
 		);
 	});
 
@@ -934,6 +960,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
+			undefined,
 			undefined,
 			expect.any(String),
 			undefined,

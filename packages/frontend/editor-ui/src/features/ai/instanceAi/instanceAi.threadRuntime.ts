@@ -14,6 +14,7 @@ import {
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
+	type InstanceAiHandoffContext,
 	type TaskList,
 	type AgentRunState,
 } from '@n8n/api-types';
@@ -865,6 +866,7 @@ export function createThreadRuntime(
 	async function dispatchUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 		pushRef?: string,
 	): Promise<boolean> {
 		try {
@@ -873,6 +875,7 @@ export function createThreadRuntime(
 				threadId,
 				message,
 				attachments,
+				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 			);
@@ -905,6 +908,7 @@ export function createThreadRuntime(
 		message: string,
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
+		handoffContext?: InstanceAiHandoffContext,
 	): Promise<void> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
@@ -914,7 +918,7 @@ export function createThreadRuntime(
 			const optimistic = pushOptimisticUserMessage(message, attachments);
 			trackUserMessageSent(isFirstMessage);
 
-			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
+			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
 			}
 		} finally {

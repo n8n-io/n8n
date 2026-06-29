@@ -21,8 +21,10 @@
  *
  * Outputs (under <package-dir>/reports/mutation/):
  *   raw.json      — full Stryker Mutation Testing Elements report
- *   raw.html      — Stryker's HTML report (browse for human review)
- *   summary.json  — compact actionable summary (this script)
+ *   summary.json  — compact actionable summary (this script). Emitted even on a
+ *                   non-zero / timed-out Stryker exit, as long as Stryker wrote
+ *                   a (partial) raw.json — a run that can't finish still surfaces
+ *                   the survivors it found rather than dying with nothing.
  *
  * Each summary file row also carries a `coverage` fraction in [0,1] — the share
  * of mutants a test actually exercised — so the global picker can read
@@ -41,10 +43,12 @@
  * Exit codes:
  *   0  — gate passed (score ≥ threshold AND no unjustified survivors)
  *   1  — gate failed: score < threshold OR at least one Survived/NoCoverage
- *        mutant remains (AI loop should iterate). Also used when Stryker
- *        reports "No tests were executed" — the file has no covering tests,
- *        so we synthesise a score-0 red summary rather than hard-failing the
- *        job. The ledger then records the gap and the picker advances.
+ *        mutant remains (AI loop should iterate), OR the run was partial (a
+ *        non-zero Stryker exit with a salvaged raw.json — untested mutants
+ *        could be survivors, so a partial run never passes). Also used when
+ *        Stryker reports "No tests were executed" — the file has no covering
+ *        tests, so we synthesise a score-0 red summary rather than hard-failing
+ *        the job. The ledger then records the gap and the picker advances.
  *   2  — usage / config error
  *   3  — Stryker run failed for any other reason (instrumentation crash etc.)
  */
@@ -362,8 +366,15 @@ async function main() {
 	// picker can then advance to the next file the following night. See DEVP-414.
 	const noTestsExecuted = /no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
 
-	if (strykerExitCode !== 0 && !noTestsExecuted) {
-		die(3, `Stryker exited with code ${strykerExitCode}`);
+	// A non-zero exit shouldn't discard a report Stryker already wrote — salvage a
+	// partial summary from it below; only die when there's genuinely nothing to keep.
+	const strykerFailedWithoutReport =
+		strykerExitCode !== 0 && !noTestsExecuted && !existsSync(rawJsonPath);
+	if (strykerFailedWithoutReport) {
+		die(
+			3,
+			`Stryker exited with code ${strykerExitCode} without producing ${path.relative(repoRoot, rawJsonPath)}`,
+		);
 	}
 
 	if (noTestsExecuted) {
@@ -400,8 +411,18 @@ async function main() {
 		generatedAt: new Date().toISOString(),
 	});
 
+	// Report present but non-zero exit → run was cut short; flag it so consumers
+	// (and the gate below) know the survivor list may be incomplete.
+	const partial = strykerExitCode !== 0;
+	if (partial) summary.partial = true;
+
 	await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
 
+	if (partial) {
+		process.stderr.write(
+			`\n⚠ Stryker exited with code ${strykerExitCode}; summary built from a partial raw.json — results may be incomplete.\n`,
+		);
+	}
 	process.stderr.write('\n=== Mutation summary ===\n');
 	for (const f of summary.files) {
 		const mark = f.thresholdMet ? '✓' : '✗';
@@ -421,7 +442,10 @@ async function main() {
 			);
 		}
 	}
-	const gateState = summary.overall.thresholdMet ? 'PASS' : 'FAIL';
+	// A partial run never passes: mutants it never tested could be survivors, so
+	// reporting PASS would mark the file done with work left undone.
+	const passed = summary.overall.thresholdMet && !summary.partial;
+	const gateState = passed ? 'PASS' : summary.partial ? 'FAIL (partial)' : 'FAIL';
 	const unjustified = summary.overall.counts.survived + summary.overall.counts.noCoverage;
 	process.stderr.write(
 		`\nGate: ${gateState}  •  threshold: ${THRESHOLD}%  •  score: ${summary.overall.score.toFixed(2)}%  •  ` +
@@ -429,7 +453,7 @@ async function main() {
 	);
 	process.stderr.write(`Summary written: ${summaryJsonPath}\n`);
 
-	process.exit(summary.overall.thresholdMet ? 0 : 1);
+	process.exit(passed ? 0 : 1);
 }
 
 const isCli = import.meta.url === `file://${process.argv[1]}`;

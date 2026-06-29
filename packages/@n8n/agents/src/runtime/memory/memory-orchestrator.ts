@@ -185,6 +185,12 @@ export class MemoryOrchestrator {
 				error,
 				threadId: options.persistence.threadId,
 			});
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Failed to eagerly persist input messages',
+				error,
+				source: 'input-persistence',
+			});
 		}
 	}
 
@@ -219,6 +225,12 @@ export class MemoryOrchestrator {
 			logger.warn('Failed to persist turn on suspend', {
 				error,
 				threadId: options.persistence.threadId,
+			});
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Failed to persist turn on suspend',
+				error,
+				source: 'turn-suspend-persistence',
 			});
 		}
 	}
