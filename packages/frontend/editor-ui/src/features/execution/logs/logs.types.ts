@@ -27,10 +27,14 @@ export type NodeLogEntry = BaseLogEntry & {
 /** One boundary crossing of a group (a member execution where data enters or leaves the group). */
 export type GroupBoundaryRunData = {
 	id: string;
-	/** Member node name, used as selector label */
+	/** Selector label (member node name, disambiguated when one node has several crossings) */
 	label: string;
-	/** The member entry to render in the IO panel */
+	/** The member entry whose run data is rendered in the IO panel */
 	entry: NodeLogEntry;
+	/** Input only: which entry in the member's runData.source[] this crossing came through */
+	sourceIndex?: number;
+	/** Output only: which of the member's output branches leaves the group */
+	overrideOutputs?: number[];
 };
 
 export type GroupLogEntry = BaseLogEntry & {

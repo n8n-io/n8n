@@ -97,12 +97,8 @@ watch(
 		selectedOutputIndex.value = 0;
 	},
 );
-const groupInputEntry = computed(
-	() => groupEntry.value?.boundaries.inputs[selectedInputIndex.value]?.entry,
-);
-const groupOutputEntry = computed(
-	() => groupEntry.value?.boundaries.outputs[selectedOutputIndex.value]?.entry,
-);
+const groupInput = computed(() => groupEntry.value?.boundaries.inputs[selectedInputIndex.value]);
+const groupOutput = computed(() => groupEntry.value?.boundaries.outputs[selectedOutputIndex.value]);
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
@@ -262,7 +258,7 @@ function handleResizeEnd() {
 			</template>
 			<template v-else-if="groupEntry">
 				<N8nResizeWrapper
-					v-if="groupInputEntry && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
+					v-if="groupInput && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
 					:class="{
 						[$style.inputResizer]: true,
 						[$style.collapsed]: resizer.isCollapsed.value,
@@ -296,7 +292,8 @@ function handleResizeEnd() {
 							pane-type="input"
 							:class="$style.groupRunData"
 							:title="locale.baseText('logs.details.header.actions.input')"
-							:log-entry="groupInputEntry"
+							:log-entry="groupInput.entry"
+							:source-index="groupInput.sourceIndex"
 							:collapsing-table-column-name="null"
 							:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
 							:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
@@ -304,7 +301,7 @@ function handleResizeEnd() {
 					</div>
 				</N8nResizeWrapper>
 				<div
-					v-if="groupOutputEntry && panels !== LOG_DETAILS_PANEL_STATE.INPUT"
+					v-if="groupOutput && panels !== LOG_DETAILS_PANEL_STATE.INPUT"
 					:class="[$style.outputPanel, $style.groupPane]"
 				>
 					<N8nSelect
@@ -326,7 +323,8 @@ function handleResizeEnd() {
 						pane-type="output"
 						:class="$style.groupRunData"
 						:title="locale.baseText('logs.details.header.actions.output')"
-						:log-entry="groupOutputEntry"
+						:log-entry="groupOutput.entry"
+						:override-outputs="groupOutput.overrideOutputs"
 						:collapsing-table-column-name="null"
 						:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
 						:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"

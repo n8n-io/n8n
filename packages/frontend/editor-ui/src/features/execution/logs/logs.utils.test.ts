@@ -2012,6 +2012,50 @@ describe('createLogTree with canvas groups', () => {
 		expect(groupEntry.boundaries.outputs.map((b) => b.label)).toEqual(['B', 'C']);
 	});
 
+	it('exposes one input per crossing when multiple connections enter the same member', () => {
+		// External "If"-like node feeds both of its outputs into the single member B
+		const workflow = createTestWorkflowObject({
+			id: 'w1',
+			nodes: [createTestNode({ id: 'X', name: 'X' }), createTestNode({ id: 'B', name: 'B' })],
+			connections: {
+				X: {
+					main: [
+						[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			},
+		});
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						X: [taskAt(0)],
+						B: [
+							taskAt(1, {
+								source: [
+									{ previousNode: 'X', previousNodeOutput: 0 },
+									{ previousNode: 'X', previousNodeOutput: 1 },
+								],
+							}),
+						],
+					},
+				},
+			}),
+		});
+
+		const logs = createLogTree(workflow, response, {}, {}, undefined, [
+			{ id: 'g', name: 'G', nodeIds: ['B'] },
+		]);
+		const groupEntry = expectGroup(logs[1]);
+
+		// Two distinct crossings into B → selector with two entries, scoped per source index
+		expect(groupEntry.boundaries.inputs).toHaveLength(2);
+		expect(groupEntry.boundaries.inputs.map((b) => b.sourceIndex)).toEqual([0, 1]);
+		expect(groupEntry.boundaries.inputs.map((b) => b.label)).toEqual(['B', 'B (2)']);
+	});
+
 	it('treats a trigger member with no source as a boundary input', () => {
 		const triggerGroup = { id: 'g-trigger', name: 'Trigger group', nodeIds: ['A', 'B'] };
 		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [

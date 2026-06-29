@@ -319,36 +319,94 @@ function computeGroupBoundaries(
 	);
 
 	const inputs: GroupBoundaryRunData[] = [];
-	const seenInputs = new Set<string>();
 	const outputs: GroupBoundaryRunData[] = [];
-	const seenOutputs = new Set<string>();
+	// One entry per distinct boundary crossing (edge), deduped so loops don't multiply them
+	const seenInputEdges = new Set<string>();
+	const seenOutputEdges = new Set<string>();
+	// Disambiguate the selector label when one member node has several crossings on the same side
+	const inputLabelCount = new Map<string, number>();
+	const outputLabelCount = new Map<string, number>();
+
+	function makeLabel(counts: Map<string, number>, nodeId: string, name: string): string {
+		const seen = counts.get(nodeId) ?? 0;
+		counts.set(nodeId, seen + 1);
+		return seen === 0 ? name : `${name} (${seen + 1})`;
+	}
 
 	for (const child of executedChildren) {
-		// Input boundary: data enters the group here (a source outside the group, a trigger, or no source)
 		const sources = child.runData?.source ?? [];
-		const entersGroup =
-			sources.length === 0 ||
-			sources.some((s) => !s || !isMemberNodeName(s.previousNode, memberIds, context.workflow));
 
-		if (entersGroup && !seenInputs.has(child.node.id)) {
-			seenInputs.add(child.node.id);
-			inputs.push({ id: child.id, label: child.node.name, entry: child });
+		// Input crossings: each incoming connection from a non-member is its own input
+		if (sources.length === 0) {
+			// Entry/trigger member: data originates inside the group here
+			const edge = `${child.node.id}|origin`;
+			if (!seenInputEdges.has(edge)) {
+				seenInputEdges.add(edge);
+				inputs.push({
+					id: `${child.id}:in`,
+					label: makeLabel(inputLabelCount, child.node.id, child.node.name),
+					entry: child,
+				});
+			}
 		}
 
-		// Output boundary: data leaves the group here (a main child outside the group, or no main child)
-		const mainChildren = context.workflow.getChildNodes(
-			child.node.name,
-			NodeConnectionTypes.Main,
-			1,
-		);
-		const leavesGroup =
-			mainChildren.length === 0 ||
-			mainChildren.some((name) => !isMemberNodeName(name, memberIds, context.workflow));
+		sources.forEach((source, index) => {
+			if (!source || isMemberNodeName(source.previousNode, memberIds, context.workflow)) {
+				return;
+			}
 
-		if (leavesGroup && !seenOutputs.has(child.node.id)) {
-			seenOutputs.add(child.node.id);
-			outputs.push({ id: child.id, label: child.node.name, entry: child });
+			const edge = `${child.node.id}|${source.previousNode}|${source.previousNodeOutput ?? 0}`;
+			if (seenInputEdges.has(edge)) {
+				return;
+			}
+
+			seenInputEdges.add(edge);
+			inputs.push({
+				id: `${child.id}:in:${index}`,
+				label: makeLabel(inputLabelCount, child.node.id, child.node.name),
+				entry: child,
+				sourceIndex: index,
+			});
+		});
+
+		// Output crossings: each output branch leaving the group, plus terminal members
+		const mainConnections = context.workflow.connectionsBySourceNode[child.node.name]?.main ?? [];
+		const isTerminal = mainConnections.every((targets) => (targets ?? []).length === 0);
+
+		if (isTerminal) {
+			const edge = `${child.node.id}|out`;
+			if (!seenOutputEdges.has(edge)) {
+				seenOutputEdges.add(edge);
+				outputs.push({
+					id: `${child.id}:out`,
+					label: makeLabel(outputLabelCount, child.node.id, child.node.name),
+					entry: child,
+				});
+			}
 		}
+
+		mainConnections.forEach((targets, outputIndex) => {
+			const leavesGroup = (targets ?? []).some(
+				(t) => t && !isMemberNodeName(t.node, memberIds, context.workflow),
+			);
+			if (!leavesGroup) {
+				return;
+			}
+
+			const edge = `${child.node.id}|out|${outputIndex}`;
+			if (seenOutputEdges.has(edge)) {
+				return;
+			}
+
+			seenOutputEdges.add(edge);
+			outputs.push({
+				id: `${child.id}:out:${outputIndex}`,
+				label: makeLabel(outputLabelCount, child.node.id, child.node.name),
+				entry: child,
+				// Only scope to a branch when the node has more than one output
+				overrideOutputs: mainConnections.length > 1 ? [outputIndex] : undefined,
+			});
+		});
 	}
 
 	// Fallbacks keep a selectable IO pane even when no crossing is detected
