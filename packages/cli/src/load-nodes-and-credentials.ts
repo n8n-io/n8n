@@ -549,8 +549,18 @@ export class LoadNodesAndCredentials {
 
 			// Add domain restriction fields to loaded credentials
 			for (const credentialTypeName in known.credentials) {
-				const credentialType = loader.getCredential(credentialTypeName);
-				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
+				try {
+					const credentialType = loader.getCredential(credentialTypeName);
+					credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
+				} catch (error) {
+					// A community-package credential module can legitimately fail to load (e.g. a
+					// missing peer dependency). Skip it so one broken package can't abort loading
+					// for every other package and the whole instance.
+					this.logger.warn(
+						`Failed to load credential "${credentialTypeName}" from package "${packageName}", skipping`,
+						{ error },
+					);
+				}
 			}
 
 			for (const type in known.nodes) {
