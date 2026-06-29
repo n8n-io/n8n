@@ -39,7 +39,11 @@ import {
 	type ScenarioCounts,
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
-import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
+import {
+	formatComparisonMarkdown,
+	formatComparisonTerminal,
+	type RerunHint,
+} from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import { cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
@@ -214,7 +218,7 @@ async function main(): Promise<void> {
 			outcome,
 			commitSha,
 			slugByTestCase,
-			ciRunUrl(),
+			ciRerunHint(),
 			gate,
 		);
 		console.log(`Results:    ${jsonPath}`);
@@ -1126,11 +1130,15 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	return rates.join(' / ');
 }
 
-// GitHub Actions run URL (for the PR comment's re-run link); undefined outside CI.
-function ciRunUrl(): string | undefined {
-	const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
-	if (!GITHUB_SERVER_URL || !GITHUB_REPOSITORY || !GITHUB_RUN_ID) return undefined;
-	return `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+// Re-run hint for the PR comment: a self-seeded dispatch against the PR head.
+// Undefined outside CI or when not associated with a PR (EVAL_PR_NUMBER unset).
+function ciRerunHint(): RerunHint | undefined {
+	const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, EVAL_PR_NUMBER } = process.env;
+	if (!GITHUB_SERVER_URL || !GITHUB_REPOSITORY || !EVAL_PR_NUMBER) return undefined;
+	return {
+		prNumber: EVAL_PR_NUMBER,
+		dispatchUrl: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/ci-instance-ai-evals.yml`,
+	};
 }
 
 function writeEvalResults(
@@ -1141,7 +1149,7 @@ function writeEvalResults(
 	outcome: ComparisonOutcome | undefined,
 	commitSha: string | undefined,
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
-	runUrl: string | undefined,
+	rerun: RerunHint | undefined,
 	gate: GateResult | undefined,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
@@ -1228,7 +1236,7 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl, gate }),
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, rerun, gate }),
 	);
 
 	return { jsonPath, prCommentPath };

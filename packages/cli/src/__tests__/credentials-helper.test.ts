@@ -30,11 +30,7 @@ import { deepCopy, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 
-// The credential module resolves to nodes-base source, which uses a package-internal
-// path alias not mapped by cli's jest config.
-jest.mock('@utils/utilities', () => ({ formatPrivateKey: (key: string) => key }), {
-	virtual: true,
-});
+jest.mock('@n8n/utils', () => ({ formatPemBlock: (key: string) => key }));
 
 // SalesforceJwtApi.preAuthentication exchanges its signed JWT for a token through the
 // shared outbound HTTP client (`getTokenRequestClient`), not `this.helpers.httpRequest`.
