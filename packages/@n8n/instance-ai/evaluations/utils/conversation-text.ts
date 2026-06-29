@@ -57,12 +57,8 @@ export function conversationUserTurnsAsText(conversation: ConversationTurn[] | u
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			// Seeded turns are restored prior context — they predate the evaluated
-			// run, and judges must not score them as live behaviour.
-			const seededSuffix = turn.seeded
-				? ' (seeded prior context — predates the evaluated run)'
-				: '';
-			const lines: string[] = [`### Turn ${String(i + 1)}${seededSuffix}`];
+			// No seeded label: the judge evaluates the whole conversation as one.
+			const lines: string[] = [`### Turn ${String(i + 1)}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);
@@ -76,6 +72,16 @@ export function transcriptAsText(transcript: TranscriptTurn[]): string {
 /** Concatenated agent narration across a turn's steps (excludes tool interactions). */
 export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
+}
+
+/** The most recent turn's agent narration — a finalText fallback for seeded
+ *  conversations whose live turn produced no text-delta events. */
+export function lastAgentText(transcript: TranscriptTurn[]): string {
+	for (let i = transcript.length - 1; i >= 0; i--) {
+		const text = agentTextOf(transcript[i]);
+		if (text.length > 0) return text;
+	}
+	return '';
 }
 
 /** Tool id the builder calls to create or modify the workflow graph. */

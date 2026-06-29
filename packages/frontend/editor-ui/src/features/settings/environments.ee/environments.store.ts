@@ -7,7 +7,7 @@ import type {
 } from './environments.types';
 import * as environmentsApi from './environments.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ExpressionError } from 'n8n-workflow';
+import { ExpressionError, resolveVariables } from 'n8n-workflow';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 export const useEnvironmentsStore = defineStore('environments', () => {
@@ -77,13 +77,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	}
 
 	const variablesAsObject = computed(() => {
-		const asObject = scopedVariables.value.reduce<Record<string, string | boolean | number>>(
-			(acc, variable) => {
-				acc[variable.key] = variable.value;
-				return acc;
-			},
-			{},
-		);
+		const asObject = resolveVariables(scopedVariables.value, projectId.value);
 
 		return new Proxy(asObject, {
 			set() {

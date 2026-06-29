@@ -3,6 +3,7 @@ import {
 	inDevelopment,
 	inTest,
 	LicenseState,
+	LockService,
 	Logger,
 	ModuleRegistry,
 	ModulesConfig,
@@ -130,6 +131,15 @@ export abstract class BaseCommand<F = never> {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		await Container.get(LoadNodesAndCredentials).init();
+
+		const useRedisForLocking =
+			this.globalConfig.executions.mode === 'queue' ||
+			this.globalConfig.multiMainSetup.enabled ||
+			this.globalConfig.cache.backend === 'redis';
+		if (useRedisForLocking) {
+			const { RedisLockService } = await import('@/scaling/redis-lock.service');
+			Container.get(LockService).setProvider(Container.get(RedisLockService));
+		}
 
 		await this.dbConnection
 			.init()

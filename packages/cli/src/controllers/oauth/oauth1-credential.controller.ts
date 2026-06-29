@@ -19,7 +19,7 @@ export class OAuth1CredentialController {
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth, res: Response): Promise<string> {
-		const credential = await this.oauthService.getCredentialForUpdate(req);
+		const credential = await this.oauthService.getCredentialForAuthFlow(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 

@@ -479,6 +479,21 @@ describe('McpSettingsController', () => {
 				process.env.NODE_ENV = originalEnv;
 			}
 		});
+
+		test('allows http for IPv6 loopback [::1] outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				const dto = new UpdateAllowedRedirectUrisDto({
+					uris: ['http://[::1]:3000/callback'],
+				});
+
+				expect(dto.uris).toEqual(['http://[::1]:3000/callback']);
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
 	});
 
 	describe('UpdateWorkflowsAvailabilityDto', () => {

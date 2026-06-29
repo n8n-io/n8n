@@ -11,6 +11,7 @@ const mockSetSchemaBaseDirs = jest.fn();
 const mockSearchCodeBuilderNodes = jest.fn();
 const mockGetNodeTypes = jest.fn().mockReturnValue('get-result');
 const mockGetSuggestedNodes = jest.fn().mockReturnValue('suggest-result');
+const mockGenerateNodeTypeFile = jest.fn().mockReturnValue('synth-result');
 
 jest.mock('@n8n/ai-utilities/node-catalog', () => ({
 	NodeTypeParser: MockNodeTypeParser,
@@ -21,6 +22,7 @@ jest.mock('@n8n/ai-utilities/node-catalog', () => ({
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	setSchemaBaseDirs: (...args: unknown[]) => mockSetSchemaBaseDirs(...(args as [string[]])),
+	generateNodeTypeFile: (...args: unknown[]) => mockGenerateNodeTypeFile(...args),
 }));
 
 jest.mock('fs', () => ({
@@ -261,6 +263,169 @@ describe('NodeCatalogService', () => {
 			await service.getNodeTypes(['n8n-nodes-base.slack', 'n8n-nodes-base.gmail']);
 
 			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
+		});
+
+		test('synthesizes type definitions for a community node instead of the on-disk lookup', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-resend.resend',
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypes(['n8n-nodes-resend.resend']);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledTimes(1);
+			expect(result).toContain('synth-result');
+			// Community nodes have no on-disk artifact, so the disk lookup is skipped.
+			expect(mockGetNodeTypes).not.toHaveBeenCalled();
+		});
+
+		test('uses the on-disk lookup for built-in nodes', async () => {
+			await service.initialize();
+
+			const result = await service.getNodeTypes(['n8n-nodes-base.set']);
+
+			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
+			expect(mockGetNodeTypes).toHaveBeenCalledWith(
+				['n8n-nodes-base.set'],
+				expect.objectContaining({ nodeDefinitionDirs: expect.any(Array) }),
+			);
+			expect(result).toBe('get-result');
+			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
+		});
+
+		test('degrades gracefully when a node type cannot be synthesized', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-resend.resend',
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						// Expression-computed inputs can't be expressed as an SDK type.
+						name: 'n8n-nodes-dynamic.dynamic',
+						group: ['transform'],
+						properties: [],
+						inputs: '={{ $json.connections }}',
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypes([
+				'n8n-nodes-resend.resend',
+				'n8n-nodes-dynamic.dynamic',
+			]);
+
+			// The resolvable node still comes through; the unresolvable one is noted, not thrown.
+			expect(result).toContain('synth-result');
+			expect(result).toContain('# Errors');
+			expect(result).toContain('n8n-nodes-dynamic.dynamic');
+		});
+
+		test('synthesizes the latest version of a versioned node by default', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			await service.getNodeTypes(['n8n-nodes-multi.multi']);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledTimes(1);
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ version: 2 }),
+			);
+		});
+
+		test('synthesizes the requested version of a versioned node', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			await service.getNodeTypes([{ nodeId: 'n8n-nodes-multi.multi', version: '1' }]);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ version: 1 }),
+			);
+		});
+
+		test('reports an error for an unknown requested version instead of downgrading', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-multi.multi',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypes([
+				{ nodeId: 'n8n-nodes-multi.multi', version: '5' },
+			]);
+
+			// No silent downgrade: the missing version is reported with what's available.
+			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
+			expect(result).toContain("Version '5' not found for node 'n8n-nodes-multi.multi'");
+			expect(result).toContain('Available versions: 1, 2');
 		});
 	});
 

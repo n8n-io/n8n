@@ -85,7 +85,10 @@ test.describe(
 			// eslint-disable-next-line playwright/no-force-option
 			await specificConnection.hover({ force: true });
 
-			const addNodeButton = n8n.page.getByTestId('add-connection-button');
+			const addNodeButton = n8n.canvas.getAddConnectionButtonBetweenNodes(
+				AI_TOOL_CODE_NODE_NAME,
+				AGENT_NODE_NAME,
+			);
 			await expect(addNodeButton).toBeVisible();
 			await addNodeButton.click();
 			await n8n.canvas.clickNodeCreatorItemName(MANUAL_CHAT_TRIGGER_NODE_NAME);

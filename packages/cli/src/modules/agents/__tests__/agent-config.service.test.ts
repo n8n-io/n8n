@@ -178,13 +178,13 @@ describe('AgentConfigService', () => {
 			} = makeService();
 			const agent = makeAgent({
 				tools: {
-					'tool-1': {
+					tool_1: {
 						code: 'a',
-						descriptor: { name: 'tool-1', description: 'a', inputSchema: {} },
+						descriptor: { name: 'tool_1', description: 'a', inputSchema: {} },
 					},
-					'tool-2': {
+					tool_2: {
 						code: 'b',
-						descriptor: { name: 'tool-2', description: 'b', inputSchema: {} },
+						descriptor: { name: 'tool_2', description: 'b', inputSchema: {} },
 					},
 				} as unknown as Agent['tools'],
 				skills: {
@@ -200,8 +200,8 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(agentId, projectId, {
 				...baseConfig,
 				tools: [
-					{ type: 'custom', id: 'tool-1' },
-					{ type: 'custom', id: 'missing-tool' },
+					{ type: 'custom', id: 'tool_1' },
+					{ type: 'custom', id: 'missing_tool' },
 				],
 				skills: [
 					{ type: 'skill', id: 'skill-1' },
@@ -214,10 +214,10 @@ describe('AgentConfigService', () => {
 			});
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
-			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool-1' }]);
+			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
 			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
-			expect(Object.keys(saved.tools)).toEqual(['tool-1']);
+			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);

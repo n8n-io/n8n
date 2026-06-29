@@ -1,6 +1,6 @@
+import { formatPemBlock } from '@n8n/utils';
 import FormData from 'form-data';
 import get from 'lodash/get';
-import type { Readable } from 'stream';
 import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
@@ -13,10 +13,10 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import type { HttpSslAuthCredentials } from './interfaces';
-import { formatPrivateKey } from '../../utils/utilities';
 
 export type BodyParameter = {
 	name: string;
@@ -284,11 +284,11 @@ export const setAgentOptions = (
 ) => {
 	if (sslCertificates) {
 		const agentOptions: SecureContextOptions = {};
-		if (sslCertificates.ca) agentOptions.ca = formatPrivateKey(sslCertificates.ca);
-		if (sslCertificates.cert) agentOptions.cert = formatPrivateKey(sslCertificates.cert);
-		if (sslCertificates.key) agentOptions.key = formatPrivateKey(sslCertificates.key);
+		if (sslCertificates.ca) agentOptions.ca = formatPemBlock(sslCertificates.ca);
+		if (sslCertificates.cert) agentOptions.cert = formatPemBlock(sslCertificates.cert);
+		if (sslCertificates.key) agentOptions.key = formatPemBlock(sslCertificates.key);
 		if (sslCertificates.passphrase)
-			agentOptions.passphrase = formatPrivateKey(sslCertificates.passphrase);
+			agentOptions.passphrase = formatPemBlock(sslCertificates.passphrase);
 		requestOptions.agentOptions = agentOptions;
 	}
 };

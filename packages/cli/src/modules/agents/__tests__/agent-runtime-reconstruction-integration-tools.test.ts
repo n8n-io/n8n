@@ -23,6 +23,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -120,6 +121,7 @@ function makeRuntimeReconstructionService(
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
+		mock<AiService>(),
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
@@ -231,7 +233,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRuntimeReconstructionService,
 			credentialsService,
 		);
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, runtimeCacheService);
+		Container.set(AgentRuntimeCacheService, runtimeCacheService);
+		agentSkillsService = new AgentSkillsService(logger, agentRepository);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
@@ -267,12 +270,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRepository,
 			agentHistoryRepository,
 			agentTaskSnapshotRepository,
-			agentSkillsService,
 			agentCustomToolsService,
 			runtimeCacheService,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, agentSkillsService);
+		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
