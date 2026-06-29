@@ -142,17 +142,41 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async runDrain(): Promise<number> {
+		const concurrency = this.workflowsConfig.publicationOutboxConsumerConcurrency;
 		return await this.tracing.startSpan(
-			{ name: 'Publication outbox drain', op: 'publication.outbox.drain' },
+			{
+				name: 'Publication outbox drain',
+				op: 'publication.outbox.drain',
+				attributes: { 'n8n.publication.consumer_concurrency': concurrency },
+			},
 			async (span) => {
 				let processed = 0;
-				while (this.shouldKeepPolling()) {
-					const record = await this.outboxRepository.claimNextPendingRecord();
-					if (!record) break;
+				// Run `concurrency` worker loops in parallel. Each claims and processes records
+				// until none remain (claiming is atomic, so workers never grab the same record).
+				// If any worker throws, the others stop claiming and the error is rethrown once
+				// all workers have settled, preserving the existing poll-cycle error reporting.
+				let aborted = false;
+				const runWorker = async () => {
+					while (!aborted && this.shouldKeepPolling()) {
+						const record = await this.outboxRepository.claimNextPendingRecord();
+						if (!record) break;
 
-					await this.processRecord(record);
-					processed++;
-				}
+						await this.processRecord(record);
+						processed++;
+					}
+				};
+
+				const workerTasks = Array.from({ length: concurrency }, async () => {
+					await runWorker().catch((error) => {
+						aborted = true;
+						throw error;
+					});
+				});
+
+				const results = await Promise.allSettled(workerTasks);
+
+				const failure = results.find((r) => r.status === 'rejected');
+				if (failure?.status === 'rejected') throw failure.reason;
 
 				span.setAttribute('n8n.publication.records_processed', processed);
 				span.setStatus({ code: SpanStatus.ok });
