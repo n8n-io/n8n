@@ -31,7 +31,7 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 		throw new Error(`Invalid test case ${filePath}:\n${issues}`);
 	}
 
-	const testCase = parsed.data as WorkflowTestCase;
+	const testCase = parsed.data;
 	if (testCase.seedFile) {
 		// Resolve relative to the case file and validate now, so an authoring
 		// typo fails at load time instead of per-build as an agent failure.
@@ -49,7 +49,7 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 }
 
 /** Split a comma-separated CLI value into a normalized list of substring tokens. */
-function parseSubstringList(value: string | undefined): string[] {
+export function parseSubstringList(value: string | undefined): string[] {
 	if (!value) return [];
 	return value
 		.split(',')
