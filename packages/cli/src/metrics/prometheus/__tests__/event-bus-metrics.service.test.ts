@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
@@ -8,7 +9,7 @@ import { PrometheusEventBusMetricsService } from '../event-bus-metrics.service';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusEventBusMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -21,7 +22,7 @@ describe('PrometheusEventBusMetricsService', () => {
 	});
 	const eventBus = mock<MessageEventBus>();
 	let service: PrometheusEventBusMetricsService;
-	let mockCounterInc: jest.Mock;
+	let mockCounterInc: Mock;
 
 	function getEventBusHandler(): (event: unknown) => void {
 		const calls = eventBus.on.mock.calls as unknown as Array<[string, (event: unknown) => void]>;
@@ -38,13 +39,13 @@ describe('PrometheusEventBusMetricsService', () => {
 			includeNodeTypeLabel: false,
 		});
 		service = new PrometheusEventBusMetricsService(eventBus, config);
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
-		(promClient.validateMetricName as jest.Mock).mockReturnValue(true);
+		(promClient.validateMetricName as Mock).mockReturnValue(true);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -326,7 +327,7 @@ describe('PrometheusEventBusMetricsService', () => {
 			handler(mockEvent);
 
 			// Counter should be constructed only once
-			const counterCalls = jest
+			const counterCalls = vi
 				.mocked(promClient.Counter)
 				.mock.calls.filter((c) => c[0]?.name === 'n8n_workflow_execution_finished_total');
 			expect(counterCalls).toHaveLength(1);
@@ -336,7 +337,7 @@ describe('PrometheusEventBusMetricsService', () => {
 		});
 
 		it('should not create a counter when validateMetricName returns false', () => {
-			(promClient.validateMetricName as jest.Mock).mockReturnValue(false);
+			(promClient.validateMetricName as Mock).mockReturnValue(false);
 			service.init();
 
 			const handler = getEventBusHandler();

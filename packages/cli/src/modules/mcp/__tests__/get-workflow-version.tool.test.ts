@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { Telemetry } from '@/telemetry';
@@ -29,7 +30,7 @@ describe('get-workflow-version MCP tool', () => {
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowHistoryService = mockInstance(WorkflowHistoryService);
-		telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 	});
 
 	const buildTool = () =>
@@ -51,8 +52,8 @@ describe('get-workflow-version MCP tool', () => {
 
 	describe('handler tests', () => {
 		test('returns version content with credentials stripped from nodes', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
-			(workflowHistoryService.getVersion as jest.Mock).mockResolvedValue(
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
 				createWorkflowHistoryVersion({
 					workflowId: 'wf-1',
 					versionId: 'v1',
@@ -78,8 +79,8 @@ describe('get-workflow-version MCP tool', () => {
 		});
 
 		test('returns a structured friendly error when the version is not found', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
-			(workflowHistoryService.getVersion as jest.Mock).mockRejectedValue(
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockRejectedValue(
 				new WorkflowHistoryVersionNotFoundError(''),
 			);
 
@@ -100,7 +101,7 @@ describe('get-workflow-version MCP tool', () => {
 		});
 
 		test('returns a structured error when the workflow is not accessible', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
 
 			const tool = buildTool();
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);

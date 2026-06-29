@@ -6,12 +6,31 @@ import type {
 	SettingsRepository,
 	UserRepository,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalHooks } from '@/external-hooks';
+
+// `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
+// path that doesn't resolve to a real module, so write a real fixture that
+// delegates to a per-test global, letting the test assert on its own spy.
+const { validHookPath } = vi.hoisted(() => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { mkdtempSync, writeFileSync } = require('fs');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { tmpdir } = require('os');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { join } = require('path');
+	const dir = mkdtempSync(join(tmpdir(), 'ext-hooks-'));
+	const p = join(dir, 'valid-hook.js');
+	writeFileSync(
+		p,
+		'module.exports = { workflow: { create: [(...args) => globalThis.__extHookFn(...args)] } };',
+	);
+	return { validHookPath: p as string };
+});
 
 describe('ExternalHooks', () => {
 	const logger = mock<Logger>();
@@ -23,12 +42,12 @@ describe('ExternalHooks', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 
 	const workflowData = mock<IWorkflowBase>({ id: '123', name: 'Test Workflow' });
-	const hookFn = jest.fn();
+	const hookFn = vi.fn();
 
 	let externalHooks: ExternalHooks;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		globalConfig.externalHooks.files = [];
 		externalHooks = new ExternalHooks(
 			logger,
@@ -44,7 +63,7 @@ describe('ExternalHooks', () => {
 	describe('init()', () => {
 		it('should not load hooks if no external hook files are configured', async () => {
 			// @ts-expect-error private method
-			const loadHooksSpy = jest.spyOn(externalHooks, 'loadHooks');
+			const loadHooksSpy = vi.spyOn(externalHooks, 'loadHooks');
 			await externalHooks.init();
 			expect(loadHooksSpy).not.toHaveBeenCalled();
 		});
@@ -52,26 +71,17 @@ describe('ExternalHooks', () => {
 		it('should throw an error if hook file cannot be loaded', async () => {
 			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
 
-			jest.mock(
-				'/path/to/non-existent-hook.js',
-				() => {
-					throw new Error('File not found');
-				},
-				{ virtual: true },
-			);
+			vi.mock('/path/to/non-existent-hook.js', () => {
+				throw new Error('File not found');
+			});
 
 			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should successfully load hooks from valid hook file', async () => {
-			const mockHookFile = {
-				workflow: {
-					create: [hookFn],
-				},
-			};
+			(globalThis as unknown as { __extHookFn: typeof hookFn }).__extHookFn = hookFn;
 
-			globalConfig.externalHooks.files = ['/path/to/valid-hook.js'];
-			jest.mock('/path/to/valid-hook.js', () => mockHookFile, { virtual: true });
+			globalConfig.externalHooks.files = [validHookPath];
 
 			await externalHooks.init();
 
@@ -96,7 +106,7 @@ describe('ExternalHooks', () => {
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
 
-			const hookInvocationContext = hookFn.mock.instances[0];
+			const hookInvocationContext = hookFn.mock.instances[0] as Record<string, unknown>;
 			expect(hookInvocationContext).toHaveProperty('dbCollections');
 			expect(hookInvocationContext.dbCollections).toEqual({
 				User: userRepository,

@@ -18,8 +18,8 @@ describe('SlidingWindowSignal', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllTimers();
-		jest.clearAllMocks();
+		vi.clearAllTimers();
+		vi.clearAllMocks();
 	});
 
 	it('should return the last signal if within window size', async () => {
@@ -32,29 +32,29 @@ describe('SlidingWindowSignal', () => {
 	});
 
 	it('should return null if there is no signal within the window', async () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		const receivedSignalPromise = slidingWindowSignal.getSignal();
-		jest.advanceTimersByTime(600);
+		vi.advanceTimersByTime(600);
 		const receivedSignal = await receivedSignalPromise;
 
 		expect(receivedSignal).toBeNull();
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('should return null if "exit" event is not emitted before timeout', async () => {
 		const signal = 'testSignal';
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		const receivedSignalPromise = slidingWindowSignal.getSignal();
-		jest.advanceTimersByTime(600);
+		vi.advanceTimersByTime(600);
 		eventEmitter.emit('testEvent', signal);
 
 		const receivedSignal = await receivedSignalPromise;
 		expect(receivedSignal).toBeNull();
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('should return the signal emitted on "exit" event before timeout', async () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		const receivedSignalPromise = slidingWindowSignal.getSignal();
 
 		// Emit 'exit' with a signal before timeout
@@ -62,11 +62,11 @@ describe('SlidingWindowSignal', () => {
 		eventEmitter.emit('testEvent', exitSignal);
 
 		// Advance timers enough to go outside the timeout window
-		jest.advanceTimersByTime(600);
+		vi.advanceTimersByTime(600);
 
 		const receivedSignal = await receivedSignalPromise;
 		expect(receivedSignal).toBe(exitSignal);
 
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 });

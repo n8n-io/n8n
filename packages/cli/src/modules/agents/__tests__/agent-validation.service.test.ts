@@ -1,12 +1,13 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import type { AiService } from '@/services/ai.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { AiService } from '@/services/ai.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -31,12 +32,12 @@ function makeAgent(config: AgentJsonConfig | null = runnableConfig, skills = {})
 
 function makeCredentialProvider(credentials: Array<{ id: string; type: string }> = []) {
 	return {
-		list: jest.fn().mockResolvedValue(credentials),
+		list: vi.fn().mockResolvedValue(credentials),
 	} as unknown as CredentialProvider;
 }
 
 function makeAiService(proxyEnabled = false) {
-	return { isProxyEnabled: jest.fn().mockReturnValue(proxyEnabled) } as unknown as AiService;
+	return { isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled) } as unknown as AiService;
 }
 
 function makeService(aiService = makeAiService()) {
@@ -53,7 +54,7 @@ function makeService(aiService = makeAiService()) {
 
 describe('AgentValidationService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('reports missing essentials when the agent or runnable config is absent', async () => {

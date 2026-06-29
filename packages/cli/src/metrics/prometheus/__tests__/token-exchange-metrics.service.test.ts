@@ -1,13 +1,14 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import { PrometheusTokenExchangeMetricsService } from '../token-exchange-metrics.service';
 
 import type { EventService } from '@/events/event.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusTokenExchangeMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -15,7 +16,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 	});
 	const eventService = mock<EventService>();
 	let service: PrometheusTokenExchangeMetricsService;
-	let mockCounterInc: jest.Mock;
+	let mockCounterInc: Mock;
 
 	function getEventHandler(eventName: string) {
 		return eventService.on.mock.calls.find((c) => c[0] === eventName)?.[1];
@@ -24,12 +25,12 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_' });
 		service = new PrometheusTokenExchangeMetricsService(config, eventService);
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -146,7 +147,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should increment token exchange requests success on token-exchange-succeeded', () => {
 			service.init();
 			const handler = getEventHandler('token-exchange-succeeded');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({});
@@ -157,7 +158,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should increment token exchange requests failure and failures counter on token-exchange-failed', () => {
 			service.init();
 			const handler = getEventHandler('token-exchange-failed');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({ failureReason: 'unknown_key' });
@@ -169,7 +170,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should pass through "other" failure reason', () => {
 			service.init();
 			const handler = getEventHandler('token-exchange-failed');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({ failureReason: 'other' });
@@ -180,7 +181,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should pass through "role_not_allowed" failure reason', () => {
 			service.init();
 			const handler = getEventHandler('token-exchange-failed');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({ failureReason: 'role_not_allowed' });
@@ -191,7 +192,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should pass through "invalid_signature" failure reason', () => {
 			service.init();
 			const handler = getEventHandler('token-exchange-failed');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({ failureReason: 'invalid_signature' });
@@ -202,7 +203,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should increment embed login success on embed-login', () => {
 			service.init();
 			const handler = getEventHandler('embed-login');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({});
@@ -213,7 +214,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should increment embed login failure and failures counter on embed-login-failed', () => {
 			service.init();
 			const handler = getEventHandler('embed-login-failed');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({ failureReason: 'invalid_signature' });
@@ -225,7 +226,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should increment JIT provisioning counter on token-exchange-user-provisioned', () => {
 			service.init();
 			const handler = getEventHandler('token-exchange-user-provisioned');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({});
@@ -236,7 +237,7 @@ describe('PrometheusTokenExchangeMetricsService', () => {
 		it('should increment identity linked counter on token-exchange-identity-linked', () => {
 			service.init();
 			const handler = getEventHandler('token-exchange-identity-linked');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({});
