@@ -11,6 +11,7 @@ import {
 	filterAndManageProcessedItems,
 	salesforceApiRequest,
 	escapeSoqlString,
+	getResourceLocatorValue,
 	validateSoqlFieldName,
 	validateSoqlOperator,
 	validateSoqlObjectName,
@@ -836,6 +837,40 @@ describe('Salesforce -> GenericFunctions', () => {
 						fields: 'AnnualRevenue, Phone',
 					},
 				});
+			});
+		});
+
+		describe('getResourceLocatorValue', () => {
+			it('returns a raw string unchanged (legacy options-field shape)', () => {
+				expect(getResourceLocatorValue('0051700000ABCDE')).toBe('0051700000ABCDE');
+			});
+
+			it('extracts the value from a resourceLocator object', () => {
+				expect(
+					getResourceLocatorValue({ __rl: true, mode: 'list', value: '0051700000ABCDE' }),
+				).toBe('0051700000ABCDE');
+				expect(getResourceLocatorValue({ __rl: true, mode: 'id', value: '0051700000ABCDE' })).toBe(
+					'0051700000ABCDE',
+				);
+			});
+
+			it('returns undefined for missing or empty values', () => {
+				expect(getResourceLocatorValue(undefined)).toBeUndefined();
+				expect(getResourceLocatorValue(null)).toBeUndefined();
+				expect(getResourceLocatorValue('')).toBeUndefined();
+				expect(getResourceLocatorValue({ __rl: true, mode: 'list', value: '' })).toBeUndefined();
+				expect(getResourceLocatorValue({ __rl: true, mode: 'list', value: null })).toBeUndefined();
+			});
+
+			it('coerces non-string inner values to strings', () => {
+				expect(getResourceLocatorValue({ __rl: true, mode: 'id', value: 12345 })).toBe('12345');
+			});
+
+			it('returns undefined for unrecognised shapes', () => {
+				expect(getResourceLocatorValue({})).toBeUndefined();
+				expect(getResourceLocatorValue({ foo: 'bar' })).toBeUndefined();
+				expect(getResourceLocatorValue(42)).toBeUndefined();
+				expect(getResourceLocatorValue(true)).toBeUndefined();
 			});
 		});
 
