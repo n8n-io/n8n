@@ -122,7 +122,7 @@ describe('Salesforce', () => {
 		});
 
 		describe('searchUsers (listSearch)', () => {
-			it('should run a filtered, capped SOQL query and map results to {name, value}', async () => {
+			it('should run a filtered SOQL query with a batchSize header and map results', async () => {
 				salesforceApiRequestSpy.mockResolvedValue({
 					records: [
 						{ Id: 'user1', Name: 'John Doe' },
@@ -141,9 +141,9 @@ describe('Salesforce', () => {
 					'GET',
 					'/query',
 					{},
-					{
-						q: "SELECT Id, Name FROM User WHERE Name LIKE '%jo%' ORDER BY Name LIMIT 50",
-					},
+					{ q: "SELECT Id, Name FROM User WHERE Name LIKE '%jo%' ORDER BY Name" },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
 				);
 				expect(result).toEqual({
 					results: [
@@ -163,22 +163,21 @@ describe('Salesforce', () => {
 					'GET',
 					'/query',
 					{},
-					{
-						q: 'SELECT Id, Name FROM User ORDER BY Name LIMIT 50',
-					},
+					{ q: 'SELECT Id, Name FROM User ORDER BY Name' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
 				);
 				expect(result).toEqual({ results: [], paginationToken: undefined });
 			});
 
-			it('should escape single quotes in the filter', async () => {
+			it('should escape single quotes in the filter without applying a LIMIT', async () => {
 				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
 
 				await node.methods.listSearch.searchUsers.call(mockLoadOptionsFunctions, "O'Brien");
 
 				const qs = salesforceApiRequestSpy.mock.calls[0][3] as { q: string };
-				expect(qs.q).toBe(
-					"SELECT Id, Name FROM User WHERE Name LIKE '%O\\'Brien%' ORDER BY Name LIMIT 50",
-				);
+				expect(qs.q).toBe("SELECT Id, Name FROM User WHERE Name LIKE '%O\\'Brien%' ORDER BY Name");
+				expect(qs.q).not.toContain('LIMIT');
 			});
 
 			it('should follow the pagination cursor instead of re-querying', async () => {
@@ -226,9 +225,9 @@ describe('Salesforce', () => {
 					'GET',
 					'/query',
 					{},
-					{
-						q: 'SELECT Id, Name FROM User ORDER BY Name LIMIT 50',
-					},
+					{ q: 'SELECT Id, Name FROM User ORDER BY Name' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
 				);
 				// Queues are sorted by label; users follow in their SOQL order.
 				expect(result.results).toEqual([

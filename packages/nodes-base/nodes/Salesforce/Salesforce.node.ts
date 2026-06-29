@@ -43,7 +43,8 @@ import { taskFields, taskOperations } from './TaskDescription';
 import type { ITask } from './TaskInterface';
 import { userFields, userOperations } from './UserDescription';
 
-const USER_SEARCH_PAGE_SIZE = 50;
+// 200 is Salesforce's minimum query batchSize; smaller values are ignored.
+const USER_SEARCH_PAGE_SIZE = 200;
 
 async function searchOwners(
 	this: ILoadOptionsFunctions,
@@ -88,14 +89,16 @@ async function searchOwners(
 	} else {
 		const escapedFilter = filter ? escapeSoqlString(filter) : '';
 		const whereClause = escapedFilter ? `WHERE Name LIKE '%${escapedFilter}%' ` : '';
+		// No LIMIT: it would cap the result below the batch size and suppress the
+		// nextRecordsUrl cursor. batchSize bounds the page instead.
 		userResponse = (await salesforceApiRequest.call(
 			this,
 			'GET',
 			'/query',
 			{},
-			{
-				q: `SELECT Id, Name FROM User ${whereClause}ORDER BY Name LIMIT ${USER_SEARCH_PAGE_SIZE}`,
-			},
+			{ q: `SELECT Id, Name FROM User ${whereClause}ORDER BY Name` },
+			undefined,
+			{ headers: { 'Sforce-Query-Options': `batchSize=${USER_SEARCH_PAGE_SIZE}` } },
 		)) as typeof userResponse;
 	}
 
