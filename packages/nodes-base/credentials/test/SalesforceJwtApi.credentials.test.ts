@@ -14,8 +14,8 @@ import { SalesforceJwtApi, resolveAuthUrl } from '../SalesforceJwtApi.credential
 vi.mock('jsonwebtoken', () => ({
 	default: { sign: vi.fn() },
 }));
-vi.mock('@utils/utilities', () => ({
-	formatPrivateKey: (key: string) => key,
+vi.mock('@n8n/utils', () => ({
+	formatPemBlock: (key: string) => key,
 }));
 
 describe('SalesforceJwtApi Credential', () => {

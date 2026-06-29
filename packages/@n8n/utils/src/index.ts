@@ -12,6 +12,7 @@ export * from './files/sanitize-filename';
 export * from './files/is-windows-file-path';
 export * from './placeholder';
 export * from './get-jwt-expiry';
+export * from './format-pem-block';
 export * from './scrub-secrets';
 export type * from './types';
 export * from './is-record';
