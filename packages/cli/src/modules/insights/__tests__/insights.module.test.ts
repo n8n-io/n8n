@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
 import { InsightsModule } from '../insights.module';
 import { InsightsService } from '../insights.service';
@@ -36,6 +37,7 @@ describe('InsightsModule', () => {
 		// this DI token, so asserting on the mock's lifecycle calls verifies the
 		// load happened without probing module-loader internals.
 		Container.set(InsightsCollectionService, mockCollectionService);
+		Container.set(InsightsByPeriodRepository, mock<InsightsByPeriodRepository>());
 		Container.set(
 			InsightsService,
 			new InsightsService(
