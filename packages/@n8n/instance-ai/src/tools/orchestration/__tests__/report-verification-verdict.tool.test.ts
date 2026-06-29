@@ -9,6 +9,7 @@ function createWorkflowTaskService(reportVerificationVerdict = vi.fn()) {
 		reportBuildOutcome: vi.fn(),
 		reportVerificationVerdict,
 		getBuildOutcome: vi.fn(),
+		getLatestBuildOutcomeForWorkflow: vi.fn(),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
 	};
@@ -104,7 +105,7 @@ describe('report-verification-verdict tool', () => {
 		const result = await executeTool(tool, baseInput, {} as never);
 
 		expect((result as { guidance: string }).guidance).toContain('VERIFY');
-		expect((result as { guidance: string }).guidance).toContain('executions(action="run")');
+		expect((result as { guidance: string }).guidance).toContain('verify-built-workflow');
 	});
 
 	it('returns patch guidance when needs_patch produces patch action', async () => {

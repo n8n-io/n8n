@@ -1,0 +1,38 @@
+{
+	"description": "Regression coverage for plan-approval handoff: after a create-tasks plan is approved, the foreground orchestrator must stop and let the planned build/verification follow-up own the workflow work exactly once.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "First create a structured plan approval card/task checklist and wait for my approval before building. Do not use a plain text plan and do not skip the plan approval step. After I approve the plan card, build a workflow that runs every weekday at 9am and posts \"Plan handoff check passed\" to Slack #handoff-check. After saving, verify the workflow automatically."
+		}
+	],
+	"complexity": "simple",
+	"tags": [
+		"behaviour",
+		"verification",
+		"planning",
+		"plan-approval",
+		"handoff",
+		"schedule",
+		"slack"
+	],
+	"credentials": [{ "type": "slackApi" }],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent used the structured plan approval flow before building: the transcript includes a create-tasks tool call or Plan interaction, the conversation metrics show a plan-review confirmation request, and no workflow was built before that plan-review was approved. A plain text plan with no create-tasks/plan-review confirmation does not satisfy this expectation.",
+		"After the structured plan was approved, the single workflow build was owned by the planned build follow-up. The transcript does not show the foreground orchestrator building the requested workflow inline and then a second planned-task follow-up building the same workflow again.",
+		"The agent ran automatic verification after the planned build, and it did not use verification failure or follow-up scheduling as a reason to rebuild the same workflow a second time."
+	],
+	"outcomeExpectations": [
+		"The final workflow has a weekday 9am schedule trigger and posts the exact message \"Plan handoff check passed\" to Slack #handoff-check."
+	],
+	"executionScenarios": [
+		{
+			"name": "weekday-slack-post",
+			"description": "The scheduled workflow posts the handoff check message to Slack.",
+			"dataSetup": "The Slack postMessage/send-message node posts to #handoff-check and returns a successful response with ok=true and a message timestamp.",
+			"successCriteria": "The workflow executes without errors and the Slack node posts the exact text \"Plan handoff check passed\" to #handoff-check. There is only one Slack posting action in the workflow."
+		}
+	]
+}
