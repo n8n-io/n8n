@@ -170,7 +170,11 @@ async function importOperationHandlerResolver(
 	}
 
 	const modulePath = path.join(handlersPath, handlerModule);
-	const imported = (await import(modulePath)) as Record<string, unknown> & {
+	// `@vite-ignore`: the path is fully dynamic, so Vite's `dynamic-import-vars` plugin can't
+	// analyze it (it throws during transform when this module is loaded under Vitest). Skipping
+	// analysis leaves a plain runtime `import()`, which the test runner and the prod CJS build
+	// (downleveled to `require`) both resolve.
+	const imported = (await import(/* @vite-ignore */ modulePath)) as Record<string, unknown> & {
 		default?: Record<string, unknown>;
 	};
 	const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
