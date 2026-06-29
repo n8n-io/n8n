@@ -658,6 +658,27 @@ describe('Source Control Helper', () => {
 			expect(areSameCredentials(creds1, creds2)).toBe(false);
 		});
 
+		it('should return false when isResolvable differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should return false when resolvableAllowFallback differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ resolvableAllowFallback: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should treat undefined and false resolver fields as equal', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: false, resolvableAllowFallback: false });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(true);
+		});
+
 		it('should return true when both have undefined data', () => {
 			const creds1 = mockCredential({ data: undefined });
 			const creds2 = mockCredential({ data: undefined });
