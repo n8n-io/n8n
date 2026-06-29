@@ -148,6 +148,9 @@ function detectBinaryVersion(bin) {
 			encoding: 'utf8',
 			timeout: 3000,
 			stdio: ['ignore', 'pipe', 'ignore'],
+			// Mark as active so this probe passes straight through the PATH shim
+			// (~/.n8n/bin/<bin>) instead of triggering another tracked invocation.
+			env: { ...process.env, N8N_DEV_SHIM_ACTIVE: '1' },
 		});
 		const m = out.match(/\d+\.\d+(?:\.\d+)?(?:[-+][\w.]+)?/);
 		return m && m[0].length <= 40 ? m[0] : null;

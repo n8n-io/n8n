@@ -20,7 +20,10 @@
  */
 import { execFileSync, spawn } from 'node:child_process';
 import {
+	accessSync,
+	chmodSync,
 	closeSync,
+	constants,
 	copyFileSync,
 	existsSync,
 	mkdirSync,
@@ -38,6 +41,9 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 // The shadow library is copied out of the repo into ~/.n8n/bin and sourced from
 // there, so it survives short-lived checkouts (e.g. Conductor worktrees).
 const SHADOW_LIB_SRC = join(SCRIPT_DIR, 'shadow-binary.sh');
+// The PATH shim (also copied into ~/.n8n/bin, one per shadowed binary) broadens
+// coverage to non-interactive shells and AI agents.
+const SHADOW_SHIM_SRC = join(SCRIPT_DIR, 'shadow-shim.sh');
 const MARKER_START = '# >>> n8n dev metrics >>>';
 const MARKER_END = '# <<< n8n dev metrics <<<';
 
@@ -65,9 +71,14 @@ function statePath() {
 	return join(n8nDir(), 'dev-telemetry.json');
 }
 
+/** ~/.n8n/bin — stable home for the library and the PATH shims. */
+function binDir() {
+	return join(n8nDir(), 'bin');
+}
+
 /** Stable, repo-independent home for the shadow library (sourced from the rc). */
 function shadowLibDest() {
-	return join(n8nDir(), 'bin', 'shadow-binary.sh');
+	return join(binDir(), 'shadow-binary.sh');
 }
 
 /** Parse the `# n8n-shadow-binary-version: N` marker from a file, or null. */
@@ -93,6 +104,61 @@ function syncShadowLib() {
 		copyFileSync(SHADOW_LIB_SRC, dest);
 	}
 	return dest;
+}
+
+/** Parse the `# n8n-shadow-shim-version: N` marker from a file, or null. */
+function shadowShimVersion(file) {
+	try {
+		const m = readFileSync(file, 'utf8').match(/# n8n-shadow-shim-version:\s*(\d+)/);
+		return m ? Number(m[1]) : null;
+	} catch {
+		return null;
+	}
+}
+
+/** Resolve the real binary on PATH, excluding our shim dir so we never self-resolve. */
+function resolveRealBinary(bin) {
+	const dir = binDir();
+	for (const d of (process.env.PATH ?? '').split(':')) {
+		if (!d || d === dir) continue;
+		const p = join(d, bin);
+		try {
+			accessSync(p, constants.X_OK);
+			return p;
+		} catch {
+			// not here / not executable — keep looking
+		}
+	}
+	return '';
+}
+
+/**
+ * Install one executable PATH shim per shadowed binary at ~/.n8n/bin/<binary>,
+ * rendered from shadow-shim.sh with the binary name, the resolved real binary
+ * and this dir baked in. Rewritten whenever the rendered content changes (shim
+ * version bump or a moved real binary).
+ */
+function syncShims() {
+	const dir = binDir();
+	const template = readFileSync(SHADOW_SHIM_SRC, 'utf8');
+	mkdirSync(dir, { recursive: true });
+	for (const bin of SHADOWED_BINARIES) {
+		const dest = join(dir, bin);
+		const rendered = template
+			.replaceAll('__N8N_BIN__', bin)
+			.replaceAll('__N8N_REAL__', resolveRealBinary(bin))
+			.replaceAll('__N8N_BINDIR__', dir);
+		let current = '';
+		try {
+			current = readFileSync(dest, 'utf8');
+		} catch {
+			// no existing shim
+		}
+		if (current !== rendered) {
+			writeFileSync(dest, rendered);
+			chmodSync(dest, 0o755);
+		}
+	}
 }
 
 function readState() {
@@ -135,12 +201,17 @@ function shellRcPath() {
 
 function rcBlock() {
 	const lib = shadowLibDest();
-	const shadowCalls = SHADOWED_BINARIES.map((bin) => `\tshadow_binary ${bin}`);
+	const bin = binDir();
+	const shadowCalls = SHADOWED_BINARIES.map((b) => `\tshadow_binary ${b}`);
 	return [
 		MARKER_START,
 		`# signature: ${hookSignature()} — managed automatically; edit setup.mjs, not here.`,
 		'# Anonymous CLI usage metrics for n8n developers.',
 		'#   manage from any n8n checkout: node scripts/dev-metrics/setup.mjs --status|--disable',
+		// Put the PATH shims ahead of the real binaries so non-interactive shells
+		// and AI agents are covered too (guarded against duplicate entries).
+		`case ":$PATH:" in *":${bin}:"*) ;; *) export PATH="${bin}:$PATH" ;; esac`,
+		// The shell function adds high-resolution timing for interactive shells.
 		`if [ -f "${lib}" ]; then`,
 		`\t. "${lib}"`,
 		...shadowCalls,
@@ -168,9 +239,10 @@ function readBlockSignature(content) {
  * and no-ops if already current. Returns the action taken.
  */
 function installHook() {
-	// Keep ~/.n8n/bin/shadow-binary.sh current regardless of whether the rc block
-	// itself needs rewriting (the library is versioned independently).
+	// Keep the ~/.n8n/bin copies current regardless of whether the rc block itself
+	// needs rewriting (library and shims are versioned independently).
 	syncShadowLib();
+	syncShims();
 	const rc = shellRcPath();
 	const existing = existsSync(rc) ? readFileSync(rc, 'utf8') : '';
 	const hasBlock = existing.includes(MARKER_START);
@@ -239,6 +311,10 @@ function status() {
 	const dest = shadowLibDest();
 	console.log(
 		`  shadow lib: installed=v${shadowLibVersion(dest) ?? '(none)'} source=v${shadowLibVersion(SHADOW_LIB_SRC) ?? '?'} (${dest})`,
+	);
+	const shim = join(binDir(), SHADOWED_BINARIES[0]);
+	console.log(
+		`  path shim:  installed=v${shadowShimVersion(shim) ?? '(none)'} source=v${shadowShimVersion(SHADOW_SHIM_SRC) ?? '?'} (${binDir()}/{${SHADOWED_BINARIES.join(',')}})`,
 	);
 	console.log(`  git email:  ${gitEmail() || '(unset)'} (internal: ${isInternalDev()})`);
 }

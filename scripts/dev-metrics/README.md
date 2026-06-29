@@ -15,26 +15,35 @@ remembered. Today only `pnpm` is tracked, but the shell side is a reusable
 pnpm install
   └─ scripts/prepare.mjs
        └─ scripts/dev-metrics/setup.mjs   ← asks once (git email @n8n.io; prompts via /dev/tty)
-            └─ on "yes": copies shadow-binary.sh → ~/.n8n/bin/, and adds a block to
-                          ~/.zshrc that sources ~/.n8n/bin/shadow-binary.sh + `shadow_binary pnpm`
+            └─ on "yes": copies shadow-binary.sh + a per-binary PATH shim into
+                          ~/.n8n/bin/, and adds a block to ~/.zshrc that puts
+                          ~/.n8n/bin on PATH and sources the library
 
-pnpm <anything>            (in an n8n checkout, new shell)
-  └─ pnpm() wrapper        times the command, never blocks or changes exit code
-       └─ track.mjs        (found by walking up from $PWD; backgrounded) → PostHog capture API
+pnpm <anything>
+  ├─ interactive shell → pnpm() function (high-res timing)   ┐
+  └─ anything else (non-interactive shell, AI agent, …)      │ both run the real
+        → ~/.n8n/bin/pnpm PATH shim                          ┘ pnpm, then →
+             track.mjs  (found by walking up from $PWD; backgrounded) → PostHog
 ```
 
-The library is sourced from **`~/.n8n/bin/shadow-binary.sh`**, not from the
-checkout, so it survives short-lived repos (e.g. Conductor worktrees): the
-checkout that ran `pnpm install` can be deleted and your shells still work. The
-tracker (`track.mjs`) is *not* copied — it's a committed file discovered by
-walking up from `$PWD`, so each checkout uses its own (and pnpm runs outside any
-n8n checkout are ignored). pnpm itself prompts via `/dev/tty` because pnpm pipes
-lifecycle-script stdio in a workspace.
+Two hooks, deduped by an `N8N_DEV_SHIM_ACTIVE` guard so a command is counted once:
+- The **shell function** (from the rc block) covers interactive shells with
+  high-resolution timing.
+- The **PATH shim** at `~/.n8n/bin/<binary>` covers everything that resolves the
+  binary through PATH — non-interactive shells, scripts, and AI agents — that the
+  function can't reach.
+
+Both live under **`~/.n8n/bin`**, not the checkout, so they survive short-lived
+repos (e.g. Conductor worktrees). The tracker (`track.mjs`) is *not* copied —
+it's a committed file discovered by walking up from `$PWD`, so each checkout uses
+its own (and pnpm runs outside any n8n checkout are ignored). pnpm prompts via
+`/dev/tty` because it pipes lifecycle-script stdio in a workspace.
 
 | File | Role |
 | --- | --- |
-| `setup.mjs` | One-time consent prompt; copies the library to `~/.n8n/bin`; installs/removes the rc block; `--status`/`--enable`/`--disable`. |
-| `shadow-binary.sh` | Reusable library (versioned via `# n8n-shadow-binary-version`): `shadow_binary <name>` replaces a binary with a timing wrapper. Copied to `~/.n8n/bin`. |
+| `setup.mjs` | One-time consent prompt; copies the library + shims to `~/.n8n/bin`; installs/removes the rc block; `--status`/`--enable`/`--disable`. |
+| `shadow-binary.sh` | Interactive shell library (versioned via `# n8n-shadow-binary-version`): `shadow_binary <name>` wraps a binary with a timing function. |
+| `shadow-shim.sh` | PATH-shim template (versioned via `# n8n-shadow-shim-version`); rendered per binary into `~/.n8n/bin/<binary>` for non-interactive/agent coverage. |
 | `track.mjs` | Builds the anonymous event and POSTs it to PostHog (fire-and-forget). |
 | `capture-server.mjs` | Local PostHog stub for testing — logs every event instead of sending it upstream. |
 
@@ -107,6 +116,9 @@ visible via `setup.mjs --status`):
 - **shadow-library version** = `# n8n-shadow-binary-version` in `shadow-binary.sh`.
   Bump it whenever you edit the shell library; `setup.mjs` then replaces
   `~/.n8n/bin/shadow-binary.sh` on the next install (no rc-block change needed).
+- **shim version** = `# n8n-shadow-shim-version` in `shadow-shim.sh`. Shims are
+  re-rendered into `~/.n8n/bin/<binary>` whenever the rendered content changes
+  (version bump or a moved real binary).
 - **event `schema_version`** in `track.mjs` for the payload shape.
 
 > Each shadowed binary's version is detected per command by the backgrounded

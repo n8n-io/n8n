@@ -58,8 +58,15 @@ __n8n_find_tracker() {
 __n8n_shadow_run() {
 	__shadow_bin="$1"
 	shift
+	# Already inside a shadowed call (e.g. via the ~/.n8n/bin PATH shim): just run
+	# the real binary, so the same command isn't counted twice.
+	if [ -n "${N8N_DEV_SHIM_ACTIVE:-}" ]; then
+		command "$__shadow_bin" "$@"
+		return $?
+	fi
 	__shadow_start="$(__n8n_now_ms)"
-	command "$__shadow_bin" "$@"
+	# Mark the call so a PATH shim we pass through doesn't also track it.
+	N8N_DEV_SHIM_ACTIVE=1 command "$__shadow_bin" "$@"
 	__shadow_code=$?
 	__shadow_end="$(__n8n_now_ms)"
 
