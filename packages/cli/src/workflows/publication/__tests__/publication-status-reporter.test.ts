@@ -4,6 +4,7 @@ import type {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
+import type { DataSource, EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
@@ -20,6 +21,8 @@ describe('PublicationStatusReporter', () => {
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const push = mock<Push>();
 	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
+	const dataSource = mock<DataSource>();
+	const entityManager = mock<EntityManager>();
 
 	const reporter = new PublicationStatusReporter(
 		logger,
@@ -28,6 +31,7 @@ describe('PublicationStatusReporter', () => {
 		activationErrorsService,
 		push,
 		triggerStatusRepository,
+		dataSource,
 	);
 
 	function makeRecord(
@@ -54,14 +58,17 @@ describe('PublicationStatusReporter', () => {
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
 		triggerStatusRepository.deleteForWorkflow.mockResolvedValue(undefined);
+		dataSource.transaction.mockImplementation(
+			async (cb: (trx: EntityManager) => Promise<unknown>) => await cb(entityManager),
+		);
 	});
 
 	test('completed writes trigger rows, marks the record completed, and clears activation errors', async () => {
 		await reporter.report(makeRecord(), {
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', errorMessage: null },
-				{ nodeId: 'b', nodeName: 'Schedule', status: 'activated', errorMessage: null },
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated' },
+				{ nodeId: 'b', nodeName: 'Schedule', status: 'activated' },
 			],
 		});
 
@@ -78,8 +85,8 @@ describe('PublicationStatusReporter', () => {
 				status: 'activated',
 				errorMessage: null,
 			},
-		]);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+		], entityManager);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({
@@ -91,8 +98,8 @@ describe('PublicationStatusReporter', () => {
 	test('unpublished deletes trigger rows, marks the record completed, clears errors, and pushes deactivation', async () => {
 		await reporter.report(makeRecord(), { type: 'unpublished' });
 
-		expect(triggerStatusRepository.deleteForWorkflow).toHaveBeenCalledWith('wf-1');
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+		expect(triggerStatusRepository.deleteForWorkflow).toHaveBeenCalledWith('wf-1', entityManager);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({
@@ -106,7 +113,7 @@ describe('PublicationStatusReporter', () => {
 		async (reason) => {
 			await reporter.report(makeRecord(), { type: 'skipped', reason });
 
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
@@ -132,7 +139,7 @@ describe('PublicationStatusReporter', () => {
 
 		expect(triggerStatusRepository.replaceForWorkflow).not.toHaveBeenCalled();
 		expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed');
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed', entityManager);
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({
 			type: 'workflowFailedToActivate',
@@ -147,7 +154,7 @@ describe('PublicationStatusReporter', () => {
 			type: 'failed',
 			error,
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', errorMessage: null },
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated' },
 				{ nodeId: 'b', nodeName: 'Schedule', status: 'failed', errorMessage: 'cron unavailable' },
 			],
 		});
@@ -165,15 +172,19 @@ describe('PublicationStatusReporter', () => {
 				status: 'failed',
 				errorMessage: 'cron unavailable',
 			},
-		]);
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'partial registration failed');
+		], entityManager);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'partial registration failed',
+			entityManager,
+		);
 	});
 
 	test('partial marks partial_success, writes all trigger rows, and pushes the failures without registering activation errors', async () => {
 		await reporter.report(makeRecord(), {
 			type: 'partial',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', errorMessage: null },
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated' },
 				{ nodeId: 'b', nodeName: 'Schedule', status: 'failed', errorMessage: 'cron unavailable' },
 				{ nodeId: 'c', nodeName: 'Kafka', status: 'failed', errorMessage: 'broker down' },
 			],
@@ -182,7 +193,11 @@ describe('PublicationStatusReporter', () => {
 		const expectedMessage =
 			'Some triggers failed to activate: "Schedule": cron unavailable; "Kafka": broker down';
 
-		expect(outboxRepository.markPartialSuccess).toHaveBeenCalledWith(1, expectedMessage);
+		expect(outboxRepository.markPartialSuccess).toHaveBeenCalledWith(
+			1,
+			expectedMessage,
+			entityManager,
+		);
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
 			{
 				nodeId: 'a',
@@ -202,7 +217,7 @@ describe('PublicationStatusReporter', () => {
 				status: 'failed',
 				errorMessage: 'broker down',
 			},
-		]);
+		], entityManager);
 		// CAT-3432: partial path must NOT register activation errors
 		expect(activationErrorsService.register).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({

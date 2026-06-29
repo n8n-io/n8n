@@ -281,7 +281,7 @@ erDiagram
   varchar_36_ nodeId
   varchar_20_ status
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ versionId
+  varchar_36_ versionId FK
   varchar_36_ workflowId FK
 }
 "public.workflow_publish_history" {

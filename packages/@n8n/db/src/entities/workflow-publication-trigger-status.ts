@@ -2,6 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, Relation } from '
 
 import { WithTimestamps } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type WorkflowPublicationTriggerStatusType = 'activated' | 'failed';
 
@@ -19,6 +20,7 @@ export class WorkflowPublicationTriggerStatus extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	nodeId: string;
 
+	/** The `workflow_history` version these statuses were recorded for. */
 	@Column({ type: 'varchar', length: 36 })
 	versionId: string;
 
@@ -31,4 +33,8 @@ export class WorkflowPublicationTriggerStatus extends WithTimestamps {
 	@ManyToOne('WorkflowEntity', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'workflowId' })
 	workflow: Relation<WorkflowEntity>;
+
+	@ManyToOne('WorkflowHistory', { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'versionId', referencedColumnName: 'versionId' })
+	publishedVersion: Relation<WorkflowHistory>;
 }

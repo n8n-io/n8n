@@ -9,13 +9,25 @@ export type PublicationSkipReason =
 	/** The workflow is no longer active, so there are no triggers to reconcile. */
 	| 'workflow-inactive';
 
-/** The activation status of a single trigger node after a publication attempt. */
-export type TriggerPublicationStatus = {
+/** A trigger that activated successfully; carries no error. */
+type ActivatedTriggerPublicationStatus = {
 	nodeId: string;
 	nodeName: string;
-	status: 'activated' | 'failed';
-	errorMessage: string | null;
+	status: 'activated';
 };
+
+/** A trigger that failed to activate; always carries the failure message. */
+export type FailedTriggerPublicationStatus = {
+	nodeId: string;
+	nodeName: string;
+	status: 'failed';
+	errorMessage: string;
+};
+
+/** The activation status of a single trigger node after a publication attempt. */
+export type TriggerPublicationStatus =
+	| ActivatedTriggerPublicationStatus
+	| FailedTriggerPublicationStatus;
 
 /**
  * The outcome of applying a single publication outbox record, as produced by

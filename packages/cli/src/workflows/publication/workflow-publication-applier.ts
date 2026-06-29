@@ -235,14 +235,16 @@ export class WorkflowPublicationApplier {
 		outcome: TriggerActivationOutcome,
 	): TriggerPublicationStatus[] {
 		const failureByNodeId = new Map(outcome.failures.map((f) => [f.nodeId, f]));
-		return desiredTriggerNodes.map((node) => {
+		return desiredTriggerNodes.map((node): TriggerPublicationStatus => {
 			const failure = failureByNodeId.get(node.id);
-			return {
-				nodeId: node.id,
-				nodeName: node.name,
-				status: failure ? 'failed' : 'activated',
-				errorMessage: failure ? failure.error.message : null,
-			};
+			return failure
+				? {
+						nodeId: node.id,
+						nodeName: node.name,
+						status: 'failed',
+						errorMessage: failure.error.message,
+					}
+				: { nodeId: node.id, nodeName: node.name, status: 'activated' };
 		});
 	}
 

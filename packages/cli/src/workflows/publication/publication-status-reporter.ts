@@ -6,11 +6,13 @@ import {
 	type TriggerStatusRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { DataSource, type EntityManager } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { Push } from '@/push';
 import type {
+	FailedTriggerPublicationStatus,
 	PublicationResult,
 	PublicationSkipReason,
 	TriggerPublicationStatus,
@@ -31,6 +33,7 @@ export class PublicationStatusReporter {
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly push: Push,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
+		private readonly dataSource: DataSource,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -38,11 +41,13 @@ export class PublicationStatusReporter {
 	async report(record: WorkflowPublicationOutbox, result: PublicationResult): Promise<void> {
 		switch (result.type) {
 			case 'completed': {
-				await this.triggerStatusRepository.replaceForWorkflow(
-					record.workflowId,
-					this.toRows(record, result.triggerStatuses),
+				await this.complete(record, (trx) =>
+					this.triggerStatusRepository.replaceForWorkflow(
+						record.workflowId,
+						this.toRows(record, result.triggerStatuses),
+						trx,
+					),
 				);
-				await this.complete(record);
 				this.push.broadcast({
 					type: 'workflowActivated',
 					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
@@ -51,8 +56,9 @@ export class PublicationStatusReporter {
 			}
 
 			case 'unpublished': {
-				await this.triggerStatusRepository.deleteForWorkflow(record.workflowId);
-				await this.complete(record);
+				await this.complete(record, (trx) =>
+					this.triggerStatusRepository.deleteForWorkflow(record.workflowId, trx),
+				);
 				this.push.broadcast({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },
@@ -79,14 +85,18 @@ export class PublicationStatusReporter {
 			}
 
 			case 'failed': {
-				if (result.triggerStatuses) {
-					await this.triggerStatusRepository.replaceForWorkflow(
-						record.workflowId,
-						this.toRows(record, result.triggerStatuses),
-					);
-				}
+				const { triggerStatuses } = result;
+				await this.dataSource.transaction(async (trx) => {
+					if (triggerStatuses) {
+						await this.triggerStatusRepository.replaceForWorkflow(
+							record.workflowId,
+							this.toRows(record, triggerStatuses),
+							trx,
+						);
+					}
+					await this.outboxRepository.markFailed(record.id, result.error.message, trx);
+				});
 				this.errorReporter.error(result.error, { shouldBeLogged: true });
-				await this.outboxRepository.markFailed(record.id, result.error.message);
 				this.pushFailedToActivate(record.workflowId, result.error.message);
 				return;
 			}
@@ -111,7 +121,9 @@ export class PublicationStatusReporter {
 		record: WorkflowPublicationOutbox,
 		triggerStatuses: TriggerPublicationStatus[],
 	): Promise<void> {
-		const failures = triggerStatuses.filter((s) => s.status === 'failed');
+		const failures = triggerStatuses.filter(
+			(s): s is FailedTriggerPublicationStatus => s.status === 'failed',
+		);
 		const errorMessage = this.formatActivationError(failures);
 
 		this.logger.warn('Workflow partially published; some triggers failed to activate', {
@@ -120,11 +132,14 @@ export class PublicationStatusReporter {
 			failedNodeIds: failures.map((s) => s.nodeId),
 		});
 
-		await this.triggerStatusRepository.replaceForWorkflow(
-			record.workflowId,
-			this.toRows(record, triggerStatuses),
-		);
-		await this.outboxRepository.markPartialSuccess(record.id, errorMessage);
+		await this.dataSource.transaction(async (trx) => {
+			await this.triggerStatusRepository.replaceForWorkflow(
+				record.workflowId,
+				this.toRows(record, triggerStatuses),
+				trx,
+			);
+			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
+		});
 
 		this.push.broadcast({
 			type: 'workflowPartiallyActivated',
@@ -132,10 +147,10 @@ export class PublicationStatusReporter {
 				workflowId: record.workflowId,
 				activeVersionId: record.publishedVersionId,
 				errorMessage,
-				failedNodes: failures.map((s) => ({
-					nodeId: s.nodeId,
-					nodeName: s.nodeName,
-					errorMessage: s.errorMessage ?? '',
+				failedNodes: failures.map((triggerStatus) => ({
+					nodeId: triggerStatus.nodeId,
+					nodeName: triggerStatus.nodeName,
+					errorMessage: triggerStatus.errorMessage,
 				})),
 			},
 		});
@@ -146,17 +161,17 @@ export class PublicationStatusReporter {
 		record: WorkflowPublicationOutbox,
 		statuses: TriggerPublicationStatus[],
 	): TriggerStatusRow[] {
-		return statuses.map((s) => ({
-			nodeId: s.nodeId,
+		return statuses.map((triggerStatus) => ({
+			nodeId: triggerStatus.nodeId,
 			versionId: record.publishedVersionId,
-			status: s.status,
-			errorMessage: s.errorMessage,
+			status: triggerStatus.status,
+			errorMessage: triggerStatus.status === 'failed' ? triggerStatus.errorMessage : null,
 		}));
 	}
 
 	/** Builds a human-readable message naming each failed node and its error. */
-	private formatActivationError(failures: TriggerPublicationStatus[]): string {
-		const detail = failures.map((s) => `"${s.nodeName}": ${s.errorMessage ?? ''}`).join('; ');
+	private formatActivationError(failures: FailedTriggerPublicationStatus[]): string {
+		const detail = failures.map((s) => `"${s.nodeName}": ${s.errorMessage}`).join('; ');
 
 		return `Some triggers failed to activate: ${detail}`;
 	}
@@ -169,9 +184,20 @@ export class PublicationStatusReporter {
 		});
 	}
 
-	/** Marks the record completed and clears any activation errors for the workflow. */
-	private async complete(record: WorkflowPublicationOutbox): Promise<void> {
-		await this.outboxRepository.markCompleted(record.id);
+	/**
+	 * Marks the record completed and clears any activation errors for the workflow.
+	 * The optional per-trigger status write and the outbox status update run in a
+	 * single transaction; the cache deregister runs after commit (it is not
+	 * transactional and must not fire if the transaction rolls back).
+	 */
+	private async complete(
+		record: WorkflowPublicationOutbox,
+		writeTriggerStatus?: (trx: EntityManager) => Promise<void>,
+	): Promise<void> {
+		await this.dataSource.transaction(async (trx) => {
+			await writeTriggerStatus?.(trx);
+			await this.outboxRepository.markCompleted(record.id, trx);
+		});
 		await this.activationErrorsService.deregister(record.workflowId);
 	}
 

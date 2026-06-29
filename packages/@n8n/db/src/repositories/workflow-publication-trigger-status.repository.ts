@@ -39,6 +39,6 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 	}
 
 	async findByWorkflowId(workflowId: string): Promise<WorkflowPublicationTriggerStatus[]> {
-		return await this.find({ where: { workflowId } });
+		return await this.findBy({ workflowId });
 	}
 }

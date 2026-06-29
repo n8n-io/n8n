@@ -1,56 +1,89 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { WorkflowPublicationTriggerStatusRepository, WorkflowRepository } from '@n8n/db';
+import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test-utils';
+import type { IWorkflowDb } from '@n8n/db';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublicationTriggerStatusRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+
+/** Seeds `workflow_history` rows so the trigger-status versionId FK is satisfiable. */
+async function seedVersions(workflow: IWorkflowDb, versionIds: string[]): Promise<void> {
+	for (const versionId of versionIds) {
+		await createWorkflowHistory(workflow, undefined, undefined, { versionId });
+	}
+}
 
 describe('WorkflowPublicationTriggerStatusRepository', () => {
 	let repo: WorkflowPublicationTriggerStatusRepository;
 	let workflowRepository: WorkflowRepository;
+	let workflowHistoryRepository: WorkflowHistoryRepository;
+
+	// Shared fixture for the non-destructive tests; the CASCADE tests create their
+	// own workflow/version since they delete the parent.
+	let workflow: IWorkflowDb;
 
 	beforeAll(async () => {
 		await testDb.init();
 		repo = Container.get(WorkflowPublicationTriggerStatusRepository);
 		workflowRepository = Container.get(WorkflowRepository);
+		workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
+
+		workflow = await createWorkflow();
+		await seedVersions(workflow, ['v1', 'v2']);
 	});
 	afterEach(async () => {
-		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+		await testDb.truncate(['WorkflowPublicationTriggerStatus']);
 	});
 	afterAll(async () => await testDb.terminate());
 
 	it('replaceForWorkflow inserts rows then overwrites them', async () => {
-		const wf = await createWorkflow();
-		await repo.replaceForWorkflow(wf.id, [
+		await repo.replaceForWorkflow(workflow.id, [
 			{ nodeId: 'n1', versionId: 'v1', status: 'activated', errorMessage: null },
 			{ nodeId: 'n2', versionId: 'v1', status: 'failed', errorMessage: 'boom' },
 		]);
-		expect(await repo.findByWorkflowId(wf.id)).toHaveLength(2);
+		expect(await repo.findByWorkflowId(workflow.id)).toHaveLength(2);
 
-		await repo.replaceForWorkflow(wf.id, [
+		await repo.replaceForWorkflow(workflow.id, [
 			{ nodeId: 'n1', versionId: 'v2', status: 'activated', errorMessage: null },
 		]);
-		const rows = await repo.findByWorkflowId(wf.id);
+		const rows = await repo.findByWorkflowId(workflow.id);
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({ nodeId: 'n1', versionId: 'v2', status: 'activated' });
 	});
 
 	it('deleteForWorkflow clears rows', async () => {
-		const wf = await createWorkflow();
-		await repo.replaceForWorkflow(wf.id, [
+		await repo.replaceForWorkflow(workflow.id, [
 			{ nodeId: 'n1', versionId: 'v1', status: 'activated', errorMessage: null },
 		]);
-		await repo.deleteForWorkflow(wf.id);
-		expect(await repo.findByWorkflowId(wf.id)).toHaveLength(0);
+		await repo.deleteForWorkflow(workflow.id);
+		expect(await repo.findByWorkflowId(workflow.id)).toHaveLength(0);
 	});
 
 	it('FK CASCADE deletes trigger status rows when parent workflow is deleted', async () => {
-		const wf = await createWorkflow();
-		await repo.replaceForWorkflow(wf.id, [
-			{ nodeId: 'n1', versionId: 'v1', status: 'activated', errorMessage: null },
-			{ nodeId: 'n2', versionId: 'v1', status: 'failed', errorMessage: 'boom' },
+		const ownWorkflow = await createWorkflow();
+		await seedVersions(ownWorkflow, ['v-wf-cascade']);
+		await repo.replaceForWorkflow(ownWorkflow.id, [
+			{ nodeId: 'n1', versionId: 'v-wf-cascade', status: 'activated', errorMessage: null },
+			{ nodeId: 'n2', versionId: 'v-wf-cascade', status: 'failed', errorMessage: 'boom' },
 		]);
-		expect(await repo.findByWorkflowId(wf.id)).toHaveLength(2);
+		expect(await repo.findByWorkflowId(ownWorkflow.id)).toHaveLength(2);
 
-		await workflowRepository.delete(wf.id);
+		await workflowRepository.delete(ownWorkflow.id);
 
-		expect(await repo.findByWorkflowId(wf.id)).toEqual([]);
+		expect(await repo.findByWorkflowId(ownWorkflow.id)).toEqual([]);
+	});
+
+	it('FK CASCADE deletes trigger status rows when the referenced version is deleted', async () => {
+		const ownWorkflow = await createWorkflow();
+		await seedVersions(ownWorkflow, ['v-version-cascade']);
+		await repo.replaceForWorkflow(ownWorkflow.id, [
+			{ nodeId: 'n1', versionId: 'v-version-cascade', status: 'activated', errorMessage: null },
+		]);
+		expect(await repo.findByWorkflowId(ownWorkflow.id)).toHaveLength(1);
+
+		await workflowHistoryRepository.delete({ versionId: 'v-version-cascade' });
+
+		expect(await repo.findByWorkflowId(ownWorkflow.id)).toEqual([]);
 	});
 });
