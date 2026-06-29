@@ -7,6 +7,7 @@ import net from 'node:net';
 import { getContainerRuntimeClient } from 'testcontainers';
 import { mock } from 'vitest-mock-extended';
 
+import type { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 
 // Minimal view of the pg pool we reach into to check out a client that the pool
@@ -233,6 +234,7 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				buildDatabaseConfig(),
 				mock<Logger>(),
 				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
 			);
 			// start() installs the obtainMasterConnection wrapper on the live driver.
 			// Under vitest (NODE_ENV=test) it does not schedule background pings, so the

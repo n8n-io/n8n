@@ -54,11 +54,17 @@ const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value
 const hasExecutionErrors = computed(
 	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
 );
-const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
-const hasSimulatedOutput = computed(
-	() => !!renderData.value.executionSimulationByNodeName[name.value],
+const hasPinnedData = computed(
+	() =>
+		!renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.pinnedDataByNodeName[name.value],
 );
-const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasSimulatedOutput.value);
+const hasExecutionPinData = computed(
+	() =>
+		renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.executionPinDataByNodeName[name.value],
+);
+const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -79,7 +85,7 @@ const classes = computed(() => {
 		[$style.disabled]:
 			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
 		[$style.success]: Boolean(
-			hasRunData.value && executionStatus.value === 'success' && !hasSimulatedOutput.value,
+			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
 		[$style.error]: hasExecutionErrors.value,
 		[$style.running]: running,

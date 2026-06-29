@@ -139,7 +139,8 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
 | `--timeout-ms` | `900000` | Per-test-case timeout |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
-| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
+| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
+| `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
@@ -199,16 +200,20 @@ Operational details:
 
 ### Build expectations (per test case)
 
-A test case can declare optional natural-language assertions about *how the build went* — `buildExpectations: string[]` in its JSON. Each is graded by a separate Sonnet judge (`build-expectations/verifier.ts`) against the **conversation transcript + final workflow + conversation metrics**, and **counts as a unit in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. It doesn't flip an individual scenario's pass/fail (it's its own unit), and a judge `incomplete` verdict is excluded from the count.
+A test case can declare optional natural-language assertions, split by what they judge:
 
-Use it for things the binary checks and `successCriteria` don't cover:
+- **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
+- **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
 
-- **Process / conversational** — `"Before building, the agent asked which Slack channel to use."` (judged from the transcript)
-- **Outcome tied to the conversation** — `"The final workflow reflects the user's follow-up to split the records envelope before posting."` (judged from the workflow)
+Both are graded by the same Sonnet judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow.
+
+Use them for things the binary checks and `successCriteria` don't cover:
 
 ```json
-"buildExpectations": [
-  "Before building, the agent asked which Airtable table and which Slack channel to use.",
+"processExpectations": [
+  "Before building, the agent asked which Airtable table and which Slack channel to use."
+],
+"outcomeExpectations": [
   "The agent honored the user's instruction to fetch via an HTTP Request node, not the Airtable node."
 ]
 ```
@@ -216,14 +221,14 @@ Use it for things the binary checks and `successCriteria` don't cover:
 The signal surfaces in:
 
 - **HTML report** — a "Build expectations" disclosure on the test case: per-expectation &#10003;/&#10007; with a one-line judge reason.
-- **`eval-results.json`** — `buildExpectations` (aggregated per-expectation pass rate) plus `buildExpectationResultsPerRun` (per-iteration verdicts).
+- **`eval-results.json`** — `buildExpectations` (aggregated per-expectation pass rate across both fields) plus `buildExpectationResultsPerRun` (per-iteration verdicts).
 
 Operational details:
 
 - Judged **once per build** (not per scenario), fired concurrently with the scenario batch — ~0 added wall-clock in the common case.
-- Runs on both eval paths (direct loop + LangSmith). Requires a build transcript, so it's judged even when the build fails, and skipped only when no transcript was captured.
+- Runs on both eval paths (direct loop + LangSmith). `processExpectations` need a transcript (judged even when the build fails, skipped only when no transcript was captured); `outcomeExpectations` are judged from the workflow, including in prebuilt/MCP runs.
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
-- Absent the field, it's a complete no-op.
+- Absent both fields, it's a complete no-op.
 
 ## Environment variables
 
@@ -253,6 +258,16 @@ When `LANGSMITH_API_KEY` is set, every eval run automatically compares its resul
 - `eval-pr-comment.md` — the full PR comment rendered as markdown, including the alert, aggregate, comparison sections, per-test-case results, and failure details. Always written; falls back to a no-baseline summary when no comparison ran.
 
 The CI PR-comment step uses `eval-pr-comment.md` as the entire comment body (no jq assembly in the workflow). The console output uses a separate aligned-text formatter — same data, no markdown noise in the terminal.
+
+### Re-running on a PR
+
+Evals auto-run when a PR is **opened / reopened / marked ready** (path-filtered), but **not on new pushes** — `synchronize` is intentionally off (full runs are expensive). To exercise the latest push, re-run against the PR head on demand:
+
+```bash
+gh workflow run ci-instance-ai-evals.yml -f pr=<number>
+```
+
+…or use the **Run workflow** button on the **CI: Instance AI Evals** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so it tests the merged state like a PR-open run; otherwise it uses the head), runs the eval against it, and posts results back to the PR. A dispatched run rebuilds the docker image either way — the prebuilt image cache is scoped to `refs/pull/<n>/merge`, which a dispatch can't restore. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
 
 ### Refreshing the baseline
 
@@ -515,6 +530,8 @@ No tools, services, or workflow imports are mocked. The `eval:subagent` command 
 
 When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment against the `instance-ai-workflow-evals` dataset (synced from the JSON files before each run). Experiments against the same dataset can be compared side-by-side to spot regressions.
 
+To record an isolated cohort without touching the shared dataset or baseline — e.g. MCP-built workflows scored via `--prebuilt-workflows` — pass a dedicated `--dataset` and `--baseline-prefix`. The sync then only writes that cohort's cases (filtered by `--tier`) into its own dataset, and regression comparison only looks for baselines under the given prefix. See the [MCP workflow evaluations README](../../../cli/src/modules/mcp/evaluations/README.md#record-runs-in-langsmith).
+
 ## Adding test cases
 
 Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `data/workflows/schema.ts`.
@@ -539,7 +556,7 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the C
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One JSON file = one LangSmith split**, named from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
 

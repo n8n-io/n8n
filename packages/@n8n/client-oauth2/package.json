@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "axios": "catalog:"
   },
   "devDependencies": {

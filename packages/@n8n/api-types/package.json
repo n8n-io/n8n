@@ -32,6 +32,7 @@
     "minifaker": "1.34.1"
   },
   "dependencies": {
+    "@n8n_io/ai-assistant-sdk": "catalog:",
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
     "@n8n/permissions": "workspace:*",

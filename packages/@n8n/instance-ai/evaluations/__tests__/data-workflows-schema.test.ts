@@ -9,7 +9,7 @@ vi.mock('fs', () => ({
 import { readdirSync, readFileSync } from 'fs';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
-import { WorkflowTestCaseSchema } from '../data/workflows/schema';
+import { WorkflowTestCaseSchema, conversationTurnTextSchema } from '../data/workflows/schema';
 
 const mockedReaddir = vi.mocked(readdirSync);
 const mockedReadFile = vi.mocked(readFileSync);
@@ -42,6 +42,14 @@ describe('WorkflowTestCaseSchema', () => {
 
 	it('rejects an empty conversation', () => {
 		expect(() => WorkflowTestCaseSchema.parse({ ...validFixture(), conversation: [] })).toThrow();
+	});
+
+	it('normalizes an array-form turn text to a newline-joined string', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [{ role: 'user', text: ['line 1', 'line 2'] }],
+		});
+		expect(parsed.conversation[0].text).toBe('line 1\nline 2');
 	});
 
 	it('rejects an empty executionScenarios array', () => {
@@ -117,29 +125,47 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.triggerType).toBe('webhook');
 	});
 
-	it('accepts the optional buildExpectations array', () => {
+	it('accepts the optional process/outcome expectation arrays', () => {
 		const parsed = WorkflowTestCaseSchema.parse({
 			...validFixture(),
-			buildExpectations: ['the agent asked which channel before building'],
+			processExpectations: ['the agent asked which channel before building'],
+			outcomeExpectations: ['the final workflow posts to Slack'],
 		});
-		expect(parsed.buildExpectations).toEqual(['the agent asked which channel before building']);
+		expect(parsed.processExpectations).toEqual(['the agent asked which channel before building']);
+		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
 	});
 
-	it('leaves buildExpectations undefined when omitted', () => {
+	it('leaves expectation arrays undefined when omitted', () => {
 		const parsed = WorkflowTestCaseSchema.parse(validFixture());
-		expect(parsed.buildExpectations).toBeUndefined();
+		expect(parsed.processExpectations).toBeUndefined();
+		expect(parsed.outcomeExpectations).toBeUndefined();
 	});
 
-	it('rejects a non-array buildExpectations', () => {
+	it('rejects a non-array expectation field', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: 'nope' }),
+			WorkflowTestCaseSchema.parse({ ...validFixture(), outcomeExpectations: 'nope' }),
 		).toThrow();
 	});
 
 	it('rejects an empty-string expectation', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: [''] }),
+			WorkflowTestCaseSchema.parse({ ...validFixture(), processExpectations: [''] }),
 		).toThrow();
+	});
+
+	it('rejects a legacy buildExpectations key with a migration hint', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				buildExpectations: ['legacy assertion that would otherwise be silently dropped'],
+			}),
+		).toThrow(/no longer supported/);
+	});
+
+	it('rejects an unknown top-level key instead of silently stripping it', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), outcomeExpectaiton: ['typo'] }),
+		).toThrow(/[Uu]nrecognized key/);
 	});
 
 	it('accepts a credentials entry with a supported type', () => {
@@ -192,5 +218,17 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 		mockedReadFile.mockReturnValue(JSON.stringify({ conversation: [] }));
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/demo\.json/);
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/executionScenarios/);
+	});
+});
+
+describe('conversationTurnTextSchema', () => {
+	it('passes a plain string through unchanged', () => {
+		expect(conversationTurnTextSchema.parse('one line')).toBe('one line');
+	});
+
+	it('joins an array of lines with newlines', () => {
+		// The mcp-manifest builder reuses this, so the array form must normalize
+		// to a string before its buildPromptFromConversation calls .text.trim().
+		expect(conversationTurnTextSchema.parse(['line 1', 'line 2'])).toBe('line 1\nline 2');
 	});
 });

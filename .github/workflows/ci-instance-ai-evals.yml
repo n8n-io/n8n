@@ -12,14 +12,18 @@ on:
       - 'packages/core/src/execution-engine/eval-mock-helpers.ts'
   workflow_dispatch:
     inputs:
+      pr:
+        description: 'PR number to re-run against its latest commit. Resolves the PR head at dispatch time and posts results back; takes precedence over `branch`. Leave empty to use `branch`.'
+        required: false
+        default: ''
       branch:
-        description: 'GitHub branch to test'
+        description: 'GitHub branch to test (ignored when `pr` is set)'
         required: false
         default: 'master'
       tier:
-        description: 'Test-case dataset to run (e.g. `pr`, `full`)'
+        description: 'Test-case dataset to run (e.g. `pr`, `full`). Empty => `pr` for a PR, `full` otherwise.'
         required: false
-        default: 'full'
+        default: ''
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
@@ -34,25 +38,107 @@ on:
         default: ''
 
 concurrency:
-  group: instance-ai-evals-${{ github.ref }}
+  # Key on the PR number for dispatched re-runs (github.ref would collapse all
+  # dispatches from the default branch into one group and cross-cancel them).
+  group: instance-ai-evals-${{ inputs.pr || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  run-evals:
-    name: Instance AI Workflow Evals
-    # Skip drafts; allow workflow_dispatch (no pull_request payload).
+  # Resolves the ref/SHA/PR to test. A `uses:` caller job can't run steps, so
+  # the `gh pr view` lookup for `-f pr=<n>` dispatches lives in its own job and
+  # feeds run-evals via outputs. Also the draft/repo gate: if this is skipped,
+  # run-evals (needs: resolve) is skipped too.
+  resolve:
+    name: Resolve eval target
     if: >-
       github.repository == 'n8n-io/n8n' &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      branch: ${{ steps.resolve.outputs.branch }}
+      cache_sha: ${{ steps.resolve.outputs.cache_sha }}
+      revision_sha: ${{ steps.resolve.outputs.revision_sha }}
+      head_ref: ${{ steps.resolve.outputs.head_ref }}
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      tier: ${{ steps.resolve.outputs.tier }}
+    steps:
+      - name: Resolve target ref
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          GH_SHA: ${{ github.sha }}
+          INPUT_PR: ${{ inputs.pr }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_TIER: ${{ inputs.tier }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_PR" ]; then
+            # Dispatch against a PR number: test the latest push (auto PR-open
+            # runs go stale). Prefer the merge ref (refs/pull/N/merge) so we test
+            # the merged state like PR-open does. The merge ref updates async
+            # after a push - use it only when its parents include the current
+            # head (i.e. it reflects the latest push); otherwise fall back to the
+            # raw head. Either way a dispatched run can't restore the prepare-docker
+            # image cache (it's scoped to refs/pull/N/merge), so load-n8n-docker
+            # rebuilds from the checkout.
+            pr_json=$(gh api "repos/$REPO/pulls/$INPUT_PR")
+            head_sha=$(echo "$pr_json" | jq -r '.head.sha')
+            head_ref=$(echo "$pr_json" | jq -r '.head.ref')
+            merge_sha=$(echo "$pr_json" | jq -r '.merge_commit_sha // empty')
+            tested_sha="$head_sha"
+            if [ -n "$merge_sha" ] && \
+               gh api "repos/$REPO/commits/$merge_sha" --jq '.parents[].sha' 2>/dev/null \
+                 | grep -qx "$head_sha"; then
+              tested_sha="$merge_sha"
+              echo "PR #$INPUT_PR: testing merge ref $merge_sha (fresh; merged state, image rebuilt)"
+            else
+              echo "PR #$INPUT_PR: testing head $head_sha (merge ref stale/unavailable; image rebuilt)"
+            fi
+            branch="$tested_sha"; cache_sha="$tested_sha"; revision_sha="$tested_sha"
+            pr_number="$INPUT_PR"; tier="${INPUT_TIER:-pr}"
+          elif [ "$EVENT_NAME" = "pull_request" ]; then
+            # PR open/reopen/ready: unchanged - test the merge commit, which also
+            # matches the SHA-keyed prepare-docker image cache.
+            branch="$GH_SHA"; cache_sha="$GH_SHA"; revision_sha="$GH_SHA"
+            head_ref="$EVENT_HEAD_REF"; pr_number="$EVENT_PR_NUMBER"; tier="${INPUT_TIER:-pr}"
+          else
+            # Dispatch with an explicit branch (defaults to 'master'). Key the
+            # image cache and LangSmith tags on the ref under test, not
+            # github.sha: github.sha is the workflow's own ref (master when
+            # dispatched there), so keying on it would load master's prebuilt
+            # image even when testing another branch. A branch name misses the
+            # SHA-keyed cache, so load-n8n-docker rebuilds from the checkout.
+            branch="${INPUT_BRANCH:-$GH_SHA}"; cache_sha="$branch"; revision_sha="$branch"
+            head_ref="$branch"; pr_number=""; tier="${INPUT_TIER:-full}"
+          fi
+          {
+            echo "branch=$branch"
+            echo "cache_sha=$cache_sha"
+            echo "revision_sha=$revision_sha"
+            echo "head_ref=$head_ref"
+            echo "pr_number=$pr_number"
+            echo "tier=$tier"
+          } >> "$GITHUB_OUTPUT"
+
+  run-evals:
+    name: Instance AI Workflow Evals
+    needs: resolve
     uses: ./.github/workflows/test-evals-instance-ai.yml
     with:
-      # On PR events github.sha is the merge commit, so the eval tests the
-      # merged state (like e2e) and the checkout matches the key under which
-      # prepare-docker publishes the docker image cache.
-      branch: ${{ inputs.branch || github.sha }}
-      # PR events default to `pr`; dispatch defaults to `full`.
-      tier: ${{ inputs.tier || 'pr' }}
+      branch: ${{ needs.resolve.outputs.branch }}
+      tier: ${{ needs.resolve.outputs.tier }}
       sandbox-provider: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
       iterations: ${{ inputs.iterations }}
       experiment-name: ${{ inputs.experiment-name }}
+      pr-number: ${{ needs.resolve.outputs.pr_number }}
+      cache-sha: ${{ needs.resolve.outputs.cache_sha }}
+      revision-sha: ${{ needs.resolve.outputs.revision_sha }}
+      head-ref: ${{ needs.resolve.outputs.head_ref }}
     secrets: inherit

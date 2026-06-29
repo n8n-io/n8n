@@ -28,6 +28,7 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -87,6 +88,7 @@ function makeReconstructionService(
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
+		agentRepository?: AgentRepository;
 		agentsConfig?: Partial<AgentsConfig>;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
 	} = {},
@@ -99,7 +101,7 @@ function makeReconstructionService(
 	outboundHttp.transport.mockReturnValue(transport);
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
-		mock<AgentRepository>(),
+		overrides.agentRepository ?? mock<AgentRepository>(),
 		mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
@@ -115,6 +117,7 @@ function makeReconstructionService(
 			modules,
 			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
+		mock<AiService>(),
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
@@ -222,7 +225,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		},
 		{
 			name: 'saved-agent references',
-			subAgents: { agents: [{ agentId: 'agent-2' }] },
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }],
+			},
 		},
 	])('always injects delegation tools for $name', async ({ subAgents }) => {
 		const { service, credentialProvider } = setup();
@@ -241,6 +246,18 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				const tool = item as BuiltTool;
 				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) {
 					return getInlineDelegateSubAgentToolOptions(tool)?.policy;
+				}
+			}
+		}
+		return undefined;
+	}
+
+	function getInjectedAvailableSubAgents() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) {
+					return getInlineDelegateSubAgentToolOptions(tool)?.availableSubAgents;
 				}
 			}
 		}
@@ -296,6 +313,37 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: 2,
 		});
+	});
+
+	it('passes saved sub-agent useWhen guidance into delegate tool metadata', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-billing',
+			name: 'Billing Agent',
+			activeVersionId: 'version-billing',
+		} as Agent);
+		const service = makeReconstructionService([], { agentRepository });
+		const entity = makeAgentEntity(undefined, {
+			subAgents: {
+				agents: [
+					{
+						agentId: 'agent-billing',
+						useWhen: 'Use for invoice investigations and payment status checks.',
+					},
+				],
+			},
+		});
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(getInjectedAvailableSubAgents()).toEqual([
+			{
+				id: 'agent-billing',
+				name: 'Billing Agent',
+				useWhen: 'Use for invoice investigations and payment status checks.',
+			},
+		]);
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
