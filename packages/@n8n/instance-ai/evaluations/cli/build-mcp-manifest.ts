@@ -10,7 +10,7 @@ import { homedir, tmpdir } from 'os';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
-import { DEFAULT_DATASETS, conversationTurnTextSchema } from '../data/workflows/schema';
+import { ConversationTurnSchema, DEFAULT_DATASETS } from '../data/workflows/schema';
 import { createLogger } from '../harness/logger';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
@@ -402,11 +402,15 @@ interface BuildOutcome {
 	durationMs: number;
 }
 
+/** Canonical conversation-turn type (role enum + normalized text), reused from
+ *  the harness schema instead of a looser inline `{ role: string; text }`. */
+type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
+
 const testCaseSchema = z
 	.object({
-		// Reuse the canonical text normalizer so the array (multi-line) form of a
-		// turn's `text` is accepted and joined here exactly as in the eval harness.
-		conversation: z.array(z.object({ role: z.string(), text: conversationTurnTextSchema })).min(1),
+		// Reuse the canonical turn schema so `role` is the exact 'user' | 'assistant'
+		// enum and the array (multi-line) `text` form is normalized as in the harness.
+		conversation: z.array(ConversationTurnSchema).min(1),
 	})
 	.passthrough();
 
@@ -440,7 +444,7 @@ async function buildOne(
 	iteration: number,
 	args: CliArgs,
 	mcpConfigPath: string,
-	conversation: Array<{ role: string; text: string }>,
+	conversation: ConversationTurn[],
 	allowedTools: readonly string[],
 ): Promise<BuildOutcome> {
 	const projectInstruction = args.projectId
@@ -624,7 +628,7 @@ async function main(): Promise<void> {
 	// Resolve slug -> conversation from the chosen source. Disk reads --workflow-dir
 	// (positional slugs or discovered), langtracer pulls a suite over MCP; both feed
 	// the same buildOne prompt.
-	const casesBySlug = new Map<string, Array<{ role: string; text: string }>>();
+	const casesBySlug = new Map<string, ConversationTurn[]>();
 	if (args.source === 'langtracer') {
 		const suite = args.suite;
 		if (!suite) throw new Error('--source langtracer requires --suite <slug>');
