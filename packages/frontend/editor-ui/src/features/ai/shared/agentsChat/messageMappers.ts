@@ -1,11 +1,13 @@
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	askCredentialInputSchema,
 	askCredentialResumeSchema,
+	askEmbeddingCredentialResumeSchema,
 	askLlmInputSchema,
 	askLlmResumeSchema,
 	askQuestionInputSchema,
@@ -35,6 +37,7 @@ import type {
 
 const INTERACTIVE_TOOL_NAMES = [
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 ] as readonly InteractiveToolName[];
@@ -130,6 +133,11 @@ function isDeclinedToolOutput(value: unknown): boolean {
 	return isRecord(value) && value.declined === true;
 }
 
+function parseAskEmbeddingCredentialOutput(value: unknown) {
+	const result = askEmbeddingCredentialResumeSchema.safeParse(value);
+	return result.success ? result.data : null;
+}
+
 /**
  * Given a tool call belonging to one of the interactive builder tools,
  * reconstruct an `InteractivePayload` for it. The result is:
@@ -192,6 +200,18 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			toolName: ASK_CREDENTIAL_TOOL_NAME,
 			input: input.data,
 			...(resolved?.success && { resolvedValue: resolved.data }),
+		};
+	}
+
+	if (tc.tool === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME) {
+		const input = askCredentialInputSchema.safeParse(tc.input);
+		if (!input.success) return undefined;
+		const resolved = tc.output !== undefined ? parseAskEmbeddingCredentialOutput(tc.output) : null;
+		return {
+			...base,
+			toolName: ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
+			input: input.data,
+			...(resolved && { resolvedValue: resolved }),
 		};
 	}
 

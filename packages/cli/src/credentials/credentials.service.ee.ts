@@ -114,6 +114,19 @@ export class EnterpriseCredentialsService {
 			credential = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
 				'credential:read',
 			]);
+
+			// Connect-capable users of a private credential need the redacted blueprint
+			// (secrets stay masked) so the UI can detect the OAuth type and render the
+			// per-user connect flow, even without edit rights.
+			if (
+				includeDecryptedData &&
+				credential?.isResolvable &&
+				(await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
+					'credential:connect',
+				]))
+			) {
+				decryptedData = await this.credentialsService.decrypt(credential);
+			}
 		}
 
 		if (!credential) {
