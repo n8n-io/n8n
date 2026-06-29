@@ -126,6 +126,35 @@ catalog:
 		expect(violations).toHaveLength(0);
 	});
 
+	it('ignores peer dependencies (they express compatibility ranges)', async () => {
+		writeFile(
+			tmpDir,
+			'pnpm-workspace.yaml',
+			`
+packages:
+  - packages/*
+catalog:
+  eslint: 9.29.0
+`,
+		);
+		writeFile(
+			tmpDir,
+			'packages/node-cli/package.json',
+			JSON.stringify(
+				{
+					name: 'node-cli',
+					peerDependencies: { eslint: '>= 9' },
+				},
+				null,
+				2,
+			),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations).toHaveLength(0);
+	});
+
 	it('ignores workspace references', async () => {
 		writeFile(
 			tmpDir,
