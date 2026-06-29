@@ -85,6 +85,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isEnabled: { value: false },
 		isCredentialTypeSupported: vi.fn(() => false),
 		isActionSupported: vi.fn(() => true),
+		isNodePropertyHidden: vi.fn(() => false),
 		balance: { value: undefined },
 		budget: { value: undefined },
 		fetchError: { value: null },
@@ -1883,8 +1884,12 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				// Mirror the real store: only hidden when a gateway-managed credential is present
 				isNodePropertyHidden: vi.fn(
-					(_node: INode | null, param: string) => param === 'modelSource',
+					(node: INode | null, param: string) =>
+						Object.values(node?.credentials ?? {}).some(
+							(cred) => cred.__aiGatewayManaged === true,
+						) && param === 'modelSource',
 				),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
