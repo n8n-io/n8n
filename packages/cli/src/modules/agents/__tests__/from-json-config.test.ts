@@ -985,6 +985,49 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
+	it('configures episodic memory with managed proxy embedding credentials', async () => {
+		const credentialProvider = {
+			resolve: jest.fn().mockResolvedValue({ apiKey: 'main-api-key' }),
+			list: jest.fn().mockResolvedValue([]),
+		};
+		const proxyFetch = jest.fn();
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'managed',
+				},
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+				resolveManagedEmbeddingProviderOptions: jest.fn().mockResolvedValue({
+					apiKey: 'proxy-managed',
+					baseURL: 'https://proxy.example/v1/api-proxy/openai/',
+					fetch: proxyFetch,
+				}),
+			},
+		);
+
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('my-anthropic-key');
+		expect(credentialProvider.resolve).not.toHaveBeenCalledWith('managed');
+		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
+			embeddingProviderOptions: {
+				apiKey: 'proxy-managed',
+				baseURL: 'https://proxy.example/v1/api-proxy/openai/',
+				fetch: proxyFetch,
+			},
+		});
+	});
+
 	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
 		const extractSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
 		const reflectSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');

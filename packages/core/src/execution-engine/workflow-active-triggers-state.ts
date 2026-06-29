@@ -14,6 +14,23 @@ type TriggerRegistration = {
 export class WorkflowActiveTriggersState {
 	private readonly registrationsByNodeId = new Map<string, TriggerRegistration>();
 
+	private pendingRegistrations = 0;
+
+	/** Marks an in-flight registration using this state object. */
+	beginRegistration() {
+		this.pendingRegistrations += 1;
+	}
+
+	/** Marks an in-flight registration as finished. */
+	finishRegistration() {
+		this.pendingRegistrations -= 1;
+	}
+
+	/** Whether this state object is still being populated by an activation. */
+	get hasPendingRegistrations() {
+		return this.pendingRegistrations > 0;
+	}
+
 	/** Records a trigger response for a registered node. */
 	addTriggerResponse(nodeId: string, response: ITriggerResponse): TriggerRegistrationToken {
 		const registration = this.getOrCreateRegistration(nodeId);

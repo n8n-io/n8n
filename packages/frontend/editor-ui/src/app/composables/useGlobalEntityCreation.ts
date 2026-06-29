@@ -4,7 +4,7 @@ import { AGENTS_MODULE_NAME, NEW_AGENT_VIEW } from '@/features/agents/constants'
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
 import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';

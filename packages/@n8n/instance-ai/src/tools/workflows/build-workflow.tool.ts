@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
-import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
 	formatWarning,
@@ -40,6 +40,7 @@ import {
 	getReferencedWorkflowIds,
 	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
+	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
@@ -521,6 +522,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 
@@ -538,6 +540,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					saved: { id: string; versionId: string },
 					operation: 'create' | 'update',
 				) => {
+					const setupRequests = await analyzeWorkflow(context, saved.id);
+					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
 					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
 						workflow: json,
 						mockedNodeNames: mockResult.mockedNodeNames,
@@ -573,6 +577,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
+						workflowNeedsSetup,
 						nodeSimulationPlan,
 						simulationFixtures,
 						supportingWorkflowIds:

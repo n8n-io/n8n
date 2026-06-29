@@ -8,6 +8,10 @@ import { Service } from '@n8n/di';
 import { Telemetry } from '@/telemetry';
 
 import { LocalGatewayRegistry, type LocalGateway } from './filesystem';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+
+/** Tool category advertised by the local gateway for browser automation tools. */
+export const BROWSER_TOOL_CATEGORY = 'browser';
 
 /**
  * Per-user Local Gateway connections (pairing tokens, session keys,
@@ -19,7 +23,21 @@ import { LocalGatewayRegistry, type LocalGateway } from './filesystem';
 export class InstanceAiGatewayService {
 	private readonly registry = new LocalGatewayRegistry();
 
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(
+		private readonly telemetry: Telemetry,
+		private readonly settingsService: InstanceAiSettingsService,
+	) {}
+
+	/**
+	 * Sync a gateway's exposed tool categories with the instance Browser Use policy.
+	 * When Browser Use is disabled instance-wide, the gateway's browser tools are
+	 * hidden everywhere they surface (agent tools, status reads, frontend pushes).
+	 */
+	applyToolPolicy(userId: string): void {
+		this.findGateway(userId)?.setExcludedToolCategories(
+			this.settingsService.isBrowserUseEnabled() ? [] : [BROWSER_TOOL_CATEGORY],
+		);
+	}
 
 	getUserIdForApiKey(key: string): string | undefined {
 		return this.registry.getUserIdForApiKey(key);

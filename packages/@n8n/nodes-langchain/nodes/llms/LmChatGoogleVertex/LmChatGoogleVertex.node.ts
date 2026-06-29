@@ -6,7 +6,7 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
+import { formatPemBlock } from '@n8n/utils';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -112,7 +112,7 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPrivateKey(credentials.privateKey as string);
+				const privateKey = formatPemBlock(credentials.privateKey as string);
 				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
@@ -140,7 +140,7 @@ export class LmChatGoogleVertex implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
 
 		// A node-level location overrides the credential region; multi-region

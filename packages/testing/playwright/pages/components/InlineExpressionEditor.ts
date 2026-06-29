@@ -43,6 +43,16 @@ export class InlineExpressionEditor {
 		return this.getInput().locator('.cm-content');
 	}
 
+	/** CodeMirror rendered lines within the in-NDV editor content. */
+	getLines(): Locator {
+		return this.getContent().locator('.cm-line');
+	}
+
+	/** A single rendered CodeMirror line by zero-based index. */
+	getLine(index: number): Locator {
+		return this.getLines().nth(index);
+	}
+
 	/** Teleported preview popover (same test id as the output). */
 	getPreview(): Locator {
 		return this.page.getByTestId('inline-expression-editor-output');

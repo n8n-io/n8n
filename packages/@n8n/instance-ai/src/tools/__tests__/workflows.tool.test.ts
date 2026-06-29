@@ -3,7 +3,11 @@ import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
-import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
+import {
+	analyzeWorkflow,
+	applyNodeChanges,
+	buildCompletedReport,
+} from '../workflows/setup-workflow.service';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -11,7 +15,7 @@ vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
 	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
-	applyNodeChanges: vi.fn().mockResolvedValue({ failed: [] }),
+	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
 	buildCompletedReport: vi.fn().mockReturnValue([]),
 }));
 
@@ -950,6 +954,11 @@ describe('workflows tool', () => {
 			expect(applyNodeChanges).toHaveBeenCalledWith(context, 'wf1', undefined, {
 				'HTTP Request': { url: 'https://example.com/api' },
 			});
+			expect(buildCompletedReport).toHaveBeenCalledWith(
+				undefined,
+				{ 'HTTP Request': { url: 'https://example.com/api' } },
+				['HTTP Request'],
+			);
 		});
 	});
 

@@ -10,8 +10,8 @@ vi.mock('@n8n/ai-utilities', () => ({
 	logWrapper: vi.fn((val: unknown) => val),
 	getConnectionHintNoticeField: vi.fn(() => ({})),
 }));
-vi.mock('n8n-nodes-base/dist/utils/utilities', () => ({
-	formatPrivateKey: vi.fn().mockImplementation((key: string) => key),
+vi.mock('@n8n/utils', () => ({
+	formatPemBlock: vi.fn().mockImplementation((key: string) => key),
 }));
 
 const MockedVertexAIEmbeddings = vi.mocked(VertexAIEmbeddings);

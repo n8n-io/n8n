@@ -546,7 +546,7 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	});
 	executionDataStore.setExecutionRunData(runExecutionData);
-	workflowExecutionStateStore.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setDisplayedExecutionId(execution.id);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view

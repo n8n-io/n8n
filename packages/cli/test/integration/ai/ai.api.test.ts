@@ -72,6 +72,7 @@ describe('POST /ai/free-credits', () => {
 
 		expect(scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:create',
 				'credential:delete',
 				'credential:list',

@@ -1,0 +1,43 @@
+{
+	"description": "Regression coverage for branch-aware verification: the builder must exercise both outcomes of a weather IF branch, not stop after the first successful verification path, even when both branches use Slack.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day at 8am, check the weather in Berlin. If it's going to rain, send a Slack message to #weather-alerts saying rain is expected in Berlin. If it's not going to rain, send a separate Slack message to #sunny-days wishing Bob a sunny day. Use separate Slack message nodes for the rain and no-rain branches."
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"verification",
+		"branch-coverage",
+		"weather",
+		"schedule",
+		"slack",
+		"conditional"
+	],
+	"credentials": [{ "type": "slackApi" }],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent ran verification executions for both conditional outcomes: one rainy forecast where the rain Slack message node was reached, and a separate dry/no-rain forecast where the separate sunny-day Slack message node was reached.",
+		"The agent did not report the workflow as fully verified after exercising only one branch; if either branch could not be exercised, it said so explicitly instead of claiming full verification."
+	],
+	"outcomeExpectations": [
+		"The final workflow runs every day at 8am, fetches Berlin weather, branches on whether rain is forecast, sends a Slack rain alert to #weather-alerts on the rain branch, and sends a separate Slack message to #sunny-days wishing Bob a sunny day on the no-rain branch. The two Slack actions are implemented as separate Slack nodes on separate branch outputs."
+	],
+	"executionScenarios": [
+		{
+			"name": "rain-forecast",
+			"description": "Rain is forecast, so the rain Slack branch runs and the sunny-day Slack branch does not.",
+			"dataSetup": "The Berlin weather API returns a rainy daily forecast: precipitation_sum is 3.2 mm, precipitation_probability_max is 80, and weathercode is a rainy code such as 61. The rain Slack postMessage/send-message node returns success. The sunny-day Slack message node for #sunny-days should not be called in this scenario.",
+			"successCriteria": "The workflow executes without errors. The rain condition evaluates true, the Slack rain alert node posts to #weather-alerts saying rain is expected in Berlin, and the separate Slack sunny-day node for #sunny-days is not executed."
+		},
+		{
+			"name": "dry-forecast",
+			"description": "No rain is forecast, so the sunny-day Slack branch runs and the rain Slack branch does not.",
+			"dataSetup": "The Berlin weather API returns a dry daily forecast: precipitation_sum is 0 mm, precipitation_probability_max is 5, and weathercode is a clear or partly-cloudy code such as 0 or 1. The sunny-day Slack postMessage/send-message node posts to #sunny-days and returns success. The rain Slack alert node should not be called in this scenario.",
+			"successCriteria": "The workflow executes without errors. The rain condition evaluates false, the separate Slack sunny-day node posts to #sunny-days wishing Bob a sunny day, and the Slack rain alert node is not executed."
+		}
+	]
+}
