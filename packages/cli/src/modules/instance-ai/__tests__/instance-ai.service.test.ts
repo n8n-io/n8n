@@ -2,6 +2,7 @@
 jest.mock('@n8n/instance-ai', () => {
 	const { z } = jest.requireActual('zod');
 	return {
+		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
@@ -46,6 +47,15 @@ jest.mock('@n8n/instance-ai', () => {
 		),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
+		createOrchestratorRunControl: jest.fn(() => ({
+			state: undefined,
+			getStopSignal: jest.fn(() => undefined),
+		})),
+		createOrchestratorRunControlForState: jest.fn(() => ({
+			state: undefined,
+			getStopSignal: jest.fn(() => undefined),
+			shouldEmitTerminalOutcome: jest.fn(() => true),
+		})),
 		WorkflowTaskCoordinator: class {},
 		WorkflowLoopStorage: class {},
 		ThreadTaskStorage: class {},
@@ -155,7 +165,6 @@ import {
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type SpawnManagedBackgroundTaskOptions,
-	type TerminalOutcome,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 
@@ -163,6 +172,10 @@ import { UserError } from 'n8n-workflow';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
+import {
+	InstanceAiTerminalOutcomeService,
+	type InstanceAiTerminalOutcomeServiceOptions,
+} from '../instance-ai-terminal-outcome.service';
 
 import type { InstanceAiConfig } from '@n8n/config';
 import type { ErrorReporter } from 'n8n-core';
@@ -224,9 +237,11 @@ type BackgroundTaskFollowUpServiceInternals = {
 			status: 'succeeded' | 'failed' | 'cancelled',
 		) => Promise<void>
 	>;
-	recordBackgroundTerminalOutcome: jest.MockedFunction<
-		(task: ManagedBackgroundTask) => Promise<void>
-	>;
+	terminalOutcome: {
+		recordBackgroundTerminalOutcome: jest.MockedFunction<
+			(task: ManagedBackgroundTask) => Promise<void>
+		>;
+	};
 	saveAgentTreeSnapshot: jest.MockedFunction<
 		(
 			threadId: string,
@@ -321,7 +336,9 @@ function createBackgroundTaskFollowUpService({
 			_status: 'succeeded' | 'failed' | 'cancelled',
 		) => {},
 	);
-	service.recordBackgroundTerminalOutcome = jest.fn(async (_task: ManagedBackgroundTask) => {});
+	service.terminalOutcome = {
+		recordBackgroundTerminalOutcome: jest.fn(async (_task: ManagedBackgroundTask) => {}),
+	};
 	service.saveAgentTreeSnapshot = jest.fn(
 		async (
 			_threadId: string,
@@ -380,10 +397,6 @@ type StartRunServiceInternals = {
 		setTimeZone: jest.MockedFunction<(threadId: string, timeZone: string) => void>;
 	};
 	threadPushRef: Map<string, string>;
-	userMessagePersistenceByRun: Map<
-		string,
-		{ userId: string; message: { id: string; text: string } }
-	>;
 	executeRun: jest.Mock;
 	trackInFlightExecution: jest.Mock;
 };
@@ -402,7 +415,6 @@ function createStartRunService(): StartRunServiceInternals {
 		setTimeZone: jest.fn(),
 	};
 	service.threadPushRef = new Map();
-	service.userMessagePersistenceByRun = new Map();
 	service.executeRun = jest.fn();
 	service.trackInFlightExecution = jest.fn();
 	return service;
@@ -513,6 +525,7 @@ type ShutdownServiceInternals = {
 	};
 	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: jest.MockedFunction<() => void> };
+	browserSessionService: { shutdown: jest.MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: jest.MockedFunction<() => void> };
 	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
@@ -520,88 +533,8 @@ type ShutdownServiceInternals = {
 	logger: { debug: jest.Mock; warn: jest.Mock };
 };
 
-type TerminalOutcomeServiceInternals = {
-	replayUndeliveredTerminalOutcomes: (
-		threadId: string,
-		options?: { delivery?: 'snapshot' | 'event' },
-	) => Promise<void>;
-	createTerminalOutcomeStorage: jest.Mock;
-	dbSnapshotStorage: {
-		getLatest: jest.Mock;
-		save: jest.Mock;
-		updateLast: jest.Mock;
-	};
-	eventBus: {
-		getEventsForRun: jest.Mock;
-		publish: jest.Mock;
-	};
-	telemetry: { track: jest.Mock };
-	logger: { warn: jest.Mock };
-	pendingTerminalOutcomes: Map<string, TerminalOutcome>;
-};
-
-function createTerminalOutcomeService(
-	outcomes: TerminalOutcome[],
-	snapshotTree?: InstanceAiAgentNode,
-): TerminalOutcomeServiceInternals {
-	const storage = {
-		getUndelivered: jest.fn(async () => outcomes),
-		markDelivered: jest.fn(async () => {}),
-	};
-	const service = Object.create(InstanceAiService.prototype) as TerminalOutcomeServiceInternals;
-	service.createTerminalOutcomeStorage = jest.fn(() => storage);
-	service.dbSnapshotStorage = {
-		getLatest: jest.fn(async () =>
-			snapshotTree
-				? {
-						tree: snapshotTree,
-						runId: 'run-1',
-						messageGroupId: 'group-1',
-						runIds: ['run-1'],
-					}
-				: undefined,
-		),
-		save: jest.fn(async () => {}),
-		updateLast: jest.fn(async () => {}),
-	};
-	service.eventBus = {
-		getEventsForRun: jest.fn(() => []),
-		publish: jest.fn(),
-	};
-	service.telemetry = { track: jest.fn() };
-	service.logger = { warn: jest.fn() };
-	service.pendingTerminalOutcomes = new Map();
-	return service;
-}
-
 type TerminalGuardOrderServiceInternals = {
-	evaluateTerminalResponse: (
-		threadId: string,
-		runId: string,
-		status: 'completed' | 'cancelled' | 'errored',
-		options?: {
-			messageGroupId?: string;
-			errorMessage?: string;
-			suppressCompletedFallback?: boolean;
-		},
-	) => { action: string; reason: string } | undefined;
-	evaluateWaitingResponse: (
-		threadId: string,
-		runId: string,
-		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
-		options?: { messageGroupId?: string },
-	) => { reason: string } | undefined;
-	finishInvalidConfirmationRun: (args: {
-		threadId: string;
-		runId: string;
-		abortController: AbortController;
-		snapshotStorage: unknown;
-	}) => Promise<{ status: string; reason?: string }>;
-	publishRunFinish: (
-		threadId: string,
-		runId: string,
-		status: 'completed' | 'cancelled' | 'errored',
-	) => void;
+	terminalOutcome: InstanceAiTerminalOutcomeService;
 	runState: {
 		getRunIdsForMessageGroup: jest.Mock;
 		cancelThread: jest.Mock;
@@ -728,6 +661,32 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.creditService = { claimRunUsage: jest.fn(async () => {}) };
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
+
+	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
+		eventBus: service.eventBus,
+		dbSnapshotStorage: {},
+		agentMemory: {},
+		telemetry: service.telemetry,
+		logger: service.logger,
+		runState: service.runState,
+		suspendedThreads: service.suspendedThreads,
+		tracing: service.tracing,
+		publishRunFinish: (
+			_threadId: string,
+			runId: string,
+			status: 'completed' | 'cancelled' | 'errored',
+		) => {
+			events.push({
+				type: 'run-finish',
+				runId,
+				agentId: 'agent-001',
+				payload: { status: status === 'errored' ? 'error' : status },
+			} as InstanceAiEvent);
+		},
+		saveAgentTreeSnapshot: async (threadId: string, runId: string, snapshotStorage: unknown) => {
+			await service.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+		},
+	} as unknown as InstanceAiTerminalOutcomeServiceOptions);
 	return service;
 }
 
@@ -744,22 +703,6 @@ function createSnapshotService(): SnapshotServiceInternals {
 	service.tracing = { getTraceContext: jest.fn(() => undefined) };
 	service.logger = { warn: jest.fn() };
 	return service;
-}
-
-function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
-	return {
-		id: 'group-1:task-1:completed',
-		threadId: 'thread-a',
-		runId: 'run-1',
-		messageGroupId: 'group-1',
-		correlationId: 'message-1',
-		taskId: 'task-1',
-		agentId: 'agent-builder',
-		status: 'completed',
-		userFacingMessage: 'The background workflow-builder task finished.',
-		createdAt: '2026-05-01T00:00:00.000Z',
-		...overrides,
-	};
 }
 
 function makeAgentTree(): InstanceAiAgentNode {
@@ -817,7 +760,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
-			gatewayService: { findGateway: jest.Mock };
+			gatewayService: { findGateway: jest.Mock; applyToolPolicy: jest.Mock };
 			aiService: { isProxyEnabled: jest.Mock };
 			adapterService: {
 				createContext: jest.Mock;
@@ -845,6 +788,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			schedulePlannedTasks: jest.Mock;
 			sendCorrectionToTask: jest.Mock;
 			sandboxService: InstanceAiSandboxService;
+			browserSessionService: { findMcpServer: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: jest.Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -860,7 +804,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
-		service.gatewayService = { findGateway: jest.fn(() => undefined) };
+		service.gatewayService = { findGateway: jest.fn(() => undefined), applyToolPolicy: jest.fn() };
 		service.aiService = { isProxyEnabled: jest.fn(() => false) };
 		service.adapterService = {
 			createContext: jest.fn(() => ({})),
@@ -896,6 +840,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = jest.fn();
 		service.sendCorrectionToTask = jest.fn();
 		service.domainAccessTrackersByThread = new Map();
+		service.browserSessionService = { findMcpServer: jest.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: jest.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
@@ -1033,6 +978,7 @@ describe('InstanceAiService — shutdown', () => {
 		};
 		service.gatewayService = { disconnectAll: jest.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: jest.fn() };
+		service.browserSessionService = { shutdown: jest.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
 		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
@@ -1118,7 +1064,7 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		await getSpawnOptions().onSettled?.(task);
 
 		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
-		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
+		expect(service.terminalOutcome.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
 		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith(
 			'thread-a',
 			'run-1',
@@ -1149,7 +1095,7 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		await getSpawnOptions().onSettled?.(task);
 
 		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
-		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
+		expect(service.terminalOutcome.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
 	});
 
 	it('clears the active-timeout guard when the user starts a new run', () => {
@@ -1159,6 +1105,33 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
+	});
+
+	it('passes handoff context into executeRun', () => {
+		const service = createStartRunService();
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		service.startRun(fakeUser, 'thread-a', 'How do I set this up?', undefined, context);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'How do I set this up?',
+			expect.any(AbortController),
+			undefined,
+			context,
+			'group-1',
+			undefined,
+		);
 	});
 });
 
@@ -1586,6 +1559,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			threadId: 'thread-a',
 			user: fakeUser,
 			toolCallId: 'tool-call-1',
+			toolName: 'workflows',
+			suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
 			abortController: new AbortController(),
 			tracing: undefined,
 			modelId: undefined,
@@ -1941,7 +1916,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
 
 		expect(plannedTaskService.markRunning).toHaveBeenCalledWith('thread-a', 'wf-1', {
-			agentId: 'agent-001',
+			agentId: 'orchestrator-plan-run-1',
 		});
 		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith('build-workflow', graph, {
 			buildTask,
@@ -2030,127 +2005,12 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.objectContaining({ approved: true }),
-			expect.objectContaining({ user: freshUser }),
+			expect.objectContaining({
+				user: freshUser,
+				toolName: 'workflows',
+				suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
+			}),
 		);
-	});
-});
-
-describe('InstanceAiService — terminal outcome replay', () => {
-	it('replays undelivered background outcomes into the persisted agent tree', async () => {
-		const outcome = makeTerminalOutcome();
-		const service = createTerminalOutcomeService([outcome], makeAgentTree());
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		expect(service.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
-		const updatedTree = service.dbSnapshotStorage.updateLast.mock
-			.calls[0][1] as InstanceAiAgentNode;
-		expect(updatedTree.textContent).toContain(outcome.userFacingMessage);
-		expect(updatedTree.timeline).toContainEqual({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: `background-outcome:${outcome.id}`,
-		});
-		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-		expect(service.eventBus.publish).not.toHaveBeenCalled();
-	});
-
-	it('publishes recovered background outcomes when replaying for SSE delivery', async () => {
-		const outcome = makeTerminalOutcome();
-		const service = createTerminalOutcomeService([outcome], makeAgentTree());
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
-
-		expect(service.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
-		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
-			runId: outcome.runId,
-			agentId: 'agent-001',
-			responseId: `background-outcome:${outcome.id}`,
-			payload: { text: outcome.userFacingMessage },
-		});
-		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-	});
-
-	it('deduplicates replay by response id only', async () => {
-		const outcome = makeTerminalOutcome({ id: 'group-1:task-2:completed' });
-		const tree = makeAgentTree();
-		tree.textContent = `${tree.textContent}\n\n${outcome.userFacingMessage}`;
-		tree.timeline.push({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: 'background-outcome:different-id',
-		});
-		const service = createTerminalOutcomeService([outcome], tree);
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		const updatedTree = service.dbSnapshotStorage.updateLast.mock
-			.calls[0][1] as InstanceAiAgentNode;
-		expect(
-			updatedTree.timeline.filter(
-				(entry) => entry.type === 'text' && entry.content === outcome.userFacingMessage,
-			),
-		).toHaveLength(2);
-		expect(updatedTree.timeline).toContainEqual({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: `background-outcome:${outcome.id}`,
-		});
-	});
-
-	it('creates a snapshot when replay has no prior agent tree', async () => {
-		const outcome = makeTerminalOutcome({ status: 'failed' });
-		const service = createTerminalOutcomeService([outcome]);
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		expect(service.dbSnapshotStorage.save).toHaveBeenCalledTimes(1);
-		const savedTree = service.dbSnapshotStorage.save.mock.calls[0][1] as InstanceAiAgentNode;
-		expect(savedTree.status).toBe('error');
-		expect(savedTree.textContent).toBe(outcome.userFacingMessage);
-		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-	});
-
-	it('publishes the deterministic line when snapshot replay fails', async () => {
-		const outcome = makeTerminalOutcome();
-		const service = createTerminalOutcomeService([outcome], makeAgentTree());
-		service.dbSnapshotStorage.updateLast.mockRejectedValue(new Error('storage unavailable'));
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
-
-		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
-			runId: outcome.runId,
-			agentId: 'agent-001',
-			responseId: `background-outcome:${outcome.id}`,
-			payload: { text: outcome.userFacingMessage },
-		});
-		expect(service.createTerminalOutcomeStorage().markDelivered).not.toHaveBeenCalled();
-	});
-
-	it('checks persisted outcomes on repeated replay calls', async () => {
-		const service = createTerminalOutcomeService([]);
-		const storage = service.createTerminalOutcomeStorage();
-		service.createTerminalOutcomeStorage.mockClear();
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		expect(service.createTerminalOutcomeStorage).toHaveBeenCalledTimes(2);
-		expect(storage.getUndelivered).toHaveBeenCalledTimes(2);
 	});
 });
 
@@ -2260,79 +2120,6 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		jest.mocked(resumeAgentRun).mockReset();
 	});
 
-	it('publishes fallback output before run-finish on a silent completed run', () => {
-		const service = createTerminalGuardOrderService();
-
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
-			messageGroupId: 'group-1',
-		});
-		service.publishRunFinish('thread-a', 'run-1', 'completed');
-
-		expect(service.eventBus.events.map((event) => event.type)).toEqual([
-			'text-delta',
-			'run-finish',
-		]);
-		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
-			thread_id: 'thread-a',
-			run_id: 'run-1',
-			status: 'completed',
-		});
-	});
-
-	it('does not publish completed fallback output when silence is expected', () => {
-		const service = createTerminalGuardOrderService();
-
-		const decision = service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
-			messageGroupId: 'group-1',
-			suppressCompletedFallback: true,
-		});
-
-		expect(decision).toMatchObject({
-			action: 'none',
-			reason: 'completed-silent-suppressed',
-		});
-		expect(service.eventBus.events).toEqual([]);
-	});
-
-	it('publishes fallback error before run-finish on a silent failed run', () => {
-		const service = createTerminalGuardOrderService();
-
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
-			messageGroupId: 'group-1',
-			errorMessage: 'Safe user-facing error',
-		});
-		service.publishRunFinish('thread-a', 'run-1', 'errored');
-
-		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
-	});
-
-	it('clears malformed confirmation suspension and finishes the run after the guard error', async () => {
-		const service = createTerminalGuardOrderService();
-		const abortController = new AbortController();
-
-		const decision = service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
-			messageGroupId: 'group-1',
-		});
-		if (decision?.reason === 'confirmation-invalid') {
-			await service.finishInvalidConfirmationRun({
-				threadId: 'thread-a',
-				runId: 'run-1',
-				abortController,
-				snapshotStorage: {},
-			});
-		}
-
-		expect(decision?.reason).toBe('confirmation-invalid');
-		expect(service.runState.cancelThread).toHaveBeenCalledWith('thread-a');
-		expect(abortController.signal.aborted).toBe(true);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
-		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
-		expect(service.eventBus.events.at(-1)).toMatchObject({
-			type: 'run-finish',
-			payload: { status: 'error' },
-		});
-	});
-
 	it('persists the resumed-run fallback error before cleanup', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
@@ -2391,6 +2178,13 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
+		});
+		// user_id must be present so the heartbeat event reaches PostHog
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'completed',
+			user_id: 'user-1',
 		});
 	});
 
@@ -2539,6 +2333,16 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		runState: { getMessageGroupId: jest.Mock };
 		startInternalFollowUpRun: jest.Mock;
 		trackWorkflowVerificationObligation: jest.Mock;
+		logger: { warn: jest.Mock };
+		getWorkflowSetupSuspensionWorkflowId: (
+			toolName: string | undefined,
+			suspendPayload: Record<string, unknown> | undefined,
+		) => string | undefined;
+		markWorkflowSetupHandled: (
+			threadId: string,
+			workflowId: string,
+			runId?: string,
+		) => Promise<boolean>;
 		maybeStartWorkflowSetupFollowUp: (user: User, threadId: string) => Promise<boolean>;
 	};
 
@@ -2560,6 +2364,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		state: {
 			workItemId: string;
 			threadId: string;
+			runId?: string;
 			workflowId?: string;
 			plannedTaskId?: string;
 			setupRoutedAt?: string;
@@ -2581,6 +2386,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			state: {
 				workItemId: 'wi-1',
 				threadId: 'thread-a',
+				runId: 'run-1',
 				workflowId: 'wf-1',
 				setupRoutedAt: undefined as string | undefined,
 				...overrides.state,
@@ -2596,6 +2402,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		return {
 			workItemId: record.state.workItemId,
 			threadId: 'thread-a',
+			runId: record.lastBuildOutcome.runId,
 			workflowId: record.lastBuildOutcome.workflowId,
 			source: 'direct',
 			policy: 'required',
@@ -2670,6 +2477,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		service.runState = { getMessageGroupId: jest.fn(() => 'group-1') };
 		service.startInternalFollowUpRun = jest.fn(async () => 'setup-run');
 		service.trackWorkflowVerificationObligation = jest.fn();
+		service.logger = { warn: jest.fn() };
 		return service;
 	}
 
@@ -2763,6 +2571,105 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'setup-claim-1',
 		);
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+	});
+
+	it('marks setup handled after the original setup card completes', async () => {
+		const records = { 'wi-1': makeRecord() };
+		const service = createSetupFollowUpService(records);
+
+		const marked = await service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1');
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(marked).toBe(true);
+		expect(records['wi-1'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(started).toBe(false);
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-1' }),
+			'setup_completed_by_tool',
+		);
+	});
+
+	it('keeps setup for other workflows routable after one workflow setup completes', async () => {
+		const records = {
+			'wi-1': makeRecord(),
+			'wi-2': makeRecord({
+				state: { workItemId: 'wi-2', workflowId: 'wf-2' },
+				outcome: { workItemId: 'wi-2', workflowId: 'wf-2' },
+			}),
+		};
+		const service = createSetupFollowUpService(records);
+
+		const marked = await service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1');
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(marked).toBe(true);
+		expect(records['wi-1'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(records['wi-2'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(started).toBe(true);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledTimes(1);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-1' }),
+			'setup_completed_by_tool',
+		);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-2', workItemId: 'wi-2' }),
+			'setup_follow_up_started',
+		);
+	});
+
+	it('keeps later setup for the same workflow routable after one setup completes', async () => {
+		const records = {
+			'wi-old': makeRecord({
+				state: { workItemId: 'wi-old', runId: 'run-old' },
+				outcome: { workItemId: 'wi-old', runId: 'run-old' },
+			}),
+			'wi-latest': makeRecord({
+				state: { workItemId: 'wi-latest', runId: 'run-latest' },
+				outcome: { workItemId: 'wi-latest', runId: 'run-latest' },
+			}),
+		};
+		const service = createSetupFollowUpService(records);
+
+		const marked = await service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-old');
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(marked).toBe(true);
+		expect(records['wi-old'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(records['wi-latest'].state.setupRoutedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(started).toBe(true);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledTimes(1);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-old' }),
+			'setup_completed_by_tool',
+		);
+		expect(service.trackWorkflowVerificationObligation).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-latest' }),
+			'setup_follow_up_started',
+		);
+	});
+
+	it('extracts workflow setup suspension ids only from workflow setup cards', () => {
+		const service = createSetupFollowUpService({});
+
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
+				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
+				workflowId: 'wf-1',
+				message: 'Publish workflow?',
+			}),
+		).toBeUndefined();
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
+				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBeUndefined();
 	});
 });
 

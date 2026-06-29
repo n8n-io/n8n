@@ -36,6 +36,7 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
@@ -72,6 +73,8 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -99,6 +102,7 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		aiService,
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
@@ -295,25 +299,21 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					id: agentId,
 					name: 'Current Agent',
-					description: 'The agent being edited',
 					activeVersionId: 'active-current',
 				},
 				{
 					id: 'agent-research',
 					name: 'Research Agent',
-					description: 'Finds information on the web',
 					activeVersionId: 'active-research',
 				},
 				{
 					id: 'agent-draft',
 					name: 'Draft Agent',
-					description: 'Not published yet',
 					activeVersionId: null,
 				},
 				{
 					id: 'agent-risk',
 					name: 'Risk Agent',
-					description: null,
 					activeVersionId: 'active-risk',
 				},
 			] as Agent[]);
@@ -326,7 +326,6 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
-						description: 'Finds information on the web',
 					},
 					{
 						agentId: 'agent-risk',
@@ -339,7 +338,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = { ...currentConfig, description: 'Updated description' };
+			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
@@ -356,7 +355,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -381,7 +380,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: 'stale-hash',
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -414,7 +413,7 @@ describe('AgentsBuilderToolsService', () => {
 			agent.integrations = [scheduleIntegration] as unknown as Agent['integrations'];
 			agentsService.findById.mockResolvedValue(agent);
 			agentsService.updateConfig.mockResolvedValue({
-				config: { ...currentConfig, integrations: [], description: 'Updated description' },
+				config: { ...currentConfig, integrations: [], instructions: 'Updated instructions' },
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -423,7 +422,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -435,7 +434,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({
 					integrations: [],
-					description: 'Updated description',
+					instructions: 'Updated instructions',
 				}),
 			);
 		});
@@ -736,7 +735,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const updatedConfig = {
 				...currentConfig,
-				description: 'Updated description',
+				instructions: 'Updated instructions',
 			};
 			const normalizedConfig = {
 				...updatedConfig,
@@ -755,7 +754,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -1063,7 +1062,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns the generated tool id', async () => {
+		it('stores a custom tool and returns the tool name as id', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -1080,7 +1079,7 @@ describe('AgentsBuilderToolsService', () => {
 			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
 			agentsService.buildCustomTool.mockResolvedValue({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 
@@ -1097,7 +1096,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 		});

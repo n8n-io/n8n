@@ -290,6 +290,7 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
+			evaluationRunId: metadata.testRunId,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -305,6 +306,7 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
+					evaluationRunId: metadata.testRunId,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -925,6 +927,10 @@ export class TestRunnerService {
 							const runAt = new Date();
 
 							try {
+								// Hoisted so the catch below can still link the failed case to
+								// its execution: errors thrown during metric extraction (e.g.
+								// INVALID_METRICS) happen after the execution already ran.
+								let testCaseExecutionId: string | undefined;
 								try {
 									const testCaseMetadata = { ...testRunMetadata };
 
@@ -949,8 +955,8 @@ export class TestRunnerService {
 										return [];
 									}
 
-									const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
-										testCaseResult;
+									const { executionData: testCaseExecution } = testCaseResult;
+									testCaseExecutionId = testCaseResult.executionId;
 
 									assert(testCaseExecution);
 									assert(testCaseExecutionId);
@@ -1032,8 +1038,11 @@ export class TestRunnerService {
 
 									telemetryMeta.errored_test_case_count++;
 
+									// `executionId` is left undefined when the failure happened before
+									// an execution was created; TypeORM skips undefined fields on update.
 									if (e instanceof TestCaseExecutionError) {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
+											executionId: testCaseExecutionId,
 											runAt,
 											completedAt,
 											status: 'error',
@@ -1042,6 +1051,7 @@ export class TestRunnerService {
 										});
 									} else {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
+											executionId: testCaseExecutionId,
 											runAt,
 											completedAt,
 											status: 'error',

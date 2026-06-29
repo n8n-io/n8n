@@ -68,6 +68,15 @@ vi.mock('@/app/utils/nodeIcon', () => {
 	};
 });
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 const mockedPrepareCommunityNodeDetailsViewStack = vi.mocked(prepareCommunityNodeDetailsViewStack);
 const mockedGetNodeIconSource = vi.mocked(getNodeIconSource);
 

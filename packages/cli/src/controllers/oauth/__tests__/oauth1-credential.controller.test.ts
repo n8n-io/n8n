@@ -33,7 +33,7 @@ describe('OAuth1CredentialController', () => {
 		it('should build CSRF state data and return a valid auth URI', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockCsrfData = { cid: '1', origin: 'static-credential' as const, userId: '123' };
-			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.getCredentialForAuthFlow.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.buildCsrfStateData.mockResolvedValueOnce(mockCsrfData);
 			oauthService.generateAOauth1AuthUri.mockResolvedValueOnce(
 				'https://example.domain/oauth/authorize?oauth_token=random-token',

@@ -41,6 +41,11 @@ export function getAdditionalKeys(
 				? createExecutionCustomData({ runExecutionData, mode })
 				: undefined,
 		},
+		// Gated on the value's presence, not on `mode`: sub-workflows of an eval run
+		// execute as 'integrated' but inherit evaluationRunId, so they must expose it too.
+		$evaluation: additionalData.evaluationRunId
+			? { runId: additionalData.evaluationRunId }
+			: undefined,
 		$vars: additionalData.variables,
 		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
 

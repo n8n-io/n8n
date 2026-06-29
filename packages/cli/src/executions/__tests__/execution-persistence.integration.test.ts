@@ -56,6 +56,7 @@ describe('ExecutionPersistence', () => {
 				nodes: workflow.nodes,
 				name: workflow.name,
 				settings: workflow.settings,
+				nodeGroups: workflow.nodeGroups,
 			});
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
 		});
@@ -168,8 +169,8 @@ describe('ExecutionPersistence', () => {
 				includeData: true,
 			});
 
-			// 51 (run data) + 67 (workflow snapshot) + 15 ("v-roundtrip-456") = 133 bytes
-			expect(execution?.jsonSizeBytes).toBe(133);
+			// 51 (run data) + 83 (workflow snapshot incl. empty nodeGroups) + 15 ("v-roundtrip-456") = 149 bytes
+			expect(execution?.jsonSizeBytes).toBe(149);
 			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
 		});
 

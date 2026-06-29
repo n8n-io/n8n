@@ -46,6 +46,25 @@ function turn(id: string, sec: number, message: string): FakeRun {
 	return { id, run_type: 'chain', name: 'turn', start_time: t(sec), inputs: { message } };
 }
 
+/** A `tool` run (workspace edit, build, get-as-code) attached to root r1. */
+function tool(
+	id: string,
+	sec: number,
+	name: string,
+	inputs: Record<string, unknown>,
+	outputs: Record<string, unknown> = { success: true },
+): FakeRun {
+	return {
+		id,
+		run_type: 'tool',
+		name,
+		start_time: t(sec),
+		inputs,
+		outputs,
+		extra: { metadata: { langsmith_root_run_id: 'r1' } },
+	};
+}
+
 describe('reconstructSeedFromThread', () => {
 	it('splits at the last user turn: seed = before, liveTurn = last', async () => {
 		const runs: FakeRun[] = [
@@ -237,6 +256,28 @@ describe('reconstructSeedFromThread', () => {
 		);
 	});
 
+	it('throws when builds succeeded but no source was recoverable (shape drift)', async () => {
+		// A recognised filePath build (post-#32545) whose workspace file was never
+		// captured and has no get-as-code fallback → nothing to reconstruct from.
+		const build: FakeRun = {
+			id: 'tool1',
+			run_type: 'tool',
+			name: 'build-workflow',
+			start_time: t(5),
+			inputs: { filePath: 'src/workflows/main.workflow.ts' },
+			outputs: { success: true, workflowId: 'WF1' },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Done.' } },
+			build,
+			turn('r2', 30, 'Change'),
+		];
+		await expect(reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs))).rejects.toThrow(
+			/built in the trace but reconstruction recovered 0/,
+		);
+	});
+
 	it('does not false-positive on a read-only tool that returns a workflowId', async () => {
 		// get-workflow returns a workflowId but takes no `code` — not build-like,
 		// so the drift detector stays quiet and the seed simply has no workflow.
@@ -379,6 +420,127 @@ describe('reconstructSeedFromThread', () => {
 		expect(askBlocks[0]).toMatchObject({
 			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
 		});
+	});
+});
+
+describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', () => {
+	const FILE = 'src/workflows/main.workflow.ts';
+
+	it('reconstructs a filePath build by replaying workspace file edits', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			tool('e1', 3, 'workspace_str_replace_file', {
+				path: FILE,
+				old_str: 'CODE_V1',
+				new_str: 'CODE_V2',
+			}),
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{
+					success: true,
+					workflowId: 'WF1',
+					workflowName: 'Main',
+				},
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0]).toMatchObject({ id: 'WF1', name: 'Main' });
+		// The edited file content (V2), not the initial write (V1), reaches the compiler.
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V2' });
+	});
+
+	it('skips a failed edit so the replay matches the unchanged sandbox file', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'GOOD' }),
+			// A failed str-replace (e.g. non-unique anchor) left the real file unchanged.
+			tool(
+				'e1',
+				3,
+				'workspace_str_replace_file',
+				{ path: FILE, old_str: 'GOOD', new_str: 'BAD' },
+				{ success: false },
+			),
+			tool('b1', 4, 'build-workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'GOOD' });
+	});
+
+	it('falls back to a get-as-code capture when a successful edit cannot be replayed', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			// Authoritative source captured by get-as-code.
+			tool(
+				'g1',
+				2,
+				'workflows[get-as-code]',
+				{ action: 'get-as-code', workflowId: 'WF1' },
+				{
+					workflowId: 'WF1',
+					name: 'Main',
+					code: 'FROM_GET_AS_CODE',
+				},
+			),
+			tool('w1', 3, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			// A *successful* edit whose anchor is absent in our replay → divergence
+			// (mimics an untracked shell edit having changed the file first).
+			tool('e1', 4, 'workspace_str_replace_file', {
+				path: FILE,
+				old_str: 'NOT_IN_REPLAY',
+				new_str: 'X',
+			}),
+			tool('b1', 5, 'build-workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'FROM_GET_AS_CODE' });
+	});
+
+	it('emits a workflow only for built files, ignoring other written files', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('kb', 2, 'workspace_write_file', {
+				path: 'knowledge-base/notes.md',
+				content: 'scratch',
+			}),
+			tool('w1', 3, 'workspace_write_file', { path: FILE, content: 'REAL' }),
+			tool('b1', 4, 'build-workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		// Only the built file becomes a workflow; the scratch write is ignored.
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'REAL' });
+	});
+
+	it('applies a batch str-replace atomically: any missing anchor leaves the file untouched', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			// One anchor matches, one is absent. The real tool is atomic (all-or-nothing),
+			// so the file must stay CODE_V1 — never a half-applied 'GOOD'.
+			tool('e1', 3, 'workspace_batch_str_replace_file', {
+				path: FILE,
+				replacements: [
+					{ old_str: 'CODE_V1', new_str: 'GOOD' },
+					{ old_str: 'NOT_PRESENT', new_str: 'Y' },
+				],
+			}),
+			tool('b1', 4, 'build-workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V1' });
 	});
 });
 

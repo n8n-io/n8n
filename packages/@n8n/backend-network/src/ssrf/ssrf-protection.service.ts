@@ -10,11 +10,13 @@ import { isIP } from 'node:net';
 import { DnsResolver } from '../dns';
 import { HostnameMatcher } from './hostname-matcher';
 import { buildIpRangeList } from './ip-range-builder';
+import { SsrfBlockedHostnameError } from './ssrf-blocked-hostname.error';
 import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';
 
 export type SsrfCheckResult = Result<void, Error>;
 
-type SsrfBlockedPayload = { phase: SsrfPhase; reason: string; durationMs: number };
+type SsrfBlockedReason = 'blocked_ip' | 'blocked_hostname' | 'invalid_url' | 'dns_error';
+type SsrfBlockedPayload = { phase: SsrfPhase; reason: SsrfBlockedReason; durationMs: number };
 type SsrfAllowedPayload = { phase: SsrfPhase; durationMs: number };
 
 /**
@@ -45,10 +47,18 @@ type LookAndValidateResult = Result<LookupAddress[], Error>;
  * to prevent Server-Side Request Forgery (SSRF) attacks.
  *
  * Validation precedence (highest to lowest):
- * 1. Hostname allowlist — if hostname matches, request is allowed
- * 2. IP allowlist — if IP matches allowed CIDR ranges, request is allowed
- * 3. IP blocklist — if IP matches blocked CIDR ranges, request is blocked
- * 4. Otherwise — request is allowed
+ * 1. Hostname allowlist — if hostname matches, request is allowed (an explicit
+ *    allow entry wins over the hostname blocklist, so operators can carve an
+ *    exception out of a broad deny)
+ * 2. Hostname blocklist — if hostname matches, request is blocked (evaluated
+ *    before DNS resolution)
+ * 3. IP allowlist — if a resolved IP matches allowed CIDR ranges, request is allowed
+ * 4. IP blocklist — if a resolved IP matches blocked CIDR ranges, request is blocked
+ * 5. Otherwise — request is allowed
+ *
+ * The hostname blocklist is an egress-governance control, not SSRF hardening: it
+ * is bypassable by IP-literal targets, alias hostnames, or DNS rebinding. The
+ * robust SSRF guarantees remain IP-based and post-resolution.
  */
 @Service()
 export class SsrfProtectionService implements SsrfBridge {
@@ -61,6 +71,8 @@ export class SsrfProtectionService implements SsrfBridge {
 	private readonly allowedIps: BlockList;
 
 	private readonly allowedHostnameMatcher: HostnameMatcher;
+
+	private readonly blockedHostnameMatcher: HostnameMatcher;
 
 	constructor(
 		private readonly ssrfConfig: SsrfProtectionConfig,
@@ -86,6 +98,7 @@ export class SsrfProtectionService implements SsrfBridge {
 		this.allowedIps = allowed.list;
 
 		this.allowedHostnameMatcher = new HostnameMatcher(this.ssrfConfig.allowedHostnames);
+		this.blockedHostnameMatcher = new HostnameMatcher(this.ssrfConfig.blockedHostnames);
 	}
 
 	/**
@@ -174,9 +187,10 @@ export class SsrfProtectionService implements SsrfBridge {
 
 	/**
 	 * Synchronous redirect validation for use in axios beforeRedirect callback.
-	 * Validates direct-IP redirect targets immediately. Hostname-based redirect
-	 * targets are covered by the secureLookup on the redirect agent.
-	 * Throws SsrfBlockedIpError if the redirect target is blocked.
+	 * Denies redirect targets on the hostname blocklist, then validates direct-IP
+	 * targets immediately. Hostname-based targets that resolve to a blocked IP are
+	 * covered by the secureLookup on the redirect agent.
+	 * @throws SsrfBlockedHostnameError or SsrfBlockedIpError if the target is blocked.
 	 */
 	validateRedirectSync(url: string): void {
 		const parsed = this.tryParseUrl(url);
@@ -185,6 +199,12 @@ export class SsrfProtectionService implements SsrfBridge {
 		const { hostname } = parsed;
 
 		if (this.allowedHostnameMatcher.matches(hostname)) return;
+
+		if (this.blockedHostnameMatcher.matches(hostname)) {
+			const error = new SsrfBlockedHostnameError(hostname);
+			this.withEvents('redirect', () => createResultError(error));
+			throw error;
+		}
 
 		const cleanIp = this.normalizeIpInHostname(hostname);
 		if (isIP(cleanIp)) {
@@ -248,12 +268,21 @@ export class SsrfProtectionService implements SsrfBridge {
 			]);
 		}
 
-		// Hostname, we need to lookup first and then validate the IP(s)
+		// Hostname path. An explicit allow entry wins over the deny-list, so resolve
+		// the allowed case and short-circuit the IP checks below.
+		const allowedByName = this.allowedHostnameMatcher.matches(hostname);
+
+		// Deny by name before DNS resolution (egress governance). Skipped when the
+		// hostname is explicitly allowed, letting operators carve out an exception.
+		if (!allowedByName && this.blockedHostnameMatcher.matches(hostname)) {
+			return createResultError(new SsrfBlockedHostnameError(hostname));
+		}
+
 		const resolved = await this.dnsResolver.lookup(hostname, options);
 		// The resolves must always return result(s) or throw
 		assert(resolved.length > 0, `DNS lookup for ${hostname} returned no results`);
 
-		if (this.allowedHostnameMatcher.matches(hostname)) {
+		if (allowedByName) {
 			return createResultOk(resolved);
 		}
 
@@ -304,9 +333,12 @@ export class SsrfProtectionService implements SsrfBridge {
 			: emitAndReturn(result);
 	}
 
-	private toReason(error: Error): string {
+	private toReason(error: Error): SsrfBlockedReason {
 		if (error instanceof SsrfBlockedIpError) {
 			return 'blocked_ip';
+		}
+		if (error instanceof SsrfBlockedHostnameError) {
+			return 'blocked_hostname';
 		}
 		return 'dns_error';
 	}

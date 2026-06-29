@@ -33,6 +33,7 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+tcr-dry.log
 .agent-setup/
 sbom-source.cdx.json
 *.junit.xml

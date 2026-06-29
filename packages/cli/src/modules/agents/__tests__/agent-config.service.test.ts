@@ -1,6 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -37,13 +36,12 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-function makeService(config: Partial<AgentsConfig> = {}) {
+function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
-	const agentsConfig = { modules: [], ...config } as AgentsConfig;
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
@@ -61,7 +59,6 @@ function makeService(config: Partial<AgentsConfig> = {}) {
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
-		agentsConfig,
 		runtimeCacheService,
 		credentialsService,
 	);
@@ -112,27 +109,6 @@ describe('AgentConfigService', () => {
 			});
 		});
 
-		it('gates config.nodeTools.enabled on the node-tools module', async () => {
-			await expect(
-				makeService().service.validateConfig({
-					...baseConfig,
-					config: { nodeTools: { enabled: true } },
-				}),
-			).resolves.toMatchObject({
-				valid: false,
-				error: expect.stringContaining('node-tools-searcher'),
-			});
-
-			await expect(
-				makeService({
-					modules: ['node-tools-searcher'] as AgentsConfig['modules'],
-				}).service.validateConfig({
-					...baseConfig,
-					config: { nodeTools: { enabled: true } },
-				}),
-			).resolves.toMatchObject({ valid: true });
-		});
-
 		it('accepts draft credentials that are not checked until update sanitization', async () => {
 			const { service } = makeService();
 
@@ -158,14 +134,13 @@ describe('AgentConfigService', () => {
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {
 			const { service, agentRepository, credentialsService, runtimeCacheService } = makeService();
 			const agent = makeAgent({
-				description: 'Existing description',
 				schema: {
 					...baseConfig,
-					description: 'Existing description',
+					description: 'Legacy description',
 					credential: 'stored-cred',
 					memory: { enabled: true, storage: 'n8n' },
 					tools: [{ type: 'custom', id: 'tool-1' }],
-				},
+				} as unknown as AgentJsonConfig,
 				integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -179,12 +154,12 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).toEqual(
 				expect.objectContaining({
 					instructions: 'Updated instructions',
-					description: 'Existing description',
 					credential: 'stored-cred',
 					memory: { enabled: true, storage: 'n8n' },
 					tools: [{ type: 'custom', id: 'tool-1' }],
 				}),
 			);
+			expect(saved.schema).not.toHaveProperty('description');
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'slack-cred' }]);
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig, integrations: [] });
@@ -203,13 +178,13 @@ describe('AgentConfigService', () => {
 			} = makeService();
 			const agent = makeAgent({
 				tools: {
-					'tool-1': {
+					tool_1: {
 						code: 'a',
-						descriptor: { name: 'tool-1', description: 'a', inputSchema: {} },
+						descriptor: { name: 'tool_1', description: 'a', inputSchema: {} },
 					},
-					'tool-2': {
+					tool_2: {
 						code: 'b',
-						descriptor: { name: 'tool-2', description: 'b', inputSchema: {} },
+						descriptor: { name: 'tool_2', description: 'b', inputSchema: {} },
 					},
 				} as unknown as Agent['tools'],
 				skills: {
@@ -225,8 +200,8 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(agentId, projectId, {
 				...baseConfig,
 				tools: [
-					{ type: 'custom', id: 'tool-1' },
-					{ type: 'custom', id: 'missing-tool' },
+					{ type: 'custom', id: 'tool_1' },
+					{ type: 'custom', id: 'missing_tool' },
 				],
 				skills: [
 					{ type: 'skill', id: 'skill-1' },
@@ -239,10 +214,10 @@ describe('AgentConfigService', () => {
 			});
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
-			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool-1' }]);
+			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
 			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
-			expect(Object.keys(saved.tools)).toEqual(['tool-1']);
+			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
@@ -303,13 +278,17 @@ describe('AgentConfigService', () => {
 				...baseConfig,
 				subAgents: {
 					maxChildren: 3,
-					agents: [{ agentId: 'missing-agent' }, { agentId: 'agent-2' }, { agentId: 'agent-2' }],
+					agents: [
+						{ agentId: 'missing-agent', useWhen: 'Use for missing work.' },
+						{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+						{ agentId: 'agent-2', useWhen: 'Use for duplicate work.' },
+					],
 				},
 			});
 
 			expect((agentRepository.save.mock.calls[0][0] as Agent).schema?.subAgents).toEqual({
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2' }],
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			});
 			expect(
 				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-2'),
@@ -318,14 +297,16 @@ describe('AgentConfigService', () => {
 			await expect(
 				service.updateConfig(agentId, projectId, {
 					...baseConfig,
-					subAgents: { agents: [{ agentId: 'agent-3' }] },
+					subAgents: {
+						agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
+					},
 				}),
 			).rejects.toThrow('must be published');
 
 			await expect(
 				service.updateConfig(agentId, projectId, {
 					...baseConfig,
-					subAgents: { agents: [{ agentId }] },
+					subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
 				}),
 			).rejects.toThrow('cannot use itself');
 		});

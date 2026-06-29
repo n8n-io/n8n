@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/json-schema": "^7.0.15",
+    "@types/json-schema": "catalog:",
     "zod": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",

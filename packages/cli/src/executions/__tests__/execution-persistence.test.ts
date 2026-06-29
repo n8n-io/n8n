@@ -232,6 +232,7 @@ describe('ExecutionPersistence', () => {
 					nodes: workflowData.nodes,
 					connections: workflowData.connections,
 					settings: workflowData.settings,
+					nodeGroups: workflowData.nodeGroups,
 				};
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId: 'workflow-123', executionId: 'exec-2' },
@@ -530,6 +531,7 @@ describe('ExecutionPersistence', () => {
 							nodes: workflowData.nodes,
 							connections: workflowData.connections,
 							settings: workflowData.settings,
+							nodeGroups: workflowData.nodeGroups,
 						},
 						// sourced from the entity row, not the incoming workflowData.versionId
 						workflowVersionId: 'v-entity',
@@ -714,6 +716,7 @@ describe('ExecutionPersistence', () => {
 							nodes: workflowData.nodes,
 							connections: workflowData.connections,
 							settings: workflowData.settings,
+							nodeGroups: workflowData.nodeGroups,
 						},
 						// from the entity row, not the incoming workflowData.versionId
 						workflowVersionId: 'v-entity',

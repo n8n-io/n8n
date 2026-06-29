@@ -18,6 +18,7 @@ import {
 	type TriggerActivationFailure,
 	type TriggerActivationOutcome,
 } from '@/workflows/triggers/workflow-trigger-activator';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -36,6 +37,7 @@ export class WorkflowPublicationApplier {
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -114,6 +116,13 @@ export class WorkflowPublicationApplier {
 			.getUnregisteredNonWebhookTriggerNodeIds(record.workflowId, desiredTriggerNodes)
 			.forEach((nodeId) => toAdd.add(nodeId));
 
+		// Webhook triggers live in the `webhook_entity` table, so reconcile them
+		// against that stored state the same way: re-add any desired webhook node
+		// whose webhooks aren't all registered locally.
+		const nodesWithUnregisteredWebhooks =
+			await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(workflow, newVersion);
+		nodesWithUnregisteredWebhooks.forEach((nodeId) => toAdd.add(nodeId));
+
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {
@@ -172,6 +181,10 @@ export class WorkflowPublicationApplier {
 			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
 		}
 
+		// Invalidate before the mapping is removed, so reads fall through to the
+		// database instead of the cache ever serving a version for an unpublished
+		// workflow. No repopulation follows: the end state has no published version.
+		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
 		return { type: 'unpublished' };
@@ -243,9 +256,14 @@ export class WorkflowPublicationApplier {
 	 * the previous one.
 	 */
 	private async advancePublishedVersion(record: WorkflowPublicationOutbox) {
+		// Invalidate → write → refresh: with the cache empty across the write, reads
+		// fall through to the database (the source of truth) rather than ever serving
+		// a stale version, before the new version is cached again.
+		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
 		await this.workflowPublishedVersionRepository.setPublishedVersion(
 			record.workflowId,
 			record.publishedVersionId,
 		);
+		await this.workflowPublishedDataService.refreshCache(record.workflowId);
 	}
 }

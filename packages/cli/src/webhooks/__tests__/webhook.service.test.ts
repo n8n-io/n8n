@@ -338,6 +338,18 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('getRegisteredWebhooks()', () => {
+		test('returns the webhooks registered for the workflow', async () => {
+			const rows = [createWebhook('GET', 'users'), createWebhook('POST', 'user/:id')];
+			webhookRepository.findBy.mockResolvedValue(rows);
+
+			const result = await webhookService.getRegisteredWebhooks('wf-1');
+
+			expect(result).toBe(rows);
+			expect(webhookRepository.findBy).toHaveBeenCalledWith({ workflowId: 'wf-1' });
+		});
+	});
+
 	describe('storeWebhook()', () => {
 		const buildWebhook = (overrides: Partial<WebhookEntity> = {}) =>
 			Object.assign(new WebhookEntity(), {
@@ -448,6 +460,36 @@ describe('WebhookService', () => {
 				node: 'Webhook',
 				workflowId: 'test-workflow',
 			});
+		});
+
+		test('should trim surrounding whitespace and slashes from the path', async () => {
+			const node = {
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+			} as INode;
+
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path: ' /path/ ',
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0].path).not.toMatch(/\s/);
+			expect(webhooks[0].path).toMatch(/\/path$/);
 		});
 	});
 

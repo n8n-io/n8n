@@ -7,6 +7,7 @@ const mockGetThread = jest.fn();
 const mockSaveThread = jest.fn();
 const mockDeleteThread = jest.fn();
 const mockDeleteThreadsByResourceIdPrefix = jest.fn();
+const mockDeleteThreadsByResourceId = jest.fn();
 const mockListThreads = jest.fn();
 const mockSaveThreadWithProject = jest.fn();
 const mockGetThreadProjectId = jest.fn();
@@ -17,6 +18,7 @@ const mockAgentMemory = {
 	saveThread: mockSaveThread,
 	deleteThread: mockDeleteThread,
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
+	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
 	listThreads: mockListThreads,
 	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
@@ -186,11 +188,13 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		expect(result.messages).toEqual([]);
 	});
 
-	it('surfaces in-flight user message from a suspended checkpoint when memory is empty', async () => {
+	it('surfaces in-flight checkpoint messages not yet committed to memory', async () => {
 		// A turn that suspended at HITL never gets `saveToMemory` called by the
-		// SDK, so the user prompt + intermediate assistant messages live only
-		// in `state.messageList.messages`. The /messages endpoint should
-		// surface them so a page reload doesn't drop the original user message.
+		// SDK. The inbound user message is persisted on receipt, but the
+		// intermediate assistant messages (and any pending tool-call) live only
+		// in `state.messageList.messages` until the turn resumes and completes.
+		// The /messages endpoint should surface them so a page reload doesn't
+		// drop in-flight artifacts.
 		mockListMessages.mockResolvedValue({ messages: [] });
 		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
 			{
@@ -442,6 +446,22 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 		expect(mockDeleteThreadsByResourceIdPrefix.mock.invocationCallOrder[0]).toBeLessThan(
 			mockDeleteThread.mock.invocationCallOrder[0],
 		);
+	});
+});
+
+describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('delegates to the agent memory and returns the number of deleted threads', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+		const service = createService();
+
+		const deleted = await service.deleteThreadsForUser('user-1');
+
+		expect(deleted).toBe(3);
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
 	});
 });
 

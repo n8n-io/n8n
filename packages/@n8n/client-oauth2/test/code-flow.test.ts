@@ -1,7 +1,9 @@
 import nock from 'nock';
 
+import { CLIENT_ASSERTION_TYPE } from '@/client-assertion';
 import { ClientOAuth2 } from '@/client-oauth2';
 import { ClientOAuth2Token } from '@/client-oauth2-token';
+import type { Headers } from '@/types';
 import { AuthError } from '@/utils';
 
 import * as config from './config';
@@ -196,6 +198,79 @@ describe('CodeFlow', () => {
 
 				await expect(token.refresh()).rejects.toThrow(
 					'OAuth access token expired and no refresh token is available. Please reconnect the credentials.',
+				);
+			});
+		});
+
+		describe('with certificate (private_key_jwt) client authentication', () => {
+			const certAuth = new ClientOAuth2({
+				clientId: config.clientId,
+				clientCredentialType: 'certificate',
+				clientCertificate: { privateKey: config.privateKey, certificate: config.certificate },
+				accessTokenUri: config.accessTokenUri,
+				authorizationUri: config.authorizationUri,
+				authorizationGrants: ['code'],
+				redirectUri: config.redirectUri,
+			});
+
+			const captureTokenCall = async () => {
+				const nockScope = nock(config.baseUrl)
+					.post('/login/oauth/access_token')
+					.once()
+					.reply(200, { access_token: config.accessToken, refresh_token: config.refreshToken });
+				return await new Promise<{ headers: Headers; body: URLSearchParams }>((resolve) => {
+					nockScope.once('request', (req) => {
+						const rawBody = (req.requestBodyBuffers as Buffer).toString('utf-8');
+						resolve({ headers: req.headers, body: new URLSearchParams(rawBody) });
+					});
+				});
+			};
+
+			it('sends a signed assertion instead of a secret on the code exchange', async () => {
+				const requestPromise = captureTokenCall();
+				const token = await certAuth.code.getToken(uri, { state: config.state });
+
+				const { headers, body } = await requestPromise;
+				expect(body.get('grant_type')).toBe('authorization_code');
+				expect(body.get('client_id')).toBe(config.clientId);
+				expect(body.get('client_assertion_type')).toBe(CLIENT_ASSERTION_TYPE);
+				expect(body.get('client_assertion')).toEqual(expect.any(String));
+				expect(body.get('client_secret')).toBeNull();
+				expect(headers.authorization).toBeUndefined();
+				expect(token).toBeInstanceOf(ClientOAuth2Token);
+				expect(token.accessToken).toBe(config.accessToken);
+			});
+
+			it('sends a signed assertion instead of a secret on refresh', async () => {
+				const token = certAuth.createToken({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				});
+
+				const requestPromise = captureTokenCall();
+				const refreshed = await token.refresh();
+
+				const { body } = await requestPromise;
+				expect(body.get('grant_type')).toBe('refresh_token');
+				expect(body.get('client_assertion_type')).toBe(CLIENT_ASSERTION_TYPE);
+				expect(body.get('client_assertion')).toEqual(expect.any(String));
+				expect(body.get('client_secret')).toBeNull();
+				expect(refreshed).toBeInstanceOf(ClientOAuth2Token);
+				expect(refreshed.accessToken).toBe(config.accessToken);
+			});
+
+			it('throws when certificate authentication is selected without a certificate', async () => {
+				const misconfigured = new ClientOAuth2({
+					clientId: config.clientId,
+					clientCredentialType: 'certificate',
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: config.authorizationUri,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+				});
+
+				await expect(misconfigured.code.getToken(uri, { state: config.state })).rejects.toThrow(
+					'Expected "clientCertificate" to exist',
 				);
 			});
 		});

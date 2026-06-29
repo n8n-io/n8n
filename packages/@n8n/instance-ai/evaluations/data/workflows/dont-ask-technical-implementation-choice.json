@@ -1,0 +1,42 @@
+{
+	"description": "INS-666: When a built-in node can't supply a needed field, the agent must pick the implementation itself (e.g. fall back to an HTTP Request to the service's API) instead of asking the user to approve a technical/node-choice decision. The built-in Linear node's 'Get many issues' doesn't return labels or the issue description, so filtering by the 'bug' label and including descriptions forces an implementation fork the agent should resolve on its own — not surface as a 'is this approach acceptable?' question.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 9am, fetch all my Linear issues that have the 'bug' label, including each issue's description, and post a summary of them to Slack #bugs."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll build that for you now."
+		},
+		{
+			"role": "user",
+			"text": "[You are a non-technical user. You don't know n8n's nodes or APIs and won't make build decisions. If the agent asks you to choose or approve anything technical — which node to use, whether to use an HTTP Request vs a built-in node, which API or endpoint (e.g. a GraphQL API), data formats — do not answer it: reply 'You're the expert — just decide for me.' and never pick. Only answer normally if it asks about what you want (your goal, schedule, channel, which Linear team/project).]"
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"clarification",
+		"question-tool",
+		"technical-decision",
+		"schedule",
+		"linear",
+		"slack"
+	],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent did not ask the user to approve or choose a technical implementation detail — for example which node type or API to use, whether to use the built-in Linear node or an HTTP Request to Linear's API (e.g. its GraphQL API), or which endpoint. It made any such decision itself.",
+		"Any questions the agent did ask were about the user's goal or desired outcome, never about how to build the workflow technically. The agent never described an implementation approach and asked whether it was acceptable."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Linear returns a couple of issues labeled 'bug' with descriptions; a summary is posted to Slack",
+			"dataSetup": "The Linear source returns 2 issues labeled 'bug': 'Login button unresponsive' and 'Export times out', each with a one-sentence description. The Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.000100\" }.",
+			"successCriteria": "Judge only the built workflow's structure, not the conversation. A pass is a weekday 9am schedule trigger that retrieves Linear issues filtered to the 'bug' label (including their descriptions) and posts a summary to Slack #bugs. Because no credentials are provided, empty/placeholder values (e.g. an unset Linear team or Slack channel) that cause a validation failure before any request is made are acceptable and count as a pass — they are values to fill in at setup, not build mistakes. If values are set and the run succeeds, that is also a pass."
+		}
+	]
+}

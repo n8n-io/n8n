@@ -234,6 +234,32 @@ function setOutput(name, value) {
 	}
 }
 
+/**
+ * Cap the changed-files list before it leaves the action.
+ *
+ * The list is consumed downstream as a step `env:` value and as a CLI argument
+ * (`--files=...`). On a PR that touches thousands of files the joined string
+ * blows past the kernel's argv/env size limit, so the runner can't even spawn
+ * the step's shell ("Argument list too long" on execve). A change set that
+ * large affects essentially every package anyway, so the per-file test scoping
+ * is moot: emit an empty list, which every consumer already reads as "no
+ * signal → run the full suite / all packages" — the safe, correct fallback.
+ */
+export function formatChangedFilesOutput(
+	changedFiles,
+	maxCount = Number(process.env.CI_FILTER_MAX_CHANGED_FILES) || 1000,
+) {
+	if (changedFiles.length > maxCount) {
+		console.log(
+			`Changed file count (${changedFiles.length}) exceeds CI_FILTER_MAX_CHANGED_FILES (${maxCount}); ` +
+				'emitting an empty changed-files output so downstream test scoping falls back to the full suite. ' +
+				'This keeps the value small enough to pass through the step environment and CLI args.',
+		);
+		return '';
+	}
+	return changedFiles.join('\n');
+}
+
 export function runFilter() {
 	const filtersInput = process.env.INPUT_FILTERS;
 	const baseRef = process.env.INPUT_BASE_REF;
@@ -264,7 +290,7 @@ export function runFilter() {
 	}
 
 	setOutput('results', JSON.stringify(results));
-	setOutput('changed-files', changedFiles.join('\n'));
+	setOutput('changed-files', formatChangedFilesOutput(changedFiles));
 	setOutput('base-ref', baseRef);
 	setOutput('merge-base', mergeBase);
 }

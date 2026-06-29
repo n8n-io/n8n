@@ -186,7 +186,13 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: {
 				'agent-2': selectedSource,
 			},
-			availableSubAgents: [{ id: 'agent-2', name: 'Research Agent' }],
+			availableSubAgents: [
+				{
+					id: 'agent-2',
+					name: 'Research Agent',
+					useWhen: 'Use for research tasks.',
+				},
+			],
 			projectId,
 			userId,
 			credentialProvider,

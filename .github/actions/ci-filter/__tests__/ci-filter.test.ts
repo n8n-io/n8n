@@ -8,6 +8,7 @@ import {
 	matchGlob,
 	parseFilters,
 	evaluateFilter,
+	formatChangedFilesOutput,
 	runValidate,
 	getChangedFiles,
 	getMergeBase,
@@ -198,6 +199,32 @@ describe('evaluateFilter', () => {
 			'packages/@n8n/task-runner-python/**',
 		];
 		assert.equal(evaluateFilter(files, patterns), true);
+	});
+});
+
+// --- formatChangedFilesOutput (oversized change-set cap) ---
+
+describe('formatChangedFilesOutput', () => {
+	it('joins the list with newlines when under the cap', () => {
+		const files = ['packages/cli/src/a.ts', 'packages/core/src/b.ts'];
+		assert.equal(
+			formatChangedFilesOutput(files, 10),
+			'packages/cli/src/a.ts\npackages/core/src/b.ts',
+		);
+	});
+
+	it('returns the full list at exactly the cap', () => {
+		const files = ['a', 'b', 'c'];
+		assert.equal(formatChangedFilesOutput(files, 3), 'a\nb\nc');
+	});
+
+	it('returns an empty string when the list exceeds the cap', () => {
+		const files = ['a', 'b', 'c', 'd'];
+		assert.equal(formatChangedFilesOutput(files, 3), '');
+	});
+
+	it('empty input stays empty', () => {
+		assert.equal(formatChangedFilesOutput([], 10), '');
 	});
 });
 

@@ -106,6 +106,15 @@ vi.mock('vue-router', () => {
 	};
 });
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 const mockBuilderState = {
 	trackWorkflowBuilderJourney: vi.fn(),
 	isAIBuilderEnabled: true,
@@ -275,6 +284,30 @@ describe('ParameterInput.vue', () => {
 		await waitFor(() =>
 			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1 })]),
 		);
+	});
+
+	test('uses medium input size by default', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				path: 'tag',
+				parameter: createTestNodeProperties({
+					displayName: 'Tag',
+					name: 'tag',
+					type: 'string',
+				}),
+				modelValue: '',
+			},
+			global: {
+				stubs: {
+					N8nInput: {
+						props: ['size'],
+						template: '<input data-test-id="parameter-input-field" :data-size="size" />',
+					},
+				},
+			},
+		});
+
+		expect(getByTestId('parameter-input-field')).toHaveAttribute('data-size', 'medium');
 	});
 
 	test('should render a string parameter', async () => {

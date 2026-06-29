@@ -210,6 +210,8 @@ import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/
 import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
 import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
 import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
+import { DropAgentDescriptionFromAgents1784000000037 } from '../common/1784000000037-DropAgentDescriptionFromAgents';
+import { SetChatHubEnabledFromUsage1784000000038 } from '../common/1784000000038-SetChatHubEnabledFromUsage';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -425,4 +427,6 @@ export const postgresMigrations: Migration[] = [
 	AllowAzureStoredAt1784000000034,
 	AddUniqueAgentFileNames1784000000035,
 	CreateInstanceAiThreadGrantTable1784000000036,
+	DropAgentDescriptionFromAgents1784000000037,
+	SetChatHubEnabledFromUsage1784000000038,
 ];

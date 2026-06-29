@@ -36,6 +36,7 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
+import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
@@ -348,13 +349,7 @@ export interface InstanceAiExecutionService {
 		inputData?: Record<string, unknown>,
 		options?: {
 			timeout?: number;
-			pinData?: Record<string, unknown[]>;
-			/**
-			 * Nodes whose pin data simulates a destructive operation, keyed by node
-			 * name. Persisted onto the saved execution (`resultData.simulation`) so
-			 * the editor can label simulated outputs.
-			 */
-			simulation?: Record<string, { reason: string }>;
+			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 		},
@@ -1231,6 +1226,7 @@ export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
@@ -1299,6 +1295,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
+	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
+	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
@@ -1329,15 +1327,6 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
-	/**
-	 * Persist the current user message to thread memory immediately, so it
-	 * survives a restart that happens while the orchestrator is suspended on
-	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
-	 * loop completion, which a suspended run never reaches — without this the
-	 * user's bubble is invisible on reload until the turn eventually completes.
-	 * Idempotent: safe to call multiple times within a run.
-	 */
-	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */

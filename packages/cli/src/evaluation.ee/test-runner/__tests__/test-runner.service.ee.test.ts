@@ -1,5 +1,6 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
+import { TestCaseExecutionErrorCode } from '@n8n/db';
 import type {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
@@ -782,6 +783,7 @@ describe('TestRunnerService', () => {
 					},
 					userId: metadata.userId,
 					forceFullExecutionData: true,
+					evaluationRunId: metadata.testRunId,
 					triggerToStartFrom: {
 						name: triggerNodeName,
 					},
@@ -930,6 +932,7 @@ describe('TestRunnerService', () => {
 							},
 						},
 						userId: metadata.userId,
+						evaluationRunId: metadata.testRunId,
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
@@ -944,6 +947,7 @@ describe('TestRunnerService', () => {
 								},
 								manualData: {
 									userId: metadata.userId,
+									evaluationRunId: metadata.testRunId,
 									triggerToStartFrom: {
 										name: triggerNodeName,
 									},
@@ -2215,6 +2219,45 @@ describe('TestRunnerService', () => {
 			expect(errorRows).toHaveLength(1);
 			expect(successRows).toHaveLength(3);
 			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('records executionId on a case that errors after running (so the UI can link to its execution)', async () => {
+			setupHappyPathMocks(2);
+
+			// Case 2's execution completes, but emits a non-numeric metric so
+			// metric extraction throws INVALID_METRICS *after* the execution ran.
+			// Its executionId must still be persisted on the error row.
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return buildDatasetExecution(2);
+				}
+				if (executionId === 'case-exec-2') {
+					return {
+						data: {
+							resultData: {
+								runData: {
+									[METRICS_NODE_NAME]: [
+										{
+											data: {
+												[NodeConnectionTypes.Main]: [[{ json: { score: 'not-a-number' } }]],
+											},
+										},
+									],
+								},
+							},
+						},
+					} as unknown as IRun;
+				}
+				return buildCaseExecution(0.5);
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			const invalidMetricRow = testCaseExecutionRepository.update.mock.calls.find(
+				([, row]) => row.errorCode === TestCaseExecutionErrorCode.INVALID_METRICS,
+			);
+			expect(invalidMetricRow).toBeDefined();
+			expect(invalidMetricRow?.[1].executionId).toBe('case-exec-2');
 		});
 
 		test('throttle is called once per case and release is called once per case', async () => {

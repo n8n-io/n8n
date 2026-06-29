@@ -34,11 +34,21 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllMocks());
 
-describe('Test Snowflake, insert - parameter binding', () => {
+describe('Test Snowflake, insert - parameter binding without origin hostname', () => {
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['insert.workflow.json'],
 		credentials: { snowflake: snowflakeCredentials },
 		customAssertions() {
+			expect(snowflake.createConnection).toHaveBeenCalledWith({
+				account: 'test-account',
+				database: 'TEST_DB',
+				schema: 'PUBLIC',
+				warehouse: 'WH',
+				role: 'SYSADMIN',
+				clientSessionKeepAlive: false,
+				username: 'user',
+				password: 'pass',
+			});
 			// One ALTER SESSION (STRICT_JSON_OUTPUT) call plus one INSERT for the single row
 			expect(mockExecute).toHaveBeenCalledTimes(2);
 			expect(mockExecute).toHaveBeenCalledWith(
@@ -50,6 +60,32 @@ describe('Test Snowflake, insert - parameter binding', () => {
 					binds: [['Alice', 'active']],
 				}),
 			);
+		},
+	});
+});
+
+describe('Test Snowflake, insert - parameter binding with origin hostname', () => {
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['insert.workflow.json'],
+		credentials: {
+			snowflake: {
+				...snowflakeCredentials,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+			},
+		},
+		customAssertions() {
+			expect(snowflake.createConnection).toHaveBeenCalledWith({
+				account: 'test-account',
+				database: 'TEST_DB',
+				schema: 'PUBLIC',
+				warehouse: 'WH',
+				role: 'SYSADMIN',
+				clientSessionKeepAlive: false,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+				username: 'user',
+				password: 'pass',
+			});
+			expect(mockExecute).toHaveBeenCalledTimes(2);
 		},
 	});
 });
