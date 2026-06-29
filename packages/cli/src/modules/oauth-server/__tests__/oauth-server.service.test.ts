@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from 'vitest';
 import {
 	InvalidGrantError,
 	InvalidTargetError,
@@ -6,7 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
@@ -21,14 +22,14 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
 
-let logger: jest.Mocked<Logger>;
-let oauthSessionService: jest.Mocked<OAuthSessionService>;
-let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let tokenService: jest.Mocked<OAuthTokenService>;
-let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
+let logger: Mocked<Logger>;
+let oauthSessionService: Mocked<OAuthSessionService>;
+let oauthClientRepository: Mocked<OAuthClientRepository>;
+let tokenService: Mocked<OAuthTokenService>;
+let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
 let service: OAuthServerService;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
-let getAllowedRedirectUris: jest.Mock<Promise<string[]>>;
+let userConsentRepository: Mocked<UserConsentRepository>;
+let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -38,7 +39,7 @@ describe('OAuthServerService', () => {
 		tokenService = mockInstance(OAuthTokenService);
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
-		getAllowedRedirectUris = jest.fn<Promise<string[]>, []>().mockResolvedValue([]);
+		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
@@ -63,7 +64,7 @@ describe('OAuthServerService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		getAllowedRedirectUris.mockResolvedValue([]);
 	});
 

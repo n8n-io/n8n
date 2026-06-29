@@ -273,24 +273,24 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Load the published workflow nodes/connections from the
-	 * `workflow_published_version` table. The passed-in workflow is used
-	 * for all other fields (staticData, settings, etc.).
+	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the cached
+	 * published data. `pinData` and `meta` are deliberately left out — they are
+	 * irrelevant to a production trigger execution.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(initialWorkflowData: IWorkflowDb): Promise<IWorkflowBase> {
-		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
-			initialWorkflowData.id,
-		);
+	async loadPublishedWorkflowData(workflowId: string): Promise<IWorkflowBase> {
+		const publishedData =
+			await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
+				workflowId,
+			);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {
-				extra: { workflowId: initialWorkflowData.id },
+				extra: { workflowId },
 			});
 		}
 
-		const { nodes, connections } = publishedData.publishedVersion;
-		return { ...initialWorkflowData, nodes, connections };
+		return publishedData;
 	}
 }

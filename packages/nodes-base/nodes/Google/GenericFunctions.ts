@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils';
 import * as jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
 import moment from 'moment-timezone';
@@ -11,8 +12,6 @@ import {
 	type IRequestOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 export const googleServiceAccountScopes = {
 	bigquery: ['https://www.googleapis.com/auth/bigquery'],
@@ -87,7 +86,7 @@ export async function getGoogleAccessToken(
 
 	const scopes = googleServiceAccountScopes[service];
 
-	const privateKey = formatPrivateKey(credentials.privateKey as string);
+	const privateKey = formatPemBlock(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
 
 	const now = moment().unix();

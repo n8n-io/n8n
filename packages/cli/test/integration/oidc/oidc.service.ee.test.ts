@@ -1,9 +1,9 @@
-const discoveryMock = jest.fn();
-const authorizationCodeGrantMock = jest.fn();
-const fetchUserInfoMock = jest.fn();
+const discoveryMock = vi.fn();
+const authorizationCodeGrantMock = vi.fn();
+const fetchUserInfoMock = vi.fn();
 
-jest.mock('openid-client', () => ({
-	...jest.requireActual('openid-client'),
+vi.mock('openid-client', async () => ({
+	...(await vi.importActual<typeof import('openid-client')>('openid-client')),
 	discovery: discoveryMock,
 	authorizationCodeGrant: authorizationCodeGrantMock,
 	fetchUserInfo: fetchUserInfoMock,
@@ -17,7 +17,11 @@ import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } 
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
-const real_odic_client = jest.requireActual('openid-client');
+// Assigned in beforeAll rather than top-level await (tsconfig module forbids TLA).
+let real_odic_client: typeof import('openid-client');
+beforeAll(async () => {
+	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
+});
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -421,17 +425,9 @@ describe('OIDC service', () => {
 	});
 
 	describe('additionalScopes', () => {
-		const mockConfiguration = new real_odic_client.Configuration(
-			{
-				issuer: 'https://example.com/auth/realms/n8n',
-				client_id: 'test-client-id',
-				redirect_uris: ['http://n8n.io/sso/oidc/callback'],
-				response_types: ['code'],
-				scopes: ['openid', 'profile', 'email'],
-				authorization_endpoint: 'https://example.com/auth',
-			},
-			'test-client-id',
-		);
+		// Built in `beforeEach` (not at describe-body level): `real_odic_client` is assigned in a
+		// `beforeAll` via `vi.importActual`, so it isn't available during collection.
+		let mockConfiguration: mocked_oidc_client.Configuration;
 
 		const baseConfig: OidcConfigDto = {
 			clientId: 'test-client-id',
@@ -446,6 +442,17 @@ describe('OIDC service', () => {
 		let provisioningConfig: GlobalConfig['sso']['provisioning'];
 
 		beforeEach(() => {
+			mockConfiguration = new real_odic_client.Configuration(
+				{
+					issuer: 'https://example.com/auth/realms/n8n',
+					client_id: 'test-client-id',
+					redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+					response_types: ['code'],
+					scopes: ['openid', 'profile', 'email'],
+					authorization_endpoint: 'https://example.com/auth',
+				},
+				'test-client-id',
+			);
 			discoveryMock.mockResolvedValue(mockConfiguration);
 			provisioningConfig = { ...Container.get(GlobalConfig).sso.provisioning };
 			// @ts-expect-error - provisioningConfig is private and only accessible within the class
@@ -1167,7 +1174,7 @@ describe('OIDC service', () => {
 					// Custom roles are license-gated when assigned via provisioning.
 					const licenseState = Container.get(LicenseState);
 					licenseState.setLicenseProvider(Container.get(License));
-					const customRolesLicensed = jest
+					const customRolesLicensed = vi
 						.spyOn(licenseState, 'isCustomRolesLicensed')
 						.mockReturnValue(true);
 

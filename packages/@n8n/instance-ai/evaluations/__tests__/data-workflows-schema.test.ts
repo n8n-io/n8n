@@ -102,6 +102,26 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.conversation).toHaveLength(1);
 	});
 
+	it('accepts a seedThread carrying a dual-tenant endpoint (US-sourced case)', () => {
+		// Cross-repo contract (TRUST-212): LangTracer's buildExportedTestCase emits
+		// seedThread.endpoint for a US-sourced replay; the harness must retain it
+		// (the inner seedThread object isn't .strict(), so an un-modelled field
+		// would be silently stripped and the read would wrongly target home/EU).
+		const { conversation: _omit, ...rest } = validFixture();
+		const parsed = WorkflowTestCaseSchema.parse({
+			...rest,
+			seedThread: { threadId: 't1', endpoint: 'https://api.smith.langchain.com' },
+		});
+		expect(parsed.seedThread?.endpoint).toBe('https://api.smith.langchain.com');
+	});
+
+	it('rejects a seedThread endpoint that is not a URL', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', endpoint: 'us' } }),
+		).toThrow();
+	});
+
 	it('rejects seedThread combined with another seeding mode', () => {
 		const { conversation: _omit, ...rest } = validFixture();
 		expect(() =>

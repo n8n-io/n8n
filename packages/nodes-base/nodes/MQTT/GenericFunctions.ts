@@ -1,7 +1,6 @@
+import { formatPemBlock } from '@n8n/utils';
 import { connect, type IClientOptions, type MqttClient } from 'mqtt';
 import { OperationalError, randomString } from 'n8n-workflow';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 interface BaseMqttCredential {
 	protocol: 'mqtt' | 'mqtts' | 'ws';
@@ -44,9 +43,9 @@ export const createClient = async (credentials: MqttCredential): Promise<MqttCli
 	}
 
 	if (credentials.ssl) {
-		clientOptions.ca = formatPrivateKey(credentials.ca);
-		clientOptions.cert = formatPrivateKey(credentials.cert);
-		clientOptions.key = formatPrivateKey(credentials.key);
+		clientOptions.ca = formatPemBlock(credentials.ca);
+		clientOptions.cert = formatPemBlock(credentials.cert);
+		clientOptions.key = formatPemBlock(credentials.key);
 		clientOptions.rejectUnauthorized = credentials.rejectUnauthorized;
 	}
 
