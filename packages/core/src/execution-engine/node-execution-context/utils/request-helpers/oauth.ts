@@ -165,8 +165,15 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			true,
 		)) as unknown as OAuth2CredentialData;
 
+		// Resolve the stored token through the same property path used to build `token`,
+		// otherwise the comparison misfires for nodes using `oAuth2Options.property` (e.g. Slack),
+		// where `token.accessToken` is a nested value rather than the top-level `access_token`.
+		const currentAccessToken =
+			get(currentCredential?.oauthTokenData, oAuth2Options?.property as string) ||
+			currentCredential?.oauthTokenData?.access_token;
+
 		// if the access token value changed, the refresh already happend in another process, so we can just return the new token
-		if (currentCredential?.oauthTokenData?.access_token !== token.accessToken) {
+		if (currentAccessToken !== token.accessToken) {
 			return buildSigningToken(
 				token.client,
 				currentCredential?.oauthTokenData as ClientOAuth2TokenData,
