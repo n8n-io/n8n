@@ -69,7 +69,7 @@ function onExtraPropValueRemove(name: string) {
 				:is-read-only="isReadOnly"
 				:value="parameterOverride?.extraPropValues[name]"
 				:path="`${path}.${name}`"
-				input-size="small"
+				input-size="medium"
 				@update="
 					(x: IUpdateInformation) => {
 						parameterOverride.extraPropValues[name] = x.value;

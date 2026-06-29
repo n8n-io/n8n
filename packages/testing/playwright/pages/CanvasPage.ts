@@ -653,6 +653,12 @@ export class CanvasPage extends BasePage {
 		);
 	}
 
+	getAddConnectionButtonBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionToolbarBetweenNodes(sourceNodeName, targetNodeName).getByTestId(
+			'add-connection-button',
+		);
+	}
+
 	// Canvas action helpers
 	async addNodeBetweenNodes(
 		sourceNodeName: string,

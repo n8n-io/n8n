@@ -1,7 +1,12 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import type { GoogleAISafetySetting } from '@langchain/google-common';
 import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import { formatPemBlock } from '@n8n/utils';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -17,10 +22,10 @@ import {
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import {
-	makeN8nLlmFailedAttemptHandler,
-	N8nLlmTracing,
-	getConnectionHintNoticeField,
-} from '@n8n/ai-utilities';
+	getVertexEndpoint,
+	resolveVertexLocation,
+	vertexLocationField,
+} from '../gemini-common/vertex-location';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -96,6 +101,7 @@ export class LmChatGoogleVertex implements INodeType {
 						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
 				},
 			},
+			vertexLocationField,
 			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],
 	};
@@ -106,7 +112,7 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPrivateKey(credentials.privateKey as string);
+				const privateKey = formatPemBlock(credentials.privateKey as string);
 				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
@@ -134,9 +140,14 @@ export class LmChatGoogleVertex implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+
+		// A node-level location overrides the credential region; multi-region
+		// locations (eu/us) need a dedicated host the SDK doesn't build itself.
+		const locationOverride = this.getNodeParameter('location', itemIndex, '') as string;
+		const location = resolveVertexLocation(locationOverride, credentials.region as string);
+		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -179,7 +190,8 @@ export class LmChatGoogleVertex implements INodeType {
 						private_key: privateKey,
 					},
 				},
-				location: region,
+				location,
+				...(endpoint ? { endpoint } : {}),
 				model: modelName,
 				topK: options.topK,
 				topP: options.topP,
