@@ -1,4 +1,4 @@
-import type { Mock, Mocked, MockedClass } from 'vitest';
+import type { Mock, MockedClass } from 'vitest';
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
@@ -8,8 +8,9 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
-import type * as fs from 'node:fs';
-import type * as fsp from 'node:fs/promises';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -798,8 +799,6 @@ describe('WorkflowBuilderService', () => {
 });
 
 describe('WorkflowBuilderService - node type loading', () => {
-	const packageDir = '/test/nodes-base';
-
 	const nodeTypeDescription = {
 		name: 'httpRequest',
 		displayName: 'HTTP Request',
@@ -812,48 +811,53 @@ describe('WorkflowBuilderService - node type loading', () => {
 		group: ['output'],
 	};
 
-	beforeEach(async () => {
-		MockedAiWorkflowBuilderService.mockClear();
+	let tmpRoot: string;
+	let packageDir: string;
 
-		// Mock node:fs so LazyPackageDirectoryLoader can "read" from disk
-		const fsModule = (await import('node:fs')) as unknown as Mocked<typeof fs>;
-		const fspModule = (await import('node:fs/promises')) as unknown as Mocked<typeof fsp>;
+	// LazyPackageDirectoryLoader lives in the externalized `n8n-core` dist and reads
+	// from disk through its own `fs` binding, which Vitest module mocks can't reach
+	// (unlike Jest's global module registry). So write a real fixture package and let
+	// the loader exercise the full path against the real filesystem.
+	beforeAll(() => {
+		tmpRoot = mkdtempSync(join(tmpdir(), 'n8n-ai-builder-nodes-'));
+		packageDir = join(tmpRoot, 'nodes-base');
+		mkdirSync(join(packageDir, 'dist', 'known'), { recursive: true });
+		mkdirSync(join(packageDir, 'dist', 'types'), { recursive: true });
 
-		fsModule.realpathSync.mockReturnValue(packageDir);
-		fsModule.readFileSync.mockImplementation((filePath: unknown) => {
-			if (String(filePath).endsWith('package.json')) {
-				return JSON.stringify({
-					name: 'n8n-nodes-base',
-					version: '1.0.0',
-					n8n: { nodes: [], credentials: [] },
-				});
-			}
-			throw new Error(`Unexpected readFileSync: ${String(filePath)}`);
-		});
-
-		fspModule.readFile.mockImplementation(async (filePath: unknown) => {
-			const p = String(filePath);
-			if (p.endsWith('known/nodes.json')) {
-				return JSON.stringify({
-					httpRequest: {
-						className: 'HttpRequest',
-						sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
-					},
-				});
-			}
-			if (p.endsWith('known/credentials.json')) return JSON.stringify({});
-			if (p.endsWith('types/nodes.json')) return JSON.stringify([nodeTypeDescription]);
-			if (p.endsWith('types/credentials.json')) return JSON.stringify([]);
-			throw new Error(`Unexpected readFile: ${p}`);
-		});
+		writeFileSync(
+			join(packageDir, 'package.json'),
+			JSON.stringify({
+				name: 'n8n-nodes-base',
+				version: '1.0.0',
+				n8n: { nodes: [], credentials: [] },
+			}),
+		);
+		writeFileSync(
+			join(packageDir, 'dist', 'known', 'nodes.json'),
+			JSON.stringify({
+				httpRequest: {
+					className: 'HttpRequest',
+					sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
+				},
+			}),
+		);
+		writeFileSync(join(packageDir, 'dist', 'known', 'credentials.json'), JSON.stringify({}));
+		writeFileSync(
+			join(packageDir, 'dist', 'types', 'nodes.json'),
+			JSON.stringify([nodeTypeDescription]),
+		);
+		writeFileSync(join(packageDir, 'dist', 'types', 'credentials.json'), JSON.stringify([]));
 	});
 
-	// Skipped under Vitest: this exercises the real LazyPackageDirectoryLoader in
-	// `n8n-core`, which is externalized to its built dist and reads the filesystem
-	// via its own `fs` binding. Vitest module mocks don't cross that package
-	// boundary (unlike Jest's global module registry), so the loader hits the real
-	// disk instead of the mocked fs. See migration notes on externalized deps.
-	it.skip('should load node types through real postProcessLoaders and pass them to AiWorkflowBuilderService', async () => {
+	afterAll(() => {
+		rmSync(tmpRoot, { recursive: true, force: true });
+	});
+
+	beforeEach(() => {
+		MockedAiWorkflowBuilderService.mockClear();
+	});
+
+	it('should load node types through real postProcessLoaders and pass them to AiWorkflowBuilderService', async () => {
 		// Real LoadNodesAndCredentials — not mocked
 		const loadNodesAndCredentials = new LoadNodesAndCredentials(
 			mock(),
