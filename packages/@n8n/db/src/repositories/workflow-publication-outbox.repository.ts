@@ -19,6 +19,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		super(WorkflowPublicationOutbox, dataSource.manager);
 	}
 
+	/** Latest outbox record for a workflow (highest id), or null. */
+	async findLatestByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		return await this.findOne({ where: { workflowId }, order: { id: 'DESC' } });
+	}
+
 	/**
 	 * Enqueue a publication for `workflowId`. If a pending record is already in
 	 * place for the same workflow, its `publishedVersionId` is updated in place,
