@@ -2,7 +2,12 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 
 import { createSubAgentPersistence } from './agent-persistence';
-import { delegateInputSchema, delegateOutputSchema, type DelegateInput } from './delegate.schemas';
+import {
+	delegateInputSchema,
+	delegateOutputSchema,
+	type DelegateInput,
+	type DelegateOutput,
+} from './delegate.schemas';
 import { truncateLabel } from './display-utils';
 import {
 	createDetachedSubAgentTraceFactory,
@@ -289,6 +294,172 @@ export async function startDetachedDelegateTask(
 	};
 }
 
+/**
+ * Input for {@link runSyncSubAgent} — tools are already resolved and validated by
+ * the caller so this helper stays focused on spawning, streaming, and debriefing.
+ */
+export interface RunSyncSubAgentInput {
+	role: string;
+	instructions: string;
+	briefing: string;
+	/** Pre-resolved, validated tool registry the sub-agent may use. */
+	validTools: InstanceAiToolRegistry;
+	/** Tool names for the agent-spawned UI event (display only). */
+	toolNames: string[];
+	artifacts?: unknown;
+	conversationContext?: string;
+}
+
+/**
+ * Run a focused sub-agent synchronously: spawn it, stream with HITL support, and
+ * return a synthesized debrief in the same turn. Shared by `delegate` and the
+ * preconfigured discovery tool so both follow identical tracing/event semantics.
+ */
+export async function runSyncSubAgent(
+	context: OrchestrationContext,
+	input: RunSyncSubAgentInput,
+): Promise<DelegateOutput> {
+	const subAgentId = generateAgentId();
+	const startTime = Date.now();
+
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: input.role,
+			tools: input.toolNames,
+			kind: 'delegate',
+			subtitle: truncateLabel(input.briefing),
+			goal: input.briefing,
+		},
+	});
+	const traceRun = await startSubAgentTrace(context, {
+		agentId: subAgentId,
+		role: input.role,
+		kind: 'delegate',
+		inputs: {
+			briefing: input.briefing,
+			instructions: input.instructions,
+			tools: input.toolNames,
+			conversationContext: input.conversationContext,
+		},
+	});
+	const tracedTools = traceSubAgentTools(context, input.validTools, input.role);
+
+	try {
+		const subAgent = createSubAgent({
+			agentId: subAgentId,
+			role: input.role,
+			instructions: input.instructions,
+			tools: tracedTools,
+			modelId: context.subAgentModelId ?? context.modelId,
+			traceRun,
+			tracing: context.tracing,
+			...buildSubAgentWorkspaceOptions(context),
+			runtimeSkills: context.runtimeSkills,
+			timeZone: context.timeZone,
+			checkpointStore: context.checkpointStore,
+		});
+
+		const briefingMessage = await buildDelegateBriefing(
+			context,
+			input.role,
+			input.briefing,
+			input.artifacts,
+			input.conversationContext,
+		);
+
+		const consumeResult = await withTraceRun(context, traceRun, async () => {
+			const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
+			const persistence = await createSubAgentPersistence(context, {
+				agentKind: input.role,
+			});
+			const stream = await subAgent.stream(briefingMessage, {
+				maxIterations,
+				abortSignal: context.abortSignal,
+				persistence,
+				providerOptions: {
+					anthropic: { cacheControl: { type: 'ephemeral' } },
+				},
+			});
+
+			return await consumeStreamWithHitl({
+				agent: subAgent,
+				stream,
+				runId: context.runId,
+				agentId: subAgentId,
+				eventBus: context.eventBus,
+				logger: context.logger,
+				threadId: context.threadId,
+				outputRedaction: context.outputRedaction,
+				abortSignal: context.abortSignal,
+				waitForConfirmation: context.waitForConfirmation,
+				maxIterations,
+				persistence,
+			});
+		});
+
+		const resultText = await requireCompletedHitlText(consumeResult, 'Delegate sub-agent');
+		const debriefing = buildDebriefing({
+			agentId: subAgentId,
+			role: input.role,
+			result: resultText,
+			workSummary: consumeResult.workSummary,
+			startTime,
+		});
+
+		await finishTraceRun(context, traceRun, {
+			outputs: {
+				result: resultText,
+				agentId: subAgentId,
+				role: input.role,
+				toolCallCount: debriefing.toolCallCount,
+				toolErrorCount: debriefing.toolErrorCount,
+				durationMs: debriefing.durationMs,
+			},
+		});
+
+		context.eventBus.publish(context.threadId, {
+			type: 'agent-completed',
+			runId: context.runId,
+			agentId: subAgentId,
+			payload: {
+				role: input.role,
+				result: resultText,
+			},
+		});
+
+		return {
+			result: resultText,
+			toolCallCount: debriefing.toolCallCount,
+			toolErrorCount: debriefing.toolErrorCount,
+			durationMs: debriefing.durationMs,
+			blockers: debriefing.blockers,
+		};
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		await failTraceRun(context, traceRun, error, {
+			agent_id: subAgentId,
+			agent_role: input.role,
+		});
+
+		context.eventBus.publish(context.threadId, {
+			type: 'agent-completed',
+			runId: context.runId,
+			agentId: subAgentId,
+			payload: {
+				role: input.role,
+				result: '',
+				error: errorMessage,
+			},
+		});
+
+		return { result: `Sub-agent error: ${errorMessage}` };
+	}
+}
+
 export function createDelegateTool(context: OrchestrationContext) {
 	return new Tool('delegate')
 		.description(
@@ -317,150 +488,15 @@ export function createDelegateTool(context: OrchestrationContext) {
 				};
 			}
 
-			const subAgentId = generateAgentId();
-			const startTime = Date.now();
-
-			// 2. Publish agent-spawned
-			context.eventBus.publish(context.threadId, {
-				type: 'agent-spawned',
-				runId: context.runId,
-				agentId: subAgentId,
-				payload: {
-					parentId: context.orchestratorAgentId,
-					role: input.role,
-					tools: input.tools,
-					kind: 'delegate',
-					subtitle: truncateLabel(input.briefing),
-					goal: input.briefing,
-				},
-			});
-			const traceRun = await startSubAgentTrace(context, {
-				agentId: subAgentId,
+			return await runSyncSubAgent(context, {
 				role: input.role,
-				kind: 'delegate',
-				inputs: {
-					briefing: input.briefing,
-					instructions: input.instructions,
-					tools: input.tools,
-					conversationContext: input.conversationContext,
-				},
+				instructions: input.instructions,
+				briefing: input.briefing,
+				validTools,
+				toolNames: input.tools,
+				artifacts: input.artifacts,
+				conversationContext: input.conversationContext,
 			});
-			const tracedTools = traceSubAgentTools(context, validTools, input.role);
-
-			try {
-				// 3. Create sub-agent
-				const subAgent = createSubAgent({
-					agentId: subAgentId,
-					role: input.role,
-					instructions: input.instructions,
-					tools: tracedTools,
-					modelId: context.subAgentModelId ?? context.modelId,
-					traceRun,
-					tracing: context.tracing,
-					...buildSubAgentWorkspaceOptions(context),
-					runtimeSkills: context.runtimeSkills,
-					timeZone: context.timeZone,
-					checkpointStore: context.checkpointStore,
-				});
-
-				const briefingMessage = await buildDelegateBriefing(
-					context,
-					input.role,
-					input.briefing,
-					input.artifacts,
-					input.conversationContext,
-				);
-
-				// 4. Stream sub-agent with HITL support
-				const consumeResult = await withTraceRun(context, traceRun, async () => {
-					const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
-					const persistence = await createSubAgentPersistence(context, {
-						agentKind: input.role,
-					});
-					const stream = await subAgent.stream(briefingMessage, {
-						maxIterations,
-						abortSignal: context.abortSignal,
-						persistence,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-					});
-
-					return await consumeStreamWithHitl({
-						agent: subAgent,
-						stream,
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						logger: context.logger,
-						threadId: context.threadId,
-						outputRedaction: context.outputRedaction,
-						abortSignal: context.abortSignal,
-						waitForConfirmation: context.waitForConfirmation,
-						maxIterations,
-						persistence,
-					});
-				});
-
-				const resultText = await requireCompletedHitlText(consumeResult, 'Delegate sub-agent');
-				const debriefing = buildDebriefing({
-					agentId: subAgentId,
-					role: input.role,
-					result: resultText,
-					workSummary: consumeResult.workSummary,
-					startTime,
-				});
-
-				await finishTraceRun(context, traceRun, {
-					outputs: {
-						result: resultText,
-						agentId: subAgentId,
-						role: input.role,
-						toolCallCount: debriefing.toolCallCount,
-						toolErrorCount: debriefing.toolErrorCount,
-						durationMs: debriefing.durationMs,
-					},
-				});
-
-				// 7. Publish agent-completed
-				context.eventBus.publish(context.threadId, {
-					type: 'agent-completed',
-					runId: context.runId,
-					agentId: subAgentId,
-					payload: {
-						role: input.role,
-						result: resultText,
-					},
-				});
-
-				return {
-					result: resultText,
-					toolCallCount: debriefing.toolCallCount,
-					toolErrorCount: debriefing.toolErrorCount,
-					durationMs: debriefing.durationMs,
-					blockers: debriefing.blockers,
-				};
-			} catch (error) {
-				// 8. Publish agent-completed with error
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				await failTraceRun(context, traceRun, error, {
-					agent_id: subAgentId,
-					agent_role: input.role,
-				});
-
-				context.eventBus.publish(context.threadId, {
-					type: 'agent-completed',
-					runId: context.runId,
-					agentId: subAgentId,
-					payload: {
-						role: input.role,
-						result: '',
-						error: errorMessage,
-					},
-				});
-
-				return { result: `Sub-agent error: ${errorMessage}` };
-			}
 		})
 		.build();
 }

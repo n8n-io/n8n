@@ -87,6 +87,31 @@ fixed taxonomy of sub-agent types.
 - Sub-agent has no memory — receives context only via the briefing
 - Past failed attempts from `iterationLog` are appended to the briefing (if available)
 
+### `discover-workflow-context`
+
+Preconfigured pre-build discovery. Spawns a focused, **synchronous** sub-agent
+(fixed role, prompt, and tool subset: `nodes`, `credentials`, `research`) that
+inventories the nodes and credential types a build needs and returns the relevant
+node **type definitions verbatim** — it selects which types are relevant rather
+than summarizing them. Unlike free-form `delegate`, the scout is fixed so
+discovery is consistent and testable. Call before loading `workflow-builder` for
+any build touching external services or unfamiliar nodes; act on the result in
+the same turn. Does not build, patch, or run workflows.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `services` | string[] | yes | External services as short node-search terms (e.g. `["Gmail", "OpenAI"]`) |
+| `categories` | string[] | no | Workflow technique categories to anchor node suggestions |
+| `conversationContext` | string | no | Build goal and user constraints to scope discovery |
+
+**Returns**: `{ result: string }` — the scout's debrief: brief Nodes and
+Credentials bullets, the relevant node type definitions verbatim, and Gaps.
+
+**Behavior**: Resolves the fixed tool subset from the orchestrator's domain
+tools, runs the sub-agent via the shared synchronous runner (same tracing and
+`agent-spawned`/`agent-completed` events as `delegate`), and returns the
+synthesized debrief. Returns an error string if the `nodes` tool is unavailable.
+
 ### `update-tasks`
 
 Update a visible task checklist for the user. Used for lightweight progress
