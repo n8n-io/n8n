@@ -21,13 +21,10 @@ type ObtainMasterConnection = PostgresDriver['obtainMasterConnection'];
 const POOL_TORN_DOWN_MESSAGE = 'Cannot use a pool after calling end on the pool';
 const DRIVER_NOT_CONNECTED_MESSAGE = 'Driver not Connected';
 
-// Minimal structural view of a pg pool client reached via pool.connect().
-// Avoids adding a `pg` dependency to this package.
-interface PgPoolClient {
-	query: (config: { text: string }) => Promise<unknown>;
-	// Passing a truthy error causes pg to destroy (remove from pool) the client.
-	release: (error?: Error) => void;
-}
+// pg types via TypeORM's `pg` typings, so no direct `pg` dependency. PoolClient is
+// taken from connect's callback arg since the overloaded `connect` defeats ReturnType.
+type PgPool = NonNullable<PostgresDriver['master']>;
+type PgPoolClient = NonNullable<Parameters<NonNullable<Parameters<PgPool['connect']>[0]>>[1]>;
 
 /**
  * Watches a DataSource and recovers it when the connection goes bad.
@@ -190,10 +187,8 @@ export class DbConnectionMonitor {
 			return;
 		}
 
-		const pool = this.postgresDriver.master as unknown as
-			| { connect?: () => Promise<PgPoolClient> }
-			| undefined;
-		if (!pool?.connect) {
+		const pool = this.postgresDriver.master;
+		if (!pool || typeof pool.connect !== 'function') {
 			this.logger.warn(
 				'Falling back to dataSource.query for ping: driver.master.connect is unavailable (TypeORM internals may have changed)',
 			);
