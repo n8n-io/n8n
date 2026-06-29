@@ -731,9 +731,7 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Collaboration lifecycle', () => {
-		// Regression (ADO-5309): owned here, not by the blip-sensitive CollaborationPane.
 		it('opens the collaboration session on mount and only closes it on unmount', async () => {
-			// Clear leftover terminate() from the previous test's auto-cleanup unmount.
 			collaborationStore.initialize.mockClear();
 			collaborationStore.terminate.mockClear();
 

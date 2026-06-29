@@ -84,8 +84,6 @@ const documentTitle = useDocumentTitle();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
-// Owned here, not in CollaborationPane: the pane unmounts on connection blips
-// (it lives inside ConnectionTracker), which would terminate the session (ADO-5309).
 useCollaborationLifecycle(workflowId);
 
 const isTagsEditEnabled = ref(false);
