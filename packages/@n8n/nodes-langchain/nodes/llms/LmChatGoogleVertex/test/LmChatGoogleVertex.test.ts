@@ -8,8 +8,8 @@ import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
 
 vi.mock('@langchain/google-vertexai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('n8n-nodes-base/dist/utils/utilities', () => ({
-	formatPrivateKey: vi.fn().mockImplementation((key: string) => key),
+vi.mock('@n8n/utils', () => ({
+	formatPemBlock: vi.fn().mockImplementation((key: string) => key),
 }));
 
 const MockedChatVertexAI = vi.mocked(ChatVertexAI);
