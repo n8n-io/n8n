@@ -15,7 +15,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../utils/utilities';
-import { createSchemaRegistry } from './utils';
+import { createSchemaRegistry, resolveKafkaSsl, type KafkaCredentials } from './utils';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -231,12 +231,10 @@ export class Kafka implements INodeType {
 
 					const clientId = credentials.clientId as string;
 
-					const ssl = credentials.ssl as boolean;
-
 					const config: KafkaConfig = {
 						clientId,
 						brokers,
-						ssl,
+						ssl: resolveKafkaSsl(credentials as unknown as KafkaCredentials),
 					};
 					if (credentials.authentication === true) {
 						if (!(credentials.username && credentials.password)) {
@@ -295,21 +293,19 @@ export class Kafka implements INodeType {
 				compression = CompressionTypes.GZIP;
 			}
 
-			const credentials = await this.getCredentials('kafka');
+			const credentials = await this.getCredentials<KafkaCredentials>('kafka');
 
-			const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
+			const brokers = (credentials.brokers || '').split(',').map((item) => item.trim());
 
-			const clientId = credentials.clientId as string;
-
-			const ssl = credentials.ssl as boolean;
+			const clientId = credentials.clientId;
 
 			const config: KafkaConfig = {
 				clientId,
 				brokers,
-				ssl,
+				ssl: resolveKafkaSsl(credentials),
 			};
 
-			if (credentials.authentication === true) {
+			if (credentials.authentication) {
 				if (!(credentials.username && credentials.password)) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -317,8 +313,8 @@ export class Kafka implements INodeType {
 					);
 				}
 				config.sasl = {
-					username: credentials.username as string,
-					password: credentials.password as string,
+					username: credentials.username,
+					password: credentials.password,
 					mechanism: credentials.saslMechanism as string,
 				} as SASLOptions;
 			}
