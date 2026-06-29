@@ -158,7 +158,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/syslog-client": "workspace:*",
     "@n8n/task-runner": "workspace:*",
-    "@n8n/typeorm": "catalog:",
+    "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
