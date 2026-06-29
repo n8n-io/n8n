@@ -1,6 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import type { MfaService } from '@/mfa/mfa.service';

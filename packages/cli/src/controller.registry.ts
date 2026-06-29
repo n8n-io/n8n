@@ -1,6 +1,8 @@
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { ZodClass } from '@n8n/api-types';
+import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
+import { isAuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {
 	AccessScope,
@@ -11,24 +13,24 @@ import type {
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
+
 import type { Application, Request, Response, RequestHandler } from 'express';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
-import type { ZodClass } from '@n8n/api-types';
 
-import { AbstractServer } from './abstract-server';
-import { NotFoundError } from './errors/response-errors/not-found.error';
-import { LastActiveAtService } from './services/last-active-at.service';
-import { RateLimitService } from './services/rate-limit.service';
-
-import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper';
+
+import { AbstractServer } from './abstract-server';
+import { NotFoundError } from './errors/response-errors/not-found.error';
 import { CorsService } from './services/cors-service';
-import { inProduction } from '@n8n/backend-common';
-import { isAuthenticatedRequest } from '@n8n/db';
+import { LastActiveAtService } from './services/last-active-at.service';
+import { RateLimitService } from './services/rate-limit.service';
+
+import { AuthService } from '@/auth/auth.service';
 
 @Service()
 export class ControllerRegistry {

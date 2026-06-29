@@ -66,7 +66,7 @@ describe('buildBuilderTelemetry', () => {
 	});
 
 	it('returns proxy-backed LangSmithTelemetry when tracing proxy config is present', async () => {
-		const getAuthHeaders = jest.fn(async () => ({ Authorization: 'Bearer proxy-token' }));
+		const getAuthHeaders = vi.fn(async () => ({ Authorization: 'Bearer proxy-token' }));
 
 		const telemetry = await buildBuilderTelemetry(
 			{

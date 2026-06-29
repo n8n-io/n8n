@@ -2,7 +2,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentPublishService } from '../agent-publish.service';
@@ -71,16 +71,16 @@ function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTask
 
 function makeTransaction() {
 	const taskRepo = {
-		findBy: jest.fn().mockResolvedValue([]),
-		delete: jest.fn(),
-		update: jest.fn(),
-		insert: jest.fn(),
+		findBy: vi.fn().mockResolvedValue([]),
+		delete: vi.fn(),
+		update: vi.fn(),
+		insert: vi.fn(),
 	};
 	const trx = {
-		save: jest.fn(),
-		getRepository: jest.fn().mockReturnValue(taskRepo),
+		save: vi.fn(),
+		getRepository: vi.fn().mockReturnValue(taskRepo),
 	};
-	const transaction = jest.fn(async (callback: (manager: typeof trx) => Promise<void>) => {
+	const transaction = vi.fn(async (callback: (manager: typeof trx) => Promise<void>) => {
 		await callback(trx);
 	});
 
@@ -135,7 +135,7 @@ function makeService() {
 
 describe('AgentPublishService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 	});
 

@@ -35,7 +35,7 @@ describe('TaskBrokerAuthController', () => {
 		}) as unknown as AuthlessRequest;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createGrantToken', () => {

@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -18,13 +19,13 @@ import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types';
 describe('WorkflowPublisher', () => {
 	const user = mock<User>({ id: 'user-1' });
 	const logger = mock<Logger>();
-	const projectRepository = mock<{ existsBy: jest.Mock }>();
+	const projectRepository = mock<{ existsBy: Mock }>();
 	const projectService = mock<ProjectService>();
 	const workflowService = mock<WorkflowService>();
 	let publisher: WorkflowPublisher;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		publisher = new WorkflowPublisher(
 			logger,
 			projectRepository as never,

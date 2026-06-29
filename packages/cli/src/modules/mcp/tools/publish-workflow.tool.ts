@@ -2,15 +2,15 @@ import type { User } from '@n8n/db';
 import { jsonStringify, ensureError } from 'n8n-workflow';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { getMcpWorkflow } from './workflow-validation.utils';
-
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { WorkflowAccessError } from '../mcp.errors';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to publish'),

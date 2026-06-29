@@ -46,10 +46,10 @@ import { ExternalHooks } from '@/external-hooks';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
-import { UserService } from '@/services/user.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
+import { UserService } from '@/services/user.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @RestController('/users')
 export class UsersController {
