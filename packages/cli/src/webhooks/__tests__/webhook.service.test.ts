@@ -461,6 +461,36 @@ describe('WebhookService', () => {
 				workflowId: 'test-workflow',
 			});
 		});
+
+		test('should trim surrounding whitespace and slashes from the path', async () => {
+			const node = {
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+			} as INode;
+
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path: ' /path/ ',
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0].path).not.toMatch(/\s/);
+			expect(webhooks[0].path).toMatch(/\/path$/);
+		});
 	});
 
 	describe('createWebhookIfNotExists()', () => {

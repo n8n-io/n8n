@@ -8,6 +8,7 @@
 
 import { parseNodeId, toSnakeCase, isValidPathComponent } from '@n8n/ai-utilities/node-catalog';
 import { safeJoinPath } from '@n8n/backend-common';
+import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -357,7 +358,7 @@ export function resolveNodeTypeDefinition(
  */
 export function resolveBuiltinNodeDefinitionDirs(): string[] {
 	const dirs: string[] = [];
-	for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+	for (const packageId of BUILTIN_NODES_PACKAGES) {
 		try {
 			const packageJsonPath = require.resolve(`${packageId}/package.json`);
 			const distDir = dirname(packageJsonPath);

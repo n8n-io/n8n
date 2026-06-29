@@ -291,6 +291,13 @@ describe('buildFromJson()', () => {
 						name: 'Summarize notes',
 						description: 'Use for meeting notes and transcripts',
 						instructions: 'Extract decisions and action items.',
+						allowedTools: ['load_workflow'],
+						references: [
+							{
+								path: 'references/guide.md',
+								content: '# Guide',
+							},
+						],
 					},
 					unused_skill: {
 						name: 'Unused skill',
@@ -313,6 +320,36 @@ describe('buildFromJson()', () => {
 			name: 'Summarize notes',
 			content: 'Extract decisions and action items.',
 			instructions: 'Extract decisions and action items.',
+			linkedFiles: {
+				references: [
+					{
+						path: 'references/guide.md',
+						bytes: 7,
+						sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+					},
+				],
+			},
+		});
+
+		await expect(
+			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
+		).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			filePath: 'references/guide.md',
+			content: '# Guide',
+			bytes: 7,
+			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+		});
+
+		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');
+		const listOutput = (await listSkills!.handler?.({}, {})) as {
+			skills: Array<Record<string, unknown>>;
+		};
+		expect(listOutput?.skills[0]).toMatchObject({
+			name: 'Summarize notes',
+			allowedTools: ['load_workflow'],
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({

@@ -6,6 +6,7 @@ import {
 	formatWorkflowStructureIssuePath,
 	isSafeObjectProperty,
 	resolveNodeWebhookId,
+	resolveVariables,
 	safeParseWorkflowStructure,
 	validateNodeSelectionForGrouping,
 	type IDataObject,
@@ -497,18 +498,7 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 	// Either projectId passed or use project from workflow
 	const projectIdToUse = projectId ?? project?.id;
 
-	return Object.freeze(
-		variables.reduce((acc, curr) => {
-			if (!curr.project) {
-				// always set globals
-				acc[curr.key] = curr.value;
-			} else if (projectIdToUse && curr.project.id === projectIdToUse) {
-				// project variables override globals
-				acc[curr.key] = curr.value;
-			}
-			return acc;
-		}, {} as IDataObject),
-	);
+	return Object.freeze(resolveVariables(variables, projectIdToUse));
 }
 
 /**
