@@ -1,3 +1,6 @@
+import { formatPemBlock } from '@n8n/utils';
+import { ConnectionPoolManager } from '@utils/connection-pool-manager';
+import { LOCALHOST } from '@utils/constants';
 import type {
 	IExecuteFunctions,
 	ICredentialTestFunctions,
@@ -7,10 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { createServer, type AddressInfo, type Server } from 'node:net';
 import pgPromise from 'pg-promise';
-
-import { ConnectionPoolManager } from '@utils/connection-pool-manager';
-import { LOCALHOST } from '@utils/constants';
-import { formatPrivateKey } from '@utils/utilities';
 
 import type {
 	ConnectionsData,
@@ -142,7 +141,7 @@ export async function configurePostgres(
 			return { db, pgp };
 		} else {
 			if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
-				credentials.privateKey = formatPrivateKey(credentials.privateKey);
+				credentials.privateKey = formatPemBlock(credentials.privateKey);
 			}
 			const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
