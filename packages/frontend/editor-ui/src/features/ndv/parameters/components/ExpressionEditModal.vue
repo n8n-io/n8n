@@ -21,7 +21,6 @@ import { useDebounce } from '@/app/composables/useDebounce';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 import { useThrottleFn } from '@vueuse/core';
 
 import { ElDialog } from 'element-plus';
@@ -162,7 +161,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 <template>
 	<ElDialog
 		width="calc(100% - var(--spacing--3xl))"
-		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+		append-to-body
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"

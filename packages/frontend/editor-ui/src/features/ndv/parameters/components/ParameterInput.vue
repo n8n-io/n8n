@@ -54,7 +54,6 @@ import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUt
 
 import {
 	AI_TRANSFORM_NODE_TYPE,
-	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
@@ -1534,7 +1533,7 @@ onUpdated(async () => {
 					width="calc(100% - var(--spacing--3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
-					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+					append-to-body
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText(ndvStore?.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
