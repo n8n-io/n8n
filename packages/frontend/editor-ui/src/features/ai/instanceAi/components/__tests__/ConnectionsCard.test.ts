@@ -170,4 +170,31 @@ describe('ConnectionsCard', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('instance-ai-connections-empty-cta')).toBeVisible();
 	});
+
+	describe('card visibility', () => {
+		it('hides the entire card when no channel is enabled', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			const { queryByText } = renderComponent();
+			expect(queryByText('instanceAi.connections.title')).toBeNull();
+		});
+
+		it('hides the card when computer use is the only enabled channel but the local gateway is disabled by admin', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			settingsStoreMock.mockReturnValue(makeSettingsStore({ isLocalGatewayDisabledByAdmin: true }));
+			const { queryByText } = renderComponent();
+			expect(queryByText('instanceAi.connections.title')).toBeNull();
+		});
+
+		it('shows the card via MCP even when both singleton experiments are disabled', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+			settingsStoreMock.mockReturnValue(
+				makeSettingsStore({ settings: { mcpAccessEnabled: true } }),
+			);
+			const { getByText } = renderComponent();
+			expect(getByText('instanceAi.connections.title')).toBeVisible();
+		});
+	});
 });

@@ -41,7 +41,7 @@ const props = defineProps<{
 
 const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
 const singletonConnections = computed(() => {
-	const filteredTypes: string[] = [];
+	const filteredTypes: SingletonConnectionType[] = [];
 	if (!isBrowserUseEnabled.value) filteredTypes.push('browser-use');
 	if (!isComputerUseEnabled.value) filteredTypes.push('computer-use');
 	return !filteredTypes.length
@@ -52,7 +52,9 @@ const singletonConnections = computed(() => {
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
 const isVisible = computed(() => {
 	const anyChannelEnabled =
-		!store.isLocalGatewayDisabledByAdmin || store.isBrowserUseEnabledByAdmin || isMcpEnabled.value;
+		(!store.isLocalGatewayDisabledByAdmin && isComputerUseEnabled.value) ||
+		(store.isBrowserUseEnabledByAdmin && isBrowserUseEnabled.value) ||
+		isMcpEnabled.value;
 	const statusReady =
 		store.gatewayStatusLoaded ||
 		store.browserStatusLoaded ||
