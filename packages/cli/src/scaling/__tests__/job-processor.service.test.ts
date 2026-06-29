@@ -339,7 +339,7 @@ describe('JobProcessor', () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const execution = mock<IExecutionResponse>({
 			mode: 'manual',
-			workflowData: { id: 'workflow-id', nodes: [] },
+			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
 			data: mock<IRunExecutionData>({
 				resultData: { runData: {} },
 				executionData: undefined,
@@ -349,7 +349,7 @@ describe('JobProcessor', () => {
 		executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
 		const manualExecutionService = createManualExecutionServiceMock();
 		const jobProcessor = new JobProcessor(

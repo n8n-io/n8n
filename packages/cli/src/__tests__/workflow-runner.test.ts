@@ -415,10 +415,10 @@ describe('enqueueExecution', () => {
 
 	it('should carry the manual-execution identity into job data', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
-		jest.spyOn(runner, 'processError').mockResolvedValue();
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			encryptedRunnerIdentity: 'encrypted-identity-blob',
 		});
