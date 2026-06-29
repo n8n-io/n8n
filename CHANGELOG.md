@@ -1,3 +1,11 @@
+## [1.123.62](https://github.com/n8n-io/n8n/compare/n8n@1.123.61...n8n@1.123.62) (2026-06-29)
+
+
+### Bug Fixes
+
+* Fix 5 security issues in hono, vue-i18n, linkify-it ([#33164](https://github.com/n8n-io/n8n/issues/33164)) ([e325585](https://github.com/n8n-io/n8n/commit/e325585aacfff869ff2e7fa631e812d17f086e1b))
+
+
 ## [1.123.61](https://github.com/n8n-io/n8n/compare/n8n@1.123.60...n8n@1.123.61) (2026-06-24)
 
 
