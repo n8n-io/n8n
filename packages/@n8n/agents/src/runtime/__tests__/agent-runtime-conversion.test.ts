@@ -123,6 +123,29 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		});
 	});
 
+	it.each([
+		{ name: 'no provider metadata', content: {} },
+		{
+			name: 'unsupported Anthropic metadata',
+			content: { providerMetadata: { anthropic: { unsupported: true } } },
+		},
+	])('drops reasoning parts with $name', ({ content }) => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Reasoning text without replay metadata',
+						...content,
+					},
+				],
+			},
+		];
+
+		expect(toAiMessages(input)).toEqual([]);
+	});
+
 	it('sanitizes replayed non-object tool-call inputs for provider requests', () => {
 		const input: Message[] = [
 			{

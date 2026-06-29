@@ -924,6 +924,7 @@
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/imap": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@thednp/dommatrix": "^2.0.12",
     "alasql": "4.4.0",
     "amqplib": "0.10.6",
