@@ -179,14 +179,15 @@ export async function getResourcePath(
 						extractValue: true,
 					}) as string;
 					if (isServicePrincipal) {
-						// `channelId` is percent-encoded when selected By URL; decode it first so
-						// validation runs on the decoded value and the subscription resource carries
-						// the raw channel id Graph matches against (parity with the OAuth2 path below).
+						// `channelId` is percent-encoded when selected By URL; decode it first (via the
+						// guarded helper, so a malformed `%` yields a NodeOperationError not a raw
+						// URIError) so validation runs on the decoded value and the subscription resource
+						// carries the raw channel id Graph matches against (parity with the OAuth2 path).
 						return buildTeamsPath.call(this, [
 							'/teams/',
 							{ id: teamId },
 							'/channels/',
-							{ id: decodeURIComponent(channelId) },
+							{ id: decodeChannelId.call(this, channelId) },
 							'/messages',
 						]);
 					}
@@ -254,4 +255,21 @@ function throwWatchAllUnsupported(this: IHookFunctions): never {
 				'Select a specific team and channel. App-only fan-out across all teams/channels is disabled for the Service Principal credential.',
 		},
 	);
+}
+
+/**
+ * Decodes a By-URL channel id (percent-encoded, e.g. `19%3A...%40thread.tacv2`) before it is
+ * validated and interpolated under SP. A malformed `%` sequence makes `decodeURIComponent` throw a
+ * raw `URIError`; convert it to a static `NodeOperationError` so the SP path never surfaces a raw
+ * decode error (the OAuth2 path keeps its pre-existing unguarded decode).
+ */
+function decodeChannelId(this: IHookFunctions, channelId: string): string {
+	try {
+		return decodeURIComponent(channelId);
+	} catch {
+		throw new NodeOperationError(this.getNode(), 'The ID is not valid', {
+			description:
+				'The channel ID could not be decoded. Re-select the channel from the list or by URL.',
+		});
+	}
 }

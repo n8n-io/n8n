@@ -470,6 +470,20 @@ describe('Microsoft Teams Helpers Functions', () => {
 			);
 		});
 
+		it('throws a friendly error (not a raw URIError) for a malformed percent-encoded channelId under SP', async () => {
+			setSpParams({
+				watchAllTeams: false,
+				teamId: '1111-2222',
+				watchAllChannels: false,
+				// `%zz` is not valid percent-encoding; an unguarded decodeURIComponent throws a raw URIError.
+				channelId: '19%zzabc',
+			});
+
+			await expect(getResourcePath.call(mockHookFunctions, 'newChannelMessage')).rejects.toThrow(
+				'The ID is not valid',
+			);
+		});
+
 		it('rejects a crafted (separator) channelId for newChannelMessage', async () => {
 			setSpParams({
 				watchAllTeams: false,
