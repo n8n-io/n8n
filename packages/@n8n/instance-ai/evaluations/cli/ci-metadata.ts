@@ -4,9 +4,11 @@
  * Distinguishes CI runs from local development runs and tracks provenance
  * of automated evaluation results.
  *
- * Note: git info (commit SHA, branch) is tracked by LangSmith automatically
- * via LANGSMITH_REVISION_ID and LANGSMITH_BRANCH env vars — set them in the
- * CI workflow and the SDK picks them up.
+ * Git provenance (branch, commit SHA, PR number) is recorded explicitly on the
+ * experiment metadata in CI from LANGSMITH_BRANCH / LANGSMITH_REVISION_ID /
+ * GITHUB_* env vars. Downstream analytics (BigQuery KPIs) key off `branch` for
+ * the dev-vs-official split, so it can't be left to fragile name parsing. Local
+ * runs are always "dev" (source = 'local'), so they carry no branch here.
  */
 
 import { execSync } from 'node:child_process';
@@ -17,6 +19,12 @@ export interface CIMetadata {
 	trigger?: string;
 	/** GitHub Actions run ID for linking back to the workflow run */
 	runId?: string;
+	/** Git branch the run was built from. Drives the dev-vs-official KPI split. */
+	branch?: string;
+	/** Commit SHA the run was built from. */
+	commitSha?: string;
+	/** Pull-request number, when the run was triggered by a `pull_request` event. */
+	prNumber?: string;
 }
 
 export function buildCIMetadata(): CIMetadata {
@@ -30,6 +38,11 @@ export function buildCIMetadata(): CIMetadata {
 		source: 'ci',
 		trigger: process.env.GITHUB_EVENT_NAME,
 		runId: process.env.GITHUB_RUN_ID,
+		branch:
+			process.env.LANGSMITH_BRANCH ?? process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME,
+		commitSha: process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA,
+		// pull_request runs expose the number via GITHUB_REF as `refs/pull/<n>/merge`.
+		prNumber: process.env.GITHUB_REF?.match(/refs\/pull\/(\d+)\//)?.[1],
 	};
 }
 

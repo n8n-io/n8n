@@ -91,7 +91,17 @@ describe('computeExperimentPrefix', () => {
 });
 
 describe('buildCIMetadata', () => {
-	const ENV_VARS = ['GITHUB_ACTIONS', 'GITHUB_EVENT_NAME', 'GITHUB_RUN_ID'] as const;
+	const ENV_VARS = [
+		'GITHUB_ACTIONS',
+		'GITHUB_EVENT_NAME',
+		'GITHUB_RUN_ID',
+		'GITHUB_SHA',
+		'GITHUB_HEAD_REF',
+		'GITHUB_REF_NAME',
+		'GITHUB_REF',
+		'LANGSMITH_BRANCH',
+		'LANGSMITH_REVISION_ID',
+	] as const;
 	const originalEnv: Record<string, string | undefined> = {};
 
 	beforeEach(() => {
@@ -124,6 +134,20 @@ describe('buildCIMetadata', () => {
 			source: 'ci',
 			trigger: 'pull_request_review',
 			runId: '12345',
+		});
+	});
+
+	it('records branch, commit SHA, and PR number in CI', () => {
+		process.env.GITHUB_ACTIONS = 'true';
+		process.env.LANGSMITH_BRANCH = 'feature-x';
+		process.env.LANGSMITH_REVISION_ID = '357e949547671e2cd1c017eb4e7c809cd55bd121';
+		process.env.GITHUB_REF = 'refs/pull/30711/merge';
+
+		expect(buildCIMetadata()).toMatchObject({
+			source: 'ci',
+			branch: 'feature-x',
+			commitSha: '357e949547671e2cd1c017eb4e7c809cd55bd121',
+			prNumber: '30711',
 		});
 	});
 });
