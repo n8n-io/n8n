@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_publication_trigger_status" ("workflowId" varchar(36) NOT NULL, "nodeId" varchar(36) NOT NULL, "nodeName" varchar(255) NOT NULL, "versionId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_publication_trigger_status_status" CHECK ("status" IN ('activated', 'failed')), CONSTRAINT "FK_b7b496d8d1a21158c65f475cd88" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, PRIMARY KEY ("workflowId", "nodeId"))
+CREATE TABLE "workflow_publication_trigger_status" ("workflowId" varchar(36) NOT NULL, "nodeId" varchar(36) NOT NULL, "versionId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_publication_trigger_status_status" CHECK ("status" IN ('activated', 'failed')), CONSTRAINT "FK_b7b496d8d1a21158c65f475cd88" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, PRIMARY KEY ("workflowId", "nodeId"))
 ```
 
 </details>
@@ -18,7 +18,6 @@ CREATE TABLE "workflow_publication_trigger_status" ("workflowId" varchar(36) NOT
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | errorMessage | TEXT |  | true |  |  |  |
 | nodeId | varchar(36) |  | false |  |  |  |
-| nodeName | varchar(255) |  | false |  |  |  |
 | status | varchar(20) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | versionId | varchar(36) |  | false |  |  |  |
@@ -51,7 +50,6 @@ erDiagram
   datetime_3_ createdAt
   TEXT errorMessage
   varchar_36_ nodeId PK
-  varchar_255_ nodeName
   varchar_20_ status
   datetime_3_ updatedAt
   varchar_36_ versionId

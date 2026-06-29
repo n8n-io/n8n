@@ -148,7 +148,6 @@ export class PublicationStatusReporter {
 	): TriggerStatusRow[] {
 		return statuses.map((s) => ({
 			nodeId: s.nodeId,
-			nodeName: s.nodeName,
 			versionId: record.publishedVersionId,
 			status: s.status,
 			errorMessage: s.errorMessage,

@@ -5,7 +5,6 @@ import { WorkflowPublicationTriggerStatus } from '../entities';
 
 export type TriggerStatusRow = {
 	nodeId: string;
-	nodeName: string;
 	versionId: string;
 	status: WorkflowPublicationTriggerStatus['status'];
 	errorMessage: string | null;

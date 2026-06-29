@@ -270,7 +270,6 @@ erDiagram
   datetime_3_ createdAt
   TEXT errorMessage
   varchar_36_ nodeId PK
-  varchar_255_ nodeName
   varchar_20_ status
   datetime_3_ updatedAt
   varchar_36_ versionId

@@ -19,9 +19,6 @@ export class WorkflowPublicationTriggerStatus extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	nodeId: string;
 
-	@Column({ type: 'varchar', length: 255 })
-	nodeName: string;
-
 	@Column({ type: 'varchar', length: 36 })
 	versionId: string;
 

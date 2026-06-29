@@ -68,14 +68,12 @@ describe('PublicationStatusReporter', () => {
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
 			{
 				nodeId: 'a',
-				nodeName: 'Webhook',
 				versionId: 'v-2',
 				status: 'activated',
 				errorMessage: null,
 			},
 			{
 				nodeId: 'b',
-				nodeName: 'Schedule',
 				versionId: 'v-2',
 				status: 'activated',
 				errorMessage: null,
@@ -157,14 +155,12 @@ describe('PublicationStatusReporter', () => {
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
 			{
 				nodeId: 'a',
-				nodeName: 'Webhook',
 				versionId: 'v-2',
 				status: 'activated',
 				errorMessage: null,
 			},
 			{
 				nodeId: 'b',
-				nodeName: 'Schedule',
 				versionId: 'v-2',
 				status: 'failed',
 				errorMessage: 'cron unavailable',
@@ -190,21 +186,18 @@ describe('PublicationStatusReporter', () => {
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
 			{
 				nodeId: 'a',
-				nodeName: 'Webhook',
 				versionId: 'v-2',
 				status: 'activated',
 				errorMessage: null,
 			},
 			{
 				nodeId: 'b',
-				nodeName: 'Schedule',
 				versionId: 'v-2',
 				status: 'failed',
 				errorMessage: 'cron unavailable',
 			},
 			{
 				nodeId: 'c',
-				nodeName: 'Kafka',
 				versionId: 'v-2',
 				status: 'failed',
 				errorMessage: 'broker down',
