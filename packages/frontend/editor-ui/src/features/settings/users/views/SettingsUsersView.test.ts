@@ -14,6 +14,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '../users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
@@ -125,6 +126,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let usersStore: MockedStore<typeof useUsersStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
+let rolesStore: MockedStore<typeof useRolesStore>;
 let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
@@ -140,6 +142,7 @@ describe('SettingsUsersView', () => {
 		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		settingsStore = mockedStore(useSettingsStore);
+		rolesStore = mockedStore(useRolesStore);
 		ssoStore = mockedStore(useSSOStore);
 
 		// Setup default store states
@@ -768,15 +771,61 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle reinvite with invalid role', async () => {
-			// Set user with invalid role
-			usersStore.usersList.state.items[2].role = 'invalid-role' as Role;
+		it('should not call reinviteUser for owner role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.Owner;
 
 			renderComponent();
 
 			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
 
-			// Should not call reinviteUser with invalid role
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should not call reinviteUser for default role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.Default;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should allow reinvite for a custom role', async () => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: 'true' };
+			rolesStore.customInstanceRoles = [
+				{
+					slug: 'custom:developer',
+					displayName: 'Developer',
+					description: '',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+			];
+			usersStore.usersList.state.items[2].role = 'custom:developer' as Role;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			await waitFor(() => {
+				expect(usersStore.reinviteUser).toHaveBeenCalledWith({
+					email: 'pending@example.com',
+					role: 'custom:developer',
+				});
+			});
+		});
+
+		it('should not call reinviteUser for chatUser role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.ChatUser;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
 			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
 		});
 
@@ -872,6 +921,53 @@ describe('SettingsUsersView', () => {
 					type: 'success',
 					title: expect.any(String),
 					message: expect.stringContaining('member@example.com'),
+				});
+			});
+		});
+
+		it('should use displayName from custom role in success toast message', async () => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: 'true' };
+			rolesStore.customInstanceRoles = [
+				{
+					slug: 'custom:developer',
+					displayName: 'Developer',
+					description: '',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+			];
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: 'custom:developer', userId: '2' });
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining('Developer'),
+				});
+			});
+		});
+
+		it('should fall back to role slug in toast when custom role is not in the store', async () => {
+			rolesStore.customInstanceRoles = [];
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', {
+				role: 'custom:unknown-role',
+				userId: '2',
+			});
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining('custom:unknown-role'),
 				});
 			});
 		});

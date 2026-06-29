@@ -7,6 +7,7 @@ import type {
 import type { OrchestrationContext } from '../../../types';
 import {
 	createRemediation,
+	MAX_VERIFY_ATTEMPTS,
 	terminalRemediationFromState,
 } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
@@ -112,6 +113,29 @@ export async function resolveVerificationTarget(
 				error:
 					`Build outcome ${resolvedInput.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
 					`but verification was requested for workflow ${input.workflowId}.`,
+			},
+		};
+	}
+
+	if ((buildOutcome.verifyAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'verify_budget_exhausted',
+			attemptCount: buildOutcome.verifyAttempts ?? 0,
+			guidance:
+				'Verification has already run the maximum number of times for this workflow. ' +
+				'Report which nodes were and were not reached, and let the user decide whether to run it manually. ' +
+				'Do not call executions(action="run") to expand coverage.',
+		});
+		return {
+			kind: 'blocked',
+			result: {
+				success: false,
+				resolvedWorkItemId: resolvedInput.workItemId,
+				error: remediation.guidance,
+				remediation,
+				guidance: remediation.guidance,
 			},
 		};
 	}
