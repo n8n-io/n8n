@@ -12,8 +12,13 @@ import {
 	MCP_SESSION_ID_HEADER,
 } from './helpers';
 import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
-import { McpServer } from '../McpServer';
+import {
+	McpServer,
+	DEFAULT_SESSION_IDLE_TTL_MS,
+	DEFAULT_SESSION_SWEEP_INTERVAL_MS,
+} from '../McpServer';
 import { InMemorySessionStore } from '../session/InMemorySessionStore';
+import type { SessionManager } from '../session/SessionManager';
 
 describe('McpServer', () => {
 	let mcpServer: McpServer;
@@ -27,6 +32,7 @@ describe('McpServer', () => {
 	});
 
 	afterEach(() => {
+		mcpServer.stopSweep();
 		// Clean up singleton
 		(McpServer as unknown as { instance_: McpServer | undefined }).instance_ = undefined;
 	});
@@ -203,6 +209,87 @@ describe('McpServer', () => {
 
 		it('should not be in queue mode by default', () => {
 			expect(mcpServer.isQueueMode()).toBe(false);
+		});
+	});
+
+	describe('idle session eviction', () => {
+		const TTL = DEFAULT_SESSION_IDLE_TTL_MS;
+		const INTERVAL = DEFAULT_SESSION_SWEEP_INTERVAL_MS;
+
+		const sessionManagerOf = (server: McpServer) =>
+			(server as unknown as { sessionManager: SessionManager }).sessionManager;
+
+		const registerSession = async (
+			sessionId: string,
+			transportType: 'sse' | 'streamableHttp' = 'streamableHttp',
+		) =>
+			await sessionManagerOf(mcpServer).registerSession(
+				sessionId,
+				createMockServer(),
+				createMockTransport(sessionId, transportType),
+			);
+
+		const touch = (sessionId: string) => sessionManagerOf(mcpServer).touch(sessionId);
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(0);
+			// Recreate the singleton so its sweep interval is registered under fake timers.
+			(McpServer as unknown as { instance_: McpServer | undefined }).instance_ = undefined;
+			mcpServer = McpServer.instance(mockLogger);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should evict a session idle past the ttl', async () => {
+			await registerSession('idle-1');
+			expect(mcpServer.getTransport('idle-1')).toBeDefined();
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+
+			expect(mcpServer.getTransport('idle-1')).toBeUndefined();
+		});
+
+		it('should not evict an idle SSE session (cleaned up via connection close instead)', async () => {
+			await registerSession('sse-1', 'sse');
+
+			await vi.advanceTimersByTimeAsync(TTL * 2);
+
+			expect(mcpServer.getTransport('sse-1')).toBeDefined();
+		});
+
+		it('should not evict a session that keeps being touched', async () => {
+			await registerSession('active-1');
+
+			// Stay active across more than a full idle window via periodic touches.
+			await vi.advanceTimersByTimeAsync(TTL - INTERVAL);
+			touch('active-1');
+			await vi.advanceTimersByTimeAsync(TTL - INTERVAL);
+
+			expect(mcpServer.getTransport('active-1')).toBeDefined();
+		});
+
+		it('should not evict a session with an in-flight pending response', async () => {
+			await registerSession('busy-1');
+			mcpServer.storePendingResponse('busy-1', 'msg-1');
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+			expect(mcpServer.getTransport('busy-1')).toBeDefined();
+
+			mcpServer.removePendingResponse('busy-1', 'msg-1');
+			await vi.advanceTimersByTimeAsync(INTERVAL);
+			expect(mcpServer.getTransport('busy-1')).toBeUndefined();
+		});
+
+		it('should stop evicting once the sweep is stopped', async () => {
+			await registerSession('idle-2');
+			mcpServer.stopSweep();
+
+			await vi.advanceTimersByTimeAsync(TTL * 2);
+
+			expect(mcpServer.getTransport('idle-2')).toBeDefined();
 		});
 	});
 
