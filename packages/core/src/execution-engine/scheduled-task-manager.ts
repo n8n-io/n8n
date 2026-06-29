@@ -1,9 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { CronLoggingConfig } from '@n8n/config';
+import { CronLoggingConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { CronJob, CronTime } from 'cron';
 import type { CronContext } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -49,6 +50,7 @@ export class ScheduledTaskManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		{ activeInterval }: CronLoggingConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('cron');
 
@@ -66,6 +68,8 @@ export class ScheduledTaskManager {
 	 */
 	register(ctx: ScheduledTaskContext, onTick: (scheduledTime: Date) => void): boolean {
 		const { group, targetId, timezone, expression, recurrence } = ctx;
+
+		this.enforceMinScheduleInterval(expression, timezone);
 
 		if (!this.instanceSettings.isLeader) {
 			this.logger.debug('Skipped cron registration on follower instance', {
@@ -255,6 +259,21 @@ export class ScheduledTaskManager {
 			cronsByGroup.set(group.id, new Map([[key, cron]]));
 		} else {
 			groupCrons.set(key, cron);
+		}
+	}
+
+	private enforceMinScheduleInterval(expression: string, timezone: string): void {
+		const minSeconds = this.globalConfig.workflows.minScheduleIntervalSeconds;
+		if (minSeconds === 0) return;
+
+		const tempJob = new CronJob(expression, () => {}, undefined, false, timezone || 'UTC');
+		const [d1, d2] = tempJob.nextDates(2);
+		const intervalSeconds = d2.diff(d1).as('seconds');
+
+		if (intervalSeconds < minSeconds) {
+			throw new UserError(
+				`Schedule interval too short: expression fires every ${intervalSeconds}s but the minimum is ${minSeconds}s`,
+			);
 		}
 	}
 
