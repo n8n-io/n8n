@@ -37,8 +37,10 @@ export function formatWorkflowLoopGuidance(
 			return (
 				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-as-code", workflowId)\` or read the bound workspace source file, then compare it to the requested outcome. ` +
 				'Build/save success only means a workflow was saved. ' +
-				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
-				'Otherwise use `executions(action="run")`. ' +
+				`Use \`verify-built-workflow\` with workflowId "${action.workflowId ?? 'unknown'}"` +
+				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +
+				'; it reuses the build outcome simulation plan and is safe to call multiple times. ' +
+				'For alternate deterministic scenarios, pass `fixtureOverrides` for nodes already classified as simulated. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
 				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source file. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`

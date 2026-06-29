@@ -391,30 +391,16 @@ test.describe(
 				await api.setMcpAccess(true);
 			});
 
-			test('should block OAuth endpoints when MCP access is disabled', async ({ api }) => {
-				const responses = await Promise.all([
-					api.mcpOauth.registerClient({
-						client_name: `e2e OAuth client ${nanoid(8)}`,
-						redirect_uris: ['https://example.com/callback'],
-						grant_types: ['authorization_code'],
-						token_endpoint_auth_method: 'none',
-					}),
-					api.mcpOauth.authorize({
-						clientId: 'any-client',
-						redirectUri: 'https://example.com/callback',
-						challenge: api.mcpOauth.createPkcePair().challenge,
-					}),
-					api.mcpOauth.exchangeAuthorizationCode({
-						code: 'any-code',
-						clientId: 'any-client',
-						codeVerifier: 'any-verifier',
-						redirectUri: 'https://example.com/callback',
-					}),
-				]);
+			// #32157 decoupled the OAuth server from MCP access; endpoints stay reachable when off.
+			test('should keep OAuth endpoints available when MCP access is disabled', async ({ api }) => {
+				const response = await api.mcpOauth.registerClient({
+					client_name: `e2e OAuth client ${nanoid(8)}`,
+					redirect_uris: ['https://example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+				});
 
-				for (const response of responses) {
-					expect(response.status()).toBe(403);
-				}
+				expect(response.status()).toBe(201);
 			});
 		});
 
