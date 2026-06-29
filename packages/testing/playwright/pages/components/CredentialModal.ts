@@ -2,7 +2,6 @@ import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BaseModal } from './BaseModal';
-import { dialogCloseIconIn } from './dialogLocators';
 
 /**
  * Credential modal component for canvas and credentials interactions.
@@ -21,6 +20,16 @@ export class CredentialModal extends BaseModal {
 
 	static fromPage(page: Page): CredentialModal {
 		return new CredentialModal(page.getByTestId('editCredential-modal'));
+	}
+
+	/**
+	 * Scope every inherited `BaseModal` method (`close`, `getCloseButton`, `getText`, …)
+	 * to this modal's root. The credential modal is frequently stacked on top of another
+	 * dialog (e.g. the chat-hub provider settings modal), so the default page-wide
+	 * `page.getByRole('dialog')` container would resolve the wrong dialog.
+	 */
+	get container(): Locator {
+		return this.root;
 	}
 
 	getModal(): Locator {
@@ -116,13 +125,6 @@ export class CredentialModal extends BaseModal {
 	async save(): Promise<void> {
 		await this.getSaveButton().click();
 		await this.waitForSaveComplete();
-	}
-
-	async close(): Promise<void> {
-		const closeBtn = dialogCloseIconIn(this.root);
-		if (await closeBtn.isVisible()) {
-			await closeBtn.click();
-		}
 	}
 
 	/**
