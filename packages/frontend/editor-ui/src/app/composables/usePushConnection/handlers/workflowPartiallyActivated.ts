@@ -41,5 +41,13 @@ export async function workflowPartiallyActivated(
 		await initializeWorkspace(updatedWorkflow);
 	}
 
+	workflowDocumentStore.setPublicationStatus({
+		status: 'partial',
+		failures: data.failedNodes.map((n) => ({
+			nodeId: n.nodeId,
+			nodeName: n.nodeName,
+			errorMessage: n.errorMessage,
+		})),
+	});
 	bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 }

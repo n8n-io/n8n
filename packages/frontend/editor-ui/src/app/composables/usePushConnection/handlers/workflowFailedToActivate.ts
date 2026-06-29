@@ -2,7 +2,6 @@ import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useActivationError } from '@/app/composables/useActivationError';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { PushHandlerOptions } from './types';
 
@@ -10,15 +9,21 @@ export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
 	{ documentId }: PushHandlerOptions,
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
 	if (workflowDocumentStore.workflowId !== data.workflowId) {
 		return;
 	}
 
-	workflowsStore.setWorkflowInactive(data.workflowId);
-	workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+	// Failed activation is recoverable — preserve the published version and set
+	// the lifecycle to 'failed' so the UI can surface the error without clearing
+	// the active state.
+	workflowDocumentStore.setPublicationStatus({
+		status: 'failed',
+		failures: data.nodeId
+			? [{ nodeId: data.nodeId, nodeName: data.nodeId, errorMessage: data.errorMessage }]
+			: [],
+	});
 
 	const toast = useToast();
 	const i18n = useI18n();
