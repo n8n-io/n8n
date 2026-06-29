@@ -122,6 +122,24 @@ describe('WorkflowTestCaseSchema', () => {
 		).toThrow();
 	});
 
+	it('retains seedThread.liveTurnRunId through parse (LangTracer live-turn pin)', () => {
+		// Regression guard: the inner seedThread object is non-strict, so before the field
+		// was modelled it was silently stripped on parse and never reached the reconstructor.
+		const { conversation: _omit, ...rest } = validFixture();
+		const parsed = WorkflowTestCaseSchema.parse({
+			...rest,
+			seedThread: { threadId: 't1', liveTurnRunId: 'run-abc-123' },
+		});
+		expect(parsed.seedThread?.liveTurnRunId).toBe('run-abc-123');
+	});
+
+	it('rejects an empty-string seedThread.liveTurnRunId', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', liveTurnRunId: '' } }),
+		).toThrow();
+	});
+
 	it('rejects seedThread combined with another seeding mode', () => {
 		const { conversation: _omit, ...rest } = validFixture();
 		expect(() =>
