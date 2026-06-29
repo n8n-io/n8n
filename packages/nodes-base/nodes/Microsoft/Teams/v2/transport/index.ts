@@ -129,9 +129,12 @@ export function buildTeamsPath(
 	return segments
 		.map((segment) => {
 			if (typeof segment === 'string') return segment;
+			// `as string` at the call sites is compile-time only — an expression can resolve an
+			// id to a non-string (e.g. `={{ 123 }}` → number). OAuth2 passes through and is
+			// stringified by `join()`; the SP path must coerce before `.trim()` or it throws.
 			if (!isServicePrincipal) return segment.id;
 			validateTeamsId(segment.id, node);
-			return segment.id.trim();
+			return String(segment.id).trim();
 		})
 		.join('');
 }

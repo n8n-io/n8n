@@ -593,6 +593,31 @@ describe('Microsoft Teams Transport', () => {
 			expect(path).not.toContain('%40');
 		});
 
+		// A node expression like `={{ 123 }}` resolves to a non-string at runtime; the
+		// call sites' `as string` is compile-time only. The SP path must coerce before
+		// `.trim()` or it throws a raw `TypeError` (regression guard).
+		it('coerces a non-string id under SP without throwing', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			const path = buildTeamsPath.call(mockExecuteFunctions, [
+				'/v1.0/planner/tasks/',
+				{ id: 123 as unknown as string },
+			]);
+
+			expect(path).toBe('/v1.0/planner/tasks/123');
+		});
+
+		it('stringifies a non-string id under OAuth2 (join coercion, no throw)', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+
+			const path = buildTeamsPath.call(mockExecuteFunctions, [
+				'/v1.0/planner/tasks/',
+				{ id: 123 as unknown as string },
+			]);
+
+			expect(path).toBe('/v1.0/planner/tasks/123');
+		});
+
 		it.each(['x/../../groups/abc', 'abc?$expand=foo', 'a\\b', 'a#frag'])(
 			'throws on a crafted separator/injection id (%s) under the Service Principal credential',
 			(craftedId) => {
