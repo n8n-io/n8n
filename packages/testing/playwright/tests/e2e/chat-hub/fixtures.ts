@@ -14,6 +14,7 @@ type ChatHubFixtures = {
 	jinaCredential: CredentialResponse;
 	jinaApiKey: string;
 	chatHubProxySetup: undefined;
+	chatHubEnabled: undefined;
 	agentWorkflow: IWorkflowBase;
 };
 
@@ -61,6 +62,21 @@ export const test = base.extend<ChatHubFixtures>({
 					},
 				});
 			}
+		},
+		{ auto: true },
+	],
+
+	chatHubEnabled: [
+		async ({ n8n }, use) => {
+			// Chat Hub is disabled by default; turn it on for these tests.
+			const response = await n8n.api.request.put('/rest/chat/enabled', {
+				data: { enabled: true },
+			});
+			if (!response.ok()) {
+				throw new Error(`Failed to enable Chat Hub: ${response.status()} ${await response.text()}`);
+			}
+
+			await use(undefined);
 		},
 		{ auto: true },
 	],
