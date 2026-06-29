@@ -35,6 +35,11 @@ export interface Props {
 	parameterIssues?: string[];
 	parameter: INodeProperties;
 	newResourceLabel?: string;
+	/**
+	 * Hide the list/ID mode selector and render the list picker on its own. Used
+	 * on the canvas card, where the agent is always picked from the list.
+	 */
+	hideModeSelector?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 	expressionDisplayValue: '',
 	newResourceLabel: '',
 	parameterIssues: () => [],
+	hideModeSelector: false,
 });
 
 const emit = defineEmits<{
@@ -167,7 +173,7 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 
 const placeholder = computed(() => {
 	if (isListMode.value) {
-		return i18n.baseText('resourceLocator.mode.list.placeholder');
+		return i18n.baseText('agentSelector.mode.list.placeholder');
 	}
 
 	return i18n.baseText('resourceLocator.id.placeholder');
@@ -305,10 +311,11 @@ defineExpose({ showDropdown });
 			<div
 				:class="{
 					[$style.resourceLocator]: true,
-					[$style.multipleModes]: true,
+					[$style.multipleModes]: !hideModeSelector,
+					[$style.singleMode]: hideModeSelector,
 				}"
 			>
-				<div :class="$style.modeSelector">
+				<div v-if="!hideModeSelector" :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
 						:size="inputSize"
@@ -403,4 +410,13 @@ defineExpose({ showDropdown });
 
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
+
+// Without the mode selector the input stands alone, so restore the left corner
+// radii that the multi-mode layout squares off to butt against the selector.
+.singleMode {
+	.inputContainer {
+		--input--radius--top-left: var(--radius);
+		--input--radius--bottom-left: var(--radius);
+	}
+}
 </style>

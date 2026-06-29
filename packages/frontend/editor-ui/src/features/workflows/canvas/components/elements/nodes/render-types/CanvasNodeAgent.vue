@@ -87,6 +87,8 @@ const projectId = computed(
 
 const { summary, error } = useAgentCapabilitySummary(projectId, agentId);
 
+const hasError = computed(() => Boolean(error.value));
+
 const agentName = computed(
 	() =>
 		summary.value?.name ??
@@ -199,18 +201,27 @@ onMounted(() => {
 
 			<div :class="$style.body">
 				<template v-if="isConfigured">
-					<div v-if="modelName" :class="$style.modelRow" data-test-id="canvas-node-agent-model">
-						<CredentialIcon
-							v-if="modelCredentialType"
-							:credential-type-name="modelCredentialType"
-							:size="16"
-						/>
-						<N8nText size="small" :class="$style.modelName">{{ modelName }}</N8nText>
-					</div>
-					<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
-					<N8nText v-else-if="error" size="small" color="danger">
+					<N8nText v-if="hasError" size="small" color="danger">
 						{{ i18n.baseText('agentNode.card.loadError') }}
 					</N8nText>
+					<template v-else>
+						<!-- Always render the model row so a configured-but-empty agent (no
+						model, no capabilities) doesn't collapse to an empty body. -->
+						<div :class="$style.modelRow" data-test-id="canvas-node-agent-model">
+							<CredentialIcon
+								v-if="modelCredentialType"
+								:credential-type-name="modelCredentialType"
+								:size="16"
+							/>
+							<N8nText
+								size="small"
+								:class="[$style.modelName, { [$style.modelPlaceholder]: !modelName }]"
+							>
+								{{ modelName || i18n.baseText('agentNode.card.noModel') }}
+							</N8nText>
+						</div>
+						<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+					</template>
 				</template>
 				<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">
 					<AgentSelectorParameterInput
@@ -219,6 +230,7 @@ onMounted(() => {
 						path="parameters.agentId"
 						:is-read-only="isReadOnly"
 						input-size="medium"
+						hide-mode-selector
 						@update:model-value="onPickAgent"
 					/>
 				</div>
@@ -365,6 +377,11 @@ onMounted(() => {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	color: var(--text-color--subtle);
+}
+
+.modelPlaceholder {
+	// Dimmer than a real model name to read as an empty/placeholder state.
+	color: var(--text-color--subtler);
 }
 
 .picker {

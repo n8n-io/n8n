@@ -187,4 +187,22 @@ describe('AgentSelectorParameterInput', () => {
 
 		expect(listAgentsPage).toHaveBeenCalledTimes(2);
 	});
+
+	it('renders the list/ID mode selector by default', async () => {
+		const { getByTestId } = renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		expect(getByTestId('rlc-mode-selector')).toBeInTheDocument();
+	});
+
+	it('hides the mode selector when hideModeSelector is set (canvas usage)', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: makeProps({ hideModeSelector: true }),
+		});
+		await flushPromises();
+
+		expect(queryByTestId('rlc-mode-selector')).toBeNull();
+		// The list input itself is still available.
+		expect(getByTestId('rlc-input')).toBeInTheDocument();
+	});
 });

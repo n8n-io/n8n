@@ -133,6 +133,25 @@ describe('CanvasNodeAgent', () => {
 		expect(queryByTestId('agent-picker-stub')).toBeNull();
 	});
 
+	it('shows a "No model selected" placeholder for a configured agent with no model', () => {
+		summaryHolder.value = {
+			id: 'agent-1',
+			name: 'Empty Agent',
+			model: null,
+			channels: [],
+			tools: [],
+			skills: [],
+			tasks: [],
+		};
+
+		const { getByText, queryByTestId } = renderWithAgent('agent-1');
+
+		// The body never collapses to empty: the model row always renders.
+		expect(getByText('No model selected')).toBeInTheDocument();
+		expect(queryByTestId('canvas-node-agent-chip')).toBeNull();
+		expect(queryByTestId('agent-picker-stub')).toBeNull();
+	});
+
 	it('navigates to the agent detail view when the open affordance is clicked', async () => {
 		summaryHolder.value = {
 			id: 'agent-1',
