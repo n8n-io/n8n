@@ -489,12 +489,18 @@ export class ActiveWorkflowManager {
 
 	@OnLeaderTakeover()
 	async addAllNonWebhookTriggerWorkflows() {
+		// Feature flag whether the activation is handled via outbox
+		if (this.workflowsConfig.useWorkflowPublicationService) return;
+
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	@OnLeaderStepdown()
 	@OnShutdown()
 	async removeAllNonWebhookTriggerWorkflows() {
+		// Feature flag whether the activation is handled via outbox
+		if (this.workflowsConfig.useWorkflowPublicationService) return;
+
 		this.removeAllQueuedWorkflowActivations();
 		await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
 	}
@@ -634,7 +640,7 @@ export class ActiveWorkflowManager {
 				// updating the published version.
 				const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
 					? async () =>
-							await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow)
+							await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow.id)
 					: async () => dbWorkflow as IWorkflowBase;
 
 				if (shouldAddNonWebhookTriggers) {
@@ -1009,8 +1015,6 @@ export class ActiveWorkflowManager {
 			getTriggerFunctions,
 			getPollFunctions,
 		);
-
-		this.logger.debug(`Added non-webhook triggers for workflow ${formatWorkflow(dbWorkflow)}`);
 
 		return true;
 	}

@@ -16,20 +16,20 @@ CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "obse
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
-| observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
-| lastObservedMessageId | varchar(36) |  | false |  |  |  |
-| lastObservedAt | datetime(3) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| lastObservedAt | datetime(3) |  | false |  |  |  |
+| lastObservedMessageId | varchar(36) |  | false |  |  |  |
+| observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
-| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
+| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 | sqlite_autoindex_agents_observation_cursors_1 | PRIMARY KEY | PRIMARY KEY (agentId, observationScopeId) |
 
 ## Indexes
@@ -49,32 +49,31 @@ erDiagram
 
 "agents_observation_cursors" {
   varchar_36_ agentId PK
-  varchar_255_ observationScopeId PK
-  varchar_36_ lastObservedMessageId
-  datetime_3_ lastObservedAt
   datetime_3_ createdAt
+  datetime_3_ lastObservedAt
+  varchar_36_ lastObservedMessageId
+  varchar_255_ observationScopeId PK
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 "agents_threads" {
+  datetime_3_ createdAt
   varchar_128_ id PK
+  TEXT metadata
   varchar_255_ resourceId
   varchar_255_ title
-  TEXT metadata
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

@@ -13,7 +13,7 @@ import {
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
 } from '..';
-import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import { Agent } from '../../sdk/agent';
 import { isZodSchema } from '../../utils/zod';
 

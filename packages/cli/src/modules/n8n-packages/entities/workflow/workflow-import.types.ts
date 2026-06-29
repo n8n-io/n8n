@@ -1,14 +1,17 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 
 import type { WorkflowIdConflict } from './workflow-import-match.service';
-import type { WorkflowPublishingPolicy } from './workflow-publishing-policy.types';
+import type {
+	WorkflowPublishingOutcome,
+	WorkflowPublishingPolicy,
+} from './workflow-publishing-policy.types';
+import type { ImportContext } from '../../n8n-packages.types';
 
-/** The actor and destination a batch of workflows is imported into. */
-export interface WorkflowImportContext {
-	user: User;
-	projectId: string;
-	folderId: string | null;
+/** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
+export interface WorkflowImportContext extends ImportContext {
 	publishingPolicy: WorkflowPublishingPolicy;
+	/** Package workflow ids that must stay inactive because they use stubbed credentials. */
+	publishBlockedSourceWorkflowIds: ReadonlySet<string>;
 }
 
 export interface PreparedWorkflow {
@@ -50,6 +53,14 @@ export interface WorkflowConflict {
 	name: string;
 }
 
+export interface WorkflowFolderConflict {
+	sourceWorkflowId: string;
+	existingWorkflowId: string;
+	existingParentFolderId: string | null;
+	targetFolderId: string;
+	name: string;
+}
+
 /**
  * The planned actions for a batch of workflows, plus any conflicts that abort
  * the import before anything is written.
@@ -58,10 +69,12 @@ export interface WorkflowImportPlan {
 	items: WorkflowPlanItem[];
 	conflicts: WorkflowConflict[];
 	idConflicts: WorkflowIdConflict[];
+	folderConflicts: WorkflowFolderConflict[];
 }
 
 export interface WorkflowImportOutcome {
 	status: 'created' | 'updated' | 'skipped';
 	workflow: WorkflowEntity;
 	sourceWorkflowId: string;
+	publishing: WorkflowPublishingOutcome;
 }

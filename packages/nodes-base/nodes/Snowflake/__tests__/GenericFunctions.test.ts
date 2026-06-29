@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 import { escapeSnowflakeObjectIdentifier, getConnectionOptions } from '../GenericFunctions';
 
-jest.mock('crypto');
+vi.mock('crypto');
 
 describe('escapeSnowflakeObjectIdentifier', () => {
 	it('quotes a single-part identifier', () => {
@@ -54,6 +54,56 @@ describe('getConnectionOptions', () => {
 			});
 		});
 
+		it('without origin hostname when not provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).not.toHaveProperty('host');
+			expect(result).toEqual({
+				...commonOptions,
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
+		it('without origin hostname when only whitespace is provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				host: '   ',
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).not.toHaveProperty('host');
+			expect(result).toEqual({
+				...commonOptions,
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
+		it('with optional origin hostname when provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
 		it('with private key for keyPair authentication', () => {
 			const result = getConnectionOptions({
 				...commonOptions,
@@ -85,7 +135,7 @@ describe('getConnectionOptions', () => {
 		});
 
 		it('with private key for keyPair authentication and passphrase', () => {
-			const createPrivateKeySpy = jest.spyOn(crypto, 'createPrivateKey').mockImplementation(
+			const createPrivateKeySpy = vi.spyOn(crypto, 'createPrivateKey').mockImplementation(
 				() =>
 					({
 						export: () => 'test-private-key',

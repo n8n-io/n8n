@@ -216,15 +216,19 @@ async function handleCopyLink(tab: ArtifactTab) {
 	overflow-x: auto;
 	scrollbar-width: none;
 	position: relative;
-	mask: linear-gradient(
-		to right,
-		#0000,
-		#ffff var(--left--fade) calc(100% - var(--right--fade)),
-		#0000
-	);
-	animation: scrollfade;
-	animation-timeline: --scrollfade;
-	scroll-timeline: --scrollfade x;
+
+	// Scroll-driven edge fade only where supported; otherwise it pins a permanent left fade that hides the first tab
+	@supports (animation-timeline: scroll()) {
+		mask: linear-gradient(
+			to right,
+			#0000,
+			#ffff var(--left--fade) calc(100% - var(--right--fade)),
+			#0000
+		);
+		animation: scrollfade;
+		animation-timeline: --scrollfade;
+		scroll-timeline: --scrollfade x;
+	}
 }
 
 .tab {

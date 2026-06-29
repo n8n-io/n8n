@@ -7,6 +7,8 @@ import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModa
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
+import { ManualChatModal } from './components/ManualChatModal';
+import { MessageBox } from './components/messageBoxLocators';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -19,8 +21,9 @@ export class CanvasPage extends BasePage {
 
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	readonly manualChat = new ManualChatModal(this.page.getByTestId('canvas-chat'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 	readonly nodeCreator = new NodeCreator(this.page);
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
 	readonly tagsManagerModal = new TagsManagerModal(
@@ -194,6 +197,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).dblclick();
 	}
 
+	/**
+	 * Reads the test form URL (`/form-test/<id>`) shown in the open Form Trigger
+	 * NDV. Open the node first (e.g. via {@link openNode}).
+	 */
+	async getTestFormUrl(): Promise<string> {
+		const locator = this.page.getByText(/form-test\/[a-f0-9-]+/);
+		await expect(locator).toHaveText(/form-test\/[a-f0-9-]+/);
+		return (await locator.textContent()) ?? '';
+	}
+
 	getRenamePrompt(): Locator {
 		return this.page.locator('.rename-prompt');
 	}
@@ -305,7 +318,6 @@ export class CanvasPage extends BasePage {
 	async openShareModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-share');
-		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -377,6 +389,10 @@ export class CanvasPage extends BasePage {
 	// Tag dropdown getters
 	getVisibleDropdown(): Locator {
 		return this.page.locator('.el-select-dropdown:visible');
+	}
+
+	getTagDropdownItems(): Locator {
+		return this.getVisibleDropdown().locator('li');
 	}
 
 	getTagItemsInDropdown(): Locator {
@@ -465,6 +481,22 @@ export class CanvasPage extends BasePage {
 
 	async clickProductionChecklistIgnoreAll(): Promise<void> {
 		await this.getProductionChecklistIgnoreAllButton().click();
+	}
+
+	async ignoreProductionChecklistAction(index = 0): Promise<void> {
+		await this.getProductionChecklistActionItem().nth(index).getByTitle('Ignore').click();
+	}
+
+	getProductionChecklistActionCompletedIcon(index = 0): Locator {
+		return this.getProductionChecklistActionItem()
+			.nth(index)
+			.locator('svg[data-icon="circle-check"]');
+	}
+
+	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
+		const messageBox = new MessageBox(this.page);
+		await expect(messageBox.root).toBeVisible();
+		await messageBox.buttonByText(/ignore for all workflows/i).click();
 	}
 
 	async duplicateNode(nodeName: string): Promise<void> {
@@ -621,6 +653,12 @@ export class CanvasPage extends BasePage {
 		);
 	}
 
+	getAddConnectionButtonBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionToolbarBetweenNodes(sourceNodeName, targetNodeName).getByTestId(
+			'add-connection-button',
+		);
+	}
+
 	// Canvas action helpers
 	async addNodeBetweenNodes(
 		sourceNodeName: string,
@@ -737,21 +775,19 @@ export class CanvasPage extends BasePage {
 	}
 
 	getManualChatModal(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	getManualChatInput(): Locator {
-		return this.getManualChatModal().locator('.chat-inputs textarea');
+		return this.manualChat.getInput();
 	}
 
 	getManualChatMessages(): Locator {
-		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+		return this.manualChat.getMessages();
 	}
 
 	getManualChatLatestBotMessage(): Locator {
-		return this.getManualChatModal()
-			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
-			.last();
+		return this.manualChat.getLatestBotMessage();
 	}
 
 	getWaitingNodes(): Locator {
@@ -803,7 +839,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getChatPanel(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	// Input plus endpoints (to add supplemental nodes to parent inputs)
@@ -1169,6 +1205,24 @@ export class CanvasPage extends BasePage {
 		const box = await this.getNodeGroupByTitle(title).boundingBox();
 		if (!box) throw new Error(`Node group with title "${title}" not found or not visible`);
 		return box;
+	}
+
+	async dragNodeGroupFromTitleBar(
+		title: string,
+		deltaX: number,
+		deltaY: number,
+		grabFraction = 0.9,
+	): Promise<void> {
+		const box = await this.getNodeGroupTitle(title).boundingBox();
+		if (!box) throw new Error(`Node group title "${title}" not found or not visible`);
+
+		const startX = box.x + box.width * grabFraction;
+		const startY = box.y + box.height / 2;
+
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
 	}
 
 	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {

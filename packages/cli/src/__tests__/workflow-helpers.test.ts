@@ -35,15 +35,17 @@ describe('workflow-helpers', () => {
 	beforeAll(() => {
 		mockInstance(VariablesService, {
 			async getAllCached() {
+				// Project VAR2 is listed before its global twin so resolution must
+				// be order-independent: the project value still has to win.
 				return [
 					{ id: '1', key: 'VAR1', value: 'value1' },
-					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '3',
 						key: 'VAR2',
 						value: 'value1Project',
 						project: { id: '1', name: 'project1' } as Project,
 					},
+					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '4',
 						key: 'VAR4',
@@ -86,6 +88,11 @@ describe('workflow-helpers', () => {
 		it('should prioritize passed of projectId over workflowId', async () => {
 			const variables = await getVariables('1', '2');
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2', VAR5: 'value5' });
+		});
+
+		it('should let a project variable override a same-key global regardless of order', async () => {
+			const variables = await getVariables(undefined, '1');
+			expect(variables.VAR2).toBe('value1Project');
 		});
 	});
 });
@@ -282,6 +289,21 @@ describe('replaceInvalidCredentials', () => {
 			name: 'My Cred',
 		});
 	});
+
+	it('should skip credential types that resolve to object internal keys', async () => {
+		// JSON.parse keeps `__proto__` as an own enumerable key, unlike an object literal.
+		const credentials = JSON.parse(
+			'{"__proto__":{"id":"injected","name":"injected"},"constructor":{"id":"injected","name":"injected"}}',
+		) as Record<string, { id: string; name: string }>;
+		const workflow = makeWorkflow(credentials);
+
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+		expect(credentialsRepository.findByNameAndTypeInProject).not.toHaveBeenCalled();
+		expect(({} as Record<string, unknown>).id).toBeUndefined();
+		expect(({} as Record<string, unknown>).injected).toBeUndefined();
+	});
 });
 
 describe('removeDefaultValues', () => {
@@ -453,65 +475,145 @@ describe('validateWorkflowNodeGroups', () => {
 
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }, null),
 		).not.toThrow();
 	});
 
 	it('should pass when nodeGroups is empty', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }, null),
 		).not.toThrow();
 	});
 
 	it('should pass when all nodeIds reference existing nodes', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+				},
+				null,
+			),
 		).not.toThrow();
 	});
 
 	it('should throw when a nodeId does not reference an existing node', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1')],
-				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+				},
+				null,
+			),
 		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
 	});
 
 	it('should throw for the first invalid nodeId found', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [],
-				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [],
+					nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+				},
+				null,
+			),
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [
-					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
-				],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [
+						{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+					],
+				},
+				null,
+			),
 		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
 	});
 
 	it('should throw when group names are not unique', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1')],
-				nodeGroups: [
-					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
-				],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [
+						{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+					],
+				},
+				null,
+			),
 		).toThrow('Duplicate node group name "Duplicate".');
+	});
+
+	it('should throw when group ids are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [
+						{ id: 'dup', name: 'Group A', nodeIds: ['n1'] },
+						{ id: 'dup', name: 'Group B', nodeIds: ['n2'] },
+					],
+				},
+				null,
+			),
+		).toThrow('Duplicate node group ID "dup".');
+	});
+
+	describe('full validation', () => {
+		const triggerType = { group: ['trigger'] } as never;
+		const regularType = { group: ['transform'] } as never;
+		// Two nodes connected n1 → n2 form a groupable chain.
+		const connectedNodes = [makeNode('n1'), makeNode('n2')];
+		const connections = {
+			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+		} as never;
+
+		it('passes for a valid connected group', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: connectedNodes,
+						connections,
+						nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2'] }],
+					},
+					() => regularType,
+				),
+			).not.toThrow();
+		});
+
+		it('rejects a group that contains a trigger node', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					() => triggerType,
+				),
+			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+		});
+
+		it('does not run full checks when getNodeType is null (basic-only)', () => {
+			// Same trigger-in-group that fails under full validation passes under basic-only.
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					null,
+				),
+			).not.toThrow();
+		});
 	});
 });
 

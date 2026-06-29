@@ -15,19 +15,19 @@ CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "ag
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| runId | varchar(255) |  | false |  |  |  |
 | agentId | varchar(255) |  | true |  | [agents](agents.md) |  |
-| state | TEXT |  | true |  |  |  |
-| expired | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| expired | boolean | false | false |  |  |  |
+| runId | varchar(255) |  | false |  |  |  |
+| state | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| runId | PRIMARY KEY | PRIMARY KEY (runId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| runId | PRIMARY KEY | PRIMARY KEY (runId) |
 | sqlite_autoindex_agent_checkpoints_1 | PRIMARY KEY | PRIMARY KEY (runId) |
 
 ## Indexes
@@ -45,26 +45,25 @@ erDiagram
 "agent_checkpoints" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_checkpoints" {
-  varchar_255_ runId PK
   varchar_255_ agentId FK
-  TEXT state
-  boolean expired
   datetime_3_ createdAt
+  boolean expired
+  varchar_255_ runId PK
+  TEXT state
   datetime_3_ updatedAt
 }
 "agents" {
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_512_ description
-  varchar_255_ projectId FK
-  TEXT integrations
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar_36_ versionId
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ activeVersionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 ```
 

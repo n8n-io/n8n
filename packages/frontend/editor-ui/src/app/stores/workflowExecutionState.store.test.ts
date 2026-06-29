@@ -8,10 +8,15 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
+import { defineComponent, provide, shallowRef } from 'vue';
+import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowExecutionStateStore,
 	getWorkflowExecutionStateStoreId,
 	disposeWorkflowExecutionStateStore,
+	injectWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import {
 	createWorkflowDocumentId,
@@ -20,7 +25,11 @@ import {
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { createRunExecutionData, type ExecutionSummary } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+	type ExecutionSummary,
+} from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 function makeExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
@@ -237,6 +246,39 @@ describe('workflowExecutionState.store', () => {
 			expect(executionDataStore.execution?.stoppedAt).toBeUndefined();
 		});
 
+		it('records the stopped execution id when local run data has trimmed placeholders', () => {
+			executionDataStore.setExecution(
+				createTestWorkflowExecutionResponse({
+					id: 'test-exec-id',
+					status: 'running',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({
+										executionStatus: 'success',
+										data: { main: [[{ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }]] },
+									}),
+								],
+							},
+						},
+					}),
+				}),
+			);
+
+			store.markExecutionAsStopped();
+
+			expect(store.stoppedExecutionId).toBe('test-exec-id');
+			expect(store.activeExecutionId).toBeUndefined();
+		});
+
+		it('does not record the stopped execution id when local run data is complete', () => {
+			store.markExecutionAsStopped();
+
+			expect(store.stoppedExecutionId).toBeNull();
+			expect(store.activeExecutionId).toBeUndefined();
+		});
+
 		describe('when activeExecutionId is null (pending scaffold)', () => {
 			beforeEach(() => {
 				// Reset to pending state instead of the string-id default from outer beforeEach.
@@ -296,6 +338,17 @@ describe('workflowExecutionState.store', () => {
 				expect(store.pendingExecution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
 				expect(store.pendingExecution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
 			});
+
+			it('does not record a stopped execution id (no backend id to match a push against)', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				expect(store.stoppedExecutionId).toBeNull();
+			});
 		});
 
 		describe('when activeExecutionId is undefined and displayedExecutionId is set', () => {
@@ -338,6 +391,79 @@ describe('workflowExecutionState.store', () => {
 				expect(ds.execution?.data?.resultData?.runData?.node1[0].executionStatus).toBe('success');
 				expect(ds.execution?.status).toBe('canceled');
 			});
+
+			it('does not record a stopped execution id (the finish was already handled)', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				expect(store.stoppedExecutionId).toBeNull();
+			});
+		});
+	});
+
+	describe('stoppedExecutionId', () => {
+		const documentId = createWorkflowDocumentId('test-wf');
+		let store: ReturnType<typeof useWorkflowExecutionStateStore>;
+
+		beforeEach(() => {
+			store = useWorkflowExecutionStateStore(documentId);
+			store.setActiveExecutionId('stopped-exec');
+			// Marker is only set when the local run data is incomplete, so seed a
+			// trimmed placeholder item.
+			useExecutionDataStore(createExecutionDataId('stopped-exec')).setExecution(
+				createTestWorkflowExecutionResponse({
+					id: 'stopped-exec',
+					status: 'running',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({
+										executionStatus: 'success',
+										data: { main: [[{ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }]] },
+									}),
+								],
+							},
+						},
+					}),
+				}),
+			);
+			store.markExecutionAsStopped();
+			expect(store.stoppedExecutionId).toBe('stopped-exec');
+		});
+
+		it('is preserved when the active id is cleared to undefined', () => {
+			store.setActiveExecutionId(undefined);
+
+			expect(store.stoppedExecutionId).toBe('stopped-exec');
+		});
+
+		it('is cleared when a new run starts tracking (pending)', () => {
+			store.setActiveExecutionId(null);
+
+			expect(store.stoppedExecutionId).toBeNull();
+		});
+
+		it('is cleared when a new run starts tracking (known id)', () => {
+			store.setActiveExecutionId('new-exec');
+
+			expect(store.stoppedExecutionId).toBeNull();
+		});
+
+		it('is cleared by clearStoppedExecutionId', () => {
+			store.clearStoppedExecutionId();
+
+			expect(store.stoppedExecutionId).toBeNull();
+		});
+
+		it('is cleared by resetExecutionState', () => {
+			store.resetExecutionState();
+
+			expect(store.stoppedExecutionId).toBeNull();
 		});
 	});
 
@@ -495,6 +621,74 @@ describe('workflowExecutionState.store', () => {
 					createWorkflowDocumentId('wf-1'),
 				);
 				expect(executionStateStore.activeExecutionRunData).toBeNull();
+			});
+		});
+
+		describe('activeExecutionPinDataByNodeName', () => {
+			it('does not treat a displayed execution as preview pin data in debug mode', () => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				const execution = makeExecution({
+					id: 'exec-1',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {},
+							pinData: { 'HTTP Request': [{ json: { source: 'workflow-pin-data' } }] },
+						},
+					}),
+				});
+
+				executionStateStore.setWorkflowExecutionData(execution);
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(true);
+
+				executionStateStore.setIsInDebugMode(true);
+
+				expect(executionStateStore.displayedExecutionId).toBe('exec-1');
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(false);
+				expect(executionStateStore.activeExecutionPinDataByNodeName).toEqual({
+					'HTTP Request': [{ json: { source: 'workflow-pin-data' } }],
+				});
+			});
+
+			it('uses the in-progress execution pin data while a new execution id is pending', () => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				useExecutionDataStore(createExecutionDataId('previous-exec')).setExecution(
+					makeExecution({
+						id: 'previous-exec',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								pinData: { 'Send Rain Alert': [{ json: { stale: true } }] },
+							},
+						}),
+					}),
+				);
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					makeExecution({
+						id: IN_PROGRESS_EXECUTION_ID,
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								pinData: { 'Get Berlin Forecast': [{ json: { dryRun: true } }] },
+							},
+						}),
+					}),
+				);
+
+				executionStateStore.setActiveExecutionId('previous-exec');
+				executionStateStore.setActiveExecutionId(undefined);
+				executionStateStore.setActiveExecutionId(null);
+
+				expect(executionStateStore.displayedExecutionId).toBe('previous-exec');
+				expect(executionStateStore.activeExecutionPinDataByNodeName).toEqual({
+					'Get Berlin Forecast': [{ json: { dryRun: true } }],
+				});
+				expect(
+					executionStateStore.activeExecutionPinDataByNodeName['Send Rain Alert'],
+				).toBeUndefined();
 			});
 		});
 
@@ -1394,6 +1588,52 @@ describe('workflowExecutionState.store', () => {
 
 			expect(executionStateStore.executionRunningByNodeId.size).toBe(0);
 			expect(executionStateStore.executionWaitingForNextByNodeId.size).toBe(0);
+		});
+	});
+
+	describe('injectWorkflowExecutionStateStore', () => {
+		function renderWithInjector({ providedWorkflowId }: { providedWorkflowId?: string }) {
+			let injected!: ReturnType<typeof injectWorkflowExecutionStateStore>;
+
+			// inject() only resolves provides from ancestor components, so the
+			// provide must live in a parent component.
+			const ChildComponent = defineComponent({
+				setup() {
+					injected = injectWorkflowExecutionStateStore();
+				},
+				template: '<div />',
+			});
+
+			const ParentComponent = defineComponent({
+				components: { ChildComponent },
+				setup() {
+					if (providedWorkflowId) {
+						const scopedDocumentStore = useWorkflowDocumentStore(
+							createWorkflowDocumentId(providedWorkflowId, 'scoped'),
+						);
+						provide(WorkflowDocumentStoreKey, shallowRef(scopedDocumentStore));
+					}
+				},
+				template: '<ChildComponent />',
+			});
+
+			createComponentRenderer(ParentComponent)();
+
+			return injected;
+		}
+
+		it('resolves the execution-state store of the provided workflow document', () => {
+			const injected = renderWithInjector({ providedWorkflowId: 'scoped-workflow' });
+
+			expect(injected.value.documentId).toBe(createWorkflowDocumentId('scoped-workflow', 'scoped'));
+		});
+
+		it('falls back to the global workflow id when nothing is provided', () => {
+			useWorkflowsStore().setWorkflowId('global-workflow');
+
+			const injected = renderWithInjector({});
+
+			expect(injected.value.documentId).toBe(createWorkflowDocumentId('global-workflow'));
 		});
 	});
 });

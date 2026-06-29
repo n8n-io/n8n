@@ -82,6 +82,30 @@ function capture(cmd, cmdArgs, env) {
 	});
 }
 
+/** Runs a command, suppressing all output. Resolves with the exit code. */
+function runQuiet(cmd, cmdArgs, env) {
+	return new Promise((res, rej) => {
+		const child = spawn(cmd, cmdArgs, { cwd: REPO_ROOT, env, stdio: 'ignore' });
+		child.on('error', (err) => rej(new FailError(spawnErrorMessage(cmd, err))));
+		child.on('close', (code) => res(code ?? 1));
+	});
+}
+
+/** Runs a command, forwarding all output to stderr. Resolves with the exit code. */
+function runToStderr(cmd, cmdArgs, env) {
+	return new Promise((res, rej) => {
+		const child = spawn(cmd, cmdArgs, {
+			cwd: REPO_ROOT,
+			env,
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
+		child.on('error', (err) => rej(new FailError(spawnErrorMessage(cmd, err))));
+		child.stdout.on('data', (d) => process.stderr.write(d));
+		child.stderr.on('data', (d) => process.stderr.write(d));
+		child.on('close', (code) => res(code ?? 1));
+	});
+}
+
 /** Spins up an empty database and returns its connection details + a cleanup fn. */
 async function provision(dbType) {
 	if (dbType === 'sqlite') {
@@ -138,6 +162,24 @@ function buildDsn(dbType, provisioned, docker) {
 	return `postgres://${conn.username}:${conn.password}@${host}:${conn.port}/${conn.database}?sslmode=disable&search_path=public`;
 }
 
+/** Pre-pulls the tbls image, retrying on transient registry/network errors. */
+async function pullImageWithRetry(image, env, attempts = 3) {
+	if ((await runQuiet('docker', ['image', 'inspect', image], env)) === 0) return;
+
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		const code = await runToStderr('docker', ['pull', image], env);
+		if (code === 0) return;
+		if ((await runQuiet('docker', ['image', 'inspect', image], env)) === 0) {
+			console.warn('docker pull failed, but the cached tbls image is available; using it.');
+			return;
+		}
+		if (attempt === attempts) fail(`docker pull ${image} failed after ${attempts} attempts`);
+		const delayMs = 5000 * attempt;
+		console.warn(`docker pull failed (attempt ${attempt}/${attempts}); retrying in ${delayMs}ms…`);
+		await new Promise((res) => setTimeout(res, delayMs));
+	}
+}
+
 /** Invokes tbls (binary locally, Docker image in CI). */
 async function tbls(command, dbType, dsn, docker) {
 	const config = `.tbls.${dbType}.yml`;
@@ -146,6 +188,10 @@ async function tbls(command, dbType, dsn, docker) {
 	args.push('-c', config);
 
 	if (docker) {
+		// Pull up front with retry so a flaky registry/network doesn't fail the
+		// run; `docker run` then uses the cached image.
+		await pullImageWithRetry(TBLS_IMAGE, env);
+
 		const dockerArgs = [
 			'run',
 			'--rm',
@@ -170,7 +216,7 @@ async function tbls(command, dbType, dsn, docker) {
 }
 
 async function main() {
-	const { command, dbType, docker } = parseArgs(process.argv.slice(2));
+	let { command, dbType, docker } = parseArgs(process.argv.slice(2));
 	if (command !== 'doc' && command !== 'diff') {
 		fail('usage: schema-docs.mjs <doc|diff> --db=<sqlite|postgres> [--docker]');
 	}
@@ -178,10 +224,35 @@ async function main() {
 		fail('--db must be sqlite or postgres');
 	}
 
-	// Fail fast on a missing binary, before spinning up a DB and running migrations.
-	const requiredBin = docker ? 'docker' : 'tbls';
-	const probe = spawnSync(requiredBin, ['version'], { stdio: 'ignore' });
-	if (probe.error) fail(spawnErrorMessage(requiredBin, probe.error));
+	// Resolve which tbls runtime to use, before spinning up a DB and running
+	// migrations. Prefer a local tbls binary; fall back to the Docker image when
+	// it's absent. `--docker` (or CI) forces the Docker path.
+	const probeBin = (cmd) => {
+		const { error, status } = spawnSync(cmd, ['version'], { stdio: 'ignore' });
+		if (error) return 'missing';
+		return status === 0 ? 'ok' : 'broken';
+	};
+
+	if (docker) {
+		const state = probeBin('docker');
+		if (state === 'missing') fail(spawnErrorMessage('docker', { code: 'ENOENT' }));
+		if (state === 'broken')
+			fail('docker is installed but not responding — is the Docker daemon running?');
+	} else if (probeBin('tbls') !== 'ok') {
+		if (probeBin('docker') === 'ok') {
+			docker = true;
+			console.info(
+				'tbls not available — falling back to running in Docker. ' +
+					'Install tbls (`brew install tbls` or see ' +
+					'https://github.com/k1LoW/tbls#install) to run locally.',
+			);
+		} else {
+			fail(
+				'neither tbls nor docker is available. Install tbls (`brew install tbls`, ' +
+					'see https://github.com/k1LoW/tbls#install) or ensure Docker is set up.',
+			);
+		}
+	}
 
 	const provisioned = await provision(dbType);
 	try {

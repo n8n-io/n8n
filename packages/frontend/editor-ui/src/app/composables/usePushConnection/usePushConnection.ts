@@ -16,6 +16,7 @@ import {
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
 	workflowFailedToActivate,
+	workflowPartiallyActivated,
 	executionFinished,
 	executionRecovered,
 	workflowActivated,
@@ -26,7 +27,7 @@ import {
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';
-import { createEventQueue } from '@n8n/utils/event-queue';
+import { createEventQueue } from '@n8n/utils/create-event-queue';
 import type { useRouter } from 'vue-router';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
@@ -91,6 +92,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				return await sendConsoleMessage(event);
 			case 'workflowFailedToActivate':
 				return await workflowFailedToActivate(event, options);
+			case 'workflowPartiallyActivated':
+				return await workflowPartiallyActivated(event, options);
 			case 'executionFinished':
 				return await executionFinished(event, options);
 			case 'executionRecovered':

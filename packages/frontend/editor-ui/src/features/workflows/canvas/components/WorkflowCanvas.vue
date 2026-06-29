@@ -18,11 +18,15 @@ import {
 	watch,
 	type EffectScope,
 } from 'vue';
-import type { CanvasEventBusEvents } from '../canvas.types';
+import type { CanvasEventBusEvents, GroupExpansionMode } from '../canvas.types';
 import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
-import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
+import {
+	aggregateGroupExecution,
+	mapGroupsToVueFlowNodes,
+} from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -41,6 +45,7 @@ const props = withDefaults(
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		groupExpansionMode?: GroupExpansionMode;
 		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
@@ -54,6 +59,7 @@ const props = withDefaults(
 		showFallbackNodes: true,
 		suppressInteraction: false,
 		stripedBackground: true,
+		groupExpansionMode: undefined,
 	},
 );
 
@@ -102,7 +108,18 @@ const nodeGroupView = useCanvasNodeGroupView({
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
+	getGroupExpansionMode: () => props.groupExpansionMode,
 });
+
+// Keep the group view in sync with the currently displayed document
+watch(
+	() => workflowDocumentStore.value.documentId,
+	() => {
+		nodeGroupView.reinitialize();
+		applyGroupExpansion();
+	},
+);
+
 const allGroups = computed(() => workflowDocumentStore.value.allGroups);
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
@@ -114,6 +131,7 @@ const {
 	nodes: mappedWorkflowNodes,
 	connections: mappedConnections,
 	nodeDisplaySizeById,
+	getNodeExecutionSnapshot,
 } = useCanvasMapping({
 	nodes,
 	connections,
@@ -123,13 +141,56 @@ const {
 	isExperimentalNdvActive,
 });
 
+const groupIdsToExpand = computed(() => {
+	switch (props.groupExpansionMode) {
+		case 'all':
+			return allGroups.value.map((group) => group.id);
+		case 'errored':
+			return allGroups.value
+				.filter(
+					(group) => aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot) === 'error',
+				)
+				.map((group) => group.id);
+		default:
+			return [];
+	}
+});
+
+function applyGroupExpansion() {
+	for (const id of groupIdsToExpand.value) {
+		nodeGroupView.setGroupExpanded(id, true);
+	}
+}
+
+watch(groupIdsToExpand, applyGroupExpansion, { immediate: true });
+
+const layoutComponents = computed(() =>
+	// Without grouping enabled or without groups there can be no pushes —
+	// skip building per-node components.
+	!isCanvasNodeGroupingEnabled.value || workflowDocumentStore.value.allGroups.length === 0
+		? []
+		: buildNodeGroupLayoutComponents({
+				allGroups: workflowDocumentStore.value.allGroups,
+				nodes: nodes.value,
+				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+				isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+			}),
+);
+
+watch(layoutComponents, (components) => nodeGroupView.syncLayoutComponents(components), {
+	immediate: true,
+});
+
 const mappedGroupVueFlowNodes = computed(() =>
 	mapGroupsToVueFlowNodes({
 		allGroups: allGroups.value,
 		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		getGroupVisualOffset: (id) => nodeGroupView.getVisualOffsetForComponent(id),
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+		getNodeExecutionSnapshot,
 	}),
 );
 

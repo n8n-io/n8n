@@ -15,32 +15,32 @@ CREATE TABLE "test_case_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "test
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| testRunId | varchar(36) |  | false |  | [test_run](test_run.md) |  |
-| pastExecutionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
-| executionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
-| evaluationExecutionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
-| status | varchar |  | false |  |  |  |
-| runAt | datetime(3) |  | true |  |  |  |
 | completedAt | datetime(3) |  | true |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | errorCode | varchar |  | true |  |  |  |
 | errorDetails | TEXT |  | true |  |  |  |
-| metrics | TEXT |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| evaluationExecutionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
+| executionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
+| id | varchar(36) |  | false |  |  |  |
 | inputs | TEXT |  | true |  |  |  |
+| metrics | TEXT |  | true |  |  |  |
 | outputs | TEXT |  | true |  |  |  |
+| pastExecutionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
+| runAt | datetime(3) |  | true |  |  |  |
 | runIndex | INTEGER | NULL | true |  |  |  |
+| status | varchar |  | false |  |  |  |
+| testRunId | varchar(36) |  | false |  | [test_run](test_run.md) |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (testRunId) REFERENCES test_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (pastExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (evaluationExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_test_case_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -55,65 +55,66 @@ CREATE TABLE "test_case_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "test
 ```mermaid
 erDiagram
 
-"test_case_execution" }o--|| "test_run" : "FOREIGN KEY (testRunId) REFERENCES test_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (pastExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (evaluationExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (pastExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"test_case_execution" }o--|| "test_run" : "FOREIGN KEY (testRunId) REFERENCES test_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "test_case_execution" {
-  varchar_36_ id PK
-  varchar_36_ testRunId FK
-  INTEGER pastExecutionId FK
-  INTEGER executionId FK
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  varchar errorCode
+  TEXT errorDetails
   INTEGER evaluationExecutionId FK
-  varchar status
-  datetime_3_ runAt
-  datetime_3_ completedAt
-  varchar errorCode
-  TEXT errorDetails
-  TEXT metrics
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT inputs
-  TEXT outputs
-  INTEGER runIndex
-}
-"test_run" {
+  INTEGER executionId FK
   varchar_36_ id PK
-  varchar_36_ workflowId FK
-  varchar status
-  varchar errorCode
-  TEXT errorDetails
-  datetime_3_ runAt
-  datetime_3_ completedAt
+  TEXT inputs
   TEXT metrics
-  datetime_3_ createdAt
+  TEXT outputs
+  INTEGER pastExecutionId FK
+  datetime_3_ runAt
+  INTEGER runIndex
+  varchar status
+  varchar_36_ testRunId FK
   datetime_3_ updatedAt
-  varchar_255_ runningInstanceId
-  boolean cancelRequested
-  varchar_36_ workflowVersionId
-  varchar_36_ evaluationConfigId FK
-  TEXT evaluationConfigSnapshot
-  varchar_36_ collectionId FK
 }
 "execution_entity" {
-  INTEGER id
-  varchar_36_ workflowId FK
+  bigint binaryDataSizeBytes
+  datetime_3_ createdAt
+  varchar_255_ deduplicationKey
+  datetime_3_ deletedAt
   boolean finished
+  INTEGER id
+  bigint jsonSizeBytes
   varchar mode
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
-  datetime stoppedAt
-  datetime waitTill
   varchar status
-  datetime_3_ deletedAt
-  datetime_3_ createdAt
+  datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
-  varchar_255_ deduplicationKey
-  BIGINT jsonSizeBytes
-  VARCHAR_36_ workflowVersionId
+  datetime waitTill
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
+}
+"test_run" {
+  boolean cancelRequested
+  varchar_36_ collectionId FK
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  varchar errorCode
+  TEXT errorDetails
+  varchar_36_ evaluationConfigId FK
+  TEXT evaluationConfigSnapshot
+  varchar_36_ id PK
+  TEXT metrics
+  datetime_3_ runAt
+  varchar_255_ runningInstanceId
+  varchar status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
 }
 ```
 

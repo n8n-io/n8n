@@ -1,39 +1,98 @@
 import type { ITriggerResponse } from 'n8n-workflow';
 
+export type TriggerRegistrationToken = symbol;
+
+type TriggerRegistration = {
+	token: TriggerRegistrationToken;
+	response?: ITriggerResponse;
+};
+
 /**
- * Holds the activated trigger responses for a single workflow, keyed by node id.
- * One entry per activated trigger node.
+ * Holds the in-memory trigger registrations for a single workflow, keyed by node id.
+ * Poll nodes are registered here even though they do not have a trigger response.
  */
 export class WorkflowActiveTriggersState {
-	private readonly triggersByNodeId = new Map<string, ITriggerResponse>();
+	private readonly registrationsByNodeId = new Map<string, TriggerRegistration>();
 
-	/** Records the trigger response produced when activating a trigger node. */
-	add(nodeId: string, response: ITriggerResponse) {
-		this.triggersByNodeId.set(nodeId, response);
+	private pendingRegistrations = 0;
+
+	/** Marks an in-flight registration using this state object. */
+	beginRegistration() {
+		this.pendingRegistrations += 1;
+	}
+
+	/** Marks an in-flight registration as finished. */
+	finishRegistration() {
+		this.pendingRegistrations -= 1;
+	}
+
+	/** Whether this state object is still being populated by an activation. */
+	get hasPendingRegistrations() {
+		return this.pendingRegistrations > 0;
+	}
+
+	/** Records a trigger response for a registered node. */
+	addTriggerResponse(nodeId: string, response: ITriggerResponse): TriggerRegistrationToken {
+		const registration = this.getOrCreateRegistration(nodeId);
+		registration.response = response;
+
+		return registration.token;
+	}
+
+	/** Records a schedule trigger that registered cron state but has no response. */
+	addScheduledTrigger(nodeId: string): TriggerRegistrationToken {
+		return this.getOrCreateRegistration(nodeId).token;
+	}
+
+	/** Records a poller for a registered node. */
+	addPoller(nodeId: string): TriggerRegistrationToken {
+		return this.getOrCreateRegistration(nodeId).token;
+	}
+
+	private getOrCreateRegistration(nodeId: string): TriggerRegistration {
+		const existing = this.registrationsByNodeId.get(nodeId);
+		if (existing) return existing;
+
+		const registration: TriggerRegistration = { token: Symbol(nodeId) };
+		this.registrationsByNodeId.set(nodeId, registration);
+
+		return registration;
 	}
 
 	/** The trigger response recorded for a node, if any. */
 	get(nodeId: string) {
-		return this.triggersByNodeId.get(nodeId);
+		return this.registrationsByNodeId.get(nodeId)?.response;
 	}
 
-	/** Whether a trigger response has been recorded for the given node. */
+	/** Whether the given node is registered in memory. */
 	has(nodeId: string) {
-		return this.triggersByNodeId.has(nodeId);
+		return this.registrationsByNodeId.has(nodeId);
 	}
 
-	/** Drops the trigger response recorded for a node. */
+	/** Whether a node registration is still the current generation. */
+	isCurrent(nodeId: string, token: TriggerRegistrationToken) {
+		return this.registrationsByNodeId.get(nodeId)?.token === token;
+	}
+
+	/** Drops the registration recorded for a node. */
 	delete(nodeId: string) {
-		this.triggersByNodeId.delete(nodeId);
+		this.registrationsByNodeId.delete(nodeId);
 	}
 
-	/** Whether no trigger responses have been recorded yet. */
+	/** Whether no trigger registrations have been recorded yet. */
 	get isEmpty() {
-		return this.triggersByNodeId.size === 0;
+		return this.registrationsByNodeId.size === 0;
+	}
+
+	/** Ids of the nodes registered in memory. */
+	get nodeIds(): IterableIterator<string> {
+		return this.registrationsByNodeId.keys();
 	}
 
 	/** All recorded trigger responses, in insertion order. */
-	get triggerResponses(): IterableIterator<ITriggerResponse> {
-		return this.triggersByNodeId.values();
+	*triggerResponses(): IterableIterator<ITriggerResponse> {
+		for (const registration of this.registrationsByNodeId.values()) {
+			if (registration.response) yield registration.response;
+		}
 	}
 }

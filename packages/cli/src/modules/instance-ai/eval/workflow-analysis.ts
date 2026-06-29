@@ -177,6 +177,7 @@ const BINARY_PROPERTY_PARAM_NAMES = new Set([
 	'dataPropertyName',
 	'dataPropertyNameUpload',
 	'binaryDataKey',
+	'inputDataFieldName',
 ]);
 
 /**
@@ -559,11 +560,12 @@ RULES:
    - For manual triggers: include the fields that downstream nodes reference
    - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
+   - CRITICAL: triggerContent is the trigger item's JSON payload ONLY. NEVER include binary file content in it — no "binary" key, no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), real file bytes are synthesized and attached at the item level by the harness; in triggerContent include only the metadata fields the real trigger exposes (e.g. the file name or mime type), never the content.
 3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
 5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, the items in A's hint should match what B expects.
 6. Use realistic but clearly fake values (e.g., "jane@example.com", "U_abc123").
-7. **If a "Test Scenario" section is provided, it OVERRIDES your default data generation.** Use the exact names, emails, values, and conditions described in the scenario. If the scenario says "no name field", do NOT include a name. If it says "email is not-an-email", use that exact value. The scenario defines the test — follow it precisely.
+7. **If a "Test Scenario" section is provided, it OVERRIDES your default data generation.** Use the exact names, emails, numeric magnitudes (amounts, percentages, counts, thresholds), and conditions described in the scenario. If the scenario says "no name field", do NOT include a name. If it says "email is not-an-email", use that exact value. The scenario defines the test — follow it precisely.
 8. Return ONLY valid JSON, no explanation or markdown fencing.`;
 
 function buildUserPrompt(

@@ -11,6 +11,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({
@@ -38,6 +39,7 @@ vi.mock('@/app/composables/useEditorContext', async () => {
 			aiAssistant: computed(() => true),
 			aiBuilder: computed(() => true),
 			askAi: computed(() => true),
+			instanceAi: computed(() => false),
 			readOnly: computed(() => false),
 		}),
 	};
@@ -238,7 +240,11 @@ describe('NodeErrorView.vue', () => {
 
 		it('opens new window when error has different workflow and execution IDs', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
-			mockWorkflowsStore.getWorkflowExecution = {
+			const mockExecutionStateStore = mockedStore(
+				useWorkflowExecutionStateStore,
+				createWorkflowDocumentId('current-workflow-id'),
+			) as unknown as { activeExecution: IExecutionResponse | null };
+			mockExecutionStateStore.activeExecution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;
 
@@ -273,7 +279,11 @@ describe('NodeErrorView.vue', () => {
 		it('sets active node name when error is in current workflow/execution', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
 			mockNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('current-workflow-id'));
-			mockWorkflowsStore.getWorkflowExecution = {
+			const mockExecutionStateStore = mockedStore(
+				useWorkflowExecutionStateStore,
+				createWorkflowDocumentId('current-workflow-id'),
+			) as unknown as { activeExecution: IExecutionResponse | null };
+			mockExecutionStateStore.activeExecution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;
 

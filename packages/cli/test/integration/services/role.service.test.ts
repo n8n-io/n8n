@@ -2,14 +2,16 @@ import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
-import { RoleRepository, UserRepository } from '@n8n/db';
+import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
+import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';
 
 import {
@@ -19,7 +21,7 @@ import {
 	createTestScopes,
 	cleanupRolesAndScopes,
 } from '../shared/db/roles';
-import { createMember } from '../shared/db/users';
+import { createMember, createUser } from '../shared/db/users';
 
 let roleService: RoleService;
 let roleRepository: RoleRepository;
@@ -490,6 +492,56 @@ describe('RoleService', () => {
 		});
 	});
 
+	describe('getRoleMembers', () => {
+		it('should return members and total for a global role', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				roleType: 'global',
+				displayName: 'Global Members Role',
+			});
+			const user1 = await createUser({ role: globalRole });
+			const user2 = await createUser({ role: globalRole });
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRoleMembers(globalRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result.total).toBe(2);
+			expect(result.members).toEqual(
+				expect.arrayContaining(
+					[user1, user2].map((u) =>
+						expect.objectContaining({ userId: u.id, email: u.email, role: globalRole.slug }),
+					),
+				),
+			);
+		});
+
+		it('should throw NotFoundError when the role does not exist', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.getRoleMembers('non-existent-role')).rejects.toThrow(NotFoundError);
+		});
+
+		it('should throw BadRequestError when the role is not a global role', async () => {
+			//
+			// ARRANGE
+			//
+			const projectRole = await createRole({ roleType: 'project' });
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.getRoleMembers(projectRole.slug)).rejects.toThrow(BadRequestError);
+		});
+	});
+
 	describe('getRole with usage counting', () => {
 		it('should return role without usage count when withCount=false', async () => {
 			//
@@ -820,6 +872,45 @@ describe('RoleService', () => {
 			expect(savedRole?.displayName).toBe(createRoleDto.displayName);
 		});
 
+		it('should create a global custom role with valid data', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const createRoleDto: CreateRoleDto = {
+				displayName: 'Test Global Role',
+				description: 'A test global custom role',
+				roleType: 'global',
+				scopes: [testScopes.readScope.slug, testScopes.writeScope.slug],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.createCustomRole(createRoleDto);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				displayName: createRoleDto.displayName,
+				description: createRoleDto.description,
+				systemRole: false,
+				roleType: 'global',
+				scopes: expect.arrayContaining(createRoleDto.scopes),
+				licensed: expect.any(Boolean),
+			});
+
+			// Verify slug was generated with the global namespace
+			expect(result.slug).toMatch(/^global:test-global-role-[a-z0-9]{6}$/);
+
+			// Verify role was saved to database
+			const savedRole = await roleRepository.findBySlug(result.slug);
+			expect(savedRole).toBeDefined();
+			expect(savedRole?.roleType).toBe('global');
+			expect(savedRole?.systemRole).toBe(false);
+		});
+
 		it('should create custom role without description', async () => {
 			//
 			// ARRANGE
@@ -969,6 +1060,68 @@ describe('RoleService', () => {
 			expect(updatedRole?.description).toBe(updateRoleDto.description);
 		});
 
+		it('should update a global custom role with valid data', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const existingRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Original Global Role',
+				description: 'Original description',
+				roleType: 'global',
+			});
+
+			const updateRoleDto: UpdateRoleDto = {
+				displayName: 'Updated Global Role',
+				description: 'Updated description',
+				scopes: [testScopes.writeScope.slug],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.updateCustomRole(existingRole.slug, updateRoleDto);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: existingRole.slug,
+				displayName: updateRoleDto.displayName,
+				description: updateRoleDto.description,
+				roleType: 'global',
+				scopes: expect.arrayContaining(updateRoleDto.scopes as string[]),
+			});
+
+			const updatedRole = await roleRepository.findBySlug(existingRole.slug);
+			expect(updatedRole?.roleType).toBe('global');
+			expect(updatedRole?.displayName).toBe(updateRoleDto.displayName);
+		});
+
+		it('should throw BadRequestError when trying to update a system role', async () => {
+			//
+			// ARRANGE
+			//
+			const systemRole = await createSystemRole({
+				displayName: 'System Global Role',
+				roleType: 'global',
+			});
+
+			const updateRoleDto: UpdateRoleDto = {
+				displayName: 'Updated System Role',
+			};
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
+				'Cannot update system roles',
+			);
+		});
+
 		it('should update displayName when provided', async () => {
 			//
 			// ARRANGE
@@ -1102,6 +1255,35 @@ describe('RoleService', () => {
 			expect(deletedRole).toBeNull();
 		});
 
+		it('should remove a global custom role successfully', async () => {
+			//
+			// ARRANGE
+			//
+			const customRole = await createRole({
+				displayName: 'Global Role to Delete',
+				systemRole: false,
+				roleType: 'global',
+			});
+
+			//
+			// ACT
+			//
+			const result = await roleService.removeCustomRole(customRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: customRole.slug,
+				displayName: customRole.displayName,
+				roleType: 'global',
+				systemRole: false,
+			});
+
+			const deletedRole = await roleRepository.findBySlug(customRole.slug);
+			expect(deletedRole).toBeNull();
+		});
+
 		it('should throw NotFoundError when role does not exist', async () => {
 			//
 			// ARRANGE
@@ -1190,6 +1372,68 @@ describe('RoleService', () => {
 			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(
 				'Cannot delete role assigned to users',
 			);
+		});
+
+		describe('when referenced by an SSO role mapping rule', () => {
+			let roleMappingRuleRepository: RoleMappingRuleRepository;
+
+			beforeAll(() => {
+				roleMappingRuleRepository = Container.get(RoleMappingRuleRepository);
+				// Mirror how the provisioning module registers its checker on init,
+				// so the core guard can see mapping-rule references.
+				Container.get(RoleDeletionCheckProxy).registerProvider(
+					Container.get(ProvisioningRoleDeletionChecker),
+				);
+			});
+
+			afterEach(async () => {
+				await roleMappingRuleRepository.delete({});
+			});
+
+			it('should block deletion of a role still targeted by a mapping rule', async () => {
+				//
+				// ARRANGE
+				//
+				const role = await createRole({
+					displayName: 'Mapped Role',
+					roleType: 'global',
+					systemRole: false,
+				});
+				await roleMappingRuleRepository.save(
+					roleMappingRuleRepository.create({
+						expression: "{{ $claims.department === 'audit' }}",
+						role,
+						type: 'instance',
+						order: 0,
+					}),
+				);
+
+				//
+				// ACT & ASSERT
+				//
+				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(BadRequestError);
+				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(
+					'Cannot delete role: referenced by 1 role mapping rule',
+				);
+
+				// Role is preserved, not silently orphaned.
+				const stillExists = await roleRepository.findBySlug(role.slug);
+				expect(stillExists).not.toBeNull();
+			});
+
+			it('should allow deletion once no mapping rule references the role', async () => {
+				const role = await createRole({
+					displayName: 'Unmapped Role',
+					roleType: 'global',
+					systemRole: false,
+				});
+
+				const result = await roleService.removeCustomRole(role.slug);
+
+				expect(result.slug).toEqual(role.slug);
+				const deletedRole = await roleRepository.findBySlug(role.slug);
+				expect(deletedRole).toBeNull();
+			});
 		});
 	});
 

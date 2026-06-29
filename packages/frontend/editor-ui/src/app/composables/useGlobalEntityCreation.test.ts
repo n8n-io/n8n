@@ -622,11 +622,13 @@ describe('useGlobalEntityCreation', () => {
 		const INSTANCE_AI_SETTINGS = {
 			enabled: true,
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
 			sandboxEnabled: true,
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
+			runDebugEnabled: false,
 		};
 
 		const enableInstanceAi = () => {
