@@ -8,7 +8,7 @@
 // message but mechanically called the right tools).
 // ---------------------------------------------------------------------------
 
-import { createEvalAgent, extractText, HAIKU_MODEL } from '../../../src/utils/eval-agents';
+import { createEvalAgent, extractText, SONNET_MODEL } from '../../../src/utils/eval-agents';
 import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
 import type {
 	GraderResult,
@@ -90,7 +90,7 @@ export async function gradeTaskCompleted(
 	scenarioCategory: ScenarioCategory,
 	grader: LlmTaskCompletedGrader,
 ): Promise<GraderResult> {
-	const model = grader.model ?? HAIKU_MODEL;
+	const model = grader.model ?? SONNET_MODEL;
 	const timeoutMs = grader.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
 	const agent = createEvalAgent('eval-llm-task-completed', {
