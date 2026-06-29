@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { User, type WorkflowEntity } from '@n8n/db';
 
 import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
@@ -95,6 +95,39 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.activeVersion?.nodes.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
+		});
+
+		test('requests and returns workflow tags', async () => {
+			const tags = [
+				{ id: 'tag-1', name: 'production' },
+				{ id: 'tag-2', name: 'billing' },
+			];
+			const workflow = createWorkflow({ tags } as Partial<WorkflowEntity>);
+			const findWorkflowForUser = jest.fn().mockResolvedValue(workflow);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser,
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-1',
+				user,
+				['workflow:read'],
+				expect.objectContaining({ includeTags: true }),
+			);
+			expect(payload.workflow.tags).toEqual(tags);
 		});
 
 		test('propagates errors from workflow validation', async () => {
