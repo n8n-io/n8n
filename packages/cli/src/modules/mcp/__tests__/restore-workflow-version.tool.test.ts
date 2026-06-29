@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -35,10 +36,10 @@ describe('restore-workflow-version MCP tool', () => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowHistoryService = mockInstance(WorkflowHistoryService);
 		workflowService = mockInstance(WorkflowService);
-		telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		collaborationService = mockInstance(CollaborationService, {
-			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
-			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
+			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
+			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 		});
 	});
 
@@ -69,8 +70,8 @@ describe('restore-workflow-version MCP tool', () => {
 
 	describe('handler tests', () => {
 		test('restores the version via a forceSave update and reports the new version id', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
-			(workflowHistoryService.getVersion as jest.Mock).mockResolvedValue(
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
 				createWorkflowHistoryVersion({
 					workflowId: 'wf-1',
 					versionId: 'v1',
@@ -79,7 +80,7 @@ describe('restore-workflow-version MCP tool', () => {
 					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
 				}),
 			);
-			(workflowService.update as jest.Mock).mockResolvedValue({
+			(workflowService.update as Mock).mockResolvedValue({
 				id: 'wf-1',
 				versionId: 'new-version-id',
 			});
@@ -89,7 +90,7 @@ describe('restore-workflow-version MCP tool', () => {
 
 			expect(workflowService.update).toHaveBeenCalledTimes(1);
 			const [updateUser, updateEntity, updateWorkflowId, updateOptions] = (
-				workflowService.update as jest.Mock
+				workflowService.update as Mock
 			).mock.calls[0];
 			expect(updateUser).toBe(user);
 			expect(updateWorkflowId).toBe('wf-1');
@@ -111,8 +112,8 @@ describe('restore-workflow-version MCP tool', () => {
 		});
 
 		test('clears the current node groups when restoring a version that had none', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
-			(workflowHistoryService.getVersion as jest.Mock).mockResolvedValue(
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
 				createWorkflowHistoryVersion({
 					workflowId: 'wf-1',
 					versionId: 'v1',
@@ -121,7 +122,7 @@ describe('restore-workflow-version MCP tool', () => {
 					nodeGroups: [],
 				}),
 			);
-			(workflowService.update as jest.Mock).mockResolvedValue({
+			(workflowService.update as Mock).mockResolvedValue({
 				id: 'wf-1',
 				versionId: 'new-version-id',
 			});
@@ -129,12 +130,12 @@ describe('restore-workflow-version MCP tool', () => {
 			const tool = buildTool();
 			await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
 
-			const [, updateEntity] = (workflowService.update as jest.Mock).mock.calls[0];
+			const [, updateEntity] = (workflowService.update as Mock).mock.calls[0];
 			expect(updateEntity.nodeGroups).toEqual([]);
 		});
 
 		test('returns a structured error when the workflow is not accessible', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
 
 			const tool = buildTool();
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
@@ -161,8 +162,8 @@ describe('restore-workflow-version MCP tool', () => {
 		});
 
 		test('returns a friendly error when the version is not found', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
-			(workflowHistoryService.getVersion as jest.Mock).mockRejectedValue(
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockRejectedValue(
 				new WorkflowHistoryVersionNotFoundError(''),
 			);
 
@@ -178,8 +179,8 @@ describe('restore-workflow-version MCP tool', () => {
 		});
 
 		test('does not update when the workflow is locked for editing', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(createWorkflow());
-			(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(collaborationService.ensureWorkflowEditable as Mock).mockRejectedValue(
 				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
 			);
 
