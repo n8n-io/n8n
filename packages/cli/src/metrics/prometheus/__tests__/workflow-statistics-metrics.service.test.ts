@@ -1,14 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import type { LicenseMetricsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { PrometheusWorkflowStatisticsMetricsService } from '../workflow-statistics-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 const MOCK_METRICS = {
 	productionExecutions: 100,
@@ -33,7 +33,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 	let service: PrometheusWorkflowStatisticsMetricsService;
 
 	const extractGaugeCollect = (nameFragment: string) => {
-		const calls = jest.mocked(promClient.Gauge).mock.calls;
+		const calls = vi.mocked(promClient.Gauge).mock.calls;
 		const idx = calls.findIndex((c) => c[0]?.name?.includes(nameFragment));
 		if (idx === -1) {
 			throw new Error(`Gauge with name containing '${nameFragment}' not found`);
@@ -57,9 +57,9 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
-		jest.restoreAllMocks();
-		jest.useRealTimers();
+		vi.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	describe('enabled', () => {
@@ -129,7 +129,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 
 		it('should attach a collect function to each gauge', () => {
 			service.init();
-			const calls = jest.mocked(promClient.Gauge).mock.calls;
+			const calls = vi.mocked(promClient.Gauge).mock.calls;
 			for (const call of calls) {
 				expect(call[0].collect).toBeDefined();
 				expect(typeof call[0].collect).toBe('function');
@@ -141,7 +141,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('production_executions — calls DB and sets correct value', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('production_executions');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(licenseMetricsRepository.getLicenseRenewalMetrics.mock.calls).toHaveLength(1);
@@ -151,7 +151,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('production_root_executions — sets correct value', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('production_root_executions');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(mockGauge.set).toHaveBeenCalledWith(90);
@@ -160,7 +160,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('manual_executions — sets correct value', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('manual_executions');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(mockGauge.set).toHaveBeenCalledWith(50);
@@ -169,7 +169,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('enabled_users — sets correct value', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('enabled_users');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(mockGauge.set).toHaveBeenCalledWith(10);
@@ -178,7 +178,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('users — sets correct value from totalUsers', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('n8n_users');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(mockGauge.set).toHaveBeenCalledWith(12);
@@ -187,7 +187,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('workflows — sets correct value from totalWorkflows', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('n8n_workflows');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(mockGauge.set).toHaveBeenCalledWith(25);
@@ -196,7 +196,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('credentials — sets correct value from totalCredentials', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('credentials');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(mockGauge.set).toHaveBeenCalledWith(8);
@@ -205,7 +205,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		it('should store result in external cache with configured TTL', async () => {
 			service.init();
 			const collectFn = extractGaugeCollect('production_executions');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(cacheService.set.mock.calls[0]).toEqual([
@@ -232,7 +232,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 
 			service.init();
 			const collectFn = extractGaugeCollect('production_executions');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(licenseMetricsRepository.getLicenseRenewalMetrics.mock.calls).toHaveLength(0);
@@ -242,10 +242,10 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 
 	describe('collect callbacks — in-memory cache deduplication', () => {
 		it('should call DB only once within 1 second for multiple collect calls', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			service.init();
 			const collectFn = extractGaugeCollect('production_executions');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
@@ -255,15 +255,15 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		});
 
 		it('should call DB again after in-memory cache TTL (1 second) expires', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			service.init();
 			const collectFn = extractGaugeCollect('production_executions');
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			// Advance past the 1 second in-memory TTL
-			jest.advanceTimersByTime(1100);
+			vi.advanceTimersByTime(1100);
 
 			// Also need to reset external cache mock to undefined to trigger DB again
 			cacheService.get.mockResolvedValue(undefined);

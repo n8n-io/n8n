@@ -19,6 +19,7 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils';
 import {
 	SUB_AGENT_RESOURCE_PREFIX,
+	createSubAgentResourceIdPrefix,
 	type AgentDbMessage,
 	type AgentMessage,
 	type BuiltMemory,
@@ -359,6 +360,50 @@ export class TypeORMAgentMemory
 			id: In(threadIds.map((threadId) => `thread:${threadId}`)),
 		});
 		await this.threadRepo.delete({ id: In(threadIds) });
+	}
+
+	/**
+	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
+	 * spawned under those threads, and all of their working-memory resources.
+	 * Downstream rows (messages, checkpoints, run snapshots, iteration logs,
+	 * grants, pending confirmations, observations) cascade via their `threadId`
+	 * FK; resources have no FK to threads and are removed explicitly. Returns the
+	 * number of owner threads deleted.
+	 */
+	async deleteThreadsByResourceId(resourceId: string): Promise<number> {
+		const ownerThreads = await this.threadRepo.find({
+			where: { resourceId },
+			select: { id: true },
+		});
+
+		// The user's resource-scoped working memory is keyed by the resourceId
+		// itself and can outlive the user's threads, so always clear it.
+		const resourceIdsToDelete = new Set<string>([resourceId]);
+		const threadIdsToDelete = ownerThreads.map((thread) => thread.id);
+		for (const threadId of threadIdsToDelete) {
+			resourceIdsToDelete.add(`thread:${threadId}`);
+		}
+
+		if (ownerThreads.length > 0) {
+			const subAgentThreads = await this.threadRepo.find({
+				where: ownerThreads.map((thread) => ({
+					resourceId: Like(`${createSubAgentResourceIdPrefix(thread.id)}%`),
+				})),
+				select: { id: true, resourceId: true },
+			});
+			for (const subAgent of subAgentThreads) {
+				threadIdsToDelete.push(subAgent.id);
+				resourceIdsToDelete.add(subAgent.resourceId);
+				resourceIdsToDelete.add(`thread:${subAgent.id}`);
+			}
+		}
+
+		await this.resourceRepo.delete({ id: In([...resourceIdsToDelete]) });
+		if (threadIdsToDelete.length > 0) {
+			await this.threadRepo.delete({ id: In(threadIdsToDelete) });
+		}
+
+		return ownerThreads.length;
 	}
 
 	async getMessages(

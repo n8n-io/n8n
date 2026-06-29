@@ -109,7 +109,7 @@ import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
-import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
+import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { FolderService } from '@/services/folder.service';
@@ -2096,7 +2096,7 @@ export class InstanceAiAdapterService {
 				if (registryNode) {
 					const builderHint = registryNode.builderHint?.searchHint;
 					return {
-						content: synthesizeMcpRegistryTypeDef(registryNode),
+						content: synthesizeNodeTypeDef(registryNode),
 						...(builderHint ? { builderHint } : {}),
 					};
 				}

@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
@@ -9,7 +10,7 @@ import { PrometheusExecutionDataMetricsService } from '../execution-data-metrics
 
 import type { EventService } from '@/events/event.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusExecutionDataMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -19,9 +20,9 @@ describe('PrometheusExecutionDataMetricsService', () => {
 	const eventService = mock<EventService>();
 	const storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 	let service: PrometheusExecutionDataMetricsService;
-	let mockCounterInc: jest.Mock;
-	let mockGaugeSet: jest.Mock;
-	let mockHistogramObserve: jest.Mock;
+	let mockCounterInc: Mock;
+	let mockGaugeSet: Mock;
+	let mockHistogramObserve: Mock;
 
 	function getEventHandler(eventName: string) {
 		return eventService.on.mock.calls.find((c) => c[0] === eventName)?.[1];
@@ -31,16 +32,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 		Object.assign(config, { prefix: 'n8n_', includeExecutionDataMetrics: true });
 		Object.assign(storageConfig, { modeTag: 'db' });
 		service = new PrometheusExecutionDataMetricsService(config, eventService, storageConfig);
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
-		mockHistogramObserve = jest.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -239,7 +240,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			// Capture the handler before clearing mocks
 			const handler = getEventHandler('execution-data-read');
 			// Reset after seeding to isolate event handler behavior from seeding calls
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 

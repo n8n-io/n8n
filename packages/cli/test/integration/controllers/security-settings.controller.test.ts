@@ -30,7 +30,7 @@ describe('SecuritySettingsController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		testServer.license.enable('feat:personalSpacePolicy');
 		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
 	});

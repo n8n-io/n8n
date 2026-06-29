@@ -61,26 +61,63 @@ export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 // The source thread may live in a different workspace than the eval writes to
 // (e.g. seed from prod, trace to staging). A PAT spans workspaces, so we
 // enumerate them and find the one holding the thread; reads are read-only.
+//
+// Reads are also dual-tenant: during the US→EU migration a US-sourced case
+// carries `seedThread.endpoint` = the US host, while results always write to the
+// home (EU) tenant elsewhere. `configFor` maps an endpoint → host + key via env.
 
-/** Ambient LangSmith host + key (the eval's own), used to enumerate workspaces. */
-function ambientLangSmithConfig(): { apiUrl: string; apiKey: string } {
-	const raw =
-		process.env.LANGSMITH_ENDPOINT ??
-		process.env.LANGCHAIN_ENDPOINT ??
-		'https://api.smith.langchain.com';
-	const host = raw.replace(/\/$/, '');
-	const apiUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
-	const apiKey = process.env.LANGSMITH_API_KEY ?? process.env.LANGCHAIN_API_KEY ?? '';
-	return { apiUrl, apiKey };
+/** The langsmith SDK's default endpoint is the US tenant, so an unset
+ *  LANGSMITH_ENDPOINT silently means US. The eval env sets it to the home host. */
+const US_DEFAULT_ENDPOINT = 'https://api.smith.langchain.com';
+
+/** Bare host the langsmith Client wants as `apiUrl` (it appends paths itself):
+ *  a trailing slash and an optional `/api/v1` suffix stripped. */
+function bareHost(raw: string): string {
+	return raw.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
 }
 
-/** Workspaces the ambient key can access. Returns [] on any failure so the
+/**
+ * Resolve the LangSmith host + key to READ a seed trace from, by endpoint.
+ * Omitted ⇒ the eval's home tenant (its own env), so existing cases are
+ * unchanged. The home host uses the home key; the secondary (US) host uses
+ * LANGSMITH_API_KEY_US. A non-home host with no configured key THROWS rather
+ * than silently read with the home key — which would query the wrong tenant and
+ * report the thread as missing. Writes never go through here; they stay home.
+ */
+export function configFor(endpoint?: string): { apiUrl: string; apiKey: string } {
+	const homeHost = bareHost(
+		process.env.LANGSMITH_ENDPOINT ?? process.env.LANGCHAIN_ENDPOINT ?? US_DEFAULT_ENDPOINT,
+	);
+	const homeKey = process.env.LANGSMITH_API_KEY ?? process.env.LANGCHAIN_API_KEY ?? '';
+	if (!endpoint) return { apiUrl: homeHost, apiKey: homeKey };
+
+	const host = bareHost(endpoint);
+	if (host === homeHost) return { apiUrl: host, apiKey: homeKey };
+
+	const usHost = bareHost(process.env.LANGSMITH_ENDPOINT_US ?? US_DEFAULT_ENDPOINT);
+	if (host === usHost) {
+		const usKey = process.env.LANGSMITH_API_KEY_US ?? '';
+		if (!usKey) {
+			throw new Error(
+				`seedThread.endpoint "${endpoint}" is the secondary (US) tenant but LANGSMITH_API_KEY_US is not set — refusing to read it with the home key. Set LANGSMITH_API_KEY_US.`,
+			);
+		}
+		return { apiUrl: usHost, apiKey: usKey };
+	}
+	throw new Error(
+		`seedThread.endpoint "${endpoint}" matches no configured LangSmith tenant (home: ${homeHost}; secondary: ${usHost}). Set LANGSMITH_ENDPOINT_US + LANGSMITH_API_KEY_US, or omit endpoint to use the home tenant.`,
+	);
+}
+
+/** Workspaces a key can access on a host. Returns [] on any failure so the
  *  caller falls back to the key's default workspace. */
-async function listAccessibleWorkspaces(): Promise<Array<{ id: string; name: string }>> {
-	const { apiUrl, apiKey } = ambientLangSmithConfig();
+async function listAccessibleWorkspaces(
+	apiUrl: string,
+	apiKey: string,
+): Promise<Array<{ id: string; name: string }>> {
 	if (!apiKey) return [];
 	try {
-		const res = await fetch(`${apiUrl}/workspaces`, { headers: { 'x-api-key': apiKey } });
+		const res = await fetch(`${apiUrl}/api/v1/workspaces`, { headers: { 'x-api-key': apiKey } });
 		if (!res.ok) return [];
 		const data: unknown = await res.json();
 		if (!Array.isArray(data)) return [];
@@ -103,11 +140,17 @@ export interface SeedDiscoveryDeps {
 	ambientClient: () => Client;
 }
 
-const realDiscoveryDeps: SeedDiscoveryDeps = {
-	listWorkspaces: listAccessibleWorkspaces,
-	clientForWorkspace: (workspaceId) => new Client({ workspaceId }),
-	ambientClient: () => new Client(),
-};
+/** Build discovery deps bound to one tenant (host + key resolved from the seed
+ *  ref's endpoint). All three seams target that host, so cross-workspace
+ *  discovery stays within the chosen tenant. */
+function discoveryDepsFor(endpoint?: string): SeedDiscoveryDeps {
+	const { apiUrl, apiKey } = configFor(endpoint);
+	return {
+		listWorkspaces: async () => await listAccessibleWorkspaces(apiUrl, apiKey),
+		clientForWorkspace: (workspaceId) => new Client({ apiUrl, apiKey, workspaceId }),
+		ambientClient: () => new Client({ apiUrl, apiKey }),
+	};
+}
 
 /** Thrown when a thread has no runs in the queried (workspace, project) — used
  *  as control flow during discovery to advance to the next workspace. */
@@ -117,6 +160,10 @@ export interface SeedThreadRef {
 	threadId: string;
 	/** Override the LangSmith project to read the source trace from. */
 	project?: string;
+	/** LangSmith host the source trace lives on. Omit ⇒ the eval's home tenant.
+	 *  Maps host→key via env (home key for the home host, LANGSMITH_API_KEY_US for
+	 *  the US host); an unknown/unkeyed host throws rather than read the wrong tenant. */
+	endpoint?: string;
 }
 
 export interface ReconstructedSeed {
@@ -210,12 +257,13 @@ interface ToolCallBlock {
 export async function reconstructSeedFromThread(
 	ref: SeedThreadRef,
 	client?: Client,
-	deps: SeedDiscoveryDeps = realDiscoveryDeps,
+	deps?: SeedDiscoveryDeps,
 ): Promise<ReconstructedSeed> {
 	const project = ref.project ?? DEFAULT_SOURCE_PROJECT;
-	// An explicit client (tests) reads that one source; otherwise auto-discover.
+	// An explicit client (tests) reads that one source; otherwise auto-discover
+	// within the ref's tenant. Explicit deps (tests) override tenant resolution.
 	if (client) return await reconstructWithClient(ref, client, project);
-	return await discoverAndReconstruct(ref, project, deps);
+	return await discoverAndReconstruct(ref, project, deps ?? discoveryDepsFor(ref.endpoint));
 }
 
 /** Find the workspace holding the thread and reconstruct from it. Falls back to

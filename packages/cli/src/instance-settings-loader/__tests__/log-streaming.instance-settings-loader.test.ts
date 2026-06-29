@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 
@@ -12,7 +13,7 @@ import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.ins
 const UUID_A = '11111111-1111-4111-8111-111111111111';
 
 describe('LogStreamingInstanceSettingsLoader', () => {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const repository = mock<EventDestinationsRepository>();
 	const tx = mock<EntityManager>();
 
@@ -27,11 +28,11 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
 		// wire the transaction callback to run against our mock EntityManager
-		(repository.manager as unknown as { transaction: jest.Mock }) = {
-			transaction: jest.fn(async (cb: (m: EntityManager) => Promise<void>) => {
+		(repository.manager as unknown as { transaction: Mock }) = {
+			transaction: vi.fn(async (cb: (m: EntityManager) => Promise<void>) => {
 				await cb(tx);
 			}),
 		};

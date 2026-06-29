@@ -169,6 +169,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				workflowId,
 				result,
 				analysis,
+				verifyAttempts: (buildOutcome.verifyAttempts ?? 0) + 1,
 			});
 
 			const maxDataChars = resolvedInput.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;

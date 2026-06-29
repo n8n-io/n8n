@@ -37,11 +37,20 @@ import type {
 } from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
+/** How to re-run this eval against a PR's latest commit (PR-open runs go stale
+ *  on new pushes); drives the comment's re-run instructions. */
+export interface RerunHint {
+	/** PR number to dispatch against (`-f pr=<n>`). */
+	prNumber: string;
+	/** GitHub Actions "Run workflow" page for the eval dispatch workflow. */
+	dispatchUrl: string;
+}
+
 interface FormatOptions {
 	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
 	commitSha?: string;
-	/** GitHub Actions run URL; when set, the comment leads with a re-run link. */
-	runUrl?: string;
+	/** When set, the comment shows how to re-run against the PR's latest commit. */
+	rerun?: RerunHint;
 	/** Maps each test-case reference to its file slug. When provided, the
 	 *  per-scenario failure breakdown looks up failed runs by
 	 *  `${fileSlug}/${scenarioName}` — deterministic across collisions like
@@ -68,7 +77,7 @@ export function formatComparisonMarkdown(
 
 	lines.push(formatHeading());
 	lines.push('');
-	lines.push(renderRerunCallout(options.runUrl));
+	lines.push(renderRerunCallout(options.rerun));
 	lines.push('');
 	if (gate) {
 		lines.push(formatGateAlertMarkdown(gate));
@@ -269,14 +278,25 @@ function formatTerminalGateSummary(gate: GateResult): string[] {
 	return lines;
 }
 
-// Evals fire on PR open/ready, not on push — lead with a one-click re-run prompt.
-function renderRerunCallout(runUrl?: string): string {
-	const cta = runUrl
-		? `[▶ Re-run this eval](${runUrl}) (then **Re-run jobs**)`
-		: 'Re-run it from the **Checks** tab (**Re-run jobs**)';
+// Evals fire on PR open/ready, not on push. The re-run is a self-seeded
+// dispatch keyed by PR number — it resolves the PR head at run time, so it
+// always tests the latest push (unlike GitHub's "Re-run jobs", which replays
+// the stale PR-open commit).
+function renderRerunCallout(rerun?: RerunHint): string {
+	if (!rerun) {
+		return [
+			'> [!IMPORTANT]',
+			"> **This eval does not re-run on new commits.** Re-run it against the PR's latest commit by dispatching the **CI: Instance AI Evals** workflow with your PR number.",
+		].join('\n');
+	}
 	return [
 		'> [!IMPORTANT]',
-		`> **This eval does not re-run on new commits** — ${cta} when you're ready to merge.`,
+		'> **This eval does not re-run on new commits.** To test your latest push, re-run it against the PR head:',
+		'>',
+		'> ```bash',
+		`> gh workflow run ci-instance-ai-evals.yml -f pr=${rerun.prNumber}`,
+		'> ```',
+		`> …or use the [Run workflow button](${rerun.dispatchUrl}) and set **pr** = \`${rerun.prNumber}\`.`,
 	].join('\n');
 }
 

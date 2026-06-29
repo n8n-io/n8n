@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -25,6 +24,7 @@ import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.nod
 import type { INodeType, INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
@@ -83,11 +83,9 @@ export async function initCredentialsTypes(): Promise<void> {
 	};
 }
 
-/**
- * Initialize node types.
- */
-export async function initNodeTypes(customNodes?: INodeTypeData) {
-	const defaultNodes: INodeTypeData = {
+function buildDefaultNodes(): INodeTypeData {
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	return {
 		'n8n-nodes-base.manualTrigger': {
 			type: new ManualTrigger(),
 			sourcePath: '',
@@ -109,13 +107,22 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 			sourcePath: '',
 		},
 		'n8n-nodes-base.webhook': {
-			type: mock<INodeType>({ description: new WebhookNode().description }),
+			type: mock<INodeType>({ description: new WebhookNode().description } as never) as INodeType,
 			sourcePath: '',
 		},
 	};
+}
 
-	ScheduleTrigger.prototype.trigger = async () => ({});
-	const nodes = customNodes ?? defaultNodes;
+/**
+ * Initialize node types.
+ */
+export async function initNodeTypes(customNodes?: INodeTypeData) {
+	// Build the default mock node set only when the caller didn't supply its own. Building it
+	// eagerly is harmful even when unused: `mock<INodeType>({ description: new WebhookNode().description })`
+	// (vitest-mock-extended) deep-wraps the webhook description's property objects *in place*, and
+	// nodes that reuse those shared property definitions by reference (e.g. Wait) then inherit the
+	// mock-polluted `displayOptions`, which breaks parameter validation at execution time.
+	const nodes = customNodes ?? buildDefaultNodes();
 	const loader = mock<DirectoryLoader>();
 	loader.getNode.mockImplementation((nodeType) => {
 		const node = nodes[`n8n-nodes-base.${nodeType}`];

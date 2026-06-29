@@ -1,8 +1,9 @@
+import type { Mock } from 'vitest';
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
 import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
@@ -12,23 +13,29 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { ImportService } from '../import.service';
 
 // Mock fs/promises
-jest.mock('fs/promises');
+vi.mock('fs/promises');
 
-jest.mock('@/utils/compression.util');
+vi.mock('@/utils/compression.util');
+// Partial fs mock: override only existsSync (used by decompressEntitiesZip via a
+// dynamic import), keeping the rest of fs real for other tests in this file.
+vi.mock('fs', async (importOriginal) => ({
+	...(await importOriginal<typeof import('fs')>()),
+	existsSync: vi.fn(),
+}));
 
-jest.mock('@n8n/backend-common', () => ({
-	safeJoinPath: jest.fn(),
-	TypedEmitter: class {},
+vi.mock('@n8n/backend-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-common')>()),
+	safeJoinPath: vi.fn(),
 }));
 
 // Mock @n8n/db
-jest.mock('@n8n/db', () => ({
+// Spread the real module so transitively-imported exports resolve (Vitest throws
+// on undeclared mock exports, unlike Jest), overriding only the repos under test.
+vi.mock('@n8n/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/db')>()),
 	CredentialsRepository: mock<CredentialsRepository>(),
 	TagRepository: mock<TagRepository>(),
 	DataSource: mock<DataSource>(),
-	// `DataTableColumn` (transitively imported by import.service) extends
-	// `WithTimestampsAndStringId`; provide a no-op so the class evaluates.
-	WithTimestampsAndStringId: class {},
 }));
 
 describe('ImportService', () => {
@@ -45,7 +52,7 @@ describe('ImportService', () => {
 	let mockWorkflowService: WorkflowService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLogger = mock<Logger>();
 		mockDataSource = mock<DataSource>();
@@ -59,7 +66,7 @@ describe('ImportService', () => {
 		mockWorkflowService = mock<WorkflowService>();
 
 		// Set up cipher mock
-		mockCipher.decryptV2 = jest.fn(async (data: string) =>
+		mockCipher.decryptV2 = vi.fn(async (data: string) =>
 			data.replace('encrypted:', ''),
 		) as Cipher['decryptV2'];
 
@@ -67,7 +74,7 @@ describe('ImportService', () => {
 		// @ts-expect-error Accessing private property for testing
 		mockDataSource.options = { type: 'sqlite' };
 		mockDataSource.driver = {
-			escape: jest.fn((identifier: string) => `"${identifier}"`),
+			escape: vi.fn((identifier: string) => `"${identifier}"`),
 		} as any;
 		// @ts-expect-error Accessing private property for testing
 		mockDataSource.entityMetadatas = [
@@ -84,19 +91,19 @@ describe('ImportService', () => {
 		] as any;
 
 		// Set up entity manager mocks
-		mockEntityManager.createQueryBuilder = jest.fn().mockReturnValue({
-			delete: jest.fn().mockReturnThis(),
-			from: jest.fn().mockReturnThis(),
-			execute: jest.fn().mockResolvedValue(undefined),
+		mockEntityManager.createQueryBuilder = vi.fn().mockReturnValue({
+			delete: vi.fn().mockReturnThis(),
+			from: vi.fn().mockReturnThis(),
+			execute: vi.fn().mockResolvedValue(undefined),
 		});
-		mockEntityManager.query = jest.fn().mockResolvedValue(undefined);
-		mockEntityManager.insert = jest.fn().mockResolvedValue(undefined);
-		mockEntityManager.upsert = jest.fn().mockResolvedValue(undefined);
+		mockEntityManager.query = vi.fn().mockResolvedValue(undefined);
+		mockEntityManager.insert = vi.fn().mockResolvedValue(undefined);
+		mockEntityManager.upsert = vi.fn().mockResolvedValue(undefined);
 		// Passthrough so tests can read column fields off the result.
-		mockEntityManager.create = jest.fn().mockImplementation((_entity, data) => data);
+		mockEntityManager.create = vi.fn().mockImplementation((_entity, data) => data);
 
 		// Mock transaction method
-		mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
+		mockDataSource.transaction = vi.fn().mockImplementation(async (callback) => {
 			return await callback(mockEntityManager);
 		});
 
@@ -116,13 +123,13 @@ describe('ImportService', () => {
 	describe('isTableEmpty', () => {
 		it('should return true for empty table', async () => {
 			const mockQueryBuilder = {
-				select: jest.fn().mockReturnThis(),
-				from: jest.fn().mockReturnThis(),
-				limit: jest.fn().mockReturnThis(),
-				getRawMany: jest.fn().mockResolvedValue([]),
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValue([]),
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockDataSource.createQueryBuilder = vi.fn().mockReturnValue(mockQueryBuilder);
 
 			const result = await importService.isTableEmpty('users');
 
@@ -135,13 +142,13 @@ describe('ImportService', () => {
 
 		it('should return false for non-empty table', async () => {
 			const mockQueryBuilder = {
-				select: jest.fn().mockReturnThis(),
-				from: jest.fn().mockReturnThis(),
-				limit: jest.fn().mockReturnThis(),
-				getRawMany: jest.fn().mockResolvedValue([{ id: 1 }]),
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValue([{ id: 1 }]),
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockDataSource.createQueryBuilder = vi.fn().mockReturnValue(mockQueryBuilder);
 
 			const result = await importService.isTableEmpty('users');
 
@@ -154,13 +161,13 @@ describe('ImportService', () => {
 
 		it('should handle database errors gracefully', async () => {
 			const mockQueryBuilder = {
-				select: jest.fn().mockReturnThis(),
-				from: jest.fn().mockReturnThis(),
-				limit: jest.fn().mockReturnThis(),
-				getRawMany: jest.fn().mockRejectedValue(new Error('Database connection failed')),
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockRejectedValue(new Error('Database connection failed')),
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockDataSource.createQueryBuilder = vi.fn().mockReturnValue(mockQueryBuilder);
 
 			await expect(importService.isTableEmpty('users')).rejects.toThrow(
 				'Unable to check table users',
@@ -171,13 +178,13 @@ describe('ImportService', () => {
 	describe('areAllEntityTablesEmpty', () => {
 		it('should return true when all tables are empty', async () => {
 			const mockQueryBuilder = {
-				select: jest.fn().mockReturnThis(),
-				from: jest.fn().mockReturnThis(),
-				limit: jest.fn().mockReturnThis(),
-				getRawMany: jest.fn().mockResolvedValue([]),
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValue([]),
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockDataSource.createQueryBuilder = vi.fn().mockReturnValue(mockQueryBuilder);
 
 			const result = await importService.areAllEntityTablesEmpty(['users', 'workflows']);
 
@@ -187,16 +194,16 @@ describe('ImportService', () => {
 
 		it('should return false when any table has data', async () => {
 			const mockQueryBuilder = {
-				select: jest.fn().mockReturnThis(),
-				from: jest.fn().mockReturnThis(),
-				limit: jest.fn().mockReturnThis(),
-				getRawMany: jest
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				getRawMany: vi
 					.fn()
 					.mockResolvedValueOnce([]) // First table empty
 					.mockResolvedValueOnce([{ id: 1 }]), // Second table has data
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockDataSource.createQueryBuilder = vi.fn().mockReturnValue(mockQueryBuilder);
 
 			const result = await importService.areAllEntityTablesEmpty(['users', 'workflows']);
 
@@ -212,16 +219,16 @@ describe('ImportService', () => {
 
 		it('should handle multiple non-empty tables', async () => {
 			const mockQueryBuilder = {
-				select: jest.fn().mockReturnThis(),
-				from: jest.fn().mockReturnThis(),
-				limit: jest.fn().mockReturnThis(),
-				getRawMany: jest
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				getRawMany: vi
 					.fn()
 					.mockResolvedValueOnce([{ id: 1 }]) // First table has data
 					.mockResolvedValueOnce([{ id: 2 }]), // Second table has data
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockDataSource.createQueryBuilder = vi.fn().mockReturnValue(mockQueryBuilder);
 
 			const result = await importService.areAllEntityTablesEmpty(['users', 'workflows']);
 
@@ -240,11 +247,11 @@ describe('ImportService', () => {
 
 		it('should handle database errors gracefully', async () => {
 			const mockQueryBuilder = {
-				delete: jest.fn().mockReturnThis(),
-				from: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockRejectedValue(new Error('Database error')),
+				delete: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockRejectedValue(new Error('Database error')),
 			};
-			mockEntityManager.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockEntityManager.createQueryBuilder = vi.fn().mockReturnValue(mockQueryBuilder);
 
 			await expect(importService.truncateEntityTable('users', mockEntityManager)).rejects.toThrow(
 				'Database error',
@@ -256,9 +263,8 @@ describe('ImportService', () => {
 		it('should return complete import metadata for valid entity files', async () => {
 			const mockFiles = ['user.jsonl', 'workflowentity.jsonl', 'migrations.jsonl'];
 
-			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
-			jest
-				.mocked(safeJoinPath)
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/workflowentity.jsonl');
 
@@ -277,9 +283,8 @@ describe('ImportService', () => {
 		it('should handle numbered entity files', async () => {
 			const mockFiles = ['user.jsonl', 'user.2.jsonl', 'user.3.jsonl'];
 
-			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
-			jest
-				.mocked(safeJoinPath)
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/user.2.jsonl')
 				.mockReturnValueOnce('/test/input/user.3.jsonl');
@@ -298,7 +303,7 @@ describe('ImportService', () => {
 		it('should skip entities without metadata', async () => {
 			const mockFiles = ['unknown.jsonl', 'invalid.txt'];
 
-			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
 
 			const result = await importService.getImportMetadata('/test/input');
 
@@ -310,7 +315,7 @@ describe('ImportService', () => {
 		});
 
 		it('should handle empty directory', async () => {
-			jest.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(readdir).mockResolvedValue([]);
 
 			const result = await importService.getImportMetadata('/test/input');
 
@@ -324,7 +329,7 @@ describe('ImportService', () => {
 		it('should ignore non-jsonl files', async () => {
 			const mockFiles = ['user.txt', 'user.json', 'user.csv'];
 
-			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
 
 			const result = await importService.getImportMetadata('/test/input');
 
@@ -338,9 +343,9 @@ describe('ImportService', () => {
 		it('should exclude migrations from import metadata', async () => {
 			const mockFiles = ['user.jsonl', 'migrations.jsonl'];
 
-			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
 
-			jest.mocked(safeJoinPath).mockReturnValue('/test/input/user.jsonl');
+			vi.mocked(safeJoinPath).mockReturnValue('/test/input/user.jsonl');
 
 			const result = await importService.getImportMetadata('/test/input');
 
@@ -361,9 +366,8 @@ describe('ImportService', () => {
 				'data_table_user_xyz.jsonl',
 			];
 
-			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
-			jest
-				.mocked(safeJoinPath)
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath)
 				.mockReturnValueOnce('/test/input/user.jsonl')
 				.mockReturnValueOnce('/test/input/data_table_user_abc.jsonl')
 				.mockReturnValueOnce('/test/input/data_table_user_abc.2.jsonl')
@@ -387,7 +391,7 @@ describe('ImportService', () => {
 	describe('readEntityFile', () => {
 		it('should parse valid JSONL file', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n{"id":2,"name":"Test2"}';
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -401,7 +405,7 @@ describe('ImportService', () => {
 
 		it('should handle empty lines in JSONL file', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n\n{"id":2,"name":"Test2"}\n';
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -413,7 +417,7 @@ describe('ImportService', () => {
 
 		it('should handle Windows line endings', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\r\n{"id":2,"name":"Test2"}';
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -425,7 +429,7 @@ describe('ImportService', () => {
 
 		it('should handle empty file', async () => {
 			const mockContent = '';
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -434,7 +438,7 @@ describe('ImportService', () => {
 
 		it('should throw error for invalid JSON', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n{invalid json}';
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			await expect(importService.readEntityFile('/test/invalid.jsonl')).rejects.toThrow(
 				'Invalid JSON on line 1 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
@@ -442,7 +446,7 @@ describe('ImportService', () => {
 		});
 
 		it('should handle file read errors', async () => {
-			jest.mocked(readFile).mockRejectedValue(new Error('File not found'));
+			vi.mocked(readFile).mockRejectedValue(new Error('File not found'));
 
 			await expect(importService.readEntityFile('/test/missing.jsonl')).rejects.toThrow(
 				'File not found',
@@ -459,13 +463,13 @@ describe('ImportService', () => {
 				tableNames: ['user'],
 			};
 
-			mockDataSource.driver.escapeQueryWithParameters = jest
+			mockDataSource.driver.escapeQueryWithParameters = vi
 				.fn()
 				.mockReturnValue(['INSERT COMMAND', { data: 'data' }]);
 
 			const mockEntities = [{ id: 1, name: 'Test User' }];
 			const mockContent = JSON.stringify(mockEntities[0]);
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -521,7 +525,7 @@ describe('ImportService', () => {
 			};
 
 			const mockContent = '';
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -542,13 +546,13 @@ describe('ImportService', () => {
 				tableNames: ['user'],
 			};
 
-			mockDataSource.driver.escapeQueryWithParameters = jest
+			mockDataSource.driver.escapeQueryWithParameters = vi
 				.fn()
 				.mockReturnValue(['INSERT COMMAND', { data: 'data' }]);
 
 			const mockEntities = [{ id: 1, name: 'Test User' }];
 			const mockContent = JSON.stringify(mockEntities[0]);
-			jest.mocked(readFile).mockResolvedValue(mockContent);
+			vi.mocked(readFile).mockResolvedValue(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -621,7 +625,7 @@ describe('ImportService', () => {
 
 			// Mock the credentials repository to return a matching credential
 			const mockCredential = { id: null, name: 'My Auth' };
-			mockCredentialsRepository.findOneBy = jest.fn().mockResolvedValue(mockCredential);
+			mockCredentialsRepository.findOneBy = vi.fn().mockResolvedValue(mockCredential);
 
 			// @ts-expect-error For testing purposes
 			importService.toNewCredentialFormat(node);
@@ -650,7 +654,7 @@ describe('ImportService', () => {
 				},
 			};
 
-			mockCredentialsRepository.findOneBy = jest.fn().mockResolvedValue(null);
+			mockCredentialsRepository.findOneBy = vi.fn().mockResolvedValue(null);
 
 			// @ts-expect-error For testing purposes
 			importService.toNewCredentialFormat(node);
@@ -683,15 +687,13 @@ describe('ImportService', () => {
 
 	describe('validateMigrations', () => {
 		beforeEach(() => {
-			jest
-				.mocked(readFile)
-				.mockResolvedValue('{"id":"1","timestamp":"123","name":"TestMigration"}');
+			vi.mocked(readFile).mockResolvedValue('{"id":"1","timestamp":"123","name":"TestMigration"}');
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.options = { type: 'sqlite' };
 		});
 
 		it('should throw error when migrations file is missing', async () => {
-			jest.mocked(readFile).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT: no such file or directory'));
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
 				'Migrations file not found. Cannot proceed with import without migration validation.',
@@ -700,7 +702,7 @@ describe('ImportService', () => {
 
 		it('should throw error when migrations file contains invalid JSON', async () => {
 			const invalidJsonContent = '{invalid json}';
-			jest.mocked(readFile).mockResolvedValue(invalidJsonContent);
+			vi.mocked(readFile).mockResolvedValue(invalidJsonContent);
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
 				'Invalid JSON in migrations file:',
@@ -709,7 +711,7 @@ describe('ImportService', () => {
 
 		it('should handle empty migrations file gracefully', async () => {
 			const emptyContent = '';
-			jest.mocked(readFile).mockResolvedValue(emptyContent);
+			vi.mocked(readFile).mockResolvedValue(emptyContent);
 
 			// Empty content should not throw an error as it results in empty migrations array
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
@@ -717,7 +719,7 @@ describe('ImportService', () => {
 
 		it('should handle migrations file with only whitespace', async () => {
 			const whitespaceContent = '   \n  \t  ';
-			jest.mocked(readFile).mockResolvedValue(whitespaceContent);
+			vi.mocked(readFile).mockResolvedValue(whitespaceContent);
 
 			// Whitespace content should not throw an error
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
@@ -725,8 +727,8 @@ describe('ImportService', () => {
 
 		it('should throw error when target database has no migrations', async () => {
 			const migrationsContent = '{"id":"1","timestamp":"123","name":"TestMigration"}';
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue([]);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue([]);
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
 				'Target database has no migrations. Cannot import data from a different migration state.',
@@ -737,8 +739,8 @@ describe('ImportService', () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"TestMigration"}';
 			const dbMigrations = [{ id: '1', timestamp: '2000', name: 'TestMigration' }];
 
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
 				'Migration timestamp mismatch. Import data: TestMigration (1000) does not match target database TestMigration (2000). Cannot import data from different migration states.',
@@ -749,8 +751,8 @@ describe('ImportService', () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"ImportMigration"}';
 			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'DbMigration' }];
 
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
 				'Migration name mismatch. Import data: ImportMigration does not match target database DbMigration. Cannot import data from different migration states.',
@@ -761,8 +763,8 @@ describe('ImportService', () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"TestMigration"}';
 			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'TestMigration' }];
 
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
 		});
@@ -774,16 +776,16 @@ describe('ImportService', () => {
 				{ id: '2', timestamp: '2000', name: 'LatestMigration' },
 			];
 
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow();
 		});
 
 		it('should handle database query errors gracefully', async () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"TestMigration"}';
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
 				'Database connection failed',
@@ -797,8 +799,8 @@ describe('ImportService', () => {
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.options = { type: 'sqlite', entityPrefix: 'n8n_' };
 
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
 
@@ -812,8 +814,8 @@ describe('ImportService', () => {
 				'{"id":"1","timestamp":"1000","name":"TestMigration"}\r\n{"id":"2","timestamp":"2000","name":"TestMigration2"}';
 			const dbMigrations = [{ id: '2', timestamp: '2000', name: 'TestMigration2' }];
 
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
 		});
@@ -928,10 +930,10 @@ describe('ImportService', () => {
 
 			// SQLite-origin: nodes is a serialised string, not an object
 			const sqliteEntity = { id: '1', nodes: '[{"id":"abc"}]' };
-			jest.mocked(readFile).mockResolvedValue(JSON.stringify(sqliteEntity));
+			vi.mocked(readFile).mockResolvedValue(JSON.stringify(sqliteEntity));
 
 			const capturedParams: Array<Record<string, unknown>> = [];
-			mockDataSource.driver.escapeQueryWithParameters = jest
+			mockDataSource.driver.escapeQueryWithParameters = vi
 				.fn()
 				.mockImplementation((_query, params) => {
 					capturedParams.push(params as Record<string, unknown>);
@@ -965,10 +967,10 @@ describe('ImportService', () => {
 
 			// Postgres-origin: nodes is a parsed object in the JSONL
 			const postgresEntity = { id: '1', nodes: [{ id: 'abc' }] };
-			jest.mocked(readFile).mockResolvedValue(JSON.stringify(postgresEntity));
+			vi.mocked(readFile).mockResolvedValue(JSON.stringify(postgresEntity));
 
 			const capturedParams: Array<Record<string, unknown>> = [];
-			mockDataSource.driver.escapeQueryWithParameters = jest
+			mockDataSource.driver.escapeQueryWithParameters = vi
 				.fn()
 				.mockImplementation((_query, params) => {
 					capturedParams.push(params as Record<string, unknown>);
@@ -993,19 +995,12 @@ describe('ImportService', () => {
 			const inputDir = '/test/input';
 			const entitiesZipPath = '/test/input/entities.zip';
 
-			// Mock fs module
-			const mockExistsSync = jest.fn().mockReturnValue(true);
-			jest.mock('fs', () => ({
-				existsSync: mockExistsSync,
-			}));
+			// Override the partial fs mock's existsSync for this test.
+			const { existsSync } = await import('fs');
+			vi.mocked(existsSync).mockReturnValue(true);
 
-			// Mock decompressFolder
-			const mockDecompressFolder = jest.fn().mockResolvedValue(undefined);
-			jest.mock('@/utils/compression.util', () => ({
-				decompressFolder: mockDecompressFolder,
-			}));
-
-			jest.mocked(safeJoinPath).mockReturnValue(entitiesZipPath);
+			// decompressFolder is auto-mocked at the top of the file (resolves undefined).
+			vi.mocked(safeJoinPath).mockReturnValue(entitiesZipPath);
 
 			// @ts-expect-error For testing purposes
 			await importService.decompressEntitiesZip(inputDir);
@@ -1019,7 +1014,7 @@ describe('ImportService', () => {
 
 	describe('dropExistingDataTableUserTables', () => {
 		it('should drop dynamic tables for every entry in the destination registry', async () => {
-			mockEntityManager.query = jest.fn().mockResolvedValue([{ id: 'abc' }, { id: 'xyz' }]);
+			mockEntityManager.query = vi.fn().mockResolvedValue([{ id: 'abc' }, { id: 'xyz' }]);
 
 			await importService.dropExistingDataTableUserTables(mockEntityManager);
 
@@ -1032,7 +1027,7 @@ describe('ImportService', () => {
 		});
 
 		it('should silently skip when the registry is missing on the destination', async () => {
-			mockEntityManager.query = jest.fn().mockRejectedValue(new Error('table not found'));
+			mockEntityManager.query = vi.fn().mockRejectedValue(new Error('table not found'));
 
 			await expect(
 				importService.dropExistingDataTableUserTables(mockEntityManager),
@@ -1044,7 +1039,7 @@ describe('ImportService', () => {
 		it('should respect the table prefix when querying the registry', async () => {
 			// @ts-expect-error overriding for the test
 			mockDataSource.options = { type: 'sqlite', entityPrefix: 'n8n_' };
-			mockEntityManager.query = jest.fn().mockResolvedValue([]);
+			mockEntityManager.query = vi.fn().mockResolvedValue([]);
 
 			await importService.dropExistingDataTableUserTables(mockEntityManager);
 
@@ -1056,7 +1051,7 @@ describe('ImportService', () => {
 
 	describe('recreateDataTableUserTablesFromRegistry', () => {
 		it('should recreate every backing table referenced in the imported registry', async () => {
-			mockEntityManager.query = jest
+			mockEntityManager.query = vi
 				.fn()
 				.mockResolvedValueOnce([{ id: 'abc' }, { id: 'xyz' }]) // SELECT id FROM data_table
 				.mockResolvedValueOnce([
@@ -1080,7 +1075,7 @@ describe('ImportService', () => {
 		});
 
 		it('should sort columns by index before recreating the backing table', async () => {
-			mockEntityManager.query = jest
+			mockEntityManager.query = vi
 				.fn()
 				.mockResolvedValueOnce([{ id: 'abc' }])
 				.mockResolvedValueOnce([
@@ -1090,13 +1085,13 @@ describe('ImportService', () => {
 
 			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
 
-			const call = (mockDataTableDDLService.createTableWithColumns as jest.Mock).mock.calls[0];
+			const call = (mockDataTableDDLService.createTableWithColumns as Mock).mock.calls[0];
 			const [, sortedColumns] = call;
 			expect((sortedColumns as Array<{ name: string }>).map((c) => c.name)).toEqual(['a', 'b']);
 		});
 
 		it('should drop existing tables before recreating to make the operation idempotent', async () => {
-			mockEntityManager.query = jest
+			mockEntityManager.query = vi
 				.fn()
 				.mockResolvedValueOnce([{ id: 'abc' }])
 				.mockResolvedValueOnce([
@@ -1105,15 +1100,14 @@ describe('ImportService', () => {
 
 			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
 
-			const dropCallOrder = (mockDataTableDDLService.dropTable as jest.Mock).mock
-				.invocationCallOrder[0];
-			const createCallOrder = (mockDataTableDDLService.createTableWithColumns as jest.Mock).mock
+			const dropCallOrder = (mockDataTableDDLService.dropTable as Mock).mock.invocationCallOrder[0];
+			const createCallOrder = (mockDataTableDDLService.createTableWithColumns as Mock).mock
 				.invocationCallOrder[0];
 			expect(dropCallOrder).toBeLessThan(createCallOrder);
 		});
 
 		it('should skip silently when the registry is missing', async () => {
-			mockEntityManager.query = jest.fn().mockRejectedValue(new Error('relation does not exist'));
+			mockEntityManager.query = vi.fn().mockRejectedValue(new Error('relation does not exist'));
 
 			await expect(
 				importService.recreateDataTableUserTablesFromRegistry(mockEntityManager),
@@ -1123,7 +1117,7 @@ describe('ImportService', () => {
 		});
 
 		it('should no-op when the registry is empty', async () => {
-			mockEntityManager.query = jest.fn().mockResolvedValueOnce([]);
+			mockEntityManager.query = vi.fn().mockResolvedValueOnce([]);
 
 			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
 
@@ -1133,13 +1127,13 @@ describe('ImportService', () => {
 
 		describe('row import', () => {
 			beforeEach(() => {
-				mockDataSource.driver.escapeQueryWithParameters = jest
+				mockDataSource.driver.escapeQueryWithParameters = vi
 					.fn()
 					.mockImplementation((sql, params) => [sql, params]);
 			});
 
 			it('should insert rows into the recreated backing table when files are provided', async () => {
-				mockEntityManager.query = jest
+				mockEntityManager.query = vi
 					.fn()
 					.mockResolvedValueOnce([{ id: 'abc' }])
 					.mockResolvedValueOnce([
@@ -1153,13 +1147,13 @@ describe('ImportService', () => {
 					updatedAt: '2024-01-01 12:00:00',
 					flag: 0,
 				};
-				jest.mocked(readFile).mockResolvedValue(JSON.stringify(row));
+				vi.mocked(readFile).mockResolvedValue(JSON.stringify(row));
 
 				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
 					abc: ['/test/input/data_table_user_abc.jsonl'],
 				});
 
-				const insertCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+				const insertCalls = (mockEntityManager.query as Mock).mock.calls.filter(
 					([sql]) => typeof sql === 'string' && sql.startsWith('INSERT INTO'),
 				);
 				expect(insertCalls).toHaveLength(1);
@@ -1171,7 +1165,7 @@ describe('ImportService', () => {
 			});
 
 			it('should warn when archive has row files but registry is empty', async () => {
-				mockEntityManager.query = jest.fn().mockResolvedValueOnce([]);
+				mockEntityManager.query = vi.fn().mockResolvedValueOnce([]);
 
 				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
 					orphan: ['/test/input/data_table_user_orphan.jsonl'],
@@ -1190,7 +1184,7 @@ describe('ImportService', () => {
 				// identifiers to lowercase, so the param must be the quoted form.
 				const mixedCaseId = 'AbC123';
 
-				mockEntityManager.query = jest
+				mockEntityManager.query = vi
 					.fn()
 					.mockResolvedValueOnce([{ id: mixedCaseId }])
 					.mockResolvedValueOnce([
@@ -1200,7 +1194,7 @@ describe('ImportService', () => {
 					.mockResolvedValueOnce([{ column_name: 'id' }]) // information_schema lookup
 					.mockResolvedValue(undefined);
 
-				jest.mocked(readFile).mockResolvedValue(
+				vi.mocked(readFile).mockResolvedValue(
 					JSON.stringify({
 						id: 5,
 						createdAt: '2024-01-01T00:00:00.000Z',
@@ -1213,7 +1207,7 @@ describe('ImportService', () => {
 					[mixedCaseId]: [`/test/input/data_table_user_${mixedCaseId}.jsonl`],
 				});
 
-				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+				const setvalCalls = (mockEntityManager.query as Mock).mock.calls.filter(
 					([sql]) => typeof sql === 'string' && sql.includes('setval('),
 				);
 				expect(setvalCalls).toHaveLength(1);
@@ -1225,7 +1219,7 @@ describe('ImportService', () => {
 				// @ts-expect-error overriding for the test
 				mockDataSource.options = { type: 'postgres' };
 
-				mockEntityManager.query = jest
+				mockEntityManager.query = vi
 					.fn()
 					.mockResolvedValueOnce([{ id: 'abc' }])
 					.mockResolvedValueOnce([])
@@ -1233,7 +1227,7 @@ describe('ImportService', () => {
 
 				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {});
 
-				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+				const setvalCalls = (mockEntityManager.query as Mock).mock.calls.filter(
 					([sql]) => typeof sql === 'string' && sql.includes('setval('),
 				);
 				expect(setvalCalls).toHaveLength(0);
@@ -1474,7 +1468,7 @@ describe('ImportService', () => {
 			// @ts-expect-error overriding for the test
 			mockDataSource.options = { type: 'postgres' };
 
-			mockEntityManager.query = jest
+			mockEntityManager.query = vi
 				.fn()
 				// information_schema lookup for "workflow_dependency"
 				.mockResolvedValueOnce([{ column_name: 'id' }])
@@ -1492,7 +1486,7 @@ describe('ImportService', () => {
 				'user',
 			]);
 
-			const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+			const setvalCalls = (mockEntityManager.query as Mock).mock.calls.filter(
 				([sql]) => typeof sql === 'string' && sql.includes('setval('),
 			);
 			expect(setvalCalls).toHaveLength(2);
@@ -1504,7 +1498,7 @@ describe('ImportService', () => {
 
 		it('should be a no-op on SQLite', async () => {
 			// SQLite is the default in beforeEach.
-			mockEntityManager.query = jest.fn();
+			mockEntityManager.query = vi.fn();
 
 			await importService.advanceIdentitySequences(mockEntityManager, ['workflow_dependency']);
 
@@ -1514,7 +1508,7 @@ describe('ImportService', () => {
 		it('should be a no-op when no tables are provided', async () => {
 			// @ts-expect-error overriding for the test
 			mockDataSource.options = { type: 'postgres' };
-			mockEntityManager.query = jest.fn();
+			mockEntityManager.query = vi.fn();
 
 			await importService.advanceIdentitySequences(mockEntityManager, []);
 

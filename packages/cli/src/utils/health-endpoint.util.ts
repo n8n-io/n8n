@@ -1,6 +1,5 @@
-import path from 'node:path';
-
 import type { GlobalConfig } from '@n8n/config';
+import path from 'node:path';
 
 /**
  * Resolves the health endpoint path for backend Express route registration.

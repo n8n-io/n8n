@@ -1,7 +1,7 @@
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -16,7 +16,7 @@ describe('LogStreamingEventRelay', () => {
 	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('workflow events', () => {
@@ -493,7 +493,7 @@ describe('LogStreamingEventRelay', () => {
 					status: 'success',
 					mode: 'manual',
 					data: { resultData: {} },
-				}),
+				} as never),
 				projectId: 'proj-456',
 				projectName: 'My Project',
 			});
@@ -524,7 +524,7 @@ describe('LogStreamingEventRelay', () => {
 				mode: 'manual',
 				jobId: '12345',
 				data: { resultData: {} },
-			});
+			} as never);
 
 			const event = {
 				executionId: 'exec-123',
@@ -554,7 +554,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',
@@ -562,7 +561,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'some-id',
@@ -604,7 +603,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',
@@ -612,7 +610,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'exec-456',

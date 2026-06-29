@@ -1,5 +1,6 @@
+import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -52,14 +53,14 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 
 describe('AgentExecutionService', () => {
 	let service: AgentExecutionService;
-	let agentExecutionRepository: jest.Mocked<AgentExecutionRepository>;
-	let agentExecutionThreadRepository: jest.Mocked<AgentExecutionThreadRepository>;
-	let n8nMemory: jest.Mocked<N8nMemory>;
-	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let agentExecutionRepository: Mocked<AgentExecutionRepository>;
+	let agentExecutionThreadRepository: Mocked<AgentExecutionThreadRepository>;
+	let n8nMemory: Mocked<N8nMemory>;
+	let memoryBackend: Mocked<N8nMemoryImplementation>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
