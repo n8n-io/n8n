@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useCssModule } from 'vue';
+import { computed, useCssModule, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -162,11 +162,19 @@ function openAgent() {
 	});
 }
 
-onMounted(() => {
-	if (!projectId.value) return;
-	void ensureIntegrationsLoaded(projectId.value).catch(() => {});
-	void ensureModelsLoaded(projectId.value).catch(() => {});
-});
+// Resolve chip labels/icons (channel names/icons + friendly model name) once the
+// project scope is known. projectId is often empty at mount and resolves async,
+// so watch it (immediate) rather than firing once in onMounted, which would skip
+// the load on a cold canvas and leave chips on raw-type/raw-id fallbacks.
+watch(
+	projectId,
+	(id) => {
+		if (!id) return;
+		void ensureIntegrationsLoaded(id).catch(() => {});
+		void ensureModelsLoaded(id).catch(() => {});
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

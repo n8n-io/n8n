@@ -152,6 +152,19 @@ describe('CanvasNodeAgent', () => {
 		expect(queryByTestId('agent-picker-stub')).toBeNull();
 	});
 
+	it('shows the load-error message and no model row or picker when the summary fails to load', () => {
+		summaryHolder.value = null;
+		errorHolder.value = new Error('boom');
+
+		const { getByText, queryByTestId } = renderWithAgent('agent-1');
+
+		expect(getByText(/Couldn.t load agent details/)).toBeInTheDocument();
+		// The error branch replaces the body: no model row, no chips, no picker.
+		expect(queryByTestId('canvas-node-agent-model')).toBeNull();
+		expect(queryByTestId('canvas-node-agent-chip')).toBeNull();
+		expect(queryByTestId('agent-picker-stub')).toBeNull();
+	});
+
 	it('navigates to the agent detail view when the open affordance is clicked', async () => {
 		summaryHolder.value = {
 			id: 'agent-1',
