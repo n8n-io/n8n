@@ -196,22 +196,18 @@ export class DbConnectionMonitor {
 			return;
 		}
 
-		let bailed = false;
-		// If the timeout wins the connect race, a client may still resolve afterwards.
-		// Destroy that late arrival rather than silently parking it back in the pool.
-		const connectPromise = pool.connect().then((client) => {
-			if (bailed) {
-				this.safeDestroyClient(client);
-			}
-			return client;
-		});
+		const connectPromise = pool.connect();
 
 		let client: PgPoolClient;
 		try {
 			client = await this.raceTimeout(connectPromise);
 		} catch (error) {
-			bailed = true;
-			void connectPromise.catch(() => {});
+			// Timeout (or connect failure) won the race: destroy any late-arriving client
+			// and swallow a late rejection so it neither parks a pool slot nor warns as unhandled.
+			void connectPromise.then(
+				(late) => this.safeDestroyClient(late),
+				() => {},
+			);
 			throw error;
 		}
 
