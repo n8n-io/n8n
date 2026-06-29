@@ -1,9 +1,10 @@
 import { Service } from '@n8n/di';
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import {
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationOutboxStatus,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
-import type { WorkflowPublicationStatus } from '@n8n/api-types';
 
 @Service()
 export class WorkflowPublicationStatusService {
@@ -37,7 +38,7 @@ export class WorkflowPublicationStatusService {
 	private deriveStatus(
 		isPublishing: boolean,
 		rows: Array<{ status: 'activated' | 'failed' }>,
-		latest: { status: string } | null,
+		latest: { status: WorkflowPublicationOutboxStatus } | null,
 	): WorkflowPublicationStatus['status'] {
 		if (isPublishing) return 'in_progress';
 		if (rows.length > 0) {
