@@ -17,6 +17,10 @@ const props = defineProps<{
 	credentialOptions: CredentialOption[];
 	selectedCredentialId: string | null;
 	permissions: PermissionsRecord['credential'];
+	placeholder?: string;
+	loading?: boolean;
+	disabled?: boolean;
+	teleported?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -46,12 +50,18 @@ const onFilter = (newFilter = '') => {
 	filter.value = newFilter;
 };
 
+const closeSelect = () => {
+	selectRefs.value?.innerSelect?.handleClose();
+	selectRefs.value?.blur();
+};
+
 const onCredentialSelected = (credentialId: string) => {
+	closeSelect();
 	emit('credentialSelected', credentialId);
 };
 
 const onCreateNewCredential = async () => {
-	selectRefs.value?.blur();
+	closeSelect();
 	await nextTick();
 	emit('newCredential');
 };
@@ -64,6 +74,10 @@ const onCreateNewCredential = async () => {
 		filterable
 		:filter-method="onFilter"
 		:model-value="props.selectedCredentialId"
+		:placeholder="props.placeholder"
+		:loading="props.loading"
+		:disabled="props.disabled"
+		:teleported="props.teleported ?? false"
 		:popper-class="$style.selectPopper"
 		@update:model-value="onCredentialSelected"
 	>
@@ -73,6 +87,7 @@ const onCreateNewCredential = async () => {
 			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:label="item.name"
 			:value="item.id"
+			@click="closeSelect"
 		>
 			<div :class="[$style.credentialOption, 'mt-2xs mb-2xs']">
 				<N8nText bold>{{ item.name }}</N8nText>

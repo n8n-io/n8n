@@ -1,3 +1,4 @@
+import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -9,6 +10,9 @@ import {
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { DeploymentKey } from './deployment-key';
+import { EvaluationCollection } from './evaluation-collection.ee';
+import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -38,6 +42,10 @@ import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
+import {
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxStatus,
+} from './workflow-publication-outbox';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -45,6 +53,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -58,6 +67,9 @@ export {
 	CredentialsEntity,
 	CredentialDependency,
 	type CredentialDependencyType,
+	DeploymentKey,
+	EvaluationCollection,
+	EvaluationConfig,
 	Folder,
 	Project,
 	ProjectRelation,
@@ -75,6 +87,8 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -92,6 +106,7 @@ export {
 
 export const entities = {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -101,6 +116,9 @@ export const entities = {
 	AuthIdentity,
 	CredentialsEntity,
 	CredentialDependency,
+	DeploymentKey,
+	EvaluationCollection,
+	EvaluationConfig,
 	Folder,
 	Project,
 	ProjectRelation,
@@ -117,6 +135,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,

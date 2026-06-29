@@ -16,6 +16,7 @@
 6. [Tool Call Dispatch](#6-tool-call-dispatch)
 7. [Disconnect & Reconnect](#7-disconnect--reconnect)
 8. [Module Settings](#8-module-settings)
+9. [Session Model](#9-session-model)
 
 ---
 
@@ -276,7 +277,7 @@ When the AI agent needs to invoke a local tool the call flows through
 
 ```mermaid
 sequenceDiagram
-    participant A as AI Agent (Mastra tool)
+    participant A as AI Agent (@n8n/agents tool)
     participant GW as LocalGateway
     participant SRV as Controller (SSE)
     participant D as computer-use Daemon
@@ -303,7 +304,7 @@ rejects all outstanding promises immediately with `"Local gateway disconnected"`
 
 When a tool group operates in `Ask` mode and no stored rule matches the
 resource, the daemon returns a `GATEWAY_CONFIRMATION_REQUIRED` error instead
-of a result. The Mastra tool layer handles this by suspending the agent —
+of a result. The `@n8n/agents` tool layer handles this by suspending the agent —
 persisting its state to the database — and resuming it after the user
 responds. This means the confirmation survives page reloads and server
 restarts.
@@ -315,7 +316,7 @@ sequenceDiagram
     participant DB as Database
     participant D as computer-use Daemon
 
-    Note over SRV: First invocation — tool execute() called by Mastra
+    Note over SRV: First invocation — tool execute() called by @n8n/agents
     SRV->>D: callTool({ name, args }) via LocalGateway
     D-->>SRV: { isError: true, content: ["GATEWAY_CONFIRMATION_REQUIRED::..."] }
     SRV->>SRV: parse GatewayConfirmationRequiredPayload
@@ -415,9 +416,7 @@ per-user.
 ```typescript
 {
   enabled: boolean;                       // Model is configured and usable
-  localGateway: boolean;                  // Local filesystem path is configured
   localGatewayDisabled: boolean;          // Admin/user opt-out flag
-  localGatewayFallbackDirectory: string | null;  // Configured fallback path
 }
 ```
 
@@ -425,3 +424,74 @@ Per-user gateway state is delivered via two mechanisms:
 - **Initial load** — `GET /gateway/status` (called on page mount).
 - **Live updates** — targeted push notification `instanceAiGatewayStateChanged`
   sent only to the affected user via `push.sendToUsers(..., [userId])`.
+
+---
+
+## 9. Session Model
+
+Tool group permission modes and the working directory are **session-scoped** —
+they live in a `GatewaySession` object created at connect time and discarded
+when the session ends.
+
+### GatewaySession
+
+`GatewaySession` is constructed from defaults (loaded from the settings file
+and merged with any CLI/ENV overrides) and a reference to `SettingsStore` for
+persistent rule delegation.
+
+```typescript
+class GatewaySession {
+  constructor(
+    defaults: { permissions: Record<ToolGroup, PermissionMode>; dir: string },
+    settingsStore: SettingsStore,
+  )
+
+  // Mutable session settings — set by the confirmConnect prompt
+  setPermissions(p: Record<ToolGroup, PermissionMode>): void
+  setDir(dir: string): void
+
+  // Read session settings
+  get dir(): string
+  getAllPermissions(): Record<ToolGroup, PermissionMode>
+  getGroupMode(toolGroup: ToolGroup): PermissionMode  // includes filesystemRead→Write constraint
+
+  // Permission check — used by GatewayClient for every tool call
+  check(toolGroup: ToolGroup, resource: string): PermissionMode
+
+  // Session-scoped allow rules — cleared on disconnect
+  allowForSession(toolGroup: ToolGroup, resource: string): void
+  clearSessionRules(): void
+
+  // Persistent rules — delegate to SettingsStore
+  alwaysAllow(toolGroup: ToolGroup, resource: string): void
+  alwaysDeny(toolGroup: ToolGroup, resource: string): void
+
+  // Flush pending writes on shutdown
+  flush(): Promise<void>
+}
+```
+
+### Permission check evaluation order
+
+`check(toolGroup, resource)` evaluates rules in this order:
+
+1. Persistent deny list → `'deny'` (absolute priority, even in Allow mode)
+2. Persistent allow list → `'allow'`
+3. Session allow set → `'allow'`
+4. Group mode → result of `getGroupMode()` (includes cross-group constraints)
+
+### Persistent rules
+
+`alwaysAllow` / `alwaysDeny` resource rules still write through to the settings
+file via `SettingsStore` so they persist across sessions.
+
+### DaemonOptions.confirmConnect signature
+
+```typescript
+confirmConnect: (url: string, session: GatewaySession) => Promise<boolean> | boolean
+```
+
+The session is pre-seeded from defaults and passed to the `confirmConnect`
+callback. The callback may mutate the session (e.g. via `setPermissions` /
+`setDir`) before returning `true`. The daemon then uses the mutated session
+for the duration of the connection.

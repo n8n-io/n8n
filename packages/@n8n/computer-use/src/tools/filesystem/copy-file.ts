@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { buildFilesystemResource, resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveReadablePath, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	sourcePath: z.string().describe('Source file path relative to root'),
@@ -34,7 +34,7 @@ export const copyFileTool: ToolDefinition<typeof inputSchema> = {
 		];
 	},
 	async execute({ sourcePath, destinationPath }, { dir }) {
-		const resolvedSrc = await resolveSafePath(dir, sourcePath);
+		const resolvedSrc = await resolveReadablePath(dir, sourcePath);
 		const resolvedDest = await resolveSafePath(dir, destinationPath);
 
 		await fs.mkdir(path.dirname(resolvedDest), { recursive: true });

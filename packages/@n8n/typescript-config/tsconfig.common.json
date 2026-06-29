@@ -6,7 +6,7 @@
 		"module": "commonjs",
 		"moduleResolution": "node",
 		"target": "es2021",
-		"lib": ["es2021", "es2022.error", "dom"],
+		"lib": ["es2021", "es2022.error", "es2022.object", "dom"],
 		"removeComments": true,
 		"useUnknownInCatchVariables": true,
 		"forceConsistentCasingInFileNames": true,
@@ -21,7 +21,8 @@
 		"incremental": true,
 		"declaration": false,
 		"sourceMap": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"tsBuildInfoFile": "${configDir}/dist/typecheck.tsbuildinfo"
 	},
 	"files": ["../../../node_modules/jest-expect-message/types/index.d.ts"]
 }

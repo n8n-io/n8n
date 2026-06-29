@@ -3,4 +3,4 @@
 vulnerability:
   vex:
     - security/vex.openvex.json
-  ignore-policy: security/trivy-ignore-policy.rego
+ignore-policy: security/trivy-ignore-policy.rego

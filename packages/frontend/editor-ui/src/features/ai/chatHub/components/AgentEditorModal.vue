@@ -308,7 +308,9 @@ async function onSave() {
 		closeDialog();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';
-		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.save'), errorMessage);
+		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.save'), {
+			message: errorMessage,
+		});
 	} finally {
 		isSaving.value = false;
 	}
@@ -340,7 +342,9 @@ async function onDelete() {
 		closeDialog();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';
-		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.delete'), errorMessage);
+		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.delete'), {
+			message: errorMessage,
+		});
 	} finally {
 		isDeleting.value = false;
 	}

@@ -458,7 +458,10 @@ describe('validateValueAgainstSchema', () => {
 
 				expect(() =>
 					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
-				).toThrow(new ExpressionError("Invalid input for 'count' [item 0]"));
+				).toThrow(ExpressionError);
+				expect(() =>
+					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+				).toThrow("Invalid input for 'count' [item 0]");
 			});
 		});
 	});

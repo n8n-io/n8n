@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:unchecked": "tsc --noCheck",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "format": "biome format --write .",
@@ -50,9 +51,11 @@
     "globals": "^16.2.0",
     "typescript": "catalog:",
     "typescript-eslint": "^8.35.0",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9"
-  }
+    "eslint": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

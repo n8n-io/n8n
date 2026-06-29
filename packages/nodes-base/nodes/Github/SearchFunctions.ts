@@ -61,7 +61,8 @@ export async function getUsers(
 		url: item.html_url,
 	}));
 
-	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
+	const nextPaginationToken =
+		page * per_page < responseData.total_count ? String(page + 1) : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
 
@@ -97,7 +98,8 @@ export async function getRepositories(
 		url: item.html_url,
 	}));
 
-	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
+	const nextPaginationToken =
+		page * per_page < responseData.total_count ? String(page + 1) : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
 
@@ -126,7 +128,8 @@ export async function getWorkflows(
 		value: workflow.id,
 	}));
 
-	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
+	const nextPaginationToken =
+		page * per_page < responseData.total_count ? String(page + 1) : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
 
@@ -177,6 +180,6 @@ export async function getRefs(
 		);
 		return { results: filteredRefs };
 	}
-	const nextPaginationToken = responseData.length === per_page ? page + 1 : undefined;
+	const nextPaginationToken = responseData.length === per_page ? String(page + 1) : undefined;
 	return { results: refs, paginationToken: nextPaginationToken };
 }

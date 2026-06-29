@@ -15,18 +15,19 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:unchecked": "tsc --noCheck",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"
   },
   "dependencies": {
-    "stylelint": "^16.23.0",
+    "stylelint": "catalog:",
     "stylelint-config-standard-scss": "^15.0.1",
     "stylelint-scss": "^6.12.1",
     "postcss-html": "^1.8.0",
@@ -35,9 +36,12 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "typescript": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
-  "peerDependencies": {
-    "stylelint": ">= 16"
-  }
+  "license": "LicenseRef-n8n-sustainable-use"
 }

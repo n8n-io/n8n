@@ -176,17 +176,17 @@ describe('NodeTypes', () => {
 			expect(result.description.outputs).toEqual(['ai_tool']);
 		});
 
-		it('should return a declarative node-type with an `.execute` method', () => {
+		it('should return a declarative node-type with an `.execute` method', async () => {
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.declarativeNode');
 			expect(result).toBe(declarativeNode.type);
 			expect(result.execute).toBeDefined();
 
 			const runNodeSpy = jest.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
-			result.execute!.call(mock());
+			await result.execute!.call(mock());
 			expect(runNodeSpy).toHaveBeenCalled();
 		});
 
-		it('should return a declarative node-type as a tool with an `.execute` method', () => {
+		it('should return a declarative node-type as a tool with an `.execute` method', async () => {
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.declarativeNodeTool');
 			expect(result).not.toEqual(declarativeNode.type);
 			expect(result.description.name).toEqual('n8n-nodes-base.declarativeNodeTool');
@@ -197,7 +197,7 @@ describe('NodeTypes', () => {
 			expect(result.execute).toBeDefined();
 
 			const runNodeSpy = jest.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
-			result.execute!.call(mock());
+			await result.execute!.call(mock());
 			expect(runNodeSpy).toHaveBeenCalled();
 		});
 	});

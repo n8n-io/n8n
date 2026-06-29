@@ -1,12 +1,12 @@
-import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { makeN8nLlmFailedAttemptHandler } from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 
 describe('makeN8nLlmFailedAttemptHandler', () => {
 	const ctx = mock<ISupplyDataFunctions>({
-		getNode: jest.fn(),
+		getNode: vi.fn(),
 	});
 
 	it('should throw a wrapped error, when NO custom handler is provided', () => {
@@ -16,7 +16,7 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 	});
 
 	it('should wrapped error when custom handler is provided', () => {
-		const customHandler = jest.fn();
+		const customHandler = vi.fn();
 		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
 
 		expect(() => handler(new Error('Test error'))).toThrow(NodeApiError);
@@ -24,7 +24,7 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 	});
 
 	it('should throw wrapped exception from custom handler', () => {
-		const customHandler = jest.fn(() => {
+		const customHandler = vi.fn(() => {
 			throw new ApplicationError('Custom handler error');
 		});
 		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
@@ -34,7 +34,7 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 	});
 
 	it('should not throw if retries are left', () => {
-		const customHandler = jest.fn();
+		const customHandler = vi.fn();
 		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
 
 		const error = new Error('Test error');
@@ -53,7 +53,7 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 	});
 
 	it('should throw NodeApiError if no retries are left with custom handler', () => {
-		const customHandler = jest.fn();
+		const customHandler = vi.fn();
 		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
 
 		const error = new Error('Test error');

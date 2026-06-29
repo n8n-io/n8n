@@ -9,12 +9,28 @@ import { useFoldersStore } from '../folders.store';
 import type { FolderPathItem, FolderShortInfo } from '../folders.types';
 import type { IUser } from 'n8n-workflow';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
+import {
+	N8nBreadcrumbs,
+	N8nDropdownMenu,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
 
-import { N8nActionToggle, N8nBreadcrumbs } from '@n8n/design-system';
+type FolderBreadcrumbAction = UserAction<IUser> & {
+	children?: FolderBreadcrumbAction[];
+	tooltip?: string;
+};
+
+type MenuItemData = {
+	tooltip?: string;
+};
+
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
-	actions?: Array<UserAction<IUser>>;
+	actions?: FolderBreadcrumbAction[];
 	hiddenItemsTrigger?: 'hover' | 'click';
 	currentFolderAsLink?: boolean;
 	visibleLevels?: 1 | 2;
@@ -76,6 +92,21 @@ const isDragging = computed(() => {
 const hasMoreItems = computed(() => {
 	return visibleBreadcrumbsItems.value[0]?.parentFolder !== undefined;
 });
+
+function toMenuItem(action: FolderBreadcrumbAction): DropdownMenuItemProps<string, MenuItemData> {
+	return {
+		id: action.value,
+		testId: `action-${action.value}`,
+		label: action.label,
+		disabled: action.disabled,
+		children: action.children?.map(toMenuItem),
+		data: action.tooltip ? { tooltip: action.tooltip } : undefined,
+	};
+}
+
+const menuItems = computed<Array<DropdownMenuItemProps<string, MenuItemData>>>(() =>
+	props.actions.map(toMenuItem),
+);
 
 const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 	visibleIds.value.clear();
@@ -233,14 +264,49 @@ onBeforeUnmount(() => {
 		<div v-else>
 			<slot name="append"></slot>
 		</div>
-		<N8nActionToggle
-			v-if="visibleBreadcrumbsItems && actions?.length"
-			:actions="actions"
-			:class="$style['action-toggle']"
-			theme="dark"
-			data-test-id="folder-breadcrumbs-actions"
-			@action="onAction"
-		/>
+		<N8nDropdownMenu
+			v-if="menuItems.length"
+			:items="menuItems"
+			content-test-id="action-toggle-dropdown"
+			placement="bottom-end"
+			:extra-popper-class="$style['actions-menu-dropdown']"
+			@select="onAction"
+		>
+			<template #trigger>
+				<N8nIconButton
+					:class="['action-toggle', $style['actions-menu']]"
+					variant="ghost"
+					icon="ellipsis-vertical"
+					size="medium"
+					data-test-id="folder-breadcrumbs-actions"
+				/>
+			</template>
+			<template #item-label="{ item, ui }">
+				<N8nTooltip
+					v-if="item.data?.tooltip"
+					:content="item.data.tooltip"
+					placement="left"
+					:show-after="300"
+					:teleported="false"
+				>
+					<N8nText
+						:class="ui.class"
+						size="medium"
+						:color="item.disabled ? 'text-light' : 'text-dark'"
+					>
+						{{ item.label }}
+					</N8nText>
+				</N8nTooltip>
+				<N8nText
+					v-else
+					:class="ui.class"
+					size="medium"
+					:color="item.disabled ? 'text-light' : 'text-dark'"
+				>
+					{{ item.label }}
+				</N8nText>
+			</template>
+		</N8nDropdownMenu>
 	</div>
 </template>
 
@@ -255,9 +321,7 @@ onBeforeUnmount(() => {
 	align-items: center;
 }
 
-.action-toggle {
-	span[role='button'] {
-		color: var(--color--text);
-	}
+.actions-menu-dropdown {
+	width: 200px;
 }
 </style>

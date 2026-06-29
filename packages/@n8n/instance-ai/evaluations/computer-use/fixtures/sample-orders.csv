@@ -1,0 +1,9 @@
+order_id,customer_email,product_sku,quantity,unit_price_eur,order_date,status
+1001,jane@example.com,SKU-A-100,2,49.90,2026-04-01,shipped
+1002,bob@example.com,SKU-B-205,1,129.00,2026-04-02,paid
+1003,alice@example.com,SKU-A-100,4,49.90,2026-04-03,paid
+1004,carlos@example.com,SKU-C-310,1,15.50,2026-04-04,refunded
+1005,jane@example.com,SKU-D-400,1,299.00,2026-04-05,paid
+1006,david@example.com,SKU-B-205,3,129.00,2026-04-06,shipped
+1007,erin@example.com,SKU-A-100,1,49.90,2026-04-07,cancelled
+1008,frank@example.com,SKU-D-400,2,299.00,2026-04-08,shipped

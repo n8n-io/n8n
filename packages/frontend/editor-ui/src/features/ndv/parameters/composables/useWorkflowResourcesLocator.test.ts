@@ -5,7 +5,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
@@ -20,6 +22,7 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 
 describe('useWorkflowResourcesLocator', () => {
 	let workflowsListStoreMock: MockedStore<typeof useWorkflowsListStore>;
+	let workflowsStoreMock: MockedStore<typeof useWorkflowsStore>;
 	let ndvStoreMock: MockedStore<typeof useNDVStore>;
 
 	const renameNodeMock = vi.fn();
@@ -32,7 +35,8 @@ describe('useWorkflowResourcesLocator', () => {
 
 		createTestingPinia();
 		workflowsListStoreMock = mockedStore(useWorkflowsListStore);
-		ndvStoreMock = mockedStore(useNDVStore);
+		workflowsStoreMock = mockedStore(useWorkflowsStore);
+		ndvStoreMock = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 
 		useCanvasOperations.mockReturnValue({ renameNode: renameNodeMock });
 	});
@@ -234,6 +238,42 @@ describe('useWorkflowResourcesLocator', () => {
 			expect(hasMoreWorkflowsToLoad.value).toBe(false);
 		});
 
+		it('should include callable subworkflow filter when inside an open workflow', async () => {
+			workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsStoreMock.workflowId = 'parent-wf-id';
+
+			const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
+			await populateNextWorkflowsPage();
+
+			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+				undefined,
+				1,
+				40,
+				'updatedAt:desc',
+				{
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: 'parent-wf-id',
+				},
+			);
+		});
+
+		it('should not include callable subworkflow filter when no workflow is open', async () => {
+			workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsStoreMock.workflowId = '';
+
+			const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
+			await populateNextWorkflowsPage();
+
+			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+				undefined,
+				1,
+				40,
+				'updatedAt:desc',
+				{ triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'] },
+			);
+		});
+
 		it('should handle multiple page loads correctly', async () => {
 			const firstPageWorkflows = [
 				{ id: '1', name: 'Workflow 1' },
@@ -338,7 +378,7 @@ describe('useWorkflowResourcesLocator', () => {
 
 			expect(routerMock.resolve as any).toHaveBeenCalledWith({
 				name: 'NodeViewExisting',
-				params: { name: 'test-workflow-id' },
+				params: { workflowId: 'test-workflow-id' },
 			});
 			expect(url).toBe('/workflow/test-workflow-id');
 		});

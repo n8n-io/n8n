@@ -192,6 +192,7 @@ describe('GET /credentials', () => {
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
 				[
+					'credential:connect',
 					'credential:move',
 					'credential:read',
 					'credential:update',
@@ -203,7 +204,7 @@ describe('GET /credentials', () => {
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
-			expect(cred2.scopes).toEqual(['credential:read']);
+			expect(cred2.scopes).toEqual(['credential:connect', 'credential:read'].sort());
 		}
 
 		{
@@ -220,12 +221,18 @@ describe('GET /credentials', () => {
 
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
-			expect(cred1.scopes).toEqual(['credential:delete', 'credential:read', 'credential:update']);
+			expect(cred1.scopes).toEqual([
+				'credential:connect',
+				'credential:delete',
+				'credential:read',
+				'credential:update',
+			]);
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
 				[
+					'credential:connect',
 					'credential:delete',
 					'credential:move',
 					'credential:read',
@@ -250,6 +257,7 @@ describe('GET /credentials', () => {
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
 				[
+					'credential:connect',
 					'credential:create',
 					'credential:delete',
 					'credential:list',
@@ -266,6 +274,7 @@ describe('GET /credentials', () => {
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
 				[
+					'credential:connect',
 					'credential:create',
 					'credential:delete',
 					'credential:list',
@@ -334,6 +343,7 @@ describe('GET /credentials', () => {
 		expect(ownedCred.data).toBeDefined();
 		expect(ownedCred.scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:move',
 				'credential:read',
 				'credential:update',
@@ -345,7 +355,7 @@ describe('GET /credentials', () => {
 
 		expect(sharedCred.id).toBe(sharedCredential.id);
 		expect(sharedCred.data).not.toBeDefined();
-		expect(sharedCred.scopes).toEqual(['credential:read'].sort());
+		expect(sharedCred.scopes).toEqual(['credential:connect', 'credential:read'].sort());
 
 		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
 		expect(teamCredAsViewer.data).not.toBeDefined();
@@ -354,7 +364,7 @@ describe('GET /credentials', () => {
 		expect(teamCredAsEditor.id).toBe(teamCredentialAsEditor.id);
 		expect(teamCredAsEditor.data).toBeDefined();
 		expect(teamCredAsEditor.scopes).toEqual(
-			['credential:read', 'credential:update', 'credential:delete'].sort(),
+			['credential:connect', 'credential:read', 'credential:update', 'credential:delete'].sort(),
 		);
 	});
 
@@ -397,6 +407,7 @@ describe('GET /credentials', () => {
 		expect(ownedCred.data).toBeDefined();
 		expect(ownedCred.scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:move',
 				'credential:read',
 				'credential:update',
@@ -413,6 +424,7 @@ describe('GET /credentials', () => {
 		expect(sharedCred.data).toBeDefined();
 		expect(sharedCred.scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:move',
 				'credential:read',
 				'credential:update',
@@ -432,6 +444,7 @@ describe('GET /credentials', () => {
 		).toBe(true);
 		expect(teamCredAsViewer.scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:move',
 				'credential:read',
 				'credential:update',
@@ -848,6 +861,7 @@ describe('POST /credentials', () => {
 
 		expect(scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:delete',
 				'credential:move',
 				'credential:read',
@@ -970,8 +984,8 @@ describe('POST /credentials', () => {
 			//
 			// ASSERT
 			//
-			.expect(400, {
-				code: 400,
+			.expect(403, {
+				code: 403,
 				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
@@ -986,7 +1000,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1013,7 +1027,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload() });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1063,7 +1077,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isGlobal: false });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1089,7 +1103,7 @@ describe('POST /credentials', () => {
 		delete payload.isGlobal;
 
 		const response = await testServer.authAgentFor(chatUser).post('/credentials').send(payload);
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1235,6 +1249,7 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:create',
 				'credential:delete',
 				'credential:list',
@@ -1288,7 +1303,7 @@ describe('PATCH /credentials/:id', () => {
 			credential.type,
 			credential.data,
 		);
-		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
+		expect(await credentialObject.getData()).toStrictEqual(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
@@ -1422,10 +1437,11 @@ describe('PATCH /credentials/:id', () => {
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
 		const unencryptedData = createCredentialsFromCredentialsEntity(dbCredential!);
-		expect(unencryptedData.getData().oauthTokenData).toEqual(credential.data.oauthTokenData);
+		const decryptedData = await unencryptedData.getData();
+		expect(decryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
 
 		// was overwritten
-		expect(unencryptedData.getData().accessToken).toBe(patchPayload.data.accessToken);
+		expect(decryptedData.accessToken).toBe(patchPayload.data.accessToken);
 	});
 
 	test('should fail with invalid inputs', async () => {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
-import { buildFilesystemResource, resolveSafePath, scanDirectory } from './fs-utils';
+import { buildFilesystemResource, resolveReadablePath, scanDirectory } from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory path relative to root (use "." for root)'),
@@ -24,7 +24,7 @@ export const getFileTreeTool: ToolDefinition<typeof inputSchema> = {
 		];
 	},
 	async execute({ dirPath, maxDepth }, { dir }) {
-		const resolvedDir = await resolveSafePath(dir, dirPath || '.');
+		const resolvedDir = await resolveReadablePath(dir, dirPath || '.');
 		const depth = maxDepth ?? 2;
 		const { rootPath, tree, truncated } = await scanDirectory(resolvedDir, depth);
 

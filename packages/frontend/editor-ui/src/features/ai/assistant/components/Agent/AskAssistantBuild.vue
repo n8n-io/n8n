@@ -10,7 +10,7 @@ import { computed, watch, ref, nextTick, useSlots, provide } from 'vue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -85,11 +85,8 @@ const workflowAutosaveStore = useWorkflowSaveStore();
 const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowId.value
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
@@ -191,7 +188,7 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
-		(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
+		workflowDocumentStore.value.allNodes.length > 0 &&
 		builderStore.hasMessages &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
@@ -210,7 +207,7 @@ const thinkingCompletionMessage = computed(() =>
 );
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	if (builderStore.hasMessages || (workflowDocumentStore.value?.allNodes ?? []).length > 0) {
+	if (builderStore.hasMessages || workflowDocumentStore.value.allNodes.length > 0) {
 		return undefined;
 	}
 	return shuffle(WORKFLOW_SUGGESTIONS);
@@ -400,7 +397,7 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = (workflowDocumentStore.value?.allNodes ?? []).length === 0;
+	const isInitialGeneration = workflowDocumentStore.value.allNodes.length === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -455,11 +452,13 @@ async function onWorkflowExecuted() {
 		return;
 	}
 
-	const executionData = workflowsStore.workflowExecutionData;
+	const executionData = useWorkflowExecutionStateStore(
+		workflowDocumentStore.value.documentId,
+	).activeExecution;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
-		? workflowDocumentStore.value?.getNodeByName(errorNodeName)?.type
+		? workflowDocumentStore.value.getNodeByName(errorNodeName)?.type
 		: undefined;
 
 	if (!executionData) {
@@ -514,7 +513,7 @@ async function onWorkflowExecuted() {
 async function onExecuteWithMockData() {
 	builderStore.applyGeneratedPinData();
 
-	const triggerNode = (workflowDocumentStore.value?.allNodes ?? []).find((node) =>
+	const triggerNode = workflowDocumentStore.value.allNodes.find((node) =>
 		nodeTypesStore.isTriggerNode(node.type),
 	);
 
@@ -535,7 +534,9 @@ async function onExecuteWithMockData() {
 	});
 
 	await runWorkflow({
-		triggerNode: workflowsStore.selectedTriggerNodeName ?? triggerNode?.name,
+		triggerNode:
+			useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
+				.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }
 
@@ -611,10 +612,7 @@ watch(
 			return;
 		}
 
-		if (
-			builderStore.initialGeneration &&
-			(workflowDocumentStore.value?.allNodes ?? []).length > 0
-		) {
+		if (builderStore.initialGeneration && workflowDocumentStore.value.allNodes.length > 0) {
 			builderStore.initialGeneration = false;
 		}
 
@@ -871,7 +869,7 @@ defineExpose({
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"
@@ -909,7 +907,7 @@ defineExpose({
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"

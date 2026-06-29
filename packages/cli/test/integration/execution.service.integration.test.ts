@@ -45,6 +45,9 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		owner = await createOwner();
@@ -94,6 +97,9 @@ describe('ExecutionService', () => {
 				waitTill: null,
 				retrySuccessId: null,
 				workflowName: expect.any(String),
+				workflowVersionId: null,
+				jsonSizeBytes: 0,
+				binaryDataSizeBytes: 0,
 				annotation: {
 					tags: expect.arrayContaining([]),
 					vote: null,
@@ -957,6 +963,9 @@ describe('ExecutionService', () => {
 			waitTill: null,
 			retrySuccessId: null,
 			workflowName: expect.any(String),
+			workflowVersionId: null,
+			jsonSizeBytes: 0,
+			binaryDataSizeBytes: 0,
 		};
 
 		afterEach(async () => {

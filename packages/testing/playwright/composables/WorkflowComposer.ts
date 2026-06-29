@@ -1,5 +1,4 @@
 import { expect } from '@playwright/test';
-import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
 
@@ -57,23 +56,6 @@ export class WorkflowComposer {
 	}
 
 	/**
-	 * Creates a new workflow by importing a JSON file
-	 * @param fileName - The workflow JSON file name (e.g., 'test_pdf_workflow.json', will search in workflows folder)
-	 * @param name - Optional custom name. If not provided, generates a unique name
-	 * @returns The actual workflow name that was used
-	 */
-	async createWorkflowFromJsonFile(
-		fileName: string,
-		name?: string,
-	): Promise<{ workflowName: string }> {
-		const workflowName = name ?? `Imported Workflow ${nanoid(8)}`;
-		await this.n8n.goHome();
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.importWorkflow(fileName, workflowName);
-		return { workflowName };
-	}
-
-	/**
 	 * Duplicates a workflow via the duplicate modal UI.
 	 * Verifies the form interaction completes without errors.
 	 * Note: This opens a new window/tab with the duplicated workflow but doesn't interact with it.
@@ -81,25 +63,24 @@ export class WorkflowComposer {
 	 * @param tag - Optional tag to add to the workflow
 	 */
 	async duplicateWorkflow(name: string, tag?: string): Promise<void> {
-		await this.n8n.workflowSettingsModal.getWorkflowMenu().click();
-		await this.n8n.workflowSettingsModal.getDuplicateMenuItem().click();
+		await this.n8n.workflowMenu.openDuplicate();
 
-		const modal = this.n8n.workflowSettingsModal.getDuplicateModal();
+		const modal = this.n8n.workflowMenu.getDuplicateModal();
 		await expect(modal).toBeVisible();
 
-		const nameInput = this.n8n.workflowSettingsModal.getDuplicateNameInput();
+		const nameInput = this.n8n.workflowMenu.getDuplicateNameInput();
 		await expect(nameInput).toBeVisible();
 		await nameInput.press('ControlOrMeta+a');
 		await nameInput.fill(name);
 
 		if (tag) {
-			const tagsInput = this.n8n.workflowSettingsModal.getDuplicateTagsInput();
+			const tagsInput = this.n8n.workflowMenu.getDuplicateTagsInput();
 			await tagsInput.fill(tag);
 			await tagsInput.press('Enter');
 			await tagsInput.press('Escape');
 		}
 
-		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
+		const saveButton = this.n8n.workflowMenu.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
 	}
@@ -152,7 +133,7 @@ export class WorkflowComposer {
 		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
 		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
 
-		const folderOption = this.n8n.page.getByTestId('move-to-folder-option').getByText(folderName);
+		const folderOption = this.n8n.resourceMoveModal.getFolderOption(folderName);
 		await folderOption.waitFor({ state: 'visible' });
 		await folderOption.click();
 	}

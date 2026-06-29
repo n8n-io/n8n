@@ -10,7 +10,7 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprot
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
-import type { Logger } from 'n8n-workflow';
+import type { CredentialCheckResult, Logger } from 'n8n-workflow';
 import { jsonParse, OperationalError } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -54,6 +54,13 @@ export class McpServer {
 	private pendingCallsManager: PendingCallsManager;
 	private resolveFunctions: Record<string, () => void> = {};
 	private pendingResponses: Record<string, PendingResponse> = {};
+	/**
+	 * Request-scoped credential-gate results, keyed by callId. Set just before a
+	 * tool call is driven through the transport and consumed (then deleted) by the
+	 * CallTool handler. Plain serializable data, not a closure — set and read within
+	 * a single `handlePostMessage` on the transport-holding main.
+	 */
+	private pendingGateResults: Record<string, CredentialCheckResult> = {};
 	private logger: Logger;
 
 	private constructor(logger: Logger) {
@@ -119,6 +126,7 @@ export class McpServer {
 		resp: CompressionResponse,
 		tools: Tool[],
 		serverName?: string,
+		gateResult?: CredentialCheckResult,
 	): Promise<HandlePostResult> {
 		const sessionId = this.getSessionId(req);
 		let transport = sessionId ? this.sessionManager.getTransport(sessionId) : undefined;
@@ -181,6 +189,11 @@ export class McpServer {
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 			this.sessionManager.setTools(sessionId, tools);
 
+			// Hand the gate result to the CallTool handler for this request only.
+			if (gateResult) {
+				this.pendingGateResults[callId] = gateResult;
+			}
+
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
@@ -188,6 +201,7 @@ export class McpServer {
 				});
 			} finally {
 				delete this.resolveFunctions[callId];
+				delete this.pendingGateResults[callId];
 			}
 		} else {
 			this.logger.warn(`No transport found for session ${sessionId}`);
@@ -196,8 +210,13 @@ export class McpServer {
 
 		resp.flush?.();
 
+		// A not-ready gate makes the CallTool handler short-circuit (returning the
+		// actionable response over the transport instead of executing). Report it as
+		// not a tool call so the node does not also trigger a workflow execution.
+		const wasGated = !!gateResult && !gateResult.readyToExecute;
+
 		return {
-			wasToolCall: MessageParser.isToolCall(rawBody),
+			wasToolCall: MessageParser.isToolCall(rawBody) && !wasGated,
 			toolCallInfo,
 			messageId,
 		};
@@ -303,7 +322,10 @@ export class McpServer {
 						`SSE queue mode: sending response directly via transport for session ${sessionId}`,
 					);
 
-					const formattedResult = MessageFormatter.formatToolResult(result);
+					const formattedResult = MessageFormatter.formatToolResult(
+						result,
+						MessageFormatter.isErrorResult(result),
+					);
 					const response: JSONRPCMessage = {
 						jsonrpc: '2.0',
 						id: messageId,
@@ -472,6 +494,17 @@ export class McpServer {
 				throw new OperationalError('Tool not found');
 			}
 
+			// Eager pre-execution credential gate: if the caller has not connected a
+			// required private credential, return the actionable connection URLs
+			// instead of executing (or enqueuing) the workflow.
+			const gateResult = this.pendingGateResults[callId];
+			if (gateResult && !gateResult.readyToExecute) {
+				if (this.resolveFunctions[callId]) {
+					this.resolveFunctions[callId]();
+				}
+				return MessageFormatter.formatCredentialGate(gateResult);
+			}
+
 			try {
 				if (this.executionCoordinator.isQueueMode()) {
 					const requestId = extra.requestId?.toString() ?? '';
@@ -489,7 +522,7 @@ export class McpServer {
 						messageId: requestId,
 					});
 
-					return MessageFormatter.formatToolResult(result);
+					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
 				}
 
 				const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
@@ -503,12 +536,12 @@ export class McpServer {
 					this.logger.warn(`No resolve function found for ${callId}`);
 				}
 
-				return MessageFormatter.formatToolResult(result);
+				return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
 			} catch (error) {
-				this.logger.error(
-					`Error while executing Tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
-				);
 				const errorObject = error instanceof Error ? error : new Error(String(error));
+				this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
+					error: errorObject,
+				});
 				return MessageFormatter.formatError(errorObject);
 			}
 		});

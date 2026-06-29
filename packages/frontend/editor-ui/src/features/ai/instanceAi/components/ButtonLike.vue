@@ -18,6 +18,8 @@
 
 	:global(.n8n-icon) {
 		flex-shrink: 0;
+		align-self: baseline;
+		margin-top: var(--spacing--2xs);
 	}
 }
 </style>

@@ -81,7 +81,7 @@ export class AuthController {
 		}
 
 		const preliminaryUser = await emailHandler.handleLogin(emailOrLdapLoginId, password);
-		this.validateSsoRestrictions(preliminaryUser);
+		this.validateSsoRestrictions(preliminaryUser, emailOrLdapLoginId);
 
 		const { user, usedAuthenticationMethod } = await this.authenticateWithPassword(
 			currentAuthenticationMethod,
@@ -112,13 +112,18 @@ export class AuthController {
 		}
 	}
 
-	private validateSsoRestrictions(preliminaryUser: User | undefined): void {
+	private validateSsoRestrictions(preliminaryUser: User | undefined, userEmail: string): void {
 		const shouldBlockSsoUser =
 			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
 			preliminaryUser?.role.slug !== GLOBAL_OWNER_ROLE.slug &&
 			!preliminaryUser?.settings?.allowSSOManualLogin;
 
 		if (shouldBlockSsoUser) {
+			this.eventService.emit('user-login-failed', {
+				authenticationMethod: 'email',
+				userEmail,
+				reason: 'SSO is enabled, please log in with SSO',
+			});
 			throw new AuthError('SSO is enabled, please log in with SSO');
 		}
 	}
@@ -252,7 +257,7 @@ export class AuthController {
 		}
 
 		const inviter = users.find((user) => user.id === inviterId);
-		if (!inviter?.email || !inviter?.firstName) {
+		if (!inviter?.email) {
 			this.logger.error(
 				'Request to resolve signup token failed because inviter does not exist or is not set up',
 				{

@@ -8,7 +8,7 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import { Workflow, WebhookPathTakenError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
@@ -338,13 +338,77 @@ describe('WebhookService', () => {
 		});
 	});
 
-	describe('createWebhook()', () => {
-		test('should store webhook in DB', async () => {
-			const mockWebhook = createWebhook('GET', 'user/:id');
+	describe('getRegisteredWebhooks()', () => {
+		test('returns the webhooks registered for the workflow', async () => {
+			const rows = [createWebhook('GET', 'users'), createWebhook('POST', 'user/:id')];
+			webhookRepository.findBy.mockResolvedValue(rows);
 
-			await webhookService.storeWebhook(mockWebhook);
+			const result = await webhookService.getRegisteredWebhooks('wf-1');
 
-			expect(webhookRepository.upsert).toHaveBeenCalledWith(mockWebhook, ['method', 'webhookPath']);
+			expect(result).toBe(rows);
+			expect(webhookRepository.findBy).toHaveBeenCalledWith({ workflowId: 'wf-1' });
+		});
+	});
+
+	describe('storeWebhook()', () => {
+		const buildWebhook = (overrides: Partial<WebhookEntity> = {}) =>
+			Object.assign(new WebhookEntity(), {
+				method: 'GET',
+				webhookPath: 'payment-webhook',
+				workflowId: 'workflow-1',
+				node: 'Webhook',
+				...overrides,
+			}) as WebhookEntity;
+
+		test('should store webhook in DB and cache it', async () => {
+			const webhook = buildWebhook();
+
+			await webhookService.storeWebhook(webhook);
+
+			expect(webhookRepository.insert).toHaveBeenCalledWith(webhook);
+			expect(cacheService.set).toHaveBeenCalledWith(webhook.cacheKey, webhook);
+		});
+
+		test('should reject storing a webhook whose path belongs to another workflow', async () => {
+			const webhook = buildWebhook({ workflowId: 'workflow-1' });
+			const existing = buildWebhook({ workflowId: 'workflow-2', node: 'Other' });
+
+			webhookRepository.insert.mockRejectedValueOnce(new Error('duplicate key'));
+			webhookRepository.findOneBy.mockResolvedValueOnce(existing);
+
+			await expect(webhookService.storeWebhook(webhook)).rejects.toThrow(WebhookPathTakenError);
+
+			expect(webhookRepository.update).not.toHaveBeenCalled();
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		test('should refresh an existing webhook owned by the same workflow', async () => {
+			const webhook = buildWebhook({ workflowId: 'workflow-1' });
+			const existing = buildWebhook({ workflowId: 'workflow-1' });
+
+			webhookRepository.insert.mockRejectedValueOnce(new Error('duplicate key'));
+			webhookRepository.findOneBy.mockResolvedValueOnce(existing);
+
+			await webhookService.storeWebhook(webhook);
+
+			expect(webhookRepository.update).toHaveBeenCalledWith(
+				{ method: webhook.method, webhookPath: webhook.webhookPath },
+				webhook,
+			);
+			expect(cacheService.set).toHaveBeenCalledWith(webhook.cacheKey, webhook);
+		});
+
+		test('should surface the original error when the failure is not a duplicate path', async () => {
+			const webhook = buildWebhook();
+			const dbError = new Error('connection lost');
+
+			webhookRepository.insert.mockRejectedValueOnce(dbError);
+			webhookRepository.findOneBy.mockResolvedValueOnce(null);
+
+			await expect(webhookService.storeWebhook(webhook)).rejects.toBe(dbError);
+
+			expect(webhookRepository.update).not.toHaveBeenCalled();
+			expect(cacheService.set).not.toHaveBeenCalled();
 		});
 	});
 
@@ -512,6 +576,38 @@ describe('WebhookService', () => {
 
 			expect(result).toEqual(responseData);
 			expect(nodeType.webhook).toHaveBeenCalled();
+		});
+
+		test('should run close functions after webhook completes', async () => {
+			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const nodeType = mock<INodeType>({
+				webhook: jest.fn().mockImplementation(async function (this: any) {
+					this.closeFunctions.push(closeFunction);
+					return responseData;
+				}),
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			await webhookService.runWebhook(workflow, webhookData, node, additionalData, 'trigger', null);
+
+			expect(closeFunction).toHaveBeenCalledTimes(1);
+		});
+
+		test('should run close functions even when webhook throws', async () => {
+			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const nodeType = mock<INodeType>({
+				webhook: jest.fn().mockImplementation(async function (this: any) {
+					this.closeFunctions.push(closeFunction);
+					throw new Error('webhook failed');
+				}),
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			await expect(
+				webhookService.runWebhook(workflow, webhookData, node, additionalData, 'trigger', null),
+			).rejects.toThrow('webhook failed');
+
+			expect(closeFunction).toHaveBeenCalledTimes(1);
 		});
 	});
 

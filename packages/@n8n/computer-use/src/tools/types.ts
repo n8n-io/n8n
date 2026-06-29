@@ -1,9 +1,10 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CreateCredentialPayload, SecretsBuffer } from '@n8n/mcp-browser';
 import type { z } from 'zod';
 
 import type { ToolGroup } from '../config';
 
-export type { CallToolResult };
+export type { CallToolResult, CreateCredentialPayload, SecretsBuffer };
 
 export interface McpTool {
 	name: string;
@@ -19,6 +20,8 @@ export interface McpTool {
 export interface ToolContext {
 	/** Base filesystem directory (used by filesystem tools) */
 	dir: string;
+	secretsBuffer?: SecretsBuffer;
+	createCredential?: (payload: CreateCredentialPayload) => Promise<{ credentialId: string }>;
 }
 
 export interface ToolAnnotations {
@@ -54,6 +57,13 @@ export const RESOURCE_DECISION_KEYS: ResourceDecision[] = [
 	'alwaysAllow',
 	'denyOnce',
 	'alwaysDeny',
+];
+
+/** Reduced option set sent to the n8n instance UI — no persistent allow/deny to avoid fatigue. */
+export const INSTANCE_RESOURCE_DECISION_KEYS: ResourceDecision[] = [
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
 ];
 
 /** Prefix used to signal a gateway confirmation is required (instance mode). */

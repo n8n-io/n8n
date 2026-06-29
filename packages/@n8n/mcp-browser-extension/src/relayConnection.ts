@@ -8,6 +8,7 @@
  */
 
 import { createLogger } from './logger';
+import type { TabManagementSettings } from './types';
 
 interface ProtocolCommand {
 	id: number;
@@ -21,11 +22,6 @@ interface ProtocolResponse {
 	params?: Record<string, unknown>;
 	result?: unknown;
 	error?: string;
-}
-
-export interface TabManagementSettings {
-	allowTabCreation: boolean;
-	allowTabClosing: boolean;
 }
 
 const DEFAULT_SETTINGS: TabManagementSettings = {
@@ -57,6 +53,7 @@ interface TabEntry {
 
 const CDP_COMMAND_TIMEOUT_MS = 30_000;
 const ATTACH_TIMEOUT_MS = 5_000;
+const KEEPALIVE_INTERVAL_MS = 15_000;
 
 // ---------------------------------------------------------------------------
 // RelayConnection
@@ -92,9 +89,11 @@ export class RelayConnection {
 	) => void;
 	private readonly detachListener: (source: chrome.debugger.Debuggee, reason: string) => void;
 	private closed = false;
+	private keepaliveInterval: ReturnType<typeof setInterval> | undefined;
 	private settings: TabManagementSettings = DEFAULT_SETTINGS;
 
 	onclose?: () => void;
+	ontabcreated?: () => void;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -105,6 +104,8 @@ export class RelayConnection {
 		this.detachListener = this.onDebuggerDetach.bind(this);
 		chrome.debugger.onEvent.addListener(this.eventListener);
 		chrome.debugger.onDetach.addListener(this.detachListener);
+
+		this.startKeepalive();
 	}
 
 	// =========================================================================
@@ -221,10 +222,24 @@ export class RelayConnection {
 	// Internal — connection lifecycle
 	// =========================================================================
 
+	private startKeepalive(): void {
+		this.keepaliveInterval = setInterval(() => {
+			this.sendMessage({ method: 'keepalive' });
+		}, KEEPALIVE_INTERVAL_MS);
+	}
+
+	private stopKeepalive(): void {
+		if (this.keepaliveInterval) {
+			clearInterval(this.keepaliveInterval);
+			this.keepaliveInterval = undefined;
+		}
+	}
+
 	private handleClose(): void {
 		if (this.closed) return;
 		this.closed = true;
 
+		this.stopKeepalive();
 		chrome.debugger.onEvent.removeListener(this.eventListener);
 		chrome.debugger.onDetach.removeListener(this.detachListener);
 
@@ -573,11 +588,12 @@ export class RelayConnection {
 		const tab = await chrome.tabs.create({ url, active: false });
 		if (!tab.id) throw new Error('Failed to create tab');
 
+		this.agentCreatedChromeTabIds.add(tab.id);
+
 		// Agent-created tabs are eagerly attached for immediate use
 		const targetId = await this.attachAndResolveTargetId(tab.id);
 		this.tabs.set(targetId, { chromeTabId: tab.id, attached: true });
 		this.chromeTabIdToId.set(tab.id, targetId);
-		this.agentCreatedChromeTabIds.add(tab.id);
 
 		// Apply cached auto-attach params so the new tab reports iframes immediately.
 		// ensureAttached() does this for lazily-attached tabs; we must do it here too
@@ -595,6 +611,8 @@ export class RelayConnection {
 		}
 
 		log.debug(`createTab: targetId=${targetId} chromeTabId=${tab.id} url=${tab.url ?? url ?? ''}`);
+
+		this.ontabcreated?.();
 
 		return {
 			id: targetId,

@@ -1,4 +1,5 @@
 import robot from '@jitsi/robotjs';
+import type { Mock, Mocked } from 'vitest';
 
 import { MouseKeyboardModule } from './index';
 import {
@@ -12,32 +13,32 @@ import {
 	keyboardShortcutTool,
 } from './mouse-keyboard';
 
-jest.mock('@jitsi/robotjs', () => ({
+vi.mock('@jitsi/robotjs', () => ({
 	__esModule: true,
 	default: {
-		moveMouse: jest.fn(),
-		mouseClick: jest.fn(),
-		mouseToggle: jest.fn(),
-		dragMouse: jest.fn(),
-		scrollMouse: jest.fn(),
-		typeString: jest.fn(),
-		typeStringDelayed: jest.fn(),
-		keyTap: jest.fn(),
-		getMousePos: jest.fn(),
+		moveMouse: vi.fn(),
+		mouseClick: vi.fn(),
+		mouseToggle: vi.fn(),
+		dragMouse: vi.fn(),
+		scrollMouse: vi.fn(),
+		typeString: vi.fn(),
+		typeStringDelayed: vi.fn(),
+		keyTap: vi.fn(),
+		getMousePos: vi.fn(),
 	},
 }));
 
-jest.mock('../monitor-utils', () => ({
-	getPrimaryMonitor: jest.fn().mockResolvedValue({ width: () => 1920, height: () => 1080 }),
+vi.mock('../monitor-utils', () => ({
+	getPrimaryMonitor: vi.fn().mockResolvedValue({ width: () => 1920, height: () => 1080 }),
 }));
 
-const mockRobot = robot as jest.Mocked<typeof robot>;
+const mockRobot = robot as Mocked<typeof robot>;
 
 const DUMMY_CONTEXT = { dir: '/test/base' };
 const OK_RESULT = { content: [{ type: 'text' as const, text: 'ok' }] };
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('mouse_move', () => {
@@ -110,11 +111,11 @@ describe('mouse_double_click', () => {
 describe('mouse_drag', () => {
 	it('moves, toggles down, drags, toggles up in order', async () => {
 		const callOrder: string[] = [];
-		(mockRobot.moveMouse as jest.Mock).mockImplementation(() => callOrder.push('moveMouse'));
-		(mockRobot.mouseToggle as jest.Mock).mockImplementation((dir: string) =>
+		(mockRobot.moveMouse as Mock).mockImplementation(() => callOrder.push('moveMouse'));
+		(mockRobot.mouseToggle as Mock).mockImplementation((dir: string) =>
 			callOrder.push(`toggle-${dir}`),
 		);
-		(mockRobot.dragMouse as jest.Mock).mockImplementation(() => callOrder.push('dragMouse'));
+		(mockRobot.dragMouse as Mock).mockImplementation(() => callOrder.push('dragMouse'));
 
 		const result = await mouseDragTool.execute(
 			{ fromX: 10, fromY: 20, toX: 100, toY: 200 },
@@ -179,22 +180,22 @@ describe('keyboard_type', () => {
 	});
 
 	it('waits for delayMs before typing', async () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 
 		const promise = keyboardTypeTool.execute({ text: 'delayed', delayMs: 500 }, DUMMY_CONTEXT);
 
 		// Allow the dynamic import microtask to resolve before checking
-		await jest.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(0);
 
 		// typeStringDelayed should not have been called yet (still waiting on setTimeout)
 		expect(mockRobot.typeStringDelayed).not.toHaveBeenCalled();
 
-		await jest.advanceTimersByTimeAsync(500);
+		await vi.advanceTimersByTimeAsync(500);
 		await promise;
 
 		expect(mockRobot.typeStringDelayed).toHaveBeenCalledWith('delayed', expect.any(Number));
 
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('types immediately when delayMs is 0', async () => {
@@ -268,7 +269,7 @@ describe('MouseKeyboardModule.isSupported', () => {
 		} else {
 			process.env.DISPLAY = originalDisplay;
 		}
-		jest.resetModules();
+		vi.resetModules();
 	});
 
 	it('returns false when WAYLAND_DISPLAY is set and DISPLAY is not', async () => {
@@ -294,21 +295,20 @@ describe('MouseKeyboardModule.isSupported', () => {
 		delete process.env.WAYLAND_DISPLAY;
 		process.env.DISPLAY = ':0';
 
-		let result: boolean | undefined;
-
-		await jest.isolateModulesAsync(async () => {
-			jest.doMock('@jitsi/robotjs', () => ({
-				__esModule: true,
-				default: {
-					getMousePos: () => {
-						throw new Error('Native module error');
-					},
+		vi.resetModules();
+		vi.doMock('@jitsi/robotjs', () => ({
+			__esModule: true,
+			default: {
+				getMousePos: () => {
+					throw new Error('Native module error');
 				},
-			}));
+			},
+		}));
 
-			const { MouseKeyboardModule: IsolatedModule } = await import('./index');
-			result = await IsolatedModule.isSupported();
-		});
+		const { MouseKeyboardModule: IsolatedModule } = await import('./index');
+		const result = await IsolatedModule.isSupported();
+
+		vi.doUnmock('@jitsi/robotjs');
 
 		expect(result).toBe(false);
 	});
