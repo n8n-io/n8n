@@ -2,7 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/core';
 import { AxiosError } from 'axios';
-import { ApplicationError, BaseError } from 'n8n-workflow';
+import { ApplicationError, BaseError, ExpressionError, NodeOperationError } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -247,6 +248,32 @@ describe('ErrorReporter', () => {
 						tag1: 'value1',
 					},
 				});
+			});
+		});
+
+		// `ExecutionBaseError` (the base of NodeApiError/NodeOperationError/ExpressionError)
+		// extends `BaseError`, so these errors are classified by the BaseError branch.
+		// Reporting must still be driven by their level, as before the re-parenting.
+		describe('ExecutionBaseError subclasses', () => {
+			const node = mock<INode>();
+
+			it('should drop warning-level node errors', async () => {
+				const originalException = new NodeOperationError(node, 'boom');
+
+				expect(originalException.level).toBe('warning');
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(null);
+			});
+
+			it('should keep error-level node errors', async () => {
+				const originalException = new NodeOperationError(node, 'boom', { level: 'error' });
+
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(event);
+			});
+
+			it('should drop an ExpressionError', async () => {
+				const originalException = new ExpressionError('bad expression');
+
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(null);
 			});
 		});
 	});

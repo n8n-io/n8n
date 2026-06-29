@@ -640,7 +640,7 @@ export class ActiveWorkflowManager {
 				// updating the published version.
 				const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
 					? async () =>
-							await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow)
+							await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow.id)
 					: async () => dbWorkflow as IWorkflowBase;
 
 				if (shouldAddNonWebhookTriggers) {

@@ -6,6 +6,7 @@ import { ExpressionError } from '../src/errors/expression.error';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
+	type IDataObject,
 	type IExecuteData,
 	type INode,
 	type IPinData,
@@ -2076,6 +2077,91 @@ describe('WorkflowDataProxy', () => {
 			// data in runData. The fix falls back to reading from runData directly.
 			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
 			expect(proxy.$('Edit').item.json.test).toBe('1111');
+		});
+	});
+
+	describe('$self', () => {
+		const node: INode = {
+			id: 'uuid-1',
+			name: 'Test Node',
+			type: 'test.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const createTestWorkflow = () =>
+			new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes: Helpers.NodeTypes(),
+			});
+
+		const readSelf = async (selfData: IDataObject, field: string) => {
+			const workflow = createTestWorkflow();
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				createEmptyRunExecutionData(),
+				0,
+				0,
+				node.name,
+				[],
+				{},
+				'integrated',
+				{},
+				undefined,
+				-1,
+				selfData,
+			);
+			const proxy = dataProxy.getDataProxy({ throwOnMissingExecutionData: false });
+
+			await workflow.expression.acquireIsolate();
+			try {
+				return proxy.$self[field];
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		};
+
+		test('returns plain (fixed-mode) values verbatim', async () => {
+			expect(await readSelf({ tenantId: 'myTenant' }, 'tenantId')).toBe('myTenant');
+		});
+
+		test('strips the leading "=" from a literal expression-mode value', async () => {
+			expect(await readSelf({ tenantId: '=myTenant' }, 'tenantId')).toBe('myTenant');
+		});
+
+		test('resolves an expression-mode value containing a template', async () => {
+			expect(await readSelf({ tenantId: '={{ "myTenant".toUpperCase() }}' }, 'tenantId')).toBe(
+				'MYTENANT',
+			);
+		});
+
+		test('does not leak the "=" marker into a mid-string URL template', async () => {
+			const workflow = createTestWorkflow();
+			const selfData = { tenantId: '=myTenant' };
+			const accessTokenUrl =
+				'=https://login.microsoftonline.com/{{ $self["tenantId"] }}/oauth2/v2.0/token';
+
+			await workflow.expression.acquireIsolate();
+			try {
+				const resolved = workflow.expression.getComplexParameterValue(
+					node,
+					accessTokenUrl,
+					'integrated',
+					{},
+					undefined,
+					undefined,
+					selfData,
+				);
+
+				expect(resolved).toBe('https://login.microsoftonline.com/myTenant/oauth2/v2.0/token');
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
 		});
 	});
 });

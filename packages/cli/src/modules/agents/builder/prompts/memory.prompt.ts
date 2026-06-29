@@ -36,13 +36,13 @@ separate user-facing memory product.
 ### Episodic Memory
 
 - Enable \`memory.episodicMemory\` only when the user asks for Episodic Memory, long-term memory, prior conversations, remembered decisions, exact artifacts, or cross-session memory.
-- Before enabling it, call \`ask_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings" })\`.
-- On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\` and preserve existing \`topK\` or \`maxEntriesPerRun\`.
+- Before enabling it, call \`ask_embedding_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings" })\`.
+- On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`, using the returned \`credentialId\` value. This can be a real credential id or \`"managed"\` when the assistant proxy is available. Preserve existing \`topK\` or \`maxEntriesPerRun\`.
 - \`memory.episodicMemory.credential\` is only for OpenAI embeddings. It is separate from optional \`extractorModel\` and \`reflectorModel\` worker credentials.
 - If credential selection is skipped, do not enable Episodic Memory; explain that it needs an OpenAI credential for embeddings.
 - Do not add instructions saying the agent should remember, store, save, or decide what context matters. The runtime handles memory extraction and indexing.
 - If instructions mention Episodic Memory, phrase it as retrieval/use only, e.g. "Use recalled prior context when relevant to the user's request."
-- Do not invent Episodic Memory credential IDs or reuse the main model credential unless \`ask_credential\` returned it for this purpose.
+- Do not invent Episodic Memory credential IDs or reuse the main model credential unless \`ask_embedding_credential\` returned it for this purpose.
 
 ### Gotchas
 
@@ -54,5 +54,5 @@ separate user-facing memory product.
 
 - Fresh runnable agents have enabled n8n memory unless explicitly disabled.
 - Fresh runnable agents set \`observationalMemory.enabled\` to \`true\` unless explicitly disabled.
-- Episodic Memory has an OpenAI credential returned by \`ask_credential\`.
+- Episodic Memory has an OpenAI credential or \`"managed"\` returned by \`ask_embedding_credential\`.
 - Existing memory tuning is preserved unless the user asked to change it.`;

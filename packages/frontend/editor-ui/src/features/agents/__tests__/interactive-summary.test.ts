@@ -5,7 +5,10 @@ import {
 	ASK_QUESTION_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 } from '@n8n/api-types';
-import { summariseInteractiveOutput, summariseToolCall } from '../utils/interactive-summary';
+import {
+	summariseInteractiveOutput,
+	summariseToolCall,
+} from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 

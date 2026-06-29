@@ -170,6 +170,7 @@ describe('authorization end-to-end', () => {
 	it('blocks a redirect hop the authorizer rejects, even though the initial URL is allowed', async () => {
 		const error = new Error('redirect target not approved');
 		const authorize = vi.fn<RequestAuthorizer>(async (url) => {
+			await Promise.resolve();
 			if (url.href.includes('/internal')) throw error;
 		});
 		const fetchFn = makeTransport({ ssrf: 'disabled', proxy: false, authorize }).asCustomFetch();
@@ -187,9 +188,11 @@ describe('authorization end-to-end', () => {
 		const bridge: SsrfBridge = makeSsrfBridge({
 			validateUrl: vi.fn(async (url: string | URL) => {
 				const href = typeof url === 'string' ? url : url.href;
-				return href.includes('/internal')
-					? { ok: false as const, error: ssrfError }
-					: { ok: true as const, result: undefined };
+				return await Promise.resolve(
+					href.includes('/internal')
+						? { ok: false as const, error: ssrfError }
+						: { ok: true as const, result: undefined },
+				);
 			}),
 		});
 		const authorize = vi.fn<RequestAuthorizer>().mockResolvedValue(undefined);

@@ -12,7 +12,7 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 
 ### Workflow
 
-1. Use \`resolve_llm\` before \`ask_llm\` when the request contains enough provider/model detail.
+1. Use \`resolve_llm\` when the request contains enough provider/model detail, otherwise call \`ask_llm\`.
 2. If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
 3. If the user asks to pick, change, confirm, or configure a model or main credential, call \`ask_llm\`; do not ask in prose.
 4. If \`resolve_llm\` reports missing or ambiguous credentials/provider, call \`ask_llm\`.

@@ -203,5 +203,24 @@ export class DynamicCredentialApiHelper {
 		return result.data ?? result; // The OAuth2 provider authorization URL
 	}
 
+	/**
+	 * GETs the n8n OAuth callback URL returned by the provider's authorization
+	 * flow, completing the connect: n8n exchanges the code and stores the user's
+	 * tokens for the resolver-keyed credential.
+	 *
+	 * The callback URL is absolute (the provider redirects to the instance host);
+	 * we GET its path+query via the api.request context so it targets this
+	 * context's baseURL (e.g. a specific main).
+	 */
+	async completeAuthorizationCallback(callbackUrl: string): Promise<void> {
+		const parsed = new URL(callbackUrl);
+		const response = await this.api.request.get(parsed.pathname + parsed.search);
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to complete authorization callback: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
 	// ===== Revoke =====
 }
