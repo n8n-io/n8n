@@ -38,6 +38,7 @@ export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowId
 export interface ExportPackageRequest {
 	user: User;
 	workflowIds?: string[];
+	folderIds?: string[];
 	projectIds?: string[];
 }
 
@@ -104,6 +105,7 @@ export type ImportPackageEventCounts = {
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
 export type ExportPackageEventCounts = {
 	workflows: number;
+	folders: number;
 	credentials: number;
 };
 
