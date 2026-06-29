@@ -2,6 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -16,11 +17,15 @@ import {
 	applyOperations,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
+	workflowSettingsObjectSchema,
 	type PartialUpdateOperation,
 } from './workflow-operations';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { TagService } from '@/services/tag.service';
@@ -47,6 +52,7 @@ const operationTypeSchema = z.enum([
 	'setNodeDisabled',
 	'setNodeSettings',
 	'setWorkflowMetadata',
+	'setWorkflowSettings',
 	'addTags',
 	'removeTags',
 	'setNodeGroups',
@@ -83,6 +89,20 @@ const nodeSettingsInputSchema = z.object({
 	executeOnce: z.boolean().optional(),
 });
 
+// Published (loose) shape for the `settings` field. It is the superset of the
+// node-level keys (setNodeSettings) and workflow-level keys
+// (setWorkflowSettings); there is no key overlap. The discriminated union in
+// workflow-operations.ts enforces the correct subset per operation type — this
+// only governs what the MCP client sees and which keys survive input parsing.
+const combinedSettingsInputSchema = z
+	.object({
+		...nodeSettingsInputSchema.shape,
+		...workflowSettingsObjectSchema.shape,
+	})
+	.describe(
+		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds). Provide only the keys for the operation you are running.',
+	);
+
 const operationInputSchema = z
 	.object({
 		type: operationTypeSchema.describe('Operation type.'),
@@ -114,7 +134,9 @@ const operationInputSchema = z
 		credentialName: z.string().optional().describe('For setNodeCredential.'),
 		position: positionInputSchema.optional().describe('For setNodePosition.'),
 		disabled: z.boolean().optional().describe('For setNodeDisabled.'),
-		settings: nodeSettingsInputSchema.optional().describe('For setNodeSettings.'),
+		settings: combinedSettingsInputSchema
+			.optional()
+			.describe('For setNodeSettings or setWorkflowSettings.'),
 		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
 		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
 		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
@@ -230,11 +252,166 @@ const outputSchema = {
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
 	note: z.string().optional(),
+	settings: z
+		.record(z.string(), z.unknown())
+		.optional()
+		.describe(
+			'Resulting workflow-level settings after the update. Present only when a setWorkflowSettings operation ran. Reflects server-side cleanup (e.g. "DEFAULT" values are removed).',
+		),
 	error: z
 		.string()
 		.optional()
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
+
+/**
+ * Validates a freshly-set `errorWorkflow` reference. Throws a teaching-oriented
+ * error when the target does not exist / is inaccessible, has no active Error
+ * Trigger node, or cannot be called by this workflow due to its sub-workflow
+ * caller policy — each of which would otherwise silently prevent the error
+ * workflow from running on failure. A 'DEFAULT' / cleared value skips the check.
+ */
+async function assertErrorWorkflowIsUsable({
+	errorWorkflowId,
+	parentWorkflowId,
+	user,
+	workflowFinderService,
+	workflowPublishedDataService,
+	useWorkflowPublicationService,
+	nodeTypes,
+	subworkflowPolicyChecker,
+	errorTriggerType,
+}: {
+	errorWorkflowId: string | undefined;
+	parentWorkflowId: string;
+	user: User;
+	workflowFinderService: WorkflowFinderService;
+	workflowPublishedDataService: WorkflowPublishedDataService;
+	useWorkflowPublicationService: boolean;
+	nodeTypes: NodeTypes;
+	subworkflowPolicyChecker: SubworkflowPolicyChecker;
+	errorTriggerType: string;
+}): Promise<void> {
+	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') return;
+
+	// Read access is required intentionally, mirroring the editor UI (the error
+	// workflow picker only lists workflows the user can read). Resolving the
+	// target without an access check would let callers probe arbitrary workflow
+	// IDs and learn their name / published / trigger / policy state from the
+	// validation errors below. Runtime not requiring read access is separate: it
+	// runs the error workflow under the owner project's context, gated by caller
+	// policy, which is about execution — not about who may configure the link.
+	const errorWorkflow = await workflowFinderService.findWorkflowForUser(
+		errorWorkflowId,
+		user,
+		['workflow:read'],
+		// activeVersion is only the published source of truth when the publication
+		// service is off; otherwise we read it from the service below.
+		{ includeActiveVersion: !useWorkflowPublicationService },
+	);
+	if (!errorWorkflow) {
+		throw new Error(
+			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
+		);
+	}
+
+	// Runtime runs the PUBLISHED version of the error workflow, not its draft, and
+	// resolves it differently depending on the publication service flag — mirror
+	// WorkflowExecutionService.loadErrorWorkflowData exactly so we neither reject a
+	// workflow runtime would run nor accept a version runtime will not use.
+	let publishedNodes: INode[] | undefined;
+	if (useWorkflowPublicationService) {
+		const published = await workflowPublishedDataService.getPublishedWorkflowData(errorWorkflowId);
+		publishedNodes = published?.publishedVersion.nodes;
+	} else if (errorWorkflow.activeVersionId && errorWorkflow.activeVersion) {
+		publishedNodes = errorWorkflow.activeVersion.nodes ?? [];
+	}
+
+	if (!publishedNodes) {
+		throw new Error(
+			`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
+		);
+	}
+
+	const hasErrorTrigger = publishedNodes.some(
+		(node) => node.type === errorTriggerType && node.disabled !== true,
+	);
+	if (!hasErrorTrigger) {
+		throw new Error(
+			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
+		);
+	}
+
+	// Runtime blocks the error workflow if this workflow may not call it as a
+	// sub-workflow (see WorkflowExecutionService.executeErrorWorkflow). The
+	// policy checker only reads the target's id + settings, so an empty-node
+	// Workflow instance is sufficient.
+	const errorWorkflowInstance = new Workflow({
+		id: errorWorkflow.id,
+		name: errorWorkflow.name,
+		nodeTypes,
+		nodes: [],
+		connections: {},
+		active: false,
+		settings: errorWorkflow.settings ?? {},
+	});
+	try {
+		await subworkflowPolicyChecker.check(
+			errorWorkflowInstance,
+			parentWorkflowId,
+			undefined,
+			user.id,
+		);
+	} catch (error) {
+		if (error instanceof SubworkflowPolicyDenialError) {
+			throw new Error(
+				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
+			);
+		}
+		throw error;
+	}
+}
+
+/**
+ * When callerPolicy is 'workflowsFromAList', callerIds must list at least one
+ * workflow ID — otherwise no workflow can call this one as a sub-workflow.
+ * Operates on the effective (merged) settings, so a partial update that sets
+ * only one of the two fields is validated against the final state.
+ */
+function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): void {
+	if (settings?.callerPolicy !== 'workflowsFromAList') return;
+
+	const callerIds = (settings.callerIds ?? '')
+		.split(',')
+		.map((id) => id.trim())
+		.filter((id) => id.length > 0);
+
+	if (callerIds.length === 0) {
+		throw new Error(
+			'callerPolicy "workflowsFromAList" requires callerIds — a comma-separated list of workflow IDs allowed to call this workflow. Without it, no workflow can call this one. Provide callerIds, or choose a different callerPolicy.',
+		);
+	}
+}
+
+/**
+ * Reject an executionTimeout that exceeds the instance maximum. The schema
+ * already enforces a positive integer; this adds the instance-specific upper
+ * bound, which isn't knowable statically. A non-positive `maxTimeout` means the
+ * instance sets no cap, so nothing is enforced.
+ */
+function assertExecutionTimeoutWithinMax(
+	executionTimeout: number | undefined,
+	maxTimeout: number,
+): void {
+	// `executionTimeout <= 0` is the "unlimited" sentinel (-1) and is never capped.
+	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) return;
+
+	if (executionTimeout > maxTimeout) {
+		throw new Error(
+			`executionTimeout (${executionTimeout}s) exceeds this instance's maximum of ${maxTimeout}s. Set executionTimeout to ${maxTimeout} or less.`,
+		);
+	}
+}
 
 /**
  * MCP tool that updates a workflow by applying a small list of named operations
@@ -259,11 +436,13 @@ export const createUpdateWorkflowTool = (
 	dataTableOps: DataTableUserOperations,
 	tagService: TagService,
 	globalConfig: GlobalConfig,
+	subworkflowPolicyChecker: SubworkflowPolicyChecker,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Atomically update an existing workflow with operation objects. Pass skillsUsed if n8n skills were used.',
+			'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -363,9 +542,79 @@ export const createUpdateWorkflowTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
+			// Validate a freshly-set error workflow so the agent can self-correct in
+			// context: the target must exist, be accessible, and contain an Error
+			// Trigger node — otherwise it would silently never run on failure.
+			const setsErrorWorkflow = strictOperations.some(
+				(op) => op.type === 'setWorkflowSettings' && op.settings.errorWorkflow !== undefined,
+			);
+			if (setsErrorWorkflow) {
+				await assertErrorWorkflowIsUsable({
+					errorWorkflowId: result.workflow.settings?.errorWorkflow,
+					parentWorkflowId: workflowId,
+					user,
+					workflowFinderService,
+					workflowPublishedDataService,
+					useWorkflowPublicationService: globalConfig.workflows.useWorkflowPublicationService,
+					nodeTypes,
+					subworkflowPolicyChecker,
+					errorTriggerType: globalConfig.nodes.errorTriggerType,
+				});
+			}
+
+			// Validate the effective (merged) caller policy, but only when this batch
+			// touched it — so a partial edit isn't rejected for pre-existing state, and
+			// `callerPolicy` set in one op can be satisfied by `callerIds` already on
+			// the workflow (or set in another op of the same batch).
+			const setsCallerConfig = strictOperations.some(
+				(op) =>
+					op.type === 'setWorkflowSettings' &&
+					(op.settings.callerPolicy !== undefined || op.settings.callerIds !== undefined),
+			);
+			if (setsCallerConfig) {
+				assertCallerPolicyConsistent(result.workflow.settings);
+			}
+
+			const setsExecutionTimeout = strictOperations.some(
+				(op) => op.type === 'setWorkflowSettings' && op.settings.executionTimeout !== undefined,
+			);
+			if (setsExecutionTimeout) {
+				assertExecutionTimeoutWithinMax(
+					result.workflow.settings?.executionTimeout,
+					globalConfig.executions.maxTimeout,
+				);
+			}
+
 			const hasNonTagOperations = strictOperations.some(
 				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
 			);
+
+			const hasSettingsOperations = strictOperations.some(
+				(op) => op.type === 'setWorkflowSettings',
+			);
+
+			// A settings change on a published workflow makes WorkflowService.update
+			// reactivate it *after* persisting (activateWorkflow → requires
+			// workflow:publish). Without this preflight, a user with edit-but-not-
+			// publish access would persist the settings and only then fail activation,
+			// breaking this tool's atomicity and leaving the running version stale.
+			// A global publish scope already guarantees access, so skip the DB lookup
+			// for instance owners/admins (the common MCP case) and only probe when the
+			// permission could come from a project/resource role.
+			if (
+				hasSettingsOperations &&
+				existingWorkflow.activeVersionId &&
+				!hasGlobalScope(user, 'workflow:publish')
+			) {
+				const canPublish = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
+					'workflow:publish',
+				]);
+				if (!canPublish) {
+					throw new Error(
+						'Changing settings on a published workflow reactivates it, which requires publish permission. Your account can edit but not publish this workflow. Ask the owner for publish access, or unpublish the workflow first.',
+					);
+				}
+			}
 
 			// Only persist nodeGroups when a setNodeGroups op ran; otherwise omit the key so
 			// WorkflowService preserves the existing groups (preserve-on-omit).
@@ -379,6 +628,9 @@ export const createUpdateWorkflowTool = (
 					: {}),
 				nodes: result.workflow.nodes,
 				connections: result.workflow.connections,
+				// Only attach settings when a settings op ran, so node-only edits
+				// don't re-save (and re-clean) the existing settings object.
+				...(hasSettingsOperations ? { settings: result.workflow.settings } : {}),
 				...(hasNodeGroupOperation ? { nodeGroups: result.workflow.nodeGroups } : {}),
 				meta: hasNonTagOperations
 					? {
@@ -475,6 +727,7 @@ export const createUpdateWorkflowTool = (
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
+				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
 			};
 
 			return {

@@ -1,7 +1,6 @@
 import { binaryToBuffer, binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import chardet from 'chardet';
-import FileType from 'file-type';
 import { IncomingMessage } from 'http';
 import get from 'lodash/get';
 import { extension, lookup } from 'mime-types';
@@ -199,7 +198,8 @@ export async function copyBinaryFile(
 
 		if (!mimeType) {
 			// read the first bytes of the file to guess mime type
-			const fileTypeData = await FileType.fromFile(filePath);
+			const { fileTypeFromFile } = await import('file-type');
+			const fileTypeData = await fileTypeFromFile(filePath);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
 				fileExtension = fileTypeData.ext;
@@ -288,7 +288,8 @@ export async function prepareBinaryData(
 		if (!mimeType) {
 			if (Buffer.isBuffer(binaryData)) {
 				// Use buffer to guess mime type
-				const fileTypeData = await FileType.fromBuffer(binaryData);
+				const { fileTypeFromBuffer } = await import('file-type');
+				const fileTypeData = await fileTypeFromBuffer(binaryData);
 				if (fileTypeData) {
 					mimeType = fileTypeData.mime;
 					fileExtension = fileTypeData.ext;

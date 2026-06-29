@@ -777,7 +777,13 @@ function renderConversationTranscript(transcript: TranscriptTurn[] | undefined):
 }
 
 function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
-	const parts: string[] = [`<div class="transcript-turn-header">Turn ${String(turnNum)}</div>`];
+	// Judged as part of the whole conversation; marked subtly only for human readers.
+	const seededTag = turn.seeded
+		? ' <span class="transcript-seeded" title="restored prior context — not part of the evaluated run">seeded</span>'
+		: '';
+	const parts: string[] = [
+		`<div class="transcript-turn-header">Turn ${String(turnNum)}${seededTag}</div>`,
+	];
 	if (turn.userMessage) {
 		parts.push(
 			`<div class="transcript-line transcript-user"><span class="transcript-icon">👤</span><span class="transcript-text">${escapeHtml(turn.userMessage)}</span></div>`,
@@ -787,7 +793,7 @@ function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
 		const block = renderStep(step);
 		if (block) parts.push(block);
 	}
-	return `<div class="transcript-turn">${parts.join('')}</div>`;
+	return `<div class="transcript-turn${turn.seeded ? ' seeded' : ''}">${parts.join('')}</div>`;
 }
 
 function renderStep(step: TranscriptStep): string | null {
@@ -1484,6 +1490,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-turn { padding: 8px 0; border-bottom: 1px dashed var(--border-light); }
 	.transcript-turn:last-child { border-bottom: none; }
 	.transcript-turn-header { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+	.transcript-turn.seeded { border-left: 2px solid var(--border-light); padding-left: 10px; }
+	.transcript-seeded { text-transform: none; letter-spacing: 0; color: var(--text-muted); border: 1px solid var(--border-light); border-radius: 3px; padding: 0 5px; margin-left: 6px; }
 	.transcript-line { display: flex; gap: 8px; padding: 4px 0; align-items: flex-start; font-size: 13px; line-height: 1.5; }
 	.transcript-icon { width: 18px; text-align: center; flex-shrink: 0; }
 	.transcript-text { color: var(--text-primary); white-space: pre-wrap; }

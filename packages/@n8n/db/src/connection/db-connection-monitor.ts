@@ -7,6 +7,8 @@ import type { ErrorReporter } from 'n8n-core';
 import { ensureError, OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
+import type { DbConnectionMetrics } from './db-connection-metrics';
+
 /** The chokepoint every TypeORM query funnels through to acquire a master connection. */
 type ObtainMasterConnection = PostgresDriver['obtainMasterConnection'];
 
@@ -84,6 +86,7 @@ export class DbConnectionMonitor {
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
+		private readonly dbConnectionMetrics: DbConnectionMetrics,
 		initialConnected = true,
 	) {
 		this.connected = initialConnected;
@@ -422,7 +425,7 @@ export class DbConnectionMonitor {
 		await this.awaitRecovery();
 
 		try {
-			return await original();
+			return await this.timeAcquisition(original);
 		} catch (error) {
 			if (!this.isRecoverableConnectionError(error)) {
 				throw error;
@@ -440,8 +443,24 @@ export class DbConnectionMonitor {
 			await this.awaitRecovery();
 			// `original` may be bound to the previous (destroyed) driver.
 			// Prefer the live one refreshed by the latest wrapConnectionAcquisition().
-			return await (this.liveObtainMasterConnection ?? original)();
+			return await this.timeAcquisition(this.liveObtainMasterConnection ?? original);
 		}
+	}
+
+	private async timeAcquisition(acquire: ObtainMasterConnection) {
+		const observer = this.dbConnectionMetrics.acquireDurationObserver;
+		if (!observer) return await acquire();
+
+		const start = process.hrtime.bigint();
+		const connection = await acquire();
+		const elapsedSeconds = Number(process.hrtime.bigint() - start) * Time.nanoseconds.toSeconds;
+		try {
+			observer(elapsedSeconds);
+		} catch (error) {
+			// Metrics must never break or leak a pooled connection, but report so it isn't silent.
+			this.errorReporter.error(ensureError(error));
+		}
+		return connection;
 	}
 
 	/**

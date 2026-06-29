@@ -1,6 +1,6 @@
 import { generateNanoId } from '@n8n/utils';
 
-type AgentResourceIdPrefix = 'skill' | 'task' | 'tool';
+type AgentResourceIdPrefix = 'skill' | 'task';
 
 export function generateAgentResourceId(
 	prefix: AgentResourceIdPrefix,

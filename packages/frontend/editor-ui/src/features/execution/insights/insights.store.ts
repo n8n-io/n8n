@@ -68,6 +68,10 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const dateRanges = computed(() => settingsStore.moduleSettings.insights?.dateRanges ?? []);
 
+	const earliestDataDate = computed(
+		() => settingsStore.moduleSettings.insights?.earliestDataDate ?? null,
+	);
+
 	return {
 		globalInsightsPermissions,
 		isInsightsEnabled,
@@ -78,5 +82,6 @@ export const useInsightsStore = defineStore('insights', () => {
 		charts,
 		table,
 		dateRanges,
+		earliestDataDate,
 	};
 });
