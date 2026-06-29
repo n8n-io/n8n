@@ -1,0 +1,98 @@
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { WorkflowPublicationTriggerStatusRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { v4 as uuid } from 'uuid';
+
+import { createOwner, createMember } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+
+const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
+
+beforeEach(async () => {
+	await testDb.truncate([
+		'WorkflowPublicationTriggerStatus',
+		'SharedWorkflow',
+		'WorkflowEntity',
+		'User',
+	]);
+});
+
+describe('GET /workflows/:workflowId/publication-status', () => {
+	let triggerStatusRepo: WorkflowPublicationTriggerStatusRepository;
+	let ownerAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
+
+	beforeEach(async () => {
+		triggerStatusRepo = Container.get(WorkflowPublicationTriggerStatusRepository);
+		const owner = await createOwner();
+		const member = await createMember();
+		ownerAgent = testServer.authAgentFor(owner);
+		memberAgent = testServer.authAgentFor(member);
+	});
+
+	test('returns partial status when workflow has mixed activated/failed trigger rows', async () => {
+		const owner = await createOwner();
+		ownerAgent = testServer.authAgentFor(owner);
+		const workflow = await createWorkflow(undefined, owner);
+		const versionId = uuid();
+
+		await triggerStatusRepo.replaceForWorkflow(workflow.id, [
+			{
+				nodeId: 'node-1',
+				nodeName: 'Webhook',
+				versionId,
+				status: 'activated',
+				errorMessage: null,
+			},
+			{
+				nodeId: 'node-2',
+				nodeName: 'Cron',
+				versionId,
+				status: 'failed',
+				errorMessage: 'Could not register trigger',
+			},
+		]);
+
+		const res = await ownerAgent.get(`/workflows/${workflow.id}/publication-status`).expect(200);
+
+		expect(res.body.data).toMatchObject({
+			status: 'partial',
+			liveVersionId: versionId,
+			pendingVersionId: null,
+			triggers: expect.arrayContaining([
+				expect.objectContaining({ nodeId: 'node-1', status: 'activated', errorMessage: null }),
+				expect.objectContaining({
+					nodeId: 'node-2',
+					status: 'failed',
+					errorMessage: 'Could not register trigger',
+				}),
+			]),
+		});
+		expect(res.body.data.triggers).toHaveLength(2);
+	});
+
+	test('returns not_published status when workflow has no trigger rows', async () => {
+		const owner = await createOwner();
+		ownerAgent = testServer.authAgentFor(owner);
+		const workflow = await createWorkflow(undefined, owner);
+
+		const res = await ownerAgent.get(`/workflows/${workflow.id}/publication-status`).expect(200);
+
+		expect(res.body.data).toMatchObject({
+			status: 'not_published',
+			liveVersionId: null,
+			pendingVersionId: null,
+			triggers: [],
+		});
+	});
+
+	test('returns 403 when member cannot access the workflow', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+		memberAgent = testServer.authAgentFor(member);
+		const workflow = await createWorkflow(undefined, owner);
+
+		await memberAgent.get(`/workflows/${workflow.id}/publication-status`).expect(403);
+	});
+});

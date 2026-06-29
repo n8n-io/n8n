@@ -7,6 +7,7 @@ import {
 	ImportWorkflowFromUrlDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
@@ -43,6 +44,7 @@ import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
@@ -87,6 +89,7 @@ export class WorkflowsController {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	@Post('/')
@@ -656,6 +659,22 @@ export class WorkflowsController {
 		);
 
 		return lastExecution ?? null;
+	}
+
+	@Get('/:workflowId/publication-status')
+	@ProjectScope('workflow:read')
+	async getPublicationStatus(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicationStatus> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:read',
+		]);
+		if (!workflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+		}
+		return await this.workflowPublicationStatusService.getStatus(workflowId);
 	}
 
 	@Post('/with-node-types')
