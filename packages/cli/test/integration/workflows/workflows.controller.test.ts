@@ -75,7 +75,15 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-const { objectContaining, arrayContaining, any } = expect;
+// Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
+// can't be destructured or bound off `expect` (a bare `const { objectContaining } = expect`
+// throws "Cannot read properties of undefined (reading '__flags')"). Wrap them in thin
+// functions that call `expect.*` inline to keep the existing call sites unchanged.
+const objectContaining = (...args: Parameters<typeof expect.objectContaining>) =>
+	expect.objectContaining(...args);
+const arrayContaining = (...args: Parameters<typeof expect.arrayContaining>) =>
+	expect.arrayContaining(...args);
+const any = (...args: Parameters<typeof expect.any>) => expect.any(...args);
 
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);

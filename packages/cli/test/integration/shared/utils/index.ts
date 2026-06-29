@@ -83,11 +83,9 @@ export async function initCredentialsTypes(): Promise<void> {
 	};
 }
 
-/**
- * Initialize node types.
- */
-export async function initNodeTypes(customNodes?: INodeTypeData) {
-	const defaultNodes: INodeTypeData = {
+function buildDefaultNodes(): INodeTypeData {
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	return {
 		'n8n-nodes-base.manualTrigger': {
 			type: new ManualTrigger(),
 			sourcePath: '',
@@ -113,9 +111,18 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 			sourcePath: '',
 		},
 	};
+}
 
-	ScheduleTrigger.prototype.trigger = async () => ({});
-	const nodes = customNodes ?? defaultNodes;
+/**
+ * Initialize node types.
+ */
+export async function initNodeTypes(customNodes?: INodeTypeData) {
+	// Build the default mock node set only when the caller didn't supply its own. Building it
+	// eagerly is harmful even when unused: `mock<INodeType>({ description: new WebhookNode().description })`
+	// (vitest-mock-extended) deep-wraps the webhook description's property objects *in place*, and
+	// nodes that reuse those shared property definitions by reference (e.g. Wait) then inherit the
+	// mock-polluted `displayOptions`, which breaks parameter validation at execution time.
+	const nodes = customNodes ?? buildDefaultNodes();
 	const loader = mock<DirectoryLoader>();
 	loader.getNode.mockImplementation((nodeType) => {
 		const node = nodes[`n8n-nodes-base.${nodeType}`];

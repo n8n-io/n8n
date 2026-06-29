@@ -30,8 +30,6 @@ const testServer = utils.setupTestServer({
 
 afterAll(async () => {
 	await eventBus?.close();
-	// Undo the "unmock" from above
-	vi.mock('@/eventbus/message-event-bus/message-event-bus');
 	await tlsServer.stop();
 });
 
@@ -97,7 +95,10 @@ describe('TLS Syslog E2E', () => {
 	});
 
 	test('should log an error when the certificate is invalid - but not break the application', async () => {
-		const loggerErrorSpy = vi.spyOn(logger, 'error');
+		// `logger` is a mock-extended instance; its `error` is already a mock fn and can't be
+		// re-spied via `vi.spyOn` (proxy properties aren't configurable). Use it directly.
+		const loggerErrorSpy = vi.mocked(logger.error);
+		loggerErrorSpy.mockClear();
 
 		const incorrectCertificate = fs.readFileSync(
 			path.join(__dirname, 'support', 'incorrect-certificate.pem'),

@@ -481,11 +481,7 @@ describe('ExternalSecretsManager', () => {
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
 			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
-
-			mockProviderLifecycle.initialize.mockResolvedValue({
-				success: true,
-				provider: dummyProvider,
-			});
+			mockProviderRegistry.get.mockReturnValue(dummyProvider);
 
 			await manager.setProviderSettings('dummy', { key: 'value' }, 'user-123');
 

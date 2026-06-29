@@ -2,7 +2,6 @@ import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -14,6 +13,7 @@ import {
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
@@ -105,7 +105,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	vi.mock('@/eventbus/message-event-bus/message-event-bus');
 	await eventBus?.close();
 });
 

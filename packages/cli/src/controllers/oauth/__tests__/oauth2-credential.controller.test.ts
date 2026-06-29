@@ -149,14 +149,9 @@ describe('OAuth2CredentialController', () => {
 			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -287,14 +282,9 @@ describe('OAuth2CredentialController', () => {
 			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -753,12 +743,9 @@ describe('OAuth2CredentialController', () => {
 			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			vi.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: { getToken: mockGetToken },
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {

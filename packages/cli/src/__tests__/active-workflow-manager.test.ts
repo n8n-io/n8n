@@ -34,9 +34,9 @@ import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 describe('ActiveWorkflowManager', () => {
 	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
@@ -563,7 +563,7 @@ describe('ActiveWorkflowManager', () => {
 				const executionError = mock<ExecutionError>();
 
 				const executeErrorWorkflowSpy = vi
-					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
+					.spyOn(factory, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 
 				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(

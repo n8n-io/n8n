@@ -42,7 +42,10 @@ import {
 import type { SuperAgentTest } from '../shared/types';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
-const { any } = expect;
+// Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
+// can't be destructured off `expect` (a bare `const { any } = expect` throws "Cannot read
+// properties of undefined (reading '__flags')"). Wrap to call `expect.any` inline.
+const any = (...args: Parameters<typeof expect.any>) => expect.any(...args);
 
 const testServer = setupTestServer({
 	endpointGroups: ['credentials'],

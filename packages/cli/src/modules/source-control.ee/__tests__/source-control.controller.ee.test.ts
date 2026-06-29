@@ -1,10 +1,10 @@
-import type { Mock } from 'vitest';
 import type { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, Project, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import * as permissions from '@n8n/permissions';
 import type { Response } from 'express';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -161,14 +161,18 @@ describe('SourceControlController', () => {
 				preferLocalVersion: true,
 				verbose: false,
 			} as SourceControlGetStatus;
-			const req = mock<SourceControlRequest.GetStatus>({
-				query,
-				user,
-			});
+			const req = mock<SourceControlRequest.GetStatus>({ query });
+			// vitest-mock-extended doesn't populate `user` from the partial here, so set it
+			// explicitly. The controller passes `new SourceControlGetStatus(req.query)`, so
+			// match the query fields with `objectContaining` rather than the raw object.
+			req.user = user as (typeof req)['user'];
 
 			await controller.getStatus(req);
 			expect(sourceControlScopedService.ensureIsAllowedToGetStatus).toHaveBeenCalledWith(req);
-			expect(sourceControlService.getStatus).toHaveBeenCalledWith(user, query);
+			expect(sourceControlService.getStatus).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ direction: 'pull', preferLocalVersion: true, verbose: false }),
+			);
 		});
 
 		it('should not call getStatus when the caller is not authorized', async () => {
@@ -198,14 +202,15 @@ describe('SourceControlController', () => {
 				preferLocalVersion: true,
 				verbose: false,
 			} as SourceControlGetStatus;
-			const req = mock<SourceControlRequest.GetStatus>({
-				query,
-				user,
-			});
+			const req = mock<SourceControlRequest.GetStatus>({ query });
+			req.user = user as (typeof req)['user'];
 
 			await controller.status(req);
 			expect(sourceControlScopedService.ensureIsAllowedToGetStatus).toHaveBeenCalledWith(req);
-			expect(sourceControlService.getStatus).toHaveBeenCalledWith(user, query);
+			expect(sourceControlService.getStatus).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ direction: 'pull', preferLocalVersion: true, verbose: false }),
+			);
 		});
 
 		it('should not call getStatus when the caller is not authorized', async () => {

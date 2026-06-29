@@ -1,7 +1,5 @@
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
-import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -12,6 +10,8 @@ import {
 	type ExecutionError,
 	createRunExecutionData,
 } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
@@ -836,6 +836,7 @@ describe('WorkflowExecutionService', () => {
 				activeVersionId: 'active-version-id',
 				isArchived: false,
 				pinData: {},
+				staticData: {},
 				nodes: [errorTriggerNode],
 				connections: {},
 				createdAt: new Date(),
@@ -978,6 +979,7 @@ describe('WorkflowExecutionService', () => {
 				activeVersionId: 'active-version-id',
 				isArchived: false,
 				pinData: {},
+				staticData: {},
 				nodes: draftNodes,
 				connections: draftConnections,
 				createdAt: new Date(),
@@ -1074,6 +1076,7 @@ describe('WorkflowExecutionService', () => {
 				activeVersionId: 'active-version-id',
 				isArchived: false,
 				pinData: {},
+				staticData: {},
 				nodes: [activeRelationNode],
 				connections: {},
 				createdAt: new Date(),
