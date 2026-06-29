@@ -23,6 +23,7 @@ import {
 	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
 	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
@@ -35,22 +36,25 @@ import {
 	Param,
 	Patch,
 	Query,
+	Middleware,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { sanitizeFilename } from '@n8n/utils';
-import type { Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { sendErrorResponse } from '@/response-helper';
+
 import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
-import { ChatHubToolService } from './chat-hub-tool.service';
 import { extractAuthenticationMetadata } from './chat-hub-extractor';
+import { ChatHubToolService } from './chat-hub-tool.service';
+import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const chatHubUploadMiddleware = Container.get(ChatHubUploadMiddleware);
 
@@ -62,7 +66,21 @@ export class ChatHubController {
 		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatToolService: ChatHubToolService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
+
+	@Middleware()
+	checkChatEnabled(_req: Request, res: Response, next: NextFunction) {
+		// Fail closed: block unless Chat Hub is explicitly enabled. Disabled is the
+		// default, and existing installs with usage get an explicit enabled value
+		// via migration, so this only locks out the genuinely-off (or unset) state.
+		// Reads the cached module settings (kept fresh by refreshModuleSettings on toggle).
+		if (this.moduleRegistry.settings.get('chat-hub')?.enabled !== true) {
+			sendErrorResponse(res, new ForbiddenError('Chat Hub is disabled'));
+			return;
+		}
+		next();
+	}
 
 	@Post('/models')
 	@GlobalScope('chatHub:message')

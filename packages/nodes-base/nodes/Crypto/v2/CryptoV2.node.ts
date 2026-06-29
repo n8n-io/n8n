@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils';
 import type { BinaryToTextEncoding, CipherGCMTypes } from 'crypto';
 import {
 	constants,
@@ -24,8 +25,6 @@ import type {
 import { deepCopy, BINARY_ENCODING, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
 import { v4 as uuid } from 'uuid';
-
-import { formatPrivateKey } from '../../../utils/utilities';
 
 const unsupportedAlgorithms = [
 	'RSA-MD4',
@@ -604,7 +603,7 @@ export class CryptoV2 implements INodeType {
 						'No private key set in credentials. Please add a private key to your Crypto credentials.',
 					);
 				}
-				signPrivateKey = formatPrivateKey(credentials.signPrivateKey);
+				signPrivateKey = formatPemBlock(credentials.signPrivateKey);
 			}
 
 			if (action === 'encrypt' || action === 'decrypt') {
@@ -627,7 +626,7 @@ export class CryptoV2 implements INodeType {
 							'No encryption public key set in credentials. Please add an Encryption Public Key to your Crypto credentials.',
 						);
 					}
-					encryptionPublicKey = formatPrivateKey(credentials.encryptionPublicKey, true);
+					encryptionPublicKey = formatPemBlock(credentials.encryptionPublicKey, true);
 				}
 
 				if (mode === 'asymmetric' && action === 'decrypt') {
@@ -637,7 +636,7 @@ export class CryptoV2 implements INodeType {
 							'No encryption private key set in credentials. Please add an Encryption Private Key to your Crypto credentials.',
 						);
 					}
-					encryptionPrivateKey = formatPrivateKey(credentials.encryptionPrivateKey);
+					encryptionPrivateKey = formatPemBlock(credentials.encryptionPrivateKey);
 				}
 			}
 		}

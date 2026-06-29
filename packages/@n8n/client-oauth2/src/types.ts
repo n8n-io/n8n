@@ -2,11 +2,28 @@ export type Headers = Record<string, string | string[]>;
 
 export type OAuth2GrantType = 'pkce' | 'authorizationCode' | 'clientCredentials';
 
+/** How the secret is transmitted on the token request (RFC 6749 §2.3.1). */
 export type OAuth2AuthenticationMethod = 'header' | 'body';
+
+/**
+ * Which credential the client presents to prove its identity: a shared secret, or
+ * a certificate (private_key_jwt, RFC 7521/7523). Distinct from
+ * `OAuth2AuthenticationMethod`, which only controls where the secret is placed.
+ */
+export type OAuth2ClientCredentialType = 'clientSecret' | 'certificate';
+
+/** Certificate (private_key_jwt) client authentication, an alternative to `clientSecret`. */
+export interface ClientCertificate {
+	privateKey: string;
+	certificate: string;
+}
 
 export interface OAuth2CredentialData {
 	clientId: string;
+	clientCredentialType?: OAuth2ClientCredentialType;
 	clientSecret?: string;
+	privateKey?: string;
+	certificate?: string;
 	accessTokenUrl: string;
 	authentication?: OAuth2AuthenticationMethod;
 	authUrl?: string;
