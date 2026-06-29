@@ -1,12 +1,17 @@
 import { Time } from '@n8n/constants';
 
 import { Config, Env } from '../decorators';
+import { nonnegativeIntSchema } from '../schemas';
 
 @Config
 export class AiConfig {
 	/** Whether AI features (such as AI nodes and AI assistant) are enabled globally. */
 	@Env('N8N_AI_ENABLED')
 	enabled: boolean = false;
+
+	/** Maximum number of requests per IP per 5 minutes to the AI assistant endpoints (build, chat, sessions). */
+	@Env('N8N_AI_RATE_LIMIT', nonnegativeIntSchema)
+	rateLimit: number = 100;
 
 	/**
 	 * Maximum time in milliseconds to wait for an HTTP response from an AI service.

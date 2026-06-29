@@ -1,4 +1,7 @@
+import type { ZodClass } from '@n8n/api-types';
+import { RateLimitConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { AuthenticatedRequest } from '@n8n/db';
 import type { RateLimiterLimits, UserKeyedRateLimiterConfig } from '@n8n/decorators';
 import { BodyKeyedRateLimiterConfig } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -6,8 +9,6 @@ import type { Request, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import assert from 'node:assert';
 import type { ZodTypeAny } from 'zod';
-import type { ZodClass } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
 
 const defaultLimits: Required<RateLimiterLimits> = {
 	limit: 5,
@@ -24,15 +25,22 @@ const defaultLimits: Required<RateLimiterLimits> = {
  */
 @Service()
 export class RateLimitService {
+	constructor(private readonly rateLimitConfig: RateLimitConfig) {}
+
 	/**
 	 * Creates Layer 1: IP-based rate limit middleware
 	 * Always runs BEFORE authentication.
+	 *
+	 * The global `N8N_RATE_LIMIT_MULTIPLIER` scales the count of every IP limit
+	 * (the window is never scaled). It applies on top of any per-route config.
 	 */
 	createIpRateLimitMiddleware(rateLimit: boolean | RateLimiterLimits): RequestHandler {
 		if (typeof rateLimit === 'boolean') rateLimit = {};
 
+		const baseLimit = rateLimit.limit ?? defaultLimits.limit;
+
 		return expressRateLimit({
-			limit: rateLimit.limit ?? defaultLimits.limit,
+			limit: Math.ceil(baseLimit * this.rateLimitConfig.multiplier),
 			windowMs: rateLimit.windowMs ?? defaultLimits.windowMs,
 			message: { message: 'Too many requests' },
 		});

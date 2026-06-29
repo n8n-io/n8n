@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { nonnegativeIntSchema } from '../schemas';
 import { PasswordConfig } from './password.config';
 
 @Config
@@ -135,6 +136,14 @@ export class UserManagementConfig {
 	 */
 	@Env('N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS')
 	jwtRefreshTimeoutHours: number = 0;
+
+	/** Max requests per IP per 5 minutes to create invitations (`0` disables). */
+	@Env('N8N_INVITATION_RATE_LIMIT', nonnegativeIntSchema)
+	invitationRateLimit: number = 10;
+
+	/** Max requests per IP per minute to accept an invitation (`0` disables). */
+	@Env('N8N_INVITATION_ACCEPT_RATE_LIMIT', nonnegativeIntSchema)
+	invitationAcceptRateLimit: number = 100;
 
 	sanitize() {
 		if (this.jwtRefreshTimeoutHours >= this.jwtSessionDurationHours) {

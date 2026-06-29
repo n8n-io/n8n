@@ -1,4 +1,5 @@
 import { Config, Env, Nested } from '../decorators';
+import { nonnegativeIntSchema } from '../schemas';
 
 @Config
 class PostHogConfig {
@@ -27,4 +28,12 @@ export class DiagnosticsConfig {
 
 	@Nested
 	posthogConfig: PostHogConfig;
+
+	/** Max requests per IP per minute to the identify/track telemetry proxy routes (`0` disables). */
+	@Env('N8N_TELEMETRY_RATE_LIMIT', nonnegativeIntSchema)
+	telemetryRateLimit: number = 100;
+
+	/** Max requests per IP per minute to the page and Rudderstack source-config routes (`0` disables). */
+	@Env('N8N_TELEMETRY_SOURCE_RATE_LIMIT', nonnegativeIntSchema)
+	telemetrySourceRateLimit: number = 50;
 }
