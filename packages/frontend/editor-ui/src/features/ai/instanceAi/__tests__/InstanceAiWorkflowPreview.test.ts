@@ -16,12 +16,25 @@ import {
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { RememberedManualExecution } from '../canvasPreview.utils';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
+
+// Map-backed stand-in for the thread runtime's user-run memory. A plain Map (not the
+// disposed execution-state store) so a remembered user run survives the simulated
+// tab-switch dispose, exactly like the real per-thread runtime.
+const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
 
 const thread = reactive({
 	messages: [],
 	consumePendingHandoff: vi.fn(),
 	sendMessage: vi.fn(),
+	rememberManualExecution: (
+		workflowId: string,
+		executionId: string,
+		agentExecutionId: string | undefined,
+	) => rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId }),
+	getRememberedManualExecution: (workflowId: string) => rememberedManualExecutions.get(workflowId),
+	forgetManualExecution: (workflowId: string) => rememberedManualExecutions.delete(workflowId),
 });
 
 vi.mock('../instanceAi.store', () => ({
@@ -139,6 +152,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		thread.messages = [];
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
+		rememberedManualExecutions.clear();
 	});
 
 	it('restores the cached agent execution after the artifact workflow reloads', async () => {
