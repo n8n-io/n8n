@@ -100,11 +100,11 @@ export async function getResourcePath(
 	event: string,
 ): Promise<string | string[]> {
 	// App-only Graph has no signed-in user. On the SP-reachable branches the
-	// path-interpolated teamId/channelId are validated and interpolated RAW via
-	// buildTeamsPath (which also drops the OAuth2-only decodeURIComponent on the SP
-	// path). Watch-all is disabled under SP (UI-hidden + the runtime guards below, since
-	// fetchAllTeams/fetchAllChannels fan out an org-wide-token request). The OAuth2
-	// branches are byte-for-byte unchanged (incl. the pre-existing decode).
+	// path-interpolated ids are validated + interpolated via buildTeamsPath. A By-URL
+	// channel id arrives percent-encoded, so newChannelMessage decodes it first (parity
+	// with the OAuth2 path) so validation runs on the decoded value. Watch-all is disabled
+	// under SP (UI-hidden + the runtime guards below, since fetchAllTeams/fetchAllChannels
+	// fan out an org-wide-token request). The OAuth2 branches are byte-for-byte unchanged.
 	const isServicePrincipal = getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 
 	switch (event) {
@@ -179,12 +179,14 @@ export async function getResourcePath(
 						extractValue: true,
 					}) as string;
 					if (isServicePrincipal) {
-						// SP path: validate + interpolate raw (no decode, no encode).
+						// `channelId` is percent-encoded when selected By URL; decode it first so
+						// validation runs on the decoded value and the subscription resource carries
+						// the raw channel id Graph matches against (parity with the OAuth2 path below).
 						return buildTeamsPath.call(this, [
 							'/teams/',
 							{ id: teamId },
 							'/channels/',
-							{ id: channelId },
+							{ id: decodeURIComponent(channelId) },
 							'/messages',
 						]);
 					}

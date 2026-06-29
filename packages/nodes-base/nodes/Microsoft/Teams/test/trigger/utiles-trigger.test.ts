@@ -440,6 +440,36 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(result).not.toContain('%40');
 		});
 
+		it('decodes a By-URL (percent-encoded) channelId for newChannelMessage under SP (parity with OAuth2)', async () => {
+			setSpParams({
+				watchAllTeams: false,
+				teamId: '1111-2222',
+				watchAllChannels: false,
+				// The By-URL mode extracts the channel id percent-encoded (19%3A...%40thread.tacv2).
+				channelId: '19%3Aabc%40thread.tacv2',
+			});
+
+			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
+			// Decoded to the raw id Graph matches against, identical to the OAuth2 path.
+			expect(result).toBe('/teams/1111-2222/channels/19:abc@thread.tacv2/messages');
+			expect(result).not.toContain('%3A');
+			expect(result).not.toContain('%40');
+		});
+
+		it('rejects a percent-encoded traversal channelId for newChannelMessage under SP (decoded before validation)', async () => {
+			setSpParams({
+				watchAllTeams: false,
+				teamId: 'team123',
+				watchAllChannels: false,
+				// %2F decodes to `/`; validation runs on the decoded value and rejects the traversal.
+				channelId: 'c%2F..%2F..%2Fgroups%2Fabc',
+			});
+
+			await expect(getResourcePath.call(mockHookFunctions, 'newChannelMessage')).rejects.toThrow(
+				'The ID is not valid',
+			);
+		});
+
 		it('rejects a crafted (separator) channelId for newChannelMessage', async () => {
 			setSpParams({
 				watchAllTeams: false,
