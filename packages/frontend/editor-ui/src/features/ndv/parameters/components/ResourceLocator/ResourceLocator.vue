@@ -119,7 +119,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), {
 	node: undefined,
 	loadOptionsMethod: undefined,
-	inputSize: 'small',
+	inputSize: 'medium',
 	parameterIssues: () => [],
 	dependentParametersValues: null,
 	displayTitle: '',
