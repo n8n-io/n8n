@@ -36,8 +36,10 @@ export class ChatHubSettingsService {
 
 	async getEnabled(): Promise<boolean> {
 		const row = await this.settingsRepository.findByKey(CHAT_ENABLED_KEY);
-		// Allowed by default
-		if (!row) return true;
+		// Disabled by default. The deprecation migration persists an explicit
+		// value for every existing install, so a missing row is only the
+		// safety-net case (e.g. deleted row) and is treated as disabled.
+		if (!row) return false;
 		return row.value === 'true';
 	}
 

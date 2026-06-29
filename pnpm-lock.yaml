@@ -1549,6 +1549,9 @@ importers:
 
   packages/@n8n/client-oauth2:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       axios:
         specifier: 1.18.0
         version: 1.18.0(debug@4.4.3)
@@ -2909,6 +2912,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@oracle/langchain-oracledb':
         specifier: 0.2.0
         version: 0.2.0(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@langchain/textsplitters@1.0.1(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(oracledb@6.10.0)
@@ -5419,6 +5425,9 @@ importers:
 
   packages/nodes-base:
     dependencies:
+      '@aws-sdk/credential-providers':
+        specifier: 3.808.0
+        version: 3.808.0
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
@@ -5443,6 +5452,9 @@ importers:
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../@n8n/utils
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12

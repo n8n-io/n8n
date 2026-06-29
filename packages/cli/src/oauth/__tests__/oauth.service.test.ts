@@ -199,7 +199,7 @@ describe('OauthService', () => {
 		});
 	});
 
-	describe('getCredential', () => {
+	describe('getCredentialForAuthFlow', () => {
 		it('should throw BadRequestError when credential ID is missing', async () => {
 			const req = {
 				query: {},
@@ -212,7 +212,7 @@ describe('OauthService', () => {
 				enumerable: true,
 			});
 
-			const promise = service.getCredentialForUpdate(req);
+			const promise = service.getCredentialForAuthFlow(req);
 			await expect(promise).rejects.toThrow(BadRequestError);
 			await expect(promise).rejects.toThrow('Required credential ID is missing');
 		});
@@ -225,29 +225,52 @@ describe('OauthService', () => {
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await expect(service.getCredentialForUpdate(req)).rejects.toThrow(NotFoundError);
+			await expect(service.getCredentialForAuthFlow(req)).rejects.toThrow(NotFoundError);
 			expect(logger.error).toHaveBeenCalledWith(
 				'OAuth credential authorization failed because the current user does not have the correct permissions',
 				{ userId: '123', credentialId: 'credential-id' },
 			);
 		});
 
-		it('should return credential when found', async () => {
+		it('should require credential:update scope for shared/static credentials', async () => {
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
 				query: { id: 'credential-id' },
 				user: mock<User>({ id: '123' }),
 			});
 
+			credentialsFinderService.findCredentialById.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'credential-id', isResolvable: false }),
+			);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 
-			const result = await service.getCredentialForUpdate(req);
+			const result = await service.getCredentialForAuthFlow(req);
 
 			expect(result).toBe(mockCredential);
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				'credential-id',
 				req.user,
 				['credential:update'],
+			);
+		});
+
+		it('should require credential:connect scope for private (resolvable) credentials', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id', isResolvable: true });
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+				query: { id: 'credential-id' },
+				user: mock<User>({ id: '123' }),
+			});
+
+			credentialsFinderService.findCredentialById.mockResolvedValue(mockCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
+
+			const result = await service.getCredentialForAuthFlow(req);
+
+			expect(result).toBe(mockCredential);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-id',
+				req.user,
+				['credential:connect'],
 			);
 		});
 	});
