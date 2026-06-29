@@ -730,6 +730,24 @@ describe('WorkflowDetails', () => {
 		});
 	});
 
+	describe('Collaboration lifecycle', () => {
+		// Regression (ADO-5309): owned here, not by the blip-sensitive CollaborationPane.
+		it('opens the collaboration session on mount and only closes it on unmount', async () => {
+			// Clear leftover terminate() from the previous test's auto-cleanup unmount.
+			collaborationStore.initialize.mockClear();
+			collaborationStore.terminate.mockClear();
+
+			const { unmount } = renderComponent({ props: { ...defaultProps } });
+
+			expect(collaborationStore.initialize).toHaveBeenCalledWith('1');
+			expect(collaborationStore.terminate).not.toHaveBeenCalled();
+
+			unmount();
+
+			expect(collaborationStore.terminate).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('Archived badge', () => {
 		it('should show badge on archived workflow', async () => {
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
