@@ -19,7 +19,7 @@ Use a new PostHog multivariant experiment flag:
 
 ```ts
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'090_instance_ai_personalized_prompt_suggestions',
+	'093_instance_ai_personalized_prompt_suggestions',
 	{
 		control: 'control',
 		variantCards: 'variant-cards',
