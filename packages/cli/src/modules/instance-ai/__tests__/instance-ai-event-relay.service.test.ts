@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
@@ -16,7 +16,7 @@ describe('InstanceAiEventRelay', () => {
 	let handleUserDeleted: (event: { targetUserId?: string }) => Promise<void>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
 
 		new InstanceAiEventRelay(logger, eventService, memoryService, mcpRegistryConnectionRepository);

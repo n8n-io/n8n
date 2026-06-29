@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
+import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { Agent } from '../entities/agent.entity';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -28,8 +29,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let runtimeCacheService: jest.Mocked<AgentRuntimeCacheService>;
+	let agentRepository: Mocked<AgentRepository>;
+	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -38,7 +39,7 @@ describe('AgentSkillsService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 
 		agentRepository = mock<AgentRepository>();
