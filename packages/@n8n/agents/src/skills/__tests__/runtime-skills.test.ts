@@ -569,10 +569,8 @@ Use the workflow SDK.`,
 			.skills[0];
 		expect(fileBackedSkill).toMatchObject({
 			name: 'Summarize notes',
-			linkedFiles: expect.objectContaining({
-				references: [{ path: 'references/guide.md', bytes: 15, sha256: 'abc123' }],
-			}),
 		});
+		expect(fileBackedSkill?.linkedFiles).toBeUndefined();
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
 		expect(unsupportedLoadTool.description).toContain('do not pass filePath');

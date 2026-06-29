@@ -94,7 +94,6 @@ const compactSkillSchema = z.object({
 	policy: skillPolicySchema,
 	dependencies: skillDependenciesSchema,
 	platforms: z.array(z.string()).optional(),
-	linkedFiles: linkedFilesSchema.optional(),
 });
 
 const skillsListOutputSchema = z.object({
@@ -329,7 +328,6 @@ function compactSkill(skill: RuntimeSkillRegistryEntry) {
 		...(skill.policy ? { policy: skill.policy } : {}),
 		...(skill.dependencies ? { dependencies: skill.dependencies } : {}),
 		...(skill.platforms ? { platforms: skill.platforms } : {}),
-		...(hasLinkedFiles(skill.linkedFiles) ? { linkedFiles: skill.linkedFiles } : {}),
 	};
 }
 
@@ -353,10 +351,6 @@ function findSkillEntry(
 	}
 
 	return undefined;
-}
-
-function hasLinkedFiles(linkedFiles: RuntimeSkillLinkedFiles): boolean {
-	return LINKED_FILE_GROUPS.some((group) => linkedFiles[group].length > 0);
 }
 
 function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {

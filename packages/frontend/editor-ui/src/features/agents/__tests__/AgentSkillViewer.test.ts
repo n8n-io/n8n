@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { defineComponent, h, onMounted } from 'vue';
 import { nextTick } from 'vue';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -44,18 +44,6 @@ const N8nFormInputStub = defineComponent({
 });
 
 describe('AgentSkillViewer', () => {
-	beforeEach(() => {
-		vi.stubGlobal('crypto', {
-			subtle: {
-				digest: vi.fn(async () => new Uint8Array(32).fill(1).buffer),
-			},
-		});
-	});
-
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
 	it('imports SKILL.md frontmatter and instructions', async () => {
 		const wrapper = mount(AgentSkillViewer, {
 			props: {
@@ -134,8 +122,6 @@ describe('AgentSkillViewer', () => {
 					{
 						path: 'references/guide.md',
 						content: '# Guide',
-						bytes: 7,
-						sha256: '01'.repeat(32),
 					},
 				],
 			}),
@@ -171,8 +157,6 @@ describe('AgentSkillViewer', () => {
 					{
 						path: 'references/guide.md',
 						content: '# Guide',
-						bytes: 7,
-						sha256: 'a'.repeat(64),
 					},
 				],
 			},
@@ -192,8 +176,6 @@ describe('AgentSkillViewer', () => {
 					{
 						path: 'references/overview.md',
 						content: '# Guide',
-						bytes: 7,
-						sha256: 'a'.repeat(64),
 					},
 				],
 			},
@@ -211,14 +193,10 @@ describe('AgentSkillViewer', () => {
 					{
 						path: 'references/guide.md',
 						content: '# Guide',
-						bytes: 7,
-						sha256: 'a'.repeat(64),
 					},
 					{
 						path: 'references/overview.md',
 						content: '# Overview',
-						bytes: 10,
-						sha256: 'b'.repeat(64),
 					},
 				],
 			},
@@ -360,6 +338,5 @@ function makeReferences(count: number) {
 	return Array.from({ length: count }, (_, index) => ({
 		path: index === 0 ? 'references/reference.md' : `references/reference-${index + 1}.md`,
 		content: 'Reference',
-		bytes: 9,
 	}));
 }

@@ -102,11 +102,6 @@ const agentSkillReferenceSchema = z
 				);
 			}, 'Reference path must be a markdown file under references/'),
 		content: z.string().min(1),
-		bytes: z.number().int().nonnegative().optional(),
-		sha256: z
-			.string()
-			.regex(/^[a-f0-9]{64}$/)
-			.optional(),
 	})
 	.strict()
 	.superRefine((reference, ctx) => {

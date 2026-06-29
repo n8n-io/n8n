@@ -1082,8 +1082,6 @@ describe('AgentBuilderView — three-column shell', () => {
 				{
 					path: 'references/guide.md',
 					content: '# Guide',
-					bytes: 7,
-					sha256: 'a'.repeat(64),
 				},
 			],
 		};

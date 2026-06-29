@@ -73,7 +73,7 @@ describe('AgentSkillsService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
-	it('normalizes reference metadata when creating a skill', async () => {
+	it('stores references without derived metadata when creating a skill', async () => {
 		const agent = makeAgent({
 			schema: {
 				name: 'Test Agent',
@@ -89,19 +89,15 @@ describe('AgentSkillsService', () => {
 				{
 					path: 'references/guide.md',
 					content: '# Guide',
-					bytes: 0,
-					sha256: '0'.repeat(64),
 				},
 			],
 		});
 
 		expect(result.skill.references).toEqual([
-			expect.objectContaining({
+			{
 				path: 'references/guide.md',
 				content: '# Guide',
-				bytes: 7,
-				sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-			}),
+			},
 		]);
 		expect(agentRepository.save).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -142,19 +138,18 @@ describe('AgentSkillsService', () => {
 	});
 
 	it('updates an existing skill on the agent and preserves omitted references', async () => {
+		const skillWithReferences = {
+			...skill,
+			references: [
+				{
+					path: 'references/guide.md',
+					content: '# Guide',
+				},
+			],
+		};
 		const agent = makeAgent({
 			skills: {
-				summarize_notes: {
-					...skill,
-					references: [
-						{
-							path: 'references/guide.md',
-							content: '# Guide',
-							bytes: 7,
-							sha256: 'a'.repeat(64),
-						},
-					],
-				},
+				summarize_notes: skillWithReferences,
 			},
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -172,8 +167,6 @@ describe('AgentSkillsService', () => {
 					{
 						path: 'references/guide.md',
 						content: '# Guide',
-						bytes: 7,
-						sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 					},
 				],
 			},
@@ -194,8 +187,6 @@ describe('AgentSkillsService', () => {
 						{
 							path: 'references/guide.md',
 							content: '# Guide',
-							bytes: 7,
-							sha256: 'a'.repeat(64),
 						},
 					],
 				},

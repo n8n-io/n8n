@@ -296,8 +296,6 @@ describe('buildFromJson()', () => {
 							{
 								path: 'references/guide.md',
 								content: '# Guide',
-								bytes: 7,
-								sha256: 'a'.repeat(64),
 							},
 						],
 					},
@@ -327,7 +325,7 @@ describe('buildFromJson()', () => {
 					{
 						path: 'references/guide.md',
 						bytes: 7,
-						sha256: 'a'.repeat(64),
+						sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 					},
 				],
 			},
@@ -342,7 +340,7 @@ describe('buildFromJson()', () => {
 			filePath: 'references/guide.md',
 			content: '# Guide',
 			bytes: 7,
-			sha256: 'a'.repeat(64),
+			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 		});
 
 		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');

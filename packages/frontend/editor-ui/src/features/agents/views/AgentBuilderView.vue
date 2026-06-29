@@ -54,6 +54,7 @@ import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs'
 import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -1075,11 +1076,7 @@ function configuredToolNames(): Set<string> {
 }
 
 function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
-	if (!skill.allowedTools?.length) return skill;
-	const names = configuredToolNames();
-	const allowedTools = skill.allowedTools.filter((toolName) => names.has(toolName));
-	const { allowedTools: _allowedTools, ...skillWithoutAllowedTools } = skill;
-	return allowedTools.length > 0 ? { ...skill, allowedTools } : skillWithoutAllowedTools;
+	return normalizeAgentSkillForSave(skill, configuredToolNames());
 }
 
 function onRemoveTool(index: number) {

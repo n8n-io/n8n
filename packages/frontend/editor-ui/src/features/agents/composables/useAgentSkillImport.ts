@@ -80,8 +80,6 @@ export function useAgentSkillImport() {
 			references.push({
 				path: relativePath,
 				content,
-				bytes,
-				sha256: await sha256(content),
 			});
 		}
 
@@ -181,11 +179,6 @@ function normalizePath(path: string): string {
 
 function isMarkdownPath(path: string): boolean {
 	return path.endsWith('.md') || path.endsWith('.markdown');
-}
-
-async function sha256(content: string): Promise<string> {
-	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
-	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 async function readFileText(file: File): Promise<string> {

@@ -40,6 +40,18 @@ describe('agent skill DTOs', () => {
 	it('rejects removed metadata fields', () => {
 		expect(agentSkillSchema.safeParse({ ...validSkill, recommendedTools: [] }).success).toBe(false);
 		expect(UpdateAgentSkillDto.safeParse({ metadata: {} }).success).toBe(false);
+		expect(
+			agentSkillSchema.safeParse({
+				...validSkill,
+				references: [
+					{
+						path: 'references/guide.md',
+						content: '# Guide',
+						bytes: 7,
+					},
+				],
+			}).success,
+		).toBe(false);
 	});
 
 	it('rejects invalid or duplicate reference paths', () => {

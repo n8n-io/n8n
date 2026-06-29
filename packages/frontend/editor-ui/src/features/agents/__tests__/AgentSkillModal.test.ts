@@ -175,6 +175,5 @@ function makeReferences(count: number) {
 	return Array.from({ length: count }, (_, index) => ({
 		path: index === 0 ? 'references/reference.md' : `references/reference-${index + 1}.md`,
 		content: 'Reference',
-		bytes: 9,
 	}));
 }

@@ -8,6 +8,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
+import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillViewer, { type AgentSkillAllowedToolOption } from './AgentSkillViewer.vue';
 
@@ -33,7 +34,7 @@ const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
 
 const skill = ref<AgentSkill>(
-	filterSkillAllowedTools({
+	normalizeSkill({
 		name: props.data.skill?.name ?? '',
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
@@ -82,7 +83,7 @@ const visibleErrors = computed(() => (submitted.value ? validationErrors.value :
 const canSave = computed(() => formIsValid.value);
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
-	skill.value = filterSkillAllowedTools({ ...skill.value, ...updates });
+	skill.value = normalizeSkill({ ...skill.value, ...updates });
 	if (
 		selectedPath.value !== SKILL_FILE &&
 		!skill.value.references?.some((reference) => reference.path === selectedPath.value)
@@ -91,12 +92,11 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 	}
 }
 
-function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
-	if (props.data.availableTools === undefined || !skill.allowedTools?.length) return skill;
-	const availableToolNames = new Set(props.data.availableTools.map((tool) => tool.name));
-	const allowedTools = skill.allowedTools.filter((toolName) => availableToolNames.has(toolName));
-	const { allowedTools: _allowedTools, ...skillWithoutAllowedTools } = skill;
-	return allowedTools.length > 0 ? { ...skill, allowedTools } : skillWithoutAllowedTools;
+function normalizeSkill(skill: AgentSkill): AgentSkill {
+	return normalizeAgentSkillForSave(
+		skill,
+		props.data.availableTools?.map((tool) => tool.name),
+	);
 }
 
 function onAddReference() {
@@ -105,7 +105,7 @@ function onAddReference() {
 	const path = nextReferencePath(skill.value.references ?? []);
 	skill.value = {
 		...skill.value,
-		references: [...(skill.value.references ?? []), { path, content: '', bytes: 0 }],
+		references: [...(skill.value.references ?? []), { path, content: '' }],
 	};
 	selectedPath.value = path;
 }
@@ -155,13 +155,13 @@ function onSave() {
 	submitted.value = true;
 	if (!canSave.value) return;
 
-	const payload: AgentSkill = {
+	const payload = normalizeSkill({
 		name: skill.value.name.trim(),
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
 		...(skill.value.allowedTools ? { allowedTools: skill.value.allowedTools } : {}),
 		...(skill.value.references ? { references: skill.value.references } : {}),
-	};
+	});
 
 	props.data.onConfirm({ id: props.data.skillId, skill: payload });
 	closeModal();

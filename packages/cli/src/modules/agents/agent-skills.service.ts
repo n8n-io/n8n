@@ -3,11 +3,9 @@ import {
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
-	type AgentSkillReference,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
-import { createHash } from 'crypto';
 import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -50,10 +48,9 @@ export class AgentSkillsService {
 		if (!entity) throw new NotFoundError('Agent not found');
 
 		this.validateSkill(skill);
-		const normalizedSkill = this.withNormalizedReferences(skill);
-		this.assertSkillNameIsUnique(entity.skills ?? {}, normalizedSkill.name);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, skill.name);
 
-		const skillId = this.addSkill(entity, normalizedSkill);
+		const skillId = this.addSkill(entity, skill);
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
@@ -61,7 +58,7 @@ export class AgentSkillsService {
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill: normalizedSkill, versionId: saved.versionId };
+		return { id: skillId, skill, versionId: saved.versionId };
 	}
 
 	async createAndAttachSkill(
@@ -74,10 +71,9 @@ export class AgentSkillsService {
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		this.validateSkill(skill);
-		const normalizedSkill = this.withNormalizedReferences(skill);
-		this.assertSkillNameIsUnique(entity.skills ?? {}, normalizedSkill.name);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, skill.name);
 
-		const skillId = this.addSkill(entity, normalizedSkill);
+		const skillId = this.addSkill(entity, skill);
 		this.attachSkillRef(entity, skillId);
 
 		markAgentDraftDirty(entity);
@@ -86,7 +82,7 @@ export class AgentSkillsService {
 
 		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill: normalizedSkill, versionId: saved.versionId };
+		return { id: skillId, skill, versionId: saved.versionId };
 	}
 
 	async updateSkill(
@@ -103,12 +99,11 @@ export class AgentSkillsService {
 
 		const updated = { ...existing, ...updates };
 		this.validateSkill(updated);
-		const normalizedUpdated = this.withNormalizedReferences(updated);
-		this.assertSkillNameIsUnique(entity.skills ?? {}, normalizedUpdated.name, skillId);
+		this.assertSkillNameIsUnique(entity.skills ?? {}, updated.name, skillId);
 
 		entity.skills = {
 			...(entity.skills ?? {}),
-			[skillId]: normalizedUpdated,
+			[skillId]: updated,
 		};
 
 		markAgentDraftDirty(entity);
@@ -117,7 +112,7 @@ export class AgentSkillsService {
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill: normalizedUpdated, versionId: saved.versionId };
+		return { id: skillId, skill: updated, versionId: saved.versionId };
 	}
 
 	async deleteSkill(agentId: string, projectId: string, skillId: string): Promise<void> {
@@ -215,29 +210,6 @@ export class AgentSkillsService {
 			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
 			{ type: 'skill', id: skillId },
 		];
-	}
-
-	private normalizeReferences(
-		references: AgentSkillReference[] | undefined,
-	): AgentSkillReference[] {
-		if (!references) return [];
-		return references.map((reference) => {
-			const content = reference.content;
-			return {
-				path: reference.path,
-				content,
-				bytes: Buffer.byteLength(content, 'utf8'),
-				sha256: createHash('sha256').update(content).digest('hex'),
-			};
-		});
-	}
-
-	private withNormalizedReferences(skill: AgentSkill): AgentSkill {
-		if (skill.references === undefined) return skill;
-		return {
-			...skill,
-			references: this.normalizeReferences(skill.references),
-		};
 	}
 
 	private async clearRuntimes(agentId: string): Promise<void> {

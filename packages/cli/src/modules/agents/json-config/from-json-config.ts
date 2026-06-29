@@ -341,8 +341,8 @@ function getConfiguredSkillSource(
 				skillId,
 				filePath: reference.path,
 				content: reference.content,
-				bytes: reference.bytes ?? Buffer.byteLength(reference.content, 'utf8'),
-				sha256: reference.sha256 ?? createHash('sha256').update(reference.content).digest('hex'),
+				bytes: Buffer.byteLength(reference.content, 'utf8'),
+				sha256: createHash('sha256').update(reference.content).digest('hex'),
 			});
 		},
 	};
@@ -352,8 +352,8 @@ function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
 	return {
 		references: (skill.references ?? []).map((reference) => ({
 			path: reference.path,
-			bytes: reference.bytes ?? Buffer.byteLength(reference.content, 'utf8'),
-			sha256: reference.sha256 ?? createHash('sha256').update(reference.content).digest('hex'),
+			bytes: Buffer.byteLength(reference.content, 'utf8'),
+			sha256: createHash('sha256').update(reference.content).digest('hex'),
 		})),
 		templates: [],
 		scripts: [],

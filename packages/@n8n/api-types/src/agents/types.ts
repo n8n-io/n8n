@@ -96,8 +96,6 @@ export interface SlackAgentAppManifestResponse {
 export interface AgentSkillReference {
 	path: string;
 	content: string;
-	bytes?: number;
-	sha256?: string;
 }
 
 export interface AgentSkill {

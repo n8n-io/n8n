@@ -111,7 +111,7 @@ const instructionsValid = computed(
 	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
 );
 const referenceBytes = (reference: AgentSkillReference) =>
-	reference.bytes ?? new TextEncoder().encode(reference.content).byteLength;
+	new TextEncoder().encode(reference.content).byteLength;
 const invalidReferences = computed(() =>
 	(props.skill.references ?? []).filter(
 		(reference) =>
@@ -309,7 +309,6 @@ function onReferenceInput(value: string) {
 	replaceReference({
 		path: reference.path,
 		content: value,
-		bytes: new TextEncoder().encode(value).byteLength,
 	});
 }
 
@@ -322,7 +321,7 @@ function onReferenceNameInput(value: string | number | boolean | null | undefine
 	if (validateReferenceFileName(nextFileName)) return;
 
 	const path = referencePathFromFileName(nextFileName);
-	replaceReference({ ...reference, path }, reference.path);
+	replaceReference({ path, content: reference.content }, reference.path);
 	emit('select:path', path);
 }
 
