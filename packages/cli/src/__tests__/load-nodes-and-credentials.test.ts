@@ -443,6 +443,40 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
+	describe('injectCustomApiCallOptions', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+		});
+
+		it('should not throw for a node with an empty resource/operation options array', () => {
+			// A node whose credential qualifies for proxy auth (extends oAuth2Api)
+			// and whose `resource` property ships an empty static options array.
+			instance.types.nodes = [
+				{
+					name: 'x',
+					version: 1,
+					defaultVersion: 1,
+					group: [],
+					credentials: [{ name: 'fooOAuth2Api' }],
+					properties: [{ name: 'resource', type: 'options', options: [] }],
+				} as unknown as INodeTypeDescription,
+			];
+			instance.types.credentials = [
+				{ name: 'fooOAuth2Api', extends: ['oAuth2Api'] } as never,
+			];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			expect(() => (instance as any).injectCustomApiCallOptions()).not.toThrow();
+
+			// The Custom API Call option should be appended into the empty array.
+			const resourceProp = instance.types.nodes[0].properties[0];
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			expect((resourceProp as any).options).toHaveLength(1);
+		});
+	});
+
 	describe('setupHotReload', () => {
 		let instance: LoadNodesAndCredentials;
 
