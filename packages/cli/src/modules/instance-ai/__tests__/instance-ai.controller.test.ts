@@ -464,7 +464,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.cancel(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.cancelRun).toHaveBeenCalledWith(THREAD_ID);
+			expect(instanceAiService.routeCancelRun).toHaveBeenCalledWith(THREAD_ID);
 		});
 
 		it('should throw ForbiddenError for other user thread', async () => {
@@ -694,7 +694,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.cancelTask(req, res, THREAD_ID, 'task-1');
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.cancelBackgroundTask).toHaveBeenCalledWith(THREAD_ID, 'task-1');
+			expect(instanceAiService.routeCancelBackgroundTask).toHaveBeenCalledWith(THREAD_ID, 'task-1');
 		});
 	});
 
@@ -710,7 +710,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.correctTask(req, res, THREAD_ID, 'task-1', payload);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.sendCorrectionToTask).toHaveBeenCalledWith(
+			expect(instanceAiService.routeCorrectionToTask).toHaveBeenCalledWith(
 				THREAD_ID,
 				'task-1',
 				'fix this',
@@ -939,7 +939,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.deleteThread(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith(THREAD_ID);
+			expect(instanceAiService.routeClearThreadState).toHaveBeenCalledWith(THREAD_ID);
 			expect(memoryService.deleteThread).toHaveBeenCalledWith(THREAD_ID);
 		});
 

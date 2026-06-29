@@ -15,7 +15,7 @@ import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
@@ -97,6 +97,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
@@ -518,6 +519,7 @@ export class InstanceAiService {
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
+		private readonly publisher: Publisher,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -1062,6 +1064,97 @@ export class InstanceAiService {
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
 			void this.handlePlannedTaskSettlement(user, task, 'cancelled');
+		}
+	}
+
+	// ── Cross-main task-control routing (INS-377) ─────────────────────────────
+	// User actions (correct/cancel/clear) can land on a different main than the
+	// one running the task/run. Each `route*` method does the local action and,
+	// when the target isn't local (or is thread-wide), broadcasts so the owning
+	// main applies it. Broadcast + local-gate — no shared ownership store. The
+	// `@OnPubSubEvent` handler calls the *local* methods only, so there's no loop.
+	// These wrappers are the controller entry points; internal callers keep using
+	// the local methods directly so they don't trigger cross-main broadcasts.
+
+	private broadcastTaskControl(payload: {
+		threadId: string;
+		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
+		taskId?: string;
+		correction?: string;
+	}): void {
+		void this.publisher
+			.publishCommand({ command: 'relay-instance-ai-task-control', payload })
+			.catch((error: unknown) =>
+				this.logger.error('Failed to relay Instance AI task-control to sibling mains', {
+					threadId: payload.threadId,
+					action: payload.action,
+					error,
+				}),
+			);
+	}
+
+	routeCorrectionToTask(threadId: string, taskId: string, correction: string): void {
+		const result = this.sendCorrectionToTask(threadId, taskId, correction);
+		if (result === 'task-not-found' && this.instanceSettings.isMultiMain) {
+			this.broadcastTaskControl({ threadId, taskId, action: 'correct', correction });
+		}
+	}
+
+	routeCancelBackgroundTask(threadId: string, taskId: string): void {
+		const isLocal = this.backgroundTasks
+			.getTaskSnapshots(threadId)
+			.some((task) => task.taskId === taskId);
+		this.cancelBackgroundTask(threadId, taskId);
+		if (!isLocal && this.instanceSettings.isMultiMain) {
+			this.broadcastTaskControl({ threadId, taskId, action: 'cancel-task' });
+		}
+	}
+
+	routeCancelRun(threadId: string): void {
+		this.cancelRun(threadId);
+		// A thread's run + tasks can be spread across mains, so always fan out.
+		if (this.instanceSettings.isMultiMain) {
+			this.broadcastTaskControl({ threadId, action: 'cancel-thread' });
+		}
+	}
+
+	async routeClearThreadState(threadId: string): Promise<void> {
+		await this.clearThreadState(threadId);
+		if (this.instanceSettings.isMultiMain) {
+			this.broadcastTaskControl({ threadId, action: 'clear-thread' });
+		}
+	}
+
+	/** Apply a task-control action relayed from another main to this main's local
+	 *  slice of the thread. Calls local methods only — never re-broadcasts. Not
+	 *  self-sent, so this never fires on the originating main. */
+	@OnPubSubEvent('relay-instance-ai-task-control', { instanceType: 'main' })
+	async handleRelayTaskControl({
+		threadId,
+		taskId,
+		action,
+		correction,
+	}: {
+		threadId: string;
+		taskId?: string;
+		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
+		correction?: string;
+	}): Promise<void> {
+		switch (action) {
+			case 'correct':
+				if (taskId && correction !== undefined) {
+					this.sendCorrectionToTask(threadId, taskId, correction);
+				}
+				break;
+			case 'cancel-task':
+				if (taskId) this.cancelBackgroundTask(threadId, taskId);
+				break;
+			case 'cancel-thread':
+				this.cancelRun(threadId);
+				break;
+			case 'clear-thread':
+				await this.clearThreadState(threadId);
+				break;
 		}
 	}
 

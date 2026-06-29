@@ -2738,3 +2738,177 @@ describe('reportInstanceAiError dedup + withSetupBoundary', () => {
 		);
 	});
 });
+
+type TaskControlInternals = {
+	instanceSettings: { isMultiMain: boolean };
+	publisher: { publishCommand: jest.Mock };
+	backgroundTasks: { getTaskSnapshots: jest.Mock };
+	logger: { error: jest.Mock };
+	sendCorrectionToTask: jest.Mock;
+	cancelBackgroundTask: jest.Mock;
+	cancelRun: jest.Mock;
+	clearThreadState: jest.Mock;
+	routeCorrectionToTask: InstanceAiService['routeCorrectionToTask'];
+	routeCancelBackgroundTask: InstanceAiService['routeCancelBackgroundTask'];
+	routeCancelRun: InstanceAiService['routeCancelRun'];
+	routeClearThreadState: InstanceAiService['routeClearThreadState'];
+	handleRelayTaskControl: InstanceAiService['handleRelayTaskControl'];
+};
+
+function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
+	const service = Object.create(InstanceAiService.prototype) as unknown as TaskControlInternals;
+	service.instanceSettings = { isMultiMain };
+	service.publisher = { publishCommand: jest.fn().mockResolvedValue(undefined) };
+	service.backgroundTasks = { getTaskSnapshots: jest.fn(() => []) };
+	service.logger = { error: jest.fn() };
+	service.sendCorrectionToTask = jest.fn(() => 'queued');
+	service.cancelBackgroundTask = jest.fn();
+	service.cancelRun = jest.fn();
+	service.clearThreadState = jest.fn(async () => {});
+	return service;
+}
+
+describe('InstanceAiService — cross-main task-control routing', () => {
+	describe('routeCorrectionToTask', () => {
+		it('broadcasts when the task is not local and multi-main', () => {
+			const service = buildTaskControlService(true);
+			service.sendCorrectionToTask.mockReturnValue('task-not-found');
+
+			service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.sendCorrectionToTask).toHaveBeenCalledWith('thread-a', 'task-1', 'try again');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: {
+					threadId: 'thread-a',
+					taskId: 'task-1',
+					action: 'correct',
+					correction: 'try again',
+				},
+			});
+		});
+
+		it('does not broadcast when the correction was applied locally', () => {
+			const service = buildTaskControlService(true);
+			service.sendCorrectionToTask.mockReturnValue('queued');
+
+			service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('does not broadcast in single-main even on a local miss', () => {
+			const service = buildTaskControlService(false);
+			service.sendCorrectionToTask.mockReturnValue('task-not-found');
+
+			service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('routeCancelBackgroundTask', () => {
+		it('broadcasts when the task is not local and multi-main', () => {
+			const service = buildTaskControlService(true);
+			service.backgroundTasks.getTaskSnapshots.mockReturnValue([]);
+
+			service.routeCancelBackgroundTask('thread-a', 'task-1');
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', taskId: 'task-1', action: 'cancel-task' },
+			});
+		});
+
+		it('does not broadcast when the task is local', () => {
+			const service = buildTaskControlService(true);
+			service.backgroundTasks.getTaskSnapshots.mockReturnValue([{ taskId: 'task-1' }]);
+
+			service.routeCancelBackgroundTask('thread-a', 'task-1');
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('routeCancelRun / routeClearThreadState', () => {
+		it('routeCancelRun cancels locally and always fans out in multi-main', () => {
+			const service = buildTaskControlService(true);
+
+			service.routeCancelRun('thread-a');
+
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', action: 'cancel-thread' },
+			});
+		});
+
+		it('routeCancelRun does not fan out in single-main', () => {
+			const service = buildTaskControlService(false);
+
+			service.routeCancelRun('thread-a');
+
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('routeClearThreadState clears locally and fans out in multi-main', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.routeClearThreadState('thread-a');
+
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', action: 'clear-thread' },
+			});
+		});
+	});
+
+	describe('handleRelayTaskControl', () => {
+		it('applies a relayed correction via the local method and never re-broadcasts', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'correct',
+				correction: 'fix it',
+			});
+
+			expect(service.sendCorrectionToTask).toHaveBeenCalledWith('thread-a', 'task-1', 'fix it');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('ignores a correction relay missing its correction text', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'correct',
+			});
+
+			expect(service.sendCorrectionToTask).not.toHaveBeenCalled();
+		});
+
+		it('routes cancel-task / cancel-thread / clear-thread to the local methods', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'cancel-task',
+			});
+			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'cancel-thread' });
+			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' });
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+});
