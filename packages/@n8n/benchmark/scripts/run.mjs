@@ -7,8 +7,8 @@
  */
 // @ts-check
 import fs from 'fs';
-import minimist from 'minimist';
 import path from 'path';
+import { minimist } from 'zx';
 import { runInCloud } from './run-in-cloud.mjs';
 import { runLocally } from './run-locally.mjs';
 
