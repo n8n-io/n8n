@@ -283,6 +283,22 @@ describe('McpServer', () => {
 			expect(mcpServer.getTransport('busy-1')).toBeUndefined();
 		});
 
+		it('should not evict a session with an in-flight direct-mode tool call', async () => {
+			await registerSession('busy-2');
+			// Direct mode tracks the running call only via resolveFunctions.
+			const resolveFunctions = (
+				mcpServer as unknown as { resolveFunctions: Record<string, () => void> }
+			).resolveFunctions;
+			resolveFunctions['busy-2_msg-1'] = () => {};
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+			expect(mcpServer.getTransport('busy-2')).toBeDefined();
+
+			delete resolveFunctions['busy-2_msg-1'];
+			await vi.advanceTimersByTimeAsync(INTERVAL);
+			expect(mcpServer.getTransport('busy-2')).toBeUndefined();
+		});
+
 		it('should stop evicting once the sweep is stopped', async () => {
 			await registerSession('idle-2');
 			mcpServer.stopSweep();

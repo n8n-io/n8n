@@ -419,6 +419,11 @@ export class McpServer {
 
 	private hasInFlightWork(sessionId: string): boolean {
 		if (this.pendingCallsManager.hasForSession(sessionId)) return true;
+		// Direct-mode tool calls are tracked only by resolveFunctions for their whole
+		// duration; queue-mode also uses pendingResponses below.
+		const ownsSession = (callId: string) =>
+			callId === sessionId || callId.startsWith(`${sessionId}_`);
+		if (Object.keys(this.resolveFunctions).some(ownsSession)) return true;
 		return Object.values(this.pendingResponses).some((pending) => pending.sessionId === sessionId);
 	}
 
