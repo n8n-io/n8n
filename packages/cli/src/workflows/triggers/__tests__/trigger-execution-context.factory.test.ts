@@ -12,7 +12,8 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
-	WorkflowExecuteMode, Workflow 
+	WorkflowExecuteMode,
+	Workflow,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
