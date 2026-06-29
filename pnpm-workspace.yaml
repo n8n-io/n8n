@@ -252,7 +252,7 @@ catalogs:
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
   undici-v6:
-    undici: ^6.24.0
+    undici: ^6.27.0
   undici-v7:
     undici: ^7.28.0
 
