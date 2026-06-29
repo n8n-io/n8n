@@ -167,7 +167,8 @@ export class OAuth2CredentialController {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
 			clientCredentialType: credential.clientCredentialType,
-			clientSecret: credential.clientSecret ?? '',
+			clientSecret:
+				credential.clientCredentialType === 'certificate' ? '' : (credential.clientSecret ?? ''),
 			accessTokenUri: credential.accessTokenUrl ?? '',
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',

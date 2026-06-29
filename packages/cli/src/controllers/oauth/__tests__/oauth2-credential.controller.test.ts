@@ -201,6 +201,72 @@ describe('OAuth2CredentialController', () => {
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 
+		it('should not send a client secret when certificate authentication is selected but a stale secret is stored', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetToken = jest.fn().mockResolvedValue({
+				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
+			});
+			jest
+				.mocked(ClientOAuth2)
+				.mockImplementation(() => mock<ClientOAuth2>({ code: { getToken: mockGetToken } }));
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientCredentialType: 'certificate',
+					privateKey: 'private-key-pem',
+					certificate: 'certificate-pem',
+					// Leftover from before the credential was switched to certificate auth.
+					clientSecret: 'stale-secret',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					scope: 'openid',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+				},
+				mockState,
+				{ csrfSecret: 'csrf-secret' },
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: validState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			// The body-auth path must not forward the stale secret alongside the client assertion.
+			expect(mockGetToken).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					body: expect.not.objectContaining({ client_secret: expect.anything() }),
+				}),
+			);
+			// The client itself is still built for certificate auth, without a secret.
+			expect(ClientOAuth2).toHaveBeenCalledWith(
+				expect.objectContaining({
+					clientCredentialType: 'certificate',
+					clientCertificate: { privateKey: 'private-key-pem', certificate: 'certificate-pem' },
+				}),
+			);
+		});
+
 		it('should pass state resource to token exchange and store it for static credentials', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = vi.fn().mockResolvedValue({
