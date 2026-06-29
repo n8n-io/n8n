@@ -805,7 +805,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 												/>
 											</Transition>
 										</div>
-										<p :class="$style.disclaimer">
+										<p v-if="thread.hasMessages" :class="$style.disclaimer">
 											{{ i18n.baseText('instanceAi.input.disclaimer') }}
 										</p>
 									</div>
