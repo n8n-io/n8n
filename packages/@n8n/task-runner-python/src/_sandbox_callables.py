@@ -224,25 +224,35 @@ class _GuardedImport(_HardenedCallable):
 
     Used both for the ``__import__`` injected into user builtins and for the
     in-place replacements on ``importlib.import_module`` / ``importlib.__import__``.
+    Only the importlib entry points are ``trust_eligible``; the user-builtins
+    ``__import__`` always validates, regardless of caller.
     """
 
-    __slots__ = ("_security_config", "_validate_import", "_original")
+    __slots__ = ("_security_config", "_validate_import", "_original", "_trust_eligible")
     _DENY = _INTROSPECTION_DENY | frozenset(
-        {"_security_config", "_validate_import", "_original"}
+        {"_security_config", "_validate_import", "_original", "_trust_eligible"}
     )
 
-    def __init__(self, security_config, validate_import: Callable, original: Callable):
+    def __init__(
+        self,
+        security_config,
+        validate_import: Callable,
+        original: Callable,
+        trust_eligible: bool = False,
+    ):
         object.__setattr__(self, "_security_config", security_config)
         object.__setattr__(self, "_validate_import", validate_import)
         object.__setattr__(self, "_original", original)
+        object.__setattr__(self, "_trust_eligible", trust_eligible)
 
     def __call__(self, name, *args, **kwargs):
         config = object.__getattribute__(self, "_security_config")
-        # When trusted, imports made by package code skip the allowlist; the
-        # user's own imports are always checked. This covers all package code,
-        # not only allowlisted packages.
+        # When trusted, package-initiated imports skip the allowlist; user
+        # imports are always validated. Applies to all package code.
         trusted = (
-            config.allow_transitive_imports and not _import_initiated_by_user_code()
+            object.__getattribute__(self, "_trust_eligible")
+            and config.allow_transitive_imports
+            and not _import_initiated_by_user_code()
         )
         if not trusted:
             validate = object.__getattribute__(self, "_validate_import")

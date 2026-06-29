@@ -203,6 +203,25 @@ class TestTransitiveDependencyTrust:
         finally:
             _evict("stdlibparent")
 
+    def test_user_supplied_import_callback_is_always_validated(
+        self, tmp_path, monkeypatch
+    ):
+        # A user-supplied callable reaches the user-builtins __import__, which is
+        # not trust-eligible, so the import is validated regardless of which frame
+        # invokes it; a non-allowlisted module stays blocked even with the opt-in on.
+        pkg = tmp_path / "cbpkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("def run(cb, name):\n    return cb(name)\n")
+        monkeypatch.syspath_prepend(str(tmp_path))
+        code = (
+            "import cbpkg\nreturn [{'json': {'r': str(cbpkg.run(__import__, 'os'))}}]"
+        )
+        try:
+            with pytest.raises(SecurityViolationError):
+                _run(code, _config({"cbpkg"}, trust=True, stdlib={"importlib"}))
+        finally:
+            _evict("cbpkg")
+
 
 class TestUserCodeAttribution:
     """Pin the frame contract behind ``_import_initiated_by_user_code``: the
@@ -220,7 +239,10 @@ class TestUserCodeAttribution:
             return (True, None)
 
         guard = _GuardedImport(
-            _config({"x"}, trust=True), validate, lambda *a, **k: "imported"
+            _config({"x"}, trust=True),
+            validate,
+            lambda *a, **k: "imported",
+            trust_eligible=True,  # mirror the importlib-path guard
         )
         return guard, state
 
