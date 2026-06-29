@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { ROLE, type Role, type UsersList } from '@n8n/api-types';
+import { ROLE, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -11,18 +11,14 @@ import SettingsUsersLastActiveCell from './SettingsUsersLastActiveCell.vue';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
-import {
-	N8nDataTableServer,
-	N8nText,
-	N8nUserInfo,
-	type ActionDropdownItem,
-	type UserAction,
-} from '@n8n/design-system';
+import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@/app/stores/roles.store';
 type Item = UsersList['items'][number];
 
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
+const rolesStore = useRolesStore();
 
 const props = defineProps<{
 	data: UsersList;
@@ -34,7 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
-	'update:role': [payload: { role: Role; userId: string }];
+	'update:role': [payload: { role: string; userId: string }];
 	action: [value: { action: string; userId: string }];
 }>();
 
@@ -102,7 +98,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	},
 ]);
 
-const roles = computed<Partial<Record<Role, { label: string; desc: string }>>>(() => ({
+const roles = computed<Record<string, { label: string; desc: string }>>(() => ({
 	[ROLE.Owner]: { label: i18n.baseText('auth.roles.owner'), desc: '' },
 	[ROLE.Admin]: {
 		label: i18n.baseText('auth.roles.admin'),
@@ -119,26 +115,13 @@ const roles = computed<Partial<Record<Role, { label: string; desc: string }>>>((
 		},
 	}),
 	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
+	...Object.fromEntries(
+		rolesStore.customInstanceRoles.map((role) => [
+			role.slug,
+			{ label: role.displayName, desc: role.description ?? '' },
+		]),
+	),
 }));
-
-const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
-	{
-		id: ROLE.Member,
-		label: i18n.baseText('auth.roles.member'),
-	},
-	...(settingsStore.isChatFeatureEnabled
-		? [
-				{
-					id: ROLE.ChatUser,
-					label: i18n.baseText('auth.roles.chatUser'),
-				},
-			]
-		: []),
-	{
-		id: ROLE.Admin,
-		label: i18n.baseText('auth.roles.admin'),
-	},
-]);
 
 const canUpdateRole = computed((): boolean => {
 	if (!hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } }))
@@ -157,7 +140,7 @@ const filterActions = (user: UsersList['items'][number]) => {
 };
 
 const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
-	emit('update:role', { role: role as Role, userId });
+	emit('update:role', { role, userId });
 };
 </script>
 
@@ -182,8 +165,6 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 				<SettingsUsersRoleCell
 					v-if="canUpdateRole"
 					:data="item"
-					:roles="roles"
-					:actions="roleActions"
 					:loading="props.updatingRoleUserId === item.id"
 					@update:role="onRoleChange"
 				/>

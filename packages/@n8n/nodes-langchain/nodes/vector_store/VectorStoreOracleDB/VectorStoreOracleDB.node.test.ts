@@ -6,6 +6,7 @@ import type { VectorStoreNodeConstructorArgs } from '@n8n/ai-utilities';
 import { ConnectionPoolManager } from 'n8n-nodes-base/dist/utils/connection-pool-manager';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import type { Pool } from 'oracledb';
+import type { Mocked } from 'vitest';
 
 type OracleFilter = Record<string, unknown>;
 
@@ -323,15 +324,15 @@ import { VectorStoreOracleDB } from './VectorStoreOracleDB.node';
 
 describe('VectorStoreOracleDB.node', () => {
 	const context = {
-		getNodeParameter: jest.fn(),
-		getCredentials: jest.fn(),
+		getNodeParameter: vi.fn(),
+		getCredentials: vi.fn(),
 		logger: {
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
+			debug: vi.fn(),
+			error: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
 		},
-	} as unknown as jest.Mocked<IExecuteFunctions>;
+	} as unknown as Mocked<IExecuteFunctions>;
 
 	const embeddings = {} as Embeddings;
 	const documents: Array<Document<Record<string, unknown>>> = [
@@ -361,7 +362,7 @@ describe('VectorStoreOracleDB.node', () => {
 	const createNode = () => new VectorStoreOracleDB() as unknown as TestNodeInstance;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		createdPools.length = 0;
 		poolCloseMocks.length = 0;
 		connectionCloseMocks.length = 0;
@@ -410,7 +411,7 @@ describe('VectorStoreOracleDB.node', () => {
 
 		expect(mockCreatePool).toHaveBeenCalledTimes(1);
 		expect(createdPools).toHaveLength(1);
-		const poolConfig = mockCreatePool.mock.calls[0]![0];
+		const poolConfig = mockCreatePool.mock.calls[0][0];
 		expect(poolConfig).toMatchObject({
 			user: 'user',
 			password: 'pw',
