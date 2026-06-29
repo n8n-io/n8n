@@ -354,7 +354,7 @@ export class LoadNodesAndCredentials {
 					if (
 						['resource', 'operation'].includes(p.name) &&
 						Array.isArray(p.options) &&
-						p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+						p.options.at(-1)?.name !== CUSTOM_API_CALL_NAME
 					) {
 						p.options.push({
 							name: CUSTOM_API_CALL_NAME,
