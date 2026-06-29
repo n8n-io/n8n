@@ -169,6 +169,8 @@ jobs:
     needs: [validate-inputs, release-to-npm, release-to-docker-hub]
     timeout-minutes: 2
     environment: release
+    env:
+      WEBHOOK_PASSWORD: ${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }}
     steps:
       - continue-on-error: true
-        run: curl --connect-timeout 10 --max-time 30 -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
+        run: curl --connect-timeout 10 --max-time 30 -u "docsWorkflows:$WEBHOOK_PASSWORD" --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'

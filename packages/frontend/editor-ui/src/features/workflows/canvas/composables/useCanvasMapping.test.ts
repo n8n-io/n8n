@@ -429,12 +429,12 @@ describe('useCanvasMapping — mapped connections', () => {
 		expect(mapped.value[0].data?.status).toBe('pinned');
 	});
 
-	it('marks the connection as "pinned" when source output was simulated and has run data', () => {
+	it('marks the connection as "pinned" when source has execution pin data and run data', () => {
 		const { allNodes, connections } = makeWorkflow({
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
 		});
-		const rd = createEmptyCanvasRenderData();
-		rd.executionSimulationByNodeName.Alpha = { reason: 'Source declares verification output' };
+		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
+		rd.executionPinDataByNodeName.Alpha = [{ json: { ok: true } }];
 		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
 
 		const { connections: mapped } = useCanvasMapping({
@@ -444,6 +444,26 @@ describe('useCanvasMapping — mapped connections', () => {
 		});
 
 		expect(mapped.value[0].data?.status).toBe('pinned');
+	});
+
+	it('does not mark a connection as pinned from workflow pin data while displaying an execution', () => {
+		const { allNodes, connections } = makeWorkflow({
+			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+		});
+		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
+		rd.pinnedDataByNodeId.set(
+			'a',
+			computed(() => [{ json: { stale: true } }]),
+		);
+		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
+
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref(allNodes),
+			connections: ref(connections),
+			renderData: shallowRef(rd),
+		});
+
+		expect(mapped.value[0].data?.status).not.toBe('pinned');
 	});
 
 	it('marks the connection as "success" when source produced run data and target has run data too', () => {
@@ -715,6 +735,25 @@ describe('useCanvasMapping — mapped connections', () => {
 			});
 
 			expect(mapped.value[0].label).toBe('2 items');
+		});
+
+		it('does not show item-count label from workflow pin data while displaying an execution', () => {
+			const { allNodes, connections } = makeWorkflow({
+				Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+			});
+			const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
+			rd.pinnedDataByNodeId.set(
+				'a',
+				computed(() => [{ json: { x: 1 } }, { json: { x: 2 } }]),
+			);
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(allNodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+			});
+
+			expect(mapped.value[0].label).toBe('');
 		});
 	});
 });
