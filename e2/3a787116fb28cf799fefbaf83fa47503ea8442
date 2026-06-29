@@ -1,0 +1,14 @@
+single-instance-promotion-prototype/TECHNICAL_CHALLENGES.md
+  h_c63dce324dfc7b 32,42,52,54-55,59,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "e23a787116fb28cf799fefbaf83fa47503ea8442",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
