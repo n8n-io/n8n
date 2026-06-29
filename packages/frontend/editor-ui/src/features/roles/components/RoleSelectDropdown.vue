@@ -36,8 +36,6 @@ const props = withDefaults(
 		addCustomRoleRouteName: string;
 		loading?: boolean;
 		testId?: string;
-		/** Disable unlicensed system role items in the list (vs. allowing click to trigger upgrade flow). */
-		disableUnlicensedSystemRoles?: boolean;
 		// Optional RoleHoverPopover overrides — defaults to project-scoped values when omitted.
 		permissionCountFn?: (role: Role) => number;
 		totalPermissions?: number;
@@ -48,7 +46,6 @@ const props = withDefaults(
 	{
 		loading: false,
 		testId: 'role-dropdown',
-		disableUnlicensedSystemRoles: false,
 		permissionCountFn: undefined,
 		totalPermissions: undefined,
 		editRouteName: undefined,
