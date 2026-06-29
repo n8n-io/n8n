@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-28T00:16:46.937Z",
-	"totalViolations": 100,
+	"generated": "2026-06-29T15:25:07.539Z",
+	"totalViolations": 93,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -231,20 +231,6 @@
 				"hash": "31695787251c"
 			}
 		],
-		"tests/e2e/nodes/form-trigger-node.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 65,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' }...",
-				"hash": "b42b05790d64"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 65,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' })",
-				"hash": "a58ac8ee8b5c"
-			}
-		],
 		"tests/e2e/projects/projects.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -307,44 +293,6 @@
 				"line": 69,
 				"message": "Chained locator call in test: n8n.canvas.tagsManagerModal.getTable().getByText(tag2)",
 				"hash": "4158ea621594"
-			}
-		],
-		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 29,
-				"message": "Direct page locator call: n8n.page.getByText('Add Routing Rule').click()",
-				"hash": "a8acc6035021"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 29,
-				"message": "Direct page locator call: n8n.page.getByText('Add Routing Rule')",
-				"hash": "7ae7242bb6f3"
-			}
-		],
-		"tests/e2e/workflows/editor/expressions/mapping.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 118,
-				"message": "Chained locator call in test: schemaItem.locator('span')",
-				"hash": "85fbb93e65c9"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 64,
-				"message": "Chained locator call in test: objectValueItem.locator('.toggle')",
-				"hash": "39445370e293"
-			}
-		],
-		"tests/e2e/workflows/editor/ndv/paired-item.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 96,
-				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
-				"hash": "e8fc423eeeb7"
 			}
 		],
 		"composables/BuilderWizardComposer.ts": [
