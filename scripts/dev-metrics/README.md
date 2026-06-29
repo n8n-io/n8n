@@ -1,0 +1,170 @@
+# Dev-tooling usage metrics
+
+Opt-in, anonymous telemetry that helps us understand how internal n8n developers
+use their CLIs in the monorepo: **which commands are run, how long they take, and
+roughly how many developers run them each week.**
+
+It is deliberately low-friction: no command to remember and no per-run flags.
+Internal developers are asked **once** (during `pnpm install`) and the answer is
+remembered. Today only `pnpm` is tracked, but the shell side is a reusable
+"shadow any binary" library, so adding another CLI is a two-line change.
+
+## How it works
+
+```
+pnpm install
+  └─ scripts/prepare.mjs
+       └─ scripts/dev-metrics/setup.mjs   ← asks once (git email @n8n.io; prompts via /dev/tty)
+            └─ on "yes": copies shadow-binary.sh → ~/.n8n/bin/, and adds a block to
+                          ~/.zshrc that sources ~/.n8n/bin/shadow-binary.sh + `shadow_binary pnpm`
+
+pnpm <anything>            (in an n8n checkout, new shell)
+  └─ pnpm() wrapper        times the command, never blocks or changes exit code
+       └─ track.mjs        (found by walking up from $PWD; backgrounded) → PostHog capture API
+```
+
+The library is sourced from **`~/.n8n/bin/shadow-binary.sh`**, not from the
+checkout, so it survives short-lived repos (e.g. Conductor worktrees): the
+checkout that ran `pnpm install` can be deleted and your shells still work. The
+tracker (`track.mjs`) is *not* copied — it's a committed file discovered by
+walking up from `$PWD`, so each checkout uses its own (and pnpm runs outside any
+n8n checkout are ignored). pnpm itself prompts via `/dev/tty` because pnpm pipes
+lifecycle-script stdio in a workspace.
+
+| File | Role |
+| --- | --- |
+| `setup.mjs` | One-time consent prompt; copies the library to `~/.n8n/bin`; installs/removes the rc block; `--status`/`--enable`/`--disable`. |
+| `shadow-binary.sh` | Reusable library (versioned via `# n8n-shadow-binary-version`): `shadow_binary <name>` replaces a binary with a timing wrapper. Copied to `~/.n8n/bin`. |
+| `track.mjs` | Builds the anonymous event and POSTs it to PostHog (fire-and-forget). |
+| `capture-server.mjs` | Local PostHog stub for testing — logs every event instead of sending it upstream. |
+
+State lives in `~/.n8n/dev-telemetry.json` (separate from n8n's secret `config`):
+
+```json
+{ "schemaVersion": 1, "consent": "granted", "anonId": "<uuid>", "week": "2026-W26" }
+```
+
+## What is sent
+
+Event `dev:cli_command` with `distinct_id` = the weekly anonymous id, and:
+
+| Property | Example | Notes |
+| --- | --- | --- |
+| `binary` | `pnpm` | The shadowed CLI. |
+| `binary_version` | `10.32.1` | The CLI's own version, detected at runtime by the tracker via `<bin> --version` (`null` if unknown). |
+| `command` | `build`, `test`, `install` | Allowlisted per binary (for pnpm: root `package.json` scripts + builtins); anything else → `other`. |
+| `duration_ms` | `41230` | Wall-clock duration. |
+| `exit_code` | `0` | The command's exit code. |
+| `os` / `arch` | `darwin` / `arm64` | |
+| `node_version`, `repo_version`, `schema_version` | | For segmenting. |
+
+**Never sent:** paths, file names, branch names, git email, username, or raw
+command arguments. Only allowlisted command names leave the machine.
+
+One lifecycle event is also sent: **`dev:metrics_opt_in`**, fired once when a
+developer opts in (the transition into `granted`), under the same anonymous
+weekly `distinct_id` with only the common properties (os/arch/node/repo/schema).
+Opting *out* is deliberately **not** tracked — we don't send telemetry about
+someone who just declined it.
+
+## Privacy & anonymity
+
+- **Opt-in.** Off until an internal developer accepts the prompt. External
+  contributors are never prompted and never tracked.
+- **Anonymous.** The `distinct_id` is a random UUID that **rotates every ISO
+  week**, so individuals cannot be followed across weeks. Weekly unique
+  `distinct_id` counts give "how many developers" without identifying anyone.
+- **Scoped.** Only commands run inside an n8n checkout are considered; the
+  wrapper looks for `scripts/dev-metrics/track.mjs` by walking up from `$PWD`.
+- **Non-disruptive.** The tracker runs detached with a 2s network timeout and
+  swallows all errors; it can never slow or fail your command.
+
+## Tracking another binary
+
+The shell side is generic. To start tracking, say, `turbo`:
+
+1. **setup.mjs** — add it to `SHADOWED_BINARIES`:
+   ```js
+   const SHADOWED_BINARIES = ['pnpm', 'turbo'];
+   ```
+   (The rc block gains `shadow_binary turbo`.)
+2. **track.mjs** — register a resolver in `BINARY_RESOLVERS` so command names are
+   meaningful (and PII-safe). For subcommand-style CLIs (`git`, `turbo`,
+   `docker`) the ready-made `resolveSubcommand` is enough:
+   ```js
+   const BINARY_RESOLVERS = { pnpm: resolvePnpmCommand, turbo: resolveSubcommand };
+   ```
+   A binary with no resolver is still recorded, but `command` is always `other`.
+
+There are three independent version axes (all reconciled on `pnpm install`,
+visible via `setup.mjs --status`):
+
+- **rc-block signature** = `HOOK_VERSION` + the shadowed binary list, e.g.
+  `1:pnpm`. Adding a binary changes it and re-syncs the `~/.zshrc` block. Bump
+  `HOOK_VERSION` only when the block's *structure* changes. (Binary versions are
+  not part of this — they're detected at runtime, see below.)
+- **shadow-library version** = `# n8n-shadow-binary-version` in `shadow-binary.sh`.
+  Bump it whenever you edit the shell library; `setup.mjs` then replaces
+  `~/.n8n/bin/shadow-binary.sh` on the next install (no rc-block change needed).
+- **event `schema_version`** in `track.mjs` for the payload shape.
+
+> Each shadowed binary's version is detected per command by the backgrounded
+> tracker (`<bin> --version`), so it's always current and nothing is baked into
+> the rc block. The cost is one extra background `--version` spawn per command,
+> which never touches the foreground prompt.
+
+## Managing it
+
+```bash
+node scripts/dev-metrics/setup.mjs --status    # show current consent / paths
+node scripts/dev-metrics/setup.mjs --enable    # opt in + install hook
+node scripts/dev-metrics/setup.mjs --disable   # opt out + remove hook
+export N8N_DEV_TELEMETRY=0                      # runtime kill switch (no sending)
+```
+
+Endpoint and key are overridable for a dedicated PostHog project:
+`N8N_DEV_METRICS_POSTHOG_HOST`, `N8N_DEV_METRICS_POSTHOG_KEY` (defaults reuse
+n8n's existing PostHog instance at `ph.n8n.io`).
+
+## Testing locally
+
+`track.mjs` reads its endpoint from `N8N_DEV_METRICS_POSTHOG_HOST`, so you can
+point it at the bundled stub instead of `ph.n8n.io` and watch events arrive.
+
+```bash
+# terminal A — start the stub (optionally append raw events to a file)
+node scripts/dev-metrics/capture-server.mjs --port 9999 --out /tmp/events.jsonl
+```
+
+```bash
+# terminal B — drive the tracker directly (fastest; run from inside the repo)
+U=$(mktemp -d); mkdir -p "$U/.n8n"; echo '{"consent":"granted"}' > "$U/.n8n/dev-telemetry.json"
+N8N_USER_FOLDER="$U" \
+N8N_DEV_METRICS_POSTHOG_HOST=http://localhost:9999 \
+N8N_DEV_TRACK_BIN=pnpm \
+N8N_DEV_TRACK_ARGS='run build' N8N_DEV_TRACK_MS=1234 N8N_DEV_TRACK_CODE=0 N8N_DEV_TRACK_CWD="$PWD" \
+node scripts/dev-metrics/track.mjs
+```
+
+To exercise the **full path** (actually type `pnpm`) without editing your real
+`~/.zshrc` or `~/.n8n`, load the wrapper into the current shell only:
+
+```bash
+export N8N_USER_FOLDER=$(mktemp -d); mkdir -p "$N8N_USER_FOLDER/.n8n"
+echo '{"consent":"granted"}' > "$N8N_USER_FOLDER/.n8n/dev-telemetry.json"
+export N8N_DEV_METRICS_POSTHOG_HOST=http://localhost:9999
+source scripts/dev-metrics/shadow-binary.sh && shadow_binary pnpm
+pnpm list          # → event appears in terminal A (wait ~1s; it's backgrounded)
+```
+
+Nothing is sent unless **consent is granted** and the command runs **inside an
+n8n checkout**; `N8N_DEV_TELEMETRY=0` disables sending entirely.
+
+## Querying in PostHog
+
+- **Most-used commands:** Trends on `dev:cli_command`, break down by `command`
+  (optionally filter by `binary`), math = total count.
+- **How many developers:** same event, math = unique `distinct_id` (per week).
+- **Opt-ins:** Trends on `dev:metrics_opt_in`, math = unique `distinct_id`.
+- **How long commands take:** Trends on `duration_ms`, math = p50/p90, broken
+  down by `command`.
