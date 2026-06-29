@@ -23,7 +23,7 @@ import type {
 import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -53,19 +53,19 @@ import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-run
 const builtAgent = mock<agents.Agent>();
 builtAgent.hasCheckpointStorage.mockReturnValue(true); // skip checkpoint injection branch
 
-const buildFromJsonMock = jest.fn().mockImplementation(async () => builtAgent);
-jest.mock('../json-config/from-json-config', () => {
-	const actual = jest.requireActual<typeof FromJsonConfig>('../json-config/from-json-config');
+const buildFromJsonMock = vi.fn().mockImplementation(async () => builtAgent);
+vi.mock('../json-config/from-json-config', async () => {
+	const actual = await vi.importActual<typeof FromJsonConfig>('../json-config/from-json-config');
 	return {
 		...actual,
 		buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
 	};
 });
 
-const buildMcpClientForServerMock = jest
+const buildMcpClientForServerMock = vi
 	.fn()
 	.mockImplementation(async () => mock<agents.McpClient>());
-jest.mock('../json-config/mcp-client-factory', () => ({
+vi.mock('../json-config/mcp-client-factory', () => ({
 	buildMcpClientForServer: (...args: unknown[]) => buildMcpClientForServerMock(...args),
 }));
 
@@ -96,7 +96,7 @@ function makeReconstructionService(
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
 	const transport = mock<HttpTransport>();
-	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	return new AgentRuntimeReconstructionService(
@@ -146,7 +146,7 @@ function makeAgentEntity(
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP wiring', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		buildFromJsonMock.mockImplementation(async (_config, _descriptors, options) => {
 			const cfg = _config as AgentJsonConfig;
@@ -203,7 +203,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-agent delegation gating', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		builtAgent.tool.mockClear();
 	});
@@ -428,7 +428,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n chat tool gating', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 
 		// Provide real ChatIntegrationRegistry with N8nChatIntegration registered.
@@ -491,15 +491,15 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — checkpoint wiring', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(false);
 	});
 
 	it('uses agent-scoped checkpoint storage for reconstructed runtime agents', async () => {
 		const scopedStorage = {
-			save: jest.fn(),
-			load: jest.fn(),
-			delete: jest.fn(),
+			save: vi.fn(),
+			load: vi.fn(),
+			delete: vi.fn(),
 		};
 		const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		n8nCheckpointStorage.getStorage.mockReturnValue(scopedStorage);
@@ -515,7 +515,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 
 describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — sub-agent runtime profile', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		builtAgent.tool.mockClear();
 	});

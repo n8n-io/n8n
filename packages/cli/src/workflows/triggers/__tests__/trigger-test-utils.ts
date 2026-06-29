@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
@@ -26,25 +26,25 @@ export function createNodeTypes() {
 	const nodeTypes = mock<NodeTypes>();
 	nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
 		if (type === 'trigger') {
-			return { description: { ...description, name: 'trigger' }, trigger: jest.fn() } as never;
+			return { description: { ...description, name: 'trigger' }, trigger: vi.fn() } as never;
 		}
 		if (type === 'manual') {
 			return {
 				description: { ...description, name: 'manualTrigger' },
-				trigger: jest.fn(),
+				trigger: vi.fn(),
 			} as never;
 		}
 		if (type === 'execute-workflow') {
 			return {
 				description: { ...description, name: 'executeWorkflowTrigger' },
-				trigger: jest.fn(),
+				trigger: vi.fn(),
 			} as never;
 		}
 		if (type === 'poll') {
-			return { description: { ...description, name: 'poll' }, poll: jest.fn() } as never;
+			return { description: { ...description, name: 'poll' }, poll: vi.fn() } as never;
 		}
 		if (type === 'webhook') {
-			return { description: { ...description, name: 'webhook' }, webhook: jest.fn() } as never;
+			return { description: { ...description, name: 'webhook' }, webhook: vi.fn() } as never;
 		}
 
 		return { description: { ...description, name: type } } as never;

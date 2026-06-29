@@ -5,6 +5,7 @@ import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -22,6 +23,7 @@ const store = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
 	useInstanceAiMcpConnectionsExperiment();
+const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const isAdmin = computed(() => store.canManage);
@@ -169,7 +171,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 					</div>
 				</div>
 
-				<div v-if="isAdmin" :class="$style.card">
+				<div v-if="isAdmin && isBrowserUseEnabled" :class="$style.card">
 					<div :class="$style.settingsRow">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">

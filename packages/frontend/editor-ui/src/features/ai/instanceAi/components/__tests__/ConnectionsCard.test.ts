@@ -12,13 +12,20 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-const { mcpExperimentMock, computerUseExperimentMock } = vi.hoisted(() => ({
-	mcpExperimentMock: vi.fn(),
-	computerUseExperimentMock: vi.fn(),
-}));
+const { mcpExperimentMock, browserUseExperimentMock, computerUseExperimentMock } = vi.hoisted(
+	() => ({
+		mcpExperimentMock: vi.fn(),
+		browserUseExperimentMock: vi.fn(),
+		computerUseExperimentMock: vi.fn(),
+	}),
+);
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpExperimentMock,
+}));
+
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	useInstanceAiBrowserUseExperiment: browserUseExperimentMock,
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
@@ -61,13 +68,20 @@ const COMPUTER_USE_CONNECTION = {
 	status: 'disconnected' as const,
 };
 
+const BROWSER_USE_CONNECTION = {
+	type: 'browser-use' as const,
+	name: 'browser-use-row',
+	subtitle: 'subtitle',
+	status: 'disconnected' as const,
+};
+
 function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	return {
-		connections: [COMPUTER_USE_CONNECTION],
+		connections: [COMPUTER_USE_CONNECTION, BROWSER_USE_CONNECTION],
 		settings: { mcpAccessEnabled: false },
 		isLocalGatewayDisabledByAdmin: false,
 		isLocalGatewayDisabled: false,
-		isBrowserUseEnabledByAdmin: false,
+		isBrowserUseEnabledByAdmin: true,
 		gatewayStatusLoaded: true,
 		browserStatusLoaded: true,
 		fetch: vi.fn(),
@@ -96,7 +110,13 @@ describe('ConnectionsCard', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
+	});
+
+	it('renders the browser use row when the experiment is enabled', () => {
+		const { getByText } = renderComponent();
+		expect(getByText('browser-use-row')).toBeVisible();
 	});
 
 	it('renders the computer use row when the experiment is enabled', () => {
@@ -104,7 +124,23 @@ describe('ConnectionsCard', () => {
 		expect(getByText('computer-use-row')).toBeVisible();
 	});
 
-	describe('when the experiment is disabled', () => {
+	describe('when browser use experiment is disabled', () => {
+		beforeEach(() => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+		});
+
+		it('hides the browser use row', () => {
+			const { queryByText } = renderComponent();
+			expect(queryByText('browser-use-row')).toBeNull();
+		});
+
+		it('keeps other connection rows visible', () => {
+			const { getByText } = renderComponent();
+			expect(getByText('computer-use-row')).toBeVisible();
+		});
+	});
+
+	describe('when computer use experiment is disabled', () => {
 		beforeEach(() => {
 			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		});
@@ -115,6 +151,9 @@ describe('ConnectionsCard', () => {
 		});
 
 		it('hides the empty-state CTA and shows the simplified title', () => {
+			settingsStoreMock.mockReturnValue(
+				makeSettingsStore({ connections: [COMPUTER_USE_CONNECTION] }),
+			);
 			const { queryByTestId, getByText } = renderComponent();
 			expect(queryByTestId('instance-ai-connections-empty-cta')).toBeNull();
 			expect(getByText('instanceAi.connections.empty.titleNoComputerUse')).toBeVisible();
@@ -130,5 +169,32 @@ describe('ConnectionsCard', () => {
 		settingsStoreMock.mockReturnValue(makeSettingsStore({ connections: [] }));
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('instance-ai-connections-empty-cta')).toBeVisible();
+	});
+
+	describe('card visibility', () => {
+		it('hides the entire card when no channel is enabled', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			const { queryByText } = renderComponent();
+			expect(queryByText('instanceAi.connections.title')).toBeNull();
+		});
+
+		it('hides the card when computer use is the only enabled channel but the local gateway is disabled by admin', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			settingsStoreMock.mockReturnValue(makeSettingsStore({ isLocalGatewayDisabledByAdmin: true }));
+			const { queryByText } = renderComponent();
+			expect(queryByText('instanceAi.connections.title')).toBeNull();
+		});
+
+		it('shows the card via MCP even when both singleton experiments are disabled', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+			settingsStoreMock.mockReturnValue(
+				makeSettingsStore({ settings: { mcpAccessEnabled: true } }),
+			);
+			const { getByText } = renderComponent();
+			expect(getByText('instanceAi.connections.title')).toBeVisible();
+		});
 	});
 });

@@ -18,7 +18,6 @@ import {
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
