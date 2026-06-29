@@ -29,7 +29,8 @@ const { MockClientOAuth2 } = vi.hoisted(() => {
 	return { MockClientOAuth2, MockCredentialsFlow };
 });
 
-vi.mock('@n8n/client-oauth2', () => ({
+vi.mock('@n8n/client-oauth2', async (importActual) => ({
+	...(await importActual()),
 	ClientOAuth2: MockClientOAuth2,
 }));
 

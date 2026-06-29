@@ -108,6 +108,10 @@ export class OAuth2Api implements ICredentialType {
 		// WARNING: if you are extending from this credentials and allow user to set their own scopes
 		// you HAVE TO add it to GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE in packages/cli/src/constants.ts
 		// track any updates to this behavior in N8N-7424
+		//
+		// `scope` accepts either a space-separated string (as below) or, when a
+		// node overrides this field with `type: 'multiOptions'`, an array of the
+		// selected scopes. Both forms are normalized before the OAuth2 request.
 		{
 			displayName: 'Scope',
 			name: 'scope',

@@ -12,7 +12,7 @@ import type {
 	ClientOAuth2TokenData,
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
-import { AuthError, ClientOAuth2 } from '@n8n/client-oauth2';
+import { AuthError, ClientOAuth2, parseOAuth2Scopes } from '@n8n/client-oauth2';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
 import get from 'lodash/get';
@@ -34,16 +34,13 @@ import clientOAuth1 from 'oauth-1.0a';
 import type { IResponseError } from '@/interfaces';
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
-	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
-	const scopes = credentials.scope
-		?.split(' ')
-		.map((s) => s.trim())
-		.filter(Boolean);
+	// `scope` may be a space-separated string or an array (multiOptions credential fields)
+	const scopes = parseOAuth2Scopes(credentials.scope);
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: scopes?.length ? scopes : undefined,
+		scopes: scopes.length ? scopes : undefined,
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
