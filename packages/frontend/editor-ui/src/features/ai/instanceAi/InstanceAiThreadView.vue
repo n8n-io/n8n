@@ -482,7 +482,12 @@ function reconnectThreadAfterHydration(): void {
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
-			void thread.sendMessage(pending.message, pending.attachments, rootStore.pushRef);
+			void thread.sendMessage(
+				pending.message,
+				pending.attachments,
+				rootStore.pushRef,
+				pending.context,
+			);
 		}
 	});
 }
@@ -800,6 +805,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 												/>
 											</Transition>
 										</div>
+										<p :class="$style.disclaimer">
+											{{ i18n.baseText('instanceAi.input.disclaimer') }}
+										</p>
 									</div>
 								</div>
 							</div>
@@ -883,6 +891,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
+								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
@@ -1033,6 +1042,8 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	:global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
 	}
 
 	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
@@ -1149,6 +1160,14 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.disclaimer {
+	margin: 0;
+	text-align: center;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--md);
 }
 
 @media (prefers-reduced-motion: reduce) {

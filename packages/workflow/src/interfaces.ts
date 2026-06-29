@@ -903,6 +903,7 @@ export interface RequestHelperFunctions {
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		sanitizedRequest?: IDataObject,
 	): Promise<any[]>;
 
 	/**
@@ -1720,6 +1721,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
+	ignoreCredentialExpressionResolveError?: boolean; // Supported by credentials fields outside execution contexts
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -2045,6 +2047,41 @@ export interface ExecuteAgentInfo {
 	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
 	 */
 	outputSchema?: JSONSchema7;
+	/**
+	 * Which slice of the calling node's input the agent's `fetch_input_data`
+	 * tool should expose: the single current item (`'item'`, default) or all
+	 * input items (`'all'`, used when the node invokes the agent once for the
+	 * whole batch).
+	 */
+	inputDataScope?: 'item' | 'all';
+	/**
+	 * When true, the agent additionally gets the `fetch_workflow_context` tool,
+	 * which can read any executed node's output. Off by default.
+	 */
+	exposeWorkflowData?: boolean;
+}
+
+/**
+ * Context about the calling workflow execution, passed to the agent runtime so
+ * it can expose the `fetch_input_data` and (opt-in) `fetch_workflow_context` tools to the agent. The
+ * `runExecutionData` is a live reference to the calling execution's run data —
+ * must be treated as read-only.
+ */
+export interface ExecuteAgentWorkflowContext {
+	workflowId?: string;
+	workflowName?: string;
+	/** Name of the node that invoked the agent */
+	callingNodeName: string;
+	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
+	inputData?: INodeExecutionData[];
+	/** Which slice {@link inputData} represents. */
+	inputDataScope?: 'item' | 'all';
+	/** Whether to attach the `fetch_workflow_context` tool. */
+	exposeWorkflowData?: boolean;
+	/** Name and type of every node in the calling workflow. */
+	nodes: Array<{ name: string; type: string }>;
+	/** The calling execution's run data (read-only by convention). */
+	runExecutionData: IRunExecutionData;
 }
 
 export interface ExecuteAgentOptions {
@@ -2819,6 +2856,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 		resumeFormUrl: string;
 		customData?: IWorkflowExecutionCustomData;
 	};
+	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
@@ -3265,6 +3303,8 @@ export interface IWorkflowExecutionDataProcess {
 	tracingContext?: { traceparent: string; tracestate?: string };
 	/** Encrypted credential context for a manual editor-triggered execution. */
 	encryptedRunnerIdentity?: string;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3331,6 +3371,7 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executionMode: WorkflowExecuteMode,
 		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
@@ -3374,6 +3415,8 @@ export interface IWorkflowExecuteAdditionalData {
 	 * data consistently across the entire execution tree.
 	 */
 	rootExecutionMode?: WorkflowExecuteMode;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,

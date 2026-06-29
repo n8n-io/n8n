@@ -219,6 +219,10 @@ describe('GlobalConfig', () => {
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
 			publicationOutboxLeaseSeconds: 120,
+			publicationOutboxCompletedRetentionHours: 1,
+			publicationOutboxFailedRetentionHours: 168,
+			publicationOutboxCleanupIntervalSeconds: 1200,
+			publicationOutboxCleanupBatchSize: 1000,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -249,6 +253,7 @@ describe('GlobalConfig', () => {
 				includeFormMetrics: false,
 				includeWorkflowInfoMetrics: false,
 				workflowInfoMetricInterval: 60,
+				includeDbPoolMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -287,6 +292,10 @@ describe('GlobalConfig', () => {
 			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
 			maxZipEntries: 5000,
 		},
+		mcpClient: {
+			cacheTtl: 300000,
+			cacheMaxSize: 500,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
@@ -298,6 +307,7 @@ describe('GlobalConfig', () => {
 			modelApiKey: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 100,
@@ -313,8 +323,8 @@ describe('GlobalConfig', () => {
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
 			sandboxAutoStopMinutes: 15,
-			sandboxAutoArchiveMinutes: 10_080,
-			sandboxAutoDeleteMinutes: 43_200,
+			sandboxAutoArchiveMinutes: 60,
+			sandboxAutoDeleteMinutes: 10_080,
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
@@ -528,6 +538,7 @@ describe('GlobalConfig', () => {
 			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 			allowedIpRanges: [],
 			allowedHostnames: [],
+			blockedHostnames: [],
 			dnsCacheMaxSize: 1024 * 1024,
 		},
 		httpRequest: {
@@ -824,6 +835,38 @@ describe('GlobalConfig', () => {
 			expect(config.database.minRecoveryBackoffMs).toBe(500);
 			expect(config.database.maxRecoveryBackoffMs).toBe(60000);
 			expect(config.database.connectionAcquisitionTimeoutMs).toBe(10000);
+		});
+	});
+
+	describe('workflow publication outbox cleanup config validation', () => {
+		it('should reject a cleanup interval of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupIntervalSeconds).toBe(1200);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS'),
+			);
+		});
+
+		it('should accept a positive cleanup interval', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS: '60' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupIntervalSeconds).toBe(60);
+		});
+
+		it('should reject a cleanup batch size of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupBatchSize).toBe(1000);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE'),
+			);
+		});
+
+		it('should accept a positive cleanup batch size', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE: '50' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupBatchSize).toBe(50);
 		});
 	});
 

@@ -1,3 +1,4 @@
+import { IANAZone } from 'luxon';
 import type {
 	IConnection,
 	IConnections,
@@ -5,6 +6,7 @@ import type {
 	INodeParameters,
 	IWorkflowBase,
 	IWorkflowGroup,
+	IWorkflowSettings,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
@@ -21,6 +23,97 @@ const positionSchema = () =>
 const credentialsSchema = z.record(
 	z.string(),
 	z.object({ id: z.string().optional(), name: z.string() }),
+);
+
+/**
+ * True when `tz` is a zone the runtime accepts. Uses Luxon's `IANAZone.isValidZone`
+ * to match downstream semantics exactly — the same check the expression runtime
+ * applies before setting the default zone, and what Schedule Trigger/cron paths
+ * rely on — rather than calling `Intl` directly, which can drift across Node/ICU
+ * builds.
+ */
+const isValidIanaTimezone = (tz: string): boolean => IANAZone.isValidZone(tz);
+
+/**
+ * Curated subset of `IWorkflowSettings` that is safe and useful to set from MCP.
+ * Each key is optional and only the keys provided are written; omitted keys are
+ * left unchanged. Enterprise/internal settings (redactionPolicy,
+ * credentialResolverId, customTelemetryTags, binaryMode) are intentionally
+ * excluded — they need dedicated license/scope handling. `availableInMCP` is
+ * excluded so an agent cannot silently revoke a workflow's own MCP access.
+ */
+export const workflowSettingsObjectSchema = z.object({
+	errorWorkflow: z
+		.string()
+		.describe(
+			'ID of a SEPARATE workflow to run whenever THIS workflow fails — the common best-practice way to send failure alerts (email, Slack, etc.) or log errors via a shared, reusable handler. The referenced workflow must contain an Error Trigger node; find its ID with search_workflows. Pass "DEFAULT" to clear it. There are two ways to handle failures: (a) a dedicated/shared error workflow set here, or (b) an Error Trigger node placed directly inside THIS workflow (n8n fires it automatically on failure, no setting needed). When the user asks for error handling, ask which pattern they prefer before choosing. When errorWorkflow is set, it takes precedence over a same-workflow Error Trigger for the failing run. Failure handling fires for production executions only, not manual/test runs. Distinct from per-node onError/retry (setNodeSettings).',
+		)
+		.optional(),
+	timezone: z
+		.string()
+		.refine((tz) => tz === 'DEFAULT' || isValidIanaTimezone(tz), {
+			message:
+				'timezone must be a valid IANA timezone (e.g. "America/New_York"), or "DEFAULT" to inherit the instance timezone',
+		})
+		.describe(
+			'IANA timezone used by Schedule Triggers and date/time operations, e.g. "America/New_York". Pass "DEFAULT" to inherit the instance timezone.',
+		)
+		.optional(),
+	executionOrder: z
+		.enum(['v0', 'v1'])
+		.describe('Node execution order. "v1" is the default for new workflows; "v0" is legacy.')
+		.optional(),
+	saveExecutionProgress: z
+		.union([z.boolean(), z.literal('DEFAULT')])
+		.describe(
+			'Save execution data after each node finishes. Allows resuming/inspecting partial runs at the cost of speed.',
+		)
+		.optional(),
+	saveManualExecutions: z
+		.union([z.boolean(), z.literal('DEFAULT')])
+		.describe('Whether manual (test) executions are saved to the execution list.')
+		.optional(),
+	saveDataErrorExecution: z
+		.enum(['DEFAULT', 'all', 'none'])
+		.describe('Whether to store execution data for failed runs.')
+		.optional(),
+	saveDataSuccessExecution: z
+		.enum(['DEFAULT', 'all', 'none'])
+		.describe('Whether to store execution data for successful runs.')
+		.optional(),
+	executionTimeout: z
+		.number()
+		.int()
+		.refine((n) => n === -1 || n >= 1, {
+			message: 'executionTimeout must be a positive number of seconds, or -1 for unlimited',
+		})
+		.describe(
+			'Maximum execution time in seconds before a run is stopped. Use a positive number of seconds (not exceeding the instance maximum, enforced server-side), or -1 for unlimited (no timeout).',
+		)
+		.optional(),
+	timeSavedPerExecution: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe('Estimated time saved per execution, in minutes (used for insights/reporting).')
+		.optional(),
+	callerPolicy: z
+		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
+		.describe(
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
+		)
+		.optional(),
+	callerIds: z
+		.string()
+		.describe(
+			'Comma-separated workflow IDs allowed to call this workflow (only used with callerPolicy "workflowsFromAList").',
+		)
+		.optional(),
+});
+
+export const workflowSettingsInputSchema = workflowSettingsObjectSchema.refine(
+	(s) => Object.keys(s).length > 0,
+	{ message: 'settings must specify at least one field' },
 );
 
 export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
@@ -170,6 +263,12 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		description: z.string().max(255).optional(),
 	}),
 	z.object({
+		type: z.literal('setWorkflowSettings'),
+		settings: workflowSettingsInputSchema.describe(
+			'Workflow-level settings to update. Only the keys you include are written; omitted keys are left unchanged.',
+		),
+	}),
+	z.object({
 		type: z.literal('addTags'),
 		names: z
 			.array(z.string().trim().min(1).max(24))
@@ -210,6 +309,8 @@ interface WorkflowSlice {
 	description?: string;
 	nodes: INode[];
 	connections: IConnections;
+	/** Workflow-level settings. Undefined when the workflow has no stored settings. */
+	settings?: IWorkflowSettings;
 	/** Node groups on the workflow. Undefined when never touched; set by setNodeGroups. */
 	nodeGroups?: IWorkflowGroup[];
 	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
@@ -237,6 +338,7 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	description: workflow.description,
 	nodes: workflow.nodes.map((node) => structuredClone(node)),
 	connections: structuredClone(workflow.connections),
+	settings: workflow.settings ? structuredClone(workflow.settings) : undefined,
 	nodeGroups: workflow.nodeGroups ? structuredClone(workflow.nodeGroups) : undefined,
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
@@ -610,6 +712,13 @@ export function applyOperations(
 				break;
 			}
 
+			case 'setWorkflowSettings': {
+				// Shallow merge: only the provided keys overwrite, others are kept.
+				// `WorkflowService.update` later strips 'DEFAULT'/default values.
+				workflow.settings = { ...(workflow.settings ?? {}), ...op.settings };
+				break;
+			}
+
 			case 'setNodeGroups': {
 				workflow.nodeGroups = op.nodeGroups.map((group) => ({
 					id: group.id ?? uuid(),
@@ -673,6 +782,7 @@ export function toWorkflowSlice(
 		description: (workflow as { description?: string }).description,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
+		settings: workflow.settings,
 		nodeGroups: workflow.nodeGroups,
 		tagNames,
 	};

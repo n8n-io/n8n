@@ -480,6 +480,7 @@ export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegi
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
+export { orchestratorAgentId } from './runtime/orchestrator-identity';
 export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
@@ -514,9 +515,10 @@ export type {
 	ResumableStreamContext,
 	ResumableStreamControl,
 	ResumableStreamSource,
+	TraceStatus,
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
-export type { RunTokenUsage } from './stream/usage-accumulator';
+export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );
@@ -661,6 +663,13 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 } from './types';
+export type {
+	OrchestratorRunHandoffReason,
+	OrchestratorRunHandoffState,
+	OrchestratorRunStopSignal,
+} from './runtime/orchestrator-run-control';
+export { createOrchestratorRunControl } from './runtime/orchestrator-run-control';
+export { createOrchestratorRunControlForState } from './runtime/orchestrator-run-control';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export const classifyAttachments: typeof StructuredFileParserMod.classifyAttachments = lazyFunction(
 	() => loadStructuredFileParser().classifyAttachments,

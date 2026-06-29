@@ -74,8 +74,8 @@ describe('SecretsCache', () => {
 
 	describe('refreshAll', () => {
 		it('should refresh all registered providers', async () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const updateSpy1 = jest.spyOn(dummyProvider, 'update');
 			const updateSpy2 = jest.spyOn(anotherProvider, 'update');
@@ -89,8 +89,8 @@ describe('SecretsCache', () => {
 		it('should continue refreshing other providers if one fails', async () => {
 			jest.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
 
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			const updateSpy = jest.spyOn(anotherProvider, 'update');
 
@@ -106,7 +106,7 @@ describe('SecretsCache', () => {
 
 	describe('getSecret', () => {
 		it('should get secret from provider', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const result = cache.getSecret('dummy', 'test1');
@@ -121,7 +121,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should return undefined for non-existent secret', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const result = cache.getSecret('dummy', 'non-existent');
@@ -130,7 +130,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should delegate to provider getSecret method', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const getSpy = jest.spyOn(dummyProvider, 'getSecret');
@@ -143,7 +143,7 @@ describe('SecretsCache', () => {
 
 	describe('hasSecret', () => {
 		it('should return true when secret exists', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const result = cache.hasSecret('dummy', 'test1');
@@ -158,7 +158,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should return false for non-existent secret', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const result = cache.hasSecret('dummy', 'non-existent');
@@ -167,7 +167,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should delegate to provider hasSecret method', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const hasSpy = jest.spyOn(dummyProvider, 'hasSecret');
@@ -180,7 +180,7 @@ describe('SecretsCache', () => {
 
 	describe('getSecretNames', () => {
 		it('should return secret names from provider', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const result = cache.getSecretNames('dummy');
@@ -195,7 +195,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should return empty array when provider has no secrets', () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			// Don't call update, so no secrets are loaded
 
 			const result = cache.getSecretNames('dummy');
@@ -204,7 +204,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should delegate to provider getSecretNames method', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
 			const getNamesSpy = jest.spyOn(dummyProvider, 'getSecretNames');
@@ -217,8 +217,8 @@ describe('SecretsCache', () => {
 
 	describe('getAllSecretNames', () => {
 		it('should return secret names from all providers', async () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			await dummyProvider.update();
 			await anotherProvider.update();
@@ -238,7 +238,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should include providers with no secrets', () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 			// Don't call update, so no secrets are loaded
 
 			const result = cache.getAllSecretNames();
@@ -249,8 +249,8 @@ describe('SecretsCache', () => {
 		});
 
 		it('should handle mix of providers with and without secrets', async () => {
-			registry.add('dummy', dummyProvider);
-			registry.add('another', anotherProvider);
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
 
 			await dummyProvider.update();
 			// Don't update anotherProvider
@@ -266,7 +266,7 @@ describe('SecretsCache', () => {
 
 	describe('integration', () => {
 		it('should refresh and retrieve secrets', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 
 			await cache.refreshAll();
 
@@ -276,7 +276,7 @@ describe('SecretsCache', () => {
 		});
 
 		it('should update secrets after refresh', async () => {
-			registry.add('dummy', dummyProvider);
+			registry.set('dummy', dummyProvider);
 
 			await cache.refreshAll();
 			expect(cache.getSecret('dummy', 'test1')).toBe('value1');

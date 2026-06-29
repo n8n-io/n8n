@@ -15,14 +15,12 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nCard,
-	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
@@ -48,22 +46,6 @@ const emit = defineEmits<{
 	'add-tool': [];
 	'remove-tool': [index: number];
 }>();
-
-const settingsStore = useSettingsStore();
-const nodeToolsFeatureEnabled = computed(() => settingsStore.isAgentsNodeToolsFeatureEnabled);
-
-const nodeToolsEnabled = computed<boolean>(
-	() => props.config?.config?.nodeTools?.enabled !== false,
-);
-
-function setNodeToolsEnabled(enabled: boolean) {
-	emit('update:config', {
-		config: {
-			...(props.config?.config ?? {}),
-			nodeTools: { enabled },
-		},
-	});
-}
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
@@ -168,21 +150,6 @@ const totalCount = computed(() => props.tools.length);
 				</N8nButton>
 			</template>
 		</AgentPanelHeader>
-
-		<div v-if="nodeToolsFeatureEnabled" :class="$style.toggleRow">
-			<div :class="$style.toggleText">
-				<N8nText :bold="true">{{ i18n.baseText('agents.builder.tools.builtIn.title') }}</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.tools.builtIn.hint') }}
-				</N8nText>
-			</div>
-			<N8nSwitch2
-				size="large"
-				data-testid="node-tools-toggle"
-				:model-value="nodeToolsEnabled"
-				@update:model-value="setNodeToolsEnabled"
-			/>
-		</div>
 
 		<div v-if="totalCount === 0" :class="$style.empty">
 			<N8nText size="small" color="text-light">{{
@@ -335,21 +302,6 @@ const totalCount = computed(() => props.tools.length);
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
-}
-
-.toggleRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--xs) 0;
-	border-bottom: var(--border);
-}
-
-.toggleText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
 }
 
 .empty {

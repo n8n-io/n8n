@@ -41,12 +41,12 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/inquirer": "^6.5.0"
+    "@types/inquirer": "^7.0.1"
   },
   "dependencies": {
     "@n8n/di": "workspace:*",
     "@oclif/core": "4.0.7",
-    "change-case": "^4.1.1",
+    "change-case": "catalog:",
     "fast-glob": "catalog:",
     "inquirer": "^7.0.1",
     "n8n-core": "workspace:*",

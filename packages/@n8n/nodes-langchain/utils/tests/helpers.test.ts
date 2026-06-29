@@ -356,8 +356,8 @@ describe('getConnectedTools', () => {
 			{ name: 'charlie', description: 'desc-charlie' },
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
-		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 

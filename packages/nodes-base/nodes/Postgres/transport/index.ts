@@ -1,3 +1,6 @@
+import { formatPemBlock } from '@n8n/utils';
+import { ConnectionPoolManager } from '@utils/connection-pool-manager';
+import { LOCALHOST } from '@utils/constants';
 import type {
 	IExecuteFunctions,
 	ICredentialTestFunctions,
@@ -7,10 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { createServer, type AddressInfo, type Server } from 'node:net';
 import pgPromise from 'pg-promise';
-
-import { ConnectionPoolManager } from '@utils/connection-pool-manager';
-import { LOCALHOST } from '@utils/constants';
-import { formatPrivateKey } from '@utils/utilities';
 
 import type {
 	ConnectionsData,
@@ -39,6 +38,26 @@ export function applyLargeNumbersReceive(e: {
 			}
 		}
 	}
+}
+
+// Must stay at module scope. Pools outlive the execution in pg-promise's global
+// registry, so an inline handler would pin the whole execution context via `this`.
+export function createReceiveHandler(
+	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
+) {
+	return (e: unknown) => {
+		if (largeNumbersOutput !== 'numbers') return;
+		applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
+	};
+}
+
+export function parseDateToISO(value: string) {
+	const parsedDate = new Date(value);
+
+	if (isNaN(parsedDate.getTime())) {
+		return value;
+	}
+	return parsedDate.toISOString();
 }
 
 const getPostgresConfig = (
@@ -113,24 +132,13 @@ export async function configurePostgres(
 			noWarnings: true,
 			// Use per-instance receive event instead of pgp.pg.types.setTypeParser, which mutates
 			// global pg state and would affect all pools regardless of their largeNumbersOutput setting
-			receive(e) {
-				if (options.largeNumbersOutput !== 'numbers') return;
-				applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
-			},
+			receive: createReceiveHandler(options.largeNumbersOutput),
 		});
 
 		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 			// Always return dates as ISO strings
 			[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
-				pgp.pg.types.setTypeParser(type, (value: string) => {
-					const parsedDate = new Date(value);
-
-					if (isNaN(parsedDate.getTime())) {
-						return value;
-					}
-
-					return parsedDate.toISOString();
-				});
+				pgp.pg.types.setTypeParser(type, parseDateToISO);
 			});
 		}
 
@@ -142,7 +150,7 @@ export async function configurePostgres(
 			return { db, pgp };
 		} else {
 			if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
-				credentials.privateKey = formatPrivateKey(credentials.privateKey);
+				credentials.privateKey = formatPemBlock(credentials.privateKey);
 			}
 			const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
