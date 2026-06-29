@@ -5,8 +5,12 @@
  * because skipAuthOnOAuthCallback is evaluated at module load time.
  */
 
-// Set environment variable before any imports
-process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+// Set the env var before imports. Vitest hoists `import`s above top-level statements, so a plain
+// assignment would run *after* the oauth module reads `skipAuthOnOAuthCallback`. `vi.hoisted` runs
+// before the imports.
+vi.hoisted(() => {
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+});
 
 import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, User } from '@n8n/db';

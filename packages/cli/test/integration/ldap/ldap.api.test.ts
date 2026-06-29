@@ -491,7 +491,7 @@ describe('POST /ldap/sync', () => {
 
 			const ldapUsers = [validLdapUser, invalidLdapUser];
 
-			const loggerSpy = vi.spyOn(Container.get(LdapService)['logger'], 'warn');
+			const loggerSpy = vi.mocked(Container.get(LdapService)['logger'].warn);
 
 			const synchronization = await runTest(ldapUsers);
 
@@ -538,7 +538,7 @@ describe('POST /ldap/sync', () => {
 				uid: originalUserId,
 			};
 
-			const loggerSpy = vi.spyOn(Container.get(LdapService)['logger'], 'warn');
+			const loggerSpy = vi.mocked(Container.get(LdapService)['logger'].warn);
 
 			const synchronization = await runTest([invalidLdapUser]);
 

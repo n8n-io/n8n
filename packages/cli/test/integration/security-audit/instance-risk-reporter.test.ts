@@ -40,15 +40,15 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
 	nock.cleanAll();
-	// @ts-expect-error readonly export
-	constants.N8N_VERSION = originalN8nVersion;
+	// The ESM export is read-only under Vitest, so spy the getter instead of assigning.
+	vi.spyOn(constants, 'N8N_VERSION', 'get').mockReturnValue(originalN8nVersion);
 	simulateUpToDateInstance();
 });
 
 afterAll(async () => {
 	nock.cleanAll();
-	// @ts-expect-error readonly export
-	constants.N8N_VERSION = originalN8nVersion;
+	// The ESM export is read-only under Vitest, so spy the getter instead of assigning.
+	vi.spyOn(constants, 'N8N_VERSION', 'get').mockReturnValue(originalN8nVersion);
 	await testDb.terminate();
 });
 

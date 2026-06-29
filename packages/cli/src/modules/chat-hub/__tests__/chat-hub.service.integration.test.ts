@@ -890,7 +890,7 @@ describe('chatHub', () => {
 				// Mock settings repository to allow anthropic provider
 				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = vi.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.mocked(Container.get(WorkflowExecutionService).executeChatWorkflow);
 
 				vi.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
 					// eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -1213,7 +1213,7 @@ describe('chatHub', () => {
 				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
 				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = vi.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.mocked(Container.get(WorkflowExecutionService).executeChatWorkflow);
 
 				vi.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
 					// eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -1380,7 +1380,7 @@ describe('chatHub', () => {
 				// Mock settings repository
 				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = vi.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.mocked(Container.get(WorkflowExecutionService).executeChatWorkflow);
 				watcherService = Container.get(ChatHubExecutionWatcherService);
 
 				sessionId = crypto.randomUUID();

@@ -425,17 +425,9 @@ describe('OIDC service', () => {
 	});
 
 	describe('additionalScopes', () => {
-		const mockConfiguration = new real_odic_client.Configuration(
-			{
-				issuer: 'https://example.com/auth/realms/n8n',
-				client_id: 'test-client-id',
-				redirect_uris: ['http://n8n.io/sso/oidc/callback'],
-				response_types: ['code'],
-				scopes: ['openid', 'profile', 'email'],
-				authorization_endpoint: 'https://example.com/auth',
-			},
-			'test-client-id',
-		);
+		// Built in `beforeEach` (not at describe-body level): `real_odic_client` is assigned in a
+		// `beforeAll` via `vi.importActual`, so it isn't available during collection.
+		let mockConfiguration: mocked_oidc_client.Configuration;
 
 		const baseConfig: OidcConfigDto = {
 			clientId: 'test-client-id',
@@ -450,6 +442,17 @@ describe('OIDC service', () => {
 		let provisioningConfig: GlobalConfig['sso']['provisioning'];
 
 		beforeEach(() => {
+			mockConfiguration = new real_odic_client.Configuration(
+				{
+					issuer: 'https://example.com/auth/realms/n8n',
+					client_id: 'test-client-id',
+					redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+					response_types: ['code'],
+					scopes: ['openid', 'profile', 'email'],
+					authorization_endpoint: 'https://example.com/auth',
+				},
+				'test-client-id',
+			);
 			discoveryMock.mockResolvedValue(mockConfiguration);
 			provisioningConfig = { ...Container.get(GlobalConfig).sso.provisioning };
 			// @ts-expect-error - provisioningConfig is private and only accessible within the class
