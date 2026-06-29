@@ -535,6 +535,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		id: string,
 		options: {
 			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 		} = {},
 	) => {
@@ -546,6 +547,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			contextNode: undefined,
 			closeOnSave: false,
 			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -561,6 +563,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		contextNode?: INodeUi,
 		options: {
 			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
 			closeOnSave?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 		} = {},
@@ -576,6 +579,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
