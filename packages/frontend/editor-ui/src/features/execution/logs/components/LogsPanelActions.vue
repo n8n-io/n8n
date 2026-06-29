@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import { PopOutWindowKey } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, inject, ref } from 'vue';
 
 import { N8nActionDropdown, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 const {
@@ -19,6 +20,12 @@ const {
 const emit = defineEmits<{ popOut: []; toggleOpen: []; toggleSyncSelection: [] }>();
 
 const locales = useI18n();
+
+// In the pop-out window modal mode must be off: reka-ui's pointer-events lock
+// restores against the wrong document on close, jamming the panel after one open.
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
+const isInPopOut = computed(() => !!popOutWindow.value);
+
 const popOutButtonText = computed(() => locales.baseText('runData.panel.actions.popOut'));
 const toggleButtonText = computed(() =>
 	locales.baseText(isOpen ? 'runData.panel.actions.collapse' : 'runData.panel.actions.open'),
@@ -59,11 +66,13 @@ function handleSelectMenuItem(selected: string) {
 		</N8nTooltip>
 		<N8nActionDropdown
 			v-if="isOpen"
+			data-test-id="logs-panel-actions"
 			icon-size="small"
 			activator-icon="ellipsis"
 			activator-size="small"
 			:items="menuItems"
 			:teleported="false /* for pop-out window */"
+			:modal="!isInPopOut"
 			@select="handleSelectMenuItem"
 			@click.stop
 		/>

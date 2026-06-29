@@ -1,6 +1,6 @@
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, InstanceAiWorkflowAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
@@ -40,6 +40,24 @@ const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-mess
 export interface PendingFirstMessage {
 	message: string;
 	attachments?: InstanceAiWorkflowAttachment[];
+	context?: InstanceAiHandoffContext;
+}
+
+export function buildInstanceAiCredentialHandoffContext(
+	credential: InstanceAiCredentialContext,
+): InstanceAiHandoffContext {
+	return {
+		source: 'credential-modal',
+		credential: {
+			credentialType: credential.credentialType,
+			displayName: credential.displayName,
+			...(credential.id ? { id: credential.id } : {}),
+			...(credential.nodeName ? { nodeName: credential.nodeName } : {}),
+			...(credential.nodeType ? { nodeType: credential.nodeType } : {}),
+			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
+			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
+		},
+	};
 }
 
 /**
@@ -75,7 +93,7 @@ export function useInstanceAiHandoff() {
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
 		prepare?: (threadId: string) => void,
-		options?: { newTab?: boolean },
+		options?: { newTab?: boolean; context?: InstanceAiHandoffContext },
 	): Promise<void> {
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
@@ -99,7 +117,7 @@ export function useInstanceAiHandoff() {
 				// consumePendingFirstMessage); sending here races backend persistence.
 				localStorage.setItem(
 					pendingFirstMessageKey(threadId),
-					JSON.stringify({ message, attachments }),
+					JSON.stringify({ message, attachments, context: options?.context }),
 				);
 				if (tab) tab.location.href = router.resolve(route).href;
 				else await router.push(route); // popup blocked → same tab; it consumes the message
@@ -108,7 +126,7 @@ export function useInstanceAiHandoff() {
 			// Same tab: seed the runtime, send, and redirect — it survives the in-store nav.
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
-			void thread.sendMessage(message, attachments, rootStore.pushRef);
+			void thread.sendMessage(message, attachments, rootStore.pushRef, options?.context);
 			await router.push(route);
 		} finally {
 			handoffInFlight = false;

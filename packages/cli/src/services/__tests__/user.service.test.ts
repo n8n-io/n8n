@@ -17,6 +17,7 @@ import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
@@ -296,6 +297,9 @@ describe('UserService', () => {
 	describe('changeUserRole', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
+			// The new license guard calls isRoleLicensed; default it to licensed so the
+			// existing branch tests below exercise the role-change logic, not the guard.
+			roleService.isRoleLicensed.mockReturnValue(true);
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -497,6 +501,38 @@ describe('UserService', () => {
 				},
 				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 			);
+		});
+
+		it('assigns a custom global role when it is licensed', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' });
+
+			expect(roleService.isRoleLicensed).toHaveBeenCalledWith('global:custom-role-abc');
+			expect(manager.update).toHaveBeenCalledWith(
+				User,
+				{ id: user.id },
+				{ role: { slug: 'global:custom-role-abc' } },
+			);
+		});
+
+		it('rejects assigning a role that is not covered by the license', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+			roleService.isRoleLicensed.mockReturnValueOnce(false);
+
+			await expect(
+				userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(manager.update).not.toHaveBeenCalled();
 		});
 	});
 

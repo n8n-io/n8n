@@ -10,6 +10,7 @@ import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -22,6 +23,7 @@ export class AgentSkillsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
+		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
@@ -53,6 +55,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
 
@@ -75,6 +78,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
 
@@ -103,6 +107,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
@@ -125,6 +130,7 @@ export class AgentSkillsService {
 
 		markAgentDraftDirty(entity);
 		await this.agentRepository.save(entity);
+		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}

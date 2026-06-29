@@ -19,7 +19,7 @@
 	"tags": ["behaviour", "clarification", "question-tool", "schedule", "slack"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"processExpectations": [
 		"Before building, the agent asked which destination to send the summary to, since the request did not specify one.",
 		"The agent asked using the structured question tool, not by posing the question in plain assistant text.",
 		"The agent waited for the user's answer before building."

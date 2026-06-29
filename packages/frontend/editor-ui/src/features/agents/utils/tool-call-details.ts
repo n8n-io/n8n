@@ -1,6 +1,6 @@
 import type { ToolCallState } from '../constants';
 import { TOOL_CALL_STATE } from '../constants';
-import type { ToolCall } from '../composables/agentChatMessages';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { formatDelegateError, isDelegateSubAgentTool, parseDelegateOutput } from './delegate-tool';
 import {
 	formatWriteTodosMarkdown,

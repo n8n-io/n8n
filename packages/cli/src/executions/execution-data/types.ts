@@ -12,7 +12,7 @@ export function createExecutionRef(workflowId: string, executionId: string): Exe
 
 export type WorkflowSnapshot = Pick<
 	IWorkflowBase,
-	'id' | 'name' | 'nodes' | 'connections' | 'settings'
+	'id' | 'name' | 'nodes' | 'connections' | 'settings' | 'nodeGroups'
 >;
 
 export type ExecutionDataPayload = {
@@ -24,6 +24,12 @@ export type ExecutionDataPayload = {
 export type ExecutionDataBundle = ExecutionDataPayload & {
 	version: 1;
 };
+
+/** The workflow-snapshot part of a bundle, without the run data. */
+export type BundleWorkflowSnapshot = Pick<
+	ExecutionDataBundle,
+	'workflowData' | 'workflowVersionId'
+>;
 
 /**
  * Persistence operations for execution data bundles. Methods which accept an
@@ -37,5 +43,16 @@ export interface ExecutionDataStore {
 	read(ref: ExecutionRef, tx?: EntityManager): Promise<ExecutionDataBundle | null>;
 	/** Read multiple bundles by ref. Returns a map keyed by `executionId`; missing entries are omitted. */
 	readMany(refs: ExecutionRef[]): Promise<Map<string, ExecutionDataBundle>>;
+	/**
+	 * Read only the workflow snapshot, skipping the run data. Optional — only stores that keep the
+	 * two separately (DB columns) implement it; blob stores omit it and callers fall back.
+	 */
+	readWorkflowData?(ref: ExecutionRef, tx?: EntityManager): Promise<BundleWorkflowSnapshot | null>;
+	/**
+	 * Cheap size of the stored run data, without loading it. Lets the size guard reject legacy
+	 * rows (`jsonSizeBytes === 0`) before reading. Optional — stores that can't size without
+	 * loading omit it, and callers fall back to measuring after read.
+	 */
+	getDataByteSize?(ref: ExecutionRef, tx?: EntityManager): Promise<number | null>;
 	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
 }
