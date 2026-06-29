@@ -547,6 +547,68 @@ describe('LoadNodesAndCredentials', () => {
 			expect(instance.types.nodes[0].name).toBe('test-package.TestNode');
 		});
 
+		it('should skip a community package whose credential fails to load and still process the healthy packages', async () => {
+			// A lazy-loaded community package whose compiled credential module throws the
+			// first time it is require()'d in postProcessLoaders (e.g. a missing peer
+			// dependency -> MODULE_NOT_FOUND, or any error while constructing the class).
+			const moduleNotFound = new Error(
+				"Cannot find module 'some-missing-peer-dependency'",
+			) as Error & { code: string };
+			moduleNotFound.code = 'MODULE_NOT_FOUND';
+
+			const brokenLoader = mock<DirectoryLoader>({
+				packageName: 'n8n-nodes-broken',
+				directory: '/test/broken',
+				known: {
+					nodes: {},
+					credentials: {
+						brokenApi: {
+							className: 'BrokenApi',
+							sourcePath: 'dist/credentials/BrokenApi.credentials.js',
+						},
+					},
+				},
+				types: { nodes: [], credentials: [] },
+				credentialTypes: {},
+				isLazyLoaded: true,
+				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
+			});
+			brokenLoader.getCredential.mockImplementation(() => {
+				throw moduleNotFound;
+			});
+
+			const healthyLoader = mock<DirectoryLoader>({
+				packageName: 'n8n-nodes-base',
+				directory: '/test/base',
+				known: { nodes: {}, credentials: {} },
+				types: {
+					nodes: [{ name: 'httpRequest', displayName: 'HTTP Request' } as INodeTypeDescription],
+					credentials: [],
+				},
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
+			});
+
+			// Broken loader is processed first; its failure must not abort the loop.
+			instance.loaders = {
+				'n8n-nodes-broken': brokenLoader,
+				'n8n-nodes-base': healthyLoader,
+			};
+
+			// One broken community-package credential must not abort all node/credential loading.
+			await expect(instance.postProcessLoaders()).resolves.toBeUndefined();
+
+			// The healthy package's node types are still present...
+			expect(instance.types.nodes.some((node) => node.name === 'n8n-nodes-base.httpRequest')).toBe(
+				true,
+			);
+
+			// ...and the rest of post-processing (tool generation, post-processors) still ran.
+			expect(createAiTools).toHaveBeenCalledTimes(1);
+			expect(createHitlTools).toHaveBeenCalledTimes(1);
+		});
+
 		it('should call createAiTools and createHitlTools', async () => {
 			// Setup a mock loader
 			const mockLoader = mock<DirectoryLoader>({
