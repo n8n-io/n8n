@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import z from 'zod';
 
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -234,6 +235,58 @@ describe('search-workflows MCP tool', () => {
 			});
 			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
 			expect(optionsArg.take).toBe(1);
+		});
+
+		test('structuredContent conforms to declared outputSchema under strict validation', async () => {
+			// Regression for ADO-5515 / GH #33056: search_workflows publishes its
+			// outputSchema with additionalProperties: false on each workflow preview.
+			// Since 2.27.0 the handler emits a `tags` field for every workflow; if
+			// the schema omits it, strict MCP clients reject the server's own
+			// response with an opaque `-32602` "must NOT have additional properties"
+			// error (one entry per returned workflow) before it reaches the caller.
+			const tags = [
+				{ id: 'tag-1', name: 'production' },
+				{ id: 'tag-2', name: 'critical' },
+			] as unknown as WorkflowEntity['tags'];
+			const workflows = [
+				{
+					...createWorkflow({
+						id: 'tagged',
+						activeVersionId: uuid(),
+						settings: { availableInMCP: true },
+						tags,
+					}),
+					scopes: ['workflow:read', 'workflow:execute'],
+				},
+			];
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
+			});
+			const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+
+			const tool = createSearchWorkflowsTool(
+				user,
+				workflowService as unknown as WorkflowService,
+				telemetry,
+			);
+			const result = (await tool.handler({} as never, {} as never)) as {
+				structuredContent: unknown;
+			};
+
+			// Mirror the additionalProperties:false that strict MCP clients enforce:
+			// both the outer envelope AND each workflow preview must reject unknown
+			// keys. Tightening only the envelope would let an undeclared `tags` field
+			// slip through, masking the bug clients actually hit.
+			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
+			const dataArray = envelopeShape.data as z.ZodArray<z.ZodObject<z.ZodRawShape>>;
+			const strictSchema = z
+				.object({
+					...envelopeShape,
+					data: z.array(dataArray.element.strict()),
+				})
+				.strict();
+
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 
 		test('formats workflows with basic metadata', async () => {
