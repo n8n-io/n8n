@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  h_44f8d1c0f2f8c4 43-47,49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "6f0005fd07293cd097fdaa94b3c70c952be9e0a6",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
