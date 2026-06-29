@@ -9,6 +9,8 @@ import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '../users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/app/composables/useClipboard';
@@ -37,6 +39,13 @@ const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const rolesStore = useRolesStore();
+const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
+
+// Custom instance roles can only be invited when the feature is enabled.
+const customInstanceRolesEnabled = computed(() =>
+	envFeatureFlagCheck.value('CUSTOM_INSTANCE_ROLES'),
+);
 
 const clipboard = useClipboard();
 const { showMessage, showError } = useToast();
@@ -114,10 +123,8 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 };
 
 function isInvitableRoleName(val: unknown): val is InvitableRoleName {
-	return (
-		typeof val === 'string' &&
-		[ROLE.Member, ROLE.Admin, ROLE.ChatUser].includes(val as InvitableRoleName)
-	);
+	if (typeof val !== 'string') return false;
+	return rolesStore.processedInstanceRoles.some((role) => role.slug === val);
 }
 
 function onInput(e: FormFieldValueUpdate) {
@@ -322,6 +329,13 @@ onMounted(() => {
 						label: i18n.baseText('auth.roles.admin'),
 						disabled: !isAdvancedPermissionsEnabled.value,
 					},
+					...(customInstanceRolesEnabled.value
+						? rolesStore.customInstanceRoles.map((role) => ({
+								value: role.slug,
+								label: role.displayName,
+								disabled: !role.licensed,
+							}))
+						: []),
 				],
 				capitalize: true,
 			},

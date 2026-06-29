@@ -104,6 +104,7 @@ export const API_KEY_RESOURCES = {
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
+export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';

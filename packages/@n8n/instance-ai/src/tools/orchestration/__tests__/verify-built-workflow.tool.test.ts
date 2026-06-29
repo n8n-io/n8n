@@ -8,7 +8,7 @@ import type {
 	OrchestrationContext,
 	WorkflowTaskService,
 } from '../../../types';
-import { createRemediation } from '../../../workflow-loop/remediation';
+import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
@@ -612,6 +612,37 @@ describe('verify-built-workflow tool', () => {
 		});
 		expect(update.verification?.evidence?.nodesExecuted).toEqual(['Form Trigger', 'Insert Row']);
 		expect(typeof update.verification?.verifiedAt).toBe('string');
+	});
+
+	it('increments the verify attempt count on the build outcome each run', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ verifyAttempts: 2 }), {
+			executionId: 'exec-count',
+			status: 'success',
+			data: { 'Manual Trigger': [{ ok: true }] },
+		});
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(updateBuildOutcome.mock.calls[0][1].verifyAttempts).toBe(3);
+	});
+
+	it('blocks verification once the verify attempt budget is exhausted', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ verifyAttempts: MAX_VERIFY_ATTEMPTS }),
+			{ executionId: 'exec-exhausted', status: 'success', data: {} },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'verify_budget_exhausted',
+		});
+		expect(result.error).toContain('executions(action="run")');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
 
 	it('returns compact verification evidence by default without full execution data', async () => {
