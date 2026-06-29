@@ -49,6 +49,31 @@ workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
 
+For workflows produced by `build-workflow`, **always verify with
+`verify-built-workflow`, never with raw `executions(action="run")`.** It reuses
+the build outcome simulation plan, mocked credentials, and temporary pin data, so
+destructive nodes are pinned and it is safe to call repeatedly. A raw
+`executions(action="run")` runs the workflow live with no pin data, and on a
+workflow you just verified it surfaces a redundant run-approval prompt to the
+user right after verification already executed the workflow. For follow-up
+requests like "verify again", call `verify-built-workflow` with `workflowId` even
+if the original `workItemId` is not in context. For alternate deterministic
+scenarios, pass `fixtureOverrides` keyed by simulated node name instead of trying
+to force data through the trigger.
+
+**Reserve `executions(action="run")` for runs the user explicitly asked for**
+(e.g. "run it now", "execute it against my real data"). Never call it on your own
+to re-test, expand coverage, or "prove the full chain" of a workflow you just
+built or verified: re-run `verify-built-workflow` (with `fixtureOverrides` to
+reach an unverified branch) instead, or report the partial coverage and let the
+user decide whether to run it.
+If `fixtureOverrides` is rejected with `invalid_fixture_override`, the target
+node was not classified as simulated in the build outcome. Do not retry the same
+override. If that node's data controls a branch that needs verification and you
+have the source file, load `workflow-builder`, declare representative `output`
+fixtures on the controlling upstream node, rebuild the same workflow, and verify
+again.
+
 ## After build-workflow succeeds
 
 1. Read `workflowId`, `workItemId`, `triggerNodes`, `verificationReadiness`, and
@@ -66,9 +91,9 @@ workflow as a precondition for running it.
      again.
    - If `verificationReadiness.status === "already_verified"`, treat the
      workflow as verified and do **not** call `verify-built-workflow` again.
-   - If `verificationReadiness.status === "ready"`, call
-     `verify-built-workflow` with the `workItemId` / `workflowId` and the
-     trigger-appropriate `inputData` shape.
+  - If `verificationReadiness.status === "ready"`, call
+    `verify-built-workflow` with the `workflowId`, the `workItemId` when you
+    have it, and the trigger-appropriate `inputData` shape.
    - If `verificationReadiness.status === "needs_setup"`, call
      `workflows(action="setup")` with the workflowId so the user can configure it
      through the inline setup card in the AI Assistant panel.
@@ -86,8 +111,16 @@ workflow as a precondition for running it.
      re-run `verify-built-workflow`, and delete the test row afterwards.
    - If you cannot seed the data source, report honestly: name which nodes
      were verified and which were not, and tell the user the unreached part
-     needs a manual test. Never claim end-to-end verification when
-     `nodesNotReached` is non-empty.
+     needs a manual test. Do not start a live `executions(action="run")`
+     yourself to reach those nodes; offer the user a test instead. Never claim
+     end-to-end verification when `nodesNotReached` is non-empty.
+   - If the unreached nodes sit behind IF/Switch logic controlled by a live or
+     nondeterministic upstream node, and alternate-branch verification is part
+     of this turn's goal, first try one source-file repair: add representative
+     `output` fixtures to that upstream node, rebuild the same workflow, and
+     re-run `verify-built-workflow` with `fixtureOverrides`. Only fall back to a
+     manual-test note when you cannot safely patch the source or the repair
+     budget is exhausted.
    - Relay `simulationNote` (nodes whose output was simulated) to the user
      whenever it is present.
 3. After verification handling, if `setupRequirement.status === "required"` and

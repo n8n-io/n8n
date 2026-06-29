@@ -100,17 +100,17 @@ export class InstanceAiConfig {
 
 	/**
 	 * Minutes a stopped Daytona sandbox waits before it is archived to cold storage.
-	 * Default 7 days. `0` uses Daytona's maximum interval.
+	 * Default 1 hour. `0` uses Daytona's maximum interval.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES')
-	sandboxAutoArchiveMinutes: number = 7 * 24 * 60;
+	sandboxAutoArchiveMinutes: number = 60;
 
 	/**
-	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 30 days. A negative
+	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 7 days. A negative
 	 * value disables auto-delete; `0` deletes on stop. Ignored when {@link sandboxEphemeral} is true.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES')
-	sandboxAutoDeleteMinutes: number = 30 * 24 * 60;
+	sandboxAutoDeleteMinutes: number = 7 * 24 * 60;
 
 	/**
 	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.

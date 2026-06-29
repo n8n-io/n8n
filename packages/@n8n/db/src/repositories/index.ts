@@ -52,7 +52,10 @@ export {
 	WorkflowPublicationTriggerStatusRepository,
 	type TriggerStatusRow,
 } from './workflow-publication-trigger-status.repository';
-export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
+export {
+	WorkflowPublishedVersionRepository,
+	type PublishedWorkflowDataForExecution,
+} from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowDependencyRepository,
