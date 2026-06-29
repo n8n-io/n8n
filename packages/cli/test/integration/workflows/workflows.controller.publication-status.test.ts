@@ -1,6 +1,7 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { WorkflowPublicationTriggerStatusRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { nanoid } from 'nanoid';
 import { v4 as uuid } from 'uuid';
 
 import { createOwner, createMember } from '../shared/db/users';
@@ -22,18 +23,18 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 	let triggerStatusRepo: WorkflowPublicationTriggerStatusRepository;
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
+	let owner: Awaited<ReturnType<typeof createOwner>>;
+	let member: Awaited<ReturnType<typeof createMember>>;
 
 	beforeEach(async () => {
 		triggerStatusRepo = Container.get(WorkflowPublicationTriggerStatusRepository);
-		const owner = await createOwner();
-		const member = await createMember();
+		owner = await createOwner();
+		member = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
 		memberAgent = testServer.authAgentFor(member);
 	});
 
 	test('returns partial status when workflow has mixed activated/failed trigger rows', async () => {
-		const owner = await createOwner();
-		ownerAgent = testServer.authAgentFor(owner);
 		const workflow = await createWorkflow(undefined, owner);
 		const versionId = uuid();
 
@@ -73,8 +74,6 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 	});
 
 	test('returns not_published status when workflow has no trigger rows', async () => {
-		const owner = await createOwner();
-		ownerAgent = testServer.authAgentFor(owner);
 		const workflow = await createWorkflow(undefined, owner);
 
 		const res = await ownerAgent.get(`/workflows/${workflow.id}/publication-status`).expect(200);
@@ -88,11 +87,14 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 	});
 
 	test('returns 403 when member cannot access the workflow', async () => {
-		const owner = await createOwner();
-		const member = await createMember();
-		memberAgent = testServer.authAgentFor(member);
 		const workflow = await createWorkflow(undefined, owner);
 
 		await memberAgent.get(`/workflows/${workflow.id}/publication-status`).expect(403);
+	});
+
+	test('returns 404 for a non-existent workflow id', async () => {
+		const nonExistentId = nanoid();
+
+		await ownerAgent.get(`/workflows/${nonExistentId}/publication-status`).expect(404);
 	});
 });
