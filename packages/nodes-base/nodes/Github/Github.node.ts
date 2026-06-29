@@ -27,6 +27,7 @@ import {
 import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
 import { removeTrailingSlash } from '../../utils/utilities';
 import { defaultWebhookDescription } from '../Webhook/description';
+import { pullRequestFields } from './descriptions/PullRequestDescription';
 
 const waitingTooltip = (parameters: { operation: string }, resumeUrl: string) => {
 	if (parameters?.operation === 'dispatchAndWait') {
@@ -84,6 +85,15 @@ export class Github implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'githubAppApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['githubAppApi'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -98,6 +108,10 @@ export class Github implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
+					},
+					{
+						name: 'GitHub App',
+						value: 'githubAppApi',
 					},
 				],
 				default: 'accessToken',
@@ -119,6 +133,10 @@ export class Github implements INodeType {
 					{
 						name: 'Organization',
 						value: 'organization',
+					},
+					{
+						name: 'Pull Request',
+						value: 'pullRequest',
 					},
 					{
 						name: 'Release',
@@ -173,6 +191,11 @@ export class Github implements INodeType {
 				],
 				default: 'getRepositories',
 			},
+
+			// Pull Request operations are extracted to descriptions/PullRequestDescription.ts
+			// to keep the main node file maintainable and to share a single `PR Number` field
+			// across all operations that need it.
+			...pullRequestFields,
 
 			{
 				displayName: 'Operation',
@@ -2326,6 +2349,16 @@ export class Github implements INodeType {
 			'issue:createComment',
 			'issue:edit',
 			'issue:get',
+			'pullRequest:close',
+			'pullRequest:create',
+			'pullRequest:createComment',
+			'pullRequest:editComment',
+			'pullRequest:getDiff',
+			'pullRequest:getPatch',
+			'pullRequest:get',
+			'pullRequest:merge',
+			'pullRequest:reopen',
+			'pullRequest:update',
 			'release:create',
 			'release:delete',
 			'release:get',
@@ -2369,7 +2402,7 @@ export class Github implements INodeType {
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0);
-		const resource = this.getNodeParameter('resource', 0);
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const fullOperation = `${resource}:${operation}`;
 
 		if (resource === 'workflow' && operation === 'dispatchAndWait') {
@@ -2633,6 +2666,125 @@ export class Github implements INodeType {
 
 						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
 					}
+				} else if (resource === 'pullRequest') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+						requestMethod = 'POST';
+
+						body.title = this.getNodeParameter('title', i) as string;
+						body.body = this.getNodeParameter('body', i, '') as string;
+						body.head = this.getNodeParameter('head', i) as string; // owner:branch supported
+						body.base = this.getNodeParameter('base', i) as string;
+						body.draft = this.getNodeParameter('draft', i, false) as boolean;
+
+						endpoint = `/repos/${owner}/${repository}/pulls`;
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update pull request
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
+						const editFields = this.getNodeParameter('editFields', i, {}) as IDataObject;
+
+						if (editFields.title !== undefined) body.title = editFields.title;
+						if (editFields.body !== undefined) body.body = editFields.body;
+						if (editFields.state !== undefined) body.state = editFields.state;
+						if (editFields.base !== undefined) body.base = editFields.base;
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'close') {
+						// ----------------------------------
+						//         close pull request
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
+						body.state = 'closed';
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'reopen') {
+						// ----------------------------------
+						//         reopen pull request
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
+						body.state = 'open';
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get pull request
+						// ----------------------------------
+						requestMethod = 'GET';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'createComment') {
+						// ----------------------------------
+						//         createComment
+						// ----------------------------------
+						requestMethod = 'POST';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
+
+						body.body = this.getNodeParameter('body', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/issues/${pullRequestNumber}/comments`;
+					} else if (operation === 'editComment') {
+						// ----------------------------------
+						//         edit comment
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const commentId = this.getNodeParameter('commentId', i) as string;
+						body.body = this.getNodeParameter('body', i) as string;
+						endpoint = `/repos/${owner}/${repository}/issues/comments/${commentId}`;
+					} else if (operation === 'getDiff' || operation === 'getPatch') {
+						// ----------------------------------
+						//         getDiff / getPatch
+						// ----------------------------------
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
+						const format = operation === 'getDiff' ? 'diff' : 'patch';
+						const options: IDataObject = {
+							headers: { Accept: `application/vnd.github.v3.${format}` },
+							json: false,
+						};
+						const responseText = await githubApiRequest.call(
+							this,
+							'GET',
+							`/repos/${owner}/${repository}/pulls/${pullRequestNumber}`,
+							{},
+							{},
+							options,
+						);
+						responseData = { [format]: responseText };
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray([responseData]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+						continue;
+					} else if (operation === 'merge') {
+						// ----------------------------------
+						//         merge pull request
+						// ----------------------------------
+						requestMethod = 'PUT';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
+						const mergeMethod = this.getNodeParameter('mergeMethod', i, 'merge') as string;
+						const commitTitle = (this.getNodeParameter('commitTitle', i, '') as string).trim();
+						const commitMessage = (this.getNodeParameter('commitMessage', i, '') as string).trim();
+
+						// Only attach optional fields when non-empty so we never
+						// send empty strings to GitHub's API parser.
+						if (commitTitle !== '') body.commit_title = commitTitle;
+						if (commitMessage !== '') body.commit_message = commitMessage;
+						body.merge_method = mergeMethod;
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/merge`;
+					}
 				} else if (resource === 'release') {
 					if (operation === 'create') {
 						// ----------------------------------
@@ -2772,7 +2924,7 @@ export class Github implements INodeType {
 
 						const reviewId = this.getNodeParameter('reviewId', i) as string;
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 					} else if (operation === 'getAll') {
@@ -2783,7 +2935,7 @@ export class Github implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
@@ -2796,7 +2948,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'POST';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
@@ -2812,7 +2964,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'PUT';
 
-						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						const reviewId = this.getNodeParameter('reviewId', i) as string;
 
 						body.body = this.getNodeParameter('body', i) as string;

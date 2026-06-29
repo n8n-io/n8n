@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, provide, ref, watch } from 'vue';
+import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -10,8 +10,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
 	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { INodeProperties } from 'n8n-workflow';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
@@ -99,14 +102,11 @@ const displayNode = computed<INodeUi>(() => {
 	} as INodeUi;
 });
 
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(
-		createWorkflowDocumentId(
-			ctx.workflowId.value ?? 'instance-ai-workflow-setup',
-			props.section.id,
-		),
-	),
+const documentId = computed(() =>
+	createWorkflowDocumentId(ctx.workflowId.value ?? 'instance-ai-workflow-setup', props.section.id),
 );
+
+const workflowDocumentStore = computed(() => useWorkflowDocumentStore(documentId.value));
 
 watch(
 	displayNode,
@@ -115,6 +115,24 @@ watch(
 	},
 	{ immediate: true, deep: true },
 );
+
+// The provided document store — and the NDV store its descendants
+// (NodeCredentials, ParameterInputList) materialize via injectNDVStore() — are
+// keyed by a per-section document id. Pinia stores are not freed when this
+// component unmounts, so dispose the previous id whenever it changes and the
+// final id on scope teardown.
+function disposeStores(id: WorkflowDocumentId) {
+	disposeNDVStore(useNDVStore(id));
+	disposeWorkflowDocumentStore(useWorkflowDocumentStore(id));
+}
+
+watch(documentId, (_newId, oldId) => {
+	if (oldId) disposeStores(oldId);
+});
+
+onScopeDispose(() => {
+	disposeStores(documentId.value);
+});
 
 const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => ({
 	localResolve: true,

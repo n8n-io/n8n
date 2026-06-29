@@ -1,11 +1,7 @@
-ARG NODE_VERSION=24.16.0
-
-# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# Bump the digest together with the tag when updating the base image.
-# Digest pins to dhi.io/node:24.16.0-alpine3.22-dev (Node 24.16.0, Alpine 3.22, DHI dev variant).
-FROM dhi.io/node:24.16.0-alpine3.22-dev@sha256:67906dda1e458153488aecb9a7a5a926cb03cf1e8890eb8602a86a78162b2556
-
-ARG NODE_VERSION
+# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# The tag is the human-readable version; Docker resolves by the digest. Bump the tag and
+# digest together when updating the base image.
+FROM dhi.io/node:24.16.0-alpine3.24-dev@sha256:0fda302d7d6f2436b27edc9392bd6a4f8ae9ce86e9837c2b8676abdf26a4a7fb
 
 # Install all dependencies in a single layer to minimize image size
 RUN apk add --no-cache busybox-binsh && \
@@ -22,7 +18,7 @@ RUN apk add --no-cache busybox-binsh && \
     # libs Node uses (the openssl CLI binary isn't needed at runtime).
     apk add --no-cache \
         openssh \
-        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (GPL-2.0); see SEC-398 + NODE-4184` \
+        graphicsmagick \
         tini \
         tzdata \
         ca-certificates \
@@ -31,8 +27,12 @@ RUN apk add --no-cache busybox-binsh && \
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
     apk del apk-tools
 
+# Alpine 3.24 ships node at /usr/bin; symlink it to /usr/local/bin so the path
+# matches what the cloud launch and AppArmor profile expect.
+RUN mkdir -p /usr/local/bin && ln -sf /usr/bin/node /usr/local/bin/node
+
 WORKDIR /home/node
-# DHI images use a non-standard global npm path, so we need to set NODE_PATH
-# to allow externally installed npm packages to be found by require()
-ENV NODE_PATH=/opt/nodejs/node-v${NODE_VERSION}/lib/node_modules
+# This base image installs global npm modules under /usr/local; set NODE_PATH
+# so packages added via `npm install -g` are require()-able at runtime.
+ENV NODE_PATH=/usr/local/lib/node_modules
 EXPOSE 5678/tcp

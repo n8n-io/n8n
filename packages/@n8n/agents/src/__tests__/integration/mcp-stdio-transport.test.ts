@@ -7,7 +7,7 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 
 import { TINY_PNG } from './mcp-server-helpers';
-import { McpConnection } from '../../runtime/mcp-connection';
+import { McpConnection } from '../../runtime/mcp/mcp-connection';
 
 // vitest injects __dirname for TypeScript test files in the node environment.
 const FIXTURE_PATH = path.resolve(__dirname, '../fixtures/mcp-stdio-server.mjs');

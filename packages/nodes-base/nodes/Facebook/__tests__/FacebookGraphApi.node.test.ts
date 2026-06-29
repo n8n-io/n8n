@@ -108,3 +108,84 @@ describe('FacebookGraphApi node — binary upload', () => {
 		expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).not.toHaveBeenCalled();
 	});
 });
+
+describe('FacebookGraphApi node — error handling', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+	let node: FacebookGraphApi;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		node = new FacebookGraphApi();
+
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		mockExecuteFunctions.getNode.mockReturnValue({
+			id: 'test-node-id',
+			name: 'Facebook Graph API',
+			type: 'n8n-nodes-base.facebookGraphApi',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+		mockExecuteFunctions.getCredentials.mockResolvedValue({ accessToken: 'TOKEN' });
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+			const params: Record<string, unknown> = {
+				authType: 'accessToken',
+				hostUrl: 'graph.facebook.com',
+				httpRequestMethod: 'GET',
+				graphApiVersion: 'v23.0',
+				node: '123456',
+				edge: 'feed',
+				options: {},
+				sendBinaryData: false,
+			};
+			return params[name] as never;
+		});
+	});
+
+	it('throws when the request fails and continueOnFail is disabled', async () => {
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		mockExecuteFunctions.helpers = {
+			request: vi.fn().mockRejectedValue({ statusCode: 400 }),
+		} as never;
+
+		await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow();
+	});
+
+	it('routes the failed item to the error output when continueOnFail is enabled', async () => {
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+		mockExecuteFunctions.helpers = {
+			request: vi.fn().mockRejectedValue({
+				statusCode: 400,
+				response: {
+					body: { error: { message: 'Invalid token', type: 'OAuthException', code: 190 } },
+					headers: { 'x-fb-trace-id': 'abc' },
+				},
+			}),
+		} as never;
+
+		const result = await node.execute.call(mockExecuteFunctions);
+
+		const item = result[0][0];
+		// The engine routes an item to the error output only when `error` is set,
+		// and needs `pairedItem` to resolve the originating input item.
+		expect(item.error).toBeDefined();
+		expect(item.pairedItem).toEqual({ item: 0 });
+		// The Graph API error detail is still preserved on the item.
+		expect(item.json).toMatchObject({ statusCode: 400, message: 'Invalid token', code: 190 });
+	});
+
+	it('marks a non-JSON string response as an error item when continueOnFail is enabled', async () => {
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+		mockExecuteFunctions.helpers = {
+			request: vi.fn().mockResolvedValue('<html>not json</html>'),
+		} as never;
+
+		const result = await node.execute.call(mockExecuteFunctions);
+
+		const item = result[0][0];
+		expect(item.error).toBeDefined();
+		expect(item.pairedItem).toEqual({ item: 0 });
+		expect(item.json).toEqual({ message: '<html>not json</html>' });
+	});
+});

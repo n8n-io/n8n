@@ -20,6 +20,7 @@ const props = defineProps<{
 	placeholder?: string;
 	loading?: boolean;
 	disabled?: boolean;
+	teleported?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -76,7 +77,7 @@ const onCreateNewCredential = async () => {
 		:placeholder="props.placeholder"
 		:loading="props.loading"
 		:disabled="props.disabled"
-		:teleported="false"
+		:teleported="props.teleported ?? false"
 		:popper-class="$style.selectPopper"
 		@update:model-value="onCredentialSelected"
 	>

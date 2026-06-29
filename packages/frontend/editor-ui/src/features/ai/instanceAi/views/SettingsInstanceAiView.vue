@@ -4,6 +4,9 @@ import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -18,9 +21,34 @@ const documentTitle = useDocumentTitle();
 const settingsStore = useSettingsStore();
 const store = useInstanceAiSettingsStore();
 
+const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
+	useInstanceAiMcpConnectionsExperiment();
+const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
+const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
+
 const isAdmin = computed(() => store.canManage);
 
-const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTextKey }> = [
+const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
+	'require_approval',
+	'always_allow',
+	'blocked',
+];
+
+const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
+	'require_approval',
+	'always_allow',
+];
+
+const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
+	require_approval: 'settings.n8nAgent.permissions.needsApproval',
+	always_allow: 'settings.n8nAgent.permissions.alwaysAllow',
+	blocked: 'settings.n8nAgent.permissions.blocked',
+};
+
+const permissionKeys: Array<{
+	key: keyof InstanceAiPermissions;
+	labelKey: BaseTextKey;
+}> = [
 	{ key: 'createWorkflow', labelKey: 'settings.n8nAgent.permissions.createWorkflow' },
 	{ key: 'updateWorkflow', labelKey: 'settings.n8nAgent.permissions.updateWorkflow' },
 	{ key: 'runWorkflow', labelKey: 'settings.n8nAgent.permissions.runWorkflow' },
@@ -47,6 +75,8 @@ const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTe
 	},
 ];
 
+const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
+
 const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
 );
@@ -63,6 +93,16 @@ function handleEnabledToggle(value: string | number | boolean) {
 
 function handleComputerUseToggle(value: string | number | boolean) {
 	store.setField('localGatewayDisabled', !Boolean(value));
+	void store.save();
+}
+
+function handleBrowserUseToggle(value: string | number | boolean) {
+	store.setField('browserUseEnabled', Boolean(value));
+	void store.save();
+}
+
+function handleMcpAccessToggle(value: string | number | boolean) {
+	store.setField('mcpAccessEnabled', Boolean(value));
 	void store.save();
 }
 
@@ -112,7 +152,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 			</template>
 
 			<template v-if="isEnabled">
-				<div v-if="isAdmin" :class="$style.card">
+				<div v-if="isAdmin && isComputerUseExperimentEnabled" :class="$style.card">
 					<div :class="$style.settingsRow">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">
@@ -128,6 +168,68 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							data-test-id="n8n-agent-computer-use-toggle"
 							@update:model-value="handleComputerUseToggle"
 						/>
+					</div>
+				</div>
+
+				<div v-if="isAdmin && isBrowserUseEnabled" :class="$style.card">
+					<div :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.browserUse.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.browserUse.description') }}
+							</span>
+						</div>
+						<ElSwitch
+							:model-value="store.settings?.browserUseEnabled ?? true"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-browser-use-toggle"
+							@update:model-value="handleBrowserUseToggle"
+						/>
+					</div>
+				</div>
+
+				<div v-if="isAdmin && isMcpConnectionsExperimentEnabled" :class="$style.card">
+					<div :class="[$style.settingsRow, { [$style.settingsRowBorder]: isMcpAccessEnabled }]">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.mcpAccess.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.mcpAccess.description') }}
+							</span>
+						</div>
+						<ElSwitch
+							:model-value="isMcpAccessEnabled"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-mcp-access-toggle"
+							@update:model-value="handleMcpAccessToggle"
+						/>
+					</div>
+					<div v-if="isMcpAccessEnabled" :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.permissions.executeMcpTool') }}
+							</span>
+						</div>
+						<N8nSelect
+							:class="$style.permissionSelect"
+							:model-value="store.getPermission('executeMcpTool')"
+							size="small"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-permission-executeMcpTool"
+							@update:model-value="
+								handlePermissionChange('executeMcpTool', $event as InstanceAiPermissionMode)
+							"
+						>
+							<N8nOption
+								v-for="option in MCP_TOOL_PERMISSION_OPTIONS"
+								:key="option"
+								:value="option"
+								:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
+							/>
+						</N8nSelect>
 					</div>
 				</div>
 
@@ -166,16 +268,10 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 								"
 							>
 								<N8nOption
-									value="require_approval"
-									:label="i18n.baseText('settings.n8nAgent.permissions.needsApproval')"
-								/>
-								<N8nOption
-									value="always_allow"
-									:label="i18n.baseText('settings.n8nAgent.permissions.alwaysAllow')"
-								/>
-								<N8nOption
-									value="blocked"
-									:label="i18n.baseText('settings.n8nAgent.permissions.blocked')"
+									v-for="option in PERMISSION_OPTIONS"
+									:key="option"
+									:value="option"
+									:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
 								/>
 							</N8nSelect>
 						</div>

@@ -80,6 +80,7 @@ interface PersistedAdminSettings {
 	subAgentMaxSteps?: number;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
+	mcpAccessEnabled?: boolean;
 	sandboxEnabled?: boolean;
 	sandboxProvider?: string;
 	sandboxImage?: string;
@@ -88,6 +89,7 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
+	browserUseEnabled?: boolean;
 }
 
 @Service()
@@ -98,6 +100,9 @@ export class InstanceAiSettingsService {
 
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
+
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	private mcpAccessEnabled = true;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -177,6 +182,7 @@ export class InstanceAiSettingsService {
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: normalizeSandboxProvider(c.sandboxProvider),
 			sandboxImage: c.sandboxImage,
@@ -185,6 +191,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
+			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
 	}
 
@@ -207,12 +214,14 @@ export class InstanceAiSettingsService {
 		this.validateAdminSettingsUpdate(update);
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
+		const previousMcpAccessEnabled = this.mcpAccessEnabled;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
 		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
+		if (update.mcpAccessEnabled !== undefined) this.mcpAccessEnabled = update.mcpAccessEnabled;
 		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
 		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
 		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
@@ -225,10 +234,12 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
+		if (update.browserUseEnabled !== undefined) c.browserUseEnabled = update.browserUseEnabled;
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged: c.mcpServers !== previousMcpServers,
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || this.mcpAccessEnabled !== previousMcpAccessEnabled,
 		});
 
 		return this.getAdminSettings();
@@ -414,6 +425,11 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	isMcpAccessEnabled(): boolean {
+		return this.mcpAccessEnabled;
+	}
+
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
 	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
 		if (!this.enabled) return true;
@@ -431,6 +447,10 @@ export class InstanceAiSettingsService {
 	/** Whether the local gateway is disabled globally by the admin. */
 	isLocalGatewayDisabled(): boolean {
 		return this.config.localGatewayDisabled;
+	}
+
+	isBrowserUseEnabled(): boolean {
+		return this.config.browserUseEnabled;
 	}
 
 	/** Whether workflow building can use the required sandbox workspace. */
@@ -624,6 +644,8 @@ export class InstanceAiSettingsService {
 			};
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
+		if (persisted.mcpAccessEnabled !== undefined)
+			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
 		if (persisted.sandboxProvider !== undefined)
 			c.sandboxProvider = normalizeSandboxProvider(persisted.sandboxProvider);
@@ -637,6 +659,8 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
+		if (persisted.browserUseEnabled !== undefined)
+			c.browserUseEnabled = persisted.browserUseEnabled;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -650,6 +674,7 @@ export class InstanceAiSettingsService {
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: c.sandboxProvider,
 			sandboxImage: c.sandboxImage,
@@ -658,6 +683,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
+			browserUseEnabled: c.browserUseEnabled,
 		};
 
 		await this.settingsRepository.upsert(

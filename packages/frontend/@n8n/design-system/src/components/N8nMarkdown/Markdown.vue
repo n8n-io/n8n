@@ -99,10 +99,52 @@ const htmlContent = computed(() => {
 	const fileIdRegex = new RegExp('fileId:([0-9]+)');
 	let contentToRender = props.content;
 	if (props.withMultiBreaks) {
-		contentToRender = contentToRender.replace(/\n{3,}/g, (match) => {
-			// Keep \n\n for the paragraph break, add &nbsp;\n for each extra blank line
-			return '\n\n' + '&nbsp;\n'.repeat(match.length - 2);
-		});
+		// Turn blank lines between plain text into &nbsp; soft breaks so they render
+		// as one paragraph (avoids UA <p> margins stacking on top of theme spacing).
+		// Keep them as real paragraph breaks when adjacent to block-level markdown
+		// (list, heading, blockquote, code fence, hr) so structures parse correctly,
+		// and leave blank lines inside fenced code blocks untouched so they stay literal.
+		// Parse a code-fence line into its fence char and run length (>= 3). A fence
+		// can be made of 3+ backticks or tildes; the closing fence must use the same
+		// char and be at least as long, and carry no info string after it.
+		const parseFence = (line: string) => {
+			const match = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+			return match ? { char: match[1][0], length: match[1].length, rest: match[2] } : null;
+		};
+		const isBlockStart = (line: string) =>
+			/^\s*([-*+]|\d+\.)\s/.test(line) ||
+			/^#{1,6}\s/.test(line) ||
+			/^>/.test(line) ||
+			parseFence(line) !== null ||
+			/^---+\s*$/.test(line);
+		const lines = contentToRender.split('\n');
+		let openFence: { char: string; length: number } | null = null;
+		contentToRender = lines
+			.map((line, i) => {
+				const fence = parseFence(line);
+				if (openFence) {
+					// A closing fence matches the opening char, is at least as long, and
+					// has no trailing content; shorter/different fences stay code content.
+					if (
+						fence &&
+						fence.char === openFence.char &&
+						fence.length >= openFence.length &&
+						fence.rest.trim() === ''
+					) {
+						openFence = null;
+					}
+					return line;
+				}
+				if (fence) {
+					openFence = { char: fence.char, length: fence.length };
+					return line;
+				}
+				if (line !== '') return line;
+				const prev = lines[i - 1] ?? '';
+				const next = lines[i + 1] ?? '';
+				return isBlockStart(prev) || isBlockStart(next) ? '' : '&nbsp;';
+			})
+			.join('\n');
 	}
 	const html = md.render(contentToRender);
 

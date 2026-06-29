@@ -1,3 +1,5 @@
+import { formatPemBlock } from '@n8n/utils';
+import { generatePairedItemData } from '@utils/utilities';
 import { createWriteStream } from 'fs';
 import { BINARY_ENCODING, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -19,8 +21,6 @@ import sftpClient from 'ssh2-sftp-client';
 import type { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
-
-import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
 interface ReturnFtpItem {
 	type: string;
@@ -558,7 +558,7 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
+							privateKey: formatPemBlock(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
 						});
 					} else {
@@ -613,7 +613,7 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
+							privateKey: formatPemBlock(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
 							readyTimeout: connectionTimeout,
 							algorithms: {

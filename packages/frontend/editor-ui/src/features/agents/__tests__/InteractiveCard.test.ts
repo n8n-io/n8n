@@ -4,7 +4,7 @@ import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import InteractiveCard from '../components/interactive/InteractiveCard.vue';
-import type { InteractivePayload } from '../composables/agentChatMessages';
+import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {

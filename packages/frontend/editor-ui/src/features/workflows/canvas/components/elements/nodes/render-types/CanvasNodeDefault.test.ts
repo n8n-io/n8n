@@ -8,7 +8,7 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type IPinData } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import type * as actualVueRouter from 'vue-router';
@@ -30,6 +30,9 @@ vi.mock('vue-router', async (importOriginal) => {
 
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const pinnedDataByNodeName: IPinData = {};
+const executionPinDataByNodeName: IPinData = {};
+let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -39,6 +42,9 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 			value: actual.createEmptyCanvasRenderData({
 				nodeInputsByNodeId: renderNodeInputsMap,
 				nodeOutputsByNodeId: renderNodeOutputsMap,
+				pinnedDataByNodeName,
+				executionPinDataByNodeName,
+				isExecutionDataDisplayed,
 			}),
 		})),
 	};
@@ -68,6 +74,13 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	renderNodeInputsMap.clear();
 	renderNodeOutputsMap.clear();
+	for (const key of Object.keys(pinnedDataByNodeName)) {
+		delete pinnedDataByNodeName[key];
+	}
+	for (const key of Object.keys(executionPinDataByNodeName)) {
+		delete executionPinDataByNodeName[key];
+	}
+	isExecutionDataDisplayed = false;
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -281,6 +294,76 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+		});
+	});
+
+	describe('execution pin data', () => {
+		it('should apply pinned styling instead of success styling when node output used execution pin data', () => {
+			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+			isExecutionDataDisplayed = true;
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).toHaveClass('pinned');
+			expect(nodeElement).not.toHaveClass('success');
+		});
+
+		it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
+			pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
+			isExecutionDataDisplayed = true;
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).not.toHaveClass('pinned');
+			expect(nodeElement).toHaveClass('success');
+		});
+
+		it('should ignore execution pin data outside execution preview mode', () => {
+			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).not.toHaveClass('pinned');
+			expect(nodeElement).toHaveClass('success');
 		});
 	});
 

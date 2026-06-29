@@ -3,6 +3,10 @@ import { describe, expect, test, vi } from 'vitest';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { createInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: vi.fn() }),
+}));
+
 describe('instance ai prompt suggestions telemetry', () => {
 	const track = vi.fn();
 	const telemetry = { track };
@@ -45,6 +49,32 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
 			thread_id: 'thread-v2',
 			suggestion_catalog_version: 'v2',
+		});
+	});
+
+	test('tracks suggestion impressions with experiment telemetry fields', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, new Set<string>());
+
+		helper.trackSuggestionsShown({
+			threadId: 'thread-v4',
+			suggestionCatalogVersion: 'v4-personalized',
+			telemetryPayload: {
+				suggestion_format: 'cards',
+				suggestion_source: 'matrix',
+				metadata_load_state: 'loaded',
+				variant: 'variant-cards',
+				'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			},
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
+			thread_id: 'thread-v4',
+			suggestion_catalog_version: 'v4-personalized',
+			suggestion_format: 'cards',
+			suggestion_source: 'matrix',
+			metadata_load_state: 'loaded',
+			variant: 'variant-cards',
+			'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 		});
 	});
 
@@ -191,6 +221,30 @@ describe('instance ai prompt suggestions telemetry', () => {
 			cycle_count: 1,
 		});
 		expect(track.mock.calls[0][1]).not.toHaveProperty('thread_id');
+	});
+
+	test('tracks suggestion cycles with experiment telemetry fields', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
+
+		helper.trackSuggestionsCycled({
+			suggestionCatalogVersion: 'v4-personalized',
+			visibleSuggestionIds: ['one', 'two', 'three', 'four'],
+			cycleCount: 2,
+			telemetryPayload: {
+				suggestion_format: 'list',
+				suggestion_source: 'v2_top_used_fallback',
+				metadata_load_state: 'loaded',
+			},
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions cycled', {
+			suggestion_catalog_version: 'v4-personalized',
+			visible_suggestion_ids: ['one', 'two', 'three', 'four'],
+			cycle_count: 2,
+			suggestion_format: 'list',
+			suggestion_source: 'v2_top_used_fallback',
+			metadata_load_state: 'loaded',
+		});
 	});
 
 	test('tracks submitted inserted suggestions with modified state', () => {

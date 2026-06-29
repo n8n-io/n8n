@@ -176,6 +176,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	collaboration: {
+		crdt: 'off',
+	},
 	evaluation: {
 		quota: 0,
 	},
@@ -185,5 +188,8 @@ export const defaultSettings: FrontendSettings = {
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,
+		filters: {
+			publishedWorkflowCount: 0,
+		},
 	},
 };

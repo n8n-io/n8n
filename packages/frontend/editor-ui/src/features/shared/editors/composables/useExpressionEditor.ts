@@ -21,7 +21,7 @@ import {
 	EXPRESSION_EDITOR_PARSER_TIMEOUT,
 	ExpressionLocalResolveContextSymbol,
 } from '@/app/constants';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
 import {
@@ -81,8 +81,8 @@ export const useExpressionEditor = ({
 	initialCursorPosition?: number | 'lastExpression' | 'end';
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
-	const ndvStore = injectNDVStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
