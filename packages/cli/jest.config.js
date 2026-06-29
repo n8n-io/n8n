@@ -6,6 +6,7 @@ const baseConfig = require('../../jest.config');
 module.exports = {
 	...baseConfig,
 	testEnvironmentOptions: {
+		...baseConfig.testEnvironmentOptions,
 		url: 'http://localhost/',
 	},
 	globalSetup: '<rootDir>/test/setup.ts',

@@ -139,7 +139,8 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
 | `--timeout-ms` | `900000` | Per-test-case timeout |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
-| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
+| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
+| `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
@@ -257,6 +258,16 @@ When `LANGSMITH_API_KEY` is set, every eval run automatically compares its resul
 - `eval-pr-comment.md` — the full PR comment rendered as markdown, including the alert, aggregate, comparison sections, per-test-case results, and failure details. Always written; falls back to a no-baseline summary when no comparison ran.
 
 The CI PR-comment step uses `eval-pr-comment.md` as the entire comment body (no jq assembly in the workflow). The console output uses a separate aligned-text formatter — same data, no markdown noise in the terminal.
+
+### Re-running on a PR
+
+Evals auto-run when a PR is **opened / reopened / marked ready** (path-filtered), but **not on new pushes** — `synchronize` is intentionally off (full runs are expensive). To exercise the latest push, re-run against the PR head on demand:
+
+```bash
+gh workflow run ci-instance-ai-evals.yml -f pr=<number>
+```
+
+…or use the **Run workflow** button on the **CI: Instance AI Evals** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so it tests the merged state like a PR-open run; otherwise it uses the head), runs the eval against it, and posts results back to the PR. A dispatched run rebuilds the docker image either way — the prebuilt image cache is scoped to `refs/pull/<n>/merge`, which a dispatch can't restore. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
 
 ### Refreshing the baseline
 
@@ -518,6 +529,8 @@ No tools, services, or workflow imports are mocked. The `eval:subagent` command 
 ## LangSmith integration
 
 When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment against the `instance-ai-workflow-evals` dataset (synced from the JSON files before each run). Experiments against the same dataset can be compared side-by-side to spot regressions.
+
+To record an isolated cohort without touching the shared dataset or baseline — e.g. MCP-built workflows scored via `--prebuilt-workflows` — pass a dedicated `--dataset` and `--baseline-prefix`. The sync then only writes that cohort's cases (filtered by `--tier`) into its own dataset, and regression comparison only looks for baselines under the given prefix. See the [MCP workflow evaluations README](../../../cli/src/modules/mcp/evaluations/README.md#record-runs-in-langsmith).
 
 ## Adding test cases
 

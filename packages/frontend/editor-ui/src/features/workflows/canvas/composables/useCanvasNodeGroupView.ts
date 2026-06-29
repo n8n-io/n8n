@@ -3,7 +3,9 @@ import { jsonParse } from 'n8n-workflow';
 import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
+import type { GroupExpansionMode } from '../canvas.types';
 import { isStringArrayRecord } from '@/app/utils/objectUtils';
+import { applyOffset } from '../canvas.utils';
 import {
 	aggregateNodeGroupLayoutOffsets,
 	computeNodeGroupLayoutPushes,
@@ -17,8 +19,8 @@ export interface UseCanvasNodeGroupViewDeps {
 	getCurrentGroupIds: () => string[];
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
 	isGroupingEnabled: () => boolean;
-	// Show every group expanded and leave persisted view state untouched
-	forceAllGroupsExpanded: () => boolean;
+	// Host override for group expansion; leaves persisted view state untouched.
+	getGroupExpansionMode?: () => GroupExpansionMode | undefined;
 }
 
 export interface NodeGroupNodePosition {
@@ -108,8 +110,10 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	);
 	const componentOffsets = computed(() => aggregateNodeGroupLayoutOffsets(pushEntries.value));
 
+	const usesStoredExpansion = () => deps.getGroupExpansionMode?.() === undefined;
+
 	function persist() {
-		if (deps.forceAllGroupsExpanded()) return;
+		if (!usesStoredExpansion()) return;
 		writeStore({ ...readStore(), [deps.workflowId()]: [...expandedGroupIdOrder.value] });
 	}
 
@@ -129,15 +133,18 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	// Seed the expanded set on (re)load: all groups when forced, otherwise
-	// the persisted ids. Drop any id whose group no longer exists.
 	function restore(presentIds: Set<string>) {
-		const stored = deps.forceAllGroupsExpanded()
-			? [...presentIds]
-			: (readStore()[deps.workflowId()] ?? []);
-		expandedGroupIdOrder.value = stored.filter((id) => presentIds.has(id));
 		disabledPushSourceGroupIds.value = new Set();
 		ignoredNodeIdsBySourceGroup.value = new Map();
+
+		if (!usesStoredExpansion()) {
+			expandedGroupIdOrder.value = [];
+			return;
+		}
+
+		const storedExpandedGroupIds = readStore()[deps.workflowId()] ?? [];
+		// Prune ids whose group no longer exists
+		expandedGroupIdOrder.value = storedExpandedGroupIds.filter((id) => presentIds.has(id));
 
 		const groupsLoaded = presentIds.size > 0;
 		if (groupsLoaded) persist();
@@ -264,7 +271,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 					if (!position) continue;
 					bakedMoves.push({
 						id: nodeId,
-						position: { x: position[0] + offset.x, y: position[1] + offset.y },
+						position: applyOffset(position, offset),
 					});
 				}
 			}
@@ -287,10 +294,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			return [
 				{
 					id: nodeId,
-					position: {
-						x: position[0] + offset.x,
-						y: position[1] + offset.y,
-					},
+					position: applyOffset(position, offset),
 				},
 			];
 		});
@@ -347,6 +351,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		reinitialize,
 		isGroupCollapsed,
 		toggleCollapsed,
+		setGroupExpanded,
 		syncLayoutComponents,
 		getVisualOffsetForComponent,
 		getVisualOffsetForNode,

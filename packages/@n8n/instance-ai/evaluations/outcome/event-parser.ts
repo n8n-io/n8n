@@ -11,6 +11,7 @@ import type {
 	ConversationMetrics,
 	EventOutcome,
 	InstanceAiMetrics,
+	TranscriptTurn,
 	TurnCounter,
 } from '../types';
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
@@ -398,6 +399,82 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 		confirmationAskedTotal: aggregateTotal,
 		confirmationAskedByKind: aggregateByKind,
 		reachedRunFinishCleanly,
+	};
+}
+
+/** Per-turn counters for the SEEDED prefix. Seeded turns emit no SSE events, so we
+ *  count tool calls + confirmations from step kinds (mirrors buildConversationMetrics).
+ *  Best-effort: replanAfterError / repeatQuestion / runFinishStatus aren't recoverable. */
+export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[] {
+	return seededTurns.map((turn, i) => {
+		const counter: TurnCounter = {
+			turn: i + 1,
+			toolCallCount: 0,
+			toolErrorCount: 0,
+			confirmationAskedTotal: 0,
+			confirmationAskedByKind: {},
+			replanAfterErrorCount: 0,
+			repeatQuestionCount: 0,
+		};
+		for (const step of turn.steps) {
+			// Every non-narration step is a tool call (+1); in a live run the HITL
+			// ones also emit a confirmation-request, counted below.
+			if (step.kind === 'agent-text') continue;
+			counter.toolCallCount++;
+			switch (step.kind) {
+				case 'tool-call':
+					if (step.error !== undefined) counter.toolErrorCount++;
+					break;
+				case 'ask-user':
+					counter.confirmationAskedTotal++;
+					counter.confirmationAskedByKind.questions =
+						(counter.confirmationAskedByKind.questions ?? 0) + 1;
+					break;
+				case 'setup-card':
+					counter.confirmationAskedTotal++;
+					counter.confirmationAskedByKind.setup = (counter.confirmationAskedByKind.setup ?? 0) + 1;
+					break;
+				case 'confirmation': {
+					counter.confirmationAskedTotal++;
+					const kind = step.resumeReason;
+					counter.confirmationAskedByKind[kind] = (counter.confirmationAskedByKind[kind] ?? 0) + 1;
+					break;
+				}
+				default:
+					break; // plan, setup-wizard — tool call only
+			}
+		}
+		return counter;
+	});
+}
+
+/** Prepend the seeded prefix's counters to live metrics so a seedThread case's
+ *  metrics span the whole conversation (matching the unified transcript). Live
+ *  `reachedRunFinishCleanly` is preserved (it describes the evaluated run); an
+ *  empty prefix returns metrics deep-equal to the live ones. */
+export function mergeSeededConversationMetrics(
+	seededTurns: TranscriptTurn[],
+	liveMetrics: ConversationMetrics,
+): ConversationMetrics {
+	const seededPerTurn = seededTurnCounters(seededTurns);
+	const perTurn = [...seededPerTurn, ...liveMetrics.perTurn].map((counter, i) => ({
+		...counter,
+		turn: i + 1,
+	}));
+	const confirmationAskedByKind = { ...liveMetrics.confirmationAskedByKind };
+	let confirmationAskedTotal = liveMetrics.confirmationAskedTotal;
+	for (const counter of seededPerTurn) {
+		confirmationAskedTotal += counter.confirmationAskedTotal;
+		for (const [kind, count] of Object.entries(counter.confirmationAskedByKind)) {
+			confirmationAskedByKind[kind] = (confirmationAskedByKind[kind] ?? 0) + count;
+		}
+	}
+	return {
+		turnCount: seededPerTurn.length + liveMetrics.turnCount,
+		perTurn,
+		confirmationAskedTotal,
+		confirmationAskedByKind,
+		reachedRunFinishCleanly: liveMetrics.reachedRunFinishCleanly,
 	};
 }
 

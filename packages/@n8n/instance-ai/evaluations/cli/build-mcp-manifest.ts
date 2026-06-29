@@ -10,7 +10,7 @@ import { homedir, tmpdir } from 'os';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
-import { DEFAULT_DATASETS } from '../data/workflows/schema';
+import { DEFAULT_DATASETS, conversationTurnTextSchema } from '../data/workflows/schema';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
 
@@ -379,7 +379,9 @@ interface BuildOutcome {
 
 const testCaseSchema = z
 	.object({
-		conversation: z.array(z.object({ role: z.string(), text: z.string() })).min(1),
+		// Reuse the canonical text normalizer so the array (multi-line) form of a
+		// turn's `text` is accepted and joined here exactly as in the eval harness.
+		conversation: z.array(z.object({ role: z.string(), text: conversationTurnTextSchema })).min(1),
 	})
 	.passthrough();
 

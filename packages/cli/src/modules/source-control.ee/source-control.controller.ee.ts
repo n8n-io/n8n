@@ -202,11 +202,6 @@ export class SourceControlController {
 		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
 
 		try {
-			await this.sourceControlService.setGitUserDetails(
-				`${req.user.firstName} ${req.user.lastName}`,
-				req.user.email,
-			);
-
 			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 
@@ -256,6 +251,7 @@ export class SourceControlController {
 
 	@Get('/get-status', { middlewares: [sourceControlEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
+		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 		try {
 			const result = await this.sourceControlService.getStatus(
 				req.user,
@@ -272,6 +268,7 @@ export class SourceControlController {
 
 	@Get('/status')
 	async status(req: SourceControlRequest.GetStatus) {
+		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 		try {
 			return await this.sourceControlService.getStatus(
 				req.user,

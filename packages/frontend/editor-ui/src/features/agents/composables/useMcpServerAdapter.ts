@@ -83,6 +83,14 @@ const AUTHENTICATION_TO_CREDENTIAL_TYPE: Record<string, string | undefined> = {
 	none: 'none',
 } satisfies Record<McpAuthenticationSchemaType, string | undefined>;
 
+const CREDENTIAL_TYPE_TO_AUTHENTICATION: Record<string, string | undefined> = {
+	httpBearerAuth: 'bearerAuth',
+	httpHeaderAuth: 'headerAuth',
+	httpMultipleHeadersAuth: 'multipleHeadersAuth',
+	mcpOAuth2Api: 'mcpOAuth2Api',
+	none: 'none',
+} satisfies Record<string, McpAuthenticationSchemaType | undefined>;
+
 function authenticationToCredentialType(authentication: string): string | undefined {
 	return AUTHENTICATION_TO_CREDENTIAL_TYPE[authentication] ?? authentication;
 }
@@ -104,7 +112,7 @@ function resolveAuthenticationFromNode(node: INode): string {
 	if (authentication) return authentication;
 
 	const credentialType = resolveCredentialType(node.credentials);
-	if (credentialType) return credentialType;
+	if (credentialType) return CREDENTIAL_TYPE_TO_AUTHENTICATION[credentialType] ?? credentialType;
 
 	return 'none';
 }

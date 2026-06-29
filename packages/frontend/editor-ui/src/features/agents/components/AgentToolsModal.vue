@@ -58,7 +58,10 @@ const props = defineProps<{
 		projectId?: string;
 		/** Optional — tagged onto telemetry events for correlation with agent analytics. */
 		agentId?: string;
-		onConfirm: (tools: AgentJsonToolRef[], mcpServers?: AgentJsonMcpServerConfig[]) => void;
+		onConfirm: (props: {
+			tools?: AgentJsonToolRef[];
+			mcpServers?: AgentJsonMcpServerConfig[];
+		}) => void;
 	};
 }>();
 
@@ -684,7 +687,10 @@ function handleConfigureMcpServer(serverView: ConfiguredMcpServerView) {
 }
 
 function commit() {
-	props.data.onConfirm(workingTools.value, workingMcpServers.value);
+	props.data.onConfirm({
+		tools: workingTools.value,
+		mcpServers: workingMcpServers.value,
+	});
 }
 </script>
 

@@ -257,6 +257,7 @@ export interface EpisodicMemoryPrompts {
 export interface EpisodicMemoryEmbeddingProviderOptions {
 	apiKey?: string;
 	baseURL?: string;
+	fetch?: typeof globalThis.fetch;
 }
 
 export interface EpisodicMemoryConfig {
