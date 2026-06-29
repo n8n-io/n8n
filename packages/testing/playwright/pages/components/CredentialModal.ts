@@ -22,6 +22,16 @@ export class CredentialModal extends BaseModal {
 		return new CredentialModal(page.getByTestId('editCredential-modal'));
 	}
 
+	/**
+	 * Scope every inherited `BaseModal` method (`close`, `getCloseButton`, `getText`, …)
+	 * to this modal's root. The credential modal is frequently stacked on top of another
+	 * dialog (e.g. the chat-hub provider settings modal), so the default page-wide
+	 * `page.getByRole('dialog')` container would resolve the wrong dialog.
+	 */
+	get container(): Locator {
+		return this.root;
+	}
+
 	getModal(): Locator {
 		return this.root;
 	}

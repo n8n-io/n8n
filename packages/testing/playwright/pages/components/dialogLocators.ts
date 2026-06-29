@@ -17,17 +17,14 @@ export function dialogCloseIconIn(scope: Page | Locator): Locator {
 	return scope.locator('.el-dialog__close').first();
 }
 
-/** Click the dialog close (X) icon within `scope`, but only if it's currently visible. */
+/**
+ * Click the dialog close (X) icon within `scope`, but only if it's currently visible.
+ *
+ * `scope` must be the modal's own root (not a page-wide `getByRole('dialog')`) so that,
+ * when modals are stacked, the close icon resolves to the intended dialog.
+ */
 export async function closeDialogIfOpen(scope: Page | Locator): Promise<void> {
 	const closeBtn = dialogCloseIconIn(scope);
 	if (!(await closeBtn.isVisible())) return;
-
-	// A teleported overlay (e.g. an open el-select popper) can sit over the close
-	// icon and intercept the click. Try a normal click first, then fall back to a
-	// forced click that bypasses the pointer-interception check.
-	try {
-		await closeBtn.click({ timeout: 5_000 });
-	} catch {
-		await closeBtn.click({ force: true });
-	}
+	await closeBtn.click();
 }
