@@ -3137,17 +3137,20 @@ export class Salesforce implements INodeType {
 				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({
+					const errorItem: INodeExecutionData = {
+						json: {
 							error: error.message,
 							description: (error as NodeApiError).description ?? null,
 							httpCode: (error as NodeApiError).httpCode ?? null,
 							errorCode: (error as NodeApiError).context?.errorCode ?? null,
 							fields: (error as NodeApiError).context?.fields ?? null,
-						}),
-						{ itemData: { item: i } },
-					);
-					returnData.push.apply(returnData, executionErrorData);
+						},
+						pairedItem: { item: i },
+					};
+					if (this.getNode().onError === 'continueErrorOutput') {
+						errorItem.error = error as NodeApiError;
+					}
+					returnData.push(errorItem);
 					continue;
 				}
 				throw error;

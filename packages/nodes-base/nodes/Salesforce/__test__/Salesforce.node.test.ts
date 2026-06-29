@@ -4420,4 +4420,62 @@ describe('Salesforce', () => {
 			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 10, 1.1);
 		});
 	});
+
+	describe('Error output routing (onError)', () => {
+		const buildApiError = () =>
+			Object.assign(new Error('Bad request - please check your parameters'), {
+				description: 'Lead can\'t be created with the domain name "loopwork.co"',
+				httpCode: '400',
+				context: { errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION', fields: null },
+			});
+
+		const expectedErrorJson = {
+			error: 'Bad request - please check your parameters',
+			description: 'Lead can\'t be created with the domain name "loopwork.co"',
+			httpCode: '400',
+			errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+			fields: null,
+		};
+
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { testData: 'value' } }]);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+				const params: Record<string, unknown> = {
+					resource: 'lead',
+					operation: 'create',
+					company: 'Test Company',
+					lastname: 'Test Lead',
+					additionalFields: {},
+				};
+				return params[param];
+			});
+		});
+
+		it('should attach the error to the item so it routes to the error output with continueErrorOutput', async () => {
+			mockNode.onError = 'continueErrorOutput';
+			const apiError = buildApiError();
+			salesforceApiRequestSpy.mockRejectedValue(apiError);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+			const item = result[0][0];
+
+			expect(item.error).toBe(apiError);
+			expect(item.json).toEqual(expectedErrorJson);
+			expect(item.pairedItem).toEqual({ item: 0 });
+		});
+
+		it('should keep the error payload on the regular output without an error marker with continueRegularOutput', async () => {
+			mockNode.onError = 'continueRegularOutput';
+			const apiError = buildApiError();
+			salesforceApiRequestSpy.mockRejectedValue(apiError);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+			const item = result[0][0];
+
+			expect(item.error).toBeUndefined();
+			expect(item.json).toEqual(expectedErrorJson);
+			expect(item.pairedItem).toEqual({ item: 0 });
+		});
+	});
 });
