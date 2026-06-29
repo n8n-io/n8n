@@ -37,6 +37,14 @@ const esmDependencies = [
 	'p-retry',
 	'is-network-error',
 	'uuid',
+	'change-case',
+	// file-type@21 and its ESM-only dependency chain
+	'file-type',
+	'strtok3',
+	'token-types',
+	'uint8array-extras',
+	'@tokenizer/inflate',
+	'@borewit/text-codec',
 	// Add other ESM dependencies that need to be transformed here
 ];
 
@@ -92,6 +100,12 @@ const config = {
 					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
 				})
 			: {}),
+	},
+	// file-type@21's `exports` map exposes no `require`/string `default` entry,
+	// only `import`/`module-sync`. Add `module-sync` so jest-resolve can pick its
+	// entry point (additive to the node env defaults).
+	testEnvironmentOptions: {
+		customExportConditions: ['node', 'node-addons', 'module-sync'],
 	},
 	setupFilesAfterEnv: ['jest-expect-message'],
 	restoreMocks: true,

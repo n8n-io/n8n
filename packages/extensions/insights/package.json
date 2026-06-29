@@ -52,9 +52,12 @@
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "stylelint": "catalog:",
     "tsdown": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
+    "vitest": "catalog:",
+    "vite-plugin-dts": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"

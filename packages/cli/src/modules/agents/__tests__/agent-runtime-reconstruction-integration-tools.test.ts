@@ -23,6 +23,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -43,7 +44,6 @@ import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
 import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
-import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -118,10 +118,10 @@ function makeRuntimeReconstructionService(
 		mock<N8NCheckpointStorage>(),
 		mock<AgentSecureRuntime>(),
 		mock<EphemeralNodeExecutor>(),
-		mock<AgentsToolsService>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
+		mock<AiService>(),
 		outboundHttp,
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
@@ -182,7 +182,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
 	let agentKnowledgeService: jest.Mocked<AgentKnowledgeService>;
 	let publisher: jest.Mocked<Publisher>;
-	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
 	let telemetry: jest.Mocked<Telemetry>;
 	let runtimeCacheService: AgentRuntimeCacheService;
@@ -214,11 +213,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
-		agentsConfig = {
-			modules: [],
-			sandboxEnabled: false,
-			sandboxProvider: '',
-		} as unknown as AgentsConfig;
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
@@ -245,7 +239,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRepository,
 			agentTaskRepository,
 			agentSkillsService,
-			agentsConfig,
 			runtimeCacheService,
 			credentialsService,
 		);
@@ -281,7 +274,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, agentSkillsService);
+		agentValidationService = new AgentValidationService(
+			agentRepository,
+			agentSkillsService,
+			mock<AiService>(),
+		);
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
@@ -349,7 +346,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 						userId: string;
 						runtimeProfile: 'top-level';
 						config: AgentJsonConfig;
-						nodeToolsEnabled: boolean;
 						subAgentDelegation: {
 							sourcesById: Record<string, never>;
 							availableSubAgents: [];
@@ -370,7 +366,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					model: 'anthropic/claude-sonnet-4-5',
 					instructions: 'Be helpful',
 				},
-				nodeToolsEnabled: false,
 				parentAgentIdForDelegation: agentId,
 				subAgentDelegation: {
 					sourcesById: {},

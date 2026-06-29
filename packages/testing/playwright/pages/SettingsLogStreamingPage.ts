@@ -1,9 +1,12 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { MessageBox } from './components/messageBoxLocators';
 
 export class SettingsLogStreamingPage extends BasePage {
+	readonly actionToggle = new ActionToggle(this.page);
+
 	async goto(): Promise<void> {
 		await this.page.goto('/settings/log-streaming');
 	}
@@ -61,11 +64,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	getDropdownMenuItem(index: number): Locator {
-		return this.page
-			.getByTestId('action-toggle-dropdown')
-			.filter({ visible: true })
-			.getByRole('menuitem')
-			.nth(index);
+		return this.actionToggle.getMenuItem(index);
 	}
 
 	getConfirmationDialog(): Locator {
@@ -137,11 +136,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async clickDestinationCardDropdown(index: number): Promise<void> {
-		await this.getDestinationCards()
-			.nth(index)
-			.getByTestId('action-toggle')
-			.getByRole('button')
-			.click();
+		await this.actionToggle.open(this.getDestinationCards().nth(index));
 	}
 
 	async clickDropdownMenuItem(index: number): Promise<void> {
@@ -232,5 +227,99 @@ export class SettingsLogStreamingPage extends BasePage {
 		const testButton = this.getSendTestEventButton();
 		await testButton.waitFor({ state: 'visible' });
 		await testButton.click();
+	}
+
+	// ===== Destination type-specific helpers =====
+
+	/**
+	 * Opens the add-destination modal and selects a type by its index in the
+	 * type dropdown (0 = Webhook, 1 = Sentry, 2 = Syslog), then confirms the
+	 * selection so the parameter form is shown.
+	 */
+	async openDestinationModalForType(typeIndex: number): Promise<void> {
+		await this.addDestination();
+		await this.getDestinationModal().waitFor({ state: 'visible' });
+		await this.clickSelectDestinationType();
+		await this.selectDestinationType(typeIndex);
+		await this.clickSelectDestinationButton();
+	}
+
+	/** Sets the destination name via the inline-edit title field. */
+	async setDestinationName(name: string): Promise<void> {
+		await this.clickDestinationNameInput();
+		await this.clickInlineEditPreview();
+		await this.typeDestinationName(name);
+	}
+
+	getDsnInput(): Locator {
+		return this.getDestinationModal().getByTestId('parameter-input-dsn').locator('input');
+	}
+
+	async fillDsn(value: string): Promise<void> {
+		await this.getDsnInput().fill(value);
+	}
+
+	async getDsnValue(): Promise<string> {
+		return await this.getDsnInput().inputValue();
+	}
+
+	getMethodInput(): Locator {
+		return this.getDestinationModal().getByTestId('parameter-input-method').locator('input');
+	}
+
+	/** Selects an HTTP method (GET/POST/PUT) from the method options dropdown. */
+	async selectMethod(method: string): Promise<void> {
+		await this.getDestinationModal().getByTestId('parameter-input-method').click();
+		await this.getVisiblePopoverOption(method).click();
+	}
+
+	async getMethodValue(): Promise<string> {
+		return await this.getMethodInput().inputValue();
+	}
+
+	/** Toggles the "Add Headers" switch to reveal the header parameter rows. */
+	async toggleSendHeaders(): Promise<void> {
+		await this.getDestinationModal()
+			.getByTestId('parameter-input-sendHeaders')
+			.locator('.el-switch')
+			.click();
+	}
+
+	/**
+	 * Selects how headers are specified. The schema default isn't applied in this
+	 * modal, so the option must be picked explicitly before the header inputs render.
+	 */
+	async selectSpecifyHeaders(optionText: string): Promise<void> {
+		await this.getDestinationModal().getByTestId('parameter-input-specifyHeaders').click();
+		await this.getVisiblePopoverOption(optionText).click();
+	}
+
+	/**
+	 * Fills the JSON headers editor. Requires headers enabled via
+	 * {@link toggleSendHeaders} and {@link selectSpecifyHeaders} set to "Using JSON".
+	 */
+	async fillJsonHeaders(json: string): Promise<void> {
+		const editor = this.getDestinationModal()
+			.getByTestId('parameter-input-jsonHeaders')
+			.locator('.cm-content');
+		await editor.click();
+		await editor.fill(json);
+		// ParameterInput.vue debounces updates by 200ms before they reach the model.
+		await this.page.waitForTimeout(200);
+	}
+
+	getCardToggle(index: number): Locator {
+		return this.getDestinationCards().nth(index).getByTestId('workflow-activate-switch');
+	}
+
+	async clickCardToggle(index: number): Promise<void> {
+		// Toggling the switch saves the destination via POST /eventbus/destination;
+		// await it so the enabled/disabled state is committed server-side before
+		// the test proceeds.
+		const responsePromise = this.page.waitForResponse(
+			(res) => res.url().includes('/eventbus/destination') && res.request().method() === 'POST',
+		);
+		await this.getCardToggle(index).click();
+		await responsePromise;
 	}
 }

@@ -677,6 +677,107 @@ describe('applyOperations', () => {
 		});
 	});
 
+	describe('setWorkflowSettings', () => {
+		test('sets the error workflow on a workflow with no prior settings', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf-1' } },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.settings).toEqual({ errorWorkflow: 'err-wf-1' });
+		});
+
+		test('merges into existing settings without dropping untouched keys', () => {
+			const wf = { ...baseWorkflow(), settings: { availableInMCP: true, timezone: 'UTC' } };
+			const result = applyOperations(wf, [
+				{
+					type: 'setWorkflowSettings',
+					settings: { errorWorkflow: 'err-wf-1', timezone: 'America/New_York' },
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.settings).toEqual({
+				availableInMCP: true,
+				timezone: 'America/New_York',
+				errorWorkflow: 'err-wf-1',
+			});
+		});
+
+		test('keeps "DEFAULT" as-is (cleanup happens later in WorkflowService.update)', () => {
+			const wf = { ...baseWorkflow(), settings: { errorWorkflow: 'err-wf-1' } };
+			const result = applyOperations(wf, [
+				{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'DEFAULT' } },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.settings).toEqual({ errorWorkflow: 'DEFAULT' });
+		});
+
+		test('does not mutate the input workflow settings', () => {
+			const wf = { ...baseWorkflow(), settings: { timezone: 'UTC' } };
+			const before = JSON.stringify(wf.settings);
+			applyOperations(wf, [
+				{ type: 'setWorkflowSettings', settings: { timezone: 'America/New_York' } },
+			]);
+			expect(JSON.stringify(wf.settings)).toBe(before);
+		});
+
+		test('schema rejects an empty settings object', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setWorkflowSettings',
+				settings: {},
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		test('schema rejects an unknown executionOrder value', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setWorkflowSettings',
+				settings: { executionOrder: 'v2' },
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		test('schema rejects executionTimeout of 0 or other negatives', () => {
+			for (const executionTimeout of [0, -30]) {
+				const parsed = partialUpdateOperationSchema.safeParse({
+					type: 'setWorkflowSettings',
+					settings: { executionTimeout },
+				});
+				expect(parsed.success).toBe(false);
+			}
+		});
+
+		test('schema accepts executionTimeout of -1 (unlimited)', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setWorkflowSettings',
+				settings: { executionTimeout: -1 },
+			});
+			expect(parsed.success).toBe(true);
+		});
+
+		test('schema accepts a valid IANA timezone and "DEFAULT"', () => {
+			for (const timezone of ['America/New_York', 'UTC', 'Europe/Berlin', 'DEFAULT']) {
+				const parsed = partialUpdateOperationSchema.safeParse({
+					type: 'setWorkflowSettings',
+					settings: { timezone },
+				});
+				expect(parsed.success).toBe(true);
+			}
+		});
+
+		test('schema rejects an invalid timezone', () => {
+			for (const timezone of ['Not/AZone', 'EST5', 'Mars/Olympus_Mons', '']) {
+				const parsed = partialUpdateOperationSchema.safeParse({
+					type: 'setWorkflowSettings',
+					settings: { timezone },
+				});
+				expect(parsed.success).toBe(false);
+			}
+		});
+	});
+
 	describe('atomicity', () => {
 		test('rolls back the whole batch if any op fails', () => {
 			const wf = baseWorkflow();

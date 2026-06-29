@@ -287,9 +287,11 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 }
 
 const globalCallouts = computed<INodeCreateElement[]>(() => [
-	...getRootSearchCallouts(activeViewStack.value.search ?? '', {
-		isRagStarterCalloutVisible: isRagStarterCalloutVisible.value,
-	}),
+	...getRootSearchCallouts(
+		activeViewStack.value.search ?? '',
+		{ isRagStarterCalloutVisible: isRagStarterCalloutVisible.value },
+		mergedNodes,
+	),
 ]);
 
 function arrowLeft() {

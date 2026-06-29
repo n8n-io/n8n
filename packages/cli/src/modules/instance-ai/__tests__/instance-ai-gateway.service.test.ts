@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { Telemetry } from '@/telemetry';
 
 import { InstanceAiGatewayService } from '../instance-ai-gateway.service';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 
 const CAPABILITIES: InstanceAiGatewayCapabilities = {
 	rootPath: '/home/user/project',
@@ -17,11 +18,14 @@ const CAPABILITIES: InstanceAiGatewayCapabilities = {
 
 describe('InstanceAiGatewayService', () => {
 	let telemetry: ReturnType<typeof mock<Telemetry>>;
+	let settingsService: ReturnType<typeof mock<InstanceAiSettingsService>>;
 	let service: InstanceAiGatewayService;
 
 	beforeEach(() => {
 		telemetry = mock<Telemetry>();
-		service = new InstanceAiGatewayService(telemetry);
+		settingsService = mock<InstanceAiSettingsService>();
+		settingsService.isBrowserUseEnabled.mockReturnValue(true);
+		service = new InstanceAiGatewayService(telemetry, settingsService);
 	});
 
 	describe('initGateway', () => {
@@ -33,6 +37,28 @@ describe('InstanceAiGatewayService', () => {
 				tool_groups: ['files', 'browser'],
 			});
 			expect(service.getGatewayStatus('user-1').connected).toBe(true);
+		});
+	});
+
+	describe('applyToolPolicy', () => {
+		it('hides the browser category from the status when Browser Use is disabled', () => {
+			settingsService.isBrowserUseEnabled.mockReturnValue(false);
+			service.initGateway('user-1', CAPABILITIES);
+
+			service.applyToolPolicy('user-1');
+
+			const categoryNames = service.getGatewayStatus('user-1').toolCategories.map((c) => c.name);
+			expect(categoryNames).toEqual(['files', 'shell']);
+		});
+
+		it('keeps the browser category when Browser Use is enabled', () => {
+			settingsService.isBrowserUseEnabled.mockReturnValue(true);
+			service.initGateway('user-1', CAPABILITIES);
+
+			service.applyToolPolicy('user-1');
+
+			const categoryNames = service.getGatewayStatus('user-1').toolCategories.map((c) => c.name);
+			expect(categoryNames).toContain('browser');
 		});
 	});
 
