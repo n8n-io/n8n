@@ -181,6 +181,12 @@ export async function resolveContainerMetadataViaSdk(): Promise<SystemCredential
 	// (AWS_CONTAINER_CREDENTIALS_FULL_URI). We only want ECS here. That is safe
 	// because podIdentity runs first in getSystemCredentials and already handles
 	// FULL_URI, so anything reaching this point is genuinely ECS.
+	//
+	// Wire format note: the legacy resolver sent `Authorization: Bearer ${token}`.
+	// The ECS metadata agent at 169.254.170.2 does not validate the scheme prefix,
+	// so that worked, but `Bearer` was never correct here — this is not an OAuth
+	// bearer-token endpoint. The SDK sends the token raw (no prefix), which matches
+	// the AWS-canonical form. Intentional deviation from the legacy wire format.
 	return await runProvider(fromContainerMetadata(REMOTE_PROVIDER_CONFIG));
 }
 

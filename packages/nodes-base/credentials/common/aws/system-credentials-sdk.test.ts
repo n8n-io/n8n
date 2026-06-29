@@ -1,5 +1,7 @@
 import { UserError } from 'n8n-workflow';
 
+global.fetch = vi.fn();
+
 const {
 	mockContainer,
 	MockSecurityConfig,
@@ -77,6 +79,7 @@ describe('system-credentials-sdk', () => {
 		mockContainer.get.mockReturnValue(mockSecurityConfigInstance);
 
 		mockEnvGetter.mockReturnValue(undefined);
+		(global.fetch as ReturnType<typeof vi.fn>).mockReset();
 
 		// Every provider factory returns a provider resolving the standard identity.
 		const provider = vi.fn().mockResolvedValue(SDK_IDENTITY);
@@ -414,6 +417,23 @@ describe('system-credentials-sdk', () => {
 			expect(fromWebToken).not.toHaveBeenCalled();
 		});
 
+		it('when both FULL_URI (podIdentity) and RELATIVE_URI (ECS) are set, podIdentity wins and ECS is never tried', async () => {
+			// Guards the podIdentity→containerMetadata ordering. fromContainerMetadata natively
+			// also reads FULL_URI, so a reorder in the chain would silently pass every factory
+			// mock (they all return the same identity) — but this test would catch it.
+			mockEnvGetter.mockImplementation((key: string) => {
+				if (key === 'AWS_CONTAINER_CREDENTIALS_FULL_URI')
+					return 'http://169.254.170.23/v1/credentials';
+				if (key === 'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI') return '/v2/credentials/uuid';
+				return undefined;
+			});
+
+			const result = await getSystemCredentials('us-east-1');
+			expect(result).toEqual({ ...SDK_IDENTITY, source: 'podIdentity' });
+			expect(fromHttp).toHaveBeenCalledTimes(1);
+			expect(fromContainerMetadata).not.toHaveBeenCalled();
+		});
+
 		it('resolves the IRSA source via the SDK', async () => {
 			mockEnvGetter.mockImplementation((key: string) =>
 				key === 'AWS_ROLE_ARN' || key === 'AWS_WEB_IDENTITY_TOKEN_FILE' ? 'set' : undefined,
@@ -428,6 +448,54 @@ describe('system-credentials-sdk', () => {
 				roleSessionName: 'n8n-web-identity-session',
 				clientConfig: { region: 'us-east-1', maxAttempts: 1, requestHandler: expect.any(Object) },
 			});
+		});
+	});
+
+	// SDK/legacy parity for the ECS containerMetadata source. Unlike the environment
+	// source (pure env reads, no I/O), ECS makes an HTTP request — so we compare at
+	// the HTTP layer for the legacy path and at the factory-args layer for the SDK path.
+	// Key documented divergence: legacy sends `Authorization: Bearer <token>`; the SDK
+	// sends the token raw (no Bearer prefix). The ECS metadata agent does not validate
+	// the scheme, so both work in practice. See the comment in resolveContainerMetadataViaSdk.
+	describe('SDK/legacy parity (containerMetadata ECS auth header)', () => {
+		const RELATIVE_URI = '/v2/credentials/uuid';
+		const AUTH_TOKEN = 'ecs-auth-token';
+		const ECS_RESPONSE = { AccessKeyId: 'AKIAx', SecretAccessKey: 'secret', Token: 'session' };
+
+		beforeEach(() => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				if (key === 'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI') return RELATIVE_URI;
+				if (key === 'AWS_CONTAINER_AUTHORIZATION_TOKEN') return AUTH_TOKEN;
+				return undefined;
+			});
+		});
+
+		it('legacy path sends Authorization: Bearer <token>', async () => {
+			mockSecurityConfigInstance.awsSystemCredentialsSdkSources = 'none';
+			(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+				ok: true,
+				json: vi.fn().mockResolvedValue(ECS_RESPONSE),
+			});
+
+			const result = await getSystemCredentials('us-east-1');
+			expect(result?.source).toBe('containerMetadata');
+			expect(global.fetch).toHaveBeenCalledWith(
+				`http://169.254.170.2${RELATIVE_URI}`,
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: `Bearer ${AUTH_TOKEN}` }),
+				}),
+			);
+		});
+
+		it('SDK path passes no auth to the factory; fromContainerMetadata reads env and sends token raw (no Bearer prefix)', async () => {
+			mockSecurityConfigInstance.awsSystemCredentialsSdkSources = 'all';
+
+			const result = await getSystemCredentials('us-east-1');
+			expect(result?.source).toBe('containerMetadata');
+			// Auth token is read from env by fromContainerMetadata internally — not passed
+			// through factory args — so the SDK sends the raw value without a Bearer prefix.
+			expect(fromContainerMetadata).toHaveBeenCalledWith(REMOTE_PROVIDER_CONFIG);
+			expect(global.fetch).not.toHaveBeenCalled();
 		});
 	});
 
