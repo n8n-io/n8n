@@ -40,7 +40,7 @@ const threadCreditsUsed = computed(() =>
 					:show-after="TOOLTIP_DELAY_MS"
 				>
 					<N8nIconButton
-						icon="bars"
+						icon="menu"
 						variant="ghost"
 						size="small"
 						icon-size="large"
