@@ -916,6 +916,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
+    "@aws-sdk/credential-providers": "3.808.0",
     "@n8n/backend-network": "workspace:*",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@langchain/core": "catalog:",
