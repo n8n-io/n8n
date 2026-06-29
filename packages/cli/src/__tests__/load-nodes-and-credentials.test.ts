@@ -463,9 +463,7 @@ describe('LoadNodesAndCredentials', () => {
 					properties: [{ name: 'resource', type: 'options', options: [] }],
 				} as unknown as INodeTypeDescription,
 			];
-			instance.types.credentials = [
-				{ name: 'fooOAuth2Api', extends: ['oAuth2Api'] } as never,
-			];
+			instance.types.credentials = [{ name: 'fooOAuth2Api', extends: ['oAuth2Api'] } as never];
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			expect(() => (instance as any).injectCustomApiCallOptions()).not.toThrow();
