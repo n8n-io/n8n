@@ -1158,6 +1158,44 @@ describe('applyNodeChanges', () => {
 		});
 	});
 
+	it('reports unknown setup node keys instead of silently ignoring them', async () => {
+		const node = makeNode({
+			name: 'Send Rain Alert',
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 2.2,
+			parameters: {
+				channelId: { __rl: true, mode: 'id', value: '' },
+			},
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		const result = await applyNodeChanges(context, 'wf-1', undefined, {
+			channelId: { __rl: true, mode: 'name', value: '#berlin-weather-rain' },
+		});
+
+		expect(result.applied).toHaveLength(0);
+		expect(result.failed).toEqual([
+			{
+				nodeName: 'channelId',
+				error: 'Node "channelId" was not found in the workflow',
+			},
+		]);
+
+		const calls = (context.workflowService.updateFromWorkflowJSON as Mock).mock.calls as Array<
+			[string, WorkflowJSON]
+		>;
+		const savedNode = calls[0][1].nodes.find((n) => n.name === 'Send Rain Alert');
+		expect(savedNode?.parameters).toEqual({
+			channelId: { __rl: true, mode: 'id', value: '' },
+		});
+	});
+
 	it('keeps credentials matching description displayOptions', async () => {
 		const node = makeNode({
 			name: 'HTTP Request',
@@ -1217,6 +1255,19 @@ describe('buildCompletedReport', () => {
 			nodeName: 'Gmail',
 			parametersSet: ['resource'],
 		});
+	});
+
+	it('filters completed report to nodes confirmed as applied', () => {
+		const report = buildCompletedReport(
+			undefined,
+			{
+				Slack: { channelId: '#general' },
+				channelId: { __rl: true, value: '#general' },
+			},
+			['Slack'],
+		);
+
+		expect(report).toEqual([{ nodeName: 'Slack', parametersSet: ['channelId'] }]);
 	});
 
 	it('returns empty array when nothing was applied', () => {
@@ -1443,7 +1494,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		expect(result.failed[0].error).toContain('cred-other');
 	});
 
-	it('skips credentials for nodes not present in the workflow', async () => {
+	it('reports credentials for nodes not present in the workflow', async () => {
 		const node = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
 		const wfJson = makeWorkflowJSON([node]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
@@ -1454,6 +1505,11 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 
 		expect(context.credentialService.get).not.toHaveBeenCalled();
 		expect(result.applied).toEqual([]);
-		expect(result.failed).toEqual([]);
+		expect(result.failed).toEqual([
+			{
+				nodeName: 'GhostNode',
+				error: 'Node "GhostNode" was not found in the workflow',
+			},
+		]);
 	});
 });

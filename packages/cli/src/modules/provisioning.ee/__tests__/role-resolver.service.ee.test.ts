@@ -562,6 +562,100 @@ describe('RoleResolverService', () => {
 		});
 	});
 
+	describe('resolveRoles - custom global roles', () => {
+		// The resolver treats the target role as an opaque slug, so custom global
+		// roles resolve exactly like built-in ones. These lock that behavior.
+		const customRole = 'global:auditor';
+
+		it('should resolve a custom global role when its rule matches (SAML attribute)', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $saml.attributes.department === "audit" }}',
+						role: customRole,
+					}),
+				],
+			});
+			const context = makeContext({
+				$provider: 'saml',
+				$saml: { attributes: { department: 'audit' } },
+			});
+
+			const result = await resolveRolesSimple(config, context);
+
+			expect(result.instanceRole).toBe(customRole);
+		});
+
+		it('should resolve a custom global role when its rule matches (OIDC claim)', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $oidc.userInfo.groups.includes("auditors") }}',
+						role: customRole,
+					}),
+				],
+			});
+			const context = makeContext({
+				$provider: 'oidc',
+				$oidc: { idToken: {}, userInfo: { groups: ['auditors'] } },
+			});
+
+			const result = await resolveRolesSimple(config, context);
+
+			expect(result.instanceRole).toBe(customRole);
+		});
+
+		it('should fall back to the default role when no rule matches the attribute', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $claims.department === "audit" }}',
+						role: customRole,
+					}),
+				],
+				fallbackInstanceRole: 'global:member',
+			});
+			const context = makeContext({ $claims: { department: 'sales' } });
+
+			const result = await resolveRolesSimple(config, context);
+
+			expect(result.instanceRole).toBe('global:member');
+		});
+
+		it('should re-resolve to a different role when the attributes change', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $claims.department === "audit" }}',
+						role: customRole,
+					}),
+					makeRule({
+						id: 'r2',
+						expression: '{{ $claims.department === "engineering" }}',
+						role: 'global:admin',
+					}),
+				],
+			});
+
+			const first = await resolveRolesSimple(
+				config,
+				makeContext({ $claims: { department: 'audit' } }),
+			);
+			expect(first.instanceRole).toBe(customRole);
+
+			// Same config, changed IdP attributes on a later login → re-resolved role.
+			const second = await resolveRolesSimple(
+				config,
+				makeContext({ $claims: { department: 'engineering' } }),
+			);
+			expect(second.instanceRole).toBe('global:admin');
+		});
+	});
+
 	describe('resolveRoles', () => {
 		it('should return matched rule metadata for instance role', async () => {
 			const config = makeConfig({

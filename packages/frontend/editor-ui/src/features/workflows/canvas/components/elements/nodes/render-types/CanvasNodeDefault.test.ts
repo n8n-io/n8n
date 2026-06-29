@@ -31,7 +31,8 @@ vi.mock('vue-router', async (importOriginal) => {
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const pinnedDataByNodeName: IPinData = {};
-const executionSimulationByNodeName: Record<string, { reason: string }> = {};
+const executionPinDataByNodeName: IPinData = {};
+let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -42,7 +43,8 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 				nodeInputsByNodeId: renderNodeInputsMap,
 				nodeOutputsByNodeId: renderNodeOutputsMap,
 				pinnedDataByNodeName,
-				executionSimulationByNodeName,
+				executionPinDataByNodeName,
+				isExecutionDataDisplayed,
 			}),
 		})),
 	};
@@ -75,9 +77,10 @@ beforeEach(() => {
 	for (const key of Object.keys(pinnedDataByNodeName)) {
 		delete pinnedDataByNodeName[key];
 	}
-	for (const key of Object.keys(executionSimulationByNodeName)) {
-		delete executionSimulationByNodeName[key];
+	for (const key of Object.keys(executionPinDataByNodeName)) {
+		delete executionPinDataByNodeName[key];
 	}
+	isExecutionDataDisplayed = false;
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -294,11 +297,10 @@ describe('CanvasNodeDefault', () => {
 		});
 	});
 
-	describe('simulated output', () => {
-		it('should apply pinned styling instead of success styling when node output was simulated', () => {
-			executionSimulationByNodeName['Test Node'] = {
-				reason: 'Source declares verification output',
-			};
+	describe('execution pin data', () => {
+		it('should apply pinned styling instead of success styling when node output used execution pin data', () => {
+			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+			isExecutionDataDisplayed = true;
 
 			const { getByText } = renderComponent({
 				global: {
@@ -317,6 +319,51 @@ describe('CanvasNodeDefault', () => {
 			const nodeElement = getByText('Test Node').closest('.node');
 			expect(nodeElement).toHaveClass('pinned');
 			expect(nodeElement).not.toHaveClass('success');
+		});
+
+		it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
+			pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
+			isExecutionDataDisplayed = true;
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).not.toHaveClass('pinned');
+			expect(nodeElement).toHaveClass('success');
+		});
+
+		it('should ignore execution pin data outside execution preview mode', () => {
+			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+
+			const { getByText } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeElement = getByText('Test Node').closest('.node');
+			expect(nodeElement).not.toHaveClass('pinned');
+			expect(nodeElement).toHaveClass('success');
 		});
 	});
 

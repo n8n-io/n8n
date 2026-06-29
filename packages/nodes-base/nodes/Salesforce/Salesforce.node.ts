@@ -3,6 +3,8 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -26,6 +28,7 @@ import { flowFields, flowOperations } from './FlowDescription';
 import {
 	escapeSoqlString,
 	getQuery,
+	getResourceLocatorValue,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
@@ -39,6 +42,75 @@ import { searchFields, searchOperations } from './SearchDescription';
 import { taskFields, taskOperations } from './TaskDescription';
 import type { ITask } from './TaskInterface';
 import { userFields, userOperations } from './UserDescription';
+
+// 200 is Salesforce's minimum query batchSize; smaller values are ignored.
+const USER_SEARCH_PAGE_SIZE = 200;
+
+async function searchOwners(
+	this: ILoadOptionsFunctions,
+	queueSobjectType: 'Case' | 'Lead' | undefined,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const results: INodeListSearchItems[] = [];
+
+	if (queueSobjectType && !paginationToken) {
+		// Owner queues have no SOQL typeahead, so fetch them all once (as the legacy
+		// owner loaders did) and filter/sort in-memory alongside the users.
+		const queueRecords = (await salesforceApiRequestAllItems.call(
+			this,
+			'records',
+			'GET',
+			'/query',
+			{},
+			{
+				q: `SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = '${queueSobjectType}'`,
+			},
+		)) as Array<{ Queue: { Id: string; Name: string } }>;
+		const lowerFilter = (filter ?? '').toLowerCase();
+		const queues = queueRecords
+			.filter((record) => !lowerFilter || record.Queue.Name.toLowerCase().includes(lowerFilter))
+			.map((record) => ({ name: `Queue: ${record.Queue.Name}`, value: record.Queue.Id }))
+			.sort((a, b) => a.name.localeCompare(b.name));
+		results.push(...queues);
+	}
+
+	let userResponse: { records?: Array<{ Id: string; Name: string }>; nextRecordsUrl?: string };
+	if (paginationToken) {
+		// `nextRecordsUrl` is a full Salesforce path like
+		// `/services/data/v59.0/query/01g4o00000abcdef-2000`. salesforceApiRequest
+		// re-prefixes the API base itself, so we pass only the `/query/<locator>` suffix.
+		const locator = paginationToken.split('/').pop();
+		userResponse = (await salesforceApiRequest.call(
+			this,
+			'GET',
+			`/query/${locator}`,
+		)) as typeof userResponse;
+	} else {
+		const escapedFilter = filter ? escapeSoqlString(filter) : '';
+		const whereClause = escapedFilter ? `WHERE Name LIKE '%${escapedFilter}%' ` : '';
+		// No LIMIT: it would cap the result below the batch size and suppress the
+		// nextRecordsUrl cursor. batchSize bounds the page instead.
+		userResponse = (await salesforceApiRequest.call(
+			this,
+			'GET',
+			'/query',
+			{},
+			{ q: `SELECT Id, Name FROM User ${whereClause}ORDER BY Name` },
+			undefined,
+			{ headers: { 'Sforce-Query-Options': `batchSize=${USER_SEARCH_PAGE_SIZE}` } },
+		)) as typeof userResponse;
+	}
+
+	// Prefix users with "User: " only when queues share this result (mirrors the legacy
+	// labels); a list of just users — including any paginated page — stays unprefixed.
+	const userPrefix = results.length > 0 ? 'User: ' : '';
+	for (const user of userResponse.records ?? []) {
+		results.push({ name: `${userPrefix}${user.Name}`, value: user.Id });
+	}
+
+	return { results, paginationToken: userResponse.nextRecordsUrl };
+}
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -213,124 +285,6 @@ export class Salesforce implements INodeType {
 					returnData.push({
 						name: statusName,
 						value: statusName,
-					});
-				}
-				sortOptions(returnData);
-				return returnData;
-			},
-			// Get all the users to display them to user so that they can
-			// select them easily
-			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs = {
-					q: 'SELECT id, Name FROM User',
-				};
-				const users = await salesforceApiRequestAllItems.call(
-					this,
-					'records',
-					'GET',
-					'/query',
-					{},
-					qs,
-				);
-				for (const user of users) {
-					const userName = user.Name;
-					const userId = user.Id;
-					returnData.push({
-						name: userName,
-						value: userId,
-					});
-				}
-				sortOptions(returnData);
-				return returnData;
-			},
-			// Get all the users and case queues to display them to user so that they can
-			// select them easily
-			async getCaseOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qsQueues = {
-					q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Case'",
-				};
-				const queues = await salesforceApiRequestAllItems.call(
-					this,
-					'records',
-					'GET',
-					'/query',
-					{},
-					qsQueues,
-				);
-				for (const queue of queues) {
-					const queueName = queue.Queue.Name;
-					const queueId = queue.Queue.Id;
-					returnData.push({
-						name: `Queue: ${queueName}`,
-						value: queueId,
-					});
-				}
-				const qsUsers = {
-					q: 'SELECT id, Name FROM User',
-				};
-				const users = await salesforceApiRequestAllItems.call(
-					this,
-					'records',
-					'GET',
-					'/query',
-					{},
-					qsUsers,
-				);
-				const userPrefix = returnData.length > 0 ? 'User: ' : '';
-				for (const user of users) {
-					const userName = user.Name;
-					const userId = user.Id;
-					returnData.push({
-						name: userPrefix + (userName as string),
-						value: userId,
-					});
-				}
-				sortOptions(returnData);
-				return returnData;
-			},
-			// Get all the users and lead queues to display them to user so that they can
-			// select them easily
-			async getLeadOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qsQueues = {
-					q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Lead'",
-				};
-				const queues = await salesforceApiRequestAllItems.call(
-					this,
-					'records',
-					'GET',
-					'/query',
-					{},
-					qsQueues,
-				);
-				for (const queue of queues) {
-					const queueName = queue.Queue.Name;
-					const queueId = queue.Queue.Id;
-					returnData.push({
-						name: `Queue: ${queueName}`,
-						value: queueId,
-					});
-				}
-				const qsUsers = {
-					q: 'SELECT id, Name FROM User',
-				};
-				const users = await salesforceApiRequestAllItems.call(
-					this,
-					'records',
-					'GET',
-					'/query',
-					{},
-					qsUsers,
-				);
-				const userPrefix = returnData.length > 0 ? 'User: ' : '';
-				for (const user of users) {
-					const userName = user.Name;
-					const userId = user.Id;
-					returnData.push({
-						name: userPrefix + (userName as string),
-						value: userId,
 					});
 				}
 				sortOptions(returnData);
@@ -1040,6 +994,32 @@ export class Salesforce implements INodeType {
 			// 	return returnData;
 			// },
 		},
+		listSearch: {
+			// Server-side typeahead for the owner (User) selectors.
+			async searchUsers(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				return await searchOwners.call(this, undefined, filter, paginationToken);
+			},
+			// Owner selector for Case fields — users plus case queues.
+			async searchCaseOwners(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				return await searchOwners.call(this, 'Case', filter, paginationToken);
+			},
+			// Owner selector for Lead fields — users plus lead queues.
+			async searchLeadOwners(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				return await searchOwners.call(this, 'Lead', filter, paginationToken);
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -1103,8 +1083,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.country !== undefined) {
 							body.Country = additionalFields.country as string;
 						}
-						if (additionalFields.owner !== undefined) {
-							body.OwnerId = additionalFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(additionalFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (additionalFields.website !== undefined) {
 							body.Website = additionalFields.website as string;
@@ -1221,8 +1204,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.country !== undefined) {
 							body.Country = updateFields.country as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(updateFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (updateFields.website !== undefined) {
 							body.Website = updateFields.website as string;
@@ -1363,8 +1349,11 @@ export class Salesforce implements INodeType {
 						if (options.body) {
 							body.Body = options.body as string;
 						}
-						if (options.owner) {
-							body.OwnerId = options.owner as string;
+						{
+							const owner = getResourceLocatorValue(options.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (options.isPrivate) {
 							body.IsPrivate = options.isPrivate as boolean;
@@ -1398,8 +1387,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.recordTypeId !== undefined) {
 							body.RecordTypeId = additionalFields.recordTypeId as string;
 						}
-						if (additionalFields.owner !== undefined) {
-							body.OwnerId = additionalFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(additionalFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (additionalFields.acconuntId !== undefined) {
 							body.AccountId = additionalFields.acconuntId as string;
@@ -1543,8 +1535,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.jigsaw !== undefined) {
 							body.Jigsaw = updateFields.jigsaw as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(updateFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (updateFields.acconuntId !== undefined) {
 							body.AccountId = updateFields.acconuntId as string;
@@ -1737,8 +1732,11 @@ export class Salesforce implements INodeType {
 						if (options.body !== undefined) {
 							body.Body = options.body as string;
 						}
-						if (options.owner !== undefined) {
-							body.OwnerId = options.owner as string;
+						{
+							const owner = getResourceLocatorValue(options.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (options.isPrivate !== undefined) {
 							body.IsPrivate = options.isPrivate as boolean;
@@ -1867,8 +1865,11 @@ export class Salesforce implements INodeType {
 								ContentLocation: 'S',
 							},
 						};
-						if (additionalFields.ownerId) {
-							body.entity_content.ownerId = additionalFields.ownerId as string;
+						{
+							const ownerId = getResourceLocatorValue(additionalFields.ownerId);
+							if (ownerId !== undefined) {
+								body.entity_content.ownerId = ownerId;
+							}
 						}
 						if (additionalFields.linkToObjectId) {
 							body.entity_content.FirstPublishLocationId =
@@ -1923,8 +1924,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.amount !== undefined) {
 							body.Amount = additionalFields.amount as number;
 						}
-						if (additionalFields.owner !== undefined) {
-							body.OwnerId = additionalFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(additionalFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (additionalFields.nextStep !== undefined) {
 							body.NextStep = additionalFields.nextStep as string;
@@ -1992,8 +1996,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.amount !== undefined) {
 							body.Amount = updateFields.amount as number;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(updateFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (updateFields.nextStep !== undefined) {
 							body.NextStep = updateFields.nextStep as string;
@@ -2104,8 +2111,11 @@ export class Salesforce implements INodeType {
 						if (options.body !== undefined) {
 							body.Body = options.body as string;
 						}
-						if (options.owner !== undefined) {
-							body.OwnerId = options.owner as string;
+						{
+							const owner = getResourceLocatorValue(options.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (options.isPrivate !== undefined) {
 							body.IsPrivate = options.isPrivate as boolean;
@@ -2133,8 +2143,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.phone !== undefined) {
 							body.Phone = additionalFields.phone as string;
 						}
-						if (additionalFields.owner !== undefined) {
-							body.OwnerId = additionalFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(additionalFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (additionalFields.sicDesc !== undefined) {
 							body.SicDesc = additionalFields.sicDesc as string;
@@ -2241,8 +2254,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.phone !== undefined) {
 							body.Phone = updateFields.phone as string;
 						}
-						if (updateFields.ownerId !== undefined) {
-							body.OwnerId = updateFields.ownerId as string;
+						{
+							const ownerId = getResourceLocatorValue(updateFields.ownerId);
+							if (ownerId !== undefined) {
+								body.OwnerId = ownerId;
+							}
 						}
 						if (updateFields.sicDesc !== undefined) {
 							body.SicDesc = updateFields.sicDesc as string;
@@ -2392,8 +2408,11 @@ export class Salesforce implements INodeType {
 						if (options.body !== undefined) {
 							body.Body = options.body as string;
 						}
-						if (options.owner !== undefined) {
-							body.OwnerId = options.owner as string;
+						{
+							const ownerId = getResourceLocatorValue(options.ownerId);
+							if (ownerId !== undefined) {
+								body.OwnerId = ownerId;
+							}
 						}
 						if (options.isPrivate !== undefined) {
 							body.IsPrivate = options.isPrivate as boolean;
@@ -2418,8 +2437,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.status !== undefined) {
 							body.Status = additionalFields.status as string;
 						}
-						if (additionalFields.owner !== undefined) {
-							body.OwnerId = additionalFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(additionalFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (additionalFields.subject !== undefined) {
 							body.Subject = additionalFields.subject as string;
@@ -2486,8 +2508,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.status !== undefined) {
 							body.Status = updateFields.status as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(updateFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (updateFields.subject !== undefined) {
 							body.Subject = updateFields.subject as string;
@@ -2633,8 +2658,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.whatId !== undefined) {
 							body.WhatId = additionalFields.whatId as string;
 						}
-						if (additionalFields.owner !== undefined) {
-							body.OwnerId = additionalFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(additionalFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (additionalFields.subject !== undefined) {
 							body.Subject = additionalFields.subject as string;
@@ -2725,8 +2753,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.whatId !== undefined) {
 							body.WhatId = updateFields.whatId as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(updateFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (updateFields.subject !== undefined) {
 							body.Subject = updateFields.subject as string;
@@ -2883,8 +2914,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.description !== undefined) {
 							body.Description = additionalFields.description as string;
 						}
-						if (additionalFields.owner !== undefined) {
-							body.OwnerId = additionalFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(additionalFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (additionalFields.isPrivate !== undefined) {
 							body.IsPrivate = additionalFields.isPrivate as boolean;
@@ -2920,8 +2954,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.description !== undefined) {
 							body.Description = updateFields.description as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						{
+							const owner = getResourceLocatorValue(updateFields.owner);
+							if (owner !== undefined) {
+								body.OwnerId = owner;
+							}
 						}
 						if (updateFields.isPrivate !== undefined) {
 							body.IsPrivate = updateFields.isPrivate as boolean;

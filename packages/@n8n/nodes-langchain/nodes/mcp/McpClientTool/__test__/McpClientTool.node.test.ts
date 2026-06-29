@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { proxyFetch } from '@n8n/ai-utilities';
+import { Container } from '@n8n/di';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	type IExecuteFunctions,
@@ -12,12 +13,13 @@ import {
 	type ISupplyDataFunctions,
 	jsonParse,
 } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { McpClientsManager } from '../../shared/McpClientsManager';
 import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
 import { buildMcpToolName } from '../utils';
-import type { MockedFunction } from 'vitest';
 
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -1028,12 +1030,12 @@ describe('McpClientTool', () => {
 		});
 
 		it('should treat isError: true as success on version 1.2 (legacy behavior)', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				isError: true,
 				content: [{ type: 'text', text: 'simulated tool-level error' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'get_weather',
@@ -1045,8 +1047,8 @@ describe('McpClientTool', () => {
 
 			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
 							tool: buildMcpToolName('MCP Client', 'get_weather'),
@@ -1054,7 +1056,7 @@ describe('McpClientTool', () => {
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -1081,12 +1083,12 @@ describe('McpClientTool', () => {
 		});
 
 		it('should throw NodeOperationError when tool result has isError: true (version 1.3+)', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				isError: true,
 				content: [{ type: 'text', text: 'simulated tool-level error' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'get_weather',
@@ -1098,8 +1100,8 @@ describe('McpClientTool', () => {
 
 			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
 							tool: buildMcpToolName('MCP Client', 'get_weather'),
@@ -1107,7 +1109,7 @@ describe('McpClientTool', () => {
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -1127,12 +1129,12 @@ describe('McpClientTool', () => {
 		});
 
 		it('should throw generic error when isError: true with no text content (version 1.3+)', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				isError: true,
 				content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'get_weather',
@@ -1144,8 +1146,8 @@ describe('McpClientTool', () => {
 
 			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
 							tool: buildMcpToolName('MCP Client', 'get_weather'),
@@ -1153,7 +1155,7 @@ describe('McpClientTool', () => {
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -2066,6 +2068,82 @@ describe('McpClientTool', () => {
 			});
 
 			await expect(getTools.call(ctx)).rejects.toThrow(/Domain not allowed.*allowed\.example/);
+		});
+	});
+
+	describe('execute: session cache version gating', () => {
+		let manager: McpClientsManager;
+
+		function createCtx(typeVersion: number) {
+			const mockNode = mock<INode>({ typeVersion, type: 'mcpClientTool', name: 'MCP Client' });
+			return mock<any>({
+				getNode: vi.fn(() => mockNode),
+				logger: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+				getExecutionId: vi.fn(() => 'exec-gating'),
+				getExecutionCancelSignal: vi.fn(() => undefined),
+				onExecutionCancellation: vi.fn(),
+				getInputData: vi.fn(() => [
+					{ json: { tool: buildMcpToolName('MCP Client', 'get_weather'), location: 'Berlin' } },
+				]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+		}
+
+		beforeEach(() => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Sunny' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+			manager = new McpClientsManager({
+				cacheTtl: 300_000,
+				cacheMaxSize: 500,
+			} as never);
+			vi.mocked(Container.get).mockReturnValue(manager as never);
+		});
+
+		afterEach(() => {
+			manager.shutdown();
+		});
+
+		it('reuses one MCP session across tool calls for v1.4 nodes', async () => {
+			const ctx = createCtx(1.4);
+			await new McpClientTool().execute.call(ctx);
+			await new McpClientTool().execute.call(ctx);
+
+			expect(Client.prototype.connect).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.close).not.toHaveBeenCalled();
+			expect(manager.size).toBe(1);
+		});
+
+		it('opens a fresh MCP session per tool call for v1.3 nodes', async () => {
+			const ctx = createCtx(1.3);
+			await new McpClientTool().execute.call(ctx);
+			await new McpClientTool().execute.call(ctx);
+
+			expect(Client.prototype.connect).toHaveBeenCalledTimes(2);
+			expect(Client.prototype.close).toHaveBeenCalledTimes(2);
+			expect(manager.size).toBe(0);
 		});
 	});
 });

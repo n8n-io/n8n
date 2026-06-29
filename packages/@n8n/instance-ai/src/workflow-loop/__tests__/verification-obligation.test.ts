@@ -135,6 +135,33 @@ describe('deriveWorkflowVerificationObligation', () => {
 		expect(obligation.blockingReason).toContain('Send Email');
 	});
 
+	it('settles failed verification evidence as a manual completion instead of looping', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState(),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({
+				// Readiness "ready" + setup "not_required" is the production shape that
+				// previously fell through to ready_to_verify and re-issued forever.
+				verificationReadiness: { status: 'ready' },
+				setupRequirement: { status: 'not_required' },
+				verification: {
+					attempted: true,
+					success: false,
+					executionId: 'exec-1',
+					status: 'error',
+					failureSignature:
+						'Error in sub-node Google Gemini — Node does not have any credentials set',
+					evidence: { nodesNotReached: ['Send Bug Report Email'] },
+				},
+			}),
+		});
+
+		expect(obligation.status).toBe('not_verifiable');
+		expect(obligation.policy).toBe('manual');
+		expect(obligation.blockingReason).toContain('Node does not have any credentials set');
+		expect(obligation.blockingReason).toContain('Send Bug Report Email');
+	});
+
 	it('treats not-verifiable outcomes as manual warning completions', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState(),
@@ -290,6 +317,29 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 		expect(obligation.status).toBe('not_verifiable');
 		expect(obligation.policy).toBe('manual');
 		expect(obligation.blockingReason).toContain('Send Email');
+	});
+
+	it('settles failed verification evidence as manual from outcome-only records', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeOutcome({
+				verificationReadiness: { status: 'ready' },
+				setupRequirement: { status: 'not_required' },
+				verification: {
+					attempted: true,
+					success: false,
+					executionId: 'exec-1',
+					status: 'error',
+					failureSignature: 'Sheet with name Registrations not found',
+				},
+			}),
+			{ source: 'planned', plannedTaskId: 'task-1' },
+		);
+
+		expect(obligation.status).toBe('not_verifiable');
+		expect(obligation.policy).toBe('manual');
+		expect(obligation.blockingReason).toContain('Sheet with name Registrations not found');
+		expect(obligation.plannedTaskId).toBe('task-1');
 	});
 
 	it('marks setup-blocked failed evidence as needs setup from outcome-only records', () => {

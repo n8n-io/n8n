@@ -805,6 +805,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 												/>
 											</Transition>
 										</div>
+										<p :class="$style.disclaimer">
+											{{ i18n.baseText('instanceAi.input.disclaimer') }}
+										</p>
 									</div>
 								</div>
 							</div>
@@ -1039,6 +1042,8 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	:global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
 	}
 
 	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
@@ -1155,6 +1160,14 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.disclaimer {
+	margin: 0;
+	text-align: center;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--md);
 }
 
 @media (prefers-reduced-motion: reduce) {

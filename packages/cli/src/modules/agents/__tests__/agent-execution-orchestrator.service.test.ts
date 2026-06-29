@@ -4,6 +4,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
+import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
@@ -556,5 +557,157 @@ describe('AgentExecutionOrchestratorService', () => {
 			),
 		).rejects.toThrow(OperationalError);
 		expect(runtime.agent.structuredOutput).toHaveBeenCalledWith(outputSchema);
+	});
+
+	describe('workflow data tools', () => {
+		const baseContext = {
+			workflowId: 'wf-1',
+			workflowName: 'My workflow',
+			callingNodeName: 'Message an Agent',
+			inputData: [{ json: { a: 1 } }],
+			inputDataScope: 'item' as const,
+			nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
+			runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+		};
+
+		const setupRuntimeWithToolSpy = (declaredTools: Array<{ name: string }> = []) => {
+			const { service, agentRepository, reconstructionService } = makeService();
+			const runtime = makeRuntime();
+			const toolFn = jest.fn();
+			Object.assign(runtime.agent, { tool: toolFn, declaredTools });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			return { service, toolFn };
+		};
+
+		const toolNamesFrom = (toolFn: jest.Mock): string[] => {
+			const [tools] = toolFn.mock.calls[0] as [Array<{ name: string }>];
+			return tools.map((t) => t.name);
+		};
+
+		it('always injects fetch_input_data when workflowContext is provided', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy();
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				...baseContext,
+				exposeWorkflowData: false,
+			};
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				workflowContext,
+			);
+
+			expect(toolFn).toHaveBeenCalledTimes(1);
+			expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data']);
+		});
+
+		it('also injects fetch_workflow_context when exposeWorkflowData is true', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy();
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				...baseContext,
+				exposeWorkflowData: true,
+			};
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				workflowContext,
+			);
+
+			expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data', 'fetch_workflow_context']);
+		});
+
+		it('injects no tools without workflowContext', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy();
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+			);
+
+			expect(toolFn).not.toHaveBeenCalled();
+		});
+
+		it('surfaces an error when the agent already declares a reserved tool name', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy([{ name: 'fetch_input_data' }]);
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				...baseContext,
+				exposeWorkflowData: false,
+			};
+
+			await expect(
+				service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					undefined,
+					undefined,
+					undefined,
+					workflowContext,
+				),
+			).rejects.toThrow('"fetch_input_data"');
+
+			expect(toolFn).not.toHaveBeenCalled();
+		});
+	});
+
+	it('maps structured-output stream reader errors before recording and rethrowing', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const outputSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { answer: { type: 'string' } },
+		};
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockResolvedValue({
+			stream: makeFailingStream(new Error('No output generated. Check the stream for errors.')),
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		const execution = service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			userId,
+			projectId,
+			userId,
+			false,
+			outputSchema,
+		);
+
+		await expect(execution).rejects.toThrow(OperationalError);
+		await expect(execution).rejects.toThrow("Couldn't get structured output matching the schema");
+		await expect(execution).rejects.not.toThrow('Check the stream');
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				record: expect.objectContaining({
+					error: expect.stringContaining("Couldn't get structured output matching the schema"),
+				}),
+			}),
+		);
 	});
 });
