@@ -1,3 +1,4 @@
+import { getProxyAgent } from '@n8n/ai-utilities';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import OpenAI from 'openai';
 import type { Mocked, MockedClass } from 'vitest';
@@ -5,12 +6,26 @@ import type { Mocked, MockedClass } from 'vitest';
 import { searchModels } from '../loadModels';
 
 vi.mock('openai');
+vi.mock('@n8n/ai-utilities');
+
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+
+const JWT_ACCOUNT_CLAIM = 'https://api.openai.com/auth';
+
+function makeOpenAiAccountToken(accountId: string) {
+	const payload = Buffer.from(
+		JSON.stringify({ [JWT_ACCOUNT_CLAIM]: { chatgpt_account_id: accountId } }),
+	).toString('base64url');
+
+	return `header.${payload}.signature`;
+}
 
 describe('searchModels', () => {
 	let mockContext: Mocked<ILoadOptionsFunctions>;
 	let mockOpenAI: Mocked<typeof OpenAI>;
 
 	beforeEach(() => {
+		mockedGetProxyAgent.mockReturnValue({} as never);
 		mockContext = {
 			getCredentials: vi.fn().mockResolvedValue({
 				apiKey: 'test-api-key',
@@ -51,6 +66,7 @@ describe('searchModels', () => {
 	});
 
 	afterEach(() => {
+		vi.restoreAllMocks();
 		vi.clearAllMocks();
 	});
 
@@ -85,6 +101,52 @@ describe('searchModels', () => {
 				apiKey: 'test-api-key',
 			}),
 		);
+	});
+
+	it('should fetch Codex account models with OAuth token-backed credentials', async () => {
+		const accessToken = makeOpenAiAccountToken('account-id');
+		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({
+				models: [
+					{ slug: 'hidden-model', visibility: 'hidden', priority: 1 },
+					{ slug: 'gpt-5.4-mini', visibility: 'list', priority: 2 },
+					{ slug: 'gpt-5.4', visibility: 'list', priority: 1 },
+				],
+			}),
+		} as Response);
+		mockContext.getCredentials.mockResolvedValueOnce({
+			oauthTokenData: {
+				access_token: accessToken,
+			},
+			url: 'https://test-url.com',
+		});
+		mockContext.getNodeParameter.mockImplementation((parameterName: string) => {
+			if (parameterName === 'authentication') return 'oAuth2';
+			return '';
+		});
+
+		const result = await searchModels.call(mockContext);
+
+		expect(mockContext.getCredentials).toHaveBeenCalledWith('openAiOAuth2Api');
+		expect(mockOpenAI).not.toHaveBeenCalled();
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'https://chatgpt.com/backend-api/codex/models?client_version=1.0.0',
+			{
+				headers: expect.objectContaining({
+					Authorization: `Bearer ${accessToken}`,
+					'chatgpt-account-id': 'account-id',
+				}),
+				dispatcher: {},
+			},
+		);
+		expect(mockedGetProxyAgent).toHaveBeenCalledWith(
+			'https://chatgpt.com/backend-api/codex/models?client_version=1.0.0',
+		);
+		expect(result.results).toEqual([
+			{ name: 'gpt-5.4', value: 'gpt-5.4' },
+			{ name: 'gpt-5.4-mini', value: 'gpt-5.4-mini' },
+		]);
 	});
 
 	it('should use default OpenAI URL if no custom URL provided', async () => {
