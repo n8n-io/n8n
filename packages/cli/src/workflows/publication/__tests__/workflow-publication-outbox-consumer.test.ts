@@ -28,7 +28,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
-			publicationOutboxConsumerConcurrency: concurrency,
+			workflowPublicationConcurrency: concurrency,
 		});
 		return new WorkflowPublicationOutboxConsumer(
 			logger,

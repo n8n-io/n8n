@@ -142,7 +142,7 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async runDrain(): Promise<number> {
-		const concurrency = this.workflowsConfig.publicationOutboxConsumerConcurrency;
+		const concurrency = this.workflowsConfig.workflowPublicationConcurrency;
 		return await this.tracing.startSpan(
 			{
 				name: 'Publication outbox drain',
