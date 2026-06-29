@@ -38,8 +38,8 @@
 		{
 			"name": "happy-path",
 			"description": "All 3 cities return weather data, one is above 30°C",
-			"dataSetup": "London returns: temp=18.5, humidity=72. New York returns: temp=32.1, humidity=65. Tokyo returns: temp=28.3, humidity=80. The Telegram node returns a success response. The Airtable node returns success for each row created.",
-			"successCriteria": "The workflow executes without errors. All 3 weather API calls succeed. The Telegram alert is sent mentioning New York (32.1°C). All 3 readings are logged to Airtable with city, temperature, humidity, and timestamp."
+			"dataSetup": "London returns: temp=18.5, humidity=72. New York returns: temp=38.0, humidity=65. Tokyo returns: temp=24.0, humidity=80. The Telegram node returns a success response. The Airtable node returns success for each row created.",
+			"successCriteria": "The workflow executes without errors. All 3 weather API calls succeed. The Telegram alert is sent mentioning New York (38°C). All 3 readings are logged to Airtable with city, temperature, humidity, and timestamp."
 		},
 		{
 			"name": "no-alerts",
