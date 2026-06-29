@@ -145,7 +145,7 @@ onUnmounted(() => {
 			</N8nResizeWrapper>
 		</Transition>
 
-		<!-- Inner route — Empty for `/instance-ai`, Thread for `/instance-ai/:threadId` -->
+		<!-- Inner route — Empty for `/assistant`, Thread for `/assistant/:threadId` -->
 		<RouterView v-slot="{ Component }">
 			<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
 		</RouterView>
