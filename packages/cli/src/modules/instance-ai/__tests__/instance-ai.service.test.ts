@@ -585,6 +585,9 @@ type TerminalGuardOrderServiceInternals = {
 	creditService: { claimRunUsage: Mock };
 	schedulePlannedTasks: Mock;
 	drainPendingCheckpointReentries: Mock;
+	taskProjector: { syncFromWorkflowLoop: Mock };
+	maybeStartWorkflowSetupFollowUp: Mock;
+	finalizeRun: Mock;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
