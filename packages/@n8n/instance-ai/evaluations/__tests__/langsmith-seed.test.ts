@@ -13,7 +13,7 @@ vi.mock('../harness/parse-seed-workflow', () => ({
 	}),
 }));
 
-import { reconstructSeedFromThread } from '../harness/langsmith-seed';
+import { configFor, reconstructSeedFromThread } from '../harness/langsmith-seed';
 
 // Discovery test doubles return fixed, already-resolved workspace lists.
 /* eslint-disable @typescript-eslint/promise-function-async */
@@ -598,5 +598,59 @@ describe('reconstructSeedFromThread — workspace auto-discovery', () => {
 				ambientClient: () => fakeClient([]),
 			}),
 		).rejects.toThrow(/need ≥2 to seed/);
+	});
+});
+
+// Dual-tenant READS (US→EU migration): a seed ref's `endpoint` selects which
+// LangSmith tenant to read from. Writes are unaffected (they stay on the home
+// tenant elsewhere). The endpoint→key mapping is the cross-repo contract that
+// LangTracer's exported `seedThread.endpoint` rides on (TRUST-212).
+describe('configFor — dual-tenant read resolution', () => {
+	const EU = 'https://eu.api.smith.langchain.com';
+	const US = 'https://api.smith.langchain.com';
+
+	beforeEach(() => {
+		vi.stubEnv('LANGSMITH_ENDPOINT', EU);
+		vi.stubEnv('LANGSMITH_API_KEY', 'eu-key');
+		vi.stubEnv('LANGSMITH_ENDPOINT_US', US);
+		vi.stubEnv('LANGSMITH_API_KEY_US', 'us-key');
+	});
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('resolves an omitted endpoint to the home (EU) host + key', () => {
+		expect(configFor()).toEqual({ apiUrl: EU, apiKey: 'eu-key' });
+	});
+
+	it('resolves the home endpoint to the home key', () => {
+		expect(configFor(EU)).toEqual({ apiUrl: EU, apiKey: 'eu-key' });
+	});
+
+	it('resolves the US endpoint to the US key — never the home key', () => {
+		expect(configFor(US)).toEqual({ apiUrl: US, apiKey: 'us-key' });
+	});
+
+	it('tolerates a trailing slash and an /api/v1 suffix on the endpoint', () => {
+		expect(configFor(`${US}/`)).toEqual({ apiUrl: US, apiKey: 'us-key' });
+		expect(configFor(`${EU}/api/v1`)).toEqual({ apiUrl: EU, apiKey: 'eu-key' });
+	});
+
+	it('throws (does NOT fall back to the home key) when the US key is missing', () => {
+		vi.stubEnv('LANGSMITH_API_KEY_US', '');
+		expect(() => configFor(US)).toThrow(/LANGSMITH_API_KEY_US is not set/);
+	});
+
+	it('throws on an endpoint that matches no configured tenant', () => {
+		expect(() => configFor('https://made-up.smith.langchain.com')).toThrow(
+			/no configured LangSmith tenant/,
+		);
+	});
+
+	it('routes a US-endpoint ref through the US resolver (no silent home fallback)', async () => {
+		// End-to-end: the endpoint flows ref → discoveryDepsFor(ref.endpoint) →
+		// configFor, so a missing US key fails loudly instead of querying EU.
+		vi.stubEnv('LANGSMITH_API_KEY_US', '');
+		await expect(reconstructSeedFromThread({ threadId: 't1', endpoint: US })).rejects.toThrow(
+			/LANGSMITH_API_KEY_US is not set/,
+		);
 	});
 });
