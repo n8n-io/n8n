@@ -151,10 +151,8 @@ export class WorkflowPublicationOutboxConsumer {
 			},
 			async (span) => {
 				let processed = 0;
-				// Run `concurrency` worker loops in parallel. Each claims and processes records
+				// Run worker loops in parallel. Each claims and processes records
 				// until none remain (claiming is atomic, so workers never grab the same record).
-				// If any worker throws, the others stop claiming and the error is rethrown once
-				// all workers have settled, preserving the existing poll-cycle error reporting.
 				let aborted = false;
 				const runWorker = async () => {
 					while (!aborted && this.shouldKeepPolling()) {
