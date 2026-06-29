@@ -218,6 +218,7 @@ Treatment behavior:
 - Clicking a suggestion does not auto-send.
 - Focus the composer after insertion.
 - Hover/focus preview uses the full `builderPrompt` as the ghost placeholder, matching current v2 behavior.
+- When no suggestion hover/focus preview is active, use the experiment placeholder `Tip: Ask me for suggestions if you're not sure what to build`.
 - Suggestions are hidden once the composer is dirty, busy, gated by setup, or unavailable, matching the current input behavior.
 - Show a `See more` CTA above the suggestions, aligned to the right, only when the initial suggestion source is `matrix`, `role_default`, or `global_top_performers`.
 - The `See more` label stays `See more` in both states.
@@ -292,7 +293,7 @@ Nice to have:
 
 - [x] Replace `Suggested for you` with `Start from an example`.
 - [x] Add helper copy under the header: `Picked for you. Change anything.`
-- [x] Add a typing-state tip when suggestions are hidden: `Tip: Ask me for suggestions if you're not sure what to build`.
+- [x] Use the experiment placeholder: `Tip: Ask me for suggestions if you're not sure what to build`.
 - [x] Add an `AI Assistant` pill near the top so users recognize the feature/icon faster.
 
 ## Implementation TODO

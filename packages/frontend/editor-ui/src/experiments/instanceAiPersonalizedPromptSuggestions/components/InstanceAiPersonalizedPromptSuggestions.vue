@@ -122,11 +122,9 @@ function toggleSuggestions() {
 
 <template>
 	<div :class="$style.suggestions" data-test-id="instance-ai-personalized-prompt-suggestions">
-		<div :class="$style.header">
-			<span :class="$style.assistantPill" data-test-id="instance-ai-personalized-assistant-pill">
-				<N8nIcon icon="sparkles" size="xsmall" />
-				{{ i18n.baseText('experiments.instanceAiPersonalizedPromptSuggestions.assistantPill') }}
-			</span>
+		<div
+			:class="[$style.header, props.format === 'cards' ? $style.cardHeader : $style.compactHeader]"
+		>
 			<div :class="$style.headingRow">
 				<div :class="$style.headingCopy">
 					<span :class="$style.heading">
@@ -172,6 +170,12 @@ function toggleSuggestions() {
 				@focus="previewSuggestion(suggestion)"
 				@blur="clearPreview"
 			>
+				<N8nIcon
+					v-if="props.format === 'list'"
+					icon="sparkles"
+					size="xlarge"
+					:class="$style.listIcon"
+				/>
 				<span :class="$style.textGroup">
 					<span :class="$style.suggestionTitle">{{ suggestion.shortTitle }}</span>
 					<span :class="$style.suggestionDescription">
@@ -195,25 +199,16 @@ function toggleSuggestions() {
 	flex-direction: column;
 	align-items: stretch;
 	gap: var(--spacing--4xs);
-	/* Inset to align with the card/row text, which is padded by --spacing--sm. */
-	padding: 0 var(--spacing--sm);
 	margin-bottom: var(--spacing--xs);
 }
 
-.assistantPill {
-	display: inline-flex;
-	align-items: center;
-	align-self: flex-start;
-	gap: var(--spacing--5xs);
-	max-width: 100%;
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--sm);
-	background: var(--background--info);
-	border: 1px solid var(--border-color--info);
-	border-radius: var(--radius--lg);
+.compactHeader {
+	padding: 0;
+}
+
+.cardHeader {
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--lg);
 }
 
 .headingRow {
@@ -254,7 +249,7 @@ function toggleSuggestions() {
 /* Cards: a 2-column grid of soft surface cards that lift further on hover/focus. */
 .cardList {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--md);
 }
 
 /* List: a single column of softly filled rows, each led by a brand sparkle. */
@@ -350,16 +345,27 @@ function toggleSuggestions() {
 		0 0 0 2px var(--focus--border-color);
 }
 
-/* --- List: plain rows (title + description); the surface fills in on hover/focus. --- */
+/* --- List: compact card rows with the brand sparkle cue. --- */
+.listIcon {
+	flex: 0 0 auto;
+	margin-top: 0;
+	color: var(--color--primary);
+}
+
 .listButton {
+	align-items: center;
 	padding: var(--spacing--xs) var(--spacing--sm);
+	background: light-dark(var(--background--surface), var(--background--subtle));
+	border: 1px solid var(--border-color--subtle);
 	border-radius: var(--radius--md);
+	box-shadow: var(--shadow--2xs);
 }
 
 .listButton:not(:disabled):hover,
 .listButton:not(:disabled):focus-visible {
-	background: light-dark(var(--background--surface), var(--background--subtle));
-	box-shadow: var(--shadow--sm);
+	background: var(--background--hover);
+	border-color: var(--border-color--strong);
+	box-shadow: var(--shadow--xs);
 	transform: translateY(-1px);
 	outline: none;
 	z-index: 1;

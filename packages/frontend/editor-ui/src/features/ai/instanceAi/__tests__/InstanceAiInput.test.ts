@@ -29,7 +29,6 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
-	typingTipKey?: BaseTextKey;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -347,44 +346,6 @@ describe('InstanceAiInput', () => {
 		expect(getByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
 		expect(textbox).toHaveAttribute('placeholder', initialPlaceholder);
-	});
-
-	it('shows a caller-provided typing tip when draft text hides suggestions', async () => {
-		const { getByRole, getByTestId, queryByTestId } = renderComponent({
-			props: {
-				isStreaming: false,
-				suggestions,
-				typingTipKey: 'experiments.instanceAiPersonalizedPromptSuggestions.typingTip',
-			},
-		});
-
-		await userEvent.type(getByRole('textbox'), 'Build a follow-up workflow');
-
-		await waitFor(() => {
-			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
-			expect(getByTestId('instance-ai-typing-tip')).toHaveTextContent(
-				"Tip: Ask me for suggestions if you're not sure what to build",
-			);
-		});
-	});
-
-	it('does not show the typing tip after inserting a suggestion into the composer', async () => {
-		const { getByRole, getByTestId, queryByTestId } = renderComponent({
-			props: {
-				isStreaming: false,
-				suggestions,
-				typingTipKey: 'experiments.instanceAiPersonalizedPromptSuggestions.typingTip',
-			},
-		});
-
-		await userEvent.click(getByTestId('instance-ai-suggestion-build-workflow'));
-
-		await waitFor(() => {
-			expect(getByRole('textbox')).toHaveValue(
-				"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
-			);
-			expect(queryByTestId('instance-ai-typing-tip')).not.toBeInTheDocument();
-		});
 	});
 
 	it('shows a ghost prompt in the placeholder when hovering a quick example row', async () => {

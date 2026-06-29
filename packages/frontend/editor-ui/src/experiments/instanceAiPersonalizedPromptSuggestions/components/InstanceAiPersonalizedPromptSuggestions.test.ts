@@ -79,11 +79,8 @@ describe('InstanceAiPersonalizedPromptSuggestions', () => {
 	});
 
 	it('renders cards with titles and descriptions', () => {
-		const { getByTestId, getByText } = renderComponent();
+		const { getByText } = renderComponent();
 
-		expect(getByTestId('instance-ai-personalized-assistant-pill')).toHaveTextContent(
-			'AI Assistant',
-		);
 		expect(getByText('Start from an example')).toBeVisible();
 		expect(getByText('Picked for you. Change anything.')).toBeVisible();
 		expect(getByText('Qualify hot leads')).toBeVisible();
