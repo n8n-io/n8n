@@ -68,15 +68,22 @@ export const test = base.extend<ChatHubFixtures>({
 
 	chatHubEnabled: [
 		async ({ n8n }, use) => {
+			const setEnabled = async (enabled: boolean) => {
+				const response = await n8n.api.request.put('/rest/chat/enabled', { data: { enabled } });
+				if (!response.ok()) {
+					throw new Error(
+						`Failed to set Chat Hub enabled=${enabled}: ${response.status()} ${await response.text()}`,
+					);
+				}
+			};
+
 			// Chat Hub is disabled by default; turn it on for these tests.
-			const response = await n8n.api.request.put('/rest/chat/enabled', {
-				data: { enabled: true },
-			});
-			if (!response.ok()) {
-				throw new Error(`Failed to enable Chat Hub: ${response.status()} ${await response.text()}`);
-			}
+			await setEnabled(true);
 
 			await use(undefined);
+
+			// Restore the default (disabled) state so a shared instance isn't left enabled.
+			await setEnabled(false);
 		},
 		{ auto: true },
 	],
