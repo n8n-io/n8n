@@ -1,11 +1,12 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionsConfig, ScalingModeConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { randomUUID } from 'node:crypto';
 import { InstanceSettings } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 
 import { N8N_VERSION } from '@/constants';
+import { resolveWorkerPoolName } from '@/scaling/queue-name';
 
 import { REGISTRY_CONSTANTS } from './instance-registry.types';
 import type { InstanceStorage } from './storage/instance-storage.interface';
@@ -29,6 +30,7 @@ export class InstanceRegistryService {
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly scalingModeConfig: ScalingModeConfig,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-registry');
@@ -94,7 +96,7 @@ export class InstanceRegistryService {
 	}
 
 	private buildRegistration(): InstanceRegistration {
-		return {
+		const base: InstanceRegistration = {
 			schemaVersion: 1 as const,
 			instanceKey: this.instanceKey,
 			hostId: this.instanceSettings.hostId,
@@ -104,6 +106,12 @@ export class InstanceRegistryService {
 			registeredAt: this.registeredAt,
 			lastSeen: Date.now(),
 		};
+
+		if (this.instanceSettings.instanceType === 'worker') {
+			return { ...base, poolName: resolveWorkerPoolName(this.scalingModeConfig.workerPool) };
+		}
+
+		return base;
 	}
 
 	private async selectStorage(): Promise<InstanceStorage> {

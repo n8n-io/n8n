@@ -77,6 +77,7 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		queue: { workerPool: { enabled: false } },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({

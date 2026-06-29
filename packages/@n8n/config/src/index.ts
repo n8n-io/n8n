@@ -66,6 +66,7 @@ export {
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
+export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
