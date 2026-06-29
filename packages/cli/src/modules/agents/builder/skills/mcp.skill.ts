@@ -15,6 +15,22 @@ export function mcpSkill(): RuntimeSkill {
 		name: 'Agent builder MCP servers',
 		description:
 			'Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent.',
+		recommendedTools: [
+			'search_mcp_servers',
+			'ask_credential',
+			'verify_mcp_server',
+			'read_config',
+			'patch_config',
+		],
+		allowedTools: [
+			'search_mcp_servers',
+			'ask_credential',
+			'verify_mcp_server',
+			'ask_question',
+			'read_config',
+			'patch_config',
+			'write_config',
+		],
 		instructions: `\
 ## Purpose
 
