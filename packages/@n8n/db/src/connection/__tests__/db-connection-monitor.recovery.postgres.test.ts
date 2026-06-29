@@ -257,6 +257,7 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				buildDatabaseConfig({ pingTimeoutMs: 50 }),
 				mock<Logger>(),
 				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
 			);
 			const pool = (dataSource.driver as unknown as { master: PgPool }).master;
 			const originalConnect = pool.connect.bind(pool);

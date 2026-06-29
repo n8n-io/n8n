@@ -279,6 +279,7 @@ describe('DbConnectionMonitor', () => {
 				databaseConfig,
 				logger,
 				errorReporter,
+				dbConnectionMetrics,
 			);
 
 			// @ts-expect-error private method
