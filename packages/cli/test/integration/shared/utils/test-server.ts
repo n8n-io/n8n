@@ -99,6 +99,7 @@ export const setupTestServer = ({
 	enabledFeatures,
 	quotas,
 	modules,
+	setupTimeout,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -373,7 +374,7 @@ export const setupTestServer = ({
 
 			await Container.get(AuthHandlerRegistry).init();
 		}
-	});
+	}, setupTimeout);
 
 	afterAll(async () => {
 		// Close the HTTP server first so any in-flight requests can't reach the
