@@ -5,6 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, h, onMounted, ref } from 'vue';
+import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
 
 import AgentSkillModal from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
@@ -58,7 +59,7 @@ function renderModal({
 				Modal: ModalStub,
 				AgentSkillViewer: SkillViewerStub,
 				N8nButton: {
-					template: '<button v-bind="$attrs"><slot /></button>',
+					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
 					props: ['variant', 'disabled'],
 				},
 				N8nHeading: { template: '<h2><slot /></h2>' },
@@ -141,4 +142,39 @@ describe('AgentSkillModal', () => {
 			'SKILL.md',
 		);
 	});
+
+	it('does not add more than the maximum number of references', async () => {
+		const { container } = renderModal({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				references: makeReferences(AGENT_SKILL_REFERENCE_MAX_COUNT),
+			},
+		});
+
+		const addReferenceButton = container.querySelector(
+			'[data-testid="agent-skill-add-reference"]',
+		) as HTMLButtonElement;
+
+		expect(addReferenceButton).toBeDisabled();
+		await fireEvent.click(addReferenceButton);
+
+		expect(
+			container.querySelector(
+				'[data-testid="agent-skill-reference-nav-item-references-reference-21-md"]',
+			),
+		).not.toBeInTheDocument();
+		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
+			'SKILL.md',
+		);
+	});
 });
+
+function makeReferences(count: number) {
+	return Array.from({ length: count }, (_, index) => ({
+		path: index === 0 ? 'references/reference.md' : `references/reference-${index + 1}.md`,
+		content: 'Reference',
+		bytes: 9,
+	}));
+}

@@ -7,10 +7,16 @@ import type { AgentSkill } from '../types';
 
 const SKILL_FILE = 'SKILL.md';
 
-const props = defineProps<{
-	skill: AgentSkill;
-	selectedPath: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		skill: AgentSkill;
+		selectedPath: string;
+		addReferenceDisabled?: boolean;
+	}>(),
+	{
+		addReferenceDisabled: false,
+	},
+);
 
 const emit = defineEmits<{
 	select: [path: string];
@@ -58,6 +64,7 @@ function testIdForPath(path: string) {
 					size="xsmall"
 					icon-only
 					icon="plus"
+					:disabled="props.addReferenceDisabled"
 					:aria-label="i18n.baseText('agents.builder.skills.references.add' as BaseTextKey)"
 					data-testid="agent-skill-add-reference"
 					@click="emit('add-reference')"

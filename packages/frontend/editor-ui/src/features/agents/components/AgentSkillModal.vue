@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -45,6 +46,9 @@ const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
 
 const isEditing = computed(() => !!props.data.skillId);
+const canAddReference = computed(
+	() => (skill.value.references ?? []).length < AGENT_SKILL_REFERENCE_MAX_COUNT,
+);
 
 const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() => {
 	const errors: Partial<Record<keyof AgentSkill, string>> = {};
@@ -96,6 +100,8 @@ function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
 }
 
 function onAddReference() {
+	if (!canAddReference.value) return;
+
 	const path = nextReferencePath(skill.value.references ?? []);
 	skill.value = {
 		...skill.value,
@@ -186,6 +192,7 @@ function onRemove() {
 				<AgentSkillFileNav
 					:skill="skill"
 					:selected-path="selectedPath"
+					:add-reference-disabled="!canAddReference"
 					@add-reference="onAddReference"
 					@remove-reference="onRemoveReference"
 					@select="selectedPath = $event"

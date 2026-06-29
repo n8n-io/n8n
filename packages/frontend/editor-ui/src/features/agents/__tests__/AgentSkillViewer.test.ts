@@ -2,12 +2,24 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { defineComponent, h, onMounted } from 'vue';
 import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+} from '@n8n/api-types';
 
 import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			if (key === 'agents.builder.skills.references.byteCount') {
+				return `${options?.interpolate?.count} / ${options?.interpolate?.max} bytes`;
+			}
+			if (key === 'agents.builder.skills.references.maxCount') {
+				return `Skills can have up to ${options?.interpolate?.max} reference files.`;
+			}
+			return key;
+		},
 	}),
 }));
 
@@ -225,6 +237,43 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
 
+	it('shows the selected reference byte count', () => {
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				references: [
+					{
+						path: 'references/guide.md',
+						content: '€€€',
+					},
+				],
+			},
+			selectedPath: 'references/guide.md',
+		});
+
+		expect(wrapper.text()).toContain(
+			`9 / ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString()} bytes`,
+		);
+	});
+
+	it('marks skills with too many references invalid', () => {
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				references: makeReferences(AGENT_SKILL_REFERENCE_MAX_COUNT + 1),
+			},
+		});
+
+		expect(wrapper.text()).toContain(
+			`Skills can have up to ${AGENT_SKILL_REFERENCE_MAX_COUNT.toLocaleString()} reference files.`,
+		);
+		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
+	});
+
 	it('updates allowed tools from the picker and chips', async () => {
 		const wrapper = mountViewer({
 			skill: {
@@ -305,4 +354,12 @@ function makeFile(content: string, path: string): File {
 		configurable: true,
 	});
 	return file;
+}
+
+function makeReferences(count: number) {
+	return Array.from({ length: count }, (_, index) => ({
+		path: index === 0 ? 'references/reference.md' : `references/reference-${index + 1}.md`,
+		content: 'Reference',
+		bytes: 9,
+	}));
 }

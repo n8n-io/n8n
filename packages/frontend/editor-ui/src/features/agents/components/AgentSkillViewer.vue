@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES,
 } from '@n8n/api-types';
 import {
@@ -125,8 +126,17 @@ const referencesTotalError = computed(() => {
 	if (totalReferenceBytes.value <= AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) return '';
 	return i18n.baseText('agents.builder.skills.import.referencesTooLarge');
 });
+const referencesCountError = computed(() => {
+	if ((props.skill.references ?? []).length <= AGENT_SKILL_REFERENCE_MAX_COUNT) return '';
+	return i18n.baseText('agents.builder.skills.references.maxCount' as BaseTextKey, {
+		interpolate: { max: AGENT_SKILL_REFERENCE_MAX_COUNT.toLocaleString() },
+	});
+});
 const referencesValid = computed(
-	() => invalidReferences.value.length === 0 && !referencesTotalError.value,
+	() =>
+		invalidReferences.value.length === 0 &&
+		!referencesTotalError.value &&
+		!referencesCountError.value,
 );
 const formIsValid = computed(
 	() =>
@@ -166,10 +176,13 @@ const addableAllowedTools = computed(() => {
 	const selected = new Set(props.skill.allowedTools ?? []);
 	return props.availableTools.filter((tool) => !selected.has(tool.name));
 });
-const selectedReferenceCharacterCount = computed(() =>
-	i18n.baseText('agents.builder.skills.references.characterCount', {
+const selectedReferenceByteCount = computed(() =>
+	i18n.baseText('agents.builder.skills.references.byteCount' as BaseTextKey, {
 		interpolate: {
-			count: (selectedReference.value?.content ?? '').length.toLocaleString(),
+			count: (selectedReference.value
+				? referenceBytes(selectedReference.value)
+				: 0
+			).toLocaleString(),
 			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString(),
 		},
 	}),
@@ -188,6 +201,7 @@ const selectedReferenceError = computed(() => {
 	return '';
 });
 const referencesError = computed(() => {
+	if (referencesCountError.value) return referencesCountError.value;
 	if (referencesTotalError.value) return referencesTotalError.value;
 	if (referencesValid.value) return '';
 	return i18n.baseText('agents.builder.skills.references.invalidSummary');
@@ -591,7 +605,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					<N8nText v-if="referencesError && !selectedReferenceError" size="small" color="danger">{{
 						referencesError
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">{{ selectedReferenceCharacterCount }}</N8nText>
+					<N8nText size="xsmall" color="text-light">{{ selectedReferenceByteCount }}</N8nText>
 				</div>
 			</N8nInputLabel>
 		</div>
