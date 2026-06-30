@@ -1,0 +1,155 @@
+{
+  "name": "@n8n/typeorm",
+  "version": "0.3.20-18",
+  "description": "Data-Mapper ORM for TypeScript, ES7, ES6, ES5. Supports PostgreSQL and SQLite databases.",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "author": {
+    "name": "Umed Khudoiberdiev",
+    "email": "pleerock.me@gmail.com"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js"
+    },
+    "./*.js": "./dist/*.js",
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "require": "./dist/*.js",
+      "import": "./dist/*.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "dist/*": [
+        "./dist/*"
+      ],
+      "*": [
+        "./dist/*"
+      ]
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typeorm/typeorm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/typeorm/typeorm/issues"
+  },
+  "homepage": "https://typeorm.io",
+  "tags": [
+    "orm",
+    "typescript",
+    "typescript-orm",
+    "postgresql",
+    "postgresql-orm",
+    "sqlite",
+    "sqlite-orm"
+  ],
+  "devDependencies": {
+    "@tsconfig/node16": "^16.1.1",
+    "@types/app-root-path": "^1.2.4",
+    "@types/chai": "^4.3.4",
+    "@types/chai-as-promised": "^7.1.5",
+    "@types/debug": "^4.1.12",
+    "@types/mkdirp": "^1.0.2",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^18.13.0",
+    "@types/pg": "^8.15.6",
+    "@types/sha.js": "^2.4.0",
+    "@types/sinon": "^10.0.13",
+    "@types/source-map-support": "^0.5.6",
+    "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "chai": "^4.3.7",
+    "chai-as-promised": "^7.1.1",
+    "eslint": "^8.44.0",
+    "mocha": "^10.2.0",
+    "pg": "^8.17.0",
+    "pg-query-stream": "^4.10.3",
+    "prettier": "^2.8.3",
+    "rimraf": "^4.1.2",
+    "sinon": "^15.0.1",
+    "sinon-chai": "^3.7.0",
+    "source-map-support": "^0.5.21",
+    "sqlite3": "5.1.7",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "pg": "^8.17.0",
+    "pg-native": "^3.5.2",
+    "pg-query-stream": "^4.10.3",
+    "sqlite3": "5.1.7"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    },
+    "pg-native": {
+      "optional": true
+    },
+    "pg-query-stream": {
+      "optional": true
+    },
+    "sqlite3": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "app-root-path": "^3.1.0",
+    "async-mutex": "^0.5.0",
+    "chalk": "^4.1.2",
+    "dayjs": "^1.11.9",
+    "debug": "^4.3.4",
+    "dotenv": "catalog:",
+    "glob": "^10.0.0",
+    "mkdirp": "^2.1.3",
+    "reflect-metadata": "^0.2.2",
+    "sha.js": "^2.4.12",
+    "tarn": "3.0.2",
+    "tslib": "^2.5.0",
+    "uuid": "^9.0.0"
+  },
+  "scripts": {
+    "test": "tsc && mocha --file ./build/compiled/test/utils/test-setup.js --recursive --timeout 90000 ./build/compiled/test",
+    "test:unit": "echo \"No unit tests for @n8n/typeorm (vendored)\" && exit 0",
+    "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 90000 ./build/compiled/test",
+    "typecheck": "tsc --noEmit",
+    "build": "pnpm compile",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "compile": "tsc -p tsconfig.build.json",
+    "watch": "tsc -w -p tsconfig.build.json"
+  },
+  "funding": "https://opencollective.com/typeorm",
+  "collective": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/typeorm",
+    "logo": "https://opencollective.com/opencollective/logo.txt"
+  },
+  "nyc": {
+    "all": true,
+    "cache": false,
+    "exclude": [
+      "**/*.d.ts"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "include": [
+      "build/compiled/src/**",
+      "src/**"
+    ],
+    "reporter": "json"
+  }
+}

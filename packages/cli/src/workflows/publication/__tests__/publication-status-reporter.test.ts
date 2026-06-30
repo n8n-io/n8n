@@ -5,7 +5,7 @@ import type {
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -50,7 +50,7 @@ describe('PublicationStatusReporter', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
 		outboxRepository.markPartialSuccess.mockResolvedValue(undefined);

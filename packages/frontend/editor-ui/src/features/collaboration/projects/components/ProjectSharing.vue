@@ -108,9 +108,12 @@ const filteredProjects = computed(() => {
 });
 
 const sortedProjects = computed((): ProjectListItem[] => {
+	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
+		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
-		...filteredProjects.value,
+		...projects,
 	];
 });
 
