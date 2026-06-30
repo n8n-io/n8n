@@ -107,7 +107,10 @@ describe('useNodeRunsAsYou', () => {
 	it('is true for a node with context establishment hooks', () => {
 		mockFeatureFlag(true);
 		const node = createMockNode({
-			parameters: { contextEstablishmentHooks: { hooks: [{ id: 'hook-1' }] } },
+			parameters: {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: { hooks: [{ hookName: 'n8n-oauth' }] },
+			},
 		});
 		vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
@@ -117,6 +120,20 @@ describe('useNodeRunsAsYou', () => {
 		expect(getByTestId('tooltip-text')).toHaveTextContent(
 			"This webhook extracts the triggering user's identity token to resolve credentials at runtime.",
 		);
+	});
+
+	it('is false for malformed context establishment hooks that the runtime parser rejects', () => {
+		mockFeatureFlag(true);
+		// Missing `executionsHooksVersion` and the hook lacks `hookName` — the runtime
+		// would not establish identity, so the badge must not show either.
+		const node = createMockNode({
+			parameters: { contextEstablishmentHooks: { hooks: [{ id: 'hook-1' }] } },
+		});
+		vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('runs-as-you')).toHaveTextContent('false');
 	});
 
 	it('is false when the node has no credentials', () => {

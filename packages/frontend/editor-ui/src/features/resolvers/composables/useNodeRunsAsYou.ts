@@ -1,5 +1,6 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { toExecutionContextEstablishmentHookParameter } from 'n8n-workflow';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -29,16 +30,12 @@ export function useNodeRunsAsYou(nodeName: MaybeRefOrGetter<string>) {
 	});
 
 	const hasContextEstablishmentHooks = computed(() => {
-		const contextEstablishment = node.value?.parameters?.contextEstablishmentHooks;
-		if (
-			typeof contextEstablishment !== 'object' ||
-			contextEstablishment === null ||
-			!('hooks' in contextEstablishment)
-		) {
-			return false;
-		}
-		const hooks = contextEstablishment.hooks;
-		return Array.isArray(hooks) && hooks.length > 0;
+		// Validate with the shared parser so the badge matches what the runtime will
+		// actually establish (the parser checks the version + hook shape, not just a
+		// `hooks` array — guards against stale/malformed imported parameters).
+		const result = toExecutionContextEstablishmentHookParameter(node.value?.parameters);
+		if (!result?.success) return false;
+		return result.data.contextEstablishmentHooks.hooks.length > 0;
 	});
 
 	const runsAsYou = computed(
