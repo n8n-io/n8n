@@ -161,7 +161,7 @@ export class TaskRunnerModule {
 		this.errorReporter.error(error);
 
 		// A restart loop is unrecoverable, so exit and let the process manager
-		// restart n8n. Skip in tests, where exiting would kill the jest worker.
+		// restart n8n. Skip in tests, where exiting would kill the vi worker.
 		if (inTest) return;
 
 		// Allow some time for the error to be flushed

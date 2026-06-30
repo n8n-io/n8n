@@ -17,6 +17,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
@@ -41,6 +42,7 @@ import { dedupe } from 'n8n-workflow';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
@@ -252,10 +254,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	// Current workflow id, derived read-only from the route (out-of-tree store).
+	const routeWorkflowId = useRouteWorkflowId();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(routeWorkflowId.value)),
 	);
-	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const workflowExecutionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(routeWorkflowId.value)),
+	);
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(routeWorkflowId.value)));
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
@@ -441,7 +448,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * This deletes persisted messages so they won't be reloaded on next visit.
 	 */
 	function clearBackendSession() {
-		const workflowId = workflowsStore.workflowId;
+		const workflowId = routeWorkflowId.value;
 		if (workflowId) {
 			void clearBuilderSession(rootStore.restApiContext, workflowId);
 		}
@@ -502,7 +509,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		telemetry.track('End of response from builder', {
 			user_message_id: userMessageId,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: routeWorkflowId.value,
 			session_id: trackingSessionId.value,
 			tab_visible: document.visibilityState === 'visible',
 			code_builder: isCodeBuilder.value,
@@ -554,7 +561,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				interpolate: { workflowName },
 			}),
 			icon: '/favicon.ico',
-			tag: `workflow-build-${workflowsStore.workflowId}`,
+			tag: `workflow-build-${routeWorkflowId.value}`,
 			requireInteraction: false,
 		});
 
@@ -757,7 +764,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			message: text,
 			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: routeWorkflowId.value,
 			type,
 			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
 			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
@@ -772,7 +779,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			let resultDataSizeKb = 0;
 
 			try {
-				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+				resultData = JSON.stringify(workflowExecutionStateStore.value.activeExecution ?? {});
 				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
 			} catch (error) {
 				// Handle circular structure errors gracefully
@@ -809,7 +816,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function verifyVersionExists(
 		versionId: string,
 	): Promise<{ id: string; createdAt: string } | undefined> {
-		const workflowId = workflowsStore.workflowId;
+		const workflowId = routeWorkflowId.value;
 		const existing = await fetchExistingVersionIds(rootStore.restApiContext, workflowId, [
 			versionId,
 		]);
@@ -982,13 +989,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			options.skipUserMessage,
 		);
 
-		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const executionResult = workflowExecutionStateStore.value.activeExecution?.data?.resultData;
 		const modeForPayload =
 			resumeData !== undefined
 				? mode
 				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
-			workflowId: workflowsStore.workflowId,
+			workflowId: routeWorkflowId.value,
 			quickReplyType,
 			workflow: workflowDocumentStore.value.getSnapshot(),
 			executionData: executionResult,
@@ -1119,7 +1126,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Silently fails and returns empty array on error to prevent UI disruption.
 	 */
 	async function loadSessions() {
-		const workflowId = workflowsStore.workflowId;
+		const workflowId = routeWorkflowId.value;
 		if (!workflowId) {
 			return [];
 		}
@@ -1329,7 +1336,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 				if (isPinDataEnabled) {
 					const workflowDocumentStore = useWorkflowDocumentStore(
-						createWorkflowDocumentId(workflowsStore.workflowId),
+						createWorkflowDocumentId(routeWorkflowId.value),
 					);
 					const pinData = workflowDocumentStore.getPinDataSnapshot();
 					if (pinData && Object.keys(pinData).length > 0) {
@@ -1402,9 +1409,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function applyGeneratedPinData() {
-		if (!generatedPinData.value || !workflowsStore.workflowId) return;
+		if (!generatedPinData.value || !routeWorkflowId.value) return;
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(routeWorkflowId.value),
 		);
 		workflowDocumentStore.setPinData({
 			...workflowDocumentStore.getPinDataSnapshot(),
@@ -1470,7 +1477,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Watch workflowId changes to reset chat and load sessions when workflow changes
 	watch(
-		() => workflowsStore.workflowId,
+		() => routeWorkflowId.value,
 		(newWorkflowId, oldWorkflowId) => {
 			if (newWorkflowId === oldWorkflowId) {
 				return;
@@ -1503,7 +1510,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Only applies when the chat is fresh (no messages) so it doesn't interfere
 	// with an active conversation.
 	watch(
-		[() => workflowsStore.workflowId, () => workflowDocumentStore.value.allNodes.length],
+		[() => routeWorkflowId.value, () => workflowDocumentStore.value.allNodes.length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
 			builderMode.value = nodesCount === 0 ? 'plan' : 'build';
@@ -1520,7 +1527,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		eventProperties?: WorkflowBuilderJourneyEventProperties,
 	) {
 		const payload: WorkflowBuilderJourneyPayload = {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: routeWorkflowId.value,
 			session_id: trackingSessionId.value,
 			event_type: eventType,
 		};
@@ -1571,7 +1578,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		versionId: string,
 		versionCardId: string,
 	): Promise<IWorkflowDb | undefined> {
-		const workflowId = workflowsStore.workflowId;
+		const workflowId = routeWorkflowId.value;
 
 		// Save current workflow if there are unsaved changes before restoring
 		if (uiStore.stateIsDirty) {

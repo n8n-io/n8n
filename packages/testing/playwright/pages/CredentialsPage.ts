@@ -44,7 +44,7 @@ export class CredentialsPage extends BasePage {
 	}
 
 	async clearSearch() {
-		await this.page.getByTestId('resources-list-search').clear();
+		await this.getResourcesListSearch().clear();
 	}
 
 	async sortByNameDescending() {

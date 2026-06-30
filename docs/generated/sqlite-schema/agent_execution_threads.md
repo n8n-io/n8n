@@ -84,7 +84,6 @@ erDiagram
 "agents" {
   varchar_36_ activeVersionId FK
   datetime_3_ createdAt
-  varchar_512_ description
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
@@ -96,7 +95,6 @@ erDiagram
   varchar_36_ versionId
 }
 "agent_execution" {
-  TEXT assistantResponse
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -112,7 +110,6 @@ erDiagram
   datetime_3_ stoppedAt
   varchar_128_ threadId FK
   TEXT timeline
-  TEXT toolCalls
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage

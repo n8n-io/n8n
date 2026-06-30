@@ -26,7 +26,7 @@ export class InsightsModule implements ModuleInterface {
 	async settings() {
 		const { InsightsSettings } = await import('./insights.settings');
 
-		return Container.get(InsightsSettings).settings();
+		return await Container.get(InsightsSettings).settings();
 	}
 
 	@OnShutdown()

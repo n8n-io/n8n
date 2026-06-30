@@ -5,8 +5,13 @@ export type CsrfStateRequired = {
 	token: string;
 	/** Creation timestamp of the CSRF state. Used for expiration.  */
 	createdAt: number;
-	/** Encrypted stringified CSRF state data */
-	data: string;
+	/**
+	 * Encrypted stringified CSRF state data. Legacy field: the payload now lives
+	 * server-side in the per-flow cache (keyed by the state token) instead of in
+	 * the URL, so newly minted states omit it. Kept optional to keep in-flight
+	 * flows started before this change resolvable at the callback.
+	 */
+	data?: string;
 };
 
 export type CreateCsrfStateData = {

@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
 import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
+import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -823,7 +824,8 @@ export function getNodeParameters(
 			// Strip expression prefix if noDataExpression is true
 			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
 				const value = nodeParameters[nodeProperties.name];
-				if (isExpression(value)) {
+				// A lone $fromAI() placeholder must keep its "=" or the AI tool call never resolves it (#30531)
+				if (isExpression(value) && !isFromAIOnlyExpression(value)) {
 					nodeParameters[nodeProperties.name] = value.slice(1);
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}

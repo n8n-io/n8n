@@ -74,7 +74,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -146,7 +146,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	hint: undefined,
-	inputSize: undefined,
+	inputSize: 'medium',
 	eventSource: undefined,
 	documentationUrl: undefined,
 	isReadOnly: false,
@@ -173,7 +173,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = injectNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
@@ -239,7 +239,7 @@ const node = computed(() => {
 	const contextNode =
 		expressionLocalResolveCtx?.value &&
 		workflowDocumentStore.value.getNodeByName(expressionLocalResolveCtx.value.nodeName);
-	return contextNode ?? ndvStore.value.activeNode ?? undefined;
+	return contextNode ?? ndvStore.value?.activeNode ?? undefined;
 });
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
@@ -315,7 +315,7 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	return getParameterDisplayableOptions(safeOptions, ndvStore.value.activeNode);
+	return getParameterDisplayableOptions(safeOptions, ndvStore.value?.activeNode ?? null);
 });
 
 const modelValueString = computed<string>(() => {
@@ -479,7 +479,7 @@ const expressionDisplayValue = computed(() => {
 
 const dependentParametersValues = computedAsync(async () => {
 	// Reference dependencies to ensure reactivity tracking
-	void ndvStore.value.activeNode?.parameters;
+	void ndvStore.value?.activeNode?.parameters;
 	void props.parameter;
 	void props.path;
 
@@ -717,7 +717,7 @@ const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_
 const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 
-const isInputDataEmpty = computed(() => ndvStore.value.isInputPanelEmpty);
+const isInputDataEmpty = computed(() => ndvStore.value?.isInputPanelEmpty ?? true);
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
@@ -731,9 +731,9 @@ const showDragnDropTip = computed(
 		(isInputTypeString.value || isInputTypeNumber.value) &&
 		!isModelValueExpression.value &&
 		!isDropDisabled.value &&
-		(!ndvStore.value.hasInputData || !isInputDataEmpty.value) &&
-		!ndvStore.value.isMappingOnboarded &&
-		ndvStore.value.isInputParentOfActiveNode &&
+		(!(ndvStore.value?.hasInputData ?? false) || !isInputDataEmpty.value) &&
+		!(ndvStore.value?.isMappingOnboarded ?? true) &&
+		(ndvStore.value?.isInputParentOfActiveNode ?? false) &&
 		!props.isForCredential,
 );
 
@@ -777,14 +777,14 @@ function getPlaceholder(): string {
 
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).placeholder(props.parameter)
-		: i18n.nodeText(ndvStore.value.activeNode?.type).placeholder(props.parameter, props.path);
+		: i18n.nodeText(ndvStore.value?.activeNode?.type).placeholder(props.parameter, props.path);
 }
 
 function getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).optionsOptionDisplayName(props.parameter, option)
 		: i18n
-				.nodeText(ndvStore.value.activeNode?.type)
+				.nodeText(ndvStore.value?.activeNode?.type)
 				.optionsOptionDisplayName(props.parameter, option, props.path);
 }
 
@@ -792,7 +792,7 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).optionsOptionDescription(props.parameter, option)
 		: i18n
-				.nodeText(ndvStore.value.activeNode?.type)
+				.nodeText(ndvStore.value?.activeNode?.type)
 				.optionsOptionDescription(props.parameter, option, props.path);
 }
 
@@ -874,7 +874,7 @@ function trackExpressionEditOpen() {
 			parameter_field_type: props.parameter.type,
 			new_expression: !isModelValueExpression.value,
 			workflow_id: workflowDocumentStore.value.workflowId,
-			push_ref: ndvStore.value.pushRef,
+			push_ref: ndvStore.value?.pushRef ?? '',
 			source: props.eventSource ?? 'ndv',
 		});
 	}
@@ -1083,7 +1083,7 @@ function valueChanged(untypedValue: unknown) {
 			node_type: node.value?.type,
 			resource: node.value?.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
-			push_ref: ndvStore.value.pushRef,
+			push_ref: ndvStore.value?.pushRef ?? '',
 			parameter: props.parameter.name,
 			value: value as string,
 		});
@@ -1536,7 +1536,7 @@ onUpdated(async () => {
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
-						.nodeText(ndvStore.activeNode?.type)
+						.nodeText(ndvStore?.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"

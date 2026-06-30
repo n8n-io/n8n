@@ -27,6 +27,8 @@ import { AgentChatSubscriptionStateService } from './agent-chat-subscription-sta
 import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
+import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
+import { recordAdapterCalls } from './recording/recording-adapter';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -81,6 +83,14 @@ interface DisconnectOptions {
 	 * leader-stepdown so the cluster-wide remote release happens exactly once.
 	 */
 	skipExternalHooks?: boolean;
+}
+
+async function getAgentExecutionOrchestratorService() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { AgentExecutionOrchestratorService } = await import(
+		'../agent-execution-orchestrator.service'
+	);
+	return Container.get(AgentExecutionOrchestratorService);
 }
 
 /**
@@ -193,7 +203,8 @@ export class ChatIntegrationService {
 		}
 
 		// Delegate adapter construction to the platform implementation.
-		const adapter = await integrationImpl.createAdapter(ctx);
+		const adapter = recordAdapterCalls(integration.type, await integrationImpl.createAdapter(ctx));
+		channelIntegrationRecorder.startFetchRecording();
 
 		// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
 		const { Chat } = await loadChatSdk();
@@ -227,15 +238,12 @@ export class ChatIntegrationService {
 			// Create supporting infrastructure
 			const componentMapper = new ComponentMapper();
 
-			// Lazy-import AgentsService to avoid circular DI dependency
-			// eslint-disable-next-line import-x/no-cycle
-			const { AgentsService } = await import('../agents.service');
-			const agentService = Container.get(AgentsService);
+			const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
 
 			bridge = AgentChatBridge.create(
 				chat,
 				agentId,
-				agentService,
+				agentExecutionOrchestratorService,
 				componentMapper,
 				this.logger,
 				projectId,
@@ -341,9 +349,9 @@ export class ChatIntegrationService {
 
 	/**
 	 * Diff the previous and next chat integrations of an agent and reconcile
-	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
+	 * runtime connections accordingly. Used by `AgentConfigService.updateConfig`
 	 * after the builder writes a new integrations array, and by
-	 * `AgentsService.publishAgent` to wake up integrations that were persisted
+	 * `AgentPublishService.publishAgent` to wake up integrations that were persisted
 	 * while the agent was still a draft.
 	 *
 	 * Disconnects of removed integrations always run (so unpublishing-then-

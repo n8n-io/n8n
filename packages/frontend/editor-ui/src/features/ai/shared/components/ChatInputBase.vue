@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
@@ -15,11 +15,16 @@ const props = withDefaults(
 		showAttach?: boolean;
 		acceptedMimeTypes?: string;
 		autosize?: boolean | { minRows: number; maxRows: number };
+		buttonLabel?: string;
+		// Send button turns active only while focused with text (default: follows canSubmit).
+		activeRequiresFocus?: boolean;
 	}>(),
 	{
 		placeholder: undefined,
 		acceptedMimeTypes: undefined,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
+		buttonLabel: undefined,
+		activeRequiresFocus: false,
 	},
 );
 
@@ -34,6 +39,11 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
+const isFocused = ref(false);
+
+// Visual only — must NOT gate `submit-disabled`, or clicking the button (which
+// blurs the textarea) would disable it mid-click and swallow the submit.
+const submitMuted = computed(() => props.activeRequiresFocus && !isFocused.value);
 
 // Voice input
 const committedSpokenMessage = ref('');
@@ -119,7 +129,14 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.inputWrapper" @paste="handlePaste" @keydown.capture="handleKeydown">
+	<div
+		:class="[
+			$style.inputWrapper,
+			{ [$style.focusGatedSubmit]: activeRequiresFocus, [$style.submitMuted]: submitMuted },
+		]"
+		@paste="handlePaste"
+		@keydown.capture="handleKeydown"
+	>
 		<input
 			v-if="showAttach"
 			ref="fileInputRef"
@@ -137,6 +154,7 @@ defineExpose({
 			:streaming="isStreaming"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
+			:button-label="props.buttonLabel"
 			send-button-test-id="instance-ai-send-button"
 			stop-button-test-id="instance-ai-stop-button"
 			:autosize="autosize"
@@ -144,6 +162,8 @@ defineExpose({
 			@update:model-value="emit('update:modelValue', $event)"
 			@submit="handleSubmit"
 			@stop="emit('stop')"
+			@focus="isFocused = true"
+			@blur="isFocused = false"
 		>
 			<template #leading>
 				<slot name="attachments" />
@@ -197,5 +217,15 @@ defineExpose({
 
 .recording {
 	color: var(--color--danger);
+}
+
+/* Split empty state: de-emphasise the send button until the composer is focused.
+   Visual only — the button stays enabled so the click still submits. */
+.focusGatedSubmit [data-test-id='instance-ai-send-button'] {
+	transition: opacity 0.15s ease;
+}
+
+.submitMuted [data-test-id='instance-ai-send-button'] {
+	opacity: 0.5;
 }
 </style>

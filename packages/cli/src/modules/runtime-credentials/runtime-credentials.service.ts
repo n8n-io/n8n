@@ -2,13 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { INodeExecutionData, ISecureArtifactsV1, jsonParse } from 'n8n-workflow';
 
+import { extractAndClear } from './path-traversal';
 import { RuntimeCredentialsConfig } from './runtime-credentials.config';
 import {
 	SensitiveFieldRules,
 	sensitiveFieldRulesSchema,
 	ValueLookupPath,
 } from './runtime-credentials.schemas';
-import { extractAndClear } from './path-traversal';
 
 type ArtifactItem = ISecureArtifactsV1['artifacts'][string];
 

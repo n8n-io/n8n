@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import {
-	ApplicationError,
+	UnexpectedError,
 	type IWebhookFunctions,
 	type INodeExecutionData,
 	type IDataObject,
@@ -511,7 +511,7 @@ describe('Webhook Utils', () => {
 				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			(jwt.verify as Mock).mockImplementationOnce(() => {
-				throw new ApplicationError('jwt malformed');
+				throw new UnexpectedError('jwt malformed');
 			});
 			const authPropertyName = 'authentication';
 			await expect(
@@ -714,7 +714,7 @@ describe('Auth token generation', () => {
 
 			await generateFormPostBasicAuthToken(webhookFunctions, 'authentication');
 
-			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('authentication');
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 'none');
 		});
 
 		it('should use passed authentication key', async () => {
@@ -725,7 +725,10 @@ describe('Auth token generation', () => {
 
 			await generateFormPostBasicAuthToken(webhookFunctions, 'incomingAuthentication');
 
-			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('incomingAuthentication');
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith(
+				'incomingAuthentication',
+				'none',
+			);
 		});
 
 		it('should handle "none" authentication', async () => {

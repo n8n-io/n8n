@@ -25,7 +25,6 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
 import {
 	PROJECT_ROOT,
@@ -36,36 +35,36 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
 import { WorkflowValidationService } from './workflow-validation.service';
+
 import { WebhookService } from '@/webhooks/webhook.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
 @Service()
 export class WorkflowService {
@@ -149,6 +148,11 @@ export class WorkflowService {
 			sharingOptions.workflowRoles = workflowRoles;
 		}
 
+		const callableForParentWorkflowId = await this.resolveCallableForParentWorkflowId(
+			user,
+			options,
+		);
+
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
 			[workflowsAndFolders, count] =
@@ -156,6 +160,7 @@ export class WorkflowService {
 					user,
 					sharingOptions,
 					options,
+					callableForParentWorkflowId,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -164,6 +169,7 @@ export class WorkflowService {
 				user,
 				sharingOptions,
 				options,
+				callableForParentWorkflowId,
 			));
 		}
 
@@ -202,9 +208,30 @@ export class WorkflowService {
 		};
 	}
 
+	private async resolveCallableForParentWorkflowId(
+		user: User,
+		options?: ListQuery.Options,
+	): Promise<string | undefined> {
+		if (options?.filter?.includeCallableSubworkflows !== true) return undefined;
+
+		const parentWorkflowId =
+			typeof options.filter.parentWorkflowId === 'string'
+				? options.filter.parentWorkflowId
+				: undefined;
+		if (!parentWorkflowId) return undefined;
+
+		const parentWorkflow = await this.workflowFinderService.findWorkflowForUser(
+			parentWorkflowId,
+			user,
+			['workflow:read'],
+		);
+
+		return parentWorkflow ? parentWorkflowId : undefined;
+	}
+
 	private async addResolvableCredentialsFlag<
 		T extends ListQueryDb.Workflow.Plain | ListQueryDb.Workflow.WithSharing,
-	>(workflows: T[]): Promise<(T & { hasResolvableCredentials: boolean })[]> {
+	>(workflows: T[]): Promise<Array<T & { hasResolvableCredentials: boolean }>> {
 		// Use lazy import to avoid circular dependency
 		const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
@@ -391,9 +418,11 @@ export class WorkflowService {
 				},
 			);
 
-			// To save a version, we need both nodes and connections
+			// A saved version needs nodes, connections, and node groups; backfill any the update
+			// omitted from the persisted workflow so the history row records the effective state.
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
+			workflowUpdateData.nodeGroups = workflowUpdateData.nodeGroups ?? workflow.nodeGroups;
 		} else {
 			// Do not let users change versionId directly
 			workflowUpdateData.versionId = workflow.versionId;
@@ -405,10 +434,18 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
-		WorkflowHelpers.validateWorkflowNodeGroups({
-			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
-		});
+		// Validate node groups only for structural changes; a metadata-only edit re-persists
+		// already-validated groups, so re-checking is redundant and could block on legacy data.
+		if (saveNewVersion) {
+			WorkflowHelpers.validateWorkflowNodeGroups(
+				{
+					nodes: workflowUpdateData.nodes,
+					nodeGroups: workflowUpdateData.nodeGroups,
+					connections: workflowUpdateData.connections,
+				},
+				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			);
+		}
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (
@@ -509,6 +546,7 @@ export class WorkflowService {
 				workflowUpdateData,
 				workflowId,
 				autosaved,
+				source,
 			);
 		}
 
@@ -995,6 +1033,13 @@ export class WorkflowService {
 
 		if (!workflow) {
 			return;
+		}
+
+		if (
+			this.globalConfig.workflows.useWorkflowPublicationService &&
+			workflow.activeVersionId !== null
+		) {
+			throw new ConflictError('Cannot delete a published workflow. Unpublish it before deleting.');
 		}
 
 		if (!workflow.isArchived && !force) {

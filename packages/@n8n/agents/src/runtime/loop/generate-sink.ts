@@ -22,6 +22,9 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 
 	constructor(private readonly services: RunServices) {}
 
+	// The non-streaming path returns usage on its result; nothing to track here.
+	reportUsage(): void {}
+
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
 		const { generateText } = loadAi();
 		const result = await generateText({

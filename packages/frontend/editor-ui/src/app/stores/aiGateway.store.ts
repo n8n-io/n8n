@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import type { INode } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -104,6 +105,25 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return ops.includes(operation);
 	}
 
+	function isNodeTypeVersionSupported(nodeName: string, typeVersion: number): boolean {
+		const minVersion = config.value?.minNodeTypeVersion?.[nodeName];
+		if (minVersion === undefined) return true;
+		return typeVersion >= minVersion;
+	}
+
+	function isNodePropertyHidden(node: INode | null, propertyName: string): boolean {
+		if (!node?.credentials) return false;
+
+		const hasGatewayCredential = Object.values(node.credentials).some(
+			(cred) => cred.__aiGatewayManaged === true,
+		);
+		if (!hasGatewayCredential) return false;
+
+		const properties = config.value?.hiddenNodeProperties?.[node.type];
+		if (!properties) return false;
+		return properties.includes(propertyName);
+	}
+
 	return {
 		config,
 		balance,
@@ -116,7 +136,9 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		fetchUsage,
 		fetchMoreUsage,
 		isNodeSupported,
+		isNodeTypeVersionSupported,
 		isCredentialTypeSupported,
 		isActionSupported,
+		isNodePropertyHidden,
 	};
 });

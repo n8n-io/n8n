@@ -202,6 +202,11 @@ export const AllColors: StoryFn = (args, { argTypes }) => ({
 	`,
 });
 
+export const UserRoundKey = Template.bind({});
+UserRoundKey.args = {
+	icon: 'user-round-key',
+};
+
 export const CommonIcons: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
@@ -257,6 +262,10 @@ export const CommonIcons: StoryFn = (args, { argTypes }) => ({
 			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
 				<n8n-icon icon="exclamation-triangle" size="large" />
 				<span style="font-size: 12px;">exclamation-triangle</span>
+			</div>
+			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+				<n8n-icon icon="user-round-key" size="large" />
+				<span style="font-size: 12px;">user-round-key</span>
 			</div>
 		</div>
 	`,

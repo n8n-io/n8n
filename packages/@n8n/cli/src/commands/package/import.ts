@@ -11,6 +11,7 @@ export default class PackageImport extends BaseCommand {
 	static override examples = [
 		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail',
 		'<%= config.bin %> package import --file=export.n8np --project=<id> --conflict-policy=new-version',
+		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail --credential-missing-mode=must-preexist',
 	];
 
 	static override flags = {
@@ -39,8 +40,9 @@ export default class PackageImport extends BaseCommand {
 			aliases: ['credential-matching-mode'],
 		}),
 		credentialMissingMode: Flags.string({
-			description: 'What to do when a referenced credential cannot be resolved',
-			options: ['must-preexist'],
+			description:
+				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub)',
+			options: ['must-preexist', 'create-stub'],
 			aliases: ['credential-missing-mode'],
 		}),
 	};

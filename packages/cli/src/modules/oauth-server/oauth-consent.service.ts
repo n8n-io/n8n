@@ -8,9 +8,10 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
-	| { ok: true; clientName: string; clientId: string; resourceName?: string }
+	| { ok: true; clientName: string; clientId: string; resourceName?: string; redirectUri?: string }
 	| { ok: false; reason: 'resource_unavailable' };
 
 /**
@@ -26,6 +27,7 @@ export class OAuthConsentService {
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -58,6 +60,7 @@ export class OAuthConsentService {
 					clientName: client.name,
 					clientId: client.id,
 					resourceName: resource.displayName,
+					redirectUri: sessionPayload.redirectUri,
 				};
 			}
 
@@ -65,6 +68,7 @@ export class OAuthConsentService {
 				ok: true,
 				clientName: client.name,
 				clientId: client.id,
+				redirectUri: sessionPayload.redirectUri,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
@@ -88,12 +92,15 @@ export class OAuthConsentService {
 			throw new UserError('Invalid or expired session');
 		}
 
+		const issuer = this.urlService.getInstanceBaseUrl();
+
 		if (!approved) {
 			const redirectUrl = OAuthHelpers.buildErrorRedirectUrl(
 				sessionPayload.redirectUri,
 				'access_denied',
 				'User denied the authorization request',
 				sessionPayload.state,
+				issuer,
 			);
 
 			this.logger.info('Consent denied', {
@@ -126,6 +133,7 @@ export class OAuthConsentService {
 			sessionPayload.redirectUri,
 			code,
 			sessionPayload.state,
+			issuer,
 		);
 
 		this.logger.info('Consent approved', {

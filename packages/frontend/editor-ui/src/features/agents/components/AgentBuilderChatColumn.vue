@@ -26,6 +26,7 @@ const props = defineProps<{
 	isBuilderConfigured: boolean;
 	isFullWidth: boolean;
 	canEditAgent: boolean;
+	isBuildChatStreaming: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
 }>();
 
@@ -94,7 +95,7 @@ const sharedInputDraft = ref('');
 				@build-done="emit('build-done')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
-				<template v-if="canEditAgent" #above-input>
+				<template v-if="canEditAgent" #above-input="{ disabled: chatActionsDisabled }">
 					<div :class="$style.quickActionsRow">
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
@@ -105,6 +106,7 @@ const sharedInputDraft = ref('');
 							:is-published="
 								agent?.activeVersionId !== null && agent?.activeVersionId !== undefined
 							"
+							:disabled="isBuildChatStreaming || chatActionsDisabled"
 							@update:tools="emit('update:tools', $event)"
 							@update:mcp-servers="emit('update:mcp-servers', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"

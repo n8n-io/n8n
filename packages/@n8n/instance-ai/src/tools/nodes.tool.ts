@@ -8,7 +8,9 @@ import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
 import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
+import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
+import { buildCredentialMap } from './workflows/resolve-credentials';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -186,9 +188,38 @@ async function handleSearch(
 		}),
 	);
 
+	// Steer the language model subnode toward a provider the user already has a
+	// credential for, so the builder stops defaulting to OpenAI when only another
+	// provider is configured. Only hits the credential list when relevant.
+	const hasLanguageModelRequirement = enriched.some((r) =>
+		r.subnodeRequirements?.some((req) => req.connectionType === 'ai_languageModel'),
+	);
+	if (!hasLanguageModelRequirement) {
+		return { results: enriched, totalResults: enriched.length };
+	}
+
+	const credentialMap = await buildCredentialMap(context.credentialService);
+	const suggestedModelNode = pickPreferredChatModelNode(credentialMap.keys());
+	if (!suggestedModelNode) {
+		return { results: enriched, totalResults: enriched.length };
+	}
+
+	const withSuggestions = enriched.map((r) =>
+		r.subnodeRequirements
+			? {
+					...r,
+					subnodeRequirements: r.subnodeRequirements.map((req) =>
+						req.connectionType === 'ai_languageModel'
+							? { ...req, suggestedNode: suggestedModelNode }
+							: req,
+					),
+				}
+			: r,
+	);
+
 	return {
-		results: enriched,
-		totalResults: enriched.length,
+		results: withSuggestions,
+		totalResults: withSuggestions.length,
 	};
 }
 

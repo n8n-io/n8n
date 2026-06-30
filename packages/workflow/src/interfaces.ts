@@ -8,6 +8,7 @@ import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { AgentOptions } from 'https';
 import type { JSONSchema7 } from 'json-schema';
+import type { LookupFunction } from 'net';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -522,6 +523,7 @@ export interface IHttpRequestOptions {
 		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
+	maxRedirects?: number; // Ignored when `disableFollowRedirect` is `true`.
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
@@ -874,6 +876,18 @@ interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
+/**
+ * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
+ * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
+ * validation and a connect-time secure DNS lookup.
+ */
+export interface NodeEgressFilter {
+	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
+	validateUrl(url: string | URL): Promise<Result<void, Error>>;
+	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
+	createSecureLookup(): LookupFunction;
+}
+
 export interface RequestHelperFunctions {
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 	httpRequestWithAuthentication(
@@ -889,6 +903,7 @@ export interface RequestHelperFunctions {
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		sanitizedRequest?: IDataObject,
 	): Promise<any[]>;
 
 	/**
@@ -931,6 +946,12 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	/**
+	 * Returns the instance egress filter for clients that build their own HTTP
+	 * transport, or `undefined` when egress filtering is not configured (callers
+	 * then use the default transport).
+	 */
+	getSecureEgressFilter(): NodeEgressFilter | undefined;
 }
 
 export type SSHCredentials = {
@@ -1700,6 +1721,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
+	ignoreCredentialExpressionResolveError?: boolean; // Supported by credentials fields outside execution contexts
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -2025,6 +2047,41 @@ export interface ExecuteAgentInfo {
 	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
 	 */
 	outputSchema?: JSONSchema7;
+	/**
+	 * Which slice of the calling node's input the agent's `fetch_input_data`
+	 * tool should expose: the single current item (`'item'`, default) or all
+	 * input items (`'all'`, used when the node invokes the agent once for the
+	 * whole batch).
+	 */
+	inputDataScope?: 'item' | 'all';
+	/**
+	 * When true, the agent additionally gets the `fetch_workflow_context` tool,
+	 * which can read any executed node's output. Off by default.
+	 */
+	exposeWorkflowData?: boolean;
+}
+
+/**
+ * Context about the calling workflow execution, passed to the agent runtime so
+ * it can expose the `fetch_input_data` and (opt-in) `fetch_workflow_context` tools to the agent. The
+ * `runExecutionData` is a live reference to the calling execution's run data —
+ * must be treated as read-only.
+ */
+export interface ExecuteAgentWorkflowContext {
+	workflowId?: string;
+	workflowName?: string;
+	/** Name of the node that invoked the agent */
+	callingNodeName: string;
+	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
+	inputData?: INodeExecutionData[];
+	/** Which slice {@link inputData} represents. */
+	inputDataScope?: 'item' | 'all';
+	/** Whether to attach the `fetch_workflow_context` tool. */
+	exposeWorkflowData?: boolean;
+	/** Name and type of every node in the calling workflow. */
+	nodes: Array<{ name: string; type: string }>;
+	/** The calling execution's run data (read-only by convention). */
+	runExecutionData: IRunExecutionData;
 }
 
 export interface ExecuteAgentOptions {
@@ -2799,6 +2856,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 		resumeFormUrl: string;
 		customData?: IWorkflowExecutionCustomData;
 	};
+	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
@@ -3245,6 +3303,8 @@ export interface IWorkflowExecutionDataProcess {
 	tracingContext?: { traceparent: string; tracestate?: string };
 	/** Encrypted credential context for a manual editor-triggered execution. */
 	encryptedRunnerIdentity?: string;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3311,6 +3371,7 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executionMode: WorkflowExecuteMode,
 		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
@@ -3354,6 +3415,8 @@ export interface IWorkflowExecuteAdditionalData {
 	 * data consistently across the entire execution tree.
 	 */
 	rootExecutionMode?: WorkflowExecuteMode;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
@@ -3673,6 +3736,7 @@ export interface ExecutionSummary {
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
+	usedPrivateCredentials?: boolean;
 	annotation?: {
 		vote: AnnotationVote;
 		tags: Array<{

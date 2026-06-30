@@ -24,6 +24,7 @@ import type {
 	NodeConnectionType,
 	Result,
 	IExecuteFunctions,
+	ExecuteAgentWorkflowContext,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -34,6 +35,8 @@ import {
 	WorkflowDataProxy,
 	createEnvProviderState,
 } from 'n8n-workflow';
+
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -126,14 +129,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		},
 	): Promise<ExecuteWorkflowData> {
 		if (options?.parentExecution) {
-			// We inject the execution context of the current execution
-			// to the sub-workflow so that it can be accessed there
-			// this should only happen for the direct parent execution
-			// if a workflow starts a sub-workflow for a workflow that is not itself
-			// then the context should not be passed down
+			// Inject the current execution context into the direct parent's
+			// sub-workflow only. Normalize against the placeholder id: during a
+			// trigger's webhook phase (e.g. an MCP Trigger tool call) no execution id
+			// exists yet, so `getExecutionId()` is `undefined` while the proxied
+			// `parentExecution.executionId` is `PLACEHOLDER_EMPTY_EXECUTION_ID`.
 			if (
 				!options.parentExecution.executionContext &&
-				options.parentExecution.executionId === this.getExecutionId()
+				options.parentExecution.executionId ===
+					(this.getExecutionId() ?? PLACEHOLDER_EMPTY_EXECUTION_ID)
 			) {
 				options.parentExecution.executionContext = this.getExecutionContext();
 			}
@@ -169,6 +173,30 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
 
+		const inputDataScope = agentInfo.inputDataScope ?? 'item';
+		const mainBranches = this.inputData?.main ?? [];
+		const primaryBranch = mainBranches[0] ?? [];
+		// 'all' exposes every input item across all main branches; otherwise scope
+		// to the current item from the primary branch (empty when itemIndex is out
+		// of range — defensive).
+		const scopedInput =
+			inputDataScope === 'all'
+				? mainBranches.flatMap((branch) => branch ?? [])
+				: itemIndex < primaryBranch.length
+					? [primaryBranch[itemIndex]]
+					: [];
+
+		const workflowContext: ExecuteAgentWorkflowContext = {
+			workflowId: this.workflow.id,
+			workflowName: this.workflow.name,
+			callingNodeName: this.node.name,
+			inputData: scopedInput,
+			inputDataScope,
+			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
+			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
+			runExecutionData: this.runExecutionData,
+		};
+
 		return await this.additionalData.executeAgent(
 			agentInfo.agentId,
 			message,
@@ -177,6 +205,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData,
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
+			workflowContext,
 		);
 	}
 

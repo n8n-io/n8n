@@ -10,6 +10,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import * as migrationHelper from '../../migrations/migration-helpers';
 import type { Migration } from '../../migrations/migration-types';
 import { DbConnection } from '../db-connection';
+import type { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 import type { DbConnectionOptions } from '../db-connection-options';
 
@@ -28,6 +29,7 @@ describe('DbConnection', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const databaseConfig = mock<DatabaseConfig>();
 	const logger = mock<Logger>();
+	const dbConnectionMetrics = mock<DbConnectionMetrics>();
 	const dataSource = mockDeep<DataSource>({ options: { migrations } });
 	const connectionOptions = mockDeep<DbConnectionOptions>();
 	const postgresOptions: DataSourceOptions = {
@@ -53,7 +55,13 @@ describe('DbConnection', () => {
 			return dataSource;
 		});
 
-		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig, logger);
+		dbConnection = new DbConnection(
+			errorReporter,
+			connectionOptions,
+			databaseConfig,
+			logger,
+			dbConnectionMetrics,
+		);
 	});
 
 	describe('init', () => {

@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -8,6 +8,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
 } from '../entities/workflow-publication-outbox';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
 export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
@@ -16,6 +17,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowPublicationOutbox, dataSource.manager);
+	}
+
+	/**
+	 * The in-flight (pending or in_progress) publication for a workflow, or null.
+	 * In-progress is preferred when both exist.
+	 */
+	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.findBy({
+			workflowId,
+			status: In([Status.InProgress, Status.Pending]),
+		});
+		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
 	/**
@@ -228,18 +241,44 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		});
 	}
 
-	/** Mark a claimed record as successfully processed. */
-	async markCompleted(id: number): Promise<void> {
-		const result = await this.update(
+	/**
+	 * Return a claimed (`in_progress`) record to `pending` so another leader can
+	 * reprocess it, when this instance is no longer the leader. Best-effort: zero
+	 * rows affected (already resolved or re-leased) is not an error.
+	 *
+	 * If a newer pending record was enqueued meanwhile, the flip collides with the
+	 * one-pending-row-per-workflow unique index; that record supersedes this one, so
+	 * we delete this row instead. Catching the collision keeps it atomic against a
+	 * concurrent enqueue.
+	 */
+	async returnToPending(id: number): Promise<void> {
+		try {
+			await this.update(
+				{ id, status: Status.InProgress },
+				{ status: Status.Pending, errorMessage: null },
+			);
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			await this.delete({ id, status: Status.InProgress });
+		}
+	}
+
+	/** Mark a claimed record as successfully processed. Pass `trx` to enroll in an existing transaction. */
+	async markCompleted(id: number, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Completed, errorMessage: null },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
 
-	/** Mark a claimed record as failed and record the error for diagnostics. */
-	async markFailed(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	/** Mark a claimed record as failed and record the error for diagnostics. Pass `trx` to enroll in an existing transaction. */
+	async markFailed(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Failed, errorMessage },
 		);
@@ -249,14 +288,93 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	/**
 	 * Mark a claimed record as partially successful: the published version advanced
 	 * and some triggers are running, but others failed to (de)register. The message
-	 * carries per-node detail for diagnostics. The workflow stays published.
+	 * carries per-node detail for diagnostics. The workflow stays published. Pass
+	 * `trx` to enroll in an existing transaction.
 	 */
-	async markPartialSuccess(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	async markPartialSuccess(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.PartialSuccess, errorMessage },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
+	}
+
+	/**
+	 * Delete terminal records older than their retention window, in a single batch.
+	 * `completed` and `failed`/`partial_success` have different retention configs.
+	 *
+	 * @returns number deleted so the caller can loop until a batch comes back short.
+	 */
+	async deleteTerminalOlderThan(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		if (this.globalConfig.database.type === 'postgresdb') {
+			return await this.deleteTerminalWithPostgres(
+				completedRetentionSeconds,
+				failedRetentionSeconds,
+				batchSize,
+			);
+		}
+
+		return await this.deleteTerminalWithSqlite(
+			completedRetentionSeconds,
+			failedRetentionSeconds,
+			batchSize,
+		);
+	}
+
+	private async deleteTerminalWithPostgres(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+
+		const [row]: Array<{ count: string | number }> = await this.query(
+			`WITH deleted AS (
+				DELETE FROM ${tableName}
+				WHERE "id" IN (
+					SELECT "id" FROM ${tableName}
+					WHERE ("status" = '${Status.Completed}' AND "updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $1))
+						OR ("status" IN ('${Status.Failed}', '${Status.PartialSuccess}') AND "updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $2))
+					LIMIT $3
+				)
+				RETURNING "id"
+			)
+			SELECT COUNT(*) AS "count" FROM deleted`,
+			[completedRetentionSeconds, failedRetentionSeconds, batchSize],
+		);
+
+		return Number(row.count);
+	}
+
+	private async deleteTerminalWithSqlite(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+		const completedModifier = `-${Math.round(completedRetentionSeconds)} seconds`;
+		const failedModifier = `-${Math.round(failedRetentionSeconds)} seconds`;
+
+		return await this.manager.transaction(async (tx) => {
+			await tx.query(
+				`DELETE FROM ${tableName}
+				 WHERE "id" IN (
+					SELECT "id" FROM ${tableName}
+					WHERE ("status" = '${Status.Completed}' AND "updatedAt" < STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', ?))
+						OR ("status" IN ('${Status.Failed}', '${Status.PartialSuccess}') AND "updatedAt" < STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', ?))
+					LIMIT ?
+				 )`,
+				[completedModifier, failedModifier, batchSize],
+			);
+			const [{ count }]: Array<{ count: number }> = await tx.query('SELECT changes() AS count');
+			return Number(count);
+		});
 	}
 
 	/**

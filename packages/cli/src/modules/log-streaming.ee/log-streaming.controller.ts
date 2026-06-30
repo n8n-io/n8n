@@ -4,6 +4,7 @@ import {
 	GetDestinationQueryDto,
 	TestDestinationQueryDto,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
@@ -32,6 +33,7 @@ export class EventBusController {
 		private readonly eventBus: MessageEventBus,
 		private readonly destinationService: LogStreamingDestinationService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	private assertNotManagedByEnv() {
@@ -80,6 +82,7 @@ export class EventBusController {
 					new MessageEventBusDestinationWebhook(
 						this.eventBus,
 						body as MessageEventBusDestinationWebhookOptions,
+						this.outboundHttp,
 					),
 				);
 				break;

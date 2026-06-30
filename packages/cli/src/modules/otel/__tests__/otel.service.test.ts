@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { context, diag, metrics, propagation, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
@@ -10,34 +11,47 @@ import type { OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
-const start = jest.fn();
-const shutdown = jest.fn();
+const start = vi.fn();
+const shutdown = vi.fn();
+
+// The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
+// checkEndpointReachability ignores the response and only catches network errors.
+const fetchMock = vi.fn();
+const outboundHttp = {
+	transport: () => ({ asCustomFetch: () => fetchMock }),
+} as unknown as OutboundHttp;
 
 // Per-test control of what the throwaway exporter reports back, plus span/shutdown spies.
 let mockExportImpl: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) => void;
-const mockExporterShutdown = jest.fn().mockResolvedValue(undefined);
-const mockProviderShutdown = jest.fn().mockResolvedValue(undefined);
-const mockSpanEnd = jest.fn();
-const mockStartSpan = jest.fn();
-const mockGetTracer = jest.fn();
+const mockExporterShutdown = vi.fn().mockResolvedValue(undefined);
+const mockProviderShutdown = vi.fn().mockResolvedValue(undefined);
+const mockSpanEnd = vi.fn();
+const mockStartSpan = vi.fn();
+const mockGetTracer = vi.fn();
 
-jest.mock('@opentelemetry/sdk-node', () => ({
-	NodeSDK: jest.fn().mockImplementation(() => ({
-		start,
-		shutdown,
-	})),
+vi.mock('@opentelemetry/sdk-node', () => ({
+	NodeSDK: vi.fn().mockImplementation(function () {
+		return {
+			start,
+			shutdown,
+		};
+	}),
 }));
 
-jest.mock('@opentelemetry/exporter-trace-otlp-proto', () => ({
-	OTLPTraceExporter: jest.fn().mockImplementation(() => ({
-		export: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) =>
-			mockExportImpl(spans, resultCallback),
-		shutdown: mockExporterShutdown,
-	})),
+vi.mock('@opentelemetry/exporter-trace-otlp-proto', () => ({
+	OTLPTraceExporter: vi.fn().mockImplementation(function () {
+		return {
+			export: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) =>
+				mockExportImpl(spans, resultCallback),
+			shutdown: mockExporterShutdown,
+		};
+	}),
 }));
 
-jest.mock('@opentelemetry/sdk-trace-base', () => ({
-	BasicTracerProvider: jest.fn().mockImplementation((config: { spanProcessors?: unknown[] }) => {
+vi.mock('@opentelemetry/sdk-trace-base', () => ({
+	BasicTracerProvider: vi.fn().mockImplementation(function (config: {
+		spanProcessors?: unknown[];
+	}) {
 		const processors = (config.spanProcessors ?? []) as Array<{ onEnd: (span: unknown) => void }>;
 		mockSpanEnd.mockImplementation(() => {
 			for (const processor of processors) processor.onEnd({ name: 'n8n.test_trace' });
@@ -48,22 +62,24 @@ jest.mock('@opentelemetry/sdk-trace-base', () => ({
 	}),
 }));
 
-jest.mock('@opentelemetry/resources', () => ({
-	resourceFromAttributes: jest.fn().mockReturnValue({}),
+vi.mock('@opentelemetry/resources', () => ({
+	resourceFromAttributes: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('@opentelemetry/sdk-trace-node', () => ({
-	TraceIdRatioBasedSampler: jest.fn().mockImplementation(() => ({})),
+vi.mock('@opentelemetry/sdk-trace-node', () => ({
+	TraceIdRatioBasedSampler: vi.fn().mockImplementation(function () {
+		return {};
+	}),
 }));
 
-jest.mock('@opentelemetry/api', () => ({
-	...jest.requireActual('@opentelemetry/api'),
-	trace: { disable: jest.fn() },
-	context: { disable: jest.fn() },
-	propagation: { disable: jest.fn() },
-	metrics: { disable: jest.fn() },
+vi.mock('@opentelemetry/api', async () => ({
+	...(await vi.importActual<typeof import('@opentelemetry/api')>('@opentelemetry/api')),
+	trace: { disable: vi.fn() },
+	context: { disable: vi.fn() },
+	propagation: { disable: vi.fn() },
+	metrics: { disable: vi.fn() },
 	DiagLogLevel: { WARN: 'WARN' },
-	diag: { setLogger: jest.fn() },
+	diag: { setLogger: vi.fn() },
 }));
 
 const enabledSettings: OtelConfig = {
@@ -92,11 +108,12 @@ describe('OtelService', () => {
 	let service: OtelService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		otelSettingsService = mock<OtelSettingsService>();
 		instanceSettings = mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' });
 		logger = mock<Logger>();
-		service = new OtelService(otelSettingsService, instanceSettings, logger);
+		fetchMock.mockResolvedValue({ ok: true });
+		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
 	});
 
 	describe('init', () => {
@@ -110,7 +127,6 @@ describe('OtelService', () => {
 
 		it('starts SDK when enabled is true', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
 
@@ -119,9 +135,7 @@ describe('OtelService', () => {
 
 		it('logs connectivity failure and still finishes startup', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest
-				.fn()
-				.mockRejectedValue(new Error('connect ECONNREFUSED')) as unknown as typeof fetch;
+			fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
 
 			await service.init();
 			await flushPromises();
@@ -137,10 +151,9 @@ describe('OtelService', () => {
 	describe('restart', () => {
 		it('shuts down existing SDK then reloads settings and starts a new one', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 
 			await service.restart();
@@ -153,10 +166,9 @@ describe('OtelService', () => {
 		it('does not start SDK after restart when reloaded settings have enabled=false', async () => {
 			otelSettingsService.loadSettings.mockResolvedValueOnce(enabledSettings);
 			otelSettingsService.loadSettings.mockResolvedValueOnce(disabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			await service.restart();
 
@@ -167,7 +179,6 @@ describe('OtelService', () => {
 	describe('shutdown', () => {
 		it('disables all four OTel globals so the next SDK start can re-register providers', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 			await service.init();
 
 			await service.shutdown();
@@ -192,10 +203,9 @@ describe('OtelService', () => {
 
 		it('forwards all log levels to the n8n logger', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 			await service.init();
 
-			const capturedLogger = jest.mocked(diag.setLogger).mock.calls[0]?.[0];
+			const capturedLogger = vi.mocked(diag.setLogger).mock.calls[0]?.[0];
 			expect(capturedLogger).toBeDefined();
 
 			capturedLogger.error('e');
@@ -218,7 +228,6 @@ describe('OtelService', () => {
 
 		it('only configures the diag logger once across multiple init calls', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
 			await service.restart();
@@ -231,12 +240,12 @@ describe('OtelService', () => {
 		it('does not log a second failure within the same start cycle', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			let rejectFn!: () => void;
-			global.fetch = jest.fn().mockImplementation(
+			fetchMock.mockImplementation(
 				async () =>
 					await new Promise<never>((_, reject) => {
 						rejectFn = () => reject(new Error('ECONNREFUSED'));
 					}),
-			) as unknown as typeof fetch;
+			);
 
 			await service.init();
 			rejectFn();
@@ -248,7 +257,7 @@ describe('OtelService', () => {
 
 		it('logs string errors that are not Error instances', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			global.fetch = jest.fn().mockRejectedValue('string-error') as unknown as typeof fetch;
+			fetchMock.mockRejectedValue('string-error');
 
 			await service.init();
 			await flushPromises();

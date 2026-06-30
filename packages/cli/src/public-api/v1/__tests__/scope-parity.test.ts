@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import type { ScopeTaggedMiddleware } from '../shared/middlewares/global.middleware';
 
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
 const PUBLIC_API_ROOT = path.resolve(__dirname, '..', '..');
 const OPENAPI_SPEC_PATH = path.join(PUBLIC_API_ROOT, 'v1', 'openapi.yml');
@@ -47,10 +47,17 @@ async function loadOperations(): Promise<Operation[]> {
 	return ops;
 }
 
-function loadHandlerScope(handlerPath: string, operationId: string): ApiKeyScope | undefined {
+async function loadHandlerScope(
+	handlerPath: string,
+	operationId: string,
+): Promise<ApiKeyScope | undefined> {
 	const resolved = path.join(PUBLIC_API_ROOT, `${handlerPath}.ts`);
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const mod = require(resolved) as Record<string, unknown[]>;
+	// Vitest can't `require()` a `.ts` handler (its `export =` form fails Node's
+	// strip-only loader); import it and unwrap the CJS-interop default.
+	const imported = (await import(resolved)) as {
+		default?: Record<string, unknown[]>;
+	} & Record<string, unknown[]>;
+	const mod = imported.default ?? imported;
 	const middlewares = mod[operationId];
 	if (!Array.isArray(middlewares)) return undefined;
 	for (const mw of middlewares) {
@@ -73,11 +80,11 @@ describe('Public API scope parity', () => {
 		expect(missing.map((m) => `${m.method.toUpperCase()} ${m.pathStr}`)).toEqual([]);
 	});
 
-	test('every x-required-scope matches the handler middleware __apiKeyScope', () => {
+	test('every x-required-scope matches the handler middleware __apiKeyScope', async () => {
 		const mismatches: string[] = [];
 		for (const op of ops) {
 			if (op.requiredScope === null) continue;
-			const handlerScope = loadHandlerScope(op.handlerPath, op.operationId);
+			const handlerScope = await loadHandlerScope(op.handlerPath, op.operationId);
 			const expected = op.requiredScope === 'none' ? undefined : op.requiredScope;
 			if (handlerScope !== expected) {
 				mismatches.push(
@@ -88,7 +95,7 @@ describe('Public API scope parity', () => {
 			}
 		}
 		expect(mismatches).toEqual([]);
-	});
+	}, 30_000);
 
 	test('every API key scope in API_KEY_RESOURCES is consumed by at least one endpoint', () => {
 		const consumed = new Set(

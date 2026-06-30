@@ -28,11 +28,11 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
 import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from '../../composables/oauthCallback';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { assert } from '@n8n/utils/assert';
@@ -87,7 +87,6 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = injectNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -155,7 +154,13 @@ const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
-const workflowDocumentStore = injectWorkflowDocumentStore();
+// The credential editor can open outside the workflow editor (e.g. the
+// Credentials view), where no workflow document is provided. Re-provide the
+// resolved document store so the reused NDV parameter components rendered below
+// resolve a valid scoped store, and derive this modal's own NDV store from it
+// (it cannot inject what it provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
@@ -172,9 +177,21 @@ const hideAskAssistant = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
+// The host's Instance AI credential-help behavior, stashed in the modal state by
+// whoever opened the modal (the editor capability or the credentials list).
+const instanceAiCredentialHelp = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.instanceAiCredentialHelp : undefined;
+});
+
 const closeOnSave = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
+});
+
+const appendToBody = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
 
 const activeNodeType = computed(() => {
@@ -427,7 +444,6 @@ const showSaveButton = computed(() => {
 	if (isQuickConnectMode.value) return false;
 	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
 	if (!hasPermission) return false;
-	if (isOAuthType.value && !isOAuthConnected.value) return false;
 	return true;
 });
 
@@ -439,16 +455,6 @@ const showHeaderSaveButton = computed(
 );
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
-
-// Whether the credential is already shared (with other projects or globally) as
-// persisted. A shared credential can't be turned into a dynamic credential.
-const isCurrentlyShared = computed(() => {
-	const cred = currentCredential.value;
-	if (!cred) return false;
-	const sharedWithProjects = 'sharedWithProjects' in cred ? (cred.sharedWithProjects ?? []) : [];
-	const isGlobal = 'isGlobal' in cred ? Boolean(cred.isGlobal) : false;
-	return isGlobal || sharedWithProjects.length > 0;
-});
 
 const homeProject = computed(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -1222,7 +1228,14 @@ async function updateCredential(
 		hasUnsavedChanges.value = false;
 		isSaved.value = true;
 
+		// Only surface the "saved" toast when something was actually persisted
+		// (update/share). Connect-only users have neither, so nothing was saved.
 		if (credential) {
+			toast.showMessage({
+				title: i18n.baseText('credentials.update.toast.title'),
+				type: 'success',
+			});
+
 			await externalHooks.run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
@@ -1289,7 +1302,13 @@ async function oAuthCredentialAuthorize() {
 	let url;
 
 	credentialsStore.pendingOAuthRefresh = true;
-	const credential = await saveCredential();
+
+	// Editors persist any blueprint changes before connecting. Connect-only users
+	// (e.g. on a private credential they can't edit) have nothing to save, so
+	// connecting through saveCredential would be a no-op that returns null and
+	// aborts the flow — connect to the stored credential directly instead.
+	const canEditBlueprint = credentialPermissions.value.update || credentialPermissions.value.create;
+	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
 		return;
 	}
@@ -1574,7 +1593,7 @@ const { width } = useElementSize(credNameRef);
 		:before-close="beforeClose"
 		width="70%"
 		height="80%"
-		append-to-body
+		:append-to-body="appendToBody"
 	>
 		<template #header>
 			<div :class="$style.header">
@@ -1623,9 +1642,12 @@ const { width } = useElementSize(credNameRef);
 					<SaveButton
 						v-if="showHeaderSaveButton"
 						:class="$style.saveButton"
-						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:disabled="
+							(!isNewCredential && !hasUnsavedChanges && !isTesting) || !requiredPropertiesFilled
+						"
+						:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
 						:is-saving="isSaving || isTesting"
-						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
 						:saving-label="
 							isTesting
 								? i18n.baseText('credentialEdit.credentialEdit.testing')
@@ -1682,7 +1704,6 @@ const { width } = useElementSize(credNameRef);
 						:selected-credential="selectedCredential"
 						:is-private-credentials-enabled="isPrivateCredentialsEnabled"
 						:is-resolvable="isResolvable"
-						:is-shared="isCurrentlyShared"
 						:connected-by-me="connectedByMe"
 						:is-new-credential="isNewCredential"
 						:managed-oauth-available="managedOAuthAvailable"
@@ -1690,6 +1711,7 @@ const { width } = useElementSize(credNameRef);
 						:is-quick-connect-mode="isQuickConnectMode"
 						:context-node="contextNode"
 						:hide-ask-assistant="hideAskAssistant"
+						:instance-ai-credential-help="instanceAiCredentialHelp"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@disconnect="onDisconnectMyConnection"
@@ -1708,7 +1730,6 @@ const { width } = useElementSize(credNameRef);
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
 						:is-shared-globally="isSharedGlobally"
-						:is-resolvable="isResolvable"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"
@@ -1812,5 +1833,6 @@ const { width } = useElementSize(credNameRef);
 
 .saveButton {
 	flex-shrink: 0;
+	min-width: 57px;
 }
 </style>

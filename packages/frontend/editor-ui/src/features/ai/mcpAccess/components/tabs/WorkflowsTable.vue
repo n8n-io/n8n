@@ -212,25 +212,30 @@ const onConnectClick = () => {
 					</div>
 				</template>
 				<template #[`item.description`]="{ item }">
+					<!-- as-child anchors the tooltip to the cell content itself, keeping it
+						above the cell instead of positioning against an inline wrapper span -->
 					<N8nTooltip
 						:content="
-							item.description ||
-							i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip')
+							item.description
+								? i18n.baseText('settings.mcp.workflows.table.column.description.editTooltip')
+								: i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip')
 						"
 						:show-after="MCP_TOOLTIP_DELAY"
-						:popper-class="$style['description-popper']"
+						as-child
 					>
 						<div
 							data-test-id="mcp-workflow-description-cell"
 							:class="$style['description-cell']"
 							@click="emit('updateDescription', item)"
 						>
-							<span v-if="item.description">
-								<N8nText data-test-id="mcp-workflow-description">
-									{{ item.description }}
-								</N8nText>
-							</span>
-							<span v-else>
+							<N8nText
+								v-if="item.description"
+								:class="$style['description-text']"
+								data-test-id="mcp-workflow-description"
+							>
+								{{ item.description }}
+							</N8nText>
+							<span v-else :class="$style['empty-description']">
 								<N8nIcon icon="triangle-alert" :size="14" color="warning" class="mr-2xs" />
 								<N8nText data-test-id="mcp-workflow-description-empty">
 									{{
@@ -297,11 +302,9 @@ const onConnectClick = () => {
 }
 
 .description-cell {
-	display: -webkit-inline-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
-	line-clamp: 3;
-	overflow: hidden;
+	// Shrink to the text so the tooltip is anchored near it, not centered on the column
+	display: inline-block;
+	max-width: 100%;
 	color: var(--color--text);
 	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
@@ -309,15 +312,22 @@ const onConnectClick = () => {
 	&:hover span {
 		color: var(--color--text--shade-1);
 	}
-
-	span {
-		display: flex;
-		align-items: center;
-	}
 }
 
-.description-popper {
-	min-width: 300px;
+// Line clamping only works on inline content, so it has to live on the
+// text element itself rather than on a wrapper with non-inline children
+.description-text {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
+	word-break: break-word;
+}
+
+.empty-description {
+	display: flex;
+	align-items: center;
 }
 
 .table-link {

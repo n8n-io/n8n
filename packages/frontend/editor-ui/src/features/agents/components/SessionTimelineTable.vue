@@ -42,6 +42,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.suspended');
 		case 'suspension-waiting':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'user-feedback':
+			return i18n.baseText('agentSessions.timeline.userFeedback');
 		default:
 			return key;
 	}

@@ -9,7 +9,7 @@ import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
-import type { ContentToolCall, Message } from '../../types/sdk/message';
+import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../loop/agent-runtime';
@@ -208,11 +208,11 @@ function makeStreamWithProviderTool(opts: {
 }
 
 /** Build a default runtime wired to the shared eventBus for inspection. */
-function createRuntime(eventBus?: AgentEventBus) {
+function createRuntime(eventBus?: AgentEventBus, model = 'openai/gpt-4o-mini') {
 	const bus = eventBus ?? new AgentEventBus();
 	const runtime = new AgentRuntime({
 		name: 'test',
-		model: 'openai/gpt-4o-mini',
+		model,
 		instructions: 'You are a test assistant.',
 		eventBus: bus,
 	});
@@ -687,6 +687,176 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 });
 
 // ---------------------------------------------------------------------------
+// eager input persistence — input survives an uncompleted turn
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — eager input persistence', () => {
+	const PERSIST = { persistence: { threadId: 't1', resourceId: 'u1' } };
+
+	function textOf(message: AgentDbMessage): string | undefined {
+		const content = (message as { content?: unknown }).content;
+		if (!Array.isArray(content)) return undefined;
+		const block = content.find(
+			(c): c is { type: 'text'; text: string } =>
+				typeof c === 'object' && c !== null && Reflect.get(c, 'type') === 'text',
+		);
+		return block?.text;
+	}
+
+	function hasToolCall(message: AgentDbMessage, toolCallId: string): boolean {
+		const content = (message as { content?: unknown }).content;
+		if (!Array.isArray(content)) return false;
+		return content.some(
+			(c) =>
+				typeof c === 'object' &&
+				c !== null &&
+				Reflect.get(c, 'type') === 'tool-call' &&
+				Reflect.get(c, 'toolCallId') === toolCallId,
+		);
+	}
+
+	function makeMemoryRuntime() {
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+		});
+		return { runtime, bus, memory };
+	}
+
+	it('persists the user input when the turn aborts before completion', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const { runtime, bus, memory } = makeMemoryRuntime();
+		// Abort during AgentStart: the input is added (and eagerly persisted) in
+		// buildMessageList, but the loop's first abort-check throws before finishComplete.
+		bus.on(AgentEvent.AgentStart, () => bus.abort());
+
+		const result = await runtime.generate('remember this prompt', PERSIST);
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(persisted.map(textOf)).toContain('remember this prompt');
+	});
+
+	it('stores exactly one user-message row on normal completion (idempotent)', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('done'));
+		const { runtime, memory } = makeMemoryRuntime();
+
+		await runtime.generate('hello once', PERSIST);
+
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const userRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'user' && textOf(m) === 'hello once',
+		);
+		expect(userRows).toHaveLength(1);
+	});
+
+	it('does not duplicate the user row across a suspend -> resume cycle', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		// Turn 1: the model calls the interruptible tool, so the run suspends on HITL
+		// before reaching finishComplete.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// Eager persist wrote the input even though the turn has not completed.
+		const afterSuspend = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterSuspend.filter((m) => textOf(m) === 'please build it')).toHaveLength(1);
+
+		// Resume to completion: the end-of-turn save writes the full turnDelta, which
+		// includes the input again (same id) — it must upsert, not create a 2nd row.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterResume.filter((m) => textOf(m) === 'please build it')).toHaveLength(1);
+	});
+
+	it("persists the turn's assistant output when the turn suspends on HITL", async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		// The model calls the interruptible tool, so the run suspends on HITL before
+		// reaching finishComplete — the only path that previously saved the turn.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		await runtime.generate('please build it', PERSIST);
+
+		// The assistant's tool-call output from the suspended turn is now in memory, so a
+		// later cancel/abandon cannot drop it — the next turn sees the work was done.
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'assistant' && hasToolCall(m, 'tc-1'),
+		);
+		expect(assistantRows).toHaveLength(1);
+	});
+
+	it('stores exactly one assistant row across a suspend -> resume cycle (idempotent)', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// Saved on suspend (pending tool-call).
+		const afterSuspend = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterSuspend.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
+
+		// Resume to completion: the end-of-turn save rewrites the same assistant row (now
+		// with the resolved tool-call) under the same id — upsert, not a 2nd row.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
+		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // stream() — fallback error observability
 // ---------------------------------------------------------------------------
 
@@ -718,8 +888,281 @@ describe('AgentRuntime.stream() — fallback error observability', () => {
 				finishReason: 'error',
 			}),
 		);
-		expect(errorEvents).toHaveLength(1);
+		// The post-loop persistence failure surfaces as a sourceless error event. (The
+		// eager input persist also fails against this memory mock and emits its own
+		// source-tagged event, which has dedicated coverage elsewhere.)
+		expect(errorEvents.filter((e) => !(e as { source?: string }).source)).toHaveLength(1);
 		expect(runtime.getState().status).toBe('failed');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// stream() — usage billing on abort
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — usage billing on abort', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('emits the accumulated token usage in the terminal finish chunk when aborted after a model turn', async () => {
+		const { runtime, bus } = createRuntime();
+		streamText.mockReturnValue(makeStreamSuccess('partial'));
+
+		// Stop the run as soon as the turn begins; the model call still resolves
+		// usage before the loop's abort-check fires, mirroring a user clicking
+		// "stop" right after the model produced output.
+		bus.on(AgentEvent.TurnStart, () => bus.abort());
+
+		const { stream } = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('recovers usage from the raw provider stream when aborted before the model finishes', async () => {
+		// Anthropic model id: raw `message_start`/`message_delta` events are
+		// Anthropic-shaped, so the run must resolve the Anthropic raw-usage reader.
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		// The SDK exposes no usage on abort (finish/usage promises reject), but the
+		// provider's `message_start` raw event already carried the input/cache +
+		// initial output tokens. The run must bill those.
+		streamText.mockReturnValue({
+			fullStream: (async function* () {
+				yield {
+					type: 'raw',
+					rawValue: {
+						type: 'message_start',
+						message: {
+							usage: {
+								input_tokens: 5,
+								cache_creation_input_tokens: 100,
+								cache_read_input_tokens: 10,
+								output_tokens: 7,
+							},
+						},
+					},
+				};
+				await Promise.resolve();
+				controller.abort();
+			})(),
+			finishReason: silentReject(abortError),
+			usage: silentReject(abortError),
+			response: silentReject(abortError),
+			toolCalls: silentReject(abortError),
+		});
+
+		const { stream } = await runtime.stream('hello', {
+			abortSignal: controller.signal,
+			recoverUsageOnAbort: true,
+		});
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// input_tokens(5) + cache_creation(100) + cache_read(10) = 115 prompt tokens.
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 115,
+			completionTokens: 7,
+			totalTokens: 122,
+			inputTokenDetails: { noCache: 5, cacheRead: 10, cacheWrite: 100 },
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('adds the in-flight turn usage to the completed turns when aborted mid second turn', async () => {
+		const tool = makeMockTool('lookup', async () => await Promise.resolve({ ok: true }));
+		// Anthropic model id so the in-flight turn's Anthropic raw event is read.
+		const { runtime } = createRuntimeWithTools([tool], 1, undefined, 'anthropic/claude-sonnet-4-6');
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		streamText
+			// Turn 1 completes with a tool call; its usage is folded into the total.
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'x' } },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'lookup', input: { value: 'x' } },
+				]),
+			})
+			// Turn 2 aborts mid-stream after the provider reported its raw usage; the
+			// SDK promises reject so the only signal is the captured raw event.
+			.mockReturnValueOnce({
+				fullStream: (async function* () {
+					yield {
+						type: 'raw',
+						rawValue: {
+							type: 'message_start',
+							message: { usage: { input_tokens: 20, output_tokens: 3 } },
+						},
+					};
+					await Promise.resolve();
+					controller.abort();
+				})(),
+				finishReason: silentReject(abortError),
+				usage: silentReject(abortError),
+				response: silentReject(abortError),
+				toolCalls: silentReject(abortError),
+			});
+
+		const { stream } = await runtime.stream('hello', {
+			abortSignal: controller.signal,
+			recoverUsageOnAbort: true,
+		});
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// Turn 1 (10/5) + in-flight turn 2 (20/3). The `??` bug would bill turn 1 only.
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 30,
+			completionTokens: 8,
+			totalTokens: 38,
+			inputTokenDetails: { noCache: 20 },
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('does not double-count a completed turn when aborted between turns', async () => {
+		const tool = makeMockTool('lookup', async () => {
+			// Abort after the first turn folded its usage but before a second turn runs.
+			controller.abort();
+			return await Promise.resolve({ ok: true });
+		});
+		// Anthropic model id so the reader is created and the clear-on-fold path is
+		// genuinely exercised (otherwise no reader exists and the guard is vacuous).
+		const { runtime } = createRuntimeWithTools([tool], 1, undefined, 'anthropic/claude-sonnet-4-6');
+		const controller = new AbortController();
+
+		// Single turn: emits a raw usage event (captured) AND resolves its final
+		// usage. The raw capture must not be re-added on top of the folded total.
+		streamText.mockReturnValueOnce({
+			fullStream: makeChunkStream([
+				{
+					type: 'raw',
+					rawValue: {
+						type: 'message_start',
+						message: { usage: { input_tokens: 20, output_tokens: 3 } },
+					},
+				},
+			]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 20, outputTokens: 3, totalTokens: 23 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'x' } },
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([
+				{ toolCallId: 'tc-1', toolName: 'lookup', input: { value: 'x' } },
+			]),
+		});
+
+		const { stream } = await runtime.stream('hello', {
+			abortSignal: controller.signal,
+			recoverUsageOnAbort: true,
+		});
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// Exactly the folded turn-1 usage — not doubled by the stale raw capture.
+		expect(finish?.usage).toMatchObject({ promptTokens: 20, completionTokens: 3, totalTokens: 23 });
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('does not recover in-flight usage on abort when recoverUsageOnAbort is off (default)', async () => {
+		// Anthropic model + raw event present, but the option is omitted: the run
+		// must NOT recover the in-flight turn's usage from raw chunks.
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		streamText.mockReturnValue({
+			// Sync generator: `for await` consumes it fine and there's nothing to await.
+			fullStream: (function* () {
+				yield {
+					type: 'raw',
+					rawValue: {
+						type: 'message_start',
+						message: { usage: { input_tokens: 5, output_tokens: 7 } },
+					},
+				};
+				controller.abort();
+			})(),
+			finishReason: silentReject(abortError),
+			usage: silentReject(abortError),
+			response: silentReject(abortError),
+			toolCalls: silentReject(abortError),
+		});
+
+		// No recoverUsageOnAbort: the option stays off (the behavior under test).
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		// No completed turns and no raw recovery → no usage billed.
+		expect(finish?.usage).toBeUndefined();
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('requests includeRawChunks only when recoverUsageOnAbort is set', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const off = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		await collectChunks((await off.runtime.stream('hello')).stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('includeRawChunks');
+
+		streamText.mockClear();
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const on = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		await collectChunks((await on.runtime.stream('hello', { recoverUsageOnAbort: true })).stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).toMatchObject({ includeRawChunks: true });
 	});
 });
 
@@ -958,11 +1401,16 @@ function makeSuspendingTool(
 }
 
 /** Build a runtime with tools and concurrency config. */
-function createRuntimeWithTools(tools: BuiltTool[], concurrency: number, eventBus?: AgentEventBus) {
+function createRuntimeWithTools(
+	tools: BuiltTool[],
+	concurrency: number,
+	eventBus?: AgentEventBus,
+	model = 'openai/gpt-4o-mini',
+) {
 	const bus = eventBus ?? new AgentEventBus();
 	const runtime = new AgentRuntime({
 		name: 'test',
-		model: 'openai/gpt-4o-mini',
+		model,
 		instructions: 'You are a test assistant.',
 		tools,
 		eventBus: bus,
@@ -3857,9 +4305,13 @@ describe('tool systemInstruction merging', () => {
 
 	function getSystemMessageText(): string {
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
-		expect(systemMsg.role).toBe('system');
-		return String(systemMsg.content);
+		const systemMsg = callArgs.system;
+		if (Array.isArray(systemMsg)) {
+			return systemMsg.map((entry) => String((entry as { content: string }).content)).join('');
+		}
+		const system = systemMsg as { role: string; content: string };
+		expect(system.role).toBe('system');
+		return String(system.content);
 	}
 
 	it("wraps a tool's systemInstruction in a built_in_rules block above user instructions", async () => {
@@ -4353,7 +4805,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const generateTextMock = generateText as MockedFunction<
 			(input: {
-				system: { content: string };
+				system: { content: string } | Array<{ content: string }>;
 				messages: Array<{
 					role: string;
 					content: unknown;
@@ -4361,8 +4813,11 @@ describe('AgentRuntime — observation log jobs', () => {
 			}) => unknown
 		>;
 		const [{ system, messages }] = generateTextMock.mock.calls[0];
-		expect(system.content).toContain('Resource one memory.');
-		expect(system.content).toContain('Resource two memory.');
+		const systemText = Array.isArray(system)
+			? system.map((entry) => entry.content).join('')
+			: system.content;
+		expect(systemText).toContain('Resource one memory.');
+		expect(systemText).toContain('Resource two memory.');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
 
 		await runtime.dispose();
@@ -4405,6 +4860,17 @@ describe('AgentRuntime — observation log jobs', () => {
 			lastObservedAt: observedAt,
 			updatedAt: observedAt,
 		});
+		// A cursor is only trusted when an observation log stands in for the
+		// pre-cursor messages, so seed one alongside the cursor.
+		await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'critical',
+				text: 'Observed old context.',
+				parentId: null,
+				createdAt: observedAt,
+			},
+		]);
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',

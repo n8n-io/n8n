@@ -2,6 +2,7 @@ import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
+	GroupExpansionMode,
 } from '@/features/workflows/canvas/canvas.types';
 import type { ComputedRef, InjectionKey, Ref, ShallowRef } from 'vue';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
@@ -35,9 +36,12 @@ export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('Chat
 /**
  * AI editor capabilities a host can toggle per editor, using enablement
  * semantics (an explicit `false` supersedes; omitted or `true` falls back to
- * the editor's own gating). Grows over time.
+ * the editor's own gating). Grows over time. `instanceAi` gates the Instance AI
+ * entry points (its store gate is global Instance AI availability); a host sets
+ * it `false` to keep the legacy AI builder/assistant entry points for that
+ * editor instead.
  */
-export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
+export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'instanceAi';
 /**
  * Per-editor host overrides. The AI features use enablement semantics
  * (`false` = superseded/off; omitted or `true` falls back to the editor's own
@@ -49,10 +53,13 @@ export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
  * (mirrors the old iframe `suppressNotifications` / `allowErrorNotifications`
  * knobs, but scoped per editor instead of via the shared UI store). Hosts that
  * surface results in their own UI — e.g. the Instance AI preview — set them.
+ * `expandGroups` overrides canvas group expansion without touching the editor's
+ * persisted view state.
  * Provided by editor hosts that supersede capabilities.
  */
 export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	readOnly?: boolean;
+	expandGroups?: GroupExpansionMode;
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
 };

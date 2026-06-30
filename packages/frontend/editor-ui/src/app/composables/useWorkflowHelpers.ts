@@ -56,6 +56,7 @@ import {
 	injectWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -371,9 +372,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const documentId = createWorkflowDocumentId(workflowsStore.workflowId);
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+	const executionStateStore = useWorkflowExecutionStateStore(documentId);
 
 	return executeDataImpl(
 		connections,
@@ -382,7 +383,7 @@ export function executeData(
 		inputName,
 		runIndex,
 		workflowDocumentStore.getPinDataSnapshot(),
-		workflowsStore.getWorkflowRunData,
+		executionStateStore.activeExecutionRunData,
 		parentRunIndex,
 	);
 }
@@ -489,6 +490,7 @@ export function useWorkflowHelpers() {
 	const i18n = useI18n();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const currentWorkflowId = useWorkflowId();
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowDocumentStore.value.allNodes;
@@ -574,7 +576,7 @@ export function useWorkflowHelpers() {
 			},
 		} as const;
 		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
-		const workflowId = workflowsStore.workflowId;
+		const workflowId = currentWorkflowId.value;
 		const path = (await getWebhookExpressionValue(webhookData, 'path', true, node.name)) ?? '';
 		const isFullPath =
 			((await getWebhookExpressionValue(
@@ -663,7 +665,7 @@ export function useWorkflowHelpers() {
 		let data: WorkflowDataUpdate = {};
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
+		const isCurrentWorkflow = workflowId === currentWorkflowId.value;
 		if (isCurrentWorkflow) {
 			data = partialData
 				? { versionId: workflowDocumentStore.versionId }
@@ -873,7 +875,7 @@ export function useWorkflowHelpers() {
 		let data;
 		if (uiStore.stateIsDirty) {
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+				createWorkflowDocumentId(currentWorkflowId.value),
 			);
 			data = workflowDocumentStore.serialize();
 		} else {

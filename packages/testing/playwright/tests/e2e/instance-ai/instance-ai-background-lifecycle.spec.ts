@@ -7,7 +7,7 @@ test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI background lifecycle @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(

@@ -47,7 +47,10 @@ describe(useNodeDirtiness, () => {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
 				workflowsStore.setWorkflowId(TEST_WORKFLOW_ID);
-				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
+				historyHelper = useHistoryHelper(
+					{} as RouteLocationNormalizedLoaded,
+					shallowRef(null) as Parameters<typeof useHistoryHelper>[1],
+				);
 
 				workflowDocumentStore = useWorkflowDocumentStore(TEST_DOCUMENT_ID);
 				provide(WorkflowDocumentStoreKey, shallowRef(workflowDocumentStore));

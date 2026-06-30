@@ -148,7 +148,8 @@ graph TD
     S1 -->|tools| T6[get-execution]
     S1 -->|tools| T7[get-workflow]
     S4 -->|tools| T8[search-nodes]
-    S4 -->|tools| T9[build-workflow]
+    S4 -->|tools| T9[workspace files]
+    S4 -->|tools| T10[build-workflow]
 
     style O fill:#f9f,stroke:#333
     style S1 fill:#bbf,stroke:#333
@@ -191,7 +192,7 @@ The agent package — framework-agnostic business logic.
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
-- **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
+- **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
@@ -342,7 +343,7 @@ determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
+| `build-workflow` | Builder agent | search-nodes, workspace file tools, build-workflow, get-node-type-definition, etc. |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
 | `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 

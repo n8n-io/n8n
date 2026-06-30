@@ -70,11 +70,18 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+// The MCP SDK publishes this schema with `additionalProperties: false` and
+// validates `structuredContent` against it on every response. Success returns
+// the full payload below; the error path returns only `{ error }` (optionally
+// with `hint`). To keep both shapes valid under strict clients, the success
+// fields are optional and `error` is a declared, optional property — otherwise
+// a thrown handler error surfaces as an opaque `-32602` schema mismatch
+// instead of the real message.
 const outputSchema = {
-	workflowId: z.string().describe('The ID of the created workflow'),
-	name: z.string().describe('The name of the created workflow'),
-	nodeCount: z.number().describe('The number of nodes in the workflow'),
-	url: z.string().describe('The URL to open the workflow in n8n'),
+	workflowId: z.string().optional().describe('The ID of the created workflow'),
+	name: z.string().optional().describe('The name of the created workflow'),
+	nodeCount: z.number().optional().describe('The number of nodes in the workflow'),
+	url: z.string().optional().describe('The URL to open the workflow in n8n'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -83,6 +90,7 @@ const outputSchema = {
 				credentialType: z.string().describe('The credential type that was auto-assigned'),
 			}),
 		)
+		.optional()
 		.describe('List of credentials that were automatically assigned to nodes'),
 	targetProject: z
 		.object({
@@ -92,6 +100,7 @@ const outputSchema = {
 				.enum(['personal', 'team'])
 				.describe('Whether the workflow landed in a personal or team project'),
 		})
+		.optional()
 		.describe('The project the workflow was actually created in.'),
 	note: z
 		.string()
@@ -105,6 +114,26 @@ const outputSchema = {
 		.describe(
 			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
+	warnings: z
+		.array(
+			z.object({
+				code: z.string().describe('The warning code identifying the type of warning'),
+				message: z.string().describe('The warning message'),
+				nodeName: z.string().optional().describe('The node that triggered the warning'),
+				parameterPath: z
+					.string()
+					.optional()
+					.describe('The parameter path that triggered the warning'),
+			}),
+		)
+		.optional()
+		.describe(
+			'Validation warnings emitted while parsing the submitted code. Surface these to the user so they can correct the workflow.',
+		),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the creation failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -182,7 +211,10 @@ export const createCreateWorkflowFromCodeTool = (
 				'@n8n/ai-workflow-builder'
 			);
 
-			const handler = new ParseValidateHandler({ generatePinData: false });
+			const handler = new ParseValidateHandler({
+				generatePinData: false,
+				nodeTypesProvider: nodeTypes,
+			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
@@ -284,7 +316,7 @@ export const createCreateWorkflowFromCodeTool = (
 					: undefined,
 			].filter((note): note is string => note !== undefined);
 
-			const output = {
+			const baseOutput = {
 				workflowId: savedWorkflow.id,
 				name: savedWorkflow.name,
 				nodeCount: savedWorkflow.nodes.length,
@@ -297,6 +329,8 @@ export const createCreateWorkflowFromCodeTool = (
 				},
 				note: notes.length ? notes.join(' ') : undefined,
 			};
+			const output =
+				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

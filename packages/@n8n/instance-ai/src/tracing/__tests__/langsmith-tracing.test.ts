@@ -1252,12 +1252,6 @@ describe('createInstanceAiTraceContext', () => {
 							},
 						} as never,
 					],
-					[
-						'submit-workflow',
-						{
-							description: 'Submit a workflow to n8n.',
-						} as never,
-					],
 				]),
 				runtimeTools: createToolRegistry([
 					[
@@ -1277,8 +1271,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(actorInputs.task).toBe('Build a workflow');
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
-		expect(actorInputs.assigned_tool_count).toBe(2);
-		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.assigned_tool_count).toBe(1);
+		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow']);
 		expect(actorInputs.assigned_tool_schema_hash).toEqual(expect.any(String));
 		expect(actorInputs.runtime_tool_count).toBe(1);
 		expect(actorInputs.runtime_tool_names).toEqual(['workspace_read_file']);
@@ -1295,7 +1289,7 @@ describe('createInstanceAiTraceContext', () => {
 		const spanInputs = jsonParse<Record<string, unknown>>(
 			actorSpan?.attributes['gen_ai.prompt'] as string,
 		);
-		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow']);
 		expect(spanInputs.runtime_tool_names).toEqual(['workspace_read_file']);
 		expect(spanInputs.loaded_tool_manifest).toBeUndefined();
 		expect(spanInputs.loaded_tools).toBeUndefined();

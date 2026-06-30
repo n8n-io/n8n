@@ -3,6 +3,7 @@ import {
 	inDevelopment,
 	inTest,
 	LicenseState,
+	LockService,
 	Logger,
 	ModuleRegistry,
 	ModulesConfig,
@@ -36,13 +37,13 @@ import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -95,6 +96,8 @@ export abstract class BaseCommand<F = never> {
 			deploymentName,
 			profilesSampleRate,
 			tracesSampleRate,
+			tracesSlowSpanThresholdMs,
+			webhookTracesSampleRate,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			eventLoopBlockDetectionEnabled,
@@ -110,6 +113,9 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
+			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
+			webhookEndpoint: this.globalConfig.endpoints.webhook,
+			webhookTracesSampleRate,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
@@ -128,6 +134,15 @@ export abstract class BaseCommand<F = never> {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		await Container.get(LoadNodesAndCredentials).init();
+
+		const useRedisForLocking =
+			this.globalConfig.executions.mode === 'queue' ||
+			this.globalConfig.multiMainSetup.enabled ||
+			this.globalConfig.cache.backend === 'redis';
+		if (useRedisForLocking) {
+			const { RedisLockService } = await import('@/scaling/redis-lock.service');
+			Container.get(LockService).setProvider(Container.get(RedisLockService));
+		}
 
 		await this.dbConnection
 			.init()
@@ -251,6 +266,7 @@ export abstract class BaseCommand<F = never> {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const binaryDataService = Container.get(BinaryDataService);
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
+		const isAzureWriteMode = binaryDataConfig.mode === 'azure';
 
 		const { DatabaseManager } = await import('@/binary-data/database.manager');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
@@ -260,6 +276,22 @@ export abstract class BaseCommand<F = never> {
 			if (!isLicensed) {
 				this.logger.error(
 					'S3 binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+		}
+
+		if (isAzureWriteMode) {
+			const isLicensed = Container.get(LicenseState).isBinaryDataAzureLicensed();
+			if (!isLicensed) {
+				this.logger.error(
+					'Azure Blob binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (Container.get(AzureBlobConfig).containerName === '') {
+				this.logger.error(
+					'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
 				);
 				process.exit(1);
 			}
@@ -319,9 +351,13 @@ export abstract class BaseCommand<F = never> {
 		}
 
 		try {
-			await this.initAzureStoreIfConfigured();
+			const azureBlobService = await this.initAzureStoreIfConfigured();
+			if (azureBlobService) {
+				const { AzureBlobManager } = await import('n8n-core/dist/binary-data/azure-blob.manager');
+				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
+			}
 		} catch {
-			if (isExecutionDataAzureMode) {
+			if (isAzureWriteMode || isExecutionDataAzureMode) {
 				this.logger.error(
 					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
 				);
@@ -358,6 +394,8 @@ export abstract class BaseCommand<F = never> {
 
 		const { AzureStore } = await import('@/executions/execution-data/azure-store.ee');
 		Container.get(ExecutionPersistence).setAzStore(Container.get(AzureStore));
+
+		return azureBlobService;
 	}
 
 	protected async initDataDeduplicationService() {

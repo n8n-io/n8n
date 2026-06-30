@@ -23,6 +23,7 @@
 		"telegram",
 		"trading-bot"
 	],
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path-multi-candle-array",

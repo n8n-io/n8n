@@ -120,9 +120,12 @@ export const baseWorkflowShape = {
 	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
-	// Folder organization
+	// Folder organization.
+	// `parentFolder` (the relation object) is intentionally NOT accepted as input: workflow
+	// placement is controlled solely via `parentFolderId`, which is validated against the target
+	// project. Any `parentFolder` a client sends is stripped by this schema and never
+	// mass-assigned — the workflow entity is built from an allowlist (workflow-entity-mapper.ts).
 	parentFolderId: z.string().optional(),
-	parentFolder: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 
 	// Tags
 	tags: z

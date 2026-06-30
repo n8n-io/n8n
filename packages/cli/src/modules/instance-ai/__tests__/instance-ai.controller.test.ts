@@ -1,31 +1,36 @@
+import type { Mock } from 'vitest';
 import { z } from 'zod';
 
-jest.mock('@n8n/instance-ai', () => ({
-	workflowLoopStateSchema: z.string(),
-	attemptRecordSchema: z.object({}),
-	workflowBuildOutcomeSchema: z.string(),
-	buildAgentTreeFromEvents: jest.fn(() => ({
-		agentId: 'agent-root',
-		role: 'orchestrator',
-		status: 'active',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [],
-		children: [],
-		timeline: [],
-	})),
-}));
+vi.mock('@n8n/instance-ai', () => {
+	return {
+		workflowLoopStateSchema: z.string(),
+		attemptRecordSchema: z.object({}),
+		workflowBuildOutcomeSchema: z.string(),
+		buildAgentTreeFromEvents: vi.fn(() => ({
+			agentId: 'agent-root',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [],
+			timeline: [],
+		})),
+	};
+});
 
 // The controller imports validation helpers via the parsers subpath so they
 // don't pull in native agent. Re-export the real implementation for the test.
-jest.mock('@n8n/instance-ai/parsers', () => jest.requireActual('@n8n/instance-ai/parsers'));
+vi.mock('@n8n/instance-ai/parsers', async () => await vi.importActual('@n8n/instance-ai/parsers'));
 
-jest.mock('../eval/execution.service', () => ({
-	EvalExecutionService: jest.fn(),
+vi.mock('../eval/execution.service', () => ({
+	EvalExecutionService: vi.fn(),
 }));
 
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -46,8 +51,9 @@ import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -56,7 +62,10 @@ import type { Push } from '@/push';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
+import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalExecutionService } from '../eval/execution.service';
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
+import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -64,6 +73,7 @@ import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
+import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -97,13 +107,20 @@ describe('InstanceAiController', () => {
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const projectService = mock<ProjectService>();
+	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
+
+	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+	const evalThreadRestore = mock<EvalThreadRestoreService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
+		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		evalCredentialAllowlists,
+		evalThreadRestore,
 		eventBus,
 		moduleRegistry,
 		push,
@@ -111,6 +128,7 @@ describe('InstanceAiController', () => {
 		userRepository,
 		credentialsService,
 		projectService,
+		instanceAiErrorReporter,
 		globalConfig,
 	);
 
@@ -118,7 +136,7 @@ describe('InstanceAiController', () => {
 	const res = mock<Response>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 	});
 
@@ -126,6 +144,7 @@ describe('InstanceAiController', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
 			timeZone: 'Europe/Helsinki',
+			attachments: undefined,
 		});
 
 		it('should require instanceAi:message scope', () => {
@@ -145,6 +164,7 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				payload.message,
 				payload.attachments,
+				payload.context,
 				payload.timeZone,
 				payload.pushRef,
 			);
@@ -165,6 +185,7 @@ describe('InstanceAiController', () => {
 				message: 'build me a workflow',
 				pushRef: 'iframe-push-ref-123',
 				timeZone: 'UTC',
+				attachments: undefined,
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
@@ -177,8 +198,41 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				payloadWithPushRef.message,
 				payloadWithPushRef.attachments,
+				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+			);
+		});
+
+		it('should forward handoff context to startRun', async () => {
+			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				message: 'How do I set up Gmail OAuth?',
+				context: {
+					source: 'credential-modal',
+					credential: {
+						credentialType: 'gmailOAuth2Api',
+						displayName: 'Gmail OAuth2 API',
+						documentationUrl:
+							'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+					},
+				},
+				timeZone: 'UTC',
+				attachments: undefined,
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-3');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithContext);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithContext.message,
+				payloadWithContext.attachments,
+				payloadWithContext.context,
+				payloadWithContext.timeZone,
+				payloadWithContext.pushRef,
 			);
 		});
 
@@ -200,7 +254,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
 				message: 'see attached',
-				attachments: [{ data: '', mimeType: 'application/zip', fileName: 'archive.zip' }],
+				attachments: [
+					{ type: 'file', data: '', mimeType: 'application/zip', fileName: 'archive.zip' },
+				],
 				timeZone: 'UTC',
 			});
 
@@ -217,8 +273,8 @@ describe('InstanceAiController', () => {
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
 				message: 'see attached',
 				attachments: [
-					{ data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
-					{ data: '', mimeType: 'image/png', fileName: 'photo.png' },
+					{ type: 'file', data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
+					{ type: 'file', data: '', mimeType: 'image/png', fileName: 'photo.png' },
 				],
 				timeZone: 'UTC',
 			});
@@ -279,18 +335,18 @@ describe('InstanceAiController', () => {
 			});
 
 			const sseRes = mock<Response & { flush?: () => void }>({
-				setHeader: jest.fn(),
-				flushHeaders: jest.fn(),
-				write: jest.fn(),
-				end: jest.fn(),
-				flush: jest.fn(),
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
 			});
-			eventBus.subscribe.mockReturnValue(jest.fn());
+			eventBus.subscribe.mockReturnValue(vi.fn());
 
 			const sseReq = mock<AuthenticatedRequest>({
 				user: { id: USER_ID },
 				headers: {},
-				once: jest.fn(),
+				once: vi.fn(),
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
@@ -299,7 +355,7 @@ describe('InstanceAiController', () => {
 				delivery: 'event',
 			});
 
-			const runSyncFrame = (sseRes.write as jest.Mock).mock.calls
+			const runSyncFrame = (sseRes.write as Mock).mock.calls
 				.map(([frame]) => String(frame))
 				.find((frame) => frame.startsWith('event: run-sync'));
 
@@ -312,18 +368,18 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
 
 			const sseRes = mock<Response & { flush?: () => void }>({
-				setHeader: jest.fn(),
-				flushHeaders: jest.fn(),
-				write: jest.fn(),
-				end: jest.fn(),
-				flush: jest.fn(),
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
 			});
 
 			// Capture the subscribe handler
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
 				subscribeHandler = handler as typeof subscribeHandler;
-				return jest.fn();
+				return vi.fn();
 			});
 			eventBus.getEventsAfter.mockReturnValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
@@ -335,7 +391,7 @@ describe('InstanceAiController', () => {
 			const sseReq = mock<AuthenticatedRequest>({
 				user: { id: USER_ID },
 				headers: {},
-				once: jest.fn(),
+				once: vi.fn(),
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
@@ -360,17 +416,17 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
 
 			const sseRes = mock<Response & { flush?: () => void }>({
-				setHeader: jest.fn(),
-				flushHeaders: jest.fn(),
-				write: jest.fn(),
-				end: jest.fn(),
-				flush: jest.fn(),
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
 			});
 
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
 				subscribeHandler = handler as typeof subscribeHandler;
-				return jest.fn();
+				return vi.fn();
 			});
 			eventBus.getEventsAfter.mockReturnValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
@@ -382,7 +438,7 @@ describe('InstanceAiController', () => {
 			const sseReq = mock<AuthenticatedRequest>({
 				user: { id: USER_ID },
 				headers: {},
-				once: jest.fn(),
+				once: vi.fn(),
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
@@ -481,6 +537,153 @@ describe('InstanceAiController', () => {
 			await expect(
 				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('executeWithLlmMock', () => {
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('executeWithLlmMock')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+	});
+
+	describe('setThreadCredentialAllowlist', () => {
+		const payload = { threadId: THREAD_ID, credentialIds: ['cred-1', 'cred-2'] };
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('setThreadCredentialAllowlist')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should pin the allowlist for an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.setThreadCredentialAllowlist(
+				req,
+				res,
+				payload as InstanceAiEvalCredentialAllowlistRequest,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(evalCredentialAllowlists.get(THREAD_ID)).toEqual(['cred-1', 'cred-2']);
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.setThreadCredentialAllowlist(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialAllowlistRequest,
+				),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('restoreEvalThread', () => {
+		const seedMessages = [
+			{ id: 'm1', type: 'llm', role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' },
+		];
+		const seedWorkflow = { id: 'wf-1', name: 'Seeded', nodes: [], connections: {} };
+		const payload = {
+			threadId: THREAD_ID,
+			messages: seedMessages,
+			workflows: [seedWorkflow],
+		} as InstanceAiEvalRestoreThreadRequest;
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('restoreEvalThread')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+
+		it('should recreate referenced workflows in the thread project, then seed messages', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+
+			const result = await controller.restoreEvalThread(req, res, payload);
+
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				expect.any(Map),
+			);
+			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				seedMessages,
+			);
+			expect(result).toEqual({
+				ok: true,
+				threadId: THREAD_ID,
+				restored: 1,
+				workflowIds: ['wf-1'],
+				dataTableIds: [],
+			});
+		});
+
+		it('should recreate data tables first and pass their id map to workflow restore', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			const idMap = new Map([['dt-old-1234', 'dt-new']]);
+			evalThreadRestore.restoreDataTables.mockResolvedValue(idMap);
+
+			const dataTable = {
+				id: 'dt-old-1234',
+				name: 'FAQs',
+				columns: [{ name: 'a', type: 'string' as const }],
+			};
+			const result = await controller.restoreEvalThread(req, res, {
+				...payload,
+				dataTables: [dataTable],
+			} as InstanceAiEvalRestoreThreadRequest);
+
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1');
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				idMap,
+			);
+			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('should roll back created workflows and data tables when a later step fails', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+			evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
+			memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow('boom');
+
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
+			expect(evalThreadRestore.deleteDataTables).toHaveBeenCalledWith(['dt-new'], 'project-1');
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(NotFoundError);
+			expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
+		});
+
+		it("should reject another user's thread", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should reject a thread without a project binding', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue(undefined);
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
 		});
 	});
 
@@ -727,6 +930,26 @@ describe('InstanceAiController', () => {
 				'project-1',
 			);
 		});
+
+		it('reports ensure-thread failures to observability before rethrowing', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			const error = new Error('persist failed');
+			memoryService.ensureThread.mockRejectedValue(error);
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: 'thread-new',
+				projectId: 'project-1',
+			});
+
+			await expect(controller.ensureThread(req, res, payload)).rejects.toThrow(error);
+
+			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(error, {
+				component: 'instance-ai-ensure-thread',
+				threadId: 'thread-new',
+				userId: USER_ID,
+				projectId: 'project-1',
+			});
+		});
 	});
 
 	describe('deleteThread', () => {
@@ -844,7 +1067,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should return token, command, and token expiry', async () => {
-			const nowSpy = jest
+			const nowSpy = vi
 				.spyOn(Date, 'now')
 				.mockReturnValue(new Date('2026-01-01T00:00:00.000Z').getTime());
 			gatewayService.generatePairingToken.mockReturnValue('pairing-token');
@@ -873,6 +1096,16 @@ describe('InstanceAiController', () => {
 	describe('gatewayInit', () => {
 		const makeGatewayReq = (key: string | undefined, body: unknown) =>
 			({ headers: key ? { 'x-gateway-key': key } : {}, body }) as unknown as Request;
+
+		beforeEach(() => {
+			gatewayService.getGatewayStatus.mockReturnValue({
+				connected: true,
+				connectedAt: null,
+				directory: '/home/user',
+				hostIdentifier: null,
+				toolCategories: [],
+			});
+		});
 
 		it('should have no access scope (skipAuth)', () => {
 			expect(scopeOf('gatewayInit')).toBeUndefined();
@@ -963,16 +1196,16 @@ describe('InstanceAiController', () => {
 		const makeGatewayReq = (key: string) =>
 			({
 				headers: { 'x-gateway-key': key },
-				once: jest.fn(),
+				once: vi.fn(),
 			}) as unknown as Request;
 
 		const makeFlushableRes = () => {
 			const res = {
-				setHeader: jest.fn(),
-				flushHeaders: jest.fn(),
-				write: jest.fn(),
-				flush: jest.fn(),
-				once: jest.fn(),
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				flush: vi.fn(),
+				once: vi.fn(),
 			};
 			return res as unknown as Parameters<typeof controller.gatewayEvents>[1];
 		};
@@ -1004,8 +1237,8 @@ describe('InstanceAiController', () => {
 		});
 
 		describe('connection cleanup', () => {
-			const unsubscribeRequest = jest.fn();
-			const unsubscribeDisconnect = jest.fn();
+			const unsubscribeRequest = vi.fn();
+			const unsubscribeDisconnect = vi.fn();
 
 			/** Open the SSE stream and return the handlers registered on res events. */
 			const openStream = async () => {
@@ -1019,7 +1252,7 @@ describe('InstanceAiController', () => {
 				await controller.gatewayEvents(makeGatewayReq('session-key'), res);
 
 				const handlerFor = (event: string) =>
-					(res.once as jest.Mock).mock.calls.find(([name]) => name === event)?.[1] as
+					(res.once as Mock).mock.calls.find(([name]) => name === event)?.[1] as
 						| (() => void)
 						| undefined;
 				return { onClose: handlerFor('close'), onFinish: handlerFor('finish') };

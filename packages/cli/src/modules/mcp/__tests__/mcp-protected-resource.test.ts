@@ -1,15 +1,17 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
+import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 
 describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
-	const resource = new McpProtectedResource(urlService);
+	const mcpSettingsService = mock<McpSettingsService>();
+	const resource = new McpProtectedResource(urlService, mcpSettingsService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getResourceUrl', () => {
@@ -35,6 +37,15 @@ describe('McpProtectedResource', () => {
 			expect(resource.getAudiences()).toEqual([
 				'https://n8n.example.com/mcp-server/http',
 				'mcp-server-api',
+			]);
+		});
+	});
+
+	describe('getAllowedRedirectUris', () => {
+		it('should delegate to the MCP settings service', async () => {
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+			await expect(resource.getAllowedRedirectUris()).resolves.toEqual([
+				'https://example.com/callback',
 			]);
 		});
 	});
