@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_657a31a402f36f::t_b06202adb1f19f 568-605,607-612
+  s_657a31a402f36f::t_3ca49fb6f0b373 606
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_657a31a402f36f::t_64a0f6d27f6ed2 43,47,68,111,113-118,133-140
+  s_657a31a402f36f::t_31fb3c17a08883 14,50
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_657a31a402f36f::t_a07c4dd1bff68e 315-339,401
+  s_657a31a402f36f::t_4cef9519dd0f17 314
+packages/cli/src/modules/agents/agents.service.ts
+  s_657a31a402f36f::t_fbe69d68f87f1a 11,118-132
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_657a31a402f36f::t_a546c44b852b5d 134,141,172-176
+  s_657a31a402f36f::t_59a34e554a3ac5 177-179
+  s_657a31a402f36f::t_c7d5f16dacb532 180-182
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_657a31a402f36f::t_01b6c3f7992072 112,230,240-243
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_657a31a402f36f::t_162f04fc216bd4 137-140
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_657a31a402f36f::t_ded1c10e287f41 200
+  s_657a31a402f36f::t_ed2e89e1f2c0a1 184-194
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_657a31a402f36f::t_67e211e563be4b 20-23,104,116-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "b64095e53200de837209b6ac63711b4797b21021",
+  "prompts": {},
+  "sessions": {
+    "s_657a31a402f36f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13ea-d4c1-7d03-bc30-fcfd579f01c6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
