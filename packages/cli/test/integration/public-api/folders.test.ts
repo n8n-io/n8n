@@ -175,9 +175,9 @@ describe('POST /projects/:projectId/folders', () => {
 
 	test('should return 500 when createFolder throws an unexpected error', async () => {
 		testServer.license.enable('feat:folders');
-		jest
-			.spyOn(Container.get(FolderService), 'createFolder')
-			.mockRejectedValueOnce(new Error('Unexpected create error'));
+		vi.spyOn(Container.get(FolderService), 'createFolder').mockRejectedValueOnce(
+			new Error('Unexpected create error'),
+		);
 
 		const response = await authOwnerAgent
 			.post(`/projects/${ownerPersonalProject.id}/folders`)
@@ -313,9 +313,9 @@ describe('GET /projects/:projectId/folders', () => {
 
 	test('should return 500 when getManyAndCount throws an unexpected error', async () => {
 		testServer.license.enable('feat:folders');
-		jest
-			.spyOn(Container.get(FolderService), 'getManyAndCount')
-			.mockRejectedValueOnce(new Error('Unexpected list error'));
+		vi.spyOn(Container.get(FolderService), 'getManyAndCount').mockRejectedValueOnce(
+			new Error('Unexpected list error'),
+		);
 
 		const response = await authOwnerAgent.get(`/projects/${ownerPersonalProject.id}/folders`);
 
@@ -516,9 +516,9 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		const { agent, personalProject } = await createDeleteScopedAgent();
 
 		const folder = await createFolder(personalProject, { name: 'Folder' });
-		jest
-			.spyOn(Container.get(FolderService), 'deleteFolder')
-			.mockRejectedValueOnce(new Error('Unexpected delete error'));
+		vi.spyOn(Container.get(FolderService), 'deleteFolder').mockRejectedValueOnce(
+			new Error('Unexpected delete error'),
+		);
 
 		const response = await agent.delete(`/projects/${personalProject.id}/folders/${folder.id}`);
 

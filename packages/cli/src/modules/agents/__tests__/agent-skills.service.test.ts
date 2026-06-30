@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
+import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import type { Agent } from '../entities/agent.entity';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -27,8 +29,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let runtimeCacheService: jest.Mocked<AgentRuntimeCacheService>;
+	let agentRepository: Mocked<AgentRepository>;
+	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -37,12 +39,14 @@ describe('AgentSkillsService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		Container.reset();
 
 		agentRepository = mock<AgentRepository>();
 		runtimeCacheService = mock<AgentRuntimeCacheService>();
+		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		agentRepository.save.mockImplementation(async (a) => a as Agent);
-		service = new AgentSkillsService(mockLogger(), agentRepository, runtimeCacheService);
+		service = new AgentSkillsService(mockLogger(), agentRepository);
 	});
 
 	it('creates a skill without attaching it to the config', async () => {
@@ -68,6 +72,41 @@ describe('AgentSkillsService', () => {
 		});
 		expect(agent.schema?.skills).toEqual([]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+	});
+
+	it('stores references without derived metadata when creating a skill', async () => {
+		const agent = makeAgent({
+			schema: {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.createSkill(agentId, projectId, {
+			...skill,
+			references: [
+				{
+					path: 'references/guide.md',
+					content: '# Guide',
+				},
+			],
+		});
+
+		expect(result.skill.references).toEqual([
+			{
+				path: 'references/guide.md',
+				content: '# Guide',
+			},
+		]);
+		expect(agentRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				skills: {
+					[result.id]: expect.objectContaining({ references: result.skill.references }),
+				},
+			}),
+		);
 	});
 
 	it('creates and attaches a skill on the agent when requested', async () => {
@@ -99,8 +138,21 @@ describe('AgentSkillsService', () => {
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
-	it('updates an existing skill on the agent', async () => {
-		const agent = makeAgent({ skills: { summarize_notes: skill } });
+	it('updates an existing skill on the agent and preserves omitted references', async () => {
+		const skillWithReferences = {
+			...skill,
+			references: [
+				{
+					path: 'references/guide.md',
+					content: '# Guide',
+				},
+			],
+		};
+		const agent = makeAgent({
+			skills: {
+				summarize_notes: skillWithReferences,
+			},
+		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 		const result = await service.updateSkill(agentId, projectId, 'summarize_notes', {
@@ -112,6 +164,12 @@ describe('AgentSkillsService', () => {
 			skill: {
 				...skill,
 				description: 'Summarizes support notes',
+				references: [
+					{
+						path: 'references/guide.md',
+						content: '# Guide',
+					},
+				],
 			},
 			versionId: agent.versionId,
 		});
@@ -121,18 +179,66 @@ describe('AgentSkillsService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
-	it('rejects skill snapshots when configured skill bodies are missing', () => {
-		expect(() =>
-			service.snapshotConfiguredSkills(
-				{
+	it('clears references when an update provides an empty reference list', async () => {
+		const agent = makeAgent({
+			skills: {
+				summarize_notes: {
+					...skill,
+					references: [
+						{
+							path: 'references/guide.md',
+							content: '# Guide',
+						},
+					],
+				},
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.updateSkill(agentId, projectId, 'summarize_notes', {
+			references: [],
+		});
+
+		expect(result.skill.references).toEqual([]);
+		expect(agentRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				skills: {
+					summarize_notes: expect.objectContaining({ references: [] }),
+				},
+			}),
+		);
+	});
+
+	it('rejects creating a skill with a duplicate name', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				skills: { summarize_notes: skill },
+				schema: {
 					name: 'Test Agent',
 					model: 'anthropic/claude-sonnet-4-5',
 					instructions: 'Be helpful',
-					skills: [{ type: 'skill', id: 'missing_skill' }],
 				},
-				{},
-			),
-		).toThrow('Cannot publish agent with missing skill bodies: missing_skill');
+			}),
+		);
+
+		await expect(service.createAndAttachSkill(agentId, projectId, skill)).rejects.toThrow(
+			'Agent already has a skill named "Summarize Notes".',
+		);
+	});
+
+	it('rejects renaming a skill to another existing skill name', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				skills: {
+					summarize_notes: skill,
+					other_skill: { name: 'Other Skill', description: 'desc', instructions: 'Use it' },
+				},
+			}),
+		);
+
+		await expect(
+			service.updateSkill(agentId, projectId, 'summarize_notes', { name: 'Other Skill' }),
+		).rejects.toThrow('Agent already has a skill named "Other Skill".');
 	});
 
 	it('deletes a skill and removes its config ref', async () => {

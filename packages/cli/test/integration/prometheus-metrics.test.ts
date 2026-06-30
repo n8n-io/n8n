@@ -3,10 +3,9 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
+import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
-
-import type { IRun, IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
@@ -14,7 +13,7 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import { setupTestServer } from './shared/utils';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 const toLines = (response: Response) => response.text.trim().split('\n');
 
@@ -51,7 +50,7 @@ const agent = request.agent(server.app);
 describe('PrometheusMetricsService', () => {
 	afterEach(() => {
 		// Make sure fake timers aren't in effect after a test
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('should return n8n version', async () => {
@@ -68,7 +67,7 @@ describe('PrometheusMetricsService', () => {
 
 		const n8nVersion = semverParse(N8N_VERSION);
 
-		if (!n8nVersion) fail('Failed to parse n8n version');
+		if (!n8nVersion) expect.fail('Failed to parse n8n version');
 
 		const { version, major, minor, patch } = n8nVersion;
 
@@ -150,7 +149,7 @@ describe('PrometheusMetricsService', () => {
 		 * Arrange
 		 */
 		const startTime = DateTime.now().toUnixInteger();
-		jest.useFakeTimers().setSystemTime(startTime * 1000);
+		vi.useFakeTimers().setSystemTime(startTime * 1000);
 
 		// A request to a tracked path updates last_activity to the current (fake) time
 		await agent.get('/api/v1/workflows');
@@ -179,7 +178,7 @@ describe('PrometheusMetricsService', () => {
 		expect(parseInt(value, 10)).toBe(startTime);
 
 		// Update last activity
-		jest.advanceTimersByTime(1000);
+		vi.advanceTimersByTime(1000);
 		await agent.get('/api/v1/workflows');
 
 		response = await agent.get('/metrics');
