@@ -4,7 +4,7 @@ import callsites from 'callsites';
 import type { ErrorLevel, ReportingOptions } from './types';
 
 /**
- * Deprecated error class kept only for backwards compabitiblity
+ * Deprecated error class kept only for backwards compatibility
  * for community nodes.
  *
  * @deprecated Use `UserError`, `OperationalError` or `UnexpectedError` instead
