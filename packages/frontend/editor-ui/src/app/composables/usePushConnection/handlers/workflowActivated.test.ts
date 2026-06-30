@@ -9,22 +9,29 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { PushHandlerOptions } from './types';
 
-const { mockWorkflowsListStore, mockCanvasOperations, mockBannersStore, mockUIStore } = vi.hoisted(
-	() => ({
-		mockWorkflowsListStore: {
-			fetchWorkflow: vi.fn(),
-		},
-		mockCanvasOperations: {
-			initializeWorkspace: vi.fn(),
-		},
-		mockBannersStore: {
-			removeBannerFromStack: vi.fn(),
-		},
-		mockUIStore: {
-			stateIsDirty: false,
-		},
-	}),
-);
+const {
+	mockWorkflowsListStore,
+	mockCanvasOperations,
+	mockBannersStore,
+	mockUIStore,
+	mockSettingsStore,
+} = vi.hoisted(() => ({
+	mockWorkflowsListStore: {
+		fetchWorkflow: vi.fn(),
+	},
+	mockCanvasOperations: {
+		initializeWorkspace: vi.fn(),
+	},
+	mockBannersStore: {
+		removeBannerFromStack: vi.fn(),
+	},
+	mockUIStore: {
+		stateIsDirty: false,
+	},
+	mockSettingsStore: {
+		isWorkflowPublicationServiceEnabled: true,
+	},
+}));
 
 vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: () => mockWorkflowsListStore,
@@ -40,6 +47,10 @@ vi.mock('@/features/shared/banners/banners.store', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => mockUIStore,
+}));
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: () => mockSettingsStore,
 }));
 
 describe('workflowActivated', () => {
@@ -58,11 +69,12 @@ describe('workflowActivated', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockUIStore.stateIsDirty = false;
+		mockSettingsStore.isWorkflowPublicationServiceEnabled = true;
 		options = { router: mock<Router>(), documentId };
 		workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	});
 
-	it('sets publicationStatus to published when viewing the activated workflow', async () => {
+	it('sets publicationStatus to published when viewing the activated workflow (flag ON)', async () => {
 		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
 
 		await workflowActivated(makeEvent('wf-123', 'v1'), options);
@@ -71,7 +83,27 @@ describe('workflowActivated', () => {
 		expect(workflowDocumentStore.publicationFailures).toEqual([]);
 	});
 
+	it('does NOT set publicationStatus when flag is off', async () => {
+		mockSettingsStore.isWorkflowPublicationServiceEnabled = false;
+		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+
+		await workflowActivated(makeEvent('wf-123', 'v1'), options);
+
+		expect(workflowDocumentStore.publicationStatus).toBe('idle');
+	});
+
 	it('removes the auto-deactivated banner when viewing the activated workflow', async () => {
+		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+
+		await workflowActivated(makeEvent('wf-123', 'v1'), options);
+
+		expect(mockBannersStore.removeBannerFromStack).toHaveBeenCalledWith(
+			'WORKFLOW_AUTO_DEACTIVATED',
+		);
+	});
+
+	it('removes the banner even when flag is off', async () => {
+		mockSettingsStore.isWorkflowPublicationServiceEnabled = false;
 		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
 
 		await workflowActivated(makeEvent('wf-123', 'v1'), options);

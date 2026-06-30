@@ -5,6 +5,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import type { PushHandlerOptions } from './types';
 
@@ -41,13 +42,15 @@ export async function workflowPartiallyActivated(
 		await initializeWorkspace(updatedWorkflow);
 	}
 
-	workflowDocumentStore.setPublicationStatus({
-		status: 'partial',
-		failures: data.failedNodes.map((n) => ({
-			nodeId: n.nodeId,
-			nodeName: n.nodeName,
-			errorMessage: n.errorMessage,
-		})),
-	});
+	if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
+		workflowDocumentStore.setPublicationStatus({
+			status: 'partial',
+			failures: data.failedNodes.map((n) => ({
+				nodeId: n.nodeId,
+				nodeName: n.nodeName,
+				errorMessage: n.errorMessage,
+			})),
+		});
+	}
 	bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 }

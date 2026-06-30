@@ -16,6 +16,7 @@ import * as apiUtils from '@n8n/rest-api-client';
 import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -743,8 +744,8 @@ describe('useWorkflowsStore', () => {
 	describe('fetchPublicationStatus', () => {
 		it('should call GET /workflows/:id/publication-status and return the payload', async () => {
 			const workflowId = 'workflow-abc';
-			const mockStatus = {
-				status: 'published' as const,
+			const mockStatus: WorkflowPublicationStatus = {
+				status: 'published',
 				liveVersionId: 'pub-1',
 				pendingVersionId: null,
 				triggers: [],

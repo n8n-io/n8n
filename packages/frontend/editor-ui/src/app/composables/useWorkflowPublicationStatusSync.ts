@@ -31,6 +31,9 @@ export function useWorkflowPublicationStatusSync(documentId: WorkflowDocumentId)
 		const workflowId = workflowDocumentStore.workflowId;
 		if (!workflowId) return;
 
+		// Cancel any pending poll before awaiting so an overlapping call can't re-arm a stale timer.
+		clearTimeout(timer);
+
 		const result = await workflowsStore.fetchPublicationStatus(workflowId);
 		workflowDocumentStore.setPublicationStatus({
 			status: API_TO_LIFECYCLE[result.status] ?? 'idle',
@@ -44,7 +47,6 @@ export function useWorkflowPublicationStatusSync(documentId: WorkflowDocumentId)
 				.sort((a, b) => a.nodeName.localeCompare(b.nodeName)),
 		});
 
-		clearTimeout(timer);
 		if (result.status === 'in_progress') {
 			timer = setTimeout(() => void refetch(), PUBLICATION_STATUS_POLL_INTERVAL_MS);
 		}

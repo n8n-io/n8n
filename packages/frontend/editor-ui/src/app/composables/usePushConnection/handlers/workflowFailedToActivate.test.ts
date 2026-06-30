@@ -9,12 +9,18 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { PushHandlerOptions } from './types';
 
-const { mockToast, mockI18n } = vi.hoisted(() => ({
+const { mockToast, mockI18n, mockSettingsStore, mockWorkflowsStore } = vi.hoisted(() => ({
 	mockToast: {
 		showError: vi.fn(),
 	},
 	mockI18n: {
 		baseText: vi.fn().mockReturnValue('Activation error'),
+	},
+	mockSettingsStore: {
+		isWorkflowPublicationServiceEnabled: true,
+	},
+	mockWorkflowsStore: {
+		setWorkflowInactive: vi.fn(),
 	},
 }));
 
@@ -28,6 +34,14 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@/app/composables/useActivationError', () => ({
 	useActivationError: () => ({ errorMessage: { value: 'Node error details' } }),
+}));
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: () => mockSettingsStore,
+}));
+
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => mockWorkflowsStore,
 }));
 
 describe('workflowFailedToActivate', () => {
@@ -60,47 +74,95 @@ describe('workflowFailedToActivate', () => {
 		});
 	});
 
-	it('sets publicationStatus to failed without nodeId failures', async () => {
-		await workflowFailedToActivate(makeEvent(), options);
+	describe('flag ON (publication service enabled)', () => {
+		beforeEach(() => {
+			mockSettingsStore.isWorkflowPublicationServiceEnabled = true;
+		});
 
-		expect(workflowDocumentStore.publicationStatus).toBe('failed');
-		expect(workflowDocumentStore.publicationFailures).toEqual([]);
+		it('sets publicationStatus to failed without nodeId failures', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
+
+			expect(workflowDocumentStore.publicationStatus).toBe('failed');
+			expect(workflowDocumentStore.publicationFailures).toEqual([]);
+		});
+
+		it('sets a single failure entry when nodeId is provided', async () => {
+			await workflowFailedToActivate(
+				makeEvent({ nodeId: 'node-x', errorMessage: 'Path conflict' }),
+				options,
+			);
+
+			expect(workflowDocumentStore.publicationStatus).toBe('failed');
+			expect(workflowDocumentStore.publicationFailures).toEqual([
+				{ nodeId: 'node-x', nodeName: 'node-x', errorMessage: 'Path conflict' },
+			]);
+		});
+
+		it('does NOT clear activeVersion (failed is recoverable)', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
+
+			// The published version must stay set — no setWorkflowInactive / null setActiveState
+			expect(workflowDocumentStore.activeVersionId).toBe('v1');
+			expect(workflowDocumentStore.activeVersion).not.toBeNull();
+		});
+
+		it('shows the error toast', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
+
+			expect(mockToast.showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.any(String),
+				expect.objectContaining({ description: undefined }),
+			);
+		});
+
+		it('does not set publicationStatus when the event is for a different workflow', async () => {
+			await workflowFailedToActivate(makeEvent({ workflowId: 'wf-other' }), options);
+
+			expect(workflowDocumentStore.publicationStatus).toBe('idle');
+			expect(mockToast.showError).not.toHaveBeenCalled();
+		});
 	});
 
-	it('sets a single failure entry when nodeId is provided', async () => {
-		await workflowFailedToActivate(
-			makeEvent({ nodeId: 'node-x', errorMessage: 'Path conflict' }),
-			options,
-		);
+	describe('flag OFF (legacy path)', () => {
+		beforeEach(() => {
+			mockSettingsStore.isWorkflowPublicationServiceEnabled = false;
+		});
 
-		expect(workflowDocumentStore.publicationStatus).toBe('failed');
-		expect(workflowDocumentStore.publicationFailures).toEqual([
-			{ nodeId: 'node-x', nodeName: 'node-x', errorMessage: 'Path conflict' },
-		]);
-	});
+		it('clears active state (legacy behavior)', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
 
-	it('does NOT clear activeVersion (failed is recoverable)', async () => {
-		await workflowFailedToActivate(makeEvent(), options);
+			expect(workflowDocumentStore.activeVersionId).toBeNull();
+			expect(workflowDocumentStore.activeVersion).toBeNull();
+		});
 
-		// The published version must stay set — no setWorkflowInactive / null setActiveState
-		expect(workflowDocumentStore.activeVersionId).toBe('v1');
-		expect(workflowDocumentStore.activeVersion).not.toBeNull();
-	});
+		it('calls setWorkflowInactive on the workflows store', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
 
-	it('shows the error toast', async () => {
-		await workflowFailedToActivate(makeEvent(), options);
+			expect(mockWorkflowsStore.setWorkflowInactive).toHaveBeenCalledWith('wf-123');
+		});
 
-		expect(mockToast.showError).toHaveBeenCalledWith(
-			expect.any(Error),
-			expect.any(String),
-			expect.objectContaining({ description: undefined }),
-		);
-	});
+		it('leaves publicationStatus as idle', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
 
-	it('does not set publicationStatus when the event is for a different workflow', async () => {
-		await workflowFailedToActivate(makeEvent({ workflowId: 'wf-other' }), options);
+			expect(workflowDocumentStore.publicationStatus).toBe('idle');
+		});
 
-		expect(workflowDocumentStore.publicationStatus).toBe('idle');
-		expect(mockToast.showError).not.toHaveBeenCalled();
+		it('still shows the error toast', async () => {
+			await workflowFailedToActivate(makeEvent(), options);
+
+			expect(mockToast.showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.any(String),
+				expect.objectContaining({ description: undefined }),
+			);
+		});
+
+		it('does not call setWorkflowInactive when the event is for a different workflow', async () => {
+			await workflowFailedToActivate(makeEvent({ workflowId: 'wf-other' }), options);
+
+			expect(mockWorkflowsStore.setWorkflowInactive).not.toHaveBeenCalled();
+			expect(mockToast.showError).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -4,7 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	VIEWS,
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -67,7 +67,16 @@ const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(props.id)),
 );
 
-useWorkflowPublicationStatusSync(workflowDocumentStore.value.documentId);
+// documentId is stable for a given props.id, but this component is NOT keyed per workflow id —
+// the parent keeps it mounted across workflow switches. Watch documentId so we re-sync when
+// the user navigates to a different workflow without remounting the header.
+const { refetch: refetchPublicationStatus } = useWorkflowPublicationStatusSync(
+	workflowDocumentStore.value.documentId,
+);
+watch(
+	() => workflowDocumentStore.value.documentId,
+	() => void refetchPublicationStatus(),
+);
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();

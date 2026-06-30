@@ -16,6 +16,7 @@ const {
 	mockUIStore,
 	mockToast,
 	mockI18n,
+	mockSettingsStore,
 } = vi.hoisted(() => ({
 	mockWorkflowsListStore: {
 		fetchWorkflow: vi.fn(),
@@ -34,6 +35,9 @@ const {
 	},
 	mockI18n: {
 		baseText: vi.fn().mockReturnValue('Partial activation error'),
+	},
+	mockSettingsStore: {
+		isWorkflowPublicationServiceEnabled: true,
 	},
 }));
 
@@ -59,6 +63,10 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => mockI18n,
+}));
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: () => mockSettingsStore,
 }));
 
 describe('workflowPartiallyActivated', () => {
@@ -88,11 +96,12 @@ describe('workflowPartiallyActivated', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockUIStore.stateIsDirty = false;
+		mockSettingsStore.isWorkflowPublicationServiceEnabled = true;
 		options = { router: mock<Router>(), documentId };
 		workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	});
 
-	it('sets publicationStatus to partial with mapped failures', async () => {
+	it('sets publicationStatus to partial with mapped failures (flag ON)', async () => {
 		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
 
 		await workflowPartiallyActivated(makeEvent(), options);
@@ -104,6 +113,16 @@ describe('workflowPartiallyActivated', () => {
 		]);
 	});
 
+	it('does NOT set publicationStatus when flag is off', async () => {
+		mockSettingsStore.isWorkflowPublicationServiceEnabled = false;
+		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+
+		await workflowPartiallyActivated(makeEvent(), options);
+
+		expect(workflowDocumentStore.publicationStatus).toBe('idle');
+		expect(workflowDocumentStore.publicationFailures).toEqual([]);
+	});
+
 	it('shows the error toast', async () => {
 		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
 
@@ -112,7 +131,27 @@ describe('workflowPartiallyActivated', () => {
 		expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
 
+	it('shows the error toast even when flag is off', async () => {
+		mockSettingsStore.isWorkflowPublicationServiceEnabled = false;
+		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+
+		await workflowPartiallyActivated(makeEvent(), options);
+
+		expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+	});
+
 	it('removes the auto-deactivated banner', async () => {
+		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+
+		await workflowPartiallyActivated(makeEvent(), options);
+
+		expect(mockBannersStore.removeBannerFromStack).toHaveBeenCalledWith(
+			'WORKFLOW_AUTO_DEACTIVATED',
+		);
+	});
+
+	it('removes the banner even when flag is off', async () => {
+		mockSettingsStore.isWorkflowPublicationServiceEnabled = false;
 		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
 
 		await workflowPartiallyActivated(makeEvent(), options);

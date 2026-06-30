@@ -750,7 +750,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(publishButton).toHaveTextContent('Publishing…');
 			expect(publishButton).toBeDisabled();
 			// The loading spinner is rendered by N8nButton when :loading is truthy
-			expect(publishButton.querySelector('.el-loading-spinner, [class*="loading"]')).toBeDefined();
+			expect(publishButton.querySelector('.el-loading-spinner, [class*="loading"]')).not.toBeNull();
 		});
 
 		it('should show publish button enabled with error indicator when status is partial', () => {
