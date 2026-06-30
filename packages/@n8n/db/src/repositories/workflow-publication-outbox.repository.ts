@@ -24,8 +24,9 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * In-progress is preferred when both exist.
 	 */
 	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
-		const inFlight = await this.find({
-			where: { workflowId, status: In([Status.InProgress, Status.Pending]) },
+		const inFlight = await this.findBy({
+			workflowId,
+			status: In([Status.InProgress, Status.Pending]),
 		});
 		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
