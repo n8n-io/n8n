@@ -146,6 +146,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			}
 		},
 		resumeAgentRun: vi.fn(),
+		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
 		},
@@ -2337,6 +2338,73 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			'maybeStartWorkflowSetupFollowUp',
 			'endRun',
 		]);
+	});
+});
+
+describe('InstanceAiService — user message persistence on cancel', () => {
+	type ExecuteRunInternals = {
+		executeRun: (
+			user: User,
+			threadId: string,
+			runId: string,
+			message: string,
+			abortController: AbortController,
+		) => Promise<void>;
+		agentMemory: { saveMessages: Mock };
+		eventBus: { publish: Mock };
+		terminalOutcome: { evaluateTerminalResponse: Mock };
+		logger: { warn: Mock; error: Mock };
+		createProxyRunConfig: Mock;
+		isRunDebugEnabled: Mock;
+		runState: { clearActiveRun: Mock; hasSuspendedRun: Mock };
+		domainAccessTrackersByThread: Map<string, unknown>;
+		instanceAiErrorReporter: { beginRun: Mock; endRun: Mock };
+	};
+
+	function createCancelPersistenceService(): ExecuteRunInternals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as ExecuteRunInternals;
+		service.agentMemory = { saveMessages: vi.fn(async () => {}) };
+		service.eventBus = { publish: vi.fn() };
+		service.terminalOutcome = { evaluateTerminalResponse: vi.fn() };
+		service.logger = { warn: vi.fn(), error: vi.fn() };
+		service.createProxyRunConfig = vi.fn(async () => ({ tracingProxyConfig: undefined }));
+		service.isRunDebugEnabled = vi.fn(() => false);
+		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
+		service.runState = { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) };
+		service.domainAccessTrackersByThread = new Map();
+		service.instanceAiErrorReporter = { beginRun: vi.fn(), endRun: vi.fn() };
+		return service;
+	}
+
+	it('persists the user message when Stop is hit before the stream starts', async () => {
+		const service = createCancelPersistenceService();
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(service.agentMemory.saveMessages).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [
+					expect.objectContaining({
+						role: 'user',
+						content: [{ type: 'text', text: 'banana' }],
+					}),
+				],
+			}),
+		);
+	});
+
+	it('does not persist an empty user message', async () => {
+		const service = createCancelPersistenceService();
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', '', abortController);
+
+		expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
 	});
 });
 
