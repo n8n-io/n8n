@@ -252,12 +252,7 @@ async function main(): Promise<void> {
 		const debugHtmlPath = writeRunDebugReport(reportResults);
 		console.log(`LLM debug:  ${debugHtmlPath}`);
 		console.log(
-			'\n' +
-				formatComparisonTerminal(evaluation, outcome, {
-					commitSha,
-					slugByTestCase,
-					gate,
-				}),
+			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 	} finally {
 		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
@@ -1046,10 +1041,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 		}),
 	);
 
-	return {
-		evaluation: aggregateResults(allRunResults, args.iterations),
-		slugByTestCase,
-	};
+	return { evaluation: aggregateResults(allRunResults, args.iterations), slugByTestCase };
 }
 
 // ---------------------------------------------------------------------------

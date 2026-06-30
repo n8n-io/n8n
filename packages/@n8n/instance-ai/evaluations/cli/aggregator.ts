@@ -68,10 +68,11 @@ export function aggregateResults(
 		const testCase = runs[0].testCase;
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
-		const scenarios = testCase.executionScenarios ?? [];
+		const scenarioCount = (testCase.executionScenarios ?? []).length;
 		const executionScenarios: ExecutionScenarioAggregation[] = [];
 
-		for (const [sIdx, scenario] of scenarios.entries()) {
+		for (let sIdx = 0; sIdx < scenarioCount; sIdx++) {
+			const scenario = (testCase.executionScenarios ?? [])[sIdx];
 			const scenarioRuns = runs.map(
 				(r) =>
 					r.executionScenarioResults[sIdx] ?? {
