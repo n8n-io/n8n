@@ -258,6 +258,7 @@ describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
 		updatedAt: now,
 		relations: [],
 		scopes: [] as Scope[],
+		rolesManaged: false,
 	});
 
 	const makeStore = () => {

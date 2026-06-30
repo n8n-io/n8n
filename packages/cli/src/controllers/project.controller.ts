@@ -214,6 +214,8 @@ export class ProjectController {
 		return {
 			...project,
 			scopes,
+			// Personal projects have a single owner and are never subject to managed team roles.
+			rolesManaged: false,
 		};
 	}
 
