@@ -15,7 +15,14 @@ export interface InstanceAiProxyProviderDefinition {
 const anthropicRoute = 'anthropic/v1';
 const openAiRoute = 'openai/v1';
 
-export const INSTANCE_AI_PROXY_PROVIDERS = {
+export const SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS = ['anthropic', 'openai'] as const;
+
+export type InstanceAiProxyProvider = (typeof SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS)[number];
+
+export const INSTANCE_AI_PROXY_PROVIDERS: Record<
+	InstanceAiProxyProvider,
+	InstanceAiProxyProviderDefinition
+> = {
 	anthropic: {
 		route: anthropicRoute,
 		async createModel({ modelName, baseUrl, fetch }) {
@@ -40,13 +47,7 @@ export const INSTANCE_AI_PROXY_PROVIDERS = {
 			return provider(modelName);
 		},
 	},
-} satisfies Record<string, InstanceAiProxyProviderDefinition>;
-
-export type InstanceAiProxyProvider = keyof typeof INSTANCE_AI_PROXY_PROVIDERS;
-
-export const SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS = Object.keys(
-	INSTANCE_AI_PROXY_PROVIDERS,
-) as InstanceAiProxyProvider[];
+};
 
 export function isInstanceAiProxyProvider(value: string): value is InstanceAiProxyProvider {
 	return value in INSTANCE_AI_PROXY_PROVIDERS;
