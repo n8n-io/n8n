@@ -177,12 +177,11 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
   compatibility shim kept only so community nodes keep resolving. Use one of
   these instead, picking by cause:
   - `UserError` — the user caused it (invalid input, unauthorized action,
-    business-rule violation). Default level: info.
+    business-rule violation).
   - `OperationalError` — a transient, expected issue (network request failing,
-    DB query timing out) that should be handled gracefully. Default level:
-    warning.
+    DB query timing out) that should be handled gracefully.
   - `UnexpectedError` — a bug in the code (logic mistake, unhandled case,
-    failed assertion) that developers need to fix. Default level: error.
+    failed assertion) that developers need to fix.
 - Import from appropriate error classes in each package
 
 ### Frontend Development
