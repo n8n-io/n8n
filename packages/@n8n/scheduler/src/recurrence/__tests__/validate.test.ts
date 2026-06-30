@@ -41,6 +41,16 @@ describe('validateSchedule', () => {
 				validateSchedule({ kind: 'cron', cronExpression: '99 0 0 * * *', timezone: 'UTC' }),
 			).toThrow(InvalidScheduleError);
 		});
+
+		it('rejects a non-string cron expression (raw input) with InvalidScheduleError', () => {
+			expect(() =>
+				validateSchedule({
+					kind: 'cron',
+					cronExpression: null as unknown as CronExpression,
+					timezone: 'UTC',
+				}),
+			).toThrow(InvalidScheduleError);
+		});
 	});
 
 	describe('interval', () => {
@@ -72,6 +82,12 @@ describe('validateSchedule', () => {
 			expect(() => validateSchedule({ kind: 'one_off', fireAt: new Date('nope') })).toThrow(
 				InvalidScheduleError,
 			);
+		});
+
+		it('rejects a non-Date fireAt (raw input) with InvalidScheduleError', () => {
+			expect(() =>
+				validateSchedule({ kind: 'one_off', fireAt: '2026-01-01T00:00:00Z' as unknown as Date }),
+			).toThrow(InvalidScheduleError);
 		});
 	});
 });

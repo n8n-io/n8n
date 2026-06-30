@@ -8,10 +8,19 @@ import type { CronSchedule, IntervalSchedule, OneOffSchedule, Schedule } from '.
 const CRON_FIELD_COUNT = 6;
 
 function validateCron(schedule: CronSchedule): void {
-	const fieldCount = schedule.cronExpression.trim().split(/\s+/).length;
+	// This is the boundary for raw, possibly-untyped input (DB rows), so guard the
+	// runtime type before using it instead of throwing a raw TypeError.
+	const expression: unknown = schedule.cronExpression;
+	if (typeof expression !== 'string') {
+		throw new InvalidScheduleError(
+			`cron.cronExpression must be a string, got ${JSON.stringify(expression)}`,
+		);
+	}
+
+	const fieldCount = expression.trim().split(/\s+/).length;
 	if (fieldCount !== CRON_FIELD_COUNT) {
 		throw new InvalidScheduleError(
-			`Cron expression must have ${CRON_FIELD_COUNT} fields (seconds included), got ${fieldCount}: ${JSON.stringify(schedule.cronExpression)}`,
+			`Cron expression must have ${CRON_FIELD_COUNT} fields (seconds included), got ${fieldCount}: ${JSON.stringify(expression)}`,
 		);
 	}
 
@@ -21,12 +30,12 @@ function validateCron(schedule: CronSchedule): void {
 	}
 
 	try {
-		CronExpressionParser.parse(schedule.cronExpression, {
+		CronExpressionParser.parse(expression, {
 			tz: schedule.timezone ?? 'UTC',
 		});
 	} catch (error) {
 		throw new InvalidScheduleError(
-			`Invalid cron expression ${JSON.stringify(schedule.cronExpression)}: ${(error as Error).message}`,
+			`Invalid cron expression ${JSON.stringify(expression)}: ${(error as Error).message}`,
 		);
 	}
 }
@@ -40,7 +49,8 @@ function validateInterval(schedule: IntervalSchedule): void {
 }
 
 function validateOneOff(schedule: OneOffSchedule): void {
-	if (Number.isNaN(schedule.fireAt.getTime())) {
+	const fireAt: unknown = schedule.fireAt;
+	if (!(fireAt instanceof Date) || Number.isNaN(fireAt.getTime())) {
 		throw new InvalidScheduleError('one_off.fireAt must be a valid Date');
 	}
 }
