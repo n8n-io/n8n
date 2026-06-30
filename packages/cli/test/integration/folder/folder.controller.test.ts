@@ -16,7 +16,7 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import { DateTime } from 'luxon';
-import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT, UnexpectedError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { OwnershipService } from '@/services/ownership.service';
@@ -2613,7 +2613,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		await createActiveWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
 		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
 
-		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
 
 		//
 		// ACT & ASSERT
