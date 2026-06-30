@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import type { ChatIntegrationActionExecutor } from '../../integration-action-executor';
 import { createIntegrationContextTool } from '../../integration-tools';
 import type {
@@ -28,7 +30,7 @@ export interface ChannelIntegrationReplayScenario {
 
 export interface ChannelIntegrationReplayContext {
 	agentExecutor: {
-		executeForChatPublished: jest.Mock;
+		executeForChatPublished: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	descriptor: IntegrationToolConnectionDescriptor;
@@ -84,7 +86,7 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 			const contextTool = createIntegrationContextTool({
 				descriptor: ctx.descriptor,
 				queryExecutor: {
-					execute: jest.fn(),
+					execute: vi.fn(),
 				},
 				messageContextStore: ctx.messageContextStore,
 			}).build();

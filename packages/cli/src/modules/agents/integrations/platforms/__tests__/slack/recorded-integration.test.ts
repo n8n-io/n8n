@@ -84,13 +84,13 @@ describe('Slack recorded integration replay', () => {
 				agentUserId: 'U_BOT',
 				target: {
 					threadId: 'slack:C_CHANNEL:1782378390.841549',
-					channelId: 'C_CHANNEL',
+					channelId: 'slack:C_CHANNEL',
 				},
 			});
 			expect(ctx.lastPost()?.body).toMatchObject({
 				channel: 'C_CHANNEL',
 				thread_ts: '1782378390.841549',
-				text: 'Hey! 👋 How can I help you today?',
+				markdown_text: 'Hey! 👋 How can I help you today?',
 			});
 		} finally {
 			await ctx.shutdown();
@@ -137,13 +137,12 @@ describe('Slack recorded integration replay', () => {
 				interactingUserId: 'U_USER',
 				target: {
 					threadId: 'slack:D_DM:',
-					channelId: 'D_DM',
+					channelId: 'slack:D_DM',
 				},
 			});
 			expect(ctx.lastPost()?.body).toMatchObject({
 				channel: 'D_DM',
-				thread_ts: '',
-				text: "I'm Assistant.",
+				markdown_text: "I'm Assistant.",
 			});
 		} finally {
 			await ctx.shutdown();

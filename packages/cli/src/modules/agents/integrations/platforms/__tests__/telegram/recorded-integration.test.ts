@@ -10,6 +10,17 @@ import {
 } from '../../../__tests__/helpers/telegram/replay-test-context';
 import type { ChannelIntegrationRecord } from '../../../recording/channel-integration-recorder';
 
+// The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
+// `new Function()` hack to dodge the CJS transform, which can't run under vitest;
+// redirect the loaders to native dynamic imports so the real adapters are used.
+vi.mock('../../../esm-loader', () => ({
+	loadChatSdk: async () => await import('chat'),
+	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
+	loadTelegramAdapter: async () => await import('@chat-adapter/telegram'),
+	loadSlackAdapter: async () => await import('@chat-adapter/slack'),
+	loadLinearAdapter: async () => await import('@chat-adapter/linear'),
+}));
+
 const telegramFixtures = jsonParse<TelegramReplayFixtures>(
 	readFileSync(join(__dirname, '../../../__tests__/fixtures/telegram/basic.json'), 'utf8'),
 );
@@ -74,7 +85,7 @@ function recordedTelegramFixtures(): TelegramReplayFixtures {
 
 describe('Telegram recorded integration replay', () => {
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('replays the captured Telegram session webhook and outbound post', async () => {

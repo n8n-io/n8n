@@ -49,13 +49,12 @@ describe('Slack channel integration scenarios', () => {
 				interactingUserId: 'U_DM_USER',
 				target: {
 					threadId: 'slack:D_DM:',
-					channelId: 'D_DM',
+					channelId: 'slack:D_DM',
 				},
 			});
 			expect(ctx.lastPost()?.body).toMatchObject({
 				channel: 'D_DM',
-				thread_ts: '',
-				text: 'Got it',
+				markdown_text: 'Got it',
 			});
 		} finally {
 			await ctx.shutdown();

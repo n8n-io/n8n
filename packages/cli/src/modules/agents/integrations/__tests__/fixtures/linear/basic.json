@@ -26,6 +26,7 @@
 		"webhookTimestamp": 1719000000000,
 		"data": {
 			"id": "COMMENT_1",
+			"issueId": "ISSUE_123",
 			"body": "@AgentName hello agent",
 			"user": {
 				"id": "USER_ALICE",
@@ -52,6 +53,7 @@
 		"webhookTimestamp": 1719000001000,
 		"data": {
 			"id": "COMMENT_2",
+			"issueId": "ISSUE_123",
 			"body": "follow up",
 			"user": {
 				"id": "USER_ALICE",
@@ -78,6 +80,7 @@
 		"webhookTimestamp": 1719000002000,
 		"data": {
 			"id": "COMMENT_3",
+			"issueId": "ISSUE_123",
 			"body": "bot echo",
 			"user": {
 				"id": "USER_BOT",

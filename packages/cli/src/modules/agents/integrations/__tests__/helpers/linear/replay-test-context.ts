@@ -2,8 +2,12 @@ import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { mock } from 'jest-mock-extended';
+import { createHmac } from 'crypto';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { ChatInstance } from '../../../chat-integration.service';
+import { ComponentMapper } from '../../../component-mapper';
 import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
@@ -11,15 +15,11 @@ import type {
 import { LinearIntegration } from '../../../platforms/linear-integration';
 import {
 	createReplayContextSetup,
+	installFetchStub,
 	type MemoryMessageContextStore,
-	postableToText,
 	type ReplayApiCall,
-	type ReplayAuthor,
-	ReplayChat,
 	type ReplayContextSetup,
-	type ReplayMessage,
-	type ReplayPlatformAdapter,
-	type ReplayPostable,
+	type ReplayWebhookHandler,
 	sendJsonWebhook,
 } from '../replay-test-helpers';
 
@@ -95,25 +95,11 @@ export interface LinearReplayFixtures {
 
 export type LinearApiCall = ReplayApiCall;
 
-type LinearMessageSubject = {
-	type: string;
-	id: string;
-	title?: string;
-	description?: string;
-	url?: string;
-	author?: { id: string; name: string };
-};
-
-type LinearMessage = ReplayMessage<
-	LinearAgentSessionFixture | LinearCommentFixture,
-	LinearMessageSubject
->;
-
 export interface LinearReplayContext extends Omit<ReplayContextSetup, 'nextStream' | 'chat'> {
-	chat: ReplayChat<ReplayPostable, LinearMessage>;
+	chat: ChatInstance;
 	agentExecutor: {
-		executeForChatPublished: jest.Mock;
-		resumeForChat: jest.Mock;
+		executeForChatPublished: Mock;
+		resumeForChat: Mock;
 	};
 	apiCalls: LinearApiCall[];
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
@@ -125,190 +111,204 @@ export interface LinearReplayContext extends Omit<ReplayContextSetup, 'nextStrea
 	lastPost: () => LinearApiCall | undefined;
 }
 
-// TODO: Remove this fake adapter after the jest -> vitest migration. It mirrors
-// the small Chat SDK surface the bridge needs without importing the ESM adapter.
-class TestLinearAdapter implements ReplayPlatformAdapter<ReplayPostable, LinearMessage> {
-	readonly name = 'linear';
+const LINEAR_ACCESS_TOKEN = 'lin_test-access-token';
+const LINEAR_WEBHOOK_SECRET = 'test-webhook-secret';
+const POST_METHODS = new Set(['agentActivityCreate', 'createComment']);
 
-	readonly client: Record<string, unknown> = {};
+/**
+ * Builds the canned `@linear/sdk` entities the adapter re-reads after posting.
+ * After `agentActivityCreate` the adapter resolves `agentActivity.sourceComment`
+ * and that comment's `user`, throwing if any are missing — so responses must be
+ * fully shaped (and dates must be ISO strings, which the SDK wraps as `Date`).
+ */
+function buildLinearStubData(fixtures: LinearReplayFixtures, botUser: LinearUserFixture) {
+	const session =
+		fixtures.mention.type === 'AgentSessionEvent' ? fixtures.mention.agentSession : undefined;
+	const createdAt = '2026-01-01T00:00:00.000Z';
 
-	private readonly sessions = new Map<
-		string,
-		| { type: 'agent-session'; agentSessionId: string; issueId: string }
-		| { type: 'comment'; issueId: string }
-	>();
+	const user = session
+		? {
+				id: session.creator.id,
+				displayName: session.creator.displayName,
+				name: session.creator.name,
+				email: session.creator.email ?? null,
+				avatarUrl: null,
+			}
+		: { id: botUser.id, displayName: botUser.displayName, name: botUser.name, email: null };
 
-	constructor(
-		readonly botUser: LinearUserFixture,
-		private readonly apiCalls: LinearApiCall[],
-	) {}
+	const sourceComment = session
+		? {
+				id: session.comment.id,
+				body: session.comment.body,
+				userId: session.comment.userId,
+				user,
+				createdAt,
+				updatedAt: createdAt,
+				parentId: null,
+				url: null,
+				// `@linear/sdk`'s Comment constructor maps over `reactions` unguarded.
+				reactions: [],
+			}
+		: undefined;
 
-	async handleWebhook(
-		request: Request,
-		chat: ReplayChat<ReplayPostable, LinearMessage>,
-		options?: { waitUntil?: (task: Promise<unknown>) => void },
-	): Promise<Response> {
-		const payload = (await request.json()) as
-			| LinearAgentSessionEventFixture
-			| LinearCommentEventFixture;
-		if (payload.type === 'AgentSessionEvent' && payload.action === 'created') {
-			const session = payload.agentSession;
-			const threadId = `linear:${session.id}`;
-			this.sessions.set(threadId, {
-				type: 'agent-session',
-				agentSessionId: session.id,
-				issueId: session.issueId,
-			});
-			chat.processMessage(threadId, this.parseAgentSessionMessage(session, threadId), options);
-			return new Response('OK', { status: 200 });
-		}
+	// `agentSessionId`/`sourceComment` are getters over nested id refs, and the
+	// SDK fetches the comment by id — so reference them by id, not inline.
+	const agentActivity = {
+		id: 'AGENT_ACTIVITY_1',
+		agentSession: { id: session?.id ?? 'AGENT_SESSION_1' },
+		sourceComment: { id: session?.comment.id ?? 'COMMENT_SOURCE' },
+	};
 
-		const commentPayload = payload;
-		if (commentPayload.type === 'Comment' && commentPayload.action === 'create') {
-			const comment = commentPayload.data;
-			const threadId = `linear:${comment.issue.id}`;
-			this.sessions.set(threadId, { type: 'comment', issueId: comment.issue.id });
-			chat.processMessage(threadId, this.parseCommentMessage(comment, threadId), options);
-		}
-		return new Response('OK', { status: 200 });
-	}
+	return { user, sourceComment, agentActivity };
+}
 
-	async postMessage(
-		threadId: string,
-		message: ReplayPostable,
-	): Promise<{ id: string; threadId: string }> {
-		const session = this.sessions.get(threadId);
-		const text = await postableToText(message);
-		const body =
-			session?.type === 'agent-session'
-				? {
-						agentSessionId: session.agentSessionId,
-						content: { type: 'response', body: text },
-					}
-				: {
-						issueId: session?.issueId ?? this.sessionIdFromThreadId(threadId),
-						body: text,
-					};
-		this.apiCalls.push({
-			method: session?.type === 'agent-session' ? 'agentActivityCreate' : 'createComment',
-			body,
-		});
-		await Promise.resolve();
-		return { id: 'agent-activity-response', threadId };
-	}
-
-	channelIdFromThreadId(threadId: string): string {
-		return this.sessions.get(threadId)?.issueId ?? this.sessionIdFromThreadId(threadId);
-	}
-
-	async getUser(userId: string): Promise<ReplayAuthor> {
-		return await Promise.resolve({
-			userId,
-			userName: userId,
-			fullName: userId,
-			isBot: userId === this.botUser.id,
-			isMe: userId === this.botUser.id,
-		});
-	}
-
-	shouldDispatchAsMention(_threadId: string, message: LinearMessage): boolean {
-		return message.isMention;
-	}
-
-	private parseAgentSessionMessage(
-		session: LinearAgentSessionFixture,
-		threadId: string,
-	): LinearMessage {
+/**
+ * Map a Linear GraphQL operation to a method name + canned response. Query
+ * responses must be non-empty entities — `@linear/sdk` wraps them in typed
+ * objects and reads fields like `archivedAt`/`sourceComment`, which throw on
+ * `undefined`.
+ */
+function resolveLinearOperation(
+	query: string,
+	variables: { id?: unknown },
+	stub: ReturnType<typeof buildLinearStubData>,
+	botUser: LinearUserFixture,
+	organizationId: string,
+): { method: string; data: Record<string, unknown> } {
+	if (query.includes('agentActivityCreate')) {
 		return {
-			id: session.comment.id,
-			threadId,
-			text: session.comment.body,
-			raw: session,
-			author: this.toAuthor(session.creator),
-			isMention: session.comment.body.includes(`@${this.botUser.displayName}`),
-			subject: Promise.resolve(this.agentSessionSubject(session)),
+			method: 'agentActivityCreate',
+			data: {
+				agentActivityCreate: { agentActivity: stub.agentActivity, lastSyncId: 1, success: true },
+			},
 		};
 	}
-
-	private parseCommentMessage(comment: LinearCommentFixture, threadId: string): LinearMessage {
+	if (/commentCreate/i.test(query)) {
 		return {
-			id: comment.id,
-			threadId,
-			text: comment.body,
-			raw: comment,
-			author: this.toAuthor(comment.user),
-			isMention: comment.body.includes(`@${this.botUser.displayName}`),
-			subject: Promise.resolve(this.commentSubject(comment)),
+			method: 'createComment',
+			data: {
+				commentCreate: {
+					comment: stub.sourceComment ?? { id: 'COMMENT_NEW' },
+					lastSyncId: 1,
+					success: true,
+				},
+			},
 		};
 	}
-
-	private toAuthor(user: LinearUserFixture): ReplayAuthor {
-		const isMe = user.id === this.botUser.id || user.app === true;
+	if (/\bagentActivity\(/.test(query)) {
+		return { method: 'agentActivity', data: { agentActivity: stub.agentActivity } };
+	}
+	if (/\bcomment\(/.test(query)) {
+		return { method: 'comment', data: { comment: stub.sourceComment } };
+	}
+	if (/\buser\(/.test(query)) {
+		return { method: 'user', data: { user: stub.user } };
+	}
+	if (/\bissue\(/.test(query)) {
+		return { method: 'issue', data: { issue: { id: String(variables.id ?? 'ISSUE') } } };
+	}
+	if (/viewer/i.test(query)) {
 		return {
-			userId: user.id,
-			userName: user.name,
-			fullName: user.displayName,
-			isBot: isMe,
-			isMe,
+			method: 'viewer',
+			data: {
+				viewer: {
+					id: botUser.id,
+					displayName: botUser.displayName,
+					organization: { id: organizationId },
+				},
+			},
 		};
 	}
-
-	private agentSessionSubject(session: LinearAgentSessionFixture): LinearMessageSubject {
-		return {
-			type: 'issue',
-			id: session.issue.identifier,
-			title: session.issue.title,
-			...(session.issue.description ? { description: session.issue.description } : {}),
-			...(session.issue.url ? { url: session.issue.url } : {}),
-			author: { id: session.creator.id, name: session.creator.displayName },
-		};
-	}
-
-	private commentSubject(comment: LinearCommentFixture): LinearMessageSubject {
-		return {
-			type: 'issue',
-			id: comment.issue.identifier,
-			title: comment.issue.title,
-			...(comment.issue.description ? { description: comment.issue.description } : {}),
-			...(comment.issue.url ? { url: comment.issue.url } : {}),
-			author: { id: comment.user.id, name: comment.user.displayName },
-		};
-	}
-
-	private sessionIdFromThreadId(threadId: string): string {
-		return threadId.startsWith('linear:') ? (threadId.split(':')[1] ?? threadId) : threadId;
-	}
+	return { method: 'graphql', data: {} };
 }
 
 export async function createLinearReplayContext(
 	fixtures: LinearReplayFixtures,
 	options: { stream?: StreamChunk[] } = {},
 ): Promise<LinearReplayContext> {
-	await Promise.resolve();
-	const apiCalls: LinearApiCall[] = [];
-	const adapter = new TestLinearAdapter(fixtures.botUser, apiCalls);
-	const chat = new ReplayChat(adapter);
+	const organizationId = fixtures.mention.organizationId;
+	const mode = fixtures.mention.type === 'AgentSessionEvent' ? 'agent-sessions' : 'comments';
+	const stubData = buildLinearStubData(fixtures, fixtures.botUser);
+
+	const stub = installFetchStub({
+		match: /api\.linear\.app/,
+		onRequest: ({ body }) => {
+			const query = typeof body.query === 'string' ? body.query : '';
+			const variables = (body.variables ?? {}) as { id?: unknown; input?: Record<string, unknown> };
+			const { method, data } = resolveLinearOperation(
+				query,
+				variables,
+				stubData,
+				fixtures.botUser,
+				organizationId,
+			);
+			return {
+				apiCall: { method, body: variables.input ?? (variables as Record<string, unknown>) },
+				responseBody: { data },
+			};
+		},
+	});
+
+	const { createLinearAdapter } = await import('@chat-adapter/linear');
+	const { Chat } = await import('chat');
+	const { createMemoryState } = await import('@chat-adapter/state-memory');
+
+	const adapter = createLinearAdapter({
+		accessToken: LINEAR_ACCESS_TOKEN,
+		webhookSecret: LINEAR_WEBHOOK_SECRET,
+		userName: fixtures.botUser.displayName,
+		mode,
+	} as Parameters<typeof createLinearAdapter>[0]);
+	const chat = new Chat({
+		userName: 'n8n-agent-agent-1',
+		adapters: { linear: adapter } as unknown as Record<string, never>,
+		state: createMemoryState(),
+	});
+
+	const integration: AgentIntegrationConfig = { type: 'linear', credentialId: 'cred-linear' };
 	const setup = createReplayContextSetup({
 		chat: chat as never,
 		integrationImpl: new LinearIntegration(mock<BackendLogger>(), mock<OutboundHttp>()),
-		integration: { type: 'linear', credentialId: 'cred-linear' },
+		integration,
+		componentMapper: new ComponentMapper(),
 		stream: options.stream,
 	});
 
-	const sendWebhook = async (payload: unknown) =>
-		await sendJsonWebhook(
-			chat.webhooks.linear,
-			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/linear',
-			payload,
+	await chat.initialize();
+
+	const webhooks = chat.webhooks as Record<string, ReplayWebhookHandler>;
+	const sendWebhook = async (payload: unknown) => {
+		// Linear's webhook client verifies an HMAC `linear-signature` and rejects
+		// stale `webhookTimestamp`s, so refresh the timestamp and sign the body.
+		const signed = { ...(payload as Record<string, unknown>), webhookTimestamp: Date.now() };
+		const rawBody = JSON.stringify(signed);
+		const headers = new Headers();
+		headers.set(
+			'linear-signature',
+			createHmac('sha256', LINEAR_WEBHOOK_SECRET).update(rawBody).digest('hex'),
 		);
+		return await sendJsonWebhook(
+			async (request, requestOptions) => await webhooks.linear(request, requestOptions),
+			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/linear',
+			signed,
+			headers,
+		);
+	};
 
 	return {
 		...setup,
-		chat,
-		apiCalls,
+		chat: chat as unknown as ChatInstance,
+		apiCalls: stub.apiCalls,
 		sendWebhook,
 		latestContext: () => setup.messageContextStore.latest(),
 		latestThreadId: () => setup.messageContextStore.latestThreadId(),
-		lastPost: () => apiCalls.at(-1),
+		lastPost: () => stub.apiCalls.filter((call) => POST_METHODS.has(call.method)).at(-1),
+		shutdown: async () => {
+			try {
+				await setup.shutdown();
+			} finally {
+				stub.restore();
+			}
+		},
 	};
 }

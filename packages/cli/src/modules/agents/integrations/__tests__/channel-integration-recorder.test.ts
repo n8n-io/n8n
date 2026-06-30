@@ -61,7 +61,7 @@ describe('ChannelIntegrationRecorder', () => {
 			recordingDir,
 		});
 		const originalFetch = globalThis.fetch;
-		globalThis.fetch = jest.fn(async () => {
+		globalThis.fetch = vi.fn(async () => {
 			await Promise.resolve();
 			return new Response(JSON.stringify({ ok: true, result: true }), {
 				status: 200,
@@ -102,7 +102,7 @@ describe('ChannelIntegrationRecorder', () => {
 			recordingDir,
 		});
 		const originalFetch = globalThis.fetch;
-		globalThis.fetch = jest.fn(async () => {
+		globalThis.fetch = vi.fn(async () => {
 			await Promise.resolve();
 			return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
 		});

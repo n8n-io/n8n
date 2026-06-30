@@ -90,19 +90,8 @@ describe('Linear recorded integration replay', () => {
 				messageId: 'COMMENT_SOURCE',
 				interactingUserId: 'USER_ALICE',
 				target: {
-					threadId: 'linear:AGENT_SESSION_1',
-					channelId: 'ISSUE_1',
-				},
-				subject: {
-					type: 'issue',
-					id: 'YEH-1',
-					title: 'Get familiar with Linear',
-					description: 'Welcome to Linear!',
-					url: 'https://linear.app/workspace/issue/YEH-1/get-familiar-with-linear',
-					author: {
-						id: 'USER_ALICE',
-						name: 'Alice Developer',
-					},
+					threadId: 'linear:ISSUE_1:c:COMMENT_SOURCE:s:AGENT_SESSION_1',
+					channelId: 'linear:ISSUE_1',
 				},
 			});
 			expect(ctx.lastPost()?.body).toEqual(recordedActivityInput);
@@ -120,7 +109,7 @@ describe('Linear recorded integration replay', () => {
 			const context = ctx.latestContext();
 			expect(context).toMatchObject({
 				platform: 'linear',
-				target: { threadId: 'linear:AGENT_SESSION_1' },
+				target: { threadId: 'linear:ISSUE_1:c:COMMENT_SOURCE:s:AGENT_SESSION_1' },
 			});
 
 			const result = await ctx.actionExecutor.execute({
@@ -135,7 +124,7 @@ describe('Linear recorded integration replay', () => {
 				ok: true,
 				messageContext: {
 					platform: 'linear',
-					target: { type: 'thread', threadId: 'linear:AGENT_SESSION_1' },
+					target: { type: 'thread', threadId: 'linear:ISSUE_1:c:COMMENT_SOURCE:s:AGENT_SESSION_1' },
 				},
 			});
 			expect(ctx.lastPost()?.body).toMatchObject({

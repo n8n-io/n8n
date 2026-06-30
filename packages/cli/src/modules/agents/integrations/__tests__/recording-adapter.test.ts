@@ -1,8 +1,10 @@
+import type { Mock } from 'vitest';
+
 import type { ChannelIntegrationRecorder } from '../recording/channel-integration-recorder';
 import { recordAdapterCalls } from '../recording/recording-adapter';
 
 describe('recordAdapterCalls', () => {
-	function enabledRecorder(recordApiCall: jest.Mock): ChannelIntegrationRecorder {
+	function enabledRecorder(recordApiCall: Mock): ChannelIntegrationRecorder {
 		return {
 			isEnabled: true,
 			recordApiCall,
@@ -11,10 +13,10 @@ describe('recordAdapterCalls', () => {
 
 	it('does not fail the adapter call when recording fails', async () => {
 		const adapter = {
-			postMessage: jest.fn(async () => ({ id: 'message-1' })),
+			postMessage: vi.fn(async () => ({ id: 'message-1' })),
 		};
 		const recorder = enabledRecorder(
-			jest.fn(async () => {
+			vi.fn(async () => {
 				throw new Error('disk full');
 			}),
 		);
@@ -33,12 +35,12 @@ describe('recordAdapterCalls', () => {
 		}
 
 		const adapter = {
-			stream: jest.fn(async (_threadId: string, stream: AsyncIterable<string>) => {
+			stream: vi.fn(async (_threadId: string, stream: AsyncIterable<string>) => {
 				const iterator = stream[Symbol.asyncIterator]();
 				return await iterator.next();
 			}),
 		};
-		const recordApiCall = jest.fn(async () => undefined);
+		const recordApiCall = vi.fn(async () => undefined);
 		const wrapped = recordAdapterCalls(
 			'slack',
 			adapter,

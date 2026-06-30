@@ -1,4 +1,7 @@
-import { createTelegramReplayContext } from '../../../__tests__/helpers/telegram/replay-test-context';
+import {
+	createTelegramReplayContext,
+	getTelegramInlineCallbackData,
+} from '../../../__tests__/helpers/telegram/replay-test-context';
 import {
 	telegramCallbackQueryUpdate,
 	telegramGroupChat,
@@ -6,6 +9,17 @@ import {
 	telegramReplayFixtures,
 	telegramUser,
 } from '../../../__tests__/helpers/telegram/synthetic-fixtures';
+
+// The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
+// `new Function()` hack to dodge the CJS transform, which can't run under vitest;
+// redirect the loaders to native dynamic imports so the real adapters are used.
+vi.mock('../../../esm-loader', () => ({
+	loadChatSdk: async () => await import('chat'),
+	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
+	loadTelegramAdapter: async () => await import('@chat-adapter/telegram'),
+	loadSlackAdapter: async () => await import('@chat-adapter/slack'),
+	loadLinearAdapter: async () => await import('@chat-adapter/linear'),
+}));
 
 describe('Telegram Bot API integration scenarios', () => {
 	it('routes a Telegram group mention to a new agent conversation', async () => {
@@ -124,11 +138,8 @@ describe('Telegram Bot API integration scenarios', () => {
 		});
 		try {
 			await ctx.sendTelegramWebhook(fixtures.mention);
-			const callbackData = ctx.lastApiCall('sendMessage')?.body.reply_markup;
-			if (typeof callbackData !== 'string') throw new Error('Expected inline keyboard markup');
-			const parsedMarkup = JSON.parse(callbackData) as {
-				inline_keyboard: Array<Array<{ callback_data: string }>>;
-			};
+			const callbackData = getTelegramInlineCallbackData(ctx.lastApiCall('sendMessage'));
+			if (!callbackData) throw new Error('Expected inline keyboard markup');
 
 			ctx.nextStream([
 				{ type: 'text-delta', id: 'resume-text', delta: 'Callback handled' },
@@ -136,7 +147,7 @@ describe('Telegram Bot API integration scenarios', () => {
 			]);
 			await ctx.sendTelegramWebhook(
 				telegramCallbackQueryUpdate({
-					data: parsedMarkup.inline_keyboard[0][0].callback_data,
+					data: callbackData,
 					message: fixtures.callbackBase.callback_query?.message,
 				}),
 			);

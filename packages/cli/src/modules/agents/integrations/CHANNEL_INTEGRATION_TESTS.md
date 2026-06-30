@@ -5,13 +5,64 @@ The current suite covers three layers:
 
 - Shared contract tests for behavior every channel integration must support.
 - Synthetic platform tests for hand-built edge cases.
-- Recorded replay tests for real webhook/API traffic captured from a local run.
+- Recorded replay tests for real webhook payloads captured from a local run.
 
-These tests should validate n8n's integration logic: routing inbound messages to the agent, preserving message context, executing integration actions, resuming suspended tool calls, and avoiding self-trigger loops. Avoid asserting the Chat SDK itself unless the behavior is part of our adapter contract.
+These tests validate n8n's integration logic: routing inbound messages to the agent, preserving
+message context, executing integration actions, resuming suspended tool calls, and avoiding
+self-trigger loops.
+
+## Design: real adapters, no fakes
+
+These tests run the **real** `@chat-adapter/*` adapters and the real `chat` SDK. There are no fake
+or in-memory adapters. The packages are ESM-only; in production they are loaded via `esm-loader`'s
+`new Function()` indirection to survive the CJS transform, but **that indirection cannot run under
+Vitest** — so the test helpers import them directly (`await import('@chat-adapter/telegram')`), which
+Vitest loads natively. Any test that drives a code path which itself calls `esm-loader` (e.g. the
+real `ComponentMapper` for rich cards) must `vi.mock('../esm-loader', …)` to redirect the loaders to
+native dynamic imports — see the telegram tests for the pattern.
+
+The only thing faked is the **external platform HTTP at the network boundary** — you cannot call
+live Telegram/Slack/Linear from CI. Everything else (adapter, `AgentChatBridge`, integration
+implementation, action executor, message-context service) is real.
+
+### Answering the network boundary
+
+Each platform adapter uses a different HTTP client, so the interception mechanism differs:
+
+| Platform | Adapter HTTP client | Interception | Helper |
+|----------|---------------------|--------------|--------|
+| Telegram | native `fetch` | replace `globalThis.fetch` | `installFetchStub` (replay-test-helpers) |
+| Slack | `@slack/web-api` (axios) | `nock` at the HTTP layer | inline in slack `replay-test-context` |
+| Linear | `@linear/sdk` (GraphQL over fetch) | replace `globalThis.fetch` | `installFetchStub` |
+
+Responses are answered from two sources, in order of preference:
+
+1. **Recorded data** where it matters — the captured webhook payload is replayed into the real
+   adapter as the inbound event, and recorded outbound bodies inform assertions.
+2. **Minimal stubs** for incidental calls the recordings don't need to pin down — identity bootstrap
+   (`getMe`, `auth.test`, Linear `viewer`), streaming lifecycle, and entity look-ups.
+
+The assertions check what the adapter **sends** (the outbound request body), not what it receives,
+so response stubs only need to be valid enough for the real adapter to proceed.
+
+#### Platform notes
+
+- **Telegram** — `getMe` returns the bot fixture so the adapter learns its identity; `sendMessage`
+  returns a minimal message. `reply_markup` is sent as a JSON object (not a stringified blob), so
+  read inline-keyboard callback data via `getTelegramInlineCallbackData`.
+- **Slack** — agent replies go through Slack's assistant **streaming** API
+  (`chat.startStream` → `appendStream` → `stopStream`), not `chat.postMessage`. The nock handler
+  reconstructs the streamed text and records it as a synthetic `chat.postMessage` so assertions can
+  treat the reply as one outbound post. `webhookVerifier: () => true` bypasses signature checks (the
+  fixtures carry sanitized signatures); passing `botUserId` skips the `auth.test` lookup.
+- **Linear** — webhooks are HMAC-signed (`linear-signature`) and timestamp-checked, so the helper
+  refreshes `webhookTimestamp` and signs the body. `@linear/sdk` strictly deserializes typed
+  entities and lazily fetches relationships, so the GraphQL stub returns fully-shaped entities
+  (e.g. a `Comment` needs `reactions: []`; an `AgentActivity` references `agentSession`/`sourceComment`
+  by id). Linear's "mention" is an **agent-session** event, not a comment — see the contract note
+  below.
 
 ## Test Layout
-
-Channel integration tests live under:
 
 ```text
 src/modules/agents/integrations/
@@ -19,17 +70,20 @@ __tests__/channel-integration-contract.test.ts
 __tests__/fixtures/<platform>/
 __tests__/helpers/<platform>/replay-test-context.ts
 __tests__/helpers/<platform>/synthetic-fixtures.ts
+__tests__/helpers/replay-test-helpers.ts        # shared: createReplayContextSetup, installFetchStub, …
 platforms/__tests__/<platform>/recorded-integration.test.ts
 platforms/__tests__/<platform>/synthetic-integration.test.ts
 ```
 
-Use the replay context helpers to build a small in-memory Chat SDK surface. The helpers should be just realistic enough to drive `AgentChatBridge`, `ChatIntegrationActionExecutor`, `IntegrationMessageContextService`, and the platform integration implementation.
+Each `<platform>/replay-test-context.ts` builds the real adapter + real `Chat`, installs the
+network interceptor, wires `AgentChatBridge` via `createReplayContextSetup`, and exposes
+`sendWebhook`, `latestContext`, `lastPost`, `apiCalls`, and `shutdown` (which restores the
+interceptor).
 
 ## Shared Contract Tests
 
 Use `runSharedChannelIntegrationContract()` when a scenario should behave the same across platforms.
-
-The shared contract currently verifies that an integration:
+It verifies that an integration:
 
 - Routes a mention or DM to `executeForChatPublished()`.
 - Subscribes the thread and routes follow-up messages.
@@ -37,153 +91,81 @@ The shared contract currently verifies that an integration:
 - Responds through the integration action executor into the latest thread.
 - Ignores messages authored by the connected bot.
 
-Add a platform to `channel-integration-contract.test.ts` by providing:
+> **Linear is intentionally not in the shared contract.** The real `@chat-adapter/linear` only treats
+> agent-session events as mentions (a bare comment has `isMention = false`), and agent-session vs
+> comment threads don't share an id — so the comment-as-mention + subscribe/follow-up contract
+> doesn't model real Linear behavior. Linear's real flow is covered by its recorded agent-session
+> test (`platforms/__tests__/linear/recorded-integration.test.ts`).
 
-- `fixtures`: `mention`, `followUp`, and `selfMessage`.
-- `expected.message` and `expected.followUpMessage`.
-- Expected context fields such as platform, message ID, user ID, thread ID, and channel ID.
-- Expected outbound post body for first response and `respond`.
-- `createContext()`, usually `createSlackReplayContext()` or `createTelegramReplayContext()`.
-
-Keep shared assertions focused on n8n behavior. If a platform has special handling, put it in a synthetic platform test instead.
+Assert the real adapter's actual output, not a simplified shape. For example, the message-context
+`channelId` is platform-prefixed (`telegram:123456`, `slack:C_SUPPORT`), and Slack agent replies are
+recorded with a `markdown_text` body.
 
 ## Synthetic Integration Tests
 
-Use synthetic tests for cases that are hard to capture reliably, need narrow edge-case control, or should be readable without scanning a recorded payload.
+Use synthetic tests for cases that are hard to capture reliably or need narrow edge-case control:
+platform-specific mention routing (Telegram group mentions), ignored messages (bot-authored), thread
+identity rules (Telegram forum topics), tool-resume from cards/inline keyboards, action-executor
+behavior (`send_dm`, `respond`).
 
-Good synthetic scenarios include:
-
-- Platform-specific mention routing, such as Telegram group mentions.
-- Ignored messages, such as non-mentioned group messages or bot-authored Slack messages.
-- Thread identity rules, such as Telegram forum topic IDs.
-- Tool resume behavior from rich cards or inline keyboard callbacks.
-- Action executor behavior, such as `send_dm` or `respond`.
-
-Name each test as a scenario, not an implementation detail. Prefer:
-
-```ts
-it('routes a Telegram group mention to a new agent conversation', async () => {
-	// ...
-});
-```
-
-Avoid vague names like:
-
-```ts
-it('handles a Bot API update', async () => {
-	// ...
-});
-```
-
-The assertion should prove the integration behavior:
-
-- The agent executor received the expected cleaned message and integration type.
-- The latest message context contains the expected platform target.
-- The outbound adapter call targets the right channel/thread.
-- Blocked or ignored messages do not call the agent executor.
-
-Do not duplicate Chat SDK parsing logic in the test and then claim the test validates the SDK. If the fake adapter implements the behavior, the test only proves our bridge behavior after the adapter emits an event.
+Name each test as a scenario, not an implementation detail
+(`'routes a Telegram group mention to a new agent conversation'`, not `'handles a Bot API update'`).
+The assertion should prove integration behavior: the agent executor received the expected cleaned
+message and integration type; the latest context has the expected platform target; the outbound
+adapter call targets the right channel/thread; blocked messages don't call the agent executor.
 
 ## Recorded Replay Tests
 
-Use recorded tests to lock down real-world webhook shapes and outbound adapter call shapes. Recorded tests are most useful for payload structure, platform metadata, and regressions caused by fields that synthetic fixtures missed.
-
-A recorded replay test usually:
+Use recorded tests to lock down real webhook shapes against the real adapter. A recorded replay test:
 
 1. Loads `recorded-session.json`.
-2. Finds the webhook record for the scenario.
-3. Builds replay fixtures from the recorded webhook body and recorded bot metadata.
-4. Sends the payload through the replay context webhook.
-5. Asserts n8n behavior: agent execution, message context, and outbound post body.
+2. Builds fixtures from the recorded webhook body and recorded bot metadata.
+3. Sends the payload through the replay context webhook (driving the real adapter).
+4. Asserts n8n behavior: agent execution, message context, and outbound request body.
 
-Do not assert recorded fixture contents by themselves. For example, asserting `record.response.id` only proves the JSON file has that value. Instead, assert the replayed behavior that n8n produced in the test context.
+Do not assert recorded fixture contents by themselves (e.g. `record.response.id`) — assert the
+behavior n8n produced. Avoid overfitting to timestamps unless the timestamp is part of the thread or
+message identity being tested.
 
-Recorded tests should also avoid overfitting to timestamps unless the timestamp is part of the thread or message identity being tested.
+> **Note on recording completeness.** The recordings primarily capture webhook **inputs**. The
+> outbound side is answered by the interceptor stubs described above, because the recorder only
+> captures `fetch` traffic (Slack uses axios) and adapter versions can drift from older recordings.
+> If you want a recorded test to replay outbound responses verbatim, ensure the recording is current
+> and complete for that adapter version.
 
 ## Recording Requests
 
-Recording is controlled by `ChannelIntegrationRecorder` and the `recordAdapterCalls()` proxy.
+Recording is controlled by `ChannelIntegrationRecorder` and the `recordAdapterCalls()` proxy. It can
+capture `webhook` (incoming webhooks), `api-call` (adapter method calls), and `fetch` (outbound HTTP
+to known platform APIs — note: `fetch` only, so axios-based clients like `@slack/web-api` are not
+captured). Sensitive headers and token-shaped URLs are sanitized, but review every recording before
+committing it.
 
-The recorder can capture:
-
-- `webhook`: incoming channel webhooks.
-- `api-call`: Chat SDK adapter method calls such as `postMessage`, `openDM`, `startTyping`, and `deleteMessage`.
-- `fetch`: outbound HTTP calls to known platform APIs, such as Slack and Telegram.
-
-Sensitive headers and known token-shaped URLs are sanitized before writing records. Still review every recording before committing it.
-
-To enable recording during a local run, set:
+To record during a local run:
 
 ```bash
 export N8N_AGENT_INTEGRATION_RECORDING_ENABLED=true
 export N8N_AGENT_INTEGRATION_RECORDING_SESSION_ID=telegram-basic
 export N8N_AGENT_INTEGRATION_RECORDING_DIR="$PWD/.agent-recordings/channel-integrations"
-pnpm dev
+pnpm dev   # a real n8n instance with a real bot connected (real credentials)
+# then: message the bot, trigger callbacks, let the agent reply
 ```
 
-Then exercise the real platform flow:
-
-- Send a message or mention to the connected bot.
-- Trigger any follow-up, callback, or action scenario you want to preserve.
-- Let the agent post the response so outbound adapter calls are recorded.
-
-The default recording directory is `.agent-recordings/channel-integrations` under the current working directory if `N8N_AGENT_INTEGRATION_RECORDING_DIR` is not set.
-
-## Exporting Recordings
-
-Recordings are written as JSONL session files. Use the package scripts from `packages/cli` to list and export them.
-
-List sessions:
+Export and install the session:
 
 ```bash
 pnpm recording:list --recording-dir ~/Documents/my-recordings
-```
-
-Export a session to stdout:
-
-```bash
-pnpm recording:export telegram-basic --recording-dir ~/Documents/my-recordings
-```
-
-Export a session to the test fixture folder:
-
-```bash
 pnpm recording:export telegram-basic --output-dir src/modules/agents/integrations/__tests__/fixtures/telegram
+# review, sanitize, minimize → rename to recorded-session.json
 ```
-
-The export command writes `<session-id>.json`. Rename it to the fixture name used by the tests, for example `recorded-session.json`, after reviewing and minimizing the contents.
-
-## Using Recordings In Tests
-
-Load recordings with `jsonParse<ChannelIntegrationRecord[]>()`:
-
-```ts
-const recordedSession = jsonParse<ChannelIntegrationRecord[]>(
-	readFileSync(join(__dirname, '../../__tests__/fixtures/telegram/recorded-session.json'), 'utf8'),
-);
-```
-
-Then select only the records needed for the scenario. Keep lookup helpers specific and explicit:
-
-```ts
-function getRecordedWebhook() {
-	const record = recordedSession.find(
-		(entry): entry is Extract<ChannelIntegrationRecord, { type: 'webhook' }> =>
-			entry.type === 'webhook' && entry.platform === 'telegram',
-	);
-	if (!record) throw new Error('Expected Telegram webhook record');
-	return record;
-}
-```
-
-Build replay fixtures from the recorded webhook body, not by copying fields into new literals. This keeps the test close to the captured platform payload while still letting assertions focus on n8n behavior.
 
 ## Checklist
 
 Before committing a new channel integration test:
 
 - The test name describes a user-visible scenario or routing rule.
-- The test asserts n8n integration behavior, not just SDK or fixture behavior.
-- Shared behavior is covered in the contract test where possible.
+- The test asserts n8n integration behavior against the **real** adapter's actual output.
+- Shared behavior is covered in the contract test where the platform fits its model.
 - Platform-specific behavior is covered in a synthetic or recorded platform test.
 - Recorded fixtures are sanitized, minimal, and reviewed manually.
+- The network interceptor is restored on teardown (`shutdown()`).
