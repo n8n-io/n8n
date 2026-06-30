@@ -94,7 +94,7 @@ const activeItemId = ref(readConnectionIdPayload(modalState.value?.data));
 
 // If there is a connection ID in the modal data, the modal is being opened
 // for a particular connection, not from a list, so we don't show the back button
-const shouldHideBackButton = !!readConnectionIdPayload(modalState.value?.data);
+const shouldHideBackButton = computed(() => !!readConnectionIdPayload(modalState.value?.data));
 
 const detailItem = computed<ToolConnectionItem | null>(() => {
 	return activeItemId.value ? (items.value.find((i) => i.id === activeItemId.value) ?? null) : null;

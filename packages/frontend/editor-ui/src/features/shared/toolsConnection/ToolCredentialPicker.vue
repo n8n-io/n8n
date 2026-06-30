@@ -88,7 +88,7 @@ function editCredential(credentialId: string) {
 
 <template>
 	<N8nPopover
-		v-if="availableCredentials.length > 0"
+		v-if="isConnected || availableCredentials.length > 0"
 		v-model:open="isOpen"
 		side="bottom"
 		align="end"
