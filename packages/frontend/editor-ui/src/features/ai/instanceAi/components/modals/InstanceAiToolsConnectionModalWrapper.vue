@@ -92,6 +92,10 @@ const isOpen = computed({
 
 const activeItemId = ref(readConnectionIdPayload(modalState.value?.data));
 
+// If there is a connection ID in the modal data, the modal is being opened
+// for a particular connection, not from a list, so we don't show the back button
+const shouldHideBackButton = !!readConnectionIdPayload(modalState.value?.data);
+
 const detailItem = computed<ToolConnectionItem | null>(() => {
 	return activeItemId.value ? (items.value.find((i) => i.id === activeItemId.value) ?? null) : null;
 });
@@ -388,6 +392,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		:sections="['connected', 'built-in-services', 'nodes']"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
+		:hide-back-button="shouldHideBackButton"
 		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
 		@connect="handleConnect"

@@ -10,6 +10,7 @@ import type { ToolConnectionItem, ToolConnectionSettings } from './types';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	hideBackButton?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -43,6 +44,7 @@ function onClose() {
 		<header :class="$style.header">
 			<div :class="$style.headerLeft">
 				<N8nIconButton
+					v-if="!hideBackButton"
 					icon="arrow-left"
 					variant="ghost"
 					size="medium"

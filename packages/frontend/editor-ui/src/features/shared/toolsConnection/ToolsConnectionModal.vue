@@ -26,6 +26,7 @@ const props = withDefaults(
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		modal?: boolean;
+		hideBackButton?: boolean;
 	}>(),
 	{
 		open: false,
@@ -231,6 +232,7 @@ function handleOpenChange(value: boolean) {
 				v-if="detailItem && detailMode === 'settings'"
 				:key="detailItem.id"
 				:item="detailItem"
+				:hide-back-button="hideBackButton"
 				@back="closeDetail"
 				@close="handleOpenChange(false)"
 				@disconnect="emit('disconnect', $event)"
@@ -246,6 +248,7 @@ function handleOpenChange(value: boolean) {
 			<ToolDetailView
 				v-else-if="detailItem"
 				:item="detailItem"
+				:hide-back-button="hideBackButton"
 				@back="closeDetail"
 				@close="handleOpenChange(false)"
 				@select-credential="

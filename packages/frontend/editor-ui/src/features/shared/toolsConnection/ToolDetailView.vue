@@ -10,6 +10,7 @@ import type { ToolConnectionItem } from './types';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	hideBackButton?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -46,6 +47,7 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 		<header :class="$style.header">
 			<div :class="$style.headerLeft">
 				<N8nIconButton
+					v-if="!hideBackButton"
 					icon="arrow-left"
 					variant="ghost"
 					size="medium"
