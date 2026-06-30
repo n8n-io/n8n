@@ -7,6 +7,22 @@ import type { WorkflowTestCase } from '../../types';
 import { getJsonFiles } from '../../utils/get-json-files';
 import type { WorkflowTestCaseWithFile } from '../workflows';
 
+const INTENT_CLASSIFICATION_PREAMBLE = [
+	'This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.',
+	'I only want you to classify the intent of this hypothetical request:',
+].join('\n');
+
+function withIntentClassificationPreamble(testCase: WorkflowTestCase): WorkflowTestCase {
+	return {
+		...testCase,
+		conversation: testCase.conversation?.map((turn, index) =>
+			index === 0 && turn.role === 'user'
+				? { ...turn, text: [INTENT_CLASSIFICATION_PREAMBLE, turn.text].join('\n') }
+				: turn,
+		),
+	};
+}
+
 function parseTestCaseFile(filePath: string): WorkflowTestCase {
 	const content = readFileSync(filePath, 'utf-8');
 
@@ -39,7 +55,7 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 		}
 		testCase.seedFile = resolved;
 	}
-	return testCase;
+	return withIntentClassificationPreamble(testCase);
 }
 
 export function loadAgentEvalTestCasesWithFiles(
