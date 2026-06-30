@@ -1,11 +1,110 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { h } from 'vue';
+import { ref } from 'vue';
+
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
+import Checkbox from '../Checkbox/Checkbox.vue';
 
 import TreeNodeDefault from './TreeNodeDefault.vue';
-import TreeNodeDefaultCheckboxShowcase from './TreeNodeDefaultCheckboxShowcase.vue';
-import TreeNodeDefaultShowcase from './TreeNodeDefaultShowcase.vue';
+import treeVariables from './Tree.variables.module.css';
 
 const noop = () => undefined;
+
+const longLabel = 'Quarterly automation rollout for customer onboarding and billing reconciliation';
+
+type VariantProps = {
+	label: string;
+	icon?: IconName;
+	disabled?: boolean;
+	showExpandArrow?: boolean;
+	isExpanded: boolean;
+	isSelected: boolean;
+	hasChildren: boolean;
+};
+
+const variants: { name: string; props: VariantProps }[] = [
+	{
+		name: 'Default',
+		props: {
+			label: 'Workflows',
+			icon: 'bolt-filled',
+			isExpanded: false,
+			isSelected: false,
+			hasChildren: false,
+		},
+	},
+	{
+		name: 'Selected',
+		props: {
+			label: 'All workflows',
+			icon: 'list-tree',
+			isExpanded: false,
+			isSelected: true,
+			hasChildren: false,
+		},
+	},
+	{
+		name: 'Disabled',
+		props: {
+			label: 'Credentials',
+			icon: 'lock',
+			isExpanded: false,
+			isSelected: true,
+			hasChildren: false,
+			disabled: true,
+		},
+	},
+	{
+		name: 'Branch (collapsed)',
+		props: {
+			label: 'Executions',
+			icon: 'list',
+			isExpanded: false,
+			isSelected: false,
+			hasChildren: true,
+		},
+	},
+	{
+		name: 'Branch (expanded)',
+		props: {
+			label: 'Executions',
+			icon: 'list',
+			isExpanded: true,
+			isSelected: false,
+			hasChildren: true,
+		},
+	},
+	{
+		name: 'Without expand arrow',
+		props: {
+			label: 'Settings',
+			icon: 'settings',
+			isExpanded: false,
+			isSelected: false,
+			hasChildren: true,
+			showExpandArrow: false,
+		},
+	},
+	{
+		name: 'Long label',
+		props: {
+			label: longLabel,
+			icon: 'list-tree',
+			isExpanded: false,
+			isSelected: false,
+			hasChildren: true,
+		},
+	},
+	{
+		name: 'Without icon',
+		props: {
+			label: 'Variables',
+			isExpanded: false,
+			isSelected: false,
+			hasChildren: false,
+		},
+	},
+];
 
 const meta = {
 	title: 'Experimental/Tree/TreeNodeDefault',
@@ -32,17 +131,113 @@ export const Default: Story = {
 		handleToggle: noop,
 		handleSelect: noop,
 	},
-	render: () => h(TreeNodeDefaultShowcase),
+	render: (args) => ({
+		components: { TreeNodeDefault },
+		setup() {
+			return { args, treeVariables, noop };
+		},
+		template: `
+			<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
+				<TreeNodeDefault v-bind="args" :handle-toggle="noop" :handle-select="noop" />
+			</div>
+		`,
+	}),
 };
 
-export const WithCheckbox: Story = {
+export const Variants: Story = {
+	render: () => ({
+		components: { TreeNodeDefault, Checkbox },
+		setup() {
+			const checkboxSelected = ref(false);
+			const checkboxDisabledSelected = ref(true);
+
+			function toggleCheckboxSelected() {
+				checkboxSelected.value = !checkboxSelected.value;
+			}
+
+			return {
+				variants,
+				treeVariables,
+				noop,
+				checkboxSelected,
+				checkboxDisabledSelected,
+				toggleCheckboxSelected,
+			};
+		},
+		template: `
+			<div style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<div
+					v-for="variant in variants"
+					:key="variant.name"
+					style="display: flex; flex-direction: column; gap: var(--spacing--4xs);"
+				>
+					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+						{{ variant.name }}
+					</span>
+					<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
+						<TreeNodeDefault v-bind="variant.props" :handle-toggle="noop" :handle-select="noop" />
+					</div>
+				</div>
+
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
+					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+						Checkbox icon (interactive)
+					</span>
+					<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
+						<TreeNodeDefault
+							label="Workflows"
+							:is-expanded="false"
+							:is-selected="checkboxSelected"
+							:has-children="true"
+							:handle-toggle="noop"
+							:handle-select="toggleCheckboxSelected"
+						>
+							<template #icon="{ disabled, ui }">
+								<span v-bind="ui">
+									<Checkbox
+										:model-value="checkboxSelected"
+										:disabled="disabled"
+										@click.stop
+										@update:model-value="toggleCheckboxSelected"
+									/>
+								</span>
+							</template>
+						</TreeNodeDefault>
+					</div>
+				</div>
+
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
+					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+						Checkbox icon (disabled)
+					</span>
+					<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
+						<TreeNodeDefault
+							label="Credentials"
+							disabled
+							:is-expanded="false"
+							:is-selected="checkboxDisabledSelected"
+							:has-children="false"
+							:handle-toggle="noop"
+							:handle-select="noop"
+						>
+							<template #icon="{ disabled, ui }">
+								<span v-bind="ui">
+									<Checkbox :model-value="checkboxDisabledSelected" :disabled="disabled" />
+								</span>
+							</template>
+						</TreeNodeDefault>
+					</div>
+				</div>
+			</div>
+		`,
+	}),
 	args: {
 		label: 'Workflows',
+		icon: 'bolt-filled',
 		isExpanded: false,
 		isSelected: false,
-		hasChildren: true,
+		hasChildren: false,
 		handleToggle: noop,
 		handleSelect: noop,
 	},
-	render: () => h(TreeNodeDefaultCheckboxShowcase),
 };

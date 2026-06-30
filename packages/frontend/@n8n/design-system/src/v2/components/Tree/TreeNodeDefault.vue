@@ -47,6 +47,7 @@ const toggleUi = computed(() => ({
 		]"
 		:data-disabled="disabled ? '' : undefined"
 		:data-has-toggle="showExpandArrow && hasChildren ? '' : undefined"
+		@click="!disabled && handleSelect()"
 	>
 		<slot name="icon" :icon="icon" :disabled="disabled" :is-selected="isSelected" :ui="iconUi">
 			<span v-if="icon" :class="$style.treeItemIcon" data-test-id="tree-node-icon">
@@ -65,7 +66,6 @@ const toggleUi = computed(() => ({
 				:class="$style.treeItemLabel"
 				data-test-id="tree-node-label"
 				:aria-disabled="disabled ? 'true' : undefined"
-				@click.stop="!disabled && handleSelect()"
 			>
 				{{ label }}
 			</span>
@@ -106,8 +106,12 @@ const toggleUi = computed(() => ({
 	gap: var(--spacing--3xs);
 	width: 100%;
 	height: var(--tree-item-height);
+	position: relative;
+	padding-block: var(--tree-item-padding-block);
+	padding-left: calc(
+		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--tree-indent, 0)
+	);
 	border-radius: var(--radius);
-	padding: var(--tree-item-padding-block);
 	cursor: pointer;
 	user-select: none;
 	color: var(--color--text--shade-1);
@@ -130,7 +134,6 @@ const toggleUi = computed(() => ({
 		background-color: var(--color--background--light-2);
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
 		outline-offset: 0;
-		z-index: 1;
 	}
 }
 
