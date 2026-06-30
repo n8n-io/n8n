@@ -8,7 +8,7 @@ import type {
 } from 'kafkajs';
 import { logLevel } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type {
 	Logger,
 	ITriggerFunctions,

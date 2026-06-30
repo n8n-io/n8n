@@ -231,6 +231,25 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
+	it('renders standalone when no active workflow document store is provided', () => {
+		// Instance AI credential card: rendered standalone, outside a loaded
+		// workflow document. The strict injectNDVStore() used to throw here on the
+		// immediate parameters watch, tearing down the card (mount/unmount flicker).
+		workflowDocumentStoreRef.value = null;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		expect(() =>
+			renderComponent(
+				{ props: { node: httpNode, overrideCredType: 'openAiApi', standalone: true } },
+				{ merge: true },
+			),
+		).not.toThrow();
+
+		expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+	});
+
 	it('should refresh credentials from the server when mounted on an existing node', () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {};
@@ -1143,6 +1162,7 @@ describe('NodeCredentials', () => {
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -1217,6 +1237,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchError: computed(() => null),
@@ -1246,6 +1267,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchError: computed(() => null),
@@ -1330,6 +1352,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -1363,6 +1386,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -1396,6 +1420,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -1434,6 +1459,7 @@ describe('NodeCredentials', () => {
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
