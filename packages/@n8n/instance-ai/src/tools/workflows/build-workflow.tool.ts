@@ -43,6 +43,7 @@ import {
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
+import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
@@ -558,6 +559,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowVersionId: saved.versionId,
 						sourceHash,
 					});
+					// Capture the compiled workflow JSON as a trace-only child run (never part
+					// of the tool result, so it never enters the agent's context). Lets eval seed
+					// reconstruction consume the JSON directly instead of re-parsing SDK source,
+					// which is fragile across @n8n/workflow-sdk versions. Uses explicit
+					// startChildRun/finishRun on the injected trace handle — the ambient span
+					// helper orphans the run from inside a domain-tool handler.
+					if (context.tracing) {
+						try {
+							const compiledRun = await context.tracing.startChildRun(context.tracing.actorRun, {
+								name: COMPILED_WORKFLOW_TRACE_RUN_NAME,
+								runType: 'tool',
+								canonicalName: `instance-ai.${COMPILED_WORKFLOW_TRACE_RUN_NAME}`,
+								tags: [COMPILED_WORKFLOW_TRACE_RUN_NAME],
+								metadata: { workflow_id: saved.id, source_hash: sourceHash },
+							});
+							await context.tracing.finishRun(compiledRun, {
+								outputs: { workflowId: saved.id, sourceHash, workflow: json },
+							});
+						} catch {
+							// Best-effort: tracing must never break a build.
+						}
+					}
 					const outcome = withDeterministicRouting({
 						workItemId: resolvedWorkItemId,
 						...(runId ? { runId } : {}),

@@ -591,6 +591,52 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
 		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V1' });
 	});
+
+	it('prefers the compiled-workflow trace JSON over re-parsing the SDK source (drift-immune)', async () => {
+		const compiledWorkflow = {
+			name: 'Main',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			// SDK source whose native `.join` the local parser would reject — if the
+			// consumer fell back to re-parsing, reconstruction would differ/fail.
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: "const x = [].join('\\n');" }),
+			// Trace-only event carrying the builder's own compiled JSON, keyed by workflowId.
+			tool(
+				'c1',
+				3,
+				'compiled-workflow',
+				{},
+				{ workflowId: 'WF1', sourceHash: 'h1', workflow: compiledWorkflow },
+			),
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', workflowName: 'Main' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0]).toMatchObject({ id: 'WF1', name: 'Main' });
+		// The builder's compiled node reaches the seed — NOT the mocked re-parse (__code) path.
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ type: 'n8n-nodes-base.webhook' });
+		expect(result.seed.workflows[0].nodes[0]).not.toHaveProperty('__code');
+	});
 });
 
 describe('reconstructSeedFromThread — workflow deletes', () => {

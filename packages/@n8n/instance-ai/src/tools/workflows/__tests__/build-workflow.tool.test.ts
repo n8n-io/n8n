@@ -198,6 +198,64 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
+	it('emits a compiled-workflow trace child run carrying the compiled JSON when tracing is present', async () => {
+		const source = 'workflow source from workspace';
+		const actorRun = { id: 'actor-run-1' };
+		const startChildRun = vi.fn<
+			(parent: unknown, init: Record<string, unknown>) => Promise<{ id: string }>
+		>(async () => await Promise.resolve({ id: 'compiled-run-1' }));
+		const finishRun = vi.fn<(run: { id: string }, opts: Record<string, unknown>) => Promise<void>>(
+			async () => await Promise.resolve(),
+		);
+		const tracing = {
+			actorRun,
+			startChildRun,
+			finishRun,
+		} as unknown as InstanceAiContext['tracing'];
+		const { context, filePath } = makeContext({ source, overrides: { tracing } });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		// Attaches to the active actor run as a trace-only child named 'compiled-workflow'.
+		expect(startChildRun).toHaveBeenCalledTimes(1);
+		const [parentRun, init] = startChildRun.mock.calls[0];
+		expect(parentRun).toBe(actorRun);
+		expect(init).toMatchObject({
+			name: 'compiled-workflow',
+			runType: 'tool',
+			metadata: { workflow_id: 'wf-1', source_hash: hashWorkflowSource(source) },
+		});
+		// The compiled workflow JSON lands in the child run's outputs...
+		expect(finishRun).toHaveBeenCalledTimes(1);
+		const [finishedRun, finishOpts] = finishRun.mock.calls[0];
+		expect(finishedRun).toMatchObject({ id: 'compiled-run-1' });
+		expect(finishOpts).toMatchObject({
+			outputs: {
+				workflowId: 'wf-1',
+				sourceHash: hashWorkflowSource(source),
+				workflow: { nodes: [{ type: 'n8n-nodes-base.webhook' }] },
+			},
+		});
+		// ...and never leaks into the agent-facing tool output.
+		expect(result).not.toHaveProperty('workflow');
+	});
+
+	it('builds successfully without emitting a trace run when tracing is absent', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		expect(context.tracing).toBeUndefined();
+	});
+
 	it('keeps pending workflow setup ready for verification', async () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
 			{

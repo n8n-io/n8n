@@ -10,7 +10,7 @@ import type { Run } from 'langsmith/schemas';
 
 import type { ConversationSeed } from './conversation-seed';
 import { parseSeedWorkflowCode } from './parse-seed-workflow';
-import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
+import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 
 /** Default project that instance-ai conversations are traced to (same name in
  *  every workspace). Override per case with `seedThread.project` if it differs. */
@@ -368,7 +368,10 @@ async function reconstructWithClient(
 			`Thread ${ref.threadId} reconstructed to zero seed messages before the live turn — the trace shape may have drifted (expected root runs named 'turn' with inputs.message / outputs.response).`,
 		);
 	}
-	const workflows = buildSeedWorkflows(toolRuns, boundaryMs, ref.threadId);
+	const sdkVersion = rootRuns
+		.map((r) => asString(metadata(r).workflow_sdk_version))
+		.find((v) => v !== undefined);
+	const workflows = buildSeedWorkflows(toolRuns, boundaryMs, ref.threadId, sdkVersion);
 	const dataTables = buildSeedDataTables(toolRuns, boundaryMs);
 
 	return {
@@ -534,10 +537,15 @@ function buildSeedWorkflows(
 	toolRuns: Run[],
 	boundaryMs: number,
 	threadId: string,
+	sdkVersion?: string,
 ): ConversationSeed['workflows'] {
 	const files = new Map<string, string>();
 	const divergedPaths = new Set<string>();
 	const getAsCodeByWorkflowId = new Map<string, string>();
+	// workflowId -> compiled workflow JSON captured by the build-workflow trace event
+	// (COMPILED_WORKFLOW_TRACE_RUN_NAME). Used directly when present — drift-immune,
+	// no SDK re-parse — superseding the code-replay fallbacks below.
+	const compiledByWorkflowId = new Map<string, ParsedSeedWorkflow>();
 	// workflowId -> reconstructed source + name at its latest successful build.
 	const builtByWorkflowId = new Map<string, { code: string; diverged: boolean; name?: string }>();
 	// Workflow ids with a build-shaped run (source in, success + workflowId out),
@@ -546,6 +554,15 @@ function buildSeedWorkflows(
 
 	for (const tool of toolRuns) {
 		if (new Date(tool.start_time ?? 0).getTime() >= boundaryMs) continue;
+
+		if (tool.name === COMPILED_WORKFLOW_TRACE_RUN_NAME) {
+			const out = isRecord(tool.outputs) ? tool.outputs : {};
+			const compiledWorkflowId = asString(out.workflowId);
+			const compiled = extractCompiledWorkflow(out.workflow);
+			// Sorted ascending → the latest compiled JSON before the boundary wins.
+			if (compiledWorkflowId && compiled) compiledByWorkflowId.set(compiledWorkflowId, compiled);
+			continue;
+		}
 
 		if (tool.name.startsWith('workspace_')) {
 			const path = asString((isRecord(tool.inputs) ? tool.inputs : {}).path);
@@ -604,7 +621,22 @@ function buildSeedWorkflows(
 	const workflows: ConversationSeed['workflows'] = [];
 	const degraded: string[] = [];
 	const skipped: string[] = [];
+	// Why each skipped workflow failed (parse error per source) — surfaced in the
+	// all-failed tripwire so the real cause is visible instead of a guess.
+	const skipReason = new Map<string, string>();
 	for (const [workflowId, built] of builtByWorkflowId) {
+		const compiled = compiledByWorkflowId.get(workflowId);
+		if (compiled) {
+			// Drift-immune: the builder's own compiled JSON, captured in the trace event —
+			// no SDK re-parse, so it can't break on @n8n/workflow-sdk version drift.
+			workflows.push({
+				id: workflowId,
+				name: built.name ?? compiled.name ?? 'workflow',
+				nodes: compiled.nodes,
+				connections: compiled.connections,
+			});
+			continue;
+		}
 		const getAsCode = getAsCodeByWorkflowId.get(workflowId) ?? '';
 		// Resolve in descending order of trust: clean file replay, then a
 		// `get-as-code` capture, then a diverged replay as a last resort.
@@ -613,18 +645,22 @@ function buildSeedWorkflows(
 			['get-as-code', getAsCode],
 			['diverged-replay', built.diverged ? built.code : ''],
 		];
-		let resolved: ReturnType<typeof tryParseSeedWorkflow>;
+		let resolved: ParsedSeedWorkflow | undefined;
 		let via = '';
+		const parseErrors: string[] = [];
 		for (const [label, code] of candidates) {
 			if (code === '') continue;
-			resolved = tryParseSeedWorkflow(unredactCode(code));
-			if (resolved) {
+			const result = tryParseSeedWorkflow(unredactCode(code));
+			if ('workflow' in result) {
+				resolved = result.workflow;
 				via = label;
 				break;
 			}
+			parseErrors.push(`${label}: ${result.error}`);
 		}
 		if (!resolved) {
 			skipped.push(workflowId);
+			skipReason.set(workflowId, parseErrors.join('; ') || 'no source could be recovered');
 			continue;
 		}
 		if (via !== 'replay') degraded.push(`${workflowId}→${via}`);
@@ -642,15 +678,26 @@ function buildSeedWorkflows(
 	}
 	if (skipped.length > 0) {
 		console.warn(
-			`[seed] Thread ${threadId}: ${skipped.length} built workflow(s) could not be reconstructed and were skipped: ${skipped.join(', ')}`,
+			`[seed] Thread ${threadId}: ${skipped.length} built workflow(s) could not be reconstructed and were skipped: ${skipped
+				.map((id) => `${id} (${skipReason.get(id) ?? 'unknown'})`)
+				.join('; ')}`,
 		);
 	}
 
 	// Builds happened but we recovered nothing → throw rather than silently seed 0
-	// workflows (reported as a framework_issue; the message names the likely cause).
+	// workflows (reported as a framework_issue; the message names the real cause).
 	if (buildSignalIds.size > 0 && workflows.length === 0) {
+		const details = [...skipReason.entries()].map(([id, why]) => `${id} → ${why}`).join(' | ');
+		// Distinguish a parser rejection (SDK subset/version drift) from a missing or
+		// renamed build tool — they point at different fixes.
+		const sdkRejected = [...skipReason.values()].some((why) =>
+			/not an allowed SDK method|Failed to parse workflow code/.test(why),
+		);
+		const cause = sdkRejected
+			? "source was recovered but this harness's @n8n/workflow-sdk parser rejected it — SDK subset/version drift (the trace's builder accepted code the current parser forbids, e.g. native JS like `.join`)"
+			: 'the build tool was likely renamed or its input/output shape changed (e.g. inline-code → filePath)';
 		throw new Error(
-			`Thread ${threadId}: ${buildSignalIds.size} workflow(s) were built in the trace but reconstruction recovered 0 — the build tool was likely renamed or its input/output shape changed (e.g. inline-code → filePath). Update reconstruction (WORKFLOW_BUILD_TOOLS / source extraction in buildSeedWorkflows).`,
+			`Thread ${threadId}: ${buildSignalIds.size} workflow(s) were built in the trace but reconstruction recovered 0${sdkVersion ? ` (trace built with @n8n/workflow-sdk ${sdkVersion})` : ''} — ${cause}. Details: ${details}. Fix: align the @n8n/workflow-sdk parser, or update reconstruction (WORKFLOW_BUILD_TOOLS / source extraction in buildSeedWorkflows).`,
 		);
 	}
 	if (workflows.length < buildSignalIds.size) {
@@ -662,22 +709,39 @@ function buildSeedWorkflows(
 	return workflows;
 }
 
-/** Parse reconstructed SDK code into workflow JSON, returning undefined instead
- *  of throwing so a caller can fall back to another source. */
-function tryParseSeedWorkflow(
-	code: string,
-):
-	| { name?: string; nodes: Array<Record<string, unknown>>; connections: Record<string, unknown> }
-	| undefined {
+type ParsedSeedWorkflow = {
+	name?: string;
+	nodes: Array<Record<string, unknown>>;
+	connections: Record<string, unknown>;
+};
+
+/** Validate + extract a compiled workflow JSON captured by the build-workflow trace
+ *  event (COMPILED_WORKFLOW_TRACE_RUN_NAME). Returns undefined when the payload isn't
+ *  a workflow-shaped object, so the caller falls back to source reconstruction. */
+function extractCompiledWorkflow(value: unknown): ParsedSeedWorkflow | undefined {
+	if (!isRecord(value) || !Array.isArray(value.nodes)) return undefined;
+	return {
+		name: typeof value.name === 'string' ? value.name : undefined,
+		nodes: value.nodes as Array<Record<string, unknown>>,
+		connections: isRecord(value.connections) ? value.connections : {},
+	};
+}
+
+/** Parse reconstructed SDK code into workflow JSON. Returns the parse error
+ *  instead of throwing so a caller can fall back to another source — and so the
+ *  real failure reason can be surfaced when every source fails. */
+function tryParseSeedWorkflow(code: string): { workflow: ParsedSeedWorkflow } | { error: string } {
 	try {
 		const { workflow } = parseSeedWorkflowCode(code);
 		return {
-			name: workflow.name,
-			nodes: (workflow.nodes ?? []) as unknown as Array<Record<string, unknown>>,
-			connections: (workflow.connections ?? {}) as Record<string, unknown>,
+			workflow: {
+				name: workflow.name,
+				nodes: (workflow.nodes ?? []) as unknown as Array<Record<string, unknown>>,
+				connections: (workflow.connections ?? {}) as Record<string, unknown>,
+			},
 		};
-	} catch {
-		return undefined;
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : String(error) };
 	}
 }
 
