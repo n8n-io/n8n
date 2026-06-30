@@ -432,12 +432,12 @@ describe('CommunityPackagesService', () => {
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		test('should restore the previous package directory when loading the updated package fails', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
-			jest.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
@@ -457,7 +457,7 @@ describe('CommunityPackagesService', () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
-			mocked(readFile)
+			vi.mocked(readFile)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -526,10 +526,10 @@ describe('CommunityPackagesService', () => {
 
 		test('should restore the previous package without reloading when the download fails during an update', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
-			jest.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
-			mocked(executeNpmCommand).mockRejectedValueOnce(new Error('download failed'));
+			vi.mocked(executeNpmCommand).mockRejectedValueOnce(new Error('download failed'));
 
 			await expect(
 				communityPackagesService.updatePackage(
@@ -546,7 +546,7 @@ describe('CommunityPackagesService', () => {
 
 		test('should restore the previous package when the updated package contains no loadable nodes', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
-			jest.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
 			loadNodesAndCredentials.loadPackage.mockResolvedValueOnce(
@@ -568,7 +568,7 @@ describe('CommunityPackagesService', () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
-			mocked(readFile)
+			vi.mocked(readFile)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -610,7 +610,7 @@ describe('CommunityPackagesService', () => {
 		test('should call `exec` with the correct sequence of commands, handle file ops, and interact with services', async () => {
 			// ARRANGE
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
-			jest.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
 			// ACT
@@ -720,7 +720,7 @@ describe('CommunityPackagesService', () => {
 			);
 			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
 			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
-			mocked(rm).mockResolvedValue(undefined);
+			vi.mocked(rm).mockResolvedValue(undefined);
 			installedPackageRepository.remove.mockResolvedValue(undefined as never);
 
 			await expect(
