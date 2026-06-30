@@ -1,0 +1,28 @@
+{
+	"description": "Intent-only request: classify lead scoring and fixed follow-up branches as hybrid.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"When a new lead arrives, score how promising it is from the message and company, then notify sales if it's high and send a nurture email if it's low."
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "hybrid", "scoring-routing"],
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent classifies the lead scoring request as a hybrid workflow.",
+		"The agent explains that AI can provide the bounded promising-lead score.",
+		"The agent explains that the high and low follow-up paths are deterministic branches.",
+		"The agent does not classify the request as a full agent because the action set is fixed."
+	],
+	"executionScenarios": [
+		{
+			"name": "intent-only-response",
+			"description": "The agent should only classify intent; no executable workflow is expected",
+			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
+			"successCriteria": "The response classifies the request as hybrid and separates scoring from deterministic routing."
+		}
+	]
+}

@@ -619,7 +619,7 @@ describe('formatComparisonTerminal', () => {
 			totalRuns: 1,
 			testCases: [
 				{
-					userText: 'scheduled-weather-workflow',
+					userText: 'workflow-scheduled-weather-and-agent',
 					buildSuccessCount: 0,
 					buildError: "Agent response: Here's the intent I'd detect",
 				},
@@ -641,7 +641,7 @@ describe('formatComparisonTerminal', () => {
 			totalRuns: 1,
 			testCases: [
 				{
-					userText: 'scheduled-weather-workflow',
+					userText: 'workflow-scheduled-weather-and-agent',
 					buildSuccessCount: 0,
 					buildExpectations: [
 						{ expectation: 'does not build', passes: [true] },

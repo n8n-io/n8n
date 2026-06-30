@@ -1,0 +1,28 @@
+{
+	"description": "Intent-only request: classify review sentiment routing as hybrid because the model classifies, not chooses actions.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Analyze review sentiment, send negative ones to support, auto-thank the positive ones."
+			]
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "hybrid", "sentiment-routing"],
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent classifies the review sentiment request as a hybrid workflow.",
+		"The agent explains that the model performs bounded sentiment classification.",
+		"The agent explains that negative and positive reviews have predefined actions.",
+		"The agent does not classify the request as a full agent because the model does not decide what to do next."
+	],
+	"executionScenarios": [
+		{
+			"name": "intent-only-response",
+			"description": "The agent should only classify intent; no executable workflow is expected",
+			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
+			"successCriteria": "The response classifies the request as hybrid and distinguishes classification from action selection."
+		}
+	]
+}

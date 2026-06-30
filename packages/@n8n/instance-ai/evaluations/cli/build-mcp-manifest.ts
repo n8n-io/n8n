@@ -10,10 +10,10 @@ import { homedir, tmpdir } from 'os';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
-import { DEFAULT_DATASETS, conversationTurnTextSchema } from '../data/workflows/schema';
 import { createLogger } from '../harness/logger';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
+import { DEFAULT_DATASETS, conversationTurnTextSchema } from '../harness/schema';
 import { loadTestCasesFromLangTracer } from '../langtracer/provider';
 
 // ---------------------------------------------------------------------------

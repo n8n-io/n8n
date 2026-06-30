@@ -1,0 +1,28 @@
+{
+	"description": "Intent-only request: classify customer complaint investigation as an agent, contrasting with fixed classify-then-route triage.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"When a customer complains, figure out what went wrong by checking their order history and past tickets, then decide whether to refund, replace, or escalate."
+			]
+		}
+	],
+	"complexity": "complex",
+	"tags": ["intent-resolution", "agent", "investigation-loop", "contrast-hybrid"],
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent classifies the customer complaint investigation request as a full agent.",
+		"The agent explains that investigation steps depend on what order history and past tickets reveal.",
+		"The agent distinguishes this from fixed classify-then-route triage because the action sequence is discovered at runtime.",
+		"The agent does not classify the request as hybrid merely because refund, replace, and escalate are named outcomes."
+	],
+	"executionScenarios": [
+		{
+			"name": "intent-only-response",
+			"description": "The agent should only classify intent; no executable workflow is expected",
+			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
+			"successCriteria": "The response classifies the request as a full agent and explains the runtime-dependent investigation loop."
+		}
+	]
+}

@@ -1,0 +1,25 @@
+{
+	"description": "Intent-only request: ask for the meaning of important emails instead of assuming rule-based or judgment-based handling.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": ["Notify me about important emails."]
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "ambiguous", "clarification"],
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent treats the meaning of important emails as underspecified.",
+		"The agent asks whether importance can be defined by deterministic rules or requires judgment.",
+		"The agent explains that rule-derivable importance would be a workflow while judged importance would be hybrid."
+	],
+	"executionScenarios": [
+		{
+			"name": "intent-only-response",
+			"description": "The agent should only classify intent or ask for clarification; no executable workflow is expected",
+			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
+			"successCriteria": "The response asks for clarification and explains the rule-versus-judgment split."
+		}
+	]
+}

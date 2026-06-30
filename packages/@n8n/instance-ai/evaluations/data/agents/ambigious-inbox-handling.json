@@ -1,0 +1,25 @@
+{
+	"description": "Intent-only request: ask a clarifying question for underspecified inbox handling instead of guessing workflow or agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": ["Help me handle my inbox."]
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "ambiguous", "clarification"],
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent treats the inbox handling request as underspecified.",
+		"The agent asks a clarifying question instead of forcing a workflow, hybrid, or agent classification.",
+		"The agent explains that rule-based filing could be a workflow while autonomous triage could be an agent."
+	],
+	"executionScenarios": [
+		{
+			"name": "intent-only-response",
+			"description": "The agent should only classify intent or ask for clarification; no executable workflow is expected",
+			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
+			"successCriteria": "The response asks for clarification and identifies the workflow-versus-agent ambiguity."
+		}
+	]
+}

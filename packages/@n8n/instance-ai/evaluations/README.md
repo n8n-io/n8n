@@ -166,7 +166,7 @@ A case can belong to multiple groupings — e.g. PR-tier cases declare `"dataset
 
 ### Sourcing test cases from LangTracer
 
-By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its REST API (`GET /api/v1/suites/:id/export`), validated through the same `WorkflowTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
+By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
 
 Set these in `.env.local`:
 
@@ -555,7 +555,7 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 ## Adding test cases
 
-Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `data/workflows/schema.ts`.
+Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `harness/schema.ts`.
 
 ```json
 {

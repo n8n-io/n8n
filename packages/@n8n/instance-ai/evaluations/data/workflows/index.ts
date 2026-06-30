@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs';
 import { basename, dirname, resolve } from 'path';
 
-import { WorkflowTestCaseSchema } from './schema';
 import { loadConversationSeed } from '../../harness/conversation-seed';
+import { EvalTestCaseSchema } from '../../harness/schema';
 import type { WorkflowTestCase } from '../../types';
 import { getJsonFiles } from '../../utils/get-json-files';
 
@@ -24,7 +24,7 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 		);
 	}
 
-	const parsed = WorkflowTestCaseSchema.safeParse(raw);
+	const parsed = EvalTestCaseSchema.safeParse(raw);
 	if (!parsed.success) {
 		const issues = parsed.error.issues
 			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)

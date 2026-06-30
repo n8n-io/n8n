@@ -14,7 +14,7 @@
 	"processExpectations": [
 		"The agent classifies the incident investigator request as a full agent.",
 		"The agent explains that each next action depends on interpreting logs, metrics, or prior investigation results.",
-		"The agent identifies the need for an autonomous tool-use loop with guardrails.",
+		"The agent identifies the need for an autonomous tool-use loop.",
 		"The agent does not classify the request as a deterministic workflow because the control flow cannot be fully enumerated before runtime."
 	],
 	"executionScenarios": [
