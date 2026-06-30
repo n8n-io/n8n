@@ -71,15 +71,15 @@ export function aggregateResults(
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
 		const scenarios = testCase.executionScenarios ?? [];
-		const executionScenarios: ExecutionScenarioAggregation[] = [];
-
 		// TODO: Remove when agent building is supported
 		const scenarioIndices =
+			// TODO: Remove when agent building is supported
 			options.caseSet === 'agents'
 				? scenarios
 						.map((_, sIdx) => sIdx)
 						.filter((sIdx) => runs.some((r) => r.executionScenarioResults[sIdx] !== undefined))
 				: scenarios.map((_, sIdx) => sIdx);
+		const executionScenarios: ExecutionScenarioAggregation[] = [];
 
 		for (const sIdx of scenarioIndices) {
 			const scenario = scenarios[sIdx];

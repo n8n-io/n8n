@@ -53,9 +53,9 @@ describe('EvalTestCaseSchema', () => {
 	});
 
 	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
-		expect(() =>
-			EvalTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] }),
-		).toThrow(/at least one executionScenario, or a process\/outcome expectation/);
+		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] })).toThrow(
+			/at least one executionScenario, or a process\/outcome expectation/,
+		);
 	});
 
 	it('accepts an empty executionScenarios array when an outcome expectation is present', () => {
@@ -144,7 +144,7 @@ describe('EvalTestCaseSchema', () => {
 		// Regression guard: the inner seedThread object is non-strict, so before the field
 		// was modelled it was silently stripped on parse and never reached the reconstructor.
 		const { conversation: _omit, ...rest } = validFixture();
-		const parsed = WorkflowTestCaseSchema.parse({
+		const parsed = EvalTestCaseSchema.parse({
 			...rest,
 			seedThread: { threadId: 't1', liveTurnRunId: 'run-abc-123' },
 		});
@@ -154,7 +154,7 @@ describe('EvalTestCaseSchema', () => {
 	it('rejects an empty-string seedThread.liveTurnRunId', () => {
 		const { conversation: _omit, ...rest } = validFixture();
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', liveTurnRunId: '' } }),
+			EvalTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', liveTurnRunId: '' } }),
 		).toThrow();
 	});
 
