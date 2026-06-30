@@ -163,7 +163,9 @@ export class PublicationStatusReporter {
 
 	/** Builds a human-readable message naming each failed node and its error. */
 	private formatActivationError(failures: FailedTriggerPublicationStatus[]): string {
-		const detail = failures.map((s) => `"${s.nodeName}": ${s.errorMessage}`).join('; ');
+		const detail = failures
+			.map((status) => `"${status.nodeName}": ${status.errorMessage}`)
+			.join('; ');
 
 		return `Some triggers failed to activate: ${detail}`;
 	}
