@@ -7,10 +7,9 @@ import type { CronExpression } from 'n8n-workflow';
  * never looks at them.
  *
  * Field names mirror the `scheduled_job` columns so the storage adapter maps
- * trivially. Instants are `Date` (absolute UTC).
+ * trivially. Instants are `Date` (absolute UTC). `CronExpression` is imported
+ * from `n8n-workflow` (its canonical home) and not re-exported here.
  */
-
-export type { CronExpression };
 
 /**
  * The recurrence kinds as a runtime list (not a bare union) so the schema column

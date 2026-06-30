@@ -15,7 +15,6 @@
 export { ScheduleKindList, TaskStatusList } from './types';
 
 export type {
-	CronExpression,
 	ScheduleKind,
 	CronSchedule,
 	IntervalSchedule,

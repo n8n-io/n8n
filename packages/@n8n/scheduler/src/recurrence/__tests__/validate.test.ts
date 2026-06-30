@@ -1,5 +1,6 @@
+import type { CronExpression } from 'n8n-workflow';
+
 import { InvalidScheduleError } from '../../errors';
-import type { CronExpression } from '../../types';
 import { validateSchedule } from '../validate';
 
 describe('validateSchedule', () => {
