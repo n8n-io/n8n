@@ -66,6 +66,7 @@ function makeModuleSettings(
 	return {
 		enabled: true,
 		localGatewayDisabled: false,
+		browserUseEnabled: true,
 		proxyEnabled: false,
 		cloudManaged: false,
 		sandboxEnabled: true,

@@ -32,8 +32,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { i18n } from '@n8n/i18n';
-import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
-import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
+import { reRankSearchResults } from '@n8n/utils/search/re-rank-search-results';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';

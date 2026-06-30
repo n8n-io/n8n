@@ -714,7 +714,8 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout';
+	| 'templates_callout'
+	| 'instance_ai';
 
 export interface INodeCreatorState {
 	itemsFilter: string;

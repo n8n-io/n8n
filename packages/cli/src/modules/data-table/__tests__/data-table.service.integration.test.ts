@@ -1030,7 +1030,7 @@ describe('dataTable', () => {
 						...row,
 						id: i + 1,
 						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
-					}) as jest.AsymmetricMatcher,
+					}) as unknown as DataTableRow,
 			);
 
 			expect(data).toEqual(expected);
@@ -1624,7 +1624,7 @@ describe('dataTable', () => {
 						expect.objectContaining<DataTableRow>({
 							...row,
 							id: i + 1,
-						}) as jest.AsymmetricMatcher,
+						}) as unknown as DataTableRow,
 				);
 				expect(data).toEqual(expected);
 			});

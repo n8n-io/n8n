@@ -1,5 +1,6 @@
-import { ExecutionRecorder } from '../execution-recorder';
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
+
+import { ExecutionRecorder } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
@@ -13,12 +14,12 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 describe('ExecutionRecorder', () => {
 	describe('per-tool execution timing', () => {
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('records distinct per-tool end times from tool-execution-end for concurrent tools', () => {
-			jest.useFakeTimers();
-			jest.setSystemTime(1_000);
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
 			const recorder = new ExecutionRecorder();
 
 			// Two concurrent tool calls emitted together by the model.
@@ -56,7 +57,7 @@ describe('ExecutionRecorder', () => {
 			});
 
 			// The batched tool-results arrive together, after the slowest finished.
-			jest.setSystemTime(3_001);
+			vi.setSystemTime(3_001);
 			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
 			recorder.record(makeToolResultChunk('b', 'rb', 'tc-2'));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
@@ -72,12 +73,12 @@ describe('ExecutionRecorder', () => {
 		});
 
 		it('falls back to the tool-result time when tool-execution-end is absent', () => {
-			jest.useFakeTimers();
-			jest.setSystemTime(1_000);
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
 			const recorder = new ExecutionRecorder();
 
 			recorder.record(makeToolCallChunk('a', {}, 'tc-1'));
-			jest.setSystemTime(2_000);
+			vi.setSystemTime(2_000);
 			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 

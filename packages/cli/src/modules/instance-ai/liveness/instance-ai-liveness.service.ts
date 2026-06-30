@@ -1,11 +1,13 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import type { InstanceAiLivenessPolicy, InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
+import {
+	orchestratorAgentId,
+	type InstanceAiLivenessPolicy,
+	type InstanceAiLivenessTimeoutReason,
+} from '@n8n/instance-ai';
 
 import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 export const INSTANCE_AI_RUN_TIMEOUT_REASON = 'timeout';
 
@@ -75,7 +77,7 @@ export type InstanceAiLivenessBackgroundTasks = {
 };
 
 export type InstanceAiLivenessEventBus = {
-	getEventsForRun: (threadId: string, runId: string) => Pick<InstanceAiEvent, 'responseId'>[];
+	getEventsForRun: (threadId: string, runId: string) => Array<Pick<InstanceAiEvent, 'responseId'>>;
 	publish: (threadId: string, event: InstanceAiEvent) => void;
 };
 
@@ -240,7 +242,7 @@ export class InstanceAiLivenessService<
 		this.options.eventBus.publish(threadId, {
 			type: 'text-delta',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			responseId,
 			payload: { text: RUN_TIMEOUT_MESSAGE },
 		});
