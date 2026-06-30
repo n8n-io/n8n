@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Settings, SettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
 import { OtelConfig } from '../otel.config';
@@ -13,7 +13,7 @@ describe('OtelSettingsService', () => {
 	const originalEnv = process.env;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv };
 		// Strip any OTel env vars inherited from the test runner so each test
 		// starts from a known state.

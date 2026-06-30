@@ -13,7 +13,7 @@ import type { Client } from 'langsmith';
 import type { Example, KVMap } from 'langsmith/schemas';
 import { z } from 'zod';
 
-import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 
 /**
@@ -49,9 +49,8 @@ export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema
  * - Orders examples round-robin across test cases for optimal parallelism
  * - Assigns each example to a split (test case file slug) for UI filtering
  *
- * `filter`/`exclude`/`tier` mirror the eval CLI selection, so an isolated
- * cohort (e.g. `--tier mcp` into a dedicated `--dataset`) only syncs its own
- * cases rather than the whole corpus.
+ * Takes the already-selected test cases (the caller loads them once, from disk
+ * or lang-tracer, and threads them through), so the sync stays source-agnostic.
  *
  * Never deletes. Orphan cleanup is manual (LangSmith UI or MCP).
  *
@@ -61,12 +60,8 @@ export async function syncDataset(
 	lsClient: Client,
 	datasetName: string,
 	logger: EvalLogger,
-	filter?: string,
-	exclude?: string,
-	tier?: string,
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
 ): Promise<string> {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter, exclude, tier);
-
 	// Round-robin ordering ensures evaluate() triggers diverse builds early
 	// rather than burning all concurrency slots on one test case.
 	const scenarios = buildRoundRobinScenarios(testCasesWithFiles);

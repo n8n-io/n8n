@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	mockLogger,
 	createTeamProject,
@@ -5,11 +6,10 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import { mock } from 'vitest-mock-extended';
 
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 
@@ -59,8 +59,8 @@ beforeEach(async () => {
 
 afterEach(() => {
 	Object.assign(Container.get(InsightsConfig), defaultCompactionConfig);
-	jest.useRealTimers();
-	jest.restoreAllMocks();
+	vi.useRealTimers();
+	vi.restoreAllMocks();
 });
 
 // Terminate DB once after all tests complete
@@ -370,7 +370,7 @@ describe('compaction', () => {
 	describe('compactionSchedule', () => {
 		test('compaction is running on schedule', async () => {
 			// ARRANGE
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const insightsCompactionService = new InsightsCompactionService(
 				mock<InsightsByPeriodRepository>(),
 				mock<InsightsRawRepository>(),
@@ -380,20 +380,20 @@ describe('compaction', () => {
 				mockLogger(),
 			);
 			// spy on the compactInsights method to check if it's called
-			const compactInsightsSpy = jest.spyOn(insightsCompactionService, 'compactInsights');
+			const compactInsightsSpy = vi.spyOn(insightsCompactionService, 'compactInsights');
 
 			try {
 				insightsCompactionService.startCompactionTimer();
 
 				// ACT
 				// advance by 1 hour and 1 minute
-				jest.advanceTimersByTime(1000 * 60 * 61);
+				vi.advanceTimersByTime(1000 * 60 * 61);
 
 				// ASSERT
 				expect(compactInsightsSpy).toHaveBeenCalledTimes(1);
 			} finally {
 				insightsCompactionService.stopCompactionTimer();
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 	});
@@ -401,7 +401,7 @@ describe('compaction', () => {
 	describe('compactInsights in-memory run guard', () => {
 		test('skips a concurrent run and accepts another run after the active one finishes', async () => {
 			// ARRANGE
-			const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 			const insightsCompactionService = new InsightsCompactionService(
 				mock<InsightsByPeriodRepository>(),
 				mock<InsightsRawRepository>(),
@@ -418,12 +418,12 @@ describe('compaction', () => {
 			const firstRawToHourPromise = new Promise<number>((resolve) => {
 				resolveRawToHour = resolve;
 			});
-			const rawToHourSpy = jest
+			const rawToHourSpy = vi
 				.spyOn(insightsCompactionService, 'compactRawToHour')
 				.mockReturnValueOnce(firstRawToHourPromise)
 				.mockResolvedValue(0);
-			jest.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
-			jest.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
 
 			// ACT
 			const firstCompactionPromise = insightsCompactionService.compactInsights();
@@ -445,7 +445,7 @@ describe('compaction', () => {
 
 		test('accepts another run after the active run fails', async () => {
 			// ARRANGE
-			const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 			const insightsCompactionService = new InsightsCompactionService(
 				mock<InsightsByPeriodRepository>(),
 				mock<InsightsRawRepository>(),
@@ -457,14 +457,14 @@ describe('compaction', () => {
 				}),
 				logger,
 			);
-			const rawToHourSpy = jest
+			const rawToHourSpy = vi
 				.spyOn(insightsCompactionService, 'compactRawToHour')
 				.mockRejectedValueOnce(new Error('compaction failed'))
 				.mockResolvedValue(0);
-			const hourToDaySpy = jest
+			const hourToDaySpy = vi
 				.spyOn(insightsCompactionService, 'compactHourToDay')
 				.mockResolvedValue(0);
-			const dayToWeekSpy = jest
+			const dayToWeekSpy = vi
 				.spyOn(insightsCompactionService, 'compactDayToWeek')
 				.mockResolvedValue(0);
 
@@ -570,7 +570,7 @@ describe('compaction', () => {
 			const project = await createTeamProject();
 			const workflow = await createWorkflow({}, project);
 			await createRawSuccessEvents(workflow, 5);
-			const dateNowSpy = jest
+			const dateNowSpy = vi
 				.spyOn(Date, 'now')
 				.mockReturnValueOnce(0)
 				.mockReturnValueOnce(0)

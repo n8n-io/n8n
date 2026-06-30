@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -48,7 +48,7 @@ describe('InstanceAiSettingsService', () => {
 	let service: InstanceAiSettingsService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Object.assign(globalConfig.instanceAi, {
 			model: 'openai/gpt-5.5',
 			modelUrl: '',

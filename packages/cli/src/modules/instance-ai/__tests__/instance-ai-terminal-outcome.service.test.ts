@@ -1,11 +1,11 @@
 const terminalOutcomeStorageMock = {
-	getUndelivered: jest.fn(),
-	markDelivered: jest.fn(),
-	upsert: jest.fn(),
+	getUndelivered: vi.fn(),
+	markDelivered: vi.fn(),
+	upsert: vi.fn(),
 };
 
 // Manual mock — must be declared before any import that touches the mocked module.
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 	InstanceAiTerminalResponseGuard: class {
 		constructor(private readonly options: { runId: string; rootAgentId: string }) {}
@@ -94,6 +94,7 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
+import type { Mock } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import type { ManagedBackgroundTask, TerminalOutcome } from '@n8n/instance-ai';
 
@@ -114,22 +115,22 @@ type SnapshotRow = {
 type Deps = {
 	eventBus: {
 		events: InstanceAiEvent[];
-		getEventsForRun: jest.Mock;
-		getEventsForRuns: jest.Mock;
-		publish: jest.Mock;
+		getEventsForRun: Mock;
+		getEventsForRuns: Mock;
+		publish: Mock;
 	};
 	dbSnapshotStorage: {
-		getLatest: jest.Mock;
-		save: jest.Mock;
-		updateLast: jest.Mock;
+		getLatest: Mock;
+		save: Mock;
+		updateLast: Mock;
 	};
-	telemetry: { track: jest.Mock };
-	logger: { warn: jest.Mock; debug: jest.Mock; error: jest.Mock };
-	runState: { getRunIdsForMessageGroup: jest.Mock; cancelThread: jest.Mock };
-	suspendedThreads: { dropPendingConfirmationsForThread: jest.Mock };
-	tracing: { finalizeRunTracing: jest.Mock; buildMessageTraceMetadata: jest.Mock };
-	publishRunFinish: jest.Mock;
-	saveAgentTreeSnapshot: jest.Mock;
+	telemetry: { track: Mock };
+	logger: { warn: Mock; debug: Mock; error: Mock };
+	runState: { getRunIdsForMessageGroup: Mock; cancelThread: Mock };
+	suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+	tracing: { finalizeRunTracing: Mock; buildMessageTraceMetadata: Mock };
+	publishRunFinish: Mock;
+	saveAgentTreeSnapshot: Mock;
 };
 
 function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
@@ -169,34 +170,34 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 	const deps: Deps = {
 		eventBus: {
 			events,
-			getEventsForRun: jest.fn(() => events),
-			getEventsForRuns: jest.fn(() => events),
-			publish: jest.fn((_threadId: string, event: InstanceAiEvent) => {
+			getEventsForRun: vi.fn(() => events),
+			getEventsForRuns: vi.fn(() => events),
+			publish: vi.fn((_threadId: string, event: InstanceAiEvent) => {
 				events.push(event);
 			}),
 		},
 		dbSnapshotStorage: {
-			getLatest: jest.fn(
+			getLatest: vi.fn(
 				async (): Promise<SnapshotRow | undefined> =>
 					snapshotTree
 						? { tree: snapshotTree, runId: 'run-1', messageGroupId: 'group-1', runIds: ['run-1'] }
 						: undefined,
 			),
-			save: jest.fn(async () => {}),
-			updateLast: jest.fn(async () => {}),
+			save: vi.fn(async () => {}),
+			updateLast: vi.fn(async () => {}),
 		},
-		telemetry: { track: jest.fn() },
-		logger: { warn: jest.fn(), debug: jest.fn(), error: jest.fn() },
+		telemetry: { track: vi.fn() },
+		logger: { warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 		runState: {
-			getRunIdsForMessageGroup: jest.fn(() => ['run-1']),
-			cancelThread: jest.fn(),
+			getRunIdsForMessageGroup: vi.fn(() => ['run-1']),
+			cancelThread: vi.fn(),
 		},
-		suspendedThreads: { dropPendingConfirmationsForThread: jest.fn(async () => {}) },
+		suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
 		tracing: {
-			finalizeRunTracing: jest.fn(async () => {}),
-			buildMessageTraceMetadata: jest.fn(() => ({ completion_source: 'orchestrator' })),
+			finalizeRunTracing: vi.fn(async () => {}),
+			buildMessageTraceMetadata: vi.fn(() => ({ completion_source: 'orchestrator' })),
 		},
-		publishRunFinish: jest.fn(
+		publishRunFinish: vi.fn(
 			(_threadId: string, runId: string, status: 'completed' | 'cancelled' | 'errored') => {
 				events.push({
 					type: 'run-finish',
@@ -206,7 +207,7 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 				} as InstanceAiEvent);
 			},
 		),
-		saveAgentTreeSnapshot: jest.fn(async () => {}),
+		saveAgentTreeSnapshot: vi.fn(async () => {}),
 	};
 
 	const options = {
@@ -226,7 +227,7 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 }
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([]);
 	terminalOutcomeStorageMock.markDelivered.mockResolvedValue(undefined);
 	terminalOutcomeStorageMock.upsert.mockResolvedValue(undefined);

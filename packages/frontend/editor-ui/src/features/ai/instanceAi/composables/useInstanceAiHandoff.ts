@@ -102,7 +102,7 @@ export function useInstanceAiHandoff() {
 			const threadId = uuidv4();
 			// Open the tab now, inside the click gesture, so it isn't popup-blocked.
 			const tab = options?.newTab ? window.open('', '_blank') : null;
-			// Persist the thread on the BE before navigating — `/instance-ai/:threadId`
+			// Persist the thread on the BE before navigating — `/assistant/:threadId`
 			// expects an existing thread.
 			try {
 				await instanceAiStore.syncThread(threadId, projectId);

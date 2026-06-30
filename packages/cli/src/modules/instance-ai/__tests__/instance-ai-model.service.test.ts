@@ -1,7 +1,8 @@
 import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import type { MockedFunction } from 'vitest';
 import { UserError } from 'n8n-workflow';
 
 import type { AiService } from '@/services/ai.service';
@@ -9,19 +10,19 @@ import type { AiService } from '@/services/ai.service';
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 
-jest.mock('@n8n/backend-network', () => ({
+vi.mock('@n8n/backend-network', () => ({
 	OutboundHttp: class OutboundHttp {},
 }));
 
-jest.mock('@/services/ai.service', () => ({
+vi.mock('@/services/ai.service', () => ({
 	AiService: class AiService {},
 }));
 
-jest.mock('../instance-ai-settings.service', () => ({
+vi.mock('../instance-ai-settings.service', () => ({
 	InstanceAiSettingsService: class InstanceAiSettingsService {},
 }));
 
-jest.mock('@ai-sdk/anthropic', () => ({
+vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic:
 		(opts?: { apiKey?: string; baseURL?: string; fetch?: typeof fetch }) => (modelId: string) => ({
 			provider: 'anthropic',
@@ -30,12 +31,12 @@ jest.mock('@ai-sdk/anthropic', () => ({
 			baseURL: opts?.baseURL,
 			fetch: opts?.fetch,
 			specificationVersion: 'v2',
-			doGenerate: jest.fn(),
-			doStream: jest.fn(),
+			doGenerate: vi.fn(),
+			doStream: vi.fn(),
 		}),
 }));
 
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI:
 		(opts?: { apiKey?: string; baseURL?: string; fetch?: typeof fetch }) => (modelId: string) => ({
 			provider: 'openai',
@@ -44,8 +45,8 @@ jest.mock('@ai-sdk/openai', () => ({
 			baseURL: opts?.baseURL,
 			fetch: opts?.fetch,
 			specificationVersion: 'v2',
-			doGenerate: jest.fn(),
-			doStream: jest.fn(),
+			doGenerate: vi.fn(),
+			doStream: vi.fn(),
 		}),
 }));
 
@@ -63,11 +64,9 @@ function createClient({
 	accessToken = makeJwt(Math.floor(Date.now() / 1000) + 600),
 } = {}) {
 	return {
-		getApiProxyBaseUrl: jest.fn(() => proxyBaseUrl),
-		getBuilderApiProxyToken: jest.fn().mockResolvedValue({ tokenType: 'Bearer', accessToken }),
-		getBuilderInstanceCredits: jest
-			.fn()
-			.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
+		getApiProxyBaseUrl: vi.fn(() => proxyBaseUrl),
+		getBuilderApiProxyToken: vi.fn().mockResolvedValue({ tokenType: 'Bearer', accessToken }),
+		getBuilderInstanceCredits: vi.fn().mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
 	};
 }
 
@@ -77,17 +76,15 @@ describe('InstanceAiModelService', () => {
 	const outboundHttp = mock<OutboundHttp>();
 
 	let service: InstanceAiModelService;
-	let customFetch: jest.MockedFunction<CustomFetch>;
+	let customFetch: MockedFunction<CustomFetch>;
 
 	beforeEach(() => {
 		process.env = { ...originalEnv };
 		delete process.env.HTTP_PROXY;
 		delete process.env.HTTPS_PROXY;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		const transport = mock<HttpTransport>();
-		customFetch = jest.fn<ReturnType<CustomFetch>, Parameters<CustomFetch>>(
-			async () => new Response(null, { status: 200 }),
-		);
+		customFetch = vi.fn<CustomFetch>(async () => new Response(null, { status: 200 }));
 		transport.asCustomFetch.mockReturnValue(customFetch);
 		outboundHttp.transport.mockReturnValue(transport);
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);

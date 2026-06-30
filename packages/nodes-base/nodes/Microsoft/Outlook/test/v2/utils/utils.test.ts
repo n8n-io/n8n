@@ -1,9 +1,13 @@
+import type { INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+
 import {
 	createMessage,
 	makeRecipient,
 	prepareContactFields,
 	prepareFilterString,
 	simplifyOutputMessages,
+	validateMailbox,
 } from '../../../v2/helpers/utils';
 
 describe('Test MicrosoftOutlookV2, makeRecipient', () => {
@@ -241,5 +245,93 @@ describe('Test MicrosoftOutlookV2, createMessage', () => {
 		const message = createMessage(fields);
 
 		expect(message).toEqual(result);
+	});
+});
+
+describe('Test MicrosoftOutlookV2, validateMailbox', () => {
+	const node: INode = {
+		id: 'test-node',
+		name: 'Microsoft Outlook',
+		type: 'n8n-nodes-base.microsoftOutlook',
+		typeVersion: 2,
+		position: [0, 0],
+		parameters: {},
+	};
+
+	it('should accept a user GUID', () => {
+		expect(() => validateMailbox('11111111-1111-1111-1111-111111111111', node)).not.toThrow();
+	});
+
+	it('should accept a UPN', () => {
+		expect(() => validateMailbox('jane@contoso.com', node)).not.toThrow();
+	});
+
+	it('should accept a UPN containing "+" (sub-addressing)', () => {
+		expect(() => validateMailbox('jane+test@contoso.com', node)).not.toThrow();
+	});
+
+	it("should accept a UPN containing an apostrophe (e.g. o'connor)", () => {
+		expect(() => validateMailbox("o'connor@contoso.com", node)).not.toThrow();
+	});
+
+	it('should reject a bare host/domain (not a valid mailbox identifier)', () => {
+		expect(() => validateMailbox('contoso.onmicrosoft.com', node)).toThrow(
+			'The mailbox is not valid',
+		);
+		expect(() => validateMailbox('contoso', node)).toThrow('The mailbox is not valid');
+	});
+
+	it('should throw the static "required" error for empty/whitespace', () => {
+		expect(() => validateMailbox('', node)).toThrow(
+			'A mailbox is required for the Service Principal',
+		);
+		// whitespace is trimmed by the caller, so the validator sees '' here too
+		expect(() => validateMailbox('', node)).toThrow(NodeOperationError);
+	});
+
+	it('should reject dots-only ids', () => {
+		expect(() => validateMailbox('.', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('..', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('...', node)).toThrow('The mailbox is not valid');
+	});
+
+	it('should reject slashy / traversal ids', () => {
+		expect(() => validateMailbox('a/b', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('a\\b', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('../evil', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('%2e%2e', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('https://evil.com', node)).toThrow('The mailbox is not valid');
+	});
+
+	it('should reject other URL-unsafe characters (?, #, space)', () => {
+		expect(() => validateMailbox('a?b', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('a#b', node)).toThrow('The mailbox is not valid');
+		expect(() => validateMailbox('a b@contoso.com', node)).toThrow('The mailbox is not valid');
+	});
+
+	it('should reject a drive-style "!"-bearing id (proves the drive shape was not lifted)', () => {
+		expect(() => validateMailbox('b!abc', node)).toThrow('The mailbox is not valid');
+	});
+
+	it('should reject an encoded-traversal input (validate runs before encode)', () => {
+		expect(() => validateMailbox('..%2f..%2fadmin@evil.com', node)).toThrow(
+			'The mailbox is not valid',
+		);
+	});
+
+	it('should throw a static message/description that never echoes the rejected id', () => {
+		let caught: NodeOperationError | undefined;
+		try {
+			validateMailbox('..%2f..%2fadmin@evil.com', node);
+		} catch (error) {
+			caught = error as NodeOperationError;
+		}
+		expect(caught).toBeDefined();
+		expect(caught?.message).not.toContain('evil');
+		expect(caught?.message).not.toContain('..');
+		expect(caught?.message).not.toContain('%2');
+		expect(caught?.description).not.toContain('evil');
+		expect(caught?.description).not.toContain('..');
+		expect(caught?.description).not.toContain('%2');
 	});
 });

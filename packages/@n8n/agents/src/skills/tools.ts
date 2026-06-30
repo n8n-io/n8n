@@ -121,7 +121,6 @@ const skillLoadInputWithFilesSchema = skillLoadBaseInputSchema
 	.extend({
 		filePath: z
 			.string()
-			.min(1)
 			.optional()
 			.describe('Optional linked file path relative to the skill directory.'),
 	})
@@ -229,16 +228,17 @@ async function loadSkill(
 	}
 
 	const loadMainSkill = isMainSkillFilePath(filePath);
-	if (!loadMainSkill && filePath !== undefined) {
-		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, filePath);
+	if (!loadMainSkill) {
+		const linkedFilePath = filePath ?? '';
+		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, linkedFilePath);
 		if (!linkedFile) {
 			return {
 				ok: false,
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${filePath}. To load the main skill instructions, retry without filePath.`,
+				filePath: linkedFilePath,
+				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}. To load the main skill instructions, retry without filePath.`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -249,7 +249,7 @@ async function loadSkill(
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
+				filePath: linkedFilePath,
 				error: 'This skill source does not support loading linked files.',
 				linkedFiles: skillEntry.linkedFiles,
 			};
@@ -262,8 +262,8 @@ async function loadSkill(
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${filePath}`,
+				filePath: linkedFilePath,
+				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -376,15 +376,16 @@ function findRegisteredLinkedFile(
 	return undefined;
 }
 
-function isMainSkillFilePath(filePath: string | undefined): boolean {
-	const normalizedPath = filePath?.trim();
+function isMainSkillFilePath(filePath?: string): boolean {
+	if (filePath === undefined) return true;
+	const normalized = filePath.trim();
 	return (
-		normalizedPath === undefined ||
-		normalizedPath === RUNTIME_SKILL_FILE_NAME ||
-		normalizedPath === `./${RUNTIME_SKILL_FILE_NAME}` ||
-		normalizedPath === '/' ||
-		normalizedPath === '.' ||
-		normalizedPath === './'
+		normalized === '' ||
+		normalized === '/' ||
+		normalized === '.' ||
+		normalized === './' ||
+		normalized === RUNTIME_SKILL_FILE_NAME ||
+		normalized === `./${RUNTIME_SKILL_FILE_NAME}`
 	);
 }
 

@@ -8,12 +8,13 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 describe('WorkflowPublicationApplier', () => {
 	const logger = mock<Logger>();
@@ -22,6 +23,7 @@ describe('WorkflowPublicationApplier', () => {
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowTriggerActivator = mock<WorkflowTriggerActivator>();
+	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -29,6 +31,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowHistoryRepository,
 		workflowPublishedVersionRepository,
 		workflowTriggerActivator,
+		workflowPublishedDataService,
 	);
 
 	function makeRecord(
@@ -98,7 +101,7 @@ describe('WorkflowPublicationApplier', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: 'v-1' }));
 		workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(oldVersion));
 		workflowPublishedVersionRepository.setPublishedVersion.mockResolvedValue(undefined);
@@ -150,6 +153,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
 			);
+			expect(workflowPublishedDataService.invalidateCache).toHaveBeenCalledWith('wf-1');
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
@@ -213,6 +217,10 @@ describe('WorkflowPublicationApplier', () => {
 			'wf-1',
 			'v-2',
 		);
+		// The unchanged-triggers path still advances the version, so the cache is
+		// invalidated and repopulated for the new version to be served on next fire.
+		expect(workflowPublishedDataService.invalidateCache).toHaveBeenCalledWith('wf-1');
+		expect(workflowPublishedDataService.refreshCache).toHaveBeenCalledWith('wf-1');
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 	});
@@ -344,6 +352,12 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedVersionRepository.setPublishedVersion.mockImplementation(async () => {
 			callOrder.push('advance');
 		});
+		workflowPublishedDataService.invalidateCache.mockImplementation(async () => {
+			callOrder.push('invalidate');
+		});
+		workflowPublishedDataService.refreshCache.mockImplementation(async () => {
+			callOrder.push('refresh');
+		});
 		workflowTriggerActivator.activate.mockImplementation(async () => {
 			callOrder.push('add');
 			return { activated: ['a'], failures: [] };
@@ -362,7 +376,10 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['a']),
 		);
-		expect(callOrder).toEqual(['remove', 'advance', 'add']);
+		// The cache is invalidated before the version is advanced and repopulated
+		// straight after, so the empty window never serves a stale version, all
+		// before the new triggers are added.
+		expect(callOrder).toEqual(['remove', 'invalidate', 'advance', 'refresh', 'add']);
 	});
 
 	test('propagates without advancing when removing triggers throws', async () => {
