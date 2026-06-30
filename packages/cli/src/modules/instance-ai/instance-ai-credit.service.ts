@@ -6,7 +6,6 @@ import { InstanceSettings } from 'n8n-core';
 import { sleep, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { License } from '@/license';
 import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
@@ -53,7 +52,6 @@ export class InstanceAiCreditService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
-		private readonly license: License,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -204,19 +202,16 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
-	 * Each caller gets a unique token (separate nanoid) for audit tracking.
-	 *
-	 * Routes by license: instances licensed for Instance AI (`feat:instanceAi`)
-	 * mint against the dedicated IA pool; older/un-reissued instances keep using
-	 * the shared builder pool. The same guard routes the claim below, so a token
-	 * is always claimed against the pool it was minted from.
+	 * Fetch a fresh Instance AI proxy auth token and return the client +
+	 * Authorization headers. Each caller gets a unique token (separate nanoid)
+	 * for audit tracking.
 	 */
 	private async getProxyAuth(user: User) {
 		const client = await this.aiService.getClient();
-		const token = this.license.isInstanceAiEnabled()
-			? await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() })
-			: await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+		const token = await client.getInstanceAiApiProxyToken(
+			{ id: user.id },
+			{ userMessageId: nanoid() },
+		);
 		return {
 			client,
 			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
@@ -224,10 +219,8 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Single authoritative claim call against the proxy, routed by license.
-	 *
-	 * The IA branch forwards `threadId` so the service can attach it to the claim
-	 * telemetry; the builder branch is left unchanged (no `threadId`).
+	 * Single authoritative claim call against the Instance AI pool. Forwards
+	 * `threadId` so the service can attach it to the claim telemetry.
 	 */
 	private async claimTokens(
 		user: User,
@@ -236,13 +229,11 @@ export class InstanceAiCreditService {
 		usage: BuilderUsageItem[],
 	) {
 		const { client, headers } = await this.getProxyAuth(user);
-		return this.license.isInstanceAiEnabled()
-			? await client.markInstanceAiTokenUsage({ id: user.id }, headers, {
-					dedupeId,
-					usage,
-					threadId,
-				})
-			: await client.markBuilderTokenUsage({ id: user.id }, headers, { dedupeId, usage });
+		return await client.markInstanceAiTokenUsage({ id: user.id }, headers, {
+			dedupeId,
+			usage,
+			threadId,
+		});
 	}
 
 	/**

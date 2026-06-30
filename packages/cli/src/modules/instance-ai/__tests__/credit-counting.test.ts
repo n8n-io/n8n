@@ -2,8 +2,6 @@ import type { Mock } from 'vitest';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
 
-import type { License } from '@/license';
-
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
@@ -22,11 +20,9 @@ function createService(deps: {
 	aiService: { isProxyEnabled: Mock; getClient: Mock };
 	push: { sendToUsers: Mock };
 	telemetry: { track: Mock };
-	license?: Partial<License>;
 }) {
 	const scopedLogger = { warn: vi.fn(), debug: vi.fn() };
 	const logger = { scoped: vi.fn().mockReturnValue(scopedLogger) };
-	const license = deps.license ?? { isInstanceAiEnabled: vi.fn().mockReturnValue(false) };
 	return new InstanceAiCreditService(
 		logger as never,
 		deps.aiService as never,
@@ -34,7 +30,6 @@ function createService(deps: {
 		{ instanceId: 'inst-1' } as never,
 		deps.push as never,
 		deps.threadRepo as never,
-		license as never,
 	);
 }
 
@@ -65,37 +60,29 @@ function createMockAiService(
 		claimError,
 		failuresBeforeSuccess = 0,
 	} = opts;
-	let markBuilderTokenUsage: Mock;
+	let markInstanceAiTokenUsage: Mock;
 	if (claimError) {
-		markBuilderTokenUsage = vi.fn().mockRejectedValue(claimError);
+		markInstanceAiTokenUsage = vi.fn().mockRejectedValue(claimError);
 	} else if (failuresBeforeSuccess > 0) {
 		let calls = 0;
-		markBuilderTokenUsage = vi.fn().mockImplementation(async () => {
+		markInstanceAiTokenUsage = vi.fn().mockImplementation(async () => {
 			calls += 1;
 			if (calls <= failuresBeforeSuccess) throw new Error('transient');
 			return claimResult;
 		});
 	} else {
-		markBuilderTokenUsage = vi.fn().mockResolvedValue(claimResult);
+		markInstanceAiTokenUsage = vi.fn().mockResolvedValue(claimResult);
 	}
-	const markInstanceAiTokenUsage: Mock = vi.fn().mockResolvedValue(claimResult);
-	const getBuilderApiProxyToken = vi
-		.fn()
-		.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' });
 	const getInstanceAiApiProxyToken = vi
 		.fn()
 		.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'ia-tok' });
 	return {
 		isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled),
 		getClient: vi.fn().mockResolvedValue({
-			getBuilderApiProxyToken,
-			markBuilderTokenUsage,
 			getInstanceAiApiProxyToken,
 			markInstanceAiTokenUsage,
 		}),
-		__markBuilderTokenUsage: markBuilderTokenUsage,
 		__markInstanceAiTokenUsage: markInstanceAiTokenUsage,
-		__getBuilderApiProxyToken: getBuilderApiProxyToken,
 		__getInstanceAiApiProxyToken: getInstanceAiApiProxyToken,
 	};
 }
@@ -146,10 +133,10 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledWith(
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
 			{ id: 'user-1' },
-			{ Authorization: 'Bearer tok' },
-			{ dedupeId: 'run-1', usage },
+			{ Authorization: 'Bearer ia-tok' },
+			{ dedupeId: 'run-1', usage, threadId: 't1' },
 		);
 		expect(threadRepo.save).toHaveBeenCalledWith(
 			expect.objectContaining({ metadata: expect.objectContaining({ creditsUsed: 2.5 }) }),
@@ -200,7 +187,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service, { status: 'cancelled' });
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(1);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
 			expect.objectContaining({ status: 'cancelled', success: true }),
@@ -217,7 +204,7 @@ describe('claimRunUsage', () => {
 		await callClaim(service, { dedupeId: 'run-1' });
 		await callClaim(service, { dedupeId: 'run-1' });
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(1);
 	});
 
 	it('caps the in-memory dedup guard, evicting the oldest run ids', async () => {
@@ -263,7 +250,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(2);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(2);
 		expect(delta).toBe(0.5);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
@@ -280,7 +267,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(3);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(3);
 		expect(delta).toBeUndefined();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
@@ -415,31 +402,14 @@ describe('claimRunUsage', () => {
 		});
 	});
 
-	describe('license routing', () => {
-		it('uses the builder pool when feat:instanceAi is absent', async () => {
+	describe('instance-ai pool', () => {
+		it('always mints and claims against the instance-ai pool, forwarding threadId', async () => {
 			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 			const ai = createMockAiService();
 			const push = { sendToUsers: vi.fn() };
 			const telemetry = { track: vi.fn() };
-			const license = { isInstanceAiEnabled: vi.fn().mockReturnValue(false) };
 
-			const service = createService({ threadRepo, aiService: ai, push, telemetry, license });
-			await callClaim(service);
-
-			expect(ai.__getBuilderApiProxyToken).toHaveBeenCalledTimes(1);
-			expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
-			expect(ai.__getInstanceAiApiProxyToken).not.toHaveBeenCalled();
-			expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
-		});
-
-		it('uses the instance-ai pool when feat:instanceAi is present', async () => {
-			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
-			const ai = createMockAiService();
-			const push = { sendToUsers: vi.fn() };
-			const telemetry = { track: vi.fn() };
-			const license = { isInstanceAiEnabled: vi.fn().mockReturnValue(true) };
-
-			const service = createService({ threadRepo, aiService: ai, push, telemetry, license });
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
 			await callClaim(service, { threadId: 'thread-9', dedupeId: 'run-1' });
 
 			expect(ai.__getInstanceAiApiProxyToken).toHaveBeenCalledTimes(1);
@@ -450,8 +420,6 @@ describe('claimRunUsage', () => {
 				{ Authorization: 'Bearer ia-tok' },
 				{ dedupeId: 'run-1', usage, threadId: 'thread-9' },
 			);
-			expect(ai.__getBuilderApiProxyToken).not.toHaveBeenCalled();
-			expect(ai.__markBuilderTokenUsage).not.toHaveBeenCalled();
 		});
 	});
 
