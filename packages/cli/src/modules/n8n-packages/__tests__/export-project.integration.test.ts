@@ -1,4 +1,10 @@
-import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -87,6 +93,26 @@ describe('project package export', () => {
 			expect(projectFile).toBeDefined();
 			expect(JSON.parse(projectFile!.content.toString())).toEqual({ id, name });
 		}
+	});
+
+	it('exports the owner personal project', async () => {
+		const owner = await createOwner();
+		const personalProject = await getPersonalProject(owner);
+
+		const { manifest, entries } = await exportSingleProject(owner, personalProject.id);
+
+		expect(manifest.projects).toEqual([
+			{ id: personalProject.id, name: personalProject.name, target: expect.any(String) },
+		]);
+
+		const projectFile = entries.find(
+			(entry) => entry.name === `${manifest.projects![0].target}/project.json`,
+		);
+		expect(projectFile).toBeDefined();
+		expect(JSON.parse(projectFile!.content.toString())).toEqual({
+			id: personalProject.id,
+			name: personalProject.name,
+		});
 	});
 
 	it('allows a project editor to export an empty team project', async () => {

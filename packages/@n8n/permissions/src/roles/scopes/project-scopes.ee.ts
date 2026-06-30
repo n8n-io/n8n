@@ -100,6 +100,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'execution:reveal',
 	'project:list',
 	'project:read',
+	'project:export',
 	'folder:create',
 	'folder:read',
 	'folder:update',

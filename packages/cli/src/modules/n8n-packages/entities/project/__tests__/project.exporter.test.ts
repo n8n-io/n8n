@@ -1,7 +1,6 @@
 import type { Project, ProjectRepository, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Readable } from 'node:stream';
-import { UserError } from 'n8n-workflow';
 
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -160,13 +159,19 @@ describe('ProjectExporter', () => {
 		]);
 	});
 
-	it('throws UserError for personal projects', async () => {
+	it('exports a personal project', async () => {
 		const project = makeProject({ id: 'personal-1', name: 'Personal', type: 'personal' });
 		const { exporter } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
-		await expect(exporter.export({ user, projectIds: [project.id], writer })).rejects.toThrow(
-			UserError,
-		);
+		const { entries } = await exporter.export({ user, projectIds: [project.id], writer });
+
+		expect(entries).toEqual([
+			{
+				id: project.id,
+				name: project.name,
+				target: 'projects/personal',
+			},
+		]);
 	});
 });

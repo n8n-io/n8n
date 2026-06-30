@@ -36,12 +36,6 @@ export class ProjectExporter {
 		const targets = new UniqueFilenameAllocator('projects', 'project');
 
 		for (const project of projects) {
-			if (project.type !== 'team') {
-				throw new UserError(
-					`Project "${project.name}" is a personal project and cannot be exported`,
-				);
-			}
-
 			const target = targets.allocate(project.name);
 			const serialized = this.projectSerializer.serialize(project);
 

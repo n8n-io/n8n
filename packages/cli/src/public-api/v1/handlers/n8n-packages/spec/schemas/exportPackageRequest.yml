@@ -12,7 +12,7 @@ properties:
       - 2tUt1wbLX592XDdX
   projectIds:
     type: array
-    description: IDs of the team projects to include in the exported package.
+    description: IDs of the projects to include in the exported package.
     items:
       type: string
       minLength: 1
