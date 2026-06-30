@@ -2426,7 +2426,7 @@ describe('Salesforce', () => {
 				);
 			});
 
-			// NODE-5080: the Account field migrated from a `loadOptions`-typed select
+			// The Account field migrated from a `loadOptions`-typed select
 			// to a `resourceLocator`. New workflows save `{ __rl, mode, value }`
 			// objects; existing workflows keep saving raw strings. Execute must
 			// extract the underlying Id from either shape.
@@ -2705,7 +2705,7 @@ describe('Salesforce', () => {
 				);
 			});
 
-			// NODE-5080: parallel to the Create-path resourceLocator tests above.
+			// Parallel to the Create-path resourceLocator tests above.
 			it('should accept Account as a resourceLocator object on update', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(param: string, _i?: number, _d?: unknown, options?: unknown): any => {
@@ -4629,7 +4629,7 @@ describe('Salesforce', () => {
 	// Coverage for the 9 getAll call sites that previously had no test (Contact limit,
 	// CustomObject limit, Opportunity returnAll/limit, Account returnAll/limit, Task
 	// returnAll, User returnAll/limit) and end-to-end verification that the SF node's
-	// typeVersion is threaded into getQuery (NODE-5116 version-gate wiring).
+	// typeVersion is threaded into getQuery (version-gate wiring).
 	describe('Execute Method - GetAll Query Wiring', () => {
 		const mockGetAll = (resource: string, returnAll: boolean, limit?: number, options = {}) => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -4746,7 +4746,7 @@ describe('Salesforce', () => {
 
 		it('should pass typeVersion 1.1 to getQuery when the node is on the new version', async () => {
 			// End-to-end proof that getNode().typeVersion is threaded into getQuery,
-			// so a workflow created on v1.1 actually gets the NODE-5116 fix at runtime.
+			// so a workflow created on v1.1 actually gets the fix at runtime.
 			mockNode.typeVersion = 1.1;
 			mockGetAll('lead', false, 10);
 			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
