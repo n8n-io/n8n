@@ -104,7 +104,7 @@ describe('EvalTestCaseSchema', () => {
 		// (the inner seedThread object isn't .strict(), so an un-modelled field
 		// would be silently stripped and the read would wrongly target home/EU).
 		const { conversation: _omit, ...rest } = validFixture();
-		const parsed = WorkflowTestCaseSchema.parse({
+		const parsed = EvalTestCaseSchema.parse({
 			...rest,
 			seedThread: { threadId: 't1', endpoint: 'https://api.smith.langchain.com' },
 		});
@@ -114,7 +114,7 @@ describe('EvalTestCaseSchema', () => {
 	it('rejects a seedThread endpoint that is not a URL', () => {
 		const { conversation: _omit, ...rest } = validFixture();
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', endpoint: 'us' } }),
+			EvalTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', endpoint: 'us' } }),
 		).toThrow();
 	});
 

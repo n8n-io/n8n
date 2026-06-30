@@ -115,7 +115,7 @@ const evalTestCaseObjectSchema = z
  *  the schema is `.strict()`, so any extra key LangTracer attaches (id, name,
  *  suiteId, timestamps, …) fails the whole suite load. Whitelisting the allowed
  *  set is robust where blacklisting the few keys we happen to know today is not. */
-export const WORKFLOW_TEST_CASE_KEYS = Object.keys(workflowTestCaseObjectSchema.shape);
+export const WORKFLOW_TEST_CASE_KEYS = Object.keys(evalTestCaseObjectSchema.shape);
 
 // At most one seeding mode, and a source for the live turn.
 export const EvalTestCaseSchema = evalTestCaseObjectSchema

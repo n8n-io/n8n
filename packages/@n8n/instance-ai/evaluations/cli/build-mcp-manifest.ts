@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { createLogger } from '../harness/logger';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
-import { DEFAULT_DATASETS, conversationTurnTextSchema } from '../harness/schema';
+import { ConversationTurnSchema, DEFAULT_DATASETS } from '../harness/schema';
 import { loadTestCasesFromLangTracer } from '../langtracer/provider';
 
 // ---------------------------------------------------------------------------
