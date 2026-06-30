@@ -14,6 +14,12 @@ export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
 
 /**
+ * Max allowed size in bytes of a message relayed over the pubsub channel. Events
+ * exceeding this are skipped (or trimmed) rather than bloating the channel.
+ */
+export const MAX_PUBSUB_PAYLOAD_BYTES = 5 * 1024 * 1024; // 5 MiB
+
+/**
  * Commands that should be sent to the sender as well, e.g. during workflow activation and
  * deactivation in multi-main setup. */
 export const SELF_SEND_COMMANDS = new Set<PubSub.Command['command']>([

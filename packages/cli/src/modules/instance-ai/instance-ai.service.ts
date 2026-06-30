@@ -97,6 +97,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -1076,12 +1077,7 @@ export class InstanceAiService {
 	// These wrappers are the controller entry points; internal callers keep using
 	// the local methods directly so they don't trigger cross-main broadcasts.
 
-	private broadcastTaskControl(payload: {
-		threadId: string;
-		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
-		taskId?: string;
-		correction?: string;
-	}): void {
+	private broadcastTaskControl(payload: PubSubCommandMap['relay-instance-ai-task-control']): void {
 		void this.publisher
 			.publishCommand({ command: 'relay-instance-ai-task-control', payload })
 			.catch((error: unknown) =>
@@ -1134,12 +1130,7 @@ export class InstanceAiService {
 		taskId,
 		action,
 		correction,
-	}: {
-		threadId: string;
-		taskId?: string;
-		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
-		correction?: string;
-	}): Promise<void> {
+	}: PubSubCommandMap['relay-instance-ai-task-control']): Promise<void> {
 		switch (action) {
 			case 'correct':
 				if (taskId && correction !== undefined) {

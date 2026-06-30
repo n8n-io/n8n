@@ -6,14 +6,11 @@ import { InstanceSettings } from 'n8n-core';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
 
+import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
-
-/** Skip relaying events larger than this — they'd bloat the pubsub channel.
- *  State still reconciles on the next connect via the run-sync snapshot bootstrap. */
-const MAX_RELAY_BYTES = 5 * 1024 * 1024; // 5 MiB, mirrors push relay
 
 @Service()
 export class InProcessEventBus implements InstanceAiEventBus {
@@ -43,8 +40,10 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * holding the client's SSE connection (which may not be this one) delivers it.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
-		this.storeAndEmit(threadId, event);
-		this.relayToSiblings(threadId, event);
+		// Serialize once: reused for the store's size accounting and the relay guard.
+		const sizeBytes = Buffer.byteLength(JSON.stringify(event), 'utf8');
+		this.storeAndEmit(threadId, event, sizeBytes);
+		this.relayToSiblings(threadId, event, sizeBytes);
 	}
 
 	/**
@@ -54,19 +53,18 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * connection it serves.
 	 */
 	publishLocalOnly(threadId: string, event: InstanceAiEvent): void {
-		this.storeAndEmit(threadId, event);
+		this.storeAndEmit(threadId, event, Buffer.byteLength(JSON.stringify(event), 'utf8'));
 	}
 
-	private storeAndEmit(threadId: string, event: InstanceAiEvent): void {
+	private storeAndEmit(threadId: string, event: InstanceAiEvent, eventSizeBytes: number): void {
 		const events = this.getOrCreateStore(threadId);
 		const id = (this.nextId.get(threadId) ?? 0) + 1;
 		this.nextId.set(threadId, id);
 
 		const stored: StoredEvent = { id, event };
-		const eventSize = JSON.stringify(event).length;
 
 		events.push(stored);
-		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + eventSize);
+		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + eventSizeBytes);
 
 		// Evict oldest events if count or size exceeds caps
 		this.evictIfNeeded(threadId, events);
@@ -74,13 +72,12 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.emitter.emit(threadId, stored);
 	}
 
-	private relayToSiblings(threadId: string, event: InstanceAiEvent): void {
+	private relayToSiblings(threadId: string, event: InstanceAiEvent, sizeBytes: number): void {
 		if (!this.instanceSettings.isMultiMain) return;
 
-		const sizeBytes = Buffer.byteLength(JSON.stringify(event), 'utf8');
-		if (sizeBytes > MAX_RELAY_BYTES) {
+		if (sizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
 			this.logger.warn(
-				`Skipping cross-main relay of "${event.type}" event (${sizeBytes} bytes exceeds ${MAX_RELAY_BYTES})`,
+				`Skipping cross-main relay of "${event.type}" event (${sizeBytes} bytes exceeds ${MAX_PUBSUB_PAYLOAD_BYTES})`,
 				{ threadId, runId: event.runId },
 			);
 			return;
@@ -163,7 +160,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		while (events.length > MAX_EVENTS_PER_THREAD || totalSize > MAX_BYTES_PER_THREAD) {
 			const evicted = events.shift();
 			if (!evicted) break;
-			totalSize -= JSON.stringify(evicted.event).length;
+			totalSize -= Buffer.byteLength(JSON.stringify(evicted.event), 'utf8');
 		}
 
 		this.sizeBytes.set(threadId, Math.max(0, totalSize));
