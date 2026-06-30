@@ -19,6 +19,7 @@ import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
+import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
@@ -258,6 +259,12 @@ export abstract class AbstractServer {
 			this.app.all(
 				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
+			);
+
+			// Slack interactive callbacks post to one fixed URL; the run/node ids come from the payload
+			this.app.all(
+				`/${this.endpointWebhookWaiting}-slack`,
+				createWebhookHandlerFor(Container.get(SlackInteractionWebhooks)),
 			);
 
 			// Register a handler for live MCP servers
