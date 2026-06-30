@@ -557,7 +557,7 @@ describe('ActiveWorkflowManager', () => {
 				const node = mock<INode>({ name: 'Trigger Node' });
 				const triggerError = new Error('IMAP connection closed unexpectedly');
 
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 
