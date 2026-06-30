@@ -189,17 +189,6 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
 	});
 
-	it('rejects expected tool invocation checks with a migration hint', () => {
-		expect(() =>
-			EvalTestCaseSchema.parse({
-				...validFixture(),
-				expectedToolInvocations: {
-					allOfToolCalls: [{ toolName: 'load_skill', argsContainAny: ['intent-recognition'] }],
-				},
-			}),
-		).toThrow(/express tool-call checks as `processExpectations`/);
-	});
-
 	it('leaves expectation arrays undefined when omitted', () => {
 		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.processExpectations).toBeUndefined();

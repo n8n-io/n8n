@@ -46,13 +46,6 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
-		/** Removed for workflow test cases; discovery evals still use deterministic tool checks. */
-		expectedToolInvocations: z
-			.never({
-				invalid_type_error:
-					'`expectedToolInvocations` is no longer supported for workflow test cases — express tool-call checks as `processExpectations`; discovery evals still use deterministic tool checks.',
-			})
-			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
