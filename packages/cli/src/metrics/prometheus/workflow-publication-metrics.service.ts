@@ -53,6 +53,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 	init() {
 		this.initOutboxGauges();
 		this.initRecordOutcomeMetrics();
+		this.initTriggerMetrics();
 		this.initCleanupMetrics();
 	}
 
@@ -133,6 +134,37 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			({ result, reason, durationMs }) => {
 				outcomes.inc({ result, reason }, 1);
 				duration.observe({ result, reason }, durationMs * Time.milliseconds.toSeconds);
+			},
+		);
+	}
+
+	private initTriggerMetrics() {
+		const prefix = this.config.prefix;
+
+		const operationDuration = new promClient.Histogram({
+			name: `${prefix}workflow_publication_trigger_operation_duration_seconds`,
+			help: 'Duration in seconds of a workflow publication trigger operation by operation and result.',
+			labelNames: ['operation', 'result'],
+			buckets: DURATION_BUCKETS_SECONDS,
+		});
+
+		const nodeOperations = new promClient.Counter({
+			name: `${prefix}workflow_publication_trigger_node_operations_total`,
+			help: 'Total number of trigger nodes (de)activated during workflow publication by operation and result.',
+			labelNames: ['operation', 'result'],
+		});
+
+		this.eventService.on(
+			'workflow-publication-trigger-operation',
+			({ operation, result, durationMs }) => {
+				operationDuration.observe({ operation, result }, durationMs * Time.milliseconds.toSeconds);
+			},
+		);
+
+		this.eventService.on(
+			'workflow-publication-trigger-node-operations',
+			({ operation, result, count }) => {
+				nodeOperations.inc({ operation, result }, count);
 			},
 		);
 	}

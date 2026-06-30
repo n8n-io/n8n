@@ -20,7 +20,10 @@ export type PublicationOutcomeReason =
 	| 'workflow_inactive'
 	| 'version_missing';
 
-/** Whether an operation succeeded or failed. */
+/** A trigger operation performed during publication. */
+export type PublicationTriggerOperation = 'activate' | 'deactivate';
+
+/** Whether an operation (or a set of trigger nodes) succeeded or failed. */
 export type PublicationOperationResult = 'success' | 'failure';
 
 export type WorkflowPublicationMetricsEventMap = {
@@ -28,6 +31,18 @@ export type WorkflowPublicationMetricsEventMap = {
 		result: PublicationOutcomeResult;
 		reason: PublicationOutcomeReason;
 		durationMs: number;
+	};
+
+	'workflow-publication-trigger-operation': {
+		operation: PublicationTriggerOperation;
+		result: PublicationOperationResult;
+		durationMs: number;
+	};
+
+	'workflow-publication-trigger-node-operations': {
+		operation: 'activate' | 'deactivate';
+		result: PublicationOperationResult;
+		count: number;
 	};
 
 	'workflow-publication-outbox-cleanup': {
