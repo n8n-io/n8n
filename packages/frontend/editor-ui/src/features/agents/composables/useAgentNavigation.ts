@@ -23,12 +23,10 @@ export function useAgentNavigation() {
 		// Only a persisted workflow has a real id to return to; a brand-new
 		// (unsaved) workflow has no meaningful "back to workflow" target.
 		if (workflowsStore.isNewWorkflow) return;
-		// `workflowsStore.workflowId` is set on load and is reliable here; the
-		// route-based `useWorkflowId()` is a fallback for embedded-canvas contexts.
+
 		const wfId = workflowsStore.workflowId || workflowId.value;
 		if (!wfId) return;
-		// A full node id is fine: the canvas re-opens the node via prefix match
-		// (`findNodeByPartialId`), so we avoid the partial-id computation.
+
 		returnContext.set({ workflowId: wfId, nodeId: originNodeId ?? '', agentId });
 	}
 

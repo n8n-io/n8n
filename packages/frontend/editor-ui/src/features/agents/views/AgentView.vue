@@ -19,8 +19,6 @@ const routeAgentId = computed(() => {
 });
 
 // Show the banner only on the pages of the agent the round-trip navigated to.
-// Route-gating (rather than clearing on every unmount) keeps it stable across
-// the agent views' remounts and hides it on unrelated agents.
 const showBackBanner = computed(
 	() => !!returnContext.context && returnContext.context.agentId === routeAgentId.value,
 );
@@ -39,7 +37,9 @@ onBeforeUnmount(() => returnContext.clear());
 async function onBackToWorkflow() {
 	const ctx = returnContext.context;
 	if (!ctx) return;
+
 	returnContext.clear();
+
 	await router.push({
 		name: VIEWS.WORKFLOW,
 		params: { workflowId: ctx.workflowId, ...(ctx.nodeId ? { nodeId: ctx.nodeId } : {}) },

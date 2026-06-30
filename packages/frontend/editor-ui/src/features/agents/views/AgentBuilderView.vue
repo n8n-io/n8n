@@ -790,9 +790,7 @@ async function initialize() {
 		// against the new agent's id anyway.
 		builderTelemetry.resetForAgentSwitch();
 
-		agent.value = null;
-		// Clear the name too, so the document title / dialogs don't flash the
-	// previously-viewed agent's name until the fetch for this agent resolves.
+	agent.value = null;
 	agentName.value = '';
 	activeChatSessionId.value = null;
 	localConfig.value = null;

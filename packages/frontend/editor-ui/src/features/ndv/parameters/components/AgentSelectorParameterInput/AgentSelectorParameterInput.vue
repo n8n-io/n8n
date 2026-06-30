@@ -172,11 +172,7 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-const isAgentCreationEnabled = true;
-
-const newResourceOptions = computed(() =>
-	isAgentCreationEnabled ? { label: getCreateResourceLabel.value } : {},
-);
+const newResourceOptions = computed(() => ({ label: getCreateResourceLabel.value }));
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
@@ -290,21 +286,26 @@ async function onAddResourceClicked() {
 			i18n.baseText('agents.new.defaultName'),
 		);
 		upsertProjectAgentsListCache(projectId.value, agent);
+
 		emit('update:modelValue', {
 			__rl: true,
 			value: agent.id,
 			mode: selectedMode.value,
 			cachedResultName: agent.name,
 		});
+
 		// Keep the picker's own list consistent if it is reopened.
 		void setAgentsResources();
+
 		telemetry.track('User created agent', { agent_id: agent.id, source: 'node_picker' });
+
 		// Persist the workflow so the new agent reference is saved before navigating
 		// away. Otherwise leaving the (now-dirty) workflow and abandoning the builder
 		// would drop the reference, orphaning the freshly-created draft. Saving also
 		// clears the dirty state, so the route change doesn't prompt to save.
 		const saved = await saveCurrentWorkflow({}, false);
 		if (!saved) return;
+
 		await nav.openBuilder(
 			projectId.value,
 			agent.id,

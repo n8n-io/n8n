@@ -3,16 +3,13 @@ import { ref } from 'vue';
 
 /**
  * Origin a user navigated into the agent feature from, so the agent views can
- * offer a "Back to workflow" return. Held in memory (not the route) because the
- * builder/new-agent views `router.replace` query params away across their child
- * transitions — a `returnTo` query would be dropped. The origin is session UI
- * state, not a deep link, so losing it on a full reload is intended.
+ * offer a "Back to workflow" return. Held in memory.
  */
 export interface AgentReturnContext {
 	workflowId: string;
-	/** Origin node id so the canvas can re-focus it on return (matched by prefix via `findNodeByPartialId`). */
+	/** Origin node id so the canvas can re-focus it on return. */
 	nodeId: string;
-	/** Agent navigated to — the banner only shows on this agent's pages (survives view remounts). */
+	/** Agent navigated to — the banner only shows on this agent's pages. */
 	agentId: string;
 }
 

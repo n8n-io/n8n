@@ -31,7 +31,6 @@ defineEmits<{
 	width: 100%;
 	padding: var(--spacing--3xs) var(--spacing--sm);
 	border: none;
-	/* Brand-purple banner per the Agents design — primitives match the exact spec. */
 	border-bottom: var(--border-width, 1px) solid var(--color--purple-500);
 	background-color: var(--color--purple-50);
 	color: var(--color--purple-950);
