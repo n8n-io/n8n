@@ -6,7 +6,6 @@ import type { ModelConfig } from '@n8n/instance-ai';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
-import { License } from '@/license';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -35,7 +34,6 @@ export class InstanceAiModelService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly license: License,
 	) {}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -141,21 +139,12 @@ export class InstanceAiModelService {
 		})(modelName);
 	}
 
-	/**
-	 * Get current credit usage from the AI service proxy.
-	 *
-	 * Routes by license: instances licensed for Instance AI (`feat:instanceAi`)
-	 * read from the dedicated IA credit pool; older/un-reissued instances keep
-	 * reading the shared builder pool. This is the same guard the credit service
-	 * uses, so the read and the spend always hit the same pool.
-	 */
+	/** Get current Instance AI credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
 		if (!this.aiService.isProxyEnabled()) {
 			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}
 		const client = await this.aiService.getClient();
-		return this.license.isInstanceAiEnabled()
-			? await client.getInstanceAiCredits({ id: user.id })
-			: await client.getBuilderInstanceCredits({ id: user.id });
+		return await client.getInstanceAiCredits({ id: user.id });
 	}
 }
