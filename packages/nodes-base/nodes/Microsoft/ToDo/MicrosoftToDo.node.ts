@@ -35,9 +35,42 @@ export class MicrosoftToDo implements INodeType {
 			{
 				name: 'microsoftToDoOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftToDoOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'To Do OAuth2',
+						value: 'microsoftToDoOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Tasks.ReadWrite) on the credential.',
+					},
+				],
+				default: 'microsoftToDoOAuth2Api',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

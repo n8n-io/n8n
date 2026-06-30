@@ -714,7 +714,7 @@ describe('Auth token generation', () => {
 
 			await generateFormPostBasicAuthToken(webhookFunctions, 'authentication');
 
-			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('authentication');
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 'none');
 		});
 
 		it('should use passed authentication key', async () => {
@@ -725,7 +725,10 @@ describe('Auth token generation', () => {
 
 			await generateFormPostBasicAuthToken(webhookFunctions, 'incomingAuthentication');
 
-			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('incomingAuthentication');
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith(
+				'incomingAuthentication',
+				'none',
+			);
 		});
 
 		it('should handle "none" authentication', async () => {

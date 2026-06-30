@@ -1,6 +1,6 @@
 {
   "name": "@n8n/agents",
-  "version": "0.12.0",
+  "version": "0.14.0",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -54,7 +54,9 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "test:integration": "vitest run --config vitest.integration.config.mjs"
+    "test:integration": "vitest run --config vitest.integration.config.mjs",
+    "test:integration:replay": "cross-env CI=1 vitest run --config vitest.integration.config.mjs",
+    "test:integration:record": "cross-env VCR_MODE=record vitest run --config vitest.integration.config.mjs"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
@@ -70,22 +72,22 @@
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/xai": "catalog:",
-    "@daytonaio/sdk": "catalog:",
+    "@daytona/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@n8n/sandbox-client": "0.0.4",
     "@n8n/ai-utilities": "workspace:*",
+    "@n8n/sandbox-client": "0.0.4",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
-    "ai": "^6.0.197",
-    "ajv": "^8.18.0",
-    "yaml": "catalog:",
-    "zod": "catalog:"
-  },
-  "peerDependencies": {
     "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0",
     "@opentelemetry/sdk-trace-base": ">=1.0.0",
     "@opentelemetry/sdk-trace-node": ">=1.0.0",
-    "langsmith": "catalog:"
+    "ai": "catalog:",
+    "ajv": "^8.18.0",
+    "langsmith": "catalog:",
+    "undici": "catalog:undici-v7",
+    "yaml": "catalog:",
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
   },
   "peerDependenciesMeta": {
     "langsmith": {
@@ -104,8 +106,11 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/json-schema": "^7.0.15",
+    "@types/json-schema": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "dotenv": "catalog:",
+    "cross-env": "catalog:",
+    "nock": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

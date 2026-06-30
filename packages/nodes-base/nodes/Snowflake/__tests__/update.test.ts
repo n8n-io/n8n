@@ -39,8 +39,11 @@ describe('Test Snowflake, update - parameter binding', () => {
 		workflowFiles: ['update.workflow.json'],
 		credentials: { snowflake: snowflakeCredentials },
 		customAssertions() {
-			// UPDATE executes one query per row; one input row → one call
-			expect(mockExecute).toHaveBeenCalledTimes(1);
+			// One ALTER SESSION (STRICT_JSON_OUTPUT) call plus one UPDATE for the single row
+			expect(mockExecute).toHaveBeenCalledTimes(2);
+			expect(mockExecute).toHaveBeenCalledWith(
+				expect.objectContaining({ sqlText: 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE' }),
+			);
 			// Columns list is ["id", "status"] (updateKey "id" prepended since not in "status")
 			// Binds: [id_value, status_value, updateKey_value]
 			expect(mockExecute).toHaveBeenCalledWith(

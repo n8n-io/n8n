@@ -1,6 +1,6 @@
 import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -16,7 +16,8 @@ type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
 >[number];
 
-const usable = (id: string): UsableCredential => ({ id }) as UsableCredential;
+const usable = (id: string, type = 'githubApi'): UsableCredential =>
+	({ id, type }) as UsableCredential;
 
 const credentialsFinderService = mock<CredentialsFinderService>();
 const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
@@ -43,10 +44,10 @@ describe('IdBasedCredentialMatcher', () => {
 	let matcherFactory: CredentialMatcherFactory;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
-		context = { targetProject, user };
+		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});
 
@@ -127,7 +128,7 @@ describe('IdBasedCredentialMatcher', () => {
 
 	it('resolves global credentials usable in the target project', async () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			usable('cred-global'),
+			usable('cred-global', 'httpBasicAuth'),
 		]);
 
 		const result = await matcherFactory.getMatcher('id-only').match(
@@ -227,6 +228,34 @@ describe('IdBasedCredentialMatcher', () => {
 		expect(result.successes).toEqual(new Map());
 		expect(result.failures).toEqual([
 			{ ...createFailure(requirement, 'not_found'), targetId: 'target-missing' },
+		]);
+	});
+
+	it('should report a type mismatch when an explicit binding targets a credential of a different type', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			usable('target-cred', 'slackApi'),
+		]);
+
+		const requirement = {
+			id: 'source-cred',
+			name: 'Source GitHub',
+			type: 'githubApi',
+			usedByWorkflows: ['wf-1'],
+		};
+
+		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
+			...context,
+			credentialBindings: new Map([['source-cred', 'target-cred']]),
+		});
+
+		expect(result.successes).toEqual(new Map());
+		expect(result.failures).toEqual([
+			{
+				...createFailure(requirement, 'type_mismatch'),
+				targetId: 'target-cred',
+				expectedType: 'githubApi',
+				actualType: 'slackApi',
+			},
 		]);
 	});
 });

@@ -492,6 +492,7 @@ describe('ResourceLocator', () => {
 		});
 
 		const mockWorkflowDocumentStore = shallowRef({
+			documentId: 'test-workflow@latest',
 			homeProject: { id: 'home-project-456', name: 'Test Project', type: 'team' },
 		});
 

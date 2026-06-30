@@ -6,15 +6,15 @@ Today the main consumer is the workflow builder. The agent writes TypeScript fil
 
 ## How the Pieces Fit Together
 
-There are three layers between the agent and actual code execution: a workspace abstraction from Mastra, a sandbox provider (n8n sandbox service or Daytona), and the execution runtime inside the sandbox. Here is how they relate:
+There are three layers between the agent and actual code execution: a workspace abstraction from `@n8n/agents`, a sandbox provider (n8n sandbox service or Daytona), and the execution runtime inside the sandbox. Here is how they relate:
 
 ```mermaid
 graph TB
     subgraph Agent ["Agent Layer"]
-        LLM[LLM] --> AgentRuntime["Agent Runtime (Mastra)"]
+        LLM[LLM] --> AgentRuntime["Agent Runtime (@n8n/agents)"]
     end
 
-    subgraph WorkspaceLayer ["Workspace Abstraction (Mastra)"]
+    subgraph WorkspaceLayer ["Workspace Abstraction (@n8n/agents)"]
         AgentRuntime --> Workspace["Workspace"]
         Workspace --> FS["Filesystem Interface<br/>(read, write, list, edit files)"]
         Workspace --> Sandbox["Sandbox Interface<br/>(execute shell commands)"]
@@ -42,14 +42,14 @@ graph TB
 
 The agent never talks to Daytona, the n8n sandbox service, or the host filesystem directly. It only sees the Workspace, which exposes two capabilities: a filesystem (read/write/list files) and a sandbox (run shell commands). The Workspace routes those operations to whichever provider is configured.
 
-## Mastra Workspaces
+## Workspaces
 
-Mastra is the agent framework that Instance AI uses. A Mastra **Workspace** is a pairing of two things:
+`@n8n/agents` is the agent SDK that Instance AI uses. A **Workspace** is a pairing of two things:
 
 1. **A Sandbox** — an interface for executing shell commands. It accepts a command string and returns stdout, stderr, and an exit code. Think of it as a remote terminal.
 2. **A Filesystem** — an interface for file operations: read, write, list, delete, copy, move. Think of it as a remote disk.
 
-When a Workspace is attached to an agent, Mastra automatically exposes built-in tools to the LLM: `read_file`, `write_file`, `edit_file`, `list_files`, `grep`, `execute_command`, and others. The agent uses these tools naturally in its reasoning loop — it writes a file, runs a command, reads the output, and decides what to do next.
+When a Workspace is attached to an agent, `@n8n/agents` automatically exposes built-in tools to the LLM: `read_file`, `write_file`, `edit_file`, `list_files`, `grep`, `execute_command`, and others. The agent uses these tools naturally in its reasoning loop — it writes a file, runs a command, reads the output, and decides what to do next.
 
 The key design property is that the Workspace abstraction is provider-agnostic. The agent's code and prompts are identical regardless of whether the workspace is backed by n8n sandbox service or Daytona. The provider choice is purely an infrastructure decision.
 
@@ -106,7 +106,7 @@ sequenceDiagram
     D-->>n8n: Sandbox ID
 
     n8n->>S: Write node-types catalog via filesystem API
-    n8n->>n8n: Wrap sandbox as Mastra Workspace
+    n8n->>n8n: Wrap sandbox as Workspace
     n8n->>n8n: Inject Workspace into builder agent
 
     Note over S: Agent works inside sandbox
@@ -124,7 +124,7 @@ The process starts with a **pre-warmed image**. On first use, n8n builds a Dayto
 
 One thing that cannot be baked into the image is the **node-types catalog** (a searchable index of all available n8n nodes). It is too large for the image build API, so it is written to each sandbox after creation via the filesystem API.
 
-Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Mastra Workspace and hands it to the builder agent. From that point, the agent works autonomously inside the sandbox — writing files, running the compiler, fixing errors, iterating — until it produces a valid workflow.
+Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Workspace and hands it to the builder agent. From that point, the agent works autonomously inside the sandbox — writing files, running the compiler, fixing errors, iterating — until it produces a valid workflow.
 
 ### What is inside a Daytona sandbox
 
@@ -139,7 +139,7 @@ Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Ma
 
 ## n8n Sandbox Service: Default Provider
 
-The n8n sandbox service exposes a simple HTTP API for creating sandboxes, executing shell commands, and manipulating files. Instance AI uses it through a custom Mastra sandbox and filesystem adapter.
+The n8n sandbox service exposes a simple HTTP API for creating sandboxes, executing shell commands, and manipulating files. Instance AI uses it through a custom `@n8n/agents` sandbox and filesystem adapter.
 
 This provider supports the builder's file and command workflow, but it does not expose interactive process handles. That means `execute_command` works, while process-manager-backed features such as long-lived spawned subprocesses are out of scope for this provider.
 
@@ -245,9 +245,10 @@ If any step fails, the agent reads the error output, fixes the code, and retries
 | `N8N_SANDBOX_SERVICE_URL` | — | n8n sandbox service URL (required for `n8n-sandbox`) |
 | `N8N_SANDBOX_SERVICE_API_KEY` | — | n8n sandbox service API key (optional when using an `httpHeaderAuth` credential) |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Base container image for Daytona |
+| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | — | Override the full snapshot name (e.g. `n8n/instance-ai:2.27.3`) instead of the version-derived default. Proxy mode only; falls back to building from the base image if the snapshot doesn't exist. |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Command timeout in milliseconds |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | — | Prefix for every Daytona sandbox name (e.g. `eval-baseline-daily`). Also added as a `name_prefix` label. Empty in production. |
 | `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Create Daytona sandboxes ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | `15` | Minutes an idle sandbox waits before Daytona stops it. `0` = disabled (stays running). |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `10080` (7 days) | Minutes a stopped sandbox waits before Daytona archives it to cold storage. `0` = Daytona's max interval. |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `43200` (30 days) | Minutes a stopped sandbox waits before Daytona deletes it. Negative = disabled; `0` = on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `60` (1 hour) | Minutes a stopped sandbox waits before Daytona archives it to cold storage. `0` = Daytona's max interval. |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `10080` (7 days) | Minutes a stopped sandbox waits before Daytona deletes it. Negative = disabled; `0` = on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |

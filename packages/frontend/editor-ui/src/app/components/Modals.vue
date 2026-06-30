@@ -39,6 +39,7 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
 } from '@/app/constants';
@@ -73,6 +74,7 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import AboutModal from '@/app/components/AboutModal.vue';
 import ActivationModal from '@/app/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
@@ -140,6 +142,7 @@ import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUp
 import InstanceAiCredentialSetupModal, {
 	type InstanceAiCredentialSetupModalData,
 } from '@/features/ai/instanceAi/components/InstanceAiCredentialSetupModal.vue';
+import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue';
 </script>
 
 <template>
@@ -154,13 +157,22 @@ import InstanceAiCredentialSetupModal, {
 			<template
 				#default="{
 					modalName,
-					data: { mode, activeId },
+					data: { mode, activeId, rotatedApiKey },
 				}: {
 					modalName: string;
-					data: { mode: 'new' | 'edit'; activeId: string };
+					data: {
+						mode: 'new' | 'edit';
+						activeId: string;
+						rotatedApiKey?: ApiKeyWithRawValue | null;
+					};
 				}"
 			>
-				<ApiKeyCreateOrEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
+				<ApiKeyCreateOrEditModal
+					:modal-name="modalName"
+					:mode="mode"
+					:active-id="activeId"
+					:rotated-api-key="rotatedApiKey"
+				/>
 			</template>
 		</ModalRoot>
 
@@ -526,6 +538,12 @@ import InstanceAiCredentialSetupModal, {
 					:modal-name="modalName"
 					:data="data as InstanceAiCredentialSetupModalData"
 				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY">
+			<template #default="{ modalName }">
+				<InstanceAiToolsConnectionModalWrapper :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 

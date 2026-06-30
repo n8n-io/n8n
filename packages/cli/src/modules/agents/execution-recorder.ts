@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import { scrubSecretsInText } from '@n8n/utils';
+import { isRecord, scrubSecretsInText } from '@n8n/utils';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
@@ -197,14 +197,6 @@ export interface RecordedUsage {
 	totalTokens: number;
 }
 
-export interface RecordedToolCall {
-	name: string;
-	input: unknown;
-	output: unknown;
-}
-
-type PendingRecordedToolCall = RecordedToolCall & { toolCallId?: string };
-
 export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| {
@@ -234,10 +226,6 @@ export type TimelineEvent =
 	  }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
 /**
  * Collects execution data from agent stream chunks.
  * Used to build an execution record after a message cycle completes.
@@ -248,7 +236,6 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
-	toolCalls: RecordedToolCall[];
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
@@ -274,8 +261,6 @@ export class ExecutionRecorder {
 	private usage: RecordedUsage | null = null;
 
 	private totalCost: number | null = null;
-
-	private toolCalls: PendingRecordedToolCall[] = [];
 
 	private timeline: TimelineEvent[] = [];
 
@@ -357,7 +342,6 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
-			toolCalls: this.toolCalls.map(({ toolCallId: _toolCallId, ...toolCall }) => toolCall),
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
@@ -385,15 +369,13 @@ export class ExecutionRecorder {
 	}
 
 	/**
-	 * Record a discrete `tool-call` chunk from the stream. Maintains both the
-	 * flat `toolCalls` array (backward compat) and the ordered timeline. The
-	 * matching `tool-result` chunk closes the timeline entry.
+	 * Record a discrete `tool-call` chunk from the stream. The matching
+	 * `tool-result` chunk closes the timeline entry.
 	 */
 	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
 		this.flushTextBuffer();
 
 		const recordedInput = sanitizeExecutionLogValue(input);
-		this.toolCalls.push({ name, input: recordedInput, output: undefined, toolCallId });
 
 		const entry = this.registry.get(name);
 		// Resolve both `$fromAI(...)` placeholders and simple `={{ $json.x }}`
@@ -467,19 +449,6 @@ export class ExecutionRecorder {
 	}
 
 	/**
-	 * Find the still-open flat tool-call entry to attach a result to. Prefers
-	 * an exact match on `toolCallId`; when the stream omits the id (empty
-	 * string), falls back to the most recent open entry (`output === undefined`)
-	 * with the same tool name.
-	 */
-	private findOpenToolCall(toolCallId: string, name: string): PendingRecordedToolCall | undefined {
-		if (toolCallId !== '') {
-			return this.toolCalls.find((tc) => tc.toolCallId === toolCallId && tc.output === undefined);
-		}
-		return [...this.toolCalls].reverse().find((tc) => tc.name === name && tc.output === undefined);
-	}
-
-	/**
 	 * Record a discrete `tool-result` chunk from the stream. Closes the
 	 * matching open timeline entry by `toolCallId` (preferred) or by name as
 	 * a fallback.
@@ -498,13 +467,6 @@ export class ExecutionRecorder {
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
 		);
-
-		const pendingFlat = this.findOpenToolCall(toolCallId, name);
-		if (pendingFlat) {
-			pendingFlat.output = recordedOutput;
-		} else {
-			this.toolCalls.push({ name, input: undefined, output: recordedOutput });
-		}
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()

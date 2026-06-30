@@ -99,7 +99,7 @@ const ensureSkillLink = async ({ harness, skillName, check, errors, actions }) =
 	}
 
 	if (existing.isSymbolicLink()) {
-		const actualTarget = await readlink(linkPath);
+		const actualTarget = (await readlink(linkPath)).replaceAll(path.sep, path.posix.sep);
 		const broken = await isBrokenSymlink(linkPath);
 
 		if (actualTarget !== expectedTarget || broken) {

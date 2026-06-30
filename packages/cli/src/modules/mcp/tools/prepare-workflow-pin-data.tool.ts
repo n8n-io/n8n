@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	needsPinData,
@@ -5,19 +6,18 @@ import {
 	inferSchemasFromRunData,
 	type JsonSchema,
 } from '@n8n/workflow-sdk';
-import type { Logger } from '@n8n/backend-common';
 import type { INodeExecutionData } from 'n8n-workflow';
 import { isTriggerNode, jsonStringify } from 'n8n-workflow';
 import z from 'zod';
-
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { getMcpWorkflow } from './workflow-validation.utils';
 
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to generate test pin data for'),

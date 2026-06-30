@@ -11,6 +11,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { formatBytes } from '@/app/utils/typesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -167,6 +168,12 @@ const executionMetaText = computed(() => {
 	return null;
 });
 
+const executionDataSize = computed(() => {
+	if (!props.execution) return null;
+	const total = (props.execution.jsonSizeBytes ?? 0) + (props.execution.binaryDataSizeBytes ?? 0);
+	return total > 0 ? formatBytes(total) : null;
+});
+
 watch(
 	() => props.execution?.workflowVersionId,
 	async (versionId) => {
@@ -316,6 +323,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						color="text-base"
 						size="medium"
 					>
+						<template v-if="executionDataSize">| {{ executionDataSize }}</template>
 						| ID#{{ execution.id }}
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
@@ -339,6 +347,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						data-test-id="execution-preview-id"
 					>
 						{{ executionMetaText }}
+						<template v-if="executionDataSize">| {{ executionDataSize }}</template>
 						| ID#{{ execution.id }}
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|

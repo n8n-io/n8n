@@ -13,6 +13,7 @@ function createInitialState(threadId: string, outcome: WorkflowBuildOutcome): Wo
 		threadId,
 		runId: outcome.runId,
 		workflowId: outcome.workflowId,
+		...(outcome.sourceFilePath ? { sourceFilePath: outcome.sourceFilePath } : {}),
 		phase: 'building',
 		status: 'active',
 		source: outcome.workflowId ? 'modify' : 'create',

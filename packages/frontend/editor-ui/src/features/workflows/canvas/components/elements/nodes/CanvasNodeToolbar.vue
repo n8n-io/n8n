@@ -49,7 +49,7 @@ const focusedNodesStore = useFocusedNodesStore();
 
 // Per-editor host overrides — e.g. the Instance AI artifact preview supersedes
 // the AI capabilities of its embedded editor, which must hide this entry point.
-const { aiAssistant, aiBuilder } = useEditorContext();
+const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
 
 const node = computed(() =>
 	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
@@ -89,9 +89,13 @@ const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabl
 
 // Feeds the builder side panel, so mirror the context menu's
 // assistant-or-builder semantics on top of the focused-nodes experiment.
+// Hidden when Instance AI supersedes the legacy builder/assistant.
 const isAddToAiVisible = computed(
 	() =>
-		!props.readOnly && focusedNodesStore.isFeatureEnabled && (aiAssistant.value || aiBuilder.value),
+		!props.readOnly &&
+		focusedNodesStore.isFeatureEnabled &&
+		(aiAssistant.value || aiBuilder.value) &&
+		!instanceAi.value,
 );
 
 const isStickyNoteChangeColorVisible = computed(

@@ -1,8 +1,7 @@
+import { formatPemBlock } from '@n8n/utils';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
 import type snowflake from 'snowflake-sdk';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 const commonConnectionFields = [
 	'account',
@@ -15,7 +14,7 @@ const commonConnectionFields = [
 
 export type SnowflakeCredential = Pick<
 	snowflake.ConnectionOptions,
-	(typeof commonConnectionFields)[number]
+	(typeof commonConnectionFields)[number] | 'host'
 > &
 	(
 		| {
@@ -36,7 +35,7 @@ export type SnowflakeCredential = Pick<
 	);
 
 const extractPrivateKey = (credential: { privateKey: string; passphrase?: string }) => {
-	const key = formatPrivateKey(credential.privateKey);
+	const key = formatPemBlock(credential.privateKey);
 
 	if (!credential.passphrase) return key;
 
@@ -54,6 +53,11 @@ const extractPrivateKey = (credential: { privateKey: string; passphrase?: string
 
 export const getConnectionOptions = (credential: SnowflakeCredential) => {
 	const connectionOptions: snowflake.ConnectionOptions = pick(credential, commonConnectionFields);
+	// Keep host out of commonConnectionFields so blank values can be trimmed and skipped.
+	const originHostname = credential.host?.trim();
+	if (originHostname) {
+		connectionOptions.host = originHostname;
+	}
 	if (credential.authentication === 'keyPair') {
 		connectionOptions.authenticator = 'SNOWFLAKE_JWT';
 		connectionOptions.username = credential.username;

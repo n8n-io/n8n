@@ -1,5 +1,5 @@
-import type { Logger } from '@n8n/backend-common';
 import { type AgentIntegrationConfig } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
 import type { Agent } from '../entities/agent.entity';
@@ -12,8 +12,8 @@ import type { Agent } from '../entities/agent.entity';
  * Failures are logged but never thrown — config writes during a builder turn
  * must not be rolled back if e.g. the Slack API is briefly unavailable.
  *
- * Lazy `Container.get(...)` avoids a circular DI dependency: ChatIntegrationService
- * depends on AgentsService, which calls into this helper.
+ * Lazy `Container.get(...)` avoids a circular DI dependency between config
+ * persistence and the chat integration runtime.
  */
 export async function syncAgentIntegrations(
 	agent: Agent,

@@ -1,6 +1,7 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { isRecord } from './column-ref-utils';
+import { connectionSlotTargetsNode } from './column-ref-utils';
 import type { MetricId } from './metric-catalog';
 
 type RecommendedMetricId = Exclude<MetricId, 'helpfulness'>;
@@ -19,15 +20,8 @@ function findSourceNodesByConnectionType(
 	const connections = workflow.connections ?? {};
 	for (const [sourceName, byType] of Object.entries(connections)) {
 		if (!isRecord(byType)) continue;
-		const slot = byType[connectionType];
-		if (!Array.isArray(slot)) continue;
-		for (const inner of slot) {
-			if (!Array.isArray(inner)) continue;
-			for (const conn of inner) {
-				if (isRecord(conn) && conn.node === targetNodeName) {
-					sources.push(sourceName);
-				}
-			}
+		if (connectionSlotTargetsNode(byType[connectionType], targetNodeName)) {
+			sources.push(sourceName);
 		}
 	}
 	return sources;
@@ -52,15 +46,8 @@ function getAgentRetrieverNames(workflow: WorkflowJSON, agentNodeName: string): 
 	for (const [sourceName, byType] of Object.entries(connections)) {
 		if (!isRecord(byType)) continue;
 		for (const [connType, slot] of Object.entries(byType)) {
-			if (!connType.startsWith('ai_')) continue;
-			if (!Array.isArray(slot)) continue;
-			for (const inner of slot) {
-				if (!Array.isArray(inner)) continue;
-				for (const conn of inner) {
-					if (isRecord(conn) && conn.node === agentNodeName) {
-						candidates.add(sourceName);
-					}
-				}
+			if (connType.startsWith('ai_') && connectionSlotTargetsNode(slot, agentNodeName)) {
+				candidates.add(sourceName);
 			}
 		}
 	}

@@ -83,6 +83,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
+	const isCrdtCollaborationEnabled = computed(
+		() => (settings.value.collaboration?.crdt ?? 'off') !== 'off',
+	);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -167,7 +171,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
 	const isChatFeatureEnabled = computed(
-		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled === true,
 	);
 
 	const isOtelCustomSpanAttributesEnabled = computed(() => {
@@ -178,12 +182,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
-
-	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
-	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
-	const isAgentsNodeToolsFeatureEnabled = computed(() =>
-		isAgentModuleActive('node-tools-searcher'),
-	);
 
 	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
 	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
@@ -426,6 +424,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSwaggerUIEnabled,
 		isPreviewMode,
 		isCanvasOnly,
+		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
@@ -487,7 +486,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
-		isAgentsNodeToolsFeatureEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 	};

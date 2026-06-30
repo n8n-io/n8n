@@ -10,7 +10,12 @@ import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import merge from 'lodash/merge';
-import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	establishExecutionContext,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -82,6 +87,7 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -542,6 +548,29 @@ export async function executeWebhook(
 					? 'verifier_unavailable'
 					: 'invalid_token',
 		};
+	};
+
+	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+		if (runExecutionData === undefined) {
+			throw new UnexpectedError('Execution data is not available to establish trigger identity');
+		}
+		await Container.get(TriggerAuthIdentitySeederProxy).seed(runExecutionData, token, resource);
+
+		await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
+	};
+
+	// Eager pre-execution credential-status gate. Uses the execution context that
+	// `establishTriggerIdentity` already established (the triggering user's identity),
+	// so the check runs on the request-handling main, before any enqueue. Returns
+	// `undefined` when the dynamic-credentials module is disabled or no identity was
+	// established, in which case the caller proceeds to execute normally.
+	additionalData.checkTriggerCredentialStatus = async () => {
+		const credentialCheckProxy = additionalData['dynamic-credentials']?.credentialCheckProxy;
+		const executionContext = runExecutionData?.executionData?.runtimeData;
+		if (!credentialCheckProxy || !workflow.id || !executionContext?.credentials) {
+			return undefined;
+		}
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
 	};
 
 	let didSendResponse = false;

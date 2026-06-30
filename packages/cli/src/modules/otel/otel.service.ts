@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import type { DiagLogger } from '@opentelemetry/api';
 import { DiagLogLevel, diag, context, metrics, propagation, trace } from '@opentelemetry/api';
@@ -32,6 +33,7 @@ export class OtelService {
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async init(): Promise<void> {
@@ -199,7 +201,9 @@ export class OtelService {
 			// HEAD is used for a cheap connectivity check (no request/response body).
 			// OTLP endpoints are POST-only, so this will often return 4xx, but any
 			// HTTP response means the server is reachable. We only catch network errors.
-			await fetch(url, {
+			// SSRF is disabled: the OTLP endpoint is admin-configured observability
+			// infrastructure and is commonly an internal/localhost collector.
+			await this.outboundHttp.transport({ ssrf: 'disabled' }).asCustomFetch()(url, {
 				method: 'HEAD',
 				signal: AbortSignal.timeout(timeoutMs),
 			});

@@ -2,6 +2,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	InstanceAiAdminSettingsUpdateRequest,
+	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
 	isInstanceAiSandboxProvider,
 	type InstanceAiConfirmationInputType,
@@ -28,6 +29,19 @@ describe('sandbox provider', () => {
 		expect(
 			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'n8n-sandbox' }).success,
 		).toBe(true);
+	});
+});
+
+describe('instanceAiEventSchema', () => {
+	it('preserves traceId on run-start events', () => {
+		const event = {
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { messageId: 'msg-1', traceId: 'trace-1' },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
 });
 

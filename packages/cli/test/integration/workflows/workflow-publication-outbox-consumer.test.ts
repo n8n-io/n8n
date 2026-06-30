@@ -18,6 +18,9 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
+import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer';
+import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -204,6 +207,28 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	test('startup enqueue + drain registers triggers for active workflows via reconciliation', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('startup');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		// Fresh leader startup: the workflow is active and published, but nothing is
+		// registered in memory yet.
+		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
+
+		await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
+		consumer.startPolling();
+		await consumer.drainPending();
+		consumer.stopPolling();
+
+		// The reconciliation path registered the missing trigger and completed the record.
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
 	test('does no trigger work when only non-trigger content changed', async () => {
 		const owner = await createOwner();
 
@@ -232,5 +257,48 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		);
 		expect(published?.publishedVersionId).toBe(newVersionId);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+});
+
+describe('leader stepdown (integration)', () => {
+	let lifecycleLock: WorkflowPublicationLifecycleLock;
+	let deactivator: PublishedWorkflowTriggerDeactivator;
+
+	beforeAll(() => {
+		lifecycleLock = Container.get(WorkflowPublicationLifecycleLock);
+		deactivator = Container.get(PublishedWorkflowTriggerDeactivator);
+	});
+
+	test('teardown waits for an in-flight record before deactivating triggers', async () => {
+		const owner = await createOwner();
+		const trigger = scheduleNode('running');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(true);
+
+		// Hold the workflow's lock to stand in for an in-flight record being processed.
+		let releaseHolder!: () => void;
+		const holder = lifecycleLock.runExclusive(
+			workflow.id,
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseHolder = resolve;
+				}),
+		);
+
+		const teardown = deactivator.deactivateAllNonWebhookTriggers();
+		await new Promise((resolve) => setImmediate(resolve));
+
+		// Teardown is blocked on the lock, so the trigger is still running.
+		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(true);
+
+		releaseHolder();
+		await holder;
+		await teardown;
+
+		// Once the in-flight record released the lock, teardown deactivated it.
+		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(false);
 	});
 });

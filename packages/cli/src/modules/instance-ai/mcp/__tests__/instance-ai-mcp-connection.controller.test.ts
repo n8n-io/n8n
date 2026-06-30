@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -58,7 +58,7 @@ describe('InstanceAiMcpConnectionController', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('list', () => {
@@ -168,25 +168,29 @@ describe('InstanceAiMcpConnectionController', () => {
 		});
 	});
 
-	describe('update (no-op)', () => {
-		it('returns the existing connection without persisting the payload', async () => {
+	describe('update', () => {
+		it('delegates update to service and returns enriched response', async () => {
 			const { controller, service, credentialsFinderService, mcpRegistryService } =
 				createController();
-			service.listConnectionsForUser.mockResolvedValue([baseRow]);
+			service.updateConnection.mockResolvedValue(baseRow);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			mcpRegistryService.get.mockResolvedValue(linearServer);
-
-			const result = await controller.update(authedRequest(), {} as never, 'conn-1', {
-				inclusionMode: 'except',
+			const payload = {
+				inclusionMode: 'except' as const,
 				excludedTools: ['t1'],
-			});
+			};
 
+			const result = await controller.update(authedRequest(), {} as never, 'conn-1', payload);
+
+			expect(service.updateConnection).toHaveBeenCalledWith(user, 'conn-1', payload);
 			expect(result).toMatchObject({ id: 'conn-1', serverSlug: 'linear', serverTitle: 'Linear' });
 		});
 
 		it('throws NotFoundError when the connection does not belong to the user', async () => {
 			const { controller, service } = createController();
-			service.listConnectionsForUser.mockResolvedValue([]);
+			service.updateConnection.mockRejectedValue(
+				new NotFoundError('MCP registry connection not found'),
+			);
 
 			await expect(
 				controller.update(authedRequest(), {} as never, 'missing', {}),

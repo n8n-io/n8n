@@ -8,8 +8,16 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
-import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/agent-runtime';
-import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
+import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
+import type { FetchFn } from '../runtime/model/model-factory';
+import { AgentEventBus } from '../runtime/state/event-bus';
+import { RunStateManager } from '../runtime/state/run-state';
+import {
+	LOAD_TOOL_TOOL_NAME,
+	SEARCH_TOOLS_TOOL_NAME,
+} from '../runtime/tools/deferred-tool-manager';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -22,12 +30,9 @@ import {
 	type DelegateSubAgentToolOutput,
 	type InlineSubAgentProviderToolsResolver,
 	type SubAgentTaskDifficulty,
-} from '../runtime/delegate-sub-agent-tool';
-import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
-import { AgentEventBus } from '../runtime/event-bus';
-import { RunStateManager } from '../runtime/run-state';
-import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
-import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
+} from '../runtime/tools/delegate-sub-agent-tool';
+import { isSdkOwnedBuiltInTool } from '../runtime/tools/sdk-owned-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../runtime/tools/write-todos-tool';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,
@@ -131,6 +136,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelConfig?: ModelConfig;
 
+	private modelFetchValue?: FetchFn;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -148,6 +155,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private hasRuntimeSkillTool = false;
 
 	private memoryConfig?: MemoryConfig;
+
+	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 
 	// TODO: Guardrails are accepted by the builder API for forward
 	// compatibility but not yet wired to the runtime.
@@ -213,6 +222,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			this.modelConfig = providerOrIdOrConfig;
 		}
+		return this;
+	}
+
+	/**
+	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * construction falls back to the ambient HTTP_PROXY resolver.
+	 */
+	modelFetch(fetch: FetchFn): this {
+		this.modelFetchValue = fetch;
 		return this;
 	}
 
@@ -306,6 +324,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					'See the Memory class documentation for all options.',
 			);
 		}
+		return this;
+	}
+
+	/** Observe observational-memory background task lifecycle (observer/reflector). */
+	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
+		this.onMemoryTaskEvent = observer;
 		return this;
 	}
 
@@ -927,6 +951,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return {
 			name: this.name,
 			model: modelConfig,
+			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
@@ -945,6 +970,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
 			runState,
+			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 		};
 	}
 

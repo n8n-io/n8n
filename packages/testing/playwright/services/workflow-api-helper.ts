@@ -122,6 +122,23 @@ export class WorkflowApiHelper {
 	}
 
 	/**
+	 * Like {@link runManually}, but accepts an explicit workflow payload and
+	 * returns the raw response instead of throwing — for asserting the run
+	 * status or starting from a trigger with custom `workflowData`.
+	 */
+	async runRaw(
+		workflowId: string,
+		options: { workflowData?: Partial<IWorkflowBase>; triggerNodeName: string },
+	): Promise<APIResponse> {
+		return await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
+			data: {
+				...(options.workflowData ? { workflowData: options.workflowData } : {}),
+				triggerToStartFrom: { name: options.triggerNodeName },
+			},
+		});
+	}
+
+	/**
 	 * Like {@link update}, but returns the raw response instead of throwing on a
 	 * non-2xx status — for asserting a specific status code (e.g. the `422` from
 	 * the redaction floor-enforcement guard).
@@ -368,6 +385,18 @@ export class WorkflowApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to get execution: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/** Stops a running or waiting execution and returns the stopped execution summary. */
+	async stopExecution(executionId: string): Promise<ExecutionListResponse> {
+		const response = await this.api.request.post(`/rest/executions/${executionId}/stop`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to stop execution: ${await response.text()}`);
 		}
 
 		const result = await response.json();

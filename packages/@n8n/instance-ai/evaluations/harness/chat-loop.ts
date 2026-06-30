@@ -2,7 +2,8 @@
 // Shared agent-run chat loop
 //
 // Drives an agent run to completion: opens an SSE event stream, waits for
-// the main run to finish, drains background agent tasks, auto-approves any
+// the main run to finish, drains background agent tasks, waits for observational-
+// memory jobs (via thread status polling), auto-approves any confirmation
 // confirmation requests, and surfaces the captured events.
 //
 // Used by `harness/runner.ts` (workflow eval) and the computer-use eval
@@ -11,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
@@ -28,6 +30,7 @@ import { getNestedRecord } from '../utils/safe-extract';
 export const SSE_SETTLE_DELAY_MS = 200;
 export const POLL_INTERVAL_MS = 500;
 export const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
+const MEMORY_TASK_POLL_INTERVAL_MS = 500;
 export const MAX_CONFIRMATION_RETRIES = 5;
 
 /**
@@ -123,6 +126,9 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 		const remainingMs = Math.max(0, config.timeoutMs - (Date.now() - config.startTime));
 		await waitForBackgroundTasks(config, remainingMs);
 
+		// Wait for observational-memory jobs (observer/reflector) before the next user turn
+		await waitForMemoryTasks(config);
+
 		// Check if the main agent started a new run after background tasks completed
 		await delay(SSE_SETTLE_DELAY_MS);
 		const newRunStarts = countEvents(config.events, 'run-start');
@@ -205,6 +211,64 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 	config.logger.verbose(
 		`Background task wait timed out after ${String(timeoutMs)}ms -- continuing`,
 	);
+}
+
+async function waitForMemoryTasks(config: WaitConfig): Promise<void> {
+	const waitStartedAt = Date.now();
+	config.logger.verbose(
+		`[${config.threadId}] Waiting for observational-memory jobs (timeout ${String(INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS)}ms)...`,
+	);
+
+	const deadline = Date.now() + INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS;
+	let lastLoggedPendingCount = -1;
+	let lastLogAt = 0;
+	let pollCount = 0;
+	const HEARTBEAT_MS = 20_000;
+
+	while (Date.now() < deadline) {
+		await processConfirmationRequests(config);
+
+		pollCount++;
+		const status = await config.client.getThreadStatus(config.threadId);
+		const tasks = status.memoryTasks ?? [];
+		const pending = tasks.filter((task) => task.status === 'queued' || task.status === 'running');
+		const now = Date.now();
+
+		if (
+			pollCount === 1 ||
+			pending.length !== lastLoggedPendingCount ||
+			(pending.length > 0 && now - lastLogAt >= HEARTBEAT_MS)
+		) {
+			config.logger.verbose(
+				`[${config.threadId}] Memory task poll #${String(pollCount)} (${String(now - waitStartedAt)}ms): ${String(pending.length)} pending, ${String(tasks.length)} tracked — ${formatMemoryTasksForLog(tasks)}`,
+			);
+			lastLoggedPendingCount = pending.length;
+			lastLogAt = now;
+		}
+
+		if (pending.length === 0) {
+			config.logger.verbose(
+				`[${config.threadId}] Memory tasks idle after ${String(now - waitStartedAt)}ms (${String(pollCount)} poll(s))`,
+			);
+			await delay(SSE_SETTLE_DELAY_MS);
+			return;
+		}
+
+		await delay(MEMORY_TASK_POLL_INTERVAL_MS);
+	}
+
+	config.logger.verbose(
+		`[${config.threadId}] Memory task wait timed out after ${String(INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS)}ms (${String(pollCount)} poll(s), last pending=${String(lastLoggedPendingCount)})`,
+	);
+}
+
+function formatMemoryTasksForLog(
+	tasks: Array<{ taskId: string; taskKind: string; status: string }>,
+): string {
+	if (tasks.length === 0) {
+		return 'none';
+	}
+	return tasks.map((task) => `${task.taskKind}:${task.status}`).join(', ');
 }
 
 // ---------------------------------------------------------------------------

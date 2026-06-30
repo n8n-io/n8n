@@ -49,7 +49,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	openAiApi: {
 		provider: 'openai',
-		defaultModel: 'gpt-5',
+		defaultModel: 'gpt-5-mini',
 		modelLookup: {
 			kind: 'listSearch',
 			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',

@@ -41,6 +41,7 @@ erDiagram
   text value
 }
 "public.execution_entity" {
+  bigint binaryDataSizeBytes
   timestamp_3__with_time_zone createdAt
   varchar_255_ deduplicationKey
   timestamp_3__with_time_zone deletedAt

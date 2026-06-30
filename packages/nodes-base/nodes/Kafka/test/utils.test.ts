@@ -7,12 +7,17 @@ import type {
 	Logger,
 	IDeferredPromise,
 	ICredentialDataDecryptedObject,
+	NodeEgressFilter,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { createResultError, createResultOk, NodeOperationError, sleep } from 'n8n-workflow';
+import http from 'node:http';
+import https from 'node:https';
+import type { LookupFunction } from 'node:net';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	createSchemaRegistry,
 	getAutoCommitSettings,
 	configureDataEmitter,
 	type KafkaTriggerOptions,
@@ -604,10 +609,12 @@ describe('Kafka Utils', () => {
 			params = {},
 			nodeCredentials,
 			credentialData,
+			secureEgressFilter,
 		}: {
 			params?: Record<string, unknown>;
 			nodeCredentials?: INode['credentials'];
 			credentialData?: ICredentialDataDecryptedObject;
+			secureEgressFilter?: NodeEgressFilter;
 		} = {}) => {
 			const ctx = mock<ITriggerFunctions>();
 			ctx.getNode.mockReturnValue({ ...registryNode, credentials: nodeCredentials });
@@ -616,12 +623,39 @@ describe('Kafka Utils', () => {
 				(name: string, fallback?: unknown) => (params[name] ?? fallback) as never,
 			);
 			ctx.logger = mock<Logger>();
+			ctx.helpers = {
+				...ctx.helpers,
+				getSecureEgressFilter: vi.fn().mockReturnValue(secureEgressFilter),
+			};
 			return ctx;
 		};
 
 		const schemaRegistryNodeCredentials = {
 			schemaRegistryApi: { id: '1', name: 'Schema Registry account' },
 		};
+
+		// Builds an egress filter whose validateUrl resolves to the given result and
+		// whose createSecureLookup returns a stable sentinel, so tests can assert the
+		// exact lookup is wired onto the agent.
+		const createEgressFilter = (
+			result: Awaited<ReturnType<NodeEgressFilter['validateUrl']>>,
+		): { filter: NodeEgressFilter; lookup: LookupFunction; validateUrl: Mock } => {
+			const lookup = vi.fn() as unknown as LookupFunction;
+			const validateUrl = vi.fn().mockResolvedValue(result);
+			const filter: NodeEgressFilter = {
+				validateUrl,
+				createSecureLookup: () => lookup,
+			};
+			return { filter, lookup, validateUrl };
+		};
+
+		const okFilter = () => createEgressFilter(createResultOk(undefined));
+		const blockedFilter = (message = 'The request was blocked') =>
+			createEgressFilter(createResultError(new Error(message)));
+
+		// `options` is set on the agent at runtime but not part of the public type.
+		const agentLookup = (agent?: http.Agent) =>
+			(agent as unknown as { options?: { lookup?: LookupFunction } } | undefined)?.options?.lookup;
 
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -733,6 +767,174 @@ describe('Kafka Utils', () => {
 				await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(NodeOperationError);
 				await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(
 					'Select a Schema Registry credential or enter a Schema Registry URL',
+				);
+			});
+		});
+
+		describe('createSchemaRegistry', () => {
+			const lastConstructorArg = () => {
+				const calls = (SchemaRegistry as Mock).mock.calls;
+				return calls[calls.length - 1][0] as {
+					host: string;
+					agent?: http.Agent;
+					auth?: { username: string; password: string };
+				};
+			};
+
+			it('rejects a space-injected host when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				const error = await createSchemaRegistry(ctx, 'http://169.254.169.254:80 /v').catch(
+					(e: unknown) => e,
+				);
+
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toBe(
+					'The Schema Registry URL is not a valid URL',
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+				expect(validateUrl).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unparseable host when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'not a url')).rejects.toThrow(NodeOperationError);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+				expect(validateUrl).not.toHaveBeenCalled();
+			});
+
+			it('rejects a non-http(s) scheme when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'ftp://internal/')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+				expect(validateUrl).not.toHaveBeenCalled();
+			});
+
+			it('rejects an IPv6-literal host when its addresses are blocked', async () => {
+				const { filter } = blockedFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'http://[::1]:8081')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+			});
+
+			it('rejects a direct-IP registry host when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = blockedFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'http://169.254.169.254')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(validateUrl).toHaveBeenCalled();
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+			});
+
+			it('passes an http agent carrying the secure lookup for an http host', async () => {
+				const { filter, lookup } = okFilter();
+				const input = 'http://schema-registry.local:8081';
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, input);
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.agent).toBeInstanceOf(http.Agent);
+				expect(arg.agent).not.toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('passes an https agent for an https host', async () => {
+				const { filter, lookup } = okFilter();
+				const input = 'https://schema-registry.local:8081';
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, input);
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('normalizes the host and selects the agent by scheme', async () => {
+				const { filter, validateUrl } = okFilter();
+				const input = 'HTTP://Schema-Registry.local:8081';
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, input);
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe('http://schema-registry.local:8081/');
+				expect(arg.agent).toBeInstanceOf(http.Agent);
+				expect(arg.agent).not.toBeInstanceOf(https.Agent);
+				// The filter must validate the canonical URL that is actually connected to,
+				// not the raw input string (which differs after canonicalization).
+				expect(validateUrl).toHaveBeenCalledWith(new URL(input));
+			});
+
+			it('preserves a base path without adding a trailing slash', async () => {
+				const { filter } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, 'https://schema-registry.local/base');
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe('https://schema-registry.local/base');
+			});
+
+			it('still applies basic auth alongside the secure agent', async () => {
+				const { filter, lookup } = okFilter();
+				const input = 'https://schema-registry.local:8081';
+				const ctx = createRegistryContext({
+					secureEgressFilter: filter,
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: input,
+						authentication: 'basicAuth',
+						username: 'registry-user',
+						password: 'registry-password',
+					},
+				});
+
+				await createSchemaRegistry(ctx, '');
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.auth).toEqual({ username: 'registry-user', password: 'registry-password' });
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('constructs the registry without an agent or pre-flight when egress filtering is not configured', async () => {
+				const ctx = createRegistryContext();
+
+				await createSchemaRegistry(ctx, 'http://169.254.169.254:80 /v');
+
+				const arg = lastConstructorArg();
+				expect(arg).toEqual({ host: 'http://169.254.169.254:80 /v' });
+				expect(arg).not.toHaveProperty('agent');
+			});
+
+			it('throws a NodeOperationError surfaced as the continueOnFail item message', async () => {
+				const { filter } = blockedFilter('The request was blocked by egress rules');
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				const error = await createSchemaRegistry(ctx, 'http://169.254.169.254').catch(
+					(e: unknown) => e,
+				);
+
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).message).toBe(
+					'Verify your Schema Registry configuration',
 				);
 			});
 		});
@@ -877,6 +1079,42 @@ describe('Kafka Utils', () => {
 				await expect(setSchemaRegistry(ctx)).rejects.toThrow(
 					'Select a Schema Registry credential or enter a Schema Registry URL',
 				);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('constructs the activation registry with a secure agent when egress filtering is enabled', async () => {
+				const { filter, lookup } = okFilter();
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'http://schema-registry.local:8081',
+					},
+					secureEgressFilter: filter,
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeDefined();
+				const arg = (SchemaRegistry as Mock).mock.calls[0][0] as {
+					host: string;
+					agent?: http.Agent;
+				};
+				expect(arg.host).toBe('http://schema-registry.local:8081/');
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('fails activation loudly when the registry host is blocked', async () => {
+				const { filter } = blockedFilter();
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'http://schema-registry.local:8081',
+					},
+					secureEgressFilter: filter,
+				});
+
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(NodeOperationError);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
 			});
 		});

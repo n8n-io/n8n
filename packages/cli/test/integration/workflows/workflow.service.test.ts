@@ -19,26 +19,26 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
-import { WebhookService } from '@/webhooks/webhook.service';
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
@@ -82,7 +82,6 @@ beforeAll(async () => {
 		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
-		workflowPublishedVersionRepository,
 		workflowPublishHistoryRepository,
 		outboxRepository,
 		workflowValidationService,
@@ -116,7 +115,7 @@ afterEach(async () => {
 		'User',
 	]);
 	await cleanupRolesAndScopes();
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('update()', () => {
@@ -124,8 +123,8 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = vi.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
 			nodes: [
@@ -181,8 +180,8 @@ describe('update()', () => {
 			owner,
 		);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = vi.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
 			connections: {
@@ -221,7 +220,7 @@ describe('activateWorkflow()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
@@ -245,7 +244,7 @@ describe('activateWorkflow()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
@@ -439,7 +438,7 @@ describe('activateWorkflow()', () => {
 
 		const oldActiveVersionId = workflow.activeVersionId;
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		// Create a new version to try to activate
 		const newVersionId = uuid();
@@ -576,7 +575,7 @@ describe('workflow publication outbox', () => {
 			expect(updated?.activeVersionId).toBe(newVersionId);
 		});
 
-		test('should remove workflow_published_version on deactivation', async () => {
+		test('should enqueue an unpublish record and defer mapping removal on deactivation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -586,13 +585,27 @@ describe('workflow publication outbox', () => {
 
 			await workflowService.deactivateWorkflow(owner, workflow.id);
 
+			// The active version is cleared so the consumer treats the record as an unpublish.
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.active).toBe(false);
+			expect(updated?.activeVersionId).toBeNull();
+
+			// A single pending outbox record is enqueued at the deactivated version.
+			const outboxRecord = await outboxRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
+			expect(outboxRecord?.status).toBe('pending');
+
+			// Mapping removal and trigger teardown are deferred to the consumer, so the
+			// mapping is still present synchronously after the service call.
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersion).toBeNull();
+			expect(publishedVersion).not.toBeNull();
 		});
 
-		test('should remove workflow_published_version on archive', async () => {
+		test('should enqueue an unpublish record and defer mapping removal on archive', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -602,10 +615,21 @@ describe('workflow publication outbox', () => {
 
 			await workflowService.archive(owner, workflow.id);
 
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.isArchived).toBe(true);
+			expect(updated?.activeVersionId).toBeNull();
+
+			const outboxRecord = await outboxRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
+			expect(outboxRecord?.status).toBe('pending');
+
+			// Mapping removal is deferred to the consumer.
 			const publishedVersionAfter = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersionAfter).toBeNull();
+			expect(publishedVersionAfter).not.toBeNull();
 		});
 	});
 

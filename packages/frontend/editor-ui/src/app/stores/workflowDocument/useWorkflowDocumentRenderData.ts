@@ -189,7 +189,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		if (node.disabled) return undefined;
 		const status = executionStateStore.activeExecutionStatusByNodeId.get(nodeId)?.value ?? 'new';
 		if (!['new', 'unknown', 'waiting'].includes(status)) return undefined;
-		const pinned = workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+		const pinned = getVisiblePinData(nodeId);
 		if (pinned) return undefined;
 
 		if (typeof nodeTypeDescription.eventTriggerDescription === 'string') {
@@ -218,7 +218,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		const status = executionStateStore.activeExecutionStatusByNodeId.get(nodeId)?.value ?? 'new';
 		if (status === 'crashed' || status === 'error') return true;
 
-		const pinned = workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+		const pinned = getVisiblePinData(nodeId);
 		if (pinned) return false;
 
 		const validationErrors =
@@ -231,6 +231,15 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 
 		const tasks = executionStateStore.activeExecutionRunDataByNodeId.get(nodeId)?.value ?? null;
 		return Boolean(tasks?.at(-1)?.error);
+	}
+
+	function getVisiblePinData(nodeId: string) {
+		const node = getNode(nodeId);
+		if (!node) return undefined;
+		if (executionStateStore.isExecutionDataDisplayed) {
+			return executionStateStore.activeExecutionPinDataByNodeName[node.name];
+		}
+		return workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
 	}
 
 	// --- renderTypeByNodeId --------------------------------------------------
@@ -512,6 +521,12 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		// their own computeds and none destructure them.)
 		get executionIssuesByNodeName() {
 			return executionStateStore.activeExecutionIssuesByNodeName;
+		},
+		get executionPinDataByNodeName() {
+			return executionStateStore.activeExecutionPinDataByNodeName;
+		},
+		get isExecutionDataDisplayed() {
+			return executionStateStore.isExecutionDataDisplayed;
 		},
 		get executionStatusByNodeId() {
 			return executionStateStore.activeExecutionStatusByNodeId;

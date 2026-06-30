@@ -357,4 +357,28 @@ describe('getComputerUsePrompt', () => {
 			expect(result).not.toContain('Sensitive content on screen');
 		});
 	});
+
+	describe('browser runtime-failure guidance', () => {
+		it('tells the agent that browser_navigate needs an open tab and to fall back to browser_tab_open', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			const line = result
+				.split('\n')
+				.find((l) => l.includes('browser_navigate') && l.includes('browser_tab_open'));
+			expect(line).toBeDefined();
+			expect(line).toContain('requires a connected tab');
+		});
+
+		it('is absent when browser is not available', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('browser_tab_open');
+		});
+	});
 });

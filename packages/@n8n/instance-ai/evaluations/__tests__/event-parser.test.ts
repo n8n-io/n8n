@@ -2,8 +2,10 @@ import {
 	buildConversationMetrics,
 	buildMetrics,
 	extractOutcomeFromEvents,
+	mergeSeededConversationMetrics,
+	seededTurnCounters,
 } from '../outcome/event-parser';
-import type { CapturedEvent } from '../types';
+import type { CapturedEvent, ConversationMetrics, TranscriptTurn } from '../types';
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -576,5 +578,133 @@ describe('buildConversationMetrics', () => {
 		const result = buildConversationMetrics(events);
 		expect(result.reachedRunFinishCleanly).toBe(false);
 		expect(result.perTurn[1].runFinishStatus).toBe('cancelled');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// seededTurnCounters / mergeSeededConversationMetrics
+// ---------------------------------------------------------------------------
+
+const seededTurn = (steps: TranscriptTurn['steps']): TranscriptTurn => ({ steps, seeded: true });
+
+describe('seededTurnCounters', () => {
+	it('counts tool-call steps and their errors', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([
+				{ kind: 'tool-call', toolName: 'a' },
+				{ kind: 'tool-call', toolName: 'b', error: 'boom' },
+			]),
+		]);
+		expect(counter).toMatchObject({ toolCallCount: 2, toolErrorCount: 1 });
+	});
+
+	it('counts a plan step as a tool call', () => {
+		const [counter] = seededTurnCounters([seededTurn([{ kind: 'plan', tasks: [] }])]);
+		expect(counter.toolCallCount).toBe(1);
+	});
+
+	it('dual-counts ask-user as a tool call and a questions confirmation (mirrors live)', () => {
+		const [counter] = seededTurnCounters([seededTurn([{ kind: 'ask-user', questions: [] }])]);
+		expect(counter.toolCallCount).toBe(1);
+		expect(counter.confirmationAskedTotal).toBe(1);
+		expect(counter.confirmationAskedByKind).toEqual({ questions: 1 });
+	});
+
+	it('counts setup-card as a tool call and a setup confirmation', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([{ kind: 'setup-card', requests: [], outcome: 'pending' }]),
+		]);
+		expect(counter.toolCallCount).toBe(1);
+		expect(counter.confirmationAskedByKind).toEqual({ setup: 1 });
+	});
+
+	it('counts a confirmation as a tool call, keyed by its resumeReason', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([{ kind: 'confirmation', toolName: 'workflows', resumeReason: 'plan-review' }]),
+		]);
+		expect(counter.toolCallCount).toBe(1);
+		expect(counter.confirmationAskedTotal).toBe(1);
+		expect(counter.confirmationAskedByKind).toEqual({ 'plan-review': 1 });
+	});
+
+	it('counts setup-wizard as a tool call, ignores agent-text, leaves non-derivable counters at default', () => {
+		const [counter] = seededTurnCounters([
+			seededTurn([
+				{ kind: 'agent-text', text: 'hello' },
+				{ kind: 'setup-wizard', completedNodes: [], skippedNodes: [] },
+			]),
+		]);
+		expect(counter.toolCallCount).toBe(1); // setup-wizard is a tool call; agent-text is not
+		expect(counter.confirmationAskedTotal).toBe(0);
+		expect(counter.replanAfterErrorCount).toBe(0);
+		expect(counter.repeatQuestionCount).toBe(0);
+		expect(counter.runFinishStatus).toBeUndefined();
+	});
+
+	it('returns one counter per turn (numbered) and [] for no turns', () => {
+		expect(seededTurnCounters([])).toEqual([]);
+		expect(seededTurnCounters([seededTurn([]), seededTurn([])]).map((c) => c.turn)).toEqual([1, 2]);
+	});
+});
+
+describe('mergeSeededConversationMetrics', () => {
+	const live: ConversationMetrics = {
+		turnCount: 1,
+		perTurn: [
+			{
+				turn: 1,
+				toolCallCount: 3,
+				toolErrorCount: 0,
+				confirmationAskedTotal: 2,
+				confirmationAskedByKind: { questions: 2 },
+				replanAfterErrorCount: 0,
+				repeatQuestionCount: 0,
+				runFinishStatus: 'completed',
+			},
+		],
+		confirmationAskedTotal: 2,
+		confirmationAskedByKind: { questions: 2 },
+		reachedRunFinishCleanly: true,
+	};
+
+	it('prepends seeded turns, renumbers, sums aggregates, and preserves the live finish status', () => {
+		const seeded: TranscriptTurn[] = [
+			seededTurn([{ kind: 'ask-user', questions: [] }]),
+			seededTurn([{ kind: 'setup-card', requests: [], outcome: 'pending' }]),
+		];
+		const merged = mergeSeededConversationMetrics(seeded, live);
+		expect(merged.perTurn.map((c) => c.turn)).toEqual([1, 2, 3]);
+		expect(merged.turnCount).toBe(3); // 2 seeded + live turnCount 1
+		expect(merged.confirmationAskedTotal).toBe(4); // seeded 2 + live 2
+		expect(merged.confirmationAskedByKind).toEqual({ questions: 3, setup: 1 });
+		expect(merged.reachedRunFinishCleanly).toBe(true);
+		// The live turn is last, unchanged apart from its new turn number.
+		expect(merged.perTurn[2]).toMatchObject({
+			turn: 3,
+			toolCallCount: 3,
+			runFinishStatus: 'completed',
+		});
+	});
+
+	it('preserves a false live finish status regardless of seeded content', () => {
+		const merged = mergeSeededConversationMetrics(
+			[seededTurn([{ kind: 'agent-text', text: 'x' }])],
+			{
+				...live,
+				reachedRunFinishCleanly: false,
+			},
+		);
+		expect(merged.reachedRunFinishCleanly).toBe(false);
+	});
+
+	it('an empty seeded prefix yields metrics deep-equal to the live metrics (no live regression)', () => {
+		expect(mergeSeededConversationMetrics([], live)).toEqual(live);
+	});
+
+	it('does not mutate the passed-in live metrics', () => {
+		mergeSeededConversationMetrics([seededTurn([{ kind: 'ask-user', questions: [] }])], live);
+		expect(live.perTurn[0].turn).toBe(1);
+		expect(live.confirmationAskedByKind).toEqual({ questions: 2 });
+		expect(live.turnCount).toBe(1);
 	});
 });

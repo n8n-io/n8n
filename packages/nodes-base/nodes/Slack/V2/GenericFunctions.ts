@@ -157,8 +157,8 @@ function hasNextPage(responseData: any, propertyName: string): boolean {
 		isDefined(responseData.paging.page) &&
 		responseData.paging.page < responseData.paging.pages;
 	const morePropertyPagesAvailable =
-		isDefined(responseData[propertyName].paging?.pages) &&
-		isDefined(responseData[propertyName].paging.page) &&
+		isDefined(responseData[propertyName]?.paging?.pages) &&
+		isDefined(responseData[propertyName]?.paging?.page) &&
 		responseData[propertyName].paging.page < responseData[propertyName].paging.pages;
 	return nextCursorDefined || morePagesAvailable || morePropertyPagesAvailable;
 }
@@ -254,7 +254,7 @@ export async function slackApiRequestAllItemsWithRateLimit<TResponseData>(
 		query.page++;
 		returnData.push.apply(
 			returnData,
-			(responseData[propertyName].matches as TResponseData[]) ?? responseData[propertyName],
+			(responseData[propertyName]?.matches as TResponseData[]) ?? responseData[propertyName] ?? [],
 		);
 	} while (hasNextPage(responseData, propertyName));
 
@@ -287,7 +287,7 @@ export async function slackApiRequestAllItems(
 		query.page++;
 		returnData.push.apply(
 			returnData,
-			(responseData[propertyName].matches as IDataObject[]) ?? responseData[propertyName],
+			(responseData[propertyName]?.matches as IDataObject[]) ?? responseData[propertyName] ?? [],
 		);
 	} while (hasNextPage(responseData, propertyName));
 	return returnData;

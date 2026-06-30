@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import { MqttClient } from 'mqtt';
-import { ApplicationError } from '@n8n/errors';
+import { OperationalError } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from '../GenericFunctions';
 
@@ -37,7 +37,7 @@ describe('createClient', () => {
 		});
 	});
 
-	it('should reject with ApplicationError on connection error and close connection', async () => {
+	it('should reject with OperationalError on connection error and close connection', async () => {
 		const mockConnect = vi.spyOn(MqttClient.prototype, 'connect').mockImplementation(function (
 			this: MqttClient,
 		) {
@@ -61,7 +61,7 @@ describe('createClient', () => {
 
 		const clientPromise = createClient(credentials);
 
-		await expect(clientPromise).rejects.toThrow(ApplicationError);
+		await expect(clientPromise).rejects.toThrow(OperationalError);
 		expect(mockConnect).toBeCalledTimes(1);
 		expect(mockEnd).toBeCalledTimes(1);
 	});

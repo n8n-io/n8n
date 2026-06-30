@@ -10,6 +10,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
+import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialBindingRequest,
 	CredentialResolution,
@@ -28,16 +29,13 @@ import { PackageImportConfig } from '../n8n-packages.config';
 import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
+	ImportContext,
+	ImportCredentialSummary,
 	ImportPackageRequest,
 	ImportPackageSummary,
 	ImportResult,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-
-interface ImportTarget {
-	projectId: string;
-	folderId: string | null;
-}
 
 @Service()
 export class ImportPipeline {
@@ -54,16 +52,12 @@ export class ImportPipeline {
 	) {}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
-		const { target, project } = await this.resolveTarget(
-			request.user,
-			request.projectId,
-			request.folderId,
-		);
+		const context = await this.resolveTarget(request.user, request.projectId, request.folderId);
 
 		// PublishAll requires publish scope up front; other policies are checked per workflow
 		await this.workflowPublisher.assertCanPublish(
-			request.user,
-			target.projectId,
+			context.user,
+			context.projectId,
 			request.workflowPublishingPolicy,
 		);
 
@@ -76,16 +70,10 @@ export class ImportPipeline {
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.credentialBindings,
-			targetProject: project,
-			user: request.user,
 		};
 
-		const credentialPlan = await this.credentialImporter.plan(credentialRequest);
-		const workflowPlan = await this.workflowImporter.plan(
-			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
-			workflowsForImport,
-			request,
-		);
+		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
+		const workflowPlan = await this.workflowImporter.plan(context, workflowsForImport, request);
 
 		const blockingIssues = this.collectBlockingIssues(
 			workflowPlan,
@@ -103,23 +91,52 @@ export class ImportPipeline {
 			throw toImportBlockedError(blockingIssues);
 		}
 
+		const credentialApply = await this.credentialImporter.apply(
+			context,
+			credentialRequest,
+			credentialPlan,
+		);
+		const publishBlockedSourceWorkflowIds = workflowsBlockedFromPublish(
+			credentialRequest.requirements,
+			new Set(credentialApply.stubbed),
+		);
+
 		const { outcomes, bindings } = await this.workflowImporter.apply(
+			{
+				...context,
+				publishingPolicy: request.workflowPublishingPolicy,
+				publishBlockedSourceWorkflowIds,
+			},
 			workflowPlan,
-			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
-			createBindings({ credentials: credentialPlan.successes }),
+			createBindings({ credentials: credentialApply.bindings }),
 		);
 
 		const imported = outcomes.filter(({ status }) => status !== 'skipped');
 		this.eventService.emit('workflows-imported', {
-			user: request.user,
-			projectId: target.projectId,
+			user: context.user,
+			projectId: context.projectId,
+			folderId: context.folderId,
 			workflowIds: imported.map(({ workflow }) => workflow.id),
+			options: {
+				workflowConflictPolicy: request.workflowConflictPolicy,
+				workflowIdPolicy: request.workflowIdPolicy,
+				credentialMatchingMode: request.credentialMatchingMode,
+				credentialMissingMode: request.credentialMissingMode,
+				workflowPublishingPolicy: request.workflowPublishingPolicy,
+			},
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
-			matchedCredentialIds: [...credentialPlan.successes.values()],
+			credentialIds: {
+				matched: credentialApply.matched.map((sourceId) => credentialApply.bindings.get(sourceId)!),
+				created: credentialApply.stubbed.map((sourceId) => credentialApply.bindings.get(sourceId)!),
+				updated: [],
+			},
 		});
 
-		return this.buildResult(packageSummary, target.projectId, outcomes, bindings);
+		return this.buildResult(packageSummary, context.projectId, outcomes, bindings, {
+			matched: credentialApply.matched,
+			stubbed: credentialApply.stubbed,
+		});
 	}
 
 	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */
@@ -146,12 +163,14 @@ export class ImportPipeline {
 		);
 
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
-			.blockingFailures(credentialResolution, credentialRequest)
-			.map(({ kind, sourceId, targetId, usedByWorkflows }) => ({
+			.blockingFailures(credentialRequest, credentialResolution)
+			.map(({ kind, sourceId, targetId, expectedType, actualType, usedByWorkflows }) => ({
 				type: 'credential-unresolved',
 				kind,
 				sourceId,
 				...(targetId ? { targetId } : {}),
+				...(expectedType ? { expectedType } : {}),
+				...(actualType ? { actualType } : {}),
 				usedByWorkflows,
 			}));
 
@@ -168,19 +187,22 @@ export class ImportPipeline {
 		projectId: string,
 		outcomes: WorkflowImportOutcome[],
 		bindings: PackageImportBindings,
+		credentials: ImportCredentialSummary,
 	): ImportResult {
 		return {
 			package: packageSummary,
-			workflows: outcomes.map(({ workflow, sourceWorkflowId, status }) => ({
+			workflows: outcomes.map(({ workflow, sourceWorkflowId, status, publishing }) => ({
 				sourceWorkflowId,
 				localId: workflow.id,
 				name: workflow.name,
 				projectId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
 				activeVersionId: workflow.activeVersionId ?? null,
+				publishing,
 				status,
 			})),
 			bindings: serializeBindings(bindings),
+			credentials,
 		};
 	}
 
@@ -188,14 +210,11 @@ export class ImportPipeline {
 		user: User,
 		projectId: string | undefined,
 		folderId: string | undefined,
-	): Promise<{ target: ImportTarget; project: Project }> {
+	): Promise<ImportContext> {
 		const project = await this.resolveImportProject(user, projectId);
 		await this.assertFolderExistsInProject(folderId, project.id);
 
-		return {
-			project,
-			target: { projectId: project.id, folderId: folderId ?? null },
-		};
+		return { user, projectId: project.id, folderId: folderId ?? null };
 	}
 
 	private async resolveImportProject(user: User, projectId: string | undefined): Promise<Project> {

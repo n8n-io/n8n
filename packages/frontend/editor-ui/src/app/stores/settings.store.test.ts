@@ -121,6 +121,56 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('isCrdtCollaborationEnabled', () => {
+		it('should return true when collaboration.crdt is local', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'local' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return true when collaboration.crdt is server', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'server' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return false when collaboration.crdt is off', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'off' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
+
+		it('should return false when collaboration is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
+	});
+
 	describe('getSettings', () => {
 		describe('telemetry', () => {
 			it('should fetch settings and call sessionStarted if telemetry is enabled', async () => {

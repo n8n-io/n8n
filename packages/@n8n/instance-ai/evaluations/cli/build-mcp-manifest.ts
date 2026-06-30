@@ -10,8 +10,11 @@ import { homedir, tmpdir } from 'os';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
+import { ConversationTurnSchema, DEFAULT_DATASETS } from '../data/workflows/schema';
+import { createLogger } from '../harness/logger';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { runWithConcurrency } from '../harness/runner';
+import { loadTestCasesFromLangTracer } from '../langtracer/provider';
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -31,6 +34,8 @@ interface CliArgs {
 	slugs: string[];
 	maxAttempts: number;
 	mcpTimeoutMs: number;
+	/** When set, only build slugs whose `datasets` array includes this tier (mirrors eval --tier). */
+	tier?: string;
 	/** When set, instructs the model to pass `projectId` to
 	 *  `create_workflow_from_code` so workflows land in a specific n8n project.
 	 *  When unset, workflows go to the user's personal project (MCP default). */
@@ -43,6 +48,10 @@ interface CliArgs {
 	 *  builder from a project where they have skills/settings configured,
 	 *  independent of where the script itself runs. */
 	buildCwd?: string;
+	/** Test-case source: `disk` (default, from --workflow-dir) or `langtracer` (a suite over MCP). */
+	source: 'disk' | 'langtracer';
+	/** lang-tracer suite slug when `--source langtracer`. */
+	suite?: string;
 }
 
 const HELP = `
@@ -77,6 +86,11 @@ Flags:
   --mcp-timeout-ms N      MCP_TIMEOUT env passed to claude -p (default: 120000).
   --project-id ID         n8n project to create the workflows in. Defaults
                           to the user's personal project.
+  --source SRC            Test-case source: disk (default) or langtracer.
+  --suite SLUG            lang-tracer suite slug (required with --source langtracer).
+  --tier TIER             Only build test cases whose datasets array includes
+                          TIER (e.g. "mcp"). Mirrors eval:instance-ai --tier.
+                          Applies to discovered and positional slugs alike.
   --workflow-dir DIR      Test-case JSON directory. Defaults to
                           evaluations/data/workflows/ derived from the n8n
                           repo (via git). Set this to run from outside the
@@ -114,6 +128,7 @@ function parseArgs(argv: string[]): ParseResult {
 		slugs: [],
 		maxAttempts: 3,
 		mcpTimeoutMs: 120_000,
+		source: 'disk',
 	};
 
 	let i = 0;
@@ -170,12 +185,29 @@ function parseArgs(argv: string[]): ParseResult {
 				result.projectId = nextArg(argv, i, arg);
 				i += 2;
 				break;
+			case '--tier':
+				result.tier = nextArg(argv, i, arg);
+				i += 2;
+				break;
 			case '--workflow-dir':
 				result.workflowDir = nextArg(argv, i, arg);
 				i += 2;
 				break;
 			case '--build-cwd':
 				result.buildCwd = nextArg(argv, i, arg);
+				i += 2;
+				break;
+			case '--source': {
+				const value = nextArg(argv, i, arg);
+				if (value !== 'disk' && value !== 'langtracer') {
+					throw new Error('--source must be "disk" or "langtracer"');
+				}
+				result.source = value;
+				i += 2;
+				break;
+			}
+			case '--suite':
+				result.suite = nextArg(argv, i, arg);
 				i += 2;
 				break;
 			case '-h':
@@ -194,6 +226,9 @@ function parseArgs(argv: string[]): ParseResult {
 	if (result.iterations < 1) throw new Error('--iterations must be >= 1');
 	if (result.concurrency < 1) throw new Error('--concurrency must be >= 1');
 	if (result.maxAttempts < 1) throw new Error('--max-attempts must be >= 1');
+	if (result.source === 'langtracer' && !result.suite) {
+		throw new Error('--source langtracer requires --suite <slug>');
+	}
 
 	mkdirSync(result.outputDir, { recursive: true });
 	if (!result.manifestPath) result.manifestPath = join(result.outputDir, 'manifest.json');
@@ -367,9 +402,15 @@ interface BuildOutcome {
 	durationMs: number;
 }
 
+/** Canonical conversation-turn type (role enum + normalized text), reused from
+ *  the harness schema instead of a looser inline `{ role: string; text }`. */
+type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
+
 const testCaseSchema = z
 	.object({
-		conversation: z.array(z.object({ role: z.string(), text: z.string() })).min(1),
+		// Reuse the canonical turn schema so `role` is the exact 'user' | 'assistant'
+		// enum and the array (multi-line) `text` form is normalized as in the harness.
+		conversation: z.array(ConversationTurnSchema).min(1),
 	})
 	.passthrough();
 
@@ -403,21 +444,14 @@ async function buildOne(
 	iteration: number,
 	args: CliArgs,
 	mcpConfigPath: string,
-	workflowDir: string,
+	conversation: ConversationTurn[],
 	allowedTools: readonly string[],
 ): Promise<BuildOutcome> {
-	const scenarioFile = join(workflowDir, `${slug}.json`);
-	if (!existsSync(scenarioFile)) {
-		console.log(`  [${slug}#${iteration}] skip: scenario file missing`);
-		return { slug, iteration, workflowId: null, cost: 0, turns: 0, durationMs: 0 };
-	}
-	const testCase = testCaseSchema.parse(readJson(scenarioFile, `test case ${slug}`));
-
 	const projectInstruction = args.projectId
 		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${args.projectId}' so the workflow is created in that n8n project.`
 		: '';
 
-	const userMessage = `${buildPromptFromConversation(testCase.conversation)}${projectInstruction}
+	const userMessage = `${buildPromptFromConversation(conversation)}${projectInstruction}
 
 ---
 After you have created the workflow with create_workflow_from_code, print a final line of the exact form:
@@ -541,6 +575,26 @@ function discoverSlugs(workflowDir: string): string[] {
 		.sort();
 }
 
+const tierDatasetsSchema = z.object({ datasets: z.array(z.string()).optional() }).passthrough();
+
+/** A test case's `datasets`, defaulting to the shared eval default when absent — mirrors the loader schema. */
+function readDatasets(workflowDir: string, slug: string): string[] {
+	const file = join(workflowDir, `${slug}.json`);
+	if (!existsSync(file)) return [];
+	try {
+		return (
+			tierDatasetsSchema.parse(readJson(file, `test case ${slug}`)).datasets ?? DEFAULT_DATASETS
+		);
+	} catch {
+		return DEFAULT_DATASETS;
+	}
+}
+
+/** Keep only slugs whose `datasets` includes `tier`, mirroring eval:instance-ai --tier semantics. */
+function filterSlugsByTier(workflowDir: string, slugs: string[], tier: string): string[] {
+	return slugs.filter((slug) => readDatasets(workflowDir, slug).includes(tier));
+}
+
 async function main(): Promise<void> {
 	const parsed = parseArgs(process.argv.slice(2));
 	if (parsed.helpRequested) {
@@ -555,40 +609,76 @@ async function main(): Promise<void> {
 		throw new Error('claude not on PATH');
 	}
 
-	// `--workflow-dir` lets the script run from outside the n8n repo. When
-	// not provided, we derive both the workflow dir and the repo root from
-	// `git rev-parse` (the script must then be invoked inside the n8n repo).
-	let workflowDir: string;
+	// Repo root scopes the staged MCP config (cwd fallback). Best-effort: the disk
+	// source resolves/validates its own test-case dir below; langtracer pulls cases
+	// over MCP, so it needs no repo at all and can run outside the n8n checkout.
 	let repoRoot: string | undefined;
-	if (args.workflowDir) {
-		workflowDir = args.workflowDir;
-		try {
-			repoRoot = execSync('git rev-parse --show-toplevel', { stdio: ['ignore', 'pipe', 'ignore'] })
-				.toString()
-				.trim();
-		} catch {
-			repoRoot = undefined;
-		}
-	} else {
-		try {
-			repoRoot = execSync('git rev-parse --show-toplevel').toString().trim();
-		} catch {
-			throw new Error(
-				'Could not determine repo root via git. Run from inside the n8n repo, or pass --workflow-dir to point at a test-case directory directly.',
-			);
-		}
-		workflowDir = join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows');
+	try {
+		repoRoot = execSync('git rev-parse --show-toplevel', { stdio: ['ignore', 'pipe', 'ignore'] })
+			.toString()
+			.trim();
+	} catch {
+		repoRoot = undefined;
 	}
 
 	if (args.buildCwd && !existsSync(args.buildCwd)) {
 		throw new Error(`--build-cwd directory does not exist: ${args.buildCwd}`);
 	}
 
-	if (args.slugs.length === 0) {
-		args.slugs = discoverSlugs(workflowDir);
+	// Resolve slug -> conversation from the chosen source. Disk reads --workflow-dir
+	// (positional slugs or discovered), langtracer pulls a suite over MCP; both feed
+	// the same buildOne prompt.
+	const casesBySlug = new Map<string, ConversationTurn[]>();
+	if (args.source === 'langtracer') {
+		const suite = args.suite;
+		if (!suite) throw new Error('--source langtracer requires --suite <slug>');
+		const cases = await loadTestCasesFromLangTracer({
+			suite,
+			tier: args.tier,
+			logger: createLogger(false),
+		});
+		for (const { fileSlug, testCase } of cases)
+			casesBySlug.set(fileSlug, testCase.conversation ?? []);
+		if (args.slugs.length > 0) {
+			const requested = new Set(args.slugs);
+			for (const slug of [...casesBySlug.keys()]) {
+				if (!requested.has(slug)) casesBySlug.delete(slug);
+			}
+		}
+	} else {
+		const workflowDir =
+			args.workflowDir ??
+			(repoRoot
+				? join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows')
+				: undefined);
+		if (!workflowDir) {
+			throw new Error(
+				'Disk source needs the n8n repo (run from inside it) or --workflow-dir; or use --source langtracer.',
+			);
+		}
+		let slugs = args.slugs.length > 0 ? args.slugs : discoverSlugs(workflowDir);
+		if (args.tier) slugs = filterSlugsByTier(workflowDir, slugs, args.tier);
+		for (const slug of slugs) {
+			const file = join(workflowDir, `${slug}.json`);
+			if (!existsSync(file)) {
+				console.log(`  [${slug}] skip: scenario file missing`);
+				continue;
+			}
+			casesBySlug.set(slug, testCaseSchema.parse(readJson(file, `test case ${slug}`)).conversation);
+		}
 	}
+	// Drop cases with no user turn to build from (e.g. seedThread-only).
+	for (const [slug, conv] of [...casesBySlug]) {
+		if (!conv.some((t) => t.role === 'user' && t.text.trim().length > 0)) {
+			console.log(`  [${slug}] skip: no user turn to build from`);
+			casesBySlug.delete(slug);
+		}
+	}
+	args.slugs = [...casesBySlug.keys()];
 	if (args.slugs.length === 0) {
-		throw new Error('No scenarios to build');
+		throw new Error(
+			args.tier ? `No scenarios match --tier "${args.tier}"` : 'No scenarios to build',
+		);
 	}
 
 	const projectScopes = uniqueProjectScopes([
@@ -627,7 +717,14 @@ async function main(): Promise<void> {
 	const results = await runWithConcurrency(
 		tasks,
 		async (task) =>
-			await buildOne(task.slug, task.iteration, args, mcpConfigPath, workflowDir, allowedTools),
+			await buildOne(
+				task.slug,
+				task.iteration,
+				args,
+				mcpConfigPath,
+				casesBySlug.get(task.slug) ?? [],
+				allowedTools,
+			),
 		args.concurrency,
 	);
 

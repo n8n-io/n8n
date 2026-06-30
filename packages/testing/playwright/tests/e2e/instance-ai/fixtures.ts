@@ -521,13 +521,15 @@ async function waitForInstanceAiIdle(backendUrl: string, testSlug: string): Prom
 export const instanceAiTestConfig = {
 	timezoneId: 'America/New_York',
 	capability: {
-		// Instance AI does not support multi-main yet (implementation deferred):
-		// agent-triggered manual executions fail on the multi-main offload path
-		// (the worker job processor reads execution.data.manualData while
-		// execution.data is undefined). Pin the stack to a single main so the
-		// multi-main CI project still runs this suite against a supported
-		// topology. Drop this override when multi-main support lands.
+		// Instance AI does not support queue/multi-main execution yet (implementation
+		// deferred): agent-triggered manual executions fail or flake on the worker
+		// offload path (the worker job processor reads execution.data.manualData while
+		// execution.data is undefined). Pin to a single main AND no workers so the suite
+		// runs in direct execution mode (a supported topology) under every CI project —
+		// `mains: 1` alone left the worker in place, so full-workflow runs still offloaded
+		// and flaked. Drop these overrides when queue/multi-main support lands.
 		mains: 1,
+		workers: 0,
 		services: ['proxy', 'sandbox'],
 		env: {
 			N8N_ENABLED_MODULES: 'instance-ai',

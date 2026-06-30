@@ -1,6 +1,6 @@
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { isRecord } from './column-ref-utils';
 import type { InstanceAiContext, NodeOutputResult } from '../../types';
 
 const SCAN_LIMIT = 100;
@@ -107,7 +107,7 @@ export async function extractRowsFromExecutionHistory(
 				});
 			}
 		} catch (error) {
-			ctx.logger?.warn('extract-rows: getNodeOutput failed', {
+			ctx.logger.warn('extract-rows: getNodeOutput failed', {
 				executionId: summary.id,
 				error,
 			});

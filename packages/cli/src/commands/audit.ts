@@ -31,12 +31,21 @@ export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		await super.init();
 
+		// risk reporters read execution data, which may be stored on S3 or Azure Blob
 		try {
-			// risk reporters read execution data, which may be stored on S3
 			await this.initObjectStoreIfConfigured();
 		} catch (error) {
 			this.logger.warn(
 				'Failed to initialize object store. The audit will fail if any executions have data stored in S3.',
+				{ error: ensureError(error).message },
+			);
+		}
+
+		try {
+			await this.initAzureStoreIfConfigured();
+		} catch (error) {
+			this.logger.warn(
+				'Failed to initialize Azure Blob storage. The audit will fail if any executions have data stored on Azure Blob.',
 				{ error: ensureError(error).message },
 			);
 		}

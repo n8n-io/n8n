@@ -1,8 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
+import { HttpRequestConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
+import { binaryToString } from '../binary-string';
 import { OutboundHttp } from '../outbound-http';
 
 function makeFacade(): OutboundHttp {
@@ -118,7 +125,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				})) as { statusCode: number; body: string };
 
 				expect(response.statusCode).toBe(200);
-				const forwardedHeaders = JSON.parse(response.body);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 				expect(forwardedHeaders.authorization).toBe(basicAuth);
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			},
@@ -140,7 +147,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			})) as { statusCode: number; body: string };
 
 			expect(response.statusCode).toBe(200);
-			const forwardedHeaders = JSON.parse(response.body);
+			const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 			expect(forwardedHeaders.authorization).toBeUndefined();
 			expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 		});
@@ -163,7 +170,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				})) as { statusCode: number; body: string };
 
 				expect(response.statusCode).toBe(200);
-				const forwardedHeaders = JSON.parse(response.body);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 				expect(forwardedHeaders.authorization).toBe(basicAuth);
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			},
@@ -294,5 +301,102 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				client.requestLegacy({ url: 'https://blocked.com/data', allowedDomains: '*.example.com' }),
 			).rejects.toThrow('Domain not allowed');
 		});
+	});
+
+	describe('body drain', () => {
+		let server: Server;
+		let port: number;
+
+		beforeAll(async () => {
+			nock.enableNetConnect('127.0.0.1');
+			// Sends headers (so axios resolves the response with the body as a
+			// stream) then a partial body that never reaches the declared
+			// Content-Length, holding the socket open. The body stream then emits
+			// neither 'end', 'error' nor 'close' — replicating the stalled proxy
+			// response that hangs the caller forever. `/stall` returns 403 (error
+			// path, drained internally), `/stall-200` returns 200 (success path,
+			// drained by the caller).
+			server = createServer((req, res) => {
+				const status = (req.url ?? '').startsWith('/stall-200') ? 200 : 403;
+				res.writeHead(status, { 'content-type': 'text/plain', 'content-length': '1000' });
+				res.write('partial body');
+				// intentionally never end the response and never close the socket
+			});
+			await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+			port = (server.address() as AddressInfo).port;
+		});
+
+		afterAll(async () => {
+			server.closeAllConnections();
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+			nock.disableNetConnect();
+		});
+
+		beforeEach(() => {
+			// Bound the body-read drain to a short deadline so the test stays fast.
+			Container.set(
+				HttpRequestConfig,
+				Object.assign(new HttpRequestConfig(), { responseBodyReadTimeout: 500 }),
+			);
+		});
+
+		afterEach(() => {
+			Container.set(HttpRequestConfig, new HttpRequestConfig());
+		});
+
+		it(
+			'rejects instead of hanging when the error-response body never terminates',
+			{ timeout: 5000 },
+			async () => {
+				// No per-request `timeout`: axios then sets no socket timeout, so nothing
+				// tears the stalled body stream down — without the guard it hangs forever.
+				const client = makeFacade().requests({ ssrf: 'disabled' });
+
+				await expect(
+					client.requestLegacy({ url: `http://127.0.0.1:${port}/stall`, useStream: true }),
+				).rejects.toThrow(/timed out/i);
+			},
+		);
+
+		it(
+			'bounds the error-body read by responseBodyReadTimeout even with a larger per-request timeout',
+			{ timeout: 5000 },
+			async () => {
+				// The HTTP Request node always sets a per-request timeout (default 300_000ms).
+				// The configured guard must still apply, so the read aborts at ~500ms here,
+				// not at the 30s request timeout.
+				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: `http://127.0.0.1:${port}/stall`,
+						useStream: true,
+						timeout: 30_000,
+					}),
+				).rejects.toThrow(/timed out/i);
+				expect(Date.now() - start).toBeLessThan(3000);
+			},
+		);
+
+		it(
+			'guards a stalled success-response (2xx) body that the caller drains',
+			{ timeout: 5000 },
+			async () => {
+				// A 2xx is not thrown, so requestLegacy returns the body stream and the
+				// caller drains it. The guard must still bound it.
+				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const start = Date.now();
+
+				const body = (await client.requestLegacy({
+					url: `http://127.0.0.1:${port}/stall-200`,
+					useStream: true,
+					timeout: 30_000,
+				})) as Readable;
+
+				await expect(binaryToString(body)).rejects.toThrow(/timed out/i);
+				expect(Date.now() - start).toBeLessThan(3000);
+			},
+		);
 	});
 });

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/i18n",
   "type": "module",
-  "version": "2.27.0",
+  "version": "2.29.0",
   "files": [
     "dist"
   ],
@@ -37,7 +37,8 @@
   },
   "dependencies": {
     "n8n-workflow": "workspace:*",
-    "vue-i18n": "catalog:frontend"
+    "vue-i18n": "catalog:frontend",
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -56,9 +57,6 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
-  },
-  "peerDependencies": {
-    "vue": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

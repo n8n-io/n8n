@@ -9,6 +9,7 @@ export const BUILDER_TOOLS = {
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILL: 'create_skill',
 	CREATE_TASK: 'create_task',
+	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
 	RESOLVE_LLM: 'resolve_llm',

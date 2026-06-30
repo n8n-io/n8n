@@ -1,3 +1,4 @@
+import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
@@ -9,13 +10,13 @@ import {
 	WorkflowExecute,
 	SupplyDataContext,
 } from 'n8n-core';
-import type { Tool } from '@langchain/core/tools';
 import type {
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
+	IExecutionContext,
 	INodeExecutionData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -95,6 +96,16 @@ export class JobProcessor {
 		 */
 		if (execution.status === 'crashed') return { success: false };
 
+		// A correctly enqueued execution always carries a run-data payload. A missing
+		// one means the producer persisted no data, which would otherwise surface as an
+		// opaque `Cannot read properties of undefined` deref further down. Fail with a
+		// clear, attributable error instead.
+		if (!execution.data) {
+			throw new UnexpectedError(
+				`Worker received execution ${executionId} without run data (job ${job.id})`,
+			);
+		}
+
 		const workflowId = execution.workflowData.id;
 
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
@@ -154,6 +165,9 @@ export class JobProcessor {
 		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 		additionalData.restartExecutionId = job.data.restartExecutionId;
+		additionalData.evaluationRunId = execution.data.manualData?.evaluationRunId;
+		// Rehydrate the manual-execution identity for private credential resolution.
+		additionalData.encryptedRunnerIdentity = job.data.encryptedRunnerIdentity;
 
 		const { pushRef } = job.data;
 
@@ -170,7 +184,6 @@ export class JobProcessor {
 		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
 			}) as (type: string, data: IDataObject | IDataObject[]) => void;
@@ -337,7 +350,16 @@ export class JobProcessor {
 
 			let toolResult: unknown;
 			try {
-				toolResult = await this.invokeTool(workflow, sourceNodeName, toolArgs, additionalData);
+				toolResult = await this.invokeTool(
+					workflow,
+					sourceNodeName,
+					toolArgs,
+					additionalData,
+					// The execution context (e.g. the OAuth identity for private credentials)
+					// is established on the main and loaded with the execution here; pass it
+					// through so the tool node can resolve dynamic credentials on the worker.
+					execution.data?.executionData?.runtimeData,
+				);
 			} catch (error) {
 				this.logger.error('Tool node execution failed for MCP Trigger', {
 					executionId,
@@ -453,6 +475,7 @@ export class JobProcessor {
 		>
 			? T
 			: never,
+		executionContext?: IExecutionContext,
 	): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
 		if (!toolNode) {
@@ -475,8 +498,14 @@ export class JobProcessor {
 			],
 		];
 
-		// Create minimal run execution data
+		// Create minimal run execution data, carrying the established execution
+		// context so the tool node's `getExecutionContext()` exposes it to dynamic
+		// credential resolution (otherwise resolution fails with
+		// MissingExecutionContextError for private credentials in queue mode).
 		const runExecutionData = createRunExecutionData({});
+		if (executionContext && runExecutionData.executionData) {
+			runExecutionData.executionData.runtimeData = executionContext;
+		}
 
 		// Create execute data for the tool node
 		const executeData: IExecuteData = {

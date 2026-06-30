@@ -27,7 +27,16 @@ function sendUnauthorizedResponse(
 	resp.end();
 }
 
-export const n8nOAuth2Auth = async (context: IWebhookFunctions): Promise<'ok' | 'handled'> => {
+export const n8nOAuth2Auth = async (
+	context: IWebhookFunctions,
+): Promise<
+	| {
+			status: 'ok';
+			token: string;
+			resource: string;
+	  }
+	| 'handled'
+> => {
 	const webhookUrl = context.getNodeWebhookUrl('default');
 	if (!webhookUrl) {
 		throw new UnexpectedError('Webhook URL is not available');
@@ -58,5 +67,9 @@ export const n8nOAuth2Auth = async (context: IWebhookFunctions): Promise<'ok' | 
 		}
 		return 'handled';
 	}
-	return 'ok';
+	return {
+		status: 'ok',
+		token,
+		resource: resourceUrl,
+	};
 };

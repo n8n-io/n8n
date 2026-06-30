@@ -17,6 +17,9 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { RemoveNodeGroupCommand } from '@/app/models/history';
+import { useCanvasNodeGroupTelemetry } from './useCanvasNodeGroupTelemetry';
 
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
@@ -63,8 +66,10 @@ export function useCanvasNodeGroupOperationGuards() {
 		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 	);
 
+	const historyStore = useHistoryStore();
 	const i18n = useI18n();
 	const toast = useToast();
+	const groupTelemetry = useCanvasNodeGroupTelemetry();
 	const { isSelectionGroupable } = useSelectionValidation();
 
 	function applyAddConnection(
@@ -191,7 +196,10 @@ export function useCanvasNodeGroupOperationGuards() {
 				onClick: (event: MouseEvent) => {
 					event.preventDefault();
 					event.stopPropagation();
+					const snapshot = { ...group, nodeIds: [...group.nodeIds] };
 					workflowDocumentStore.value.deleteGroup(group.id);
+					historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
+					groupTelemetry.trackUngrouped(group, 'update-blocked-toast');
 					notification?.close();
 				},
 			},

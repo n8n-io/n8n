@@ -66,7 +66,7 @@ class ModulesHooksRegistry {
 							executionId: this.executionId,
 							retryOf: this.retryOf,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -80,7 +80,7 @@ class ModulesHooksRegistry {
 							taskData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -95,7 +95,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -109,7 +109,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -123,7 +123,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -607,6 +607,11 @@ function hookFunctionsSave(
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData: fullExecutionData,
+				// A completed run must never overwrite a status the user already canceled. This applies
+				// to every save path that runs this hook; the case that motivated it is a subworkflow
+				// stopped in queue mode, where the worker keeps running the child to completion after
+				// the cancel and would otherwise write `success` over `canceled`.
+				conditions: { requireNotCanceled: true },
 			});
 
 			await updateExistingExecutionMetadata(

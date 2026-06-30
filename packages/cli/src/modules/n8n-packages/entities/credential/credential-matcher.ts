@@ -1,4 +1,4 @@
-import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
+import type { SharedCredentialsRepository, User } from '@n8n/db';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -12,9 +12,22 @@ import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface CredentialMatcherContext {
-	targetProject: Project;
+	projectId: string;
 	user: User;
 	credentialBindings?: ImportBindingMap;
+}
+
+/**
+ * A target-project credential a matcher located for a package reference, before
+ * type compatibility is enforced. {@link CredentialMatcher.match} compares
+ * `targetType` against the reference's required type and only then accepts the
+ * binding — a credential whose id is reachable but whose type differs cannot
+ * satisfy the node's credential slot (n8n resolves node credentials by exact
+ * `{ id, type }`), so binding it would silently produce an empty credential.
+ */
+export interface ResolvedCredentialMatch {
+	targetId: string;
+	targetType: string;
 }
 
 export abstract class CredentialMatcher {
@@ -31,24 +44,45 @@ export abstract class CredentialMatcher {
 		const orphanFailures = orphanBindingFailures(context.credentialBindings, requirements);
 		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
 
-		const successes = await this.resolve(known, context);
+		const located = await this.resolve(known, context);
 
-		const notFoundFailures = known
-			.filter((reference) => !successes.has(reference.id))
-			.map((reference) =>
-				createNotFoundFailure(reference, context.credentialBindings?.get(reference.id)),
-			);
+		const successes: ImportBindingMap = new Map();
+		const notFoundFailures: CredentialResolutionFailure[] = [];
+		const typeMismatchFailures: CredentialResolutionFailure[] = [];
+
+		for (const reference of known) {
+			const match = located.get(reference.id);
+			if (match === undefined) {
+				notFoundFailures.push(
+					createNotFoundFailure(reference, context.credentialBindings?.get(reference.id)),
+				);
+			} else if (match.targetType !== reference.type) {
+				typeMismatchFailures.push(createTypeMismatchFailure(reference, match));
+			} else {
+				successes.set(reference.id, match.targetId);
+			}
+		}
 
 		return {
 			successes,
-			failures: [...orphanFailures, ...unknownTypeFailures, ...notFoundFailures],
+			failures: [
+				...orphanFailures,
+				...unknownTypeFailures,
+				...notFoundFailures,
+				...typeMismatchFailures,
+			],
 		};
 	}
 
+	/**
+	 * Locates the target-project credential each known reference points at, keyed by
+	 * the reference's source id. Returns only references that resolve to a reachable,
+	 * usable credential; type compatibility is enforced by {@link match}, not here.
+	 */
 	protected abstract resolve(
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
-	): Promise<ImportBindingMap>;
+	): Promise<Map<string, ResolvedCredentialMatch>>;
 }
 
 function partitionByKnownType(
@@ -82,6 +116,23 @@ function createNotFoundFailure(
 ): CredentialResolutionFailure {
 	const failure = createFailure(reference, 'not_found');
 	return requestedTargetId === undefined ? failure : { ...failure, targetId: requestedTargetId };
+}
+
+/**
+ * The resolved credential exists and is usable but its type does not match what
+ * the package's workflow node requires. Carries both types so the caller can
+ * report which binding is wrong rather than reporting a misleading "not found".
+ */
+function createTypeMismatchFailure(
+	reference: PackageCredentialRequirement,
+	match: ResolvedCredentialMatch,
+): CredentialResolutionFailure {
+	return {
+		...createFailure(reference, 'type_mismatch'),
+		targetId: match.targetId,
+		expectedType: reference.type,
+		actualType: match.targetType,
+	};
 }
 
 /**

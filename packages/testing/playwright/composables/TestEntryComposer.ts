@@ -70,6 +70,18 @@ export class TestEntryComposer {
 	}
 
 	/**
+	 * Start UI test on the canvas of an existing workflow (e.g. one created via
+	 * the API). Waits for the canvas loader to clear and the workflow's nodes to
+	 * render before returning, so tests don't interact with a canvas still
+	 * covered by the full-screen loader.
+	 */
+	async fromExistingWorkflow(workflowId: string) {
+		await this.n8n.navigate.toWorkflow(workflowId);
+		await this.n8n.canvas.waitForCanvasReady();
+		await this.n8n.canvas.getCanvasNodes().first().waitFor({ state: 'visible' });
+	}
+
+	/**
 	 * Start UI test on a new page created by an action
 	 * @param action - The action that will create a new page
 	 * @returns n8nPage instance for the new page
@@ -80,6 +92,18 @@ export class TestEntryComposer {
 		const newPage = await newPagePromise;
 		await newPage.waitForLoadState('domcontentloaded');
 		// Use the constructor from the current instance to avoid circular dependency
+		const n8nPageConstructor = this.n8n.constructor as new (page: Page) => n8nPage;
+		return new n8nPageConstructor(newPage);
+	}
+
+	/**
+	 * Open a fresh tab in the current browser context (shared session) and
+	 * return an n8nPage facade bound to it. Use for multi-tab scenarios such
+	 * as the instance-ai memory benchmarks that drive several threads in
+	 * parallel within the same authenticated context.
+	 */
+	async newTab(): Promise<n8nPage> {
+		const newPage = await this.n8n.page.context().newPage();
 		const n8nPageConstructor = this.n8n.constructor as new (page: Page) => n8nPage;
 		return new n8nPageConstructor(newPage);
 	}

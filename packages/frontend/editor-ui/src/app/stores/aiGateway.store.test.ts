@@ -18,6 +18,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
+const OPERATION_ONLY = '__operation_only__';
+
 const MOCK_CONFIG = {
 	nodes: ['@n8n/n8n-nodes-langchain.lmChatGoogleGemini'],
 	credentialTypes: ['googlePalmApi'],
@@ -38,6 +40,9 @@ const MOCK_CONFIG = {
 			text: ['message'],
 			image: ['analyze'],
 			document: ['analyze'],
+		},
+		'n8n-nodes-pdfco.PDFco Api': {
+			[OPERATION_ONLY]: ['AI Invoice Parser', 'Merge PDF'],
 		},
 	},
 };
@@ -332,6 +337,98 @@ describe('aiGateway.store', () => {
 			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
 				true,
 			);
+		});
+
+		describe('operation-only nodes (no resource)', () => {
+			it('should return true when operation is in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'AI Invoice Parser'),
+				).toBe(true);
+			});
+
+			it('should return false when operation is not in the OPERATION_ONLY list', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('n8n-nodes-pdfco.PDFco Api', undefined, 'Unknown Operation'),
+				).toBe(false);
+			});
+
+			it('should return false when resource is undefined and node has only resource-based actions', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', undefined, 'message'),
+				).toBe(false);
+			});
+		});
+	});
+
+	describe('isNodeTypeVersionSupported()', () => {
+		const CONFIG_WITH_VERSION_REQ = {
+			...MOCK_CONFIG,
+			nodes: [...MOCK_CONFIG.nodes, 'some-package.SomeNode'],
+			credentialTypes: [...MOCK_CONFIG.credentialTypes, 'someApi'],
+			minNodeTypeVersion: { 'some-package.SomeNode': 1.1 },
+		};
+
+		it('should return true when typeVersion meets the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
+		});
+
+		it('should return true when typeVersion exceeds the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 2)).toBe(true);
+		});
+
+		it('should return false when typeVersion is below the minimum', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.0)).toBe(false);
+		});
+
+		it('should return true when no minNodeTypeVersion entry exists for the node (no version gate)', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeTypeVersionSupported('@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1),
+			).toBe(true);
+		});
+
+		it('should return true for a node with no version requirement (even if unknown)', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// No minNodeTypeVersion entry = no version gate; node support is a separate concern
+			expect(store.isNodeTypeVersionSupported('unknown-package.UnknownNode', 2)).toBe(true);
+		});
+
+		it('should return true when config has not been loaded (no version gate defined)', () => {
+			const store = useAiGatewayStore();
+
+			// config not loaded → no minNodeTypeVersion entry → no version gate → pass through
+			// node support when config is unloaded is handled by isCredentialTypeSupported / isNodeSupported
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
 		});
 	});
 });

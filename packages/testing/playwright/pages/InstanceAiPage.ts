@@ -16,7 +16,7 @@ export class InstanceAiPage extends BasePage {
 		this.workflowSetup = new InstanceAiWorkflowSetup(
 			page.getByTestId('instance-ai-workflow-setup'),
 		);
-		this.credentialModal = new CredentialModal(page.getByTestId('editCredential-modal'));
+		this.credentialModal = CredentialModal.fromPage(page);
 	}
 
 	private get container(): Locator {
@@ -24,7 +24,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async goto(): Promise<void> {
-		await this.page.goto('/instance-ai');
+		await this.page.goto('/assistant');
 		await this.enableInstanceAiIfPrompted();
 	}
 
@@ -42,7 +42,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
-		await this.page.goto(`/instance-ai/${threadId}`);
+		await this.page.goto(`/assistant/${threadId}`);
 	}
 
 	getContainer(): Locator {

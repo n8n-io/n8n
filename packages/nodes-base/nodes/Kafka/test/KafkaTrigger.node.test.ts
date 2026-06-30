@@ -39,8 +39,12 @@ describe('KafkaTrigger Node', () => {
 	let mockConsumerCreate: Mock;
 	let mockRegistryDecode: Mock;
 	let publishMessage: (message: Partial<KafkaMessage>) => Promise<void>;
+	// Records the handlers registered via consumer.on(event, handler) so tests can
+	// fire lifecycle events (e.g. a consumer crash) the way kafkajs would at runtime.
+	let consumerEventHandlers: Record<string, (event: unknown) => unknown>;
 
 	beforeEach(() => {
+		consumerEventHandlers = {};
 		const mockEachMessageHolder = {
 			handler: vi.fn(async () => {}) as Mocked<EachMessageHandler>,
 		};
@@ -64,7 +68,10 @@ describe('KafkaTrigger Node', () => {
 				subscribe: mockConsumerSubscribe,
 				run: mockConsumerRun,
 				disconnect: mockConsumerDisconnect,
-				on: vi.fn(() => vi.fn()),
+				on: vi.fn((event: string, handler: (event: unknown) => unknown) => {
+					consumerEventHandlers[event] = handler;
+					return vi.fn();
+				}),
 				events: {
 					CONNECT: 'consumer.connect',
 					GROUP_JOIN: 'consumer.group_join',
@@ -216,6 +223,88 @@ describe('KafkaTrigger Node', () => {
 
 		await close();
 		expect(mockConsumerDisconnect).toHaveBeenCalled();
+	});
+
+	// A Kafka Trigger that loses its consumer after start-up (e.g. a compressed
+	// batch it cannot decode throws a non-retriable error, or a group-ACL denial)
+	// must surface an error to the execution instead of hanging on "Waiting..."
+	// forever. Non-retriable crashes are routed to emitError; retriable ones are
+	// left to the client's auto-restart.
+	describe('surfaces async consumer failures instead of hanging', () => {
+		const fireCrash = async (
+			restart: boolean,
+			message = 'KafkaJSNotImplemented: LZ4 compression not implemented',
+		) => {
+			const crashHandler = consumerEventHandlers['consumer.crash'];
+			expect(crashHandler).toBeDefined();
+			await crashHandler({
+				id: 0,
+				type: 'consumer.crash',
+				timestamp: 0,
+				payload: {
+					error: new Error(message),
+					groupId: 'test-group',
+					restart,
+				},
+			});
+		};
+
+		const startTrigger = async () =>
+			await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.3,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						options: { fromBeginning: true },
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: true,
+					authentication: false,
+				},
+			});
+
+		it('surfaces an unsupported-compression crash with an actionable error', async () => {
+			const { emitError } = await startTrigger();
+
+			await fireCrash(false);
+
+			expect(emitError).toHaveBeenCalledTimes(1);
+			const surfaced = emitError.mock.calls[0][0];
+			expect(surfaced).toBeInstanceOf(NodeOperationError);
+			expect(surfaced.message).toMatch(/unsupported compression codec/i);
+		});
+
+		it('surfaces other non-retriable crashes with the original error', async () => {
+			const { emitError } = await startTrigger();
+
+			await fireCrash(false, 'Broker: Group authorization failed');
+
+			expect(emitError).toHaveBeenCalledTimes(1);
+			expect(emitError.mock.calls[0][0].message).toBe('Broker: Group authorization failed');
+		});
+
+		it('does not surface a retriable crash (kafkajs auto-restarts)', async () => {
+			const { emitError } = await startTrigger();
+
+			await fireCrash(true);
+
+			expect(emitError).not.toHaveBeenCalled();
+		});
+
+		it('does not surface a crash that happens during teardown', async () => {
+			const { emitError, close } = await startTrigger();
+
+			await close();
+			await fireCrash(false);
+
+			expect(emitError).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should handle authentication when credentials are provided', async () => {

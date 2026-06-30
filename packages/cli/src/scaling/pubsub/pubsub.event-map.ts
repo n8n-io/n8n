@@ -65,6 +65,20 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// #region Execution control
+
+	/**
+	 * Stop a specific in-memory execution on whichever worker is running it. Used in queue
+	 * mode for subworkflow executions, which run inline in the parent's worker process and
+	 * therefore have no Bull job to abort. Each worker checks its own `ActiveExecutions` and
+	 * cancels the execution if it holds it.
+	 */
+	'stop-execution': {
+		executionId: string;
+	};
+
+	// #endregion
+
 	// #region Multi-main setup
 
 	'add-webhooks-triggers-and-pollers': {
@@ -85,6 +99,11 @@ export type PubSubCommandMap = {
 	'display-workflow-deactivation': {
 		workflowId: string;
 	};
+
+	/** Wake the leader's publication outbox consumer to drain pending records now.
+	 * The consumer polls as a backup, but this lets publication feel fast without frequent polling.
+	 */
+	'workflow-publish-wake-up': never;
 
 	'display-workflow-activation-error': {
 		workflowId: string;

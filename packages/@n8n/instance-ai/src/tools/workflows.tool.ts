@@ -1,9 +1,10 @@
 /**
- * Consolidated workflows tool — list, get, get-as-code, delete/archive,
+ * Consolidated workflows tool — list, get, get-json, get-as-code, delete/archive,
  * unarchive, setup, publish, unpublish, list-versions, get-version,
  * restore-version, update-version.
  */
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -23,7 +24,9 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z.literal('list').describe('List workflows accessible to the current user'),
+	action: z
+		.literal('list')
+		.describe('List workflows accessible to the current user. Use for workflow inspection.'),
 	query: z.string().optional().describe('Filter workflows by name'),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
@@ -41,19 +44,27 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get full details of a specific workflow'),
+	action: z
+		.literal('get')
+		.describe('Get full details of a specific workflow. Use for workflow inspection.'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const getJsonAction = z.object({
 	action: z
 		.literal('get-json')
-		.describe('Get full WorkflowJSON for safe read-modify-update workflow edits'),
+		.describe(
+			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const getAsCodeAction = z.object({
-	action: z.literal('get-as-code').describe('Convert an existing workflow to TypeScript SDK code'),
+	action: z
+		.literal('get-as-code')
+		.describe(
+			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -75,7 +86,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the inline AI Assistant workflow setup card for credential and parameter configuration',
+			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
@@ -98,7 +109,7 @@ const updateAction = z.object({
 	action: z
 		.literal('update')
 		.describe(
-			'Save a complete modified WorkflowJSON back to the workflow. Use after reading via `get-json` and modifying the JSON. Replaces the full workflow definition.',
+			'Internal/raw update escape hatch. Save a complete modified WorkflowJSON back to the workflow. Replaces the full workflow definition.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	workflow: z
@@ -277,14 +288,13 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		...(surface !== 'orchestrator'
-			? { 'get-json': getJsonAction, 'get-as-code': getAsCodeAction }
-			: {}),
+		'get-json': getJsonAction,
+		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
 		validate: validateAction,
-		update: updateAction,
+		...(surface !== 'orchestrator' ? { update: updateAction } : {}),
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
@@ -476,11 +486,192 @@ async function handleUnarchive(
 	return { success: true };
 }
 
+type SetupState = { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null };
+type SetupResumeData = NonNullable<WorkflowToolContext['resumeData']>;
+
+/** Run a single trigger node and map the execution status to a setup trigger-test result. */
+async function runTriggerTest(
+	context: InstanceAiContext,
+	workflowId: string,
+	triggerNodeName: string,
+): Promise<{ status: 'success' | 'error' | 'listening'; error?: string }> {
+	try {
+		const result = await context.executionService.run(workflowId, undefined, {
+			timeout: 30_000,
+			triggerNodeName,
+		});
+		if (result.status === 'success') return { status: 'success' };
+		if (result.status === 'waiting') return { status: 'listening' };
+		return { status: 'error', error: result.error ?? 'Trigger test failed' };
+	} catch (error) {
+		return {
+			status: 'error',
+			error: error instanceof Error ? error.message : 'Trigger test failed',
+		};
+	}
+}
+
+/** Collect nodes whose applied credential failed its test, so they move from completed to failed. */
+function collectCredentialTestFailures(
+	remainingRequests: Awaited<ReturnType<typeof analyzeWorkflow>>,
+	credentials: Record<string, Record<string, string>> | undefined,
+): Array<{ nodeName: string; error: string }> {
+	const failures: Array<{ nodeName: string; error: string }> = [];
+	for (const req of remainingRequests) {
+		if (
+			req.credentialTestResult &&
+			!req.credentialTestResult.success &&
+			req.credentialType &&
+			credentials?.[req.node.name]?.[req.credentialType]
+		) {
+			failures.push({
+				nodeName: req.node.name,
+				error: `Credential test failed for ${req.credentialType}: ${req.credentialTestResult.message ?? 'Invalid credentials'}`,
+			});
+		}
+	}
+	return failures;
+}
+
+/** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
+async function handleSetupTestTrigger(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'setup' }>,
+	ctx: WorkflowToolContext,
+	state: SetupState,
+	resumeData: SetupResumeData,
+	testTriggerNode: string,
+) {
+	state.preTestSnapshot ??= await context.workflowService.getAsWorkflowJSON(input.workflowId);
+
+	const preTestApply = await applyNodeChanges(
+		context,
+		input.workflowId,
+		resumeData.credentials,
+		resumeData.nodeParameters,
+	);
+	const applyFailures = preTestApply.failed;
+
+	if (applyFailures.length > 0) {
+		return {
+			success: false,
+			error: `Failed to apply setup before trigger test: ${applyFailures.map((f) => `${f.nodeName}: ${f.error}`).join('; ')}`,
+			failedNodes: applyFailures,
+		};
+	}
+
+	const triggerTestResult = await runTriggerTest(context, input.workflowId, testTriggerNode);
+
+	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
+		[testTriggerNode]: triggerTestResult,
+	});
+
+	// Generate a new requestId so the frontend doesn't filter it
+	// as already-resolved from the previous suspend cycle
+	state.currentRequestId = nanoid();
+
+	return await ctx.suspend({
+		requestId: state.currentRequestId,
+		message: 'Configure credentials for your workflow',
+		severity: 'info' as const,
+		setupRequests: refreshedRequests,
+		workflowId: input.workflowId,
+		...(input.projectId ? { projectId: input.projectId } : {}),
+	});
+}
+
+/** Setup state 4: apply credentials and parameters atomically and report the outcome. */
+async function handleSetupApply(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'setup' }>,
+	state: SetupState,
+	resumeData: SetupResumeData,
+) {
+	try {
+		state.preTestSnapshot = null;
+
+		const applyResult = await applyNodeChanges(
+			context,
+			input.workflowId,
+			resumeData.credentials,
+			resumeData.nodeParameters,
+		);
+
+		const failedNodes = applyResult.failed.length > 0 ? applyResult.failed : undefined;
+
+		// Fetch updated workflow to include in response so the frontend can refresh the canvas
+		const updatedWorkflow = await context.workflowService.getAsWorkflowJSON(input.workflowId);
+		const updatedNodes = updatedWorkflow.nodes.map((node) => ({
+			id: node.id,
+			name: node.name,
+			type: node.type,
+			typeVersion: node.typeVersion,
+			position: node.position,
+			parameters: node.parameters as Record<string, unknown> | undefined,
+			credentials: node.credentials,
+			disabled: node.disabled,
+		}));
+		const updatedConnections = updatedWorkflow.connections as Record<string, unknown>;
+
+		// Re-analyze to determine if any nodes still need setup.
+		// Filter by needsAction to distinguish "render this card" from
+		// "this still requires user intervention".
+		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
+		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
+		const completedNodes = buildCompletedReport(
+			resumeData.credentials,
+			resumeData.nodeParameters,
+			applyResult.applied,
+		);
+
+		// Detect credentials that were applied but failed testing.
+		const credTestFailures = collectCredentialTestFailures(
+			remainingRequests,
+			resumeData.credentials,
+		);
+
+		const credFailedNodeNames = new Set(credTestFailures.map((f) => f.nodeName));
+		const validCompletedNodes = completedNodes.filter((n) => !credFailedNodeNames.has(n.nodeName));
+		const allFailedNodes = [...(failedNodes ?? []), ...credTestFailures];
+		const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
+
+		if (pendingRequests.length > 0) {
+			const skippedNodes = pendingRequests.map((r) => ({
+				nodeName: r.node.name,
+				credentialType: r.credentialType,
+			}));
+			return {
+				success: true,
+				partial: true,
+				reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
+				completedNodes: validCompletedNodes,
+				skippedNodes,
+				failedNodes: mergedFailedNodes,
+				updatedNodes,
+				updatedConnections,
+			};
+		}
+
+		return {
+			success: true,
+			completedNodes: validCompletedNodes,
+			failedNodes: mergedFailedNodes,
+			updatedNodes,
+			updatedConnections,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: `Workflow apply failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+		};
+	}
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
 	ctx: WorkflowToolContext,
-	state: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null },
+	state: SetupState,
 ) {
 	// `setup` mutates workflow nodes via applyNodeChanges (credentials and
 	// parameters are workflow-record fields), so it's gated under
@@ -526,155 +717,18 @@ async function handleSetup(
 
 	// State 3: Test trigger — persist changes, run, re-suspend with result
 	if (resumeData.action === 'test-trigger' && resumeData.testTriggerNode) {
-		state.preTestSnapshot ??= await context.workflowService.getAsWorkflowJSON(input.workflowId);
-
-		const preTestApply = await applyNodeChanges(
+		return await handleSetupTestTrigger(
 			context,
-			input.workflowId,
-			resumeData.credentials,
-			resumeData.nodeParameters,
+			input,
+			ctx,
+			state,
+			resumeData,
+			resumeData.testTriggerNode,
 		);
-		const applyFailures = preTestApply.failed;
-
-		if (applyFailures.length > 0) {
-			return {
-				success: false,
-				error: `Failed to apply setup before trigger test: ${applyFailures.map((f) => `${f.nodeName}: ${f.error}`).join('; ')}`,
-				failedNodes: applyFailures,
-			};
-		}
-
-		let triggerTestResult: {
-			status: 'success' | 'error' | 'listening';
-			error?: string;
-		};
-		try {
-			const result = await context.executionService.run(input.workflowId, undefined, {
-				timeout: 30_000,
-				triggerNodeName: resumeData.testTriggerNode,
-			});
-			if (result.status === 'success') {
-				triggerTestResult = { status: 'success' };
-			} else if (result.status === 'waiting') {
-				triggerTestResult = { status: 'listening' as const };
-			} else {
-				triggerTestResult = {
-					status: 'error',
-					error: result.error ?? 'Trigger test failed',
-				};
-			}
-		} catch (error) {
-			triggerTestResult = {
-				status: 'error',
-				error: error instanceof Error ? error.message : 'Trigger test failed',
-			};
-		}
-
-		const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
-			[resumeData.testTriggerNode]: triggerTestResult,
-		});
-
-		// Generate a new requestId so the frontend doesn't filter it
-		// as already-resolved from the previous suspend cycle
-		state.currentRequestId = nanoid();
-
-		return await ctx.suspend({
-			requestId: state.currentRequestId,
-			message: 'Configure credentials for your workflow',
-			severity: 'info' as const,
-			setupRequests: refreshedRequests,
-			workflowId: input.workflowId,
-			...(input.projectId ? { projectId: input.projectId } : {}),
-		});
 	}
 
 	// State 4: Apply — save credentials and parameters atomically
-	try {
-		state.preTestSnapshot = null;
-
-		const applyResult = await applyNodeChanges(
-			context,
-			input.workflowId,
-			resumeData.credentials,
-			resumeData.nodeParameters,
-		);
-
-		const failedNodes = applyResult.failed.length > 0 ? applyResult.failed : undefined;
-
-		// Fetch updated workflow to include in response so the frontend can refresh the canvas
-		const updatedWorkflow = await context.workflowService.getAsWorkflowJSON(input.workflowId);
-		const updatedNodes = updatedWorkflow.nodes.map((node) => ({
-			id: node.id,
-			name: node.name,
-			type: node.type,
-			typeVersion: node.typeVersion,
-			position: node.position,
-			parameters: node.parameters as Record<string, unknown> | undefined,
-			credentials: node.credentials,
-			disabled: node.disabled,
-		}));
-		const updatedConnections = updatedWorkflow.connections as Record<string, unknown>;
-
-		// Re-analyze to determine if any nodes still need setup.
-		// Filter by needsAction to distinguish "render this card" from
-		// "this still requires user intervention".
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
-		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
-		const completedNodes = buildCompletedReport(resumeData.credentials, resumeData.nodeParameters);
-
-		// Detect credentials that were applied but failed testing.
-		// Move them from completedNodes to failedNodes so the LLM knows
-		// the credential is invalid rather than seeing it in both lists.
-		const credTestFailures: Array<{ nodeName: string; error: string }> = [];
-		for (const req of remainingRequests) {
-			if (
-				req.credentialTestResult &&
-				!req.credentialTestResult.success &&
-				req.credentialType &&
-				resumeData.credentials?.[req.node.name]?.[req.credentialType]
-			) {
-				credTestFailures.push({
-					nodeName: req.node.name,
-					error: `Credential test failed for ${req.credentialType}: ${req.credentialTestResult.message ?? 'Invalid credentials'}`,
-				});
-			}
-		}
-
-		const credFailedNodeNames = new Set(credTestFailures.map((f) => f.nodeName));
-		const validCompletedNodes = completedNodes.filter((n) => !credFailedNodeNames.has(n.nodeName));
-		const allFailedNodes = [...(failedNodes ?? []), ...credTestFailures];
-		const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
-
-		if (pendingRequests.length > 0) {
-			const skippedNodes = pendingRequests.map((r) => ({
-				nodeName: r.node.name,
-				credentialType: r.credentialType,
-			}));
-			return {
-				success: true,
-				partial: true,
-				reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
-				completedNodes: validCompletedNodes,
-				skippedNodes,
-				failedNodes: mergedFailedNodes,
-				updatedNodes,
-				updatedConnections,
-			};
-		}
-
-		return {
-			success: true,
-			completedNodes: validCompletedNodes,
-			failedNodes: mergedFailedNodes,
-			updatedNodes,
-			updatedConnections,
-		};
-	} catch (error) {
-		return {
-			success: false,
-			error: `Workflow apply failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		};
-	}
+	return await handleSetupApply(context, input, state, resumeData);
 }
 
 async function handleValidate(
@@ -695,10 +749,6 @@ async function handleValidate(
 			error: error instanceof Error ? error.message : 'Failed to validate workflow',
 		};
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isWorkflowJson(value: unknown): value is WorkflowJSON {
