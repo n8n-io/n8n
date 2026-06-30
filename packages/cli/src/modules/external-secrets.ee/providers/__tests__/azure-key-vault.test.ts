@@ -1,8 +1,9 @@
 import { SecretClient } from '@azure/keyvault-secrets';
 import type { KeyVaultSecret } from '@azure/keyvault-secrets';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	SecretsProviderConnectionError,
@@ -11,15 +12,15 @@ import {
 import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
-jest.mock('@azure/identity');
-jest.mock('@azure/keyvault-secrets');
+vi.mock('@azure/identity');
+vi.mock('@azure/keyvault-secrets');
 
 describe('AzureKeyVault', () => {
 	const logger = mock<Logger>();
 	let azureKeyVault: AzureKeyVault;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
 		azureKeyVault = new AzureKeyVault(logger);
 	});
@@ -37,7 +38,8 @@ describe('AzureKeyVault', () => {
 		);
 
 		const setupError = new Error('Invalid configuration');
-		(SecretClient as unknown as jest.Mock).mockImplementationOnce(() => {
+		const SecretClientMock = SecretClient as unknown as Mock;
+		SecretClientMock.mockImplementationOnce(() => {
 			throw setupError;
 		});
 
@@ -65,18 +67,18 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		const listSpy = jest
-			.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets')
-			// @ts-expect-error Partial mock
-			.mockImplementation(() => ({
-				async *[Symbol.asyncIterator]() {
-					yield { name: 'secret1' };
-					yield { name: 'secret2' };
-					yield { name: 'secret3' }; // no value
-				},
-			}));
+		const listSpy = vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'secret1' };
+						yield { name: 'secret2' };
+						yield { name: 'secret3' }; // no value
+					},
+				}) as never,
+		);
 
-		const getSpy = jest
+		const getSpy = vi
 			.spyOn(SecretClient.prototype, 'getSecret')
 			.mockImplementation(async (name: string) => {
 				return mock<KeyVaultSecret>({ value: { secret1: 'value1', secret2: 'value2' }[name] });
@@ -113,17 +115,17 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		const listSpy = jest
-			.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets')
-			// @ts-expect-error Partial mock
-			.mockImplementation(() => ({
-				async *[Symbol.asyncIterator]() {
-					yield { name: 'enabled-secret', enabled: true };
-					yield { name: 'disabled-secret', enabled: false };
-				},
-			}));
+		const listSpy = vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'enabled-secret', enabled: true };
+						yield { name: 'disabled-secret', enabled: false };
+					},
+				}) as never,
+		);
 
-		const getSpy = jest
+		const getSpy = vi
 			.spyOn(SecretClient.prototype, 'getSecret')
 			.mockResolvedValue(mock<KeyVaultSecret>({ value: 'ok' }));
 
@@ -149,15 +151,17 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		// @ts-expect-error Partial mock
-		jest.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(() => ({
-			async *[Symbol.asyncIterator]() {
-				yield { name: 'good', enabled: true };
-				yield { name: 'bad', enabled: true };
-			},
-		}));
+		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'good', enabled: true };
+						yield { name: 'bad', enabled: true };
+					},
+				}) as never,
+		);
 
-		jest.spyOn(SecretClient.prototype, 'getSecret').mockImplementation(async (name: string) => {
+		vi.spyOn(SecretClient.prototype, 'getSecret').mockImplementation(async (name: string) => {
 			if (name === 'bad') {
 				throw new Error('Forbidden');
 			}
@@ -183,14 +187,16 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		// @ts-expect-error Partial mock
-		jest.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(() => ({
-			async *[Symbol.asyncIterator]() {
-				yield { name: 'only-secret', enabled: true };
-			},
-		}));
+		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'only-secret', enabled: true };
+					},
+				}) as never,
+		);
 
-		const getSpy = jest
+		const getSpy = vi
 			.spyOn(SecretClient.prototype, 'getSecret')
 			.mockResolvedValue(mock<KeyVaultSecret>({ value: 'cached-value' }));
 

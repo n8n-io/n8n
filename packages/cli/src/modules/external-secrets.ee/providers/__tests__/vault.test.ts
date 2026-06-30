@@ -81,13 +81,16 @@ describe('VaultProvider', () => {
 	mockInstance(ExternalSecretsConfig, { preferGet: true });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
 		mockInstance(ExternalSecretsConfig, { preferGet: true });
 	});
 
 	function createProvider(routes: Route[], settings = vaultSettings) {
-		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(routes, jest.fn);
+		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(
+			routes,
+			vi.fn as unknown as Parameters<typeof createFakeOutboundHttp>[1],
+		);
 		const provider = new VaultProvider(logger, outboundHttp);
 		return { provider, httpRequest, requests, outboundHttp, settings };
 	}
@@ -525,7 +528,7 @@ describe('VaultProvider', () => {
 			const { provider } = await initProvider([
 				{ method: 'POST', pathname: '/v1/auth/token/renew-self', networkError: 'ECONNREFUSED' },
 			]);
-			const connect = jest.spyOn(provider, 'connect').mockResolvedValue();
+			const connect = vi.spyOn(provider, 'connect').mockResolvedValue();
 
 			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
 

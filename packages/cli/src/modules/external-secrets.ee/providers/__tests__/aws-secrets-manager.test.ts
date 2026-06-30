@@ -1,7 +1,8 @@
+import type { Mock } from 'vitest';
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp, HttpTransport } from '@n8n/backend-network';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 
@@ -12,7 +13,7 @@ import {
 } from '../../errors/secrets-provider-errors';
 import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
 
-jest.mock('@aws-sdk/client-secrets-manager');
+vi.mock('@aws-sdk/client-secrets-manager');
 
 describe('AwsSecretsManager', () => {
 	const region = 'eu-central-1';
@@ -20,14 +21,14 @@ describe('AwsSecretsManager', () => {
 	const secretAccessKey = 'FAKE-SECRET';
 
 	const context = mock<AwsSecretsManagerContext>();
-	const listSecretsSpy = jest.spyOn(SecretsManager.prototype, 'listSecrets');
-	const batchGetSpy = jest.spyOn(SecretsManager.prototype, 'batchGetSecretValue');
+	const listSecretsSpy = vi.spyOn(SecretsManager.prototype, 'listSecrets');
+	const batchGetSpy = vi.spyOn(SecretsManager.prototype, 'batchGetSecretValue');
 	const logger = mock<Logger>();
 
 	let awsSecretsManager: AwsSecretsManager;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnValue(logger);
 
 		awsSecretsManager = new AwsSecretsManager(logger);
@@ -53,7 +54,7 @@ describe('AwsSecretsManager', () => {
 
 			// The SDK client is built with our agents as its requestHandler, while the
 			// region and credentials it was already given are left untouched.
-			const SecretsManagerMock = SecretsManager as unknown as jest.Mock;
+			const SecretsManagerMock = SecretsManager as unknown as Mock;
 			const clientConfig = SecretsManagerMock.mock.calls.at(-1)?.[0];
 			expect(clientConfig.requestHandler).toEqual({ httpAgent, httpsAgent });
 			expect(clientConfig.region).toBe(region);

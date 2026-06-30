@@ -2,12 +2,11 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
@@ -72,16 +71,16 @@ function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTask
 
 function makeTransaction() {
 	const taskRepo = {
-		findBy: jest.fn().mockResolvedValue([]),
-		delete: jest.fn(),
-		update: jest.fn(),
-		insert: jest.fn(),
+		findBy: vi.fn().mockResolvedValue([]),
+		delete: vi.fn(),
+		update: vi.fn(),
+		insert: vi.fn(),
 	};
 	const trx = {
-		save: jest.fn(),
-		getRepository: jest.fn().mockReturnValue(taskRepo),
+		save: vi.fn(),
+		getRepository: vi.fn().mockReturnValue(taskRepo),
 	};
-	const transaction = jest.fn(async (callback: (manager: typeof trx) => Promise<void>) => {
+	const transaction = vi.fn(async (callback: (manager: typeof trx) => Promise<void>) => {
 		await callback(trx);
 	});
 
@@ -92,7 +91,6 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentHistoryRepository = mock<AgentHistoryRepository>();
 	const taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
-	const skillsService = mock<AgentSkillsService>();
 	const customToolsService = mock<AgentCustomToolsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
@@ -105,7 +103,6 @@ function makeService() {
 	});
 
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
-	skillsService.snapshotConfiguredSkills.mockReturnValue(null);
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
 	chatIntegrationService.disconnect.mockResolvedValue();
@@ -118,7 +115,6 @@ function makeService() {
 		agentRepository,
 		agentHistoryRepository,
 		taskSnapshotRepository,
-		skillsService,
 		customToolsService,
 		runtimeCacheService,
 	);
@@ -128,7 +124,6 @@ function makeService() {
 		agentRepository,
 		agentHistoryRepository,
 		taskSnapshotRepository,
-		skillsService,
 		customToolsService,
 		runtimeCacheService,
 		chatIntegrationService,
@@ -140,7 +135,7 @@ function makeService() {
 
 describe('AgentPublishService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 	});
 
@@ -150,7 +145,6 @@ describe('AgentPublishService', () => {
 			agentRepository,
 			agentHistoryRepository,
 			taskSnapshotRepository,
-			skillsService,
 			customToolsService,
 			runtimeCacheService,
 			taskRepo,
@@ -164,13 +158,14 @@ describe('AgentPublishService', () => {
 			schema: {
 				...schema,
 				tools: [{ type: 'custom', id: 'tool' }],
+				skills: [{ type: 'skill', id: 'skill' }],
 				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 			},
+			skills: configuredSkills,
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		customToolsService.snapshotConfiguredTools.mockReturnValue(configuredTools as never);
-		skillsService.snapshotConfiguredSkills.mockReturnValue(configuredSkills);
 		taskRepo.findBy.mockResolvedValue([
 			{
 				id: 'task-1',
@@ -213,6 +208,24 @@ describe('AgentPublishService', () => {
 
 		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
 			'Cannot publish agent with missing task bodies: missing_task',
+		);
+
+		expect(agent.activeVersionId).toBeNull();
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+
+	it('rejects publishing when a configured skill body is missing', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const agent = makeAgent({
+			schema: {
+				...schema,
+				skills: [{ type: 'skill', id: 'missing_skill' }],
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
+			'Cannot publish agent with missing skill bodies: missing_skill',
 		);
 
 		expect(agent.activeVersionId).toBeNull();
