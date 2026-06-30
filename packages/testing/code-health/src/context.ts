@@ -8,4 +8,12 @@ export interface CodeHealthContext {
 	 * whole-tree behaviour.
 	 */
 	changedFiles?: string[];
+	/**
+	 * Repo-relative paths of files *added* in the current change set (the
+	 * `added-files` output from `ci-filter`, a subset of `changedFiles`).
+	 * Rules that should act only on net-new files — not files that were
+	 * merely modified — use this. When omitted, such rules fall back to
+	 * `changedFiles`.
+	 */
+	addedFiles?: string[];
 }

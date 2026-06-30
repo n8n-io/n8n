@@ -40,8 +40,8 @@ describe('MigrationTimestampRule', () => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	function context(changedFiles?: string[]): CodeHealthContext {
-		return { rootDir: tmpDir, changedFiles };
+	function context(changedFiles?: string[], addedFiles?: string[]): CodeHealthContext {
+		return { rootDir: tmpDir, changedFiles, addedFiles };
 	}
 
 	describe('future-jump invariant (always on)', () => {
@@ -173,15 +173,12 @@ describe('MigrationTimestampRule', () => {
 			expect(found).toBeDefined();
 		});
 
-		it('flags a modified historical migration if listed in changedFiles', async () => {
-			// Documented trade-off: changedFiles comes from ci-filter's
-			// changed-files output, which includes modifications. A PR that
-			// edits an existing migration (rare — bug fix in up/down) will
-			// trip ordering here even though the timestamp didn't change.
-			// Author should either bump the timestamp (preferred when the
-			// edit changes semantics) or add to the baseline. This test
-			// pins that behaviour so anyone re-introducing added-files-only
-			// semantics has to revisit it intentionally.
+		it('flags a modified historical migration when only changedFiles is supplied', async () => {
+			// Fallback behaviour: when `addedFiles` is absent the rule scopes
+			// ordering to `changedFiles`, which includes modifications. A PR
+			// that edits an existing migration will trip ordering here even
+			// though the timestamp didn't change. `addedFiles` (when supplied
+			// by CI) overrides this — see the addedFiles block below.
 			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
 			const modified = writeMigration(tmpDir, COMMON_DIR, '1620000000000-Historical.ts');
 
@@ -190,6 +187,42 @@ describe('MigrationTimestampRule', () => {
 			const historical = violations.find((v) => v.file.endsWith('Historical.ts'));
 			expect(historical).toBeDefined();
 			expect(historical!.message).toContain('at or below');
+		});
+	});
+
+	describe('addedFiles scoping (overrides changedFiles for ordering)', () => {
+		it('does NOT flag a modified historical migration absent from addedFiles', async () => {
+			// The real-world case: a repo-wide refactor rewrites an import in
+			// an old migration. It shows up in changedFiles (modified) but not
+			// addedFiles, so its historical timestamp must not be re-judged.
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
+			const modified = writeMigration(tmpDir, COMMON_DIR, '1620000000000-Historical.ts');
+
+			const violations = await rule.analyze(context([modified], []));
+
+			expect(violations).toHaveLength(0);
+		});
+
+		it('flags a newly-added sub-floor migration listed in addedFiles', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1784000000000-Head.ts');
+			const added = writeMigration(tmpDir, COMMON_DIR, '1750000000000-NewBelowFloor.ts');
+
+			const violations = await rule.analyze(context([added], [added]));
+
+			const ordering = violations.find((v) => v.file.endsWith('NewBelowFloor.ts'));
+			expect(ordering).toBeDefined();
+			expect(ordering!.message).toContain('at or below');
+		});
+
+		it('runs no ordering check when addedFiles is empty', async () => {
+			// An empty addedFiles is an authoritative "nothing was added"
+			// signal — not a reason to fall back to changedFiles.
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
+			const modified = writeMigration(tmpDir, COMMON_DIR, '1700000000000-Below.ts');
+
+			const violations = await rule.analyze(context([modified], []));
+
+			expect(violations).toHaveLength(0);
 		});
 	});
 
