@@ -636,6 +636,38 @@ describe('reconstructSeedFromThread — workflow deletes', () => {
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
 		expect(result.seed.workflows).toHaveLength(1);
 	});
+
+	it('keeps a workflow when the delete only suspended for confirmation (no success)', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			tool('b1', 3, 'build-workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			// HITL: the delete suspended awaiting confirmation; its output is the confirmation
+			// request (no success field), not a completed delete — the workflow still exists.
+			tool(
+				'd1',
+				5,
+				'workflows[delete]',
+				{ action: 'delete', workflowId: 'WF1' },
+				{ requestId: 'req-1', message: 'Archive WF1', severity: 'warning' },
+			),
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(1);
+	});
+
+	it('ignores a delete-shaped input from a non-workflows tool', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			tool('b1', 3, 'build-workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			// Same delete-shaped input + success as a real workflow delete, but a different
+			// tool — the match is gated to `workflows`, so it must not evict the seed workflow.
+			tool('d1', 5, 'data-tables[delete-rows]', { action: 'delete', workflowId: 'WF1' }),
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(1);
+	});
 });
 
 describe('reconstructSeedFromThread — workspace auto-discovery', () => {

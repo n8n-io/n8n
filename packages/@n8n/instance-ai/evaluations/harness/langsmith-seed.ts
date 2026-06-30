@@ -559,13 +559,18 @@ function buildSeedWorkflows(
 			continue;
 		}
 
-		// A workflow-entity delete (shape-detected to survive renames): drop any prior
-		// reconstruction of that id — else a built-then-deleted workflow is wrongly
-		// restored. Chronological loop ⇒ a later rebuild re-adds it (delete→rebuild = kept).
-		if (isRecord(tool.inputs) && tool.inputs.action === 'delete') {
+		// A `workflows`-tool delete (traced as `workflows[delete]`) drops that id's prior
+		// reconstruction. Gated to the `workflows` tool so an unrelated delete-shaped input
+		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
+		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
+		if (
+			tool.name.split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
+			isRecord(tool.inputs) &&
+			tool.inputs.action === 'delete'
+		) {
 			const deletedId = asString(tool.inputs.workflowId);
-			const deleteFailed = isRecord(tool.outputs) && tool.outputs.success === false;
-			if (deletedId !== undefined && !deleteFailed) {
+			const deleteSucceeded = isRecord(tool.outputs) && tool.outputs.success === true;
+			if (deletedId !== undefined && deleteSucceeded) {
 				builtByWorkflowId.delete(deletedId);
 				buildSignalIds.delete(deletedId);
 				getAsCodeByWorkflowId.delete(deletedId);
