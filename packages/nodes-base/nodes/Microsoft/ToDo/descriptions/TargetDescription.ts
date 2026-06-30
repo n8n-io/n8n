@@ -27,7 +27,8 @@ export const userTargetRLC: INodeProperties = {
 			hint: 'The user principal name (UPN) or object ID of the user whose To Do lists and tasks to act on',
 		},
 	],
-	description: 'The user whose To Do lists and tasks the Service Principal should act on',
+	description:
+		'The user whose To Do lists and tasks the Service Principal should act on. Applies to the whole node — set once, not evaluated per input item.',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],

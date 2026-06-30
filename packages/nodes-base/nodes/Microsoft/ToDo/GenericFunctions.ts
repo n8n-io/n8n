@@ -41,17 +41,18 @@ export function getToDoCredentialType(
 // intact, so shape validation (not encoding) is what keeps the value safe to interpolate
 // into a Graph URL path. Validation messages are static, so the id is never echoed back.
 //
-// NOTE: this user-only app-only kernel mirrors a reduced form of the OneDrive/Excel nodes —
-// keep the user regexes + validation in sync until ENT-92 lifts a shared helper.
+// NOTE: To Do is user-only, like the Microsoft Outlook node — a Graph `/users/{id}` is only
+// a user object ID (GUID) or a UPN (has `@`); there is no bare host/domain form. Keep these
+// regexes in sync with Outlook's `validateMailbox` until ENT-92 lifts a shared helper.
 const USER_TARGET_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-const USER_TARGET_UPN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
-const USER_TARGET_HOST = /^[A-Za-z0-9.-]+$/;
+// Local part allows apostrophes (e.g. o'connor@…) and excludes `%`, so an encoded-traversal
+// payload like `..%2f..%2fx@y.com` is rejected outright.
+const USER_TARGET_UPN = /^[A-Za-z0-9._+'-]+@[A-Za-z0-9.-]+$/;
 
 /**
  * Validates an app-only user target id before it is encoded and used to compose a Graph
  * URL. Throws a `NodeOperationError` with a fully static message (never interpolating the
- * id). Empty / dots-only are rejected first, then the accepted user shapes (GUID / UPN /
- * bare host).
+ * id). Empty / dots-only are rejected first, then the accepted user shapes (GUID / UPN).
  */
 export function validateUserTargetId(id: string, node: INode): void {
 	if (id === '') {
@@ -65,7 +66,7 @@ export function validateUserTargetId(id: string, node: INode): void {
 			description: 'A target ID cannot consist only of dots.',
 		});
 	}
-	const valid = USER_TARGET_GUID.test(id) || USER_TARGET_UPN.test(id) || USER_TARGET_HOST.test(id);
+	const valid = USER_TARGET_GUID.test(id) || USER_TARGET_UPN.test(id);
 	if (!valid) {
 		throw new NodeOperationError(node, 'The target ID is not valid', {
 			description: 'Remove any slashes, backslashes, colons, commas, or spaces and try again.',
@@ -126,6 +127,7 @@ export async function microsoftApiRequest(
 	).replace(/\/+$/, '');
 
 	// App-only Service Principal has no `/me`; rebase the request onto the chosen user.
+	// `userTarget` is a per-node setting resolved once here (item 0), not per input item.
 	// Only page-1 (relative) requests are scoped — paginated follow-ups pass an absolute
 	// `@odata.nextLink` as `uri`, which is used verbatim.
 	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;

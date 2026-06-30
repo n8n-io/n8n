@@ -429,6 +429,28 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			expect(message).toBe('The target ID is not valid');
 			expect(message).not.toContain('secret');
 		});
+
+		it("accepts a UPN containing an apostrophe (e.g. o'connor)", () => {
+			expect(getServicePrincipalResourceRoot("o'connor@contoso.com", mockNode)).toBe(
+				"/users/o'connor%40contoso.com",
+			);
+		});
+
+		it('accepts a UPN with "+" sub-addressing', () => {
+			expect(() => validateUserTargetId('jane+test@contoso.com', mockNode)).not.toThrow();
+		});
+
+		it('rejects a bare host/domain (not a valid /users/{id})', () => {
+			expect(() => validateUserTargetId('contoso.com', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+			expect(() => validateUserTargetId('jane', mockNode)).toThrow('The target ID is not valid');
+		});
+
+		it('rejects backslash and encoded-traversal ids', () => {
+			expect(() => validateUserTargetId('a\\b', mockNode)).toThrow('The target ID is not valid');
+			expect(() => validateUserTargetId('%2e%2e', mockNode)).toThrow('The target ID is not valid');
+		});
 	});
 
 	describe('resolveScopeRoot', () => {
