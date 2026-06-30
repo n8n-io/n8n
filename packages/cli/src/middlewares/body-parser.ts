@@ -9,6 +9,7 @@ import { type Readable } from 'stream';
 import { Parser as XmlParser } from 'xml2js';
 import { createGunzip, createInflate } from 'zlib';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const xmlParser = new XmlParser({
@@ -49,7 +50,7 @@ export const rawBodyReader: RequestHandler = (req, _res, next) => {
 
 			// Client aborted before we read the body: treat as client error, not a 500.
 			if (req.destroyed || !stream.readable) {
-				throw new UnprocessableRequestError('Request body stream was aborted or is not readable');
+				throw new BadRequestError('Request body stream was aborted or is not readable');
 			}
 
 			try {
@@ -59,8 +60,9 @@ export const rawBodyReader: RequestHandler = (req, _res, next) => {
 				});
 			} catch (error) {
 				if (isClientAbortError(error)) {
-					throw new UnprocessableRequestError(
+					throw BadRequestError.wrap(
 						'Request body stream was aborted mid-read or is not readable',
+						error,
 					);
 				}
 				throw error;

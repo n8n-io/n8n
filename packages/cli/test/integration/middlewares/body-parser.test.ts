@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import request from 'supertest';
 import { gzipSync, deflateSync } from 'zlib';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { rawBodyReader, bodyParser } from '@/middlewares/body-parser';
 
 describe('bodyParser', () => {
@@ -63,6 +63,6 @@ describe('bodyParser', () => {
 
 		void rawBodyReader(req, {} as Response, () => {});
 
-		await expect(req.readRawBody()).rejects.toThrow(UnprocessableRequestError);
+		await expect(req.readRawBody()).rejects.toThrow(BadRequestError);
 	});
 });

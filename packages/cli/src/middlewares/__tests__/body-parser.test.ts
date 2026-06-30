@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { Readable } from 'stream';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { rawBodyReader } from '../body-parser';
 
@@ -28,29 +28,32 @@ describe('rawBodyReader', () => {
 		expect(req._body).toBe(true);
 	});
 
-	it('rejects a non-readable stream with UnprocessableRequestError', async () => {
+	it('rejects a non-readable stream with BadRequestError', async () => {
 		const req = mockRequest('hello');
 		req.destroy();
-		await expect(readRawBody(req)).rejects.toThrow(UnprocessableRequestError);
+		await expect(readRawBody(req)).rejects.toThrow(BadRequestError);
 	});
 
-	it('maps a raw-body "stream.not.readable" rejection to UnprocessableRequestError', async () => {
+	it('maps a raw-body "stream.not.readable" rejection to BadRequestError', async () => {
 		const req = mockRequest('hello');
 		// Simulate the abort racing the read: readable when our guard checks, but
 		// no longer readable by the time raw-body reads it (its own guard rejects
 		// with type 'stream.not.readable').
 		let reads = 0;
 		Object.defineProperty(req, 'readable', { get: () => ++reads === 1 });
-		await expect(readRawBody(req)).rejects.toThrow(UnprocessableRequestError);
+		await expect(readRawBody(req)).rejects.toThrow(BadRequestError);
 	});
 
-	it('maps a raw-body "request.aborted" rejection to UnprocessableRequestError', async () => {
-		// A never-ending stream that aborts mid-read: raw-body rejects with type
-		// 'request.aborted'.
+	it('maps a raw-body "request.aborted" rejection to BadRequestError', async () => {
+		// A stream that aborts mid-read: raw-body rejects with type 'request.aborted'.
 		const req = new Readable({ read() {} }) as unknown as Request;
 		req.headers = {};
 		const promise = readRawBody(req);
 		req.emit('aborted');
-		await expect(promise).rejects.toThrow(UnprocessableRequestError);
+
+		await expect(promise).rejects.toMatchObject({
+			constructor: BadRequestError,
+			cause: { type: 'request.aborted' },
+		});
 	});
 });
