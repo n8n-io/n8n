@@ -115,6 +115,10 @@ export class PrometheusMetricsConfig {
 	/** Whether to include metrics for the workflow publication service (main instances only). */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
 	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
+	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
+	workflowPublicationMetricInterval: number = 60;
 }
 
 @Config

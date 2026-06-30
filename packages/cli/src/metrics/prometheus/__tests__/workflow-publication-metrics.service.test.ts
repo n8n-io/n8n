@@ -10,6 +10,7 @@ import promClient from 'prom-client';
 import { PrometheusWorkflowPublicationMetricsService } from '../workflow-publication-metrics.service';
 
 import type { EventService } from '@/events/event.service';
+import type { CacheService } from '@/services/cache/cache.service';
 
 vi.mock('prom-client');
 
@@ -17,18 +18,24 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeWorkflowPublicationMetrics: true,
+		workflowPublicationMetricInterval: 60,
 	});
 	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 	const eventService = mock<EventService>();
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
+	const cacheService = mock<CacheService>();
 
 	let service: PrometheusWorkflowPublicationMetricsService;
 	let mockCounterInc: Mock;
 	let mockHistogramObserve: Mock;
 
 	beforeEach(() => {
-		Object.assign(config, { prefix: 'n8n_', includeWorkflowPublicationMetrics: true });
+		Object.assign(config, {
+			prefix: 'n8n_',
+			includeWorkflowPublicationMetrics: true,
+			workflowPublicationMetricInterval: 60,
+		});
 		Object.assign(workflowsConfig, { useWorkflowPublicationService: true });
 		Object.assign(instanceSettings, { instanceType: 'main' });
 
@@ -38,6 +45,7 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			instanceSettings,
 			eventService,
 			outboxRepository,
+			cacheService,
 		);
 
 		mockCounterInc = vi.fn();
@@ -205,6 +213,35 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			const pendingCall = set.mock.calls.find((c) => c[0].status === 'pending');
 			expect(pendingCall?.[1]).toBeGreaterThanOrEqual(10);
 			expect(set).toHaveBeenCalledWith({ status: 'in_progress' }, 0);
+		});
+
+		it('caches the record counts query with the configured interval as TTL', async () => {
+			outboxRepository.getRecordCountsByStatus.mockResolvedValue(new Map([['pending', 2]]));
+			service.init();
+
+			await gaugeOptsFor('n8n_workflow_publication_outbox_records').collect.call({ set: vi.fn() });
+
+			// 60s interval → 60_000ms TTL.
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'metrics:workflow-publication:outbox-record-counts',
+				[['pending', 2]],
+				60_000,
+			);
+		});
+
+		it('serves the records gauge from cache without querying the database', async () => {
+			cacheService.get.mockResolvedValue([
+				['pending', 5],
+				['completed', 7],
+			]);
+			service.init();
+
+			const set = vi.fn();
+			await gaugeOptsFor('n8n_workflow_publication_outbox_records').collect.call({ set });
+
+			expect(outboxRepository.getRecordCountsByStatus).not.toHaveBeenCalled();
+			expect(set).toHaveBeenCalledWith({ status: 'pending' }, 5);
+			expect(set).toHaveBeenCalledWith({ status: 'completed' }, 7);
 		});
 	});
 });
