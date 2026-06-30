@@ -93,8 +93,8 @@ export class AzureKeyVault extends SecretsProvider {
 					providerName: this.name,
 					providerDisplayName: this.displayName,
 					operation: 'connect',
+					errorName: error instanceof Error ? error.name : undefined,
 				}),
-				errorName: error instanceof Error ? error.name : undefined,
 			});
 			throw error;
 		}

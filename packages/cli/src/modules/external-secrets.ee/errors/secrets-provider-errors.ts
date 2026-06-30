@@ -24,17 +24,20 @@ type SecretsProviderLogContext = {
 	providerName: string;
 	providerDisplayName: string;
 	operation: SecretsProviderOperation;
+	errorName?: string;
 };
 
 export function secretsProviderLogContext({
 	providerName,
 	providerDisplayName,
 	operation,
+	errorName,
 }: SecretsProviderLogContext) {
 	return {
 		providerName,
 		providerDisplayName,
 		operation,
+		errorName,
 	};
 }
 
