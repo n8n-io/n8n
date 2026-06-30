@@ -104,7 +104,10 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 				const now = Date.now();
 				for (const status of ACTIVE_STATUSES) {
 					const oldestMs = byStatus.get(status);
-					this.set({ status }, oldestMs !== undefined ? (now - oldestMs) / 1000 : 0);
+					this.set(
+						{ status },
+						oldestMs !== undefined ? (now - oldestMs) * Time.milliseconds.toSeconds : 0,
+					);
 				}
 			},
 		});
@@ -130,7 +133,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			'workflow-publication-outbox-record-processed',
 			({ result, reason, durationMs }) => {
 				outcomes.inc({ result, reason }, 1);
-				duration.observe({ result, reason }, durationMs / 1000);
+				duration.observe({ result, reason }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);
 	}
@@ -154,7 +157,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		this.eventService.on(
 			'workflow-publication-trigger-operation',
 			({ operation, result, durationMs }) => {
-				operationDuration.observe({ operation, result }, durationMs / 1000);
+				operationDuration.observe({ operation, result }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);
 
@@ -185,7 +188,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			'workflow-publication-outbox-cleanup',
 			({ result, deletedCount, durationMs }) => {
 				deleted.inc(deletedCount);
-				duration.observe({ result }, durationMs / 1000);
+				duration.observe({ result }, durationMs * Time.milliseconds.toSeconds);
 			},
 		);
 	}
