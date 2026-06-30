@@ -13,7 +13,7 @@
 // `BuilderRecord` shape, joined by prompt text.
 // ---------------------------------------------------------------------------
 
-import { scrubSecretsInText } from '@n8n/utils';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';

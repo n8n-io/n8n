@@ -4,7 +4,7 @@ import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -347,7 +347,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			const job = mock<Job>({
 				isActive: vi.fn().mockImplementation(() => {
-					throw new ApplicationError('Something went wrong');
+					throw new UnexpectedError('Something went wrong');
 				}),
 			});
 

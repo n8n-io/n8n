@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -19,6 +19,8 @@
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
+    "recording:list": "node scripts/agent-integration-recordings.mjs --list",
+    "recording:export": "node scripts/agent-integration-recordings.mjs",
     "start": "node ../../scripts/os-normalize.mjs --dir bin n8n",
     "test": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run",
     "test:unit": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run",
