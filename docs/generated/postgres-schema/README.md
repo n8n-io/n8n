@@ -92,6 +92,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 19 |  | BASE TABLE |
+| [public.scheduled_task](public.scheduled_task.md) | 16 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
@@ -262,6 +264,8 @@ erDiagram
 "public.role_mapping_rule_project" }o--|| "public.role_mapping_rule" : "FOREIGN KEY (#quot;roleMappingRuleId#quot;) REFERENCES role_mapping_rule(id) ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.scope" : "FOREIGN KEY (#quot;scopeSlug#quot;) REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
+"public.scheduled_job" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1088,6 +1092,45 @@ erDiagram
 "public.role_scope" {
   varchar_128_ roleSlug FK
   varchar_128_ scopeSlug FK
+}
+"public.scheduled_job" {
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  timestamp_3__with_time_zone fireAt
+  integer id
+  integer intervalSeconds
+  varchar_16_ kind
+  timestamp_3__with_time_zone lastFiredAt
+  integer maxAttempts
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
+  varchar_255_ name
+  timestamp_3__with_time_zone nextRunAt
+  varchar_36_ nodeId
+  json payload
+  varchar_128_ taskType
+  varchar_64_ timezone
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.scheduled_task" {
+  integer attempts
+  varchar_255_ claimedBy
+  timestamp_3__with_time_zone createdAt
+  text errorMessage
+  timestamp_3__with_time_zone finishedAt
+  bigint id
+  integer jobId FK
+  integer leaseEpoch
+  timestamp_3__with_time_zone leaseExpiresAt
+  integer maxAttempts
+  json payload
+  timestamp_3__with_time_zone runAt
+  timestamp_3__with_time_zone scheduledFor
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  varchar_128_ taskType
 }
 "public.scope" {
   text description
