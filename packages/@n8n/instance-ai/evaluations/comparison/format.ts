@@ -29,12 +29,7 @@ import {
 import type { GateCriterion, GateResult, GateUnit } from './gate';
 import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS } from '../binaryChecks/types';
-import type {
-	MultiRunEvaluation,
-	TestCaseAggregation,
-	WorkflowTestCase,
-	WorkflowTestCaseResult,
-} from '../types';
+import type { MultiRunEvaluation, TestCaseAggregation, WorkflowTestCase } from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
 /** How to re-run this eval against a PR's latest commit (PR-open runs go stale
@@ -83,6 +78,9 @@ export function formatComparisonMarkdown(
 		lines.push(formatGateAlertMarkdown(gate));
 		lines.push('');
 		lines.push(...renderGateSummaryMarkdown(gate));
+		// Failures (full judge text) go right under the verdict in gate mode — the point
+		// is to see what failed at a glance, not hunt for it at the bottom of the comment.
+		lines.push(...renderFailureDetails(evaluation, options.slugByTestCase));
 	} else {
 		lines.push(formatTopAlert(outcome));
 		lines.push('');
@@ -161,7 +159,8 @@ export function formatComparisonMarkdown(
 		if (otherFindings.length > 0) lines.push(...otherFindings);
 	}
 
-	const failureDetails = renderFailureDetails(evaluation, options.slugByTestCase);
+	// Gate mode already rendered the Failures section under the verdict (above).
+	const failureDetails = gate ? [] : renderFailureDetails(evaluation, options.slugByTestCase);
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
@@ -188,32 +187,50 @@ function gateFailuresCell(unit: GateUnit): string {
 		.join(', ');
 }
 
-// Units that pass@k but failed at least one run (e.g. 2/3) — green, but worth surfacing.
+// A green unit that failed ≥1 run (e.g. 2/3) — passes the gate, still worth listing.
 function degradedUnits(gate: GateResult): GateUnit[] {
 	return gate.units.filter((u) => u.green && u.passCount < u.total);
 }
 
+// A green unit that failed the *majority* of its runs (passed <50%, e.g. 1/3) — it
+// barely cleared pass@k, one bad run from red. Pass-rate based so it scales across k
+// (3 on PRs, 10 on baselines); a single flaky miss (2/3) is not "barely passed".
+function barelyPassedUnits(gate: GateResult): GateUnit[] {
+	return gate.units.filter((u) => u.green && u.total > 0 && u.passCount / u.total < 0.5);
+}
+
+function pluralUnits(c: number): string {
+	return `${c} unit${c === 1 ? '' : 's'}`;
+}
+
 function formatGateAlertMarkdown(gate: GateResult): string {
 	const n = gate.units.length;
-	const k = gate.totalRuns;
-	const over = `over ${k} run${k === 1 ? '' : 's'}`;
+	const over = `over ${gate.totalRuns} run${gate.totalRuns === 1 ? '' : 's'}`;
 	// Key off failing, not gate.green: under minAggregatePassRate gate.green can be
 	// true via the pooled rate while individual units fail.
 	if (gate.failing.length > 0) {
 		return [
 			'> [!CAUTION]',
-			`> 🔴 ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} not green ${over}.`,
+			`> 🔴 ${gate.failing.length} of ${pluralUnits(n)} not green ${over}.`,
 		].join('\n');
 	}
-	// All units pass@k. Distinguish a clean sweep from green-but-flaky so a 2/3 stays visible.
-	const degraded = degradedUnits(gate);
-	if (degraded.length > 0) {
+	// All units pass@k. Only warn when a unit *barely* passed (failed most of its runs);
+	// a single flaky miss stays green but is still listed in Failures below.
+	const barely = barelyPassedUnits(gate).length;
+	if (barely > 0) {
 		return [
 			'> [!WARNING]',
-			`> 🟡 All ${n} unit${n === 1 ? '' : 's'} green ${over}, but ${degraded.length} had a failing run — see below.`,
+			`> 🟡 All ${pluralUnits(n)} green ${over}, but ${barely} barely passed (failed most runs) — see Failures below.`,
 		].join('\n');
 	}
-	return ['> [!TIP]', `> 🟢 All ${n} unit${n === 1 ? '' : 's'} green ${over} (clean).`].join('\n');
+	const flaky = degradedUnits(gate).length;
+	if (flaky > 0) {
+		return [
+			'> [!TIP]',
+			`> 🟢 All ${pluralUnits(n)} green ${over}; ${flaky} flaky — see Failures below.`,
+		].join('\n');
+	}
+	return ['> [!TIP]', `> 🟢 All ${pluralUnits(n)} green ${over} (clean).`].join('\n');
 }
 
 function renderGateSummaryMarkdown(gate: GateResult): string[] {
@@ -226,34 +243,27 @@ function renderGateSummaryMarkdown(gate: GateResult): string[] {
 		lines.push(`_${gate.excluded.length} unit(s) not gated (no judge verdict)._`);
 	}
 	lines.push('');
-	const unitTable = (heading: string, units: GateUnit[]): void => {
-		if (units.length === 0) return;
-		lines.push(`#### ${heading}`, '', '| Unit | Pass | Failures |', '|---|---|---|');
-		for (const u of units) {
-			const rateU = u.total > 0 ? Math.round(u.passRate * 100) : 0;
-			lines.push(
-				`| \`${u.slug}\` | ${u.passCount}/${u.total} (${rateU}%) | ${gateFailuresCell(u)} |`,
-			);
-		}
-		lines.push('');
-	};
-	unitTable('Not green', gate.failing);
-	unitTable('Passed with failures', degradedUnits(gate));
+	// Failing / flaky units (with their full judge text) are rendered by the Failures
+	// section below — not a per-unit table here. Build expectations carry no failure
+	// category, which left the old table's Failures column blank.
 	return lines;
 }
 
 function formatTerminalGateLine(gate: GateResult): string {
 	const n = gate.units.length;
-	const k = gate.totalRuns;
-	const over = `over ${k} run${k === 1 ? '' : 's'}`;
+	const over = `over ${gate.totalRuns} run${gate.totalRuns === 1 ? '' : 's'}`;
 	if (gate.failing.length > 0) {
-		return `▶ GATE: ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} NOT green ${over}`;
+		return `▶ GATE: ${gate.failing.length} of ${pluralUnits(n)} NOT green ${over}`;
 	}
-	const degraded = degradedUnits(gate).length;
-	if (degraded > 0) {
-		return `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green ${over}, ${degraded} with a failing run`;
+	const barely = barelyPassedUnits(gate).length;
+	if (barely > 0) {
+		return `▶ GATE: all ${pluralUnits(n)} green ${over}, ${barely} barely passed`;
 	}
-	return `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green ${over} (clean)`;
+	const flaky = degradedUnits(gate).length;
+	if (flaky > 0) {
+		return `▶ GATE: all ${pluralUnits(n)} green ${over}, ${flaky} flaky`;
+	}
+	return `▶ GATE: all ${pluralUnits(n)} green ${over} (clean)`;
 }
 
 function formatTerminalGateSummary(gate: GateResult): string[] {
@@ -273,7 +283,8 @@ function formatTerminalGateSummary(gate: GateResult): string[] {
 	}
 	for (const u of degradedUnits(gate)) {
 		const cats = u.failureCategories ? `  [${gateFailuresCell(u)}]` : '';
-		lines.push(TERMINAL_INDENT + `  FLAKY      ${u.slug}  ${u.passCount}/${u.total}${cats}`);
+		const label = u.total > 0 && u.passCount / u.total < 0.5 ? 'BARELY   ' : 'flaky    ';
+		lines.push(TERMINAL_INDENT + `  ${label}  ${u.slug}  ${u.passCount}/${u.total}${cats}`);
 	}
 	return lines;
 }
@@ -686,44 +697,63 @@ function renderFailureDetails(
 	evaluation: MultiRunEvaluation,
 	slugByTestCase?: Map<WorkflowTestCase, string>,
 ): string[] {
-	const failed: Array<{
-		tc: WorkflowTestCaseResult;
-		fileSlug: string | undefined;
-		scenarioName: string;
-		failedRuns: Array<{ category?: string; reasoning: string }>;
-	}> = [];
+	interface FailedUnit {
+		slug: string;
+		passCount: number;
+		total: number;
+		runs: Array<{ category?: string; text: string }>;
+	}
+	const units: FailedUnit[] = [];
 	for (const tc of evaluation.testCases) {
-		const fileSlug = slugByTestCase?.get(tc.testCase);
+		const prefix =
+			slugByTestCase?.get(tc.testCase) ?? caseDisplayPrompt(tc.testCase).slice(0, 50).trim();
 		for (const sa of tc.executionScenarios) {
-			const failedRuns = sa.runs
-				.filter((r) => !r.success)
-				.map((r) => ({ category: r.failureCategory, reasoning: r.reasoning }));
+			const failedRuns = sa.runs.filter((r) => !r.success);
 			if (failedRuns.length > 0) {
-				failed.push({ tc: tc.runs[0], fileSlug, scenarioName: sa.scenario.name, failedRuns });
+				units.push({
+					slug: `${prefix}/${sa.scenario.name}`,
+					passCount: sa.passCount,
+					total: sa.runs.length,
+					runs: failedRuns.map((r) => ({ category: r.failureCategory, text: r.reasoning })),
+				});
+			}
+		}
+		for (const ea of tc.buildExpectations) {
+			// Only evaluated verdicts count; `incomplete` runs have no judge text to show.
+			const failedRuns = ea.runs.filter((r) => !r.incomplete && !r.pass);
+			if (failedRuns.length > 0) {
+				units.push({
+					slug: `${prefix} :: ${ea.expectation.slice(0, 60)}`,
+					passCount: ea.passCount,
+					total: ea.evaluatedCount,
+					runs: failedRuns.map((r) => ({ text: r.reason })),
+				});
 			}
 		}
 	}
-	if (failed.length === 0) return [];
+	if (units.length === 0) return [];
 
-	const lines: string[] = [];
-	lines.push('<details><summary>Failure details</summary>');
-	lines.push('');
-	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
-		const slug = fileSlug
-			? `${fileSlug}/${scenarioName}`
-			: `${caseDisplayPrompt(tc.testCase).slice(0, 50).trim()} / ${scenarioName}`;
-		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
-		for (const fr of failedRuns) {
-			const tag = fr.category ? ` [${fr.category}]` : '';
-			// Show the full reasoning (generous cap for pathological cases); keep any
-			// newlines inside the blockquote so the detail stays readable.
-			const reason = fr.reasoning.length > 1500 ? `${fr.reasoning.slice(0, 1500)}…` : fr.reasoning;
-			lines.push(`> Run${tag}: ${reason.replace(/\n+/g, '\n> ')}`);
+	// Full judge text for every failed run — scenarios and build expectations alike —
+	// so it's easy to see exactly what failed. Open by default but collapsible.
+	const lines: string[] = [`<details open><summary>Failures (${units.length})</summary>`, ''];
+	for (const u of units) {
+		lines.push(`**\`${u.slug}\`** — passed ${u.passCount}/${u.total}`, '');
+		// Collapse identical reasonings — a unit usually fails the same way each run.
+		const byText = new Map<string, { category?: string; text: string; count: number }>();
+		for (const r of u.runs) {
+			const key = `${r.category ?? ''}::${r.text}`;
+			const existing = byText.get(key);
+			if (existing) existing.count++;
+			else byText.set(key, { ...r, count: 1 });
 		}
-		lines.push('');
+		for (const r of byText.values()) {
+			const tag = r.category ? `_[${r.category}]_ ` : '';
+			const mult = r.count > 1 ? ` _(×${r.count})_` : '';
+			const text = (r.text.trim() || '_(judge returned no text)_').replace(/\n+/g, '\n> ');
+			lines.push(`> ${tag}${text}${mult}`, '');
+		}
 	}
-	lines.push('</details>');
-	lines.push('');
+	lines.push('</details>', '');
 	return lines;
 }
 
