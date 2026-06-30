@@ -1,22 +1,37 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { PassThrough } from 'node:stream';
+import type { Mocked } from 'vitest';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
-const handler = require('../n8n-packages.handler');
+const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown) =>
+	(next as () => void)(),
+) as unknown as middlewares.ScopeTaggedMiddleware;
+vi.spyOn(middlewares, 'publicApiCompositeScope').mockReturnValue(mockMiddleware);
+vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 
+// Loaded after the middleware spies above are installed (the handler captures
+// middleware at module-evaluation time). Typed loosely to invoke route entries.
+let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
 // exportPackage = [publicApiCompositeScope(...), businessLogic]; index 1 is the handler under test.
-const exportPackage = handler.exportPackage[1];
+let exportPackage: (...args: unknown[]) => unknown;
+
+beforeAll(async () => {
+	handler = (await import('../n8n-packages.handler')) as unknown as typeof handler;
+	exportPackage = handler.exportPackage[1];
+});
 
 describe('n8n-packages handler', () => {
 	let packagesEnabled: boolean;
-	let mockService: { exportPackage: jest.Mock };
+	let mockService: Mocked<N8nPackagesService>;
 
 	function makeRequest(
 		body: { workflowIds?: string[]; projectIds?: string[] },
@@ -31,7 +46,7 @@ describe('n8n-packages handler', () => {
 
 	function makeResponse() {
 		const res = new PassThrough() as unknown as Response & PassThrough;
-		res.setHeader = jest.fn().mockReturnValue(res);
+		res.setHeader = vi.fn().mockReturnValue(res);
 		return res;
 	}
 
@@ -46,16 +61,19 @@ describe('n8n-packages handler', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		packagesEnabled = true;
-		mockService = { exportPackage: jest.fn() };
+		mockService = mockInstance(N8nPackagesService);
 
-		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
+		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === GlobalConfig) {
 				return { publicApi: { packagesEnabled } } as never;
 			}
-			if (serviceClass === N8nPackagesService) {
-				return mockService as never;
+			if (
+				serviceClass === N8nPackagesService ||
+				(typeof serviceClass === 'function' && serviceClass.name === 'N8nPackagesService')
+			) {
+				return mockService;
 			}
 			return {} as never;
 		});
