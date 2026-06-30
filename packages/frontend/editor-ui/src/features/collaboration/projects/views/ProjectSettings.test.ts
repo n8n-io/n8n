@@ -940,4 +940,67 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('external-secrets-section')).toBeInTheDocument();
 		});
 	});
+
+	describe('Worker pools', () => {
+		it('hides the section and skips the fetch when the feature flag is off', async () => {
+			settingsStore.isWorkerPoolsEnabled = false;
+			const { queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-worker-pools-section')).not.toBeInTheDocument();
+			expect(projectsStore.fetchProjectPoolSettings).not.toHaveBeenCalled();
+		});
+
+		it('shows the section and fetches pool settings when the feature flag is on', async () => {
+			settingsStore.isWorkerPoolsEnabled = true;
+			projectsStore.currentProjectPoolSettings = {
+				defaultPool: null,
+				availablePools: ['cpu', 'gpu'],
+			};
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-worker-pools-section')).toBeInTheDocument();
+			expect(projectsStore.fetchProjectPoolSettings).toHaveBeenCalledWith('123');
+		});
+
+		it('saves the selected default pool when it changes', async () => {
+			settingsStore.isWorkerPoolsEnabled = true;
+			projectsStore.currentProjectPoolSettings = {
+				defaultPool: null,
+				availablePools: ['cpu', 'gpu'],
+			};
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			// Options: [default queue, cpu, gpu]
+			const poolOptions = await getDropdownItems(getByTestId('project-default-pool-input'));
+			await userEvent.click(poolOptions[2]);
+			await nextTick();
+
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+
+			expect(projectsStore.updateCurrentProjectPoolSettings).toHaveBeenCalledWith('123', {
+				defaultPool: 'gpu',
+			});
+		});
+
+		it('does not save pool settings when only the name changed', async () => {
+			settingsStore.isWorkerPoolsEnabled = true;
+			projectsStore.currentProjectPoolSettings = {
+				defaultPool: null,
+				availablePools: ['cpu', 'gpu'],
+			};
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			await userEvent.type(getInput(getByTestId('project-settings-name-input')), ' Updated');
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+
+			expect(projectsStore.updateProject).toHaveBeenCalled();
+			expect(projectsStore.updateCurrentProjectPoolSettings).not.toHaveBeenCalled();
+		});
+	});
 });
