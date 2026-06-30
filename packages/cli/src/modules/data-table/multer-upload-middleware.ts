@@ -20,9 +20,6 @@ import {
 } from './types';
 import { formatBytes } from './utils/size-utils';
 
-// Validate by extension, not MIME: browsers derive the multipart Content-Type
-// differently (Windows Firefox reports a .csv as application/vnd.ms-excel from
-// the registry). The CSV parser validates content downstream.
 const ALLOWED_EXTENSIONS = ['.csv'];
 
 @Service()
