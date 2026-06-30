@@ -94,7 +94,7 @@ class PostgresConfig {
 	 * Must be >= 0; a negative or non-numeric value falls back to the default.
 	 */
 	@Env('DB_POSTGRESDB_DESTROY_TIMEOUT_MS', z.coerce.number().int().gte(0))
-	destroyTimeoutMs: number = 10_000;
+	destroyTimeoutMs: number = 10 * Time.seconds.toMilliseconds;
 
 	/** Time in milliseconds after which an idle connection in the pool is closed. */
 	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
