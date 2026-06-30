@@ -50,7 +50,7 @@ export class ScheduledTaskManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		{ activeInterval }: CronLoggingConfig,
-		private readonly globalConfig: GlobalConfig,
+		private readonly globalConfig?: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('cron');
 
@@ -263,7 +263,7 @@ export class ScheduledTaskManager {
 	}
 
 	private enforceMinScheduleInterval(expression: string, timezone: string): void {
-		const minSeconds = this.globalConfig.workflows.minScheduleIntervalSeconds;
+		const minSeconds = this.globalConfig?.workflows.minScheduleIntervalSeconds ?? 0;
 		if (minSeconds === 0) return;
 
 		const tempJob = new CronJob(expression, () => {}, undefined, false, timezone || 'UTC');
