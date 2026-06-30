@@ -34,6 +34,7 @@ import {
 	toMultiOptionsCsv,
 } from './GenericFunctions';
 import {
+	captureResponderField,
 	channelRLC,
 	messageFields,
 	messageOperations,
@@ -170,7 +171,7 @@ export class SlackV2 implements INodeType {
 					],
 					undefined,
 					undefined,
-					{ extraOptions: [replyToMessageField] },
+					{ extraOptions: [replyToMessageField, captureResponderField] },
 				).filter((p) => p.name !== 'subject'),
 				...starOperations,
 				...starFields,

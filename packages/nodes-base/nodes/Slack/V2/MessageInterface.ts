@@ -24,7 +24,12 @@ export interface ButtonElement {
 	type: 'button';
 	style?: 'primary';
 	text: TextBlock;
-	url: string;
+	/** Present for plain link buttons (default HITL behaviour). */
+	url?: string;
+	/** Present for interactive buttons (capture-responder mode): the decision. */
+	action_id?: string;
+	/** Present for interactive buttons: which run/node to resume, echoed back by Slack. */
+	value?: string;
 }
 
 export interface ActionsBlock {

@@ -427,6 +427,15 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const config = getSendAndWaitConfig(context);
 
+	const sendAndWaitOptions = (context.getNodeParameter('options', 0, {}) ?? {}) as {
+		captureResponder?: boolean;
+	};
+	const captureResponder = sendAndWaitOptions.captureResponder === true;
+	// Interactive buttons echo this back so the callback knows which run/node to resume.
+	const interactionValue = captureResponder
+		? JSON.stringify({ executionId: context.getExecutionId(), nodeId: context.getNode().id })
+		: undefined;
+
 	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
@@ -453,18 +462,26 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 			{
 				type: 'actions',
-				elements: config.options.map((option) => {
-					return {
-						type: 'button',
-						style: option.style === 'primary' ? 'primary' : undefined,
-						text: {
-							type: 'plain_text',
-							text: option.label,
-							emoji: true,
-						},
-						url: option.url,
-					};
-				}),
+				elements: config.options.map((option) => ({
+					type: 'button',
+					style: option.style === 'primary' ? 'primary' : undefined,
+					text: {
+						type: 'plain_text',
+						text: option.label,
+						emoji: true,
+					},
+					// Plain link button by default; an interactive button (no url) in
+					// capture-responder mode, so Slack POSTs the click to its Interactivity URL.
+					...(captureResponder
+						? {
+								action_id:
+									new URL(option.url).searchParams.get('approved') === 'false'
+										? 'n8n_hitl_decline'
+										: 'n8n_hitl_approve',
+								value: interactionValue,
+							}
+						: { url: option.url }),
+				})),
 			},
 		],
 	};

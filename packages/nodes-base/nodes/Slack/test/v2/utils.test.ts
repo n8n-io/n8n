@@ -125,6 +125,42 @@ describe('Slack Utility Functions', () => {
 			});
 		});
 
+		it('uses interactive buttons (action_id + value, no url) when captureResponder is enabled', () => {
+			mockExecuteFunctions.getNode.mockReturnValue({
+				name: 'Slack',
+				id: 'node-1',
+				typeVersion: 2.3,
+			} as any);
+			mockExecuteFunctions.getExecutionId.mockReturnValue('exec-1');
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+				'http://localhost/waiting-webhook/exec-1/node-1?approved=true&signature=abc',
+			);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+				const params: Record<string, unknown> = {
+					select: 'channel',
+					channelId: 'channelID',
+					message: 'message',
+					subject: 'subject',
+					'approvalOptions.values': {},
+					responseType: 'approval',
+					options: { captureResponder: true },
+				};
+				return params[name];
+			});
+
+			const body = createSendAndWaitMessageBody(mockExecuteFunctions);
+			const actions = body.blocks.find((b) => b.type === 'actions') as { elements: any[] };
+
+			expect(actions.elements).toHaveLength(1);
+			expect(actions.elements[0]).toMatchObject({
+				type: 'button',
+				action_id: 'n8n_hitl_approve',
+				value: JSON.stringify({ executionId: 'exec-1', nodeId: 'node-1' }),
+			});
+			// Interactive buttons must not carry a url (that would render a plain link button).
+			expect(actions.elements[0].url).toBeUndefined();
+		});
+
 		it('should create message with double buttons - pre 2.3 plain_text', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('channel');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('channelID');

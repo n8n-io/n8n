@@ -26,7 +26,7 @@ import {
 	createEmailBodyWithN8nAttribution,
 	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
-import type { IEmail } from './interfaces';
+import type { IEmail, SendAndWaitResponder } from './interfaces';
 
 export type SendAndWaitConfig = {
 	title: string;
@@ -472,9 +472,11 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
+	// Responder identity is persisted with the execution by the Slack callback path; absent otherwise.
+	const responder = (this.getContext('node') as { responder?: SendAndWaitResponder }).responder;
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
-		workflowData: [[{ json: { data: { approved } } }]],
+		workflowData: [[{ json: { data: { approved, ...(responder ? { responder } : {}) } } }]],
 	};
 }
 
