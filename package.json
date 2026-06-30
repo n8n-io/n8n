@@ -148,7 +148,6 @@
       "langsmith@<=0.6.0": "0.6.0",
       "brace-expansion@<=2.1.0": "2.1.0",
       "qs@<=6.15.2": "6.15.2",
-      "tar": "7.5.16",
       "@tootallnate/once@<=2.0.1": "2.0.1",
       "protobufjs@<=7.6.3": "7.6.3",
       "multer": "2.2.0",
@@ -160,8 +159,9 @@
       "ws": "8.21.0",
       "axios": "1.18.0",
       "hono@<=4.12.27": "4.12.27",
+      "linkify-it@<=5.0.1": "5.0.1",
       "vue-i18n@<=11.4.4": "11.4.4",
-      "linkify-it@<=5.0.1": "5.0.1"
+      "tar": "7.5.17"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
