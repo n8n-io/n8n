@@ -11,6 +11,14 @@ export function subAgentsSkill(): RuntimeSkill {
 		name: 'Agent Builder Sub-Agents',
 		description:
 			'Use when configuring inline or saved sub-agent delegation for the target agent, selecting published same-project sub-agents, or changing subAgents.maxChildren.',
+		recommendedTools: ['list_sub_agents', 'ask_question', 'read_config', 'patch_config'],
+		allowedTools: [
+			'list_sub_agents',
+			'ask_question',
+			'read_config',
+			'patch_config',
+			'write_config',
+		],
 		instructions: `\
 ## Purpose
 

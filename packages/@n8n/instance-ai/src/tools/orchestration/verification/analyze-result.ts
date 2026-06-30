@@ -1,4 +1,5 @@
-import { isPlaceholderValue, isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
+import { isPlaceholderValue } from '@n8n/utils/placeholder';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {

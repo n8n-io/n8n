@@ -1,32 +1,35 @@
+import { Module } from 'node:module';
 import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
-import { mock } from 'jest-mock-extended';
 import { CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
-jest.mock('lodash/debounce', () => (fn: () => void) => fn);
+vi.mock('lodash/debounce', () => ({ default: (fn: () => void) => fn }));
 
-jest.mock('@parcel/watcher', () => ({
-	subscribe: jest.fn().mockResolvedValue(undefined),
-}));
+vi.mock('@parcel/watcher', () => {
+	const subscribe = vi.fn().mockResolvedValue(undefined);
+	return { default: { subscribe }, subscribe };
+});
 
-jest.mock('fs/promises');
+vi.mock('fs/promises');
 
-jest.mock('@/push', () => {
+vi.mock('@/push', () => {
 	@Service()
 	class Push {
-		broadcast = jest.fn();
+		broadcast = vi.fn();
 	}
 
 	return { Push };
 });
 
-jest.mock('@/tool-generation', () => ({
-	createAiTools: jest.fn(),
-	createHitlTools: jest.fn(),
+vi.mock('@/tool-generation', () => ({
+	createAiTools: vi.fn(),
+	createHitlTools: vi.fn(),
 }));
 
 /**
@@ -42,6 +45,11 @@ jest.mock('@/tool-generation', () => ({
  */
 describe('NODE_PATH preservation (issue #24191)', () => {
 	const originalNodePath = process.env.NODE_PATH;
+	// `module` (the CJS wrapper) is not available under Vitest's ESM runtime, so
+	// derive the equivalent node_modules resolution paths the same way Node does.
+	const modulePaths = (
+		Module as unknown as { _nodeModulePaths: (p: string) => string[] }
+	)._nodeModulePaths(process.cwd());
 
 	afterEach(() => {
 		if (originalNodePath === undefined) {
@@ -57,7 +65,7 @@ describe('NODE_PATH preservation (issue #24191)', () => {
 
 		// This is the exact logic from LoadNodesAndCredentials.init()
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+		process.env.NODE_PATH = [modulePaths.join(delimiter), process.env.NODE_PATH]
 			.filter(Boolean)
 			.join(delimiter);
 
@@ -69,11 +77,11 @@ describe('NODE_PATH preservation (issue #24191)', () => {
 		delete process.env.NODE_PATH;
 
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+		process.env.NODE_PATH = [modulePaths.join(delimiter), process.env.NODE_PATH]
 			.filter(Boolean)
 			.join(delimiter);
 
-		expect(process.env.NODE_PATH).toBe(module.paths.join(delimiter));
+		expect(process.env.NODE_PATH).toBe(modulePaths.join(delimiter));
 		expect(process.env.NODE_PATH).not.toContain('undefined');
 	});
 });
@@ -99,7 +107,7 @@ describe('LoadNodesAndCredentials', () => {
 		beforeEach(() => {
 			const mockInstance = (pkg: string, directory: string) => {
 				const mi = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-				const mockLoader = mock<DirectoryLoader>({ directory });
+				const mockLoader = mock<DirectoryLoader>({ directory } as never);
 				Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
 				mi.loaders[pkg] = mockLoader;
 				return mi;
@@ -199,18 +207,18 @@ describe('LoadNodesAndCredentials', () => {
 
 	describe('injectContextEstablishmentHooks', () => {
 		let instance: LoadNodesAndCredentials;
-		let mockLogger: { debug: jest.Mock };
-		let mockExecutionContextHookRegistry: { getHookForTriggerType: jest.Mock };
+		let mockLogger: { debug: Mock };
+		let mockExecutionContextHookRegistry: { getHookForTriggerType: Mock };
 
 		beforeEach(() => {
 			// Enable the feature flag for tests
 			process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
 
 			mockLogger = {
-				debug: jest.fn(),
+				debug: vi.fn(),
 			};
 			mockExecutionContextHookRegistry = {
-				getHookForTriggerType: jest.fn(),
+				getHookForTriggerType: vi.fn(),
 			};
 			instance = new LoadNodesAndCredentials(
 				mockLogger as never,
@@ -318,7 +326,7 @@ describe('LoadNodesAndCredentials', () => {
 						},
 					],
 				},
-				isApplicableToTriggerNode: jest.fn((nodeType: string) => {
+				isApplicableToTriggerNode: vi.fn((nodeType: string) => {
 					// Only applicable to webhook trigger
 					return nodeType === 'webhookTrigger';
 				}),
@@ -450,9 +458,9 @@ describe('LoadNodesAndCredentials', () => {
 			packageName: CUSTOM_NODES_PACKAGE_NAME,
 			directory: '/some/custom/path',
 			isLazyLoaded: false,
-			reset: jest.fn(),
-			loadAll: jest.fn(),
-		});
+			reset: vi.fn(),
+			loadAll: vi.fn(),
+		} as never);
 		Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
 
 		beforeEach(() => {
@@ -460,26 +468,24 @@ describe('LoadNodesAndCredentials', () => {
 			instance.loaders = { CUSTOM: mockLoader };
 
 			// Allow access to directory
-			(fs.access as jest.Mock).mockResolvedValue(undefined);
+			(fs.access as Mock).mockResolvedValue(undefined);
 
 			// Simulate custom node dir structure
-			(fs.readdir as jest.Mock).mockResolvedValue([
+			(fs.readdir as Mock).mockResolvedValue([
 				{ name: 'test-node', isDirectory: () => true, isSymbolicLink: () => false },
 			]);
 
 			// Simulate symlink resolution
-			(fs.realpath as jest.Mock).mockResolvedValue('/resolved/test-node');
+			(fs.realpath as Mock).mockResolvedValue('/resolved/test-node');
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should subscribe to file changes and reload on changes', async () => {
-			const postProcessSpy = jest
-				.spyOn(instance, 'postProcessLoaders')
-				.mockResolvedValue(undefined);
-			const subscribe = jest.mocked(watcher.subscribe);
+			const postProcessSpy = vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+			const subscribe = vi.mocked(watcher.subscribe);
 
 			await instance.setupHotReload();
 
@@ -509,14 +515,14 @@ describe('LoadNodesAndCredentials', () => {
 
 	describe('postProcessLoaders', () => {
 		let instance: LoadNodesAndCredentials;
-		let createAiTools: jest.Mock;
-		let createHitlTools: jest.Mock;
+		let createAiTools: Mock;
+		let createHitlTools: Mock;
 
 		beforeEach(async () => {
 			// Import the mocked functions
 			const toolGeneration = await import('@/tool-generation');
-			createAiTools = toolGeneration.createAiTools as jest.Mock;
-			createHitlTools = toolGeneration.createHitlTools as jest.Mock;
+			createAiTools = toolGeneration.createAiTools as Mock;
+			createHitlTools = toolGeneration.createHitlTools as Mock;
 
 			// Clear mock calls before each test
 			createAiTools.mockClear();
@@ -531,13 +537,13 @@ describe('LoadNodesAndCredentials', () => {
 				directory: '/test/dir',
 				known: { nodes: {}, credentials: {} },
 				types: {
-					nodes: [{ name: 'TestNode', displayName: 'Test' } as INodeTypeDescription],
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as never],
 					credentials: [],
 				},
 				credentialTypes: {},
 				isLazyLoaded: false,
-				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
-			});
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
 
 			instance.loaders = { 'test-package': mockLoader };
 
@@ -556,8 +562,8 @@ describe('LoadNodesAndCredentials', () => {
 				types: { nodes: [], credentials: [] },
 				credentialTypes: {},
 				isLazyLoaded: false,
-				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
-			});
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
 
 			instance.loaders = { 'test-package': mockLoader };
 
@@ -590,13 +596,13 @@ describe('LoadNodesAndCredentials', () => {
 				directory: '/test/dir',
 				known: { nodes: {}, credentials: {} },
 				types: {
-					nodes: [{ name: 'httpRequest', displayName: 'HTTP Request' } as INodeTypeDescription],
+					nodes: [{ name: 'httpRequest', displayName: 'HTTP Request' } as never],
 					credentials: [{ name: 'httpBasicAuth', displayName: 'HTTP Basic Auth' }],
 				},
 				credentialTypes: {},
 				isLazyLoaded: false,
-				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
-			});
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
 
 			instance.loaders = { 'n8n-nodes-base': mockLoader };
 
@@ -614,13 +620,13 @@ describe('LoadNodesAndCredentials', () => {
 				directory: '/test/dir',
 				known: { nodes: {}, credentials: {} },
 				types: {
-					nodes: [{ name: 'TestNode', displayName: 'Test' } as INodeTypeDescription],
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as never],
 					credentials: [],
 				},
 				credentialTypes: {},
 				isLazyLoaded: false,
-				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
-			});
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+			} as never);
 
 			instance.loaders = { 'test-package': mockLoader };
 

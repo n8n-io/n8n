@@ -1,17 +1,18 @@
+import type { Mock } from 'vitest';
 const mockLogger = {
-	warn: jest.fn(),
-	debug: jest.fn(),
+	warn: vi.fn(),
+	debug: vi.fn(),
 };
 
-jest.mock('@n8n/backend-common', () => ({
+vi.mock('@n8n/backend-common', () => ({
 	Logger: class Logger {},
 }));
 
-jest.mock('@n8n/di', () => ({
+vi.mock('@n8n/di', () => ({
 	Container: {
-		get: jest.fn().mockReturnValue(mockLogger),
+		get: vi.fn().mockReturnValue(mockLogger),
 	},
-	Service: () => jest.fn(),
+	Service: () => vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -21,7 +22,7 @@ jest.mock('@n8n/di', () => ({
 const FALLBACK_INSTRUCTIONS =
 	'No API documentation was found for this endpoint. Generate the response based on your knowledge of this API. Follow standard REST conventions for the HTTP method: GET returns resource data, POST returns the created resource, PUT/PATCH returns the updated resource, DELETE returns 204 or confirmation.';
 
-let mockFetch: jest.Mock;
+let mockFetch: Mock;
 let savedApiKey: string | undefined;
 
 function mockFetchResponse(status: number, body: unknown, ok?: boolean) {
@@ -30,15 +31,15 @@ function mockFetchResponse(status: number, body: unknown, ok?: boolean) {
 	mockFetch.mockResolvedValueOnce({
 		ok: isOk,
 		status,
-		text: jest.fn().mockResolvedValue(textBody),
-		json: jest.fn().mockResolvedValue(body),
+		text: vi.fn().mockResolvedValue(textBody),
+		json: vi.fn().mockResolvedValue(body),
 	});
 }
 
 beforeEach(() => {
-	jest.resetModules();
-	jest.clearAllMocks();
-	mockFetch = jest.fn();
+	vi.resetModules();
+	vi.clearAllMocks();
+	mockFetch = vi.fn();
 	global.fetch = mockFetch;
 	savedApiKey = process.env.CONTEXT7_API_KEY;
 	delete process.env.CONTEXT7_API_KEY;

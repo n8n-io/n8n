@@ -4,7 +4,10 @@ import callsites from 'callsites';
 import type { ErrorLevel, ReportingOptions } from './types';
 
 /**
- * @deprecated Use `UserError`, `OperationalError` or `UnexpectedError` instead.
+ * Deprecated error class kept only for backwards compatibility
+ * for community nodes.
+ *
+ * @deprecated Use `UserError`, `OperationalError` or `UnexpectedError` instead
  */
 export class ApplicationError extends Error {
 	level: ErrorLevel;

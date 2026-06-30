@@ -248,6 +248,8 @@ jobs:
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ inputs.revision-sha || github.sha }}
           LANGSMITH_BRANCH: ${{ inputs.head-ref || github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
+          # Dedicated project so eval build traces don't pollute the default 'instance-ai' corpus.
+          LANGSMITH_PROJECT: instance-ai-evals
           FILTER: ${{ inputs.filter }}
           TIER: ${{ inputs.tier }}
           ITERATIONS: ${{ inputs.iterations }}

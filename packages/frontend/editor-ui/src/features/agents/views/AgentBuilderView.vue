@@ -53,6 +53,8 @@ import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -70,6 +72,7 @@ import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
+import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
@@ -1015,15 +1018,17 @@ function onOpenSkillFromList(id: string) {
 			agentId: agentId.value,
 			skill,
 			skillId: id,
+			availableTools: configuredToolOptions(),
 			onRemove: (skillId: string) => onRemoveSkill(skillId),
 			onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 				if (!skillId) return;
 				if (agent.value?.id !== agentId.value) return;
+				const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 				agent.value = {
 					...agent.value,
 					skills: {
 						...(agent.value.skills ?? {}),
-						[skillId]: updatedSkill,
+						[skillId]: sanitizedSkill,
 					},
 				};
 				const nextSkills = [...(localConfig.value?.skills ?? [])];
@@ -1032,9 +1037,46 @@ function onOpenSkillFromList(id: string) {
 					nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
 					onConfigFieldUpdate({ skills: nextSkills });
 				}
+				skillAutosave.scheduleAutosave({
+					type: 'skill',
+					projectId: projectId.value,
+					agentId: agentId.value,
+					skillId,
+					skill: sanitizedSkill,
+				});
 			},
 		},
 	});
+}
+
+function configuredToolOptions(): AgentSkillAllowedToolOption[] {
+	const tools: AgentSkillAllowedToolOption[] = [];
+	for (const tool of localConfig.value?.tools ?? []) {
+		if (tool.type === 'custom') {
+			const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
+			if (name) {
+				tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'code' });
+			}
+		} else if (tool.type === 'workflow') {
+			const name = tool.name ?? tool.workflow;
+			tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'workflow' });
+		} else {
+			tools.push({
+				name: tool.name,
+				label: formatToolNameForDisplay(tool.name) || tool.name,
+				icon: 'globe',
+			});
+		}
+	}
+	return tools;
+}
+
+function configuredToolNames(): Set<string> {
+	return new Set(configuredToolOptions().map((tool) => tool.name));
+}
+
+function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
+	return normalizeAgentSkillForSave(skill, configuredToolNames());
 }
 
 function onRemoveTool(index: number) {
@@ -1064,8 +1106,10 @@ function onOpenAddSkillModal() {
 		data: {
 			projectId: projectId.value,
 			agentId: agentId.value,
+			availableTools: configuredToolOptions(),
 			onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 				void (async () => {
+					const sanitizedSkill = filterSkillAllowedTools(skill);
 					let created: AgentSkill;
 					let versionId: string | null;
 					let skillId: string;
@@ -1074,7 +1118,7 @@ function onOpenAddSkillModal() {
 							rootStore.restApiContext,
 							projectId.value,
 							agentId.value,
-							skill,
+							sanitizedSkill,
 						);
 						skillId = result.id;
 						created = result.skill;

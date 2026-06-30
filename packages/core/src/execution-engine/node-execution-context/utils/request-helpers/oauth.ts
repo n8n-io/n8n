@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
+import { LockNamespace, LockAcquisitionTimeoutError, LockService } from '@n8n/backend-common';
 import { removeEmptyBody } from '@n8n/backend-network';
 import type {
 	ClientOAuth2Options,
@@ -13,6 +14,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { AuthError, ClientOAuth2 } from '@n8n/client-oauth2';
+import { Container } from '@n8n/di';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
 import get from 'lodash/get';
@@ -25,9 +27,16 @@ import type {
 	IOAuth2Options,
 	IRequestOptions,
 	IWorkflowExecuteAdditionalData,
+	WorkflowExecuteMode,
 	Logger as WorkflowLogger,
 } from 'n8n-workflow';
-import { OperationalError, jsonParse, NodeOperationError, UserError } from 'n8n-workflow';
+import {
+	OperationalError,
+	jsonParse,
+	NodeOperationError,
+	UserError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
@@ -79,6 +88,7 @@ interface RefreshOAuth2TokenContext {
 	additionalData: IWorkflowExecuteAdditionalData;
 	oAuth2Options?: IOAuth2Options;
 	logger: WorkflowLogger;
+	mode: WorkflowExecuteMode;
 	helpers: IAllExecuteFunctions['helpers'];
 }
 
@@ -113,109 +123,180 @@ function buildOAuth2ReconnectError(node: INode, credentialsType: string): NodeOp
 	);
 }
 
+const inFlightRefreshes = new Map<string, Promise<ClientOAuth2Token>>();
+
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
-	const {
-		credentials,
-		token,
-		credentialsType,
-		node,
-		additionalData,
-		oAuth2Options,
-		logger,
-		helpers,
-	} = ctx;
-	const tokenRefreshOptions: IDataObject = {};
-	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-		const body: IDataObject = {
-			client_id: credentials.clientId,
-			...(credentials.grantType === 'authorizationCode' && {
-				client_secret: credentials.clientSecret as string,
-			}),
-		};
-		tokenRefreshOptions.body = body;
-		tokenRefreshOptions.headers = { Authorization: '' };
-	}
+	const nodeCredentials = ctx.node.credentials?.[ctx.credentialsType];
+	const credentialId = nodeCredentials?.id;
 
-	logger.debug(
-		`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
-	);
-
-	const refreshResource = credentials.oauthTokenData?.resource;
-	if (typeof refreshResource === 'string' && refreshResource.length > 0) {
-		tokenRefreshOptions.resource = refreshResource;
-	}
-
-	let newToken;
-	try {
-		if (credentials.grantType === 'clientCredentials') {
-			newToken = await token.client.credentials.getToken();
-		} else {
-			newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
-		}
-	} catch (error) {
-		if (isRevokedOAuth2GrantError(error)) {
-			throw buildOAuth2ReconnectError(node, credentialsType);
-		}
-		throw error;
-	}
-
-	logger.debug(
-		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
-	);
-
-	// Merge old and new token data so fields that the authorization server
-	// does not echo back on refresh (e.g. `resource`) are preserved from the
-	// original token response.
-	const newOAuthTokenData = { ...token.data, ...newToken.data };
-
-	// If the server doesn't echo the resource back, restore it from the
-	// previous token data to ensure it's not lost on refresh.
-	if (!newOAuthTokenData.resource && token.data.resource) {
-		newOAuthTokenData.resource = token.data.resource;
-	}
-
-	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
-		additionalData,
-		newOAuthTokenData,
-		credentials.jweEnabled === true,
-	);
-
-	credentials.oauthTokenData = refreshedTokenData as typeof credentials.oauthTokenData;
-
-	// Apply preAuthentication so custom credential types extending oAuth2Api can transform
-	// refreshed token data (e.g. extracting a claim from a decrypted JWE/JWT) before signing.
-	// runPreAuthentication runs on every refresh without persisting — the transformed
-	// oauthTokenData is persisted by the updateCredentialsOauthTokenData call below.
-	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
-		{ helpers },
-		credentials as unknown as ICredentialDataDecryptedObject,
-		credentialsType,
-	);
-	let signingToken = newToken;
-	if (preAuthData) {
-		Object.assign(credentials, preAuthData);
-		signingToken = buildSigningToken(
-			token.client,
-			credentials.oauthTokenData as ClientOAuth2TokenData,
-			oAuth2Options,
-		);
-	}
-
-	if (!node.credentials?.[credentialsType]) {
-		throw new UserError('Node does not have credential type', {
-			extra: { nodeName: node.name, credentialType: credentialsType },
+	if (!credentialId) {
+		throw new UnexpectedError('Found credential with no ID.', {
+			extra: { credentialName: nodeCredentials?.name },
+			tags: { credentialType: ctx.credentialsType },
 		});
 	}
 
-	const nodeCredentials = node.credentials[credentialsType];
-	await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
-		nodeCredentials,
-		credentialsType,
-		credentials as unknown as ICredentialDataDecryptedObject,
-		additionalData,
-	);
+	// Critical section from here until the in-flight promise is stored in the map.
+	// This map is process-LOCAL: it coalesces concurrent refreshes *within this instance*
+	// so they share one network call. Cross-instance serialization is handled by the lease below.
+	// We must not yield to the event loop before `inFlightRefreshes.set(...)`, or a second concurrent
+	// caller could pass the `has` check before the promise is registered and trigger a duplicate refresh.
+	if (inFlightRefreshes.has(credentialId)) {
+		return await inFlightRefreshes.get(credentialId)!;
+	}
 
-	return signingToken;
+	const runRefresh = async () => {
+		const {
+			credentials,
+			token,
+			credentialsType,
+			node,
+			additionalData,
+			oAuth2Options,
+			logger,
+			helpers,
+		} = ctx;
+		const currentCredential = (await additionalData.credentialsHelper.getDecrypted(
+			additionalData,
+			nodeCredentials,
+			ctx.credentialsType,
+			ctx.mode,
+			undefined,
+			true,
+		)) as unknown as OAuth2CredentialData;
+
+		// Resolve the stored token through the same property path used to build `token`,
+		// otherwise the comparison misfires for nodes using `oAuth2Options.property` (e.g. Slack),
+		// where `token.accessToken` is a nested value rather than the top-level `access_token`.
+		const currentAccessToken =
+			get(currentCredential?.oauthTokenData, oAuth2Options?.property as string) ||
+			currentCredential?.oauthTokenData?.access_token;
+
+		// if the access token value changed, the refresh already happend in another process, so we can just return the new token
+		if (currentAccessToken !== token.accessToken) {
+			return buildSigningToken(
+				token.client,
+				currentCredential?.oauthTokenData as ClientOAuth2TokenData,
+				oAuth2Options,
+			);
+		}
+
+		const tokenRefreshOptions: IDataObject = {};
+		if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+			const body: IDataObject = {
+				client_id: credentials.clientId,
+				...(credentials.grantType === 'authorizationCode' && {
+					client_secret: credentials.clientSecret as string,
+				}),
+			};
+			tokenRefreshOptions.body = body;
+			tokenRefreshOptions.headers = { Authorization: '' };
+		}
+
+		logger.debug(
+			`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
+		);
+
+		const refreshResource = credentials.oauthTokenData?.resource;
+		if (typeof refreshResource === 'string' && refreshResource.length > 0) {
+			tokenRefreshOptions.resource = refreshResource;
+		}
+
+		let newToken;
+		try {
+			if (credentials.grantType === 'clientCredentials') {
+				newToken = await token.client.credentials.getToken();
+			} else {
+				newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+			}
+		} catch (error) {
+			if (isRevokedOAuth2GrantError(error)) {
+				throw buildOAuth2ReconnectError(node, credentialsType);
+			}
+			throw error;
+		}
+
+		logger.debug(
+			`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+		);
+
+		// Merge old and new token data so fields that the authorization server
+		// does not echo back on refresh (e.g. `resource`) are preserved from the
+		// original token response.
+		const newOAuthTokenData = { ...token.data, ...newToken.data };
+
+		// If the server doesn't echo the resource back, restore it from the
+		// previous token data to ensure it's not lost on refresh.
+		if (!newOAuthTokenData.resource && token.data.resource) {
+			newOAuthTokenData.resource = token.data.resource;
+		}
+
+		const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
+			additionalData,
+			newOAuthTokenData,
+			credentials.jweEnabled === true,
+		);
+
+		credentials.oauthTokenData = refreshedTokenData as typeof credentials.oauthTokenData;
+
+		// Apply preAuthentication so custom credential types extending oAuth2Api can transform
+		// refreshed token data (e.g. extracting a claim from a decrypted JWE/JWT) before signing.
+		// runPreAuthentication runs on every refresh without persisting — the transformed
+		// oauthTokenData is persisted by the updateCredentialsOauthTokenData call below.
+		const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
+			{ helpers },
+			credentials as unknown as ICredentialDataDecryptedObject,
+			credentialsType,
+		);
+		let signingToken = newToken;
+		if (preAuthData) {
+			Object.assign(credentials, preAuthData);
+			signingToken = buildSigningToken(
+				token.client,
+				credentials.oauthTokenData as ClientOAuth2TokenData,
+				oAuth2Options,
+			);
+		}
+
+		if (!node.credentials?.[credentialsType]) {
+			throw new UserError('Node does not have credential type', {
+				extra: { nodeName: node.name, credentialType: credentialsType },
+			});
+		}
+
+		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
+			nodeCredentials,
+			credentialsType,
+			credentials as unknown as ICredentialDataDecryptedObject,
+			additionalData,
+		);
+
+		return signingToken;
+	};
+
+	const promise = Container.get(LockService)
+		.withLease(LockNamespace.CREDENTIALS, credentialId, runRefresh, {
+			waitTimeoutMs: 10_000,
+			leaseTtlMs: 30_000,
+		})
+		.catch(async (error) => {
+			if (error instanceof LockAcquisitionTimeoutError) {
+				// The lease is an efficiency primitive, not a correctness one. If the lock
+				// backend is unavailable/contended, refresh without cross-process coordination
+				// rather than stalling the execution; runRefresh's read-back check still avoids
+				// a redundant network call when another holder already rotated the token.
+				ctx.logger.warn(
+					`Could not acquire refresh lock for credential "${credentialId}"; refreshing without cross-process coordination`,
+					{ error },
+				);
+				return await runRefresh();
+			}
+			throw error;
+		})
+		.finally(() => inFlightRefreshes.delete(credentialId));
+	inFlightRefreshes.set(credentialId, promise);
+
+	return await promise;
 }
 
 function resolveTokenExpiredStatusCode(
@@ -335,6 +416,7 @@ export async function requestOAuth2(
 		oAuth2Options,
 		logger: this.logger,
 		helpers: this.helpers,
+		mode: this.getMode?.() ?? 'internal',
 	};
 
 	const retryWithNewToken = async (
@@ -484,6 +566,7 @@ export async function refreshOAuth2Token(
 		oAuth2Options,
 		logger: this.logger,
 		helpers: this.helpers,
+		mode: this.getMode?.() ?? 'internal',
 	});
 
 	return newToken.data;

@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -17,6 +17,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowPublicationOutbox, dataSource.manager);
+	}
+
+	/**
+	 * The in-flight (pending or in_progress) publication for a workflow, or null.
+	 * In-progress is preferred when both exist.
+	 */
+	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.findBy({
+			workflowId,
+			status: In([Status.InProgress, Status.Pending]),
+		});
+		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
 	/**
@@ -251,18 +263,22 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		}
 	}
 
-	/** Mark a claimed record as successfully processed. */
-	async markCompleted(id: number): Promise<void> {
-		const result = await this.update(
+	/** Mark a claimed record as successfully processed. Pass `trx` to enroll in an existing transaction. */
+	async markCompleted(id: number, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Completed, errorMessage: null },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
 
-	/** Mark a claimed record as failed and record the error for diagnostics. */
-	async markFailed(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	/** Mark a claimed record as failed and record the error for diagnostics. Pass `trx` to enroll in an existing transaction. */
+	async markFailed(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Failed, errorMessage },
 		);
@@ -272,10 +288,13 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	/**
 	 * Mark a claimed record as partially successful: the published version advanced
 	 * and some triggers are running, but others failed to (de)register. The message
-	 * carries per-node detail for diagnostics. The workflow stays published.
+	 * carries per-node detail for diagnostics. The workflow stays published. Pass
+	 * `trx` to enroll in an existing transaction.
 	 */
-	async markPartialSuccess(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	async markPartialSuccess(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.PartialSuccess, errorMessage },
 		);

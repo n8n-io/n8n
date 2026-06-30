@@ -1,6 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -17,12 +16,13 @@ import {
 	NodeConnectionTypes,
 	Workflow,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-// `restoreMocks: true` in the root jest config restores spies between tests,
+// `restoreMocks: true` in the root vi config restores spies between tests,
 // but the Python runtime check is invoked from inner describes' `beforeAll`
 // hooks (which run after the previous test's restore). Patching the static
 // method directly keeps the stub active for the whole test file.
