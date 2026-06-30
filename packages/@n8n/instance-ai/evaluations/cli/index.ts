@@ -560,10 +560,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			};
 		}
 
-		// Build-only case: the build (and its expectation judging in getOrBuild) is the whole test; skip execution.
+		// Build-only case — the build plus its expectation judging (in getOrBuild) is the whole
+		// test; skip execution. A failed build returns above with its error reasoning; reflect
+		// the real build status here rather than assuming success.
 		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME) {
 			return {
-				buildSuccess: true,
+				buildSuccess: build.success,
 				workflowId: build.workflowId,
 				passed: false,
 				score: 0,
