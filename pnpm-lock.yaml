@@ -315,6 +315,9 @@ catalogs:
     cron:
       specifier: 4.4.0
       version: 4.4.0
+    cron-parser:
+      specifier: 5.6.1
+      version: 5.6.1
     cross-env:
       specifier: ^7.0.3
       version: 7.0.3
@@ -3165,6 +3168,37 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
+  packages/@n8n/scheduler:
+    dependencies:
+      cron-parser:
+        specifier: 'catalog:'
+        version: 5.6.1
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+
   packages/@n8n/stylelint-config:
     dependencies:
       postcss-html:
@@ -5597,6 +5631,12 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils
+      '@smithy/node-http-handler':
+        specifier: 4.5.0
+        version: 4.5.0
+      '@smithy/types':
+        specifier: 4.13.1
+        version: 4.13.1
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
@@ -14128,6 +14168,10 @@ packages:
   cron-parser@4.9.0:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
+
+  cron-parser@5.6.1:
+    resolution: {integrity: sha512-QBm4o1PwZiuY7KFbVvW7FLC8bozy7YWzv+Fz6KRS7sQghzcbDZCGxr/Bc5b6TQreAoSwuWVP491dIcK0THCX6A==}
+    engines: {node: '>=18'}
 
   cron@4.4.0:
     resolution: {integrity: sha512-fkdfq+b+AHI4cKdhZlppHveI/mgz2qpiYxcm+t5E5TsxX7QrLS1VE0+7GENEk9z0EeGPcpSciGv6ez24duWhwQ==}
@@ -32222,6 +32266,10 @@ snapshots:
       - ts-toolbelt
 
   cron-parser@4.9.0:
+    dependencies:
+      luxon: 3.7.2
+
+  cron-parser@5.6.1:
     dependencies:
       luxon: 3.7.2
 

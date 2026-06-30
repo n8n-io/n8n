@@ -8,7 +8,7 @@
  * - Filters trigger dataset example preloading
  */
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Client } from 'langsmith/client';
 import { evaluate as langsmithEvaluate } from 'langsmith/evaluation';
 import type { Dataset, Example } from 'langsmith/schemas';

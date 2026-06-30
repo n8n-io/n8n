@@ -206,6 +206,8 @@ import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-Ad
 import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
 import { SetChatHubEnabledFromUsage1784000000038 } from '../common/1784000000038-SetChatHubEnabledFromUsage';
 import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/1784000000039-DropAgentExecutionFallbackColumns';
+import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
+import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -415,6 +417,8 @@ const sqliteMigrations: Migration[] = [
 	DropAgentDescriptionFromAgents1784000000037,
 	SetChatHubEnabledFromUsage1784000000038,
 	DropAgentExecutionFallbackColumns1784000000039,
+	CreateWorkflowPublicationTriggerStatusTable1784000000040,
+	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
 ];
 
 export { sqliteMigrations };

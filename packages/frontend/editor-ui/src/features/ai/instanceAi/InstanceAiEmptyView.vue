@@ -72,6 +72,8 @@ const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
 const INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY: BaseTextKey =
 	'experiments.instanceAiSplitEmptyState.input.placeholder';
+const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY: BaseTextKey =
+	'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder';
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // locks the composer to a constant height so hovering an example only swaps
 // the placeholder text — the examples list below it never shifts.
@@ -223,7 +225,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		if (!resolution) {
 			return {
 				suggestions: [],
-				placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+				placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
 			};
 		}
 
@@ -241,7 +243,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 				personalizedPromptSuggestionsVariant.value,
 				resolution.telemetryPayload,
 			),
-			placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
 		};
 	}
 
