@@ -1,6 +1,11 @@
 import type { SpanJSON, TracesSamplerSamplingContext, TransactionEvent } from '@sentry/core';
 
-import { buildBeforeSendTransaction, buildTracesSampler } from '../span-sampling';
+import {
+	buildBeforeSendTransaction,
+	buildTracesSampler,
+	shouldIgnoreIncomingRequest,
+	shouldIgnoreOutgoingRequest,
+} from '../span-sampling';
 
 const THRESHOLD_MS = 1000;
 
@@ -175,5 +180,49 @@ describe('buildTracesSampler', () => {
 
 	it('returns the base rate when attributes are missing', () => {
 		expect(tracesSampler(ctx())).toBe(BASE_RATE);
+	});
+});
+
+describe('shouldIgnoreIncomingRequest', () => {
+	it.each([
+		'/assets/index-abc.js',
+		'/assets/index-abc.js.map',
+		'/styles.css.map',
+		'/rest/ph',
+		'/rest/ph/decide',
+		'/rest/telemetry/proxy/v1/track',
+		'/rest/telemetry/proxy/v1/page',
+		'/assets/index-abc.js?v=1',
+		'/rest/telemetry/proxy/v1/track?foo=bar',
+		'/healthz',
+		'/healthz/readiness',
+	])('ignores noise path %s', (path) => {
+		expect(shouldIgnoreIncomingRequest(path)).toBe(true);
+	});
+
+	it.each(['/rest/workflows', '/rest/phony', '/', '/healthcheck'])(
+		'keeps signal-bearing path %s',
+		(path) => {
+			expect(shouldIgnoreIncomingRequest(path)).toBe(false);
+		},
+	);
+});
+
+describe('shouldIgnoreOutgoingRequest', () => {
+	it.each(['https://telemetry.n8n.io/v1/batch', 'https://telemetry.n8n.io:443/v1/track?foo=bar'])(
+		'ignores outbound telemetry call %s',
+		(url) => {
+			expect(shouldIgnoreOutgoingRequest(url)).toBe(true);
+		},
+	);
+
+	it.each([
+		'https://ph.n8n.io/decide',
+		'https://api.n8n.io/x',
+		'https://api.example.com/redirect?to=https://telemetry.n8n.io/v1/batch',
+		'https://telemetry.n8n.io.example.com/v1/batch',
+		'telemetry.n8n.io/v1/batch',
+	])('keeps non-telemetry outbound call %s', (url) => {
+		expect(shouldIgnoreOutgoingRequest(url)).toBe(false);
 	});
 });
