@@ -41,6 +41,10 @@ export function secretsProviderLogContext({
 	};
 }
 
+/**
+ * @deprecated Do not use this class because this is overkill for the purpose of logging.
+ * Use `secretsProviderLogContext` instead.
+ */
 abstract class SecretsProviderOperationalError extends OperationalError {
 	constructor(
 		message: string,
@@ -61,6 +65,10 @@ abstract class SecretsProviderOperationalError extends OperationalError {
 	}
 }
 
+/**
+ * @deprecated Do not use this class because this is overkill for the purpose of logging.
+ * Use `secretsProviderLogContext` instead.
+ */
 export class SecretsProviderInitializationError extends SecretsProviderOperationalError {
 	constructor(
 		providerName: string,
@@ -93,22 +101,10 @@ export class SecretsProviderConnectionError extends SecretsProviderOperationalEr
 	}
 }
 
-export class SecretsProviderDisconnectionError extends SecretsProviderOperationalError {
-	constructor(
-		providerName: string,
-		providerDisplayName: string,
-		context?: SecretsProviderErrorContext,
-	) {
-		super(
-			'External secrets provider disconnection failed',
-			providerName,
-			providerDisplayName,
-			'disconnect',
-			context,
-		);
-	}
-}
-
+/**
+ * @deprecated Do not use this class because this is overkill for the purpose of logging.
+ * Use `secretsProviderLogContext` instead.
+ */
 export class SecretsProviderUpdateError extends SecretsProviderOperationalError {
 	constructor(
 		providerName: string,
@@ -125,6 +121,10 @@ export class SecretsProviderUpdateError extends SecretsProviderOperationalError 
 	}
 }
 
+/**
+ * @deprecated Do not use this class because this is overkill for the purpose of logging.
+ * Use `secretsProviderLogContext` instead.
+ */
 export class SecretsProviderTestError extends SecretsProviderOperationalError {
 	constructor(
 		providerName: string,
@@ -141,6 +141,10 @@ export class SecretsProviderTestError extends SecretsProviderOperationalError {
 	}
 }
 
+/**
+ * @deprecated Do not use this class because this is overkill for the purpose of logging.
+ * Use `secretsProviderLogContext` instead.
+ */
 export class SecretsProviderTokenRefreshError extends SecretsProviderOperationalError {
 	constructor(
 		providerName: string,
