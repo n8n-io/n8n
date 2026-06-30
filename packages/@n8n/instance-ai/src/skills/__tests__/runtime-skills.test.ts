@@ -4,7 +4,17 @@ import { join } from 'node:path';
 
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
+const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+
 describe('Instance AI runtime skills', () => {
+	afterEach(() => {
+		if (ORIGINAL_ENABLED_MODULES === undefined) {
+			delete process.env.N8N_ENABLED_MODULES;
+		} else {
+			process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
+		}
+	});
+
 	it('points the workflow-builder skill at the SDK language reference', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
@@ -53,6 +63,38 @@ describe('Instance AI runtime skills', () => {
 			throw new Error('Expected load_skill to return file content');
 		}
 		expect(loadResult.content).toContain('Fast Routing');
+	});
+
+	it('excludes the bundled intent-recognition skill unless the agents module is enabled', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
+
+		expect(source.registry.skills).not.toContainEqual(
+			expect.objectContaining({ id: 'intent-recognition' }),
+		);
+		await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+	});
+
+	it('loads the bundled intent-recognition skill when the agents module is enabled', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+
+		expect(source.registry.skills).toContainEqual(
+			expect.objectContaining({ id: 'intent-recognition' }),
+		);
+		expect(
+			source.registry.skills.find((entry) => entry.id === 'intent-recognition')?.description,
+		).toContain('Load for intent-only classification');
+		await expect(source.loadSkill('intent-recognition')).resolves.toMatchObject({
+			name: 'intent-recognition',
+			instructions: expect.stringContaining('The deciding question is who owns control flow'),
+		});
+
+		const loadTool = createSkillLoadTool(source);
+		await expect(loadTool.handler?.({ skillId: 'intent-recognition' }, {})).resolves.toMatchObject({
+			success: true,
+			skillId: 'intent-recognition',
+			name: 'intent-recognition',
+			content: expect.stringContaining('workflow | hybrid | agent | single-ai-task | ambiguous'),
+		});
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
@@ -274,3 +316,15 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('do this unprompted');
 	});
 });
+
+async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string | undefined) {
+	vi.resetModules();
+	if (enabledModules === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = enabledModules;
+	}
+
+	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills');
+	return loadInstanceAiRuntimeSkillSource();
+}

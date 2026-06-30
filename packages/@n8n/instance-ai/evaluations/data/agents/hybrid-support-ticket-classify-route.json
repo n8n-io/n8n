@@ -17,6 +17,14 @@
 		"The agent explains that deterministic routing should handle the fixed downstream Slack team assignment.",
 		"The agent does not classify the request as a full agent because there is no open-ended tool-use loop."
 	],
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["intent-recognition"]
+			}
+		]
+	},
 	"executionScenarios": [
 		{
 			"name": "intent-only-response",

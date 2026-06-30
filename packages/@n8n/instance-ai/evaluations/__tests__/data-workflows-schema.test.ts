@@ -149,6 +149,25 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
 	});
 
+	it('accepts deterministic expected tool invocation checks', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			expectedToolInvocations: {
+				allOfToolCalls: [{ toolName: 'load_skill', argsContainAny: ['intent-recognition'] }],
+			},
+		});
+
+		expect(parsed.expectedToolInvocations).toEqual({
+			allOfToolCalls: [{ toolName: 'load_skill', argsContainAny: ['intent-recognition'] }],
+		});
+	});
+
+	it('rejects an empty expected tool invocation rule', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), expectedToolInvocations: {} }),
+		).toThrow(/expectedToolInvocations/);
+	});
+
 	it('leaves expectation arrays undefined when omitted', () => {
 		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.processExpectations).toBeUndefined();

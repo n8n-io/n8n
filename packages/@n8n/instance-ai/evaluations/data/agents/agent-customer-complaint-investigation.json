@@ -17,6 +17,14 @@
 		"The agent distinguishes this from fixed classify-then-route triage because the action sequence is discovered at runtime.",
 		"The agent does not classify the request as hybrid merely because refund, replace, and escalate are named outcomes."
 	],
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["intent-recognition"]
+			}
+		]
+	},
 	"executionScenarios": [
 		{
 			"name": "intent-only-response",

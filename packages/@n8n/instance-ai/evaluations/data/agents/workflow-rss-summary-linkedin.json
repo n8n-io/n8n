@@ -16,6 +16,14 @@
 		"The agent explains that the LLM only performs a fixed summarization task inside a fixed pipeline.",
 		"The agent does not classify the request as a full agent merely because an LLM is present."
 	],
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["intent-recognition"]
+			}
+		]
+	},
 	"executionScenarios": [
 		{
 			"name": "intent-only-response",
