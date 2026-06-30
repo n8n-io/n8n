@@ -527,7 +527,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.clearRows.mockResolvedValue({ deletedCount: 42 });
@@ -549,7 +549,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.clearRows.mockResolvedValue({ deletedCount: 0 });
