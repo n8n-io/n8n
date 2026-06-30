@@ -608,12 +608,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</EnterpriseEdition>
 
 				<CredentialInputs
-					v-if="credentialType"
+					v-if="credentialType && canWrite"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="showValidationWarning"
-					:is-read-only="!canWrite"
 					@update="onDataChange"
 				/>
 

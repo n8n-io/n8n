@@ -795,7 +795,7 @@ describe('CredentialConfig', () => {
 			move: false,
 		};
 
-		it('renders credential inputs (disabled) for users without update permission', () => {
+		it('does not render credential inputs for users without edit permission', () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -808,8 +808,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('credential-connection-parameter')).toBeInTheDocument();
-			expect(screen.getByRole('textbox')).toBeDisabled();
+			expect(screen.queryByTestId('credential-connection-parameter')).not.toBeInTheDocument();
 		});
 	});
 

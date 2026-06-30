@@ -33,7 +33,6 @@ type Props = {
 	documentationUrl?: string;
 	eventSource?: string;
 	label?: IParameterLabel;
-	isReadOnly?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,7 +40,6 @@ const props = withDefaults(defineProps<Props>(), {
 	nodeValues: () => ({}),
 	documentationUrl: undefined,
 	eventSource: undefined,
-	isReadOnly: false,
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
@@ -187,7 +185,7 @@ defineExpose({
 				<ParameterOptions
 					:parameter="parameter"
 					:value="value"
-					:is-read-only="isReadOnly"
+					:is-read-only="false"
 					:show-options="!isFixedCollectionType"
 					:show-expression-selector="!isFixedCollectionType"
 					:is-value-expression="isValueExpression"
@@ -202,7 +200,6 @@ defineExpose({
 				:parameter="parameter"
 				:model-value="value"
 				:path="parameter.name"
-				:is-read-only="isReadOnly"
 				:hide-issues="true"
 				:documentation-url="documentationUrl"
 				:error-highlight="showRequiredErrors"
