@@ -83,6 +83,11 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  * Normalizes a PEM credential field and returns it as a Buffer, throwing a clear
  * error when the value is not a PEM block (the most common paste mistake) so the
  * failure surfaces at config time instead of as an opaque TLS handshake error.
+ *
+ * The strict BEGIN/END check stays here rather than in the shared `formatPemBlock`
+ * normalizer: that helper is a non-throwing, best-effort formatter used by many
+ * credentials (it returns multi-block chains and unrecognized input unchanged), so
+ * only this Kafka mTLS path wants to reject an incomplete PEM loudly at config time.
  * @param value - The raw PEM string from the credential
  * @param fieldName - Human-readable field name used in the error message
  */
