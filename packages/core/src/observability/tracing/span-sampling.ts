@@ -19,6 +19,35 @@ const POLL_TRIGGER_SAMPLE_RATE = 0.001;
 /** Fallback slow-span threshold (ms) when a caller doesn't configure one. */
 export const DEFAULT_SLOW_SPAN_THRESHOLD_MS = 1000;
 
+/**
+ * Skipper request paths with no tracing signal. Sentry's `ignoreStaticAssets`
+ * already drops `.js/.css/…` but misses source maps.
+ */
+const NOISE_INCOMING_PATHS = [
+	/^\/assets\//,
+	/\.map$/,
+	/^\/healthz(\/|$)/, // liveness/readiness probes (default endpoint)
+	/^\/rest\/ph(\/|$)/,
+	/^\/rest\/telemetry\/proxy\//,
+];
+
+const TELEMETRY_HOSTNAME = 'telemetry.n8n.io';
+
+/** Whether an incoming request path should be skipped before a server span is created. */
+export function shouldIgnoreIncomingRequest(urlPath: string): boolean {
+	const path = urlPath.split('?')[0];
+	return NOISE_INCOMING_PATHS.some((re) => re.test(path));
+}
+
+/** Outbound telemetry batch calls carry no tracing signal. */
+export function shouldIgnoreOutgoingRequest(url: string): boolean {
+	try {
+		return new URL(url).hostname === TELEMETRY_HOSTNAME;
+	} catch {
+		return false;
+	}
+}
+
 /** A span errored unless Sentry explicitly marked it ok. */
 function isErrored(status: SpanJSON['status']): boolean {
 	return status !== undefined && status !== 'ok';
