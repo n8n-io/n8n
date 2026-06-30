@@ -71,20 +71,24 @@ describe('PublicationStatusReporter', () => {
 			],
 		});
 
-		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
-			{
-				nodeId: 'a',
-				versionId: 'v-2',
-				status: 'activated',
-				errorMessage: null,
-			},
-			{
-				nodeId: 'b',
-				versionId: 'v-2',
-				status: 'activated',
-				errorMessage: null,
-			},
-		], entityManager);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[
+				{
+					nodeId: 'a',
+					versionId: 'v-2',
+					status: 'activated',
+					errorMessage: null,
+				},
+				{
+					nodeId: 'b',
+					versionId: 'v-2',
+					status: 'activated',
+					errorMessage: null,
+				},
+			],
+			entityManager,
+		);
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
@@ -97,7 +101,11 @@ describe('PublicationStatusReporter', () => {
 	test('unpublished clears trigger rows, marks the record completed, clears errors, and pushes deactivation', async () => {
 		await reporter.report(makeRecord(), { type: 'unpublished' });
 
-		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [], entityManager);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[],
+			entityManager,
+		);
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
@@ -138,7 +146,11 @@ describe('PublicationStatusReporter', () => {
 
 		expect(triggerStatusRepository.replaceForWorkflow).not.toHaveBeenCalled();
 		expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed', entityManager);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'registration failed',
+			entityManager,
+		);
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({
 			type: 'workflowFailedToActivate',
@@ -158,20 +170,24 @@ describe('PublicationStatusReporter', () => {
 			],
 		});
 
-		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
-			{
-				nodeId: 'a',
-				versionId: 'v-2',
-				status: 'activated',
-				errorMessage: null,
-			},
-			{
-				nodeId: 'b',
-				versionId: 'v-2',
-				status: 'failed',
-				errorMessage: 'cron unavailable',
-			},
-		], entityManager);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[
+				{
+					nodeId: 'a',
+					versionId: 'v-2',
+					status: 'activated',
+					errorMessage: null,
+				},
+				{
+					nodeId: 'b',
+					versionId: 'v-2',
+					status: 'failed',
+					errorMessage: 'cron unavailable',
+				},
+			],
+			entityManager,
+		);
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 			1,
 			'partial registration failed',
@@ -197,26 +213,30 @@ describe('PublicationStatusReporter', () => {
 			expectedMessage,
 			entityManager,
 		);
-		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [
-			{
-				nodeId: 'a',
-				versionId: 'v-2',
-				status: 'activated',
-				errorMessage: null,
-			},
-			{
-				nodeId: 'b',
-				versionId: 'v-2',
-				status: 'failed',
-				errorMessage: 'cron unavailable',
-			},
-			{
-				nodeId: 'c',
-				versionId: 'v-2',
-				status: 'failed',
-				errorMessage: 'broker down',
-			},
-		], entityManager);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[
+				{
+					nodeId: 'a',
+					versionId: 'v-2',
+					status: 'activated',
+					errorMessage: null,
+				},
+				{
+					nodeId: 'b',
+					versionId: 'v-2',
+					status: 'failed',
+					errorMessage: 'cron unavailable',
+				},
+				{
+					nodeId: 'c',
+					versionId: 'v-2',
+					status: 'failed',
+					errorMessage: 'broker down',
+				},
+			],
+			entityManager,
+		);
 		// CAT-3432: partial path must NOT register activation errors
 		expect(activationErrorsService.register).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({

@@ -12,7 +12,9 @@ export class CreateWorkflowPublicationTriggerStatusTable1784000000039
 				column('nodeId').varchar(36).notNull.primary,
 				column('versionId')
 					.varchar(36)
-					.notNull.comment('References workflow_history.versionId: the published version these statuses were recorded for'),
+					.notNull.comment(
+						'References workflow_history.versionId: the published version these statuses were recorded for',
+					),
 				column('status').varchar(20).notNull.withEnumCheck(['activated', 'failed']),
 				column('errorMessage').text,
 			)
