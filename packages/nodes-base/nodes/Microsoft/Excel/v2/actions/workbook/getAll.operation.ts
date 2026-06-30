@@ -74,8 +74,7 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		try {
 			if (getExcelCredentialType.call(this) === 'microsoftEntraServicePrincipalApi') {
-				// App-only Graph cannot search a drive (the OneDrive reference blocks search
-				// under the Service Principal too), so listing workbooks this way is unsupported.
+				// App-only Graph can't search a drive, so this listing is unsupported under SP.
 				throw new NodeOperationError(
 					this.getNode(),
 					'Search is not supported with the Service Principal credential',

@@ -14,8 +14,7 @@ export async function searchWorkbooks(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	if (getExcelCredentialType.call(this) === 'microsoftEntraServicePrincipalApi') {
-		// App-only Graph cannot search a drive, so the "From List" workbook picker can't work
-		// under the Service Principal — steer the user to the "By ID" mode.
+		// App-only Graph can't search a drive — steer the user to "By ID".
 		throw new NodeOperationError(
 			this.getNode(),
 			'Search is not supported with the Service Principal credential',

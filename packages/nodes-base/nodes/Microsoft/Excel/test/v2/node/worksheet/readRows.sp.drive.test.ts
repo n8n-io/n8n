@@ -3,10 +3,8 @@ import nock from 'nock';
 
 import { credentials } from '../../../credentials';
 
-// End-to-end guard for the Service Principal "Access As: Drive" target. With a drive
-// target the request roots at `/drives/{id}` directly (no `/drive` navigation appended,
-// so no double `/drive`), proving the `/drives/{id}` branch through the real node +
-// credential authenticate + nock pipeline — the user-target smoke can't cover this.
+// SP "Access As: Drive" target roots at `/drives/{id}` directly (no `/drive` appended) — the
+// user-target smoke can't cover this branch.
 describe('Test MicrosoftExcelV2, Service Principal worksheet => readRows (drive target) smoke', () => {
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')

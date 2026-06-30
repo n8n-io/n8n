@@ -345,8 +345,7 @@ describe('Microsoft Excel Transport', () => {
 		});
 
 		it('blocks the Service Principal list-search (drive search is unsupported app-only)', async () => {
-			// App-only Graph cannot search a drive, so the "From List" workbook picker must throw
-			// (steering the user to "By ID") rather than issue a request that fails at runtime.
+			// "From List" must throw under SP (app-only can't search a drive), not issue a request.
 			const loadOptionsRequestWithAuth = vi.fn().mockResolvedValue({ value: [] });
 			mockLoadOptions.helpers.requestWithAuthentication = loadOptionsRequestWithAuth;
 			mockLoadOptions.getNode.mockReturnValue(mockNode);
@@ -372,8 +371,7 @@ describe('Microsoft Excel Transport', () => {
 				userTarget: { value: 'jane@contoso.com' },
 				...overrides,
 			};
-			// Honor the fallback (3rd arg in execute) so an absent param behaves like the real
-			// getNodeParameter — returning the passed default rather than undefined.
+			// Honor the 3rd-arg fallback like the real getNodeParameter (return the default, not undefined).
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(name, _itemIndex, fallback) =>
 					(name in params ? params[name as string] : fallback) as never,
@@ -412,9 +410,8 @@ describe('Microsoft Excel Transport', () => {
 		});
 
 		it('defaults to the user target when resourceTarget is not persisted (unchanged default)', async () => {
-			// n8n does not persist an option left at its default, so a UI-built SP node can
-			// omit resourceTarget while still having a userTarget. resolveScopeRoot must
-			// default to 'user' (via the getNodeParameter fallback) instead of throwing.
+			// A default-valued option isn't persisted, so an SP node may omit resourceTarget;
+			// resolveScopeRoot must default to 'user' rather than throw.
 			const params: Record<string, unknown> = {
 				authentication: 'microsoftEntraServicePrincipalApi',
 				userTarget: { value: 'jane@contoso.com' },
@@ -608,10 +605,7 @@ describe('Microsoft Excel Transport', () => {
 		});
 
 		it('falls back to the user target when resourceTarget is unpersisted', () => {
-			// 3-arg-aware mock (mirrors the real getNodeParameter): an absent param returns the
-			// passed fallback. This pins the fix's contract directly at the function level —
-			// resolveScopeRoot must default to 'user' rather than throw when resourceTarget is
-			// omitted (its default is not persisted).
+			// 3-arg-aware mock: resolveScopeRoot must default to 'user' when resourceTarget is omitted.
 			const params: Record<string, unknown> = {
 				authentication: 'microsoftEntraServicePrincipalApi',
 				userTarget: { value: 'jane@contoso.com' },

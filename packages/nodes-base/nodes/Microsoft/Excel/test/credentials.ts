@@ -1,7 +1,5 @@
-// The NodeTestHarness preAuthentication is a no-op, so the Service Principal token POST
-// never fires — the credential's `authenticate` attaches `Bearer <accessToken>` straight
-// from this fixture. Supply `accessToken` directly and nock only the scoped Graph
-// endpoint (with the Bearer header), never login.microsoftonline.com.
+// preAuthentication is a no-op in the harness, so `authenticate` attaches Bearer <accessToken>
+// from this fixture — nock the scoped Graph endpoint, not login.microsoftonline.com.
 export const credentials = {
 	microsoftExcelOAuth2Api: {
 		scope: 'openid',

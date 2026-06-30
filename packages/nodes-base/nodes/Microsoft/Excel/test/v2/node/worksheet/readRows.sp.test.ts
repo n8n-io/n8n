@@ -3,13 +3,8 @@ import nock from 'nock';
 
 import { credentials } from '../../../credentials';
 
-// Smoke test that de-risks the imperative requestWithAuthentication-through-
-// NodeTestHarness path for the app-only Service Principal credential. The harness
-// preAuthentication is a no-op, so the token POST never fires — we nock ONLY the
-// scoped Graph endpoint and require the Bearer header that the credential's
-// `authenticate` attaches from the fixture's accessToken. The request is rebased from
-// `/me` onto `/users/{upn}/drive`, proving the app-only routing end to end.
-// login.microsoftonline.com is deliberately NOT nocked.
+// SP smoke test: asserts the /me → /users/{upn}/drive rebase end to end. Nock only the
+// scoped Graph endpoint (Bearer from the fixture); preAuthentication is a no-op in the harness.
 describe('Test MicrosoftExcelV2, Service Principal worksheet => readRows smoke', () => {
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')

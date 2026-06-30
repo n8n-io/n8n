@@ -1,21 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 /**
- * App-only target selector for the Service Principal credential. App-only Microsoft
- * Graph has no `/me`, so the user must say which user or drive holds the workbooks the
- * node should act on. These are STATIC `INodeProperties` only — the runtime resolution
- * lives in `resolveScopeRoot` in `transport/index.ts`.
- *
- * Each property is shown (and required) only when the Service Principal credential
- * is selected. The RLCs use ID mode only (no `searchListMethod`) so rendering needs
- * no Directory.Read.All — the user pastes the id. The param `name`s are kept identical
- * to the Microsoft OneDrive node's so the transport can read `${target}Target`
- * generically and so workflow JSON stays portable across the nodes.
- *
- * SharePoint site/library app-only access is intentionally NOT a target here — a
- * document library is reachable via its drive ID (the Drive target), and full Site
- * addressing lands with the Microsoft SharePoint node (ENT-92), matching the OneDrive
- * reference which dropped its Site target for the same reason.
+ * App-only target selector (Service Principal only): which user/drive holds the workbooks.
+ * Static descriptors — runtime resolution lives in `resolveScopeRoot` (transport/index.ts).
  */
 export const resourceTargetParam: INodeProperties = {
 	displayName: 'Access As',
