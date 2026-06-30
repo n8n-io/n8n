@@ -1,6 +1,10 @@
 import { ref, computed, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { listAgentsPage, type ListAgentsOptions } from '@/features/agents/composables/useAgentApi';
+import {
+	listAgentsPage,
+	getAgent,
+	type ListAgentsOptions,
+} from '@/features/agents/composables/useAgentApi';
 import type { AgentResource } from '@/features/agents/types';
 
 const PAGE_SIZE = 40;
@@ -118,6 +122,19 @@ export function useAgentResourcesLocator(
 		await loadPage(true);
 	}
 
+	// Re-fetches a single agent by id and refreshes its cached display name, so a
+	// stale `cachedResultName` (e.g. after the agent was renamed in the builder)
+	// can be healed. Returns null on failure so callers keep the existing value.
+	async function refreshAgentName(id: string): Promise<string | null> {
+		if (!projectId.value) return null;
+		try {
+			const agent = await getAgent(rootStore.restApiContext, projectId.value, id);
+			return agentToResourceMapper(agent).name;
+		} catch {
+			return null;
+		}
+	}
+
 	async function onSearchFilter(filter: string) {
 		searchFilter.value = filter;
 		await loadPage(true);
@@ -138,5 +155,6 @@ export function useAgentResourcesLocator(
 		getAgentName,
 		loadMore,
 		setAgentsResources,
+		refreshAgentName,
 	};
 }

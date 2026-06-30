@@ -3,12 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useAgentResourcesLocator } from './useAgentResourcesLocator';
 
-const { listAgentsPage } = vi.hoisted(() => ({
+const { listAgentsPage, getAgent } = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
+	getAgent: vi.fn(),
 }));
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listAgentsPage,
+	getAgent,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -249,5 +251,31 @@ describe('useAgentResourcesLocator', () => {
 		expect(listAgentsPage).not.toHaveBeenCalled();
 		expect(agentsResources.value).toEqual([]);
 		expect(hasMoreAgentsToLoad.value).toBe(false);
+	});
+
+	describe('refreshAgentName', () => {
+		it('returns the agent current display name', async () => {
+			getAgent.mockResolvedValue({ id: 'a1', name: 'Renamed Agent', projectId: 'proj-1' });
+
+			const { refreshAgentName } = useAgentResourcesLocator(ref('proj-1'), noProjectName);
+
+			await expect(refreshAgentName('a1')).resolves.toBe('Renamed Agent');
+			expect(getAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'a1');
+		});
+
+		it('returns null without querying when no project is resolved', async () => {
+			const { refreshAgentName } = useAgentResourcesLocator(ref(''), noProjectName);
+
+			await expect(refreshAgentName('a1')).resolves.toBeNull();
+			expect(getAgent).not.toHaveBeenCalled();
+		});
+
+		it('returns null when the fetch fails, so the caller keeps the cached name', async () => {
+			getAgent.mockRejectedValueOnce(new Error('boom'));
+
+			const { refreshAgentName } = useAgentResourcesLocator(ref('proj-1'), noProjectName);
+
+			await expect(refreshAgentName('a1')).resolves.toBeNull();
+		});
 	});
 });

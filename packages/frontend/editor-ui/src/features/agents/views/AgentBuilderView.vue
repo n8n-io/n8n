@@ -791,13 +791,16 @@ async function initialize() {
 		builderTelemetry.resetForAgentSwitch();
 
 		agent.value = null;
-		activeChatSessionId.value = null;
-		localConfig.value = null;
-		connectedTriggers.value = [];
-		agentFiles.value = [];
-		agentFilesLoading.value = false;
-		agentFilesUploading.value = false;
-		deletingAgentFileId.value = null;
+		// Clear the name too, so the document title / dialogs don't flash the
+	// previously-viewed agent's name until the fetch for this agent resolves.
+	agentName.value = '';
+	activeChatSessionId.value = null;
+	localConfig.value = null;
+	connectedTriggers.value = [];
+	agentFiles.value = [];
+	agentFilesLoading.value = false;
+	agentFilesUploading.value = false;
+	deletingAgentFileId.value = null;
 
 		// Refresh builder readiness so the empty-state CTA reflects the latest
 		// admin configuration. Never blocks the rest of the load.

@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAgentReturnContextStore } from '../agentReturnContext.store';
 import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
@@ -14,26 +15,30 @@ import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
  */
 export function useAgentNavigation() {
 	const router = useRouter();
+	const workflowId = useWorkflowId();
 	const workflowsStore = useWorkflowsStore();
 	const returnContext = useAgentReturnContextStore();
 
-	function rememberOrigin(originNodeId?: string) {
-		const workflowId = workflowsStore.workflowId;
-		// No canvas origin (e.g. opened from a settings context) → no banner.
-		if (!workflowId) return;
-		returnContext.set({
-			workflowId,
-			nodeId: originNodeId ? workflowsStore.getPartialIdForNode(originNodeId) : '',
-		});
+	function rememberOrigin(agentId: string, originNodeId?: string) {
+		// Only a persisted workflow has a real id to return to; a brand-new
+		// (unsaved) workflow has no meaningful "back to workflow" target.
+		if (workflowsStore.isNewWorkflow) return;
+		// `workflowsStore.workflowId` is set on load and is reliable here; the
+		// route-based `useWorkflowId()` is a fallback for embedded-canvas contexts.
+		const wfId = workflowsStore.workflowId || workflowId.value;
+		if (!wfId) return;
+		// A full node id is fine: the canvas re-opens the node via prefix match
+		// (`findNodeByPartialId`), so we avoid the partial-id computation.
+		returnContext.set({ workflowId: wfId, nodeId: originNodeId ?? '', agentId });
 	}
 
 	async function openBuilder(projectId: string, agentId: string, originNodeId?: string) {
-		rememberOrigin(originNodeId);
+		rememberOrigin(agentId, originNodeId);
 		await router.push({ name: AGENT_BUILDER_VIEW, params: { projectId, agentId } });
 	}
 
 	async function openAgent(projectId: string, agentId: string, originNodeId?: string) {
-		rememberOrigin(originNodeId);
+		rememberOrigin(agentId, originNodeId);
 		await router.push({ name: AGENT_VIEW, params: { projectId, agentId } });
 	}
 

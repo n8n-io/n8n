@@ -6,9 +6,10 @@ import { VIEWS } from '@/app/constants';
 import type { AgentReturnContext } from '../agentReturnContext.store';
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const route = reactive<{ params: { agentId?: string } }>({ params: { agentId: 'agent-1' } });
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push }),
-	useRoute: () => ({ params: {} }),
+	useRoute: () => route,
 	RouterLink: vi.fn(),
 }));
 
@@ -34,10 +35,11 @@ describe('AgentView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		returnContextStore.context = null;
+		route.params = { agentId: 'agent-1' };
 	});
 
-	it('shows the back-to-workflow banner when a return context is set', () => {
-		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc' };
+	it('shows the back-to-workflow banner on the pages of the round-trip agent', () => {
+		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc', agentId: 'agent-1' };
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('agent-back-to-workflow')).toBeInTheDocument();
 	});
@@ -47,8 +49,15 @@ describe('AgentView', () => {
 		expect(queryByTestId('agent-back-to-workflow')).toBeNull();
 	});
 
+	it('hides the banner when viewing a different agent than the round-trip', () => {
+		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc', agentId: 'agent-1' };
+		route.params = { agentId: 'agent-2' };
+		const { queryByTestId } = renderComponent();
+		expect(queryByTestId('agent-back-to-workflow')).toBeNull();
+	});
+
 	it('navigates back to the origin workflow and node, clearing the context', async () => {
-		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc' };
+		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc', agentId: 'agent-1' };
 		const { getByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button'));
@@ -60,8 +69,20 @@ describe('AgentView', () => {
 		});
 	});
 
-	it('clears the return context when unmounted', () => {
-		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc' };
+	it('omits the node id from the back navigation when the origin had none', async () => {
+		returnContextStore.context = { workflowId: 'wf-1', nodeId: '', agentId: 'agent-1' };
+		const { getByRole } = renderComponent();
+
+		await userEvent.click(getByRole('button'));
+
+		expect(push).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: 'wf-1' },
+		});
+	});
+
+	it('clears the round-trip context when the agent feature unmounts', () => {
+		returnContextStore.context = { workflowId: 'wf-1', nodeId: 'abc', agentId: 'agent-1' };
 		const { unmount } = renderComponent();
 
 		unmount();

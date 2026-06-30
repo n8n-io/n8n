@@ -13,8 +13,8 @@ describe('agentReturnContext.store', () => {
 	it('sets and clears the context', () => {
 		const store = useAgentReturnContextStore();
 
-		store.set({ workflowId: 'wf-1', nodeId: 'abc123' });
-		expect(store.context).toEqual({ workflowId: 'wf-1', nodeId: 'abc123' });
+		store.set({ workflowId: 'wf-1', nodeId: 'abc123', agentId: 'agent-1' });
+		expect(store.context).toEqual({ workflowId: 'wf-1', nodeId: 'abc123', agentId: 'agent-1' });
 
 		store.clear();
 		expect(store.context).toBeNull();

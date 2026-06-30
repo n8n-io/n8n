@@ -10,8 +10,10 @@ import { ref } from 'vue';
  */
 export interface AgentReturnContext {
 	workflowId: string;
-	/** Partial node id (`workflowsStore.getPartialIdForNode`) so the canvas can re-focus the origin node. */
+	/** Origin node id so the canvas can re-focus it on return (matched by prefix via `findNodeByPartialId`). */
 	nodeId: string;
+	/** Agent navigated to — the banner only shows on this agent's pages (survives view remounts). */
+	agentId: string;
 }
 
 export const useAgentReturnContextStore = defineStore('agentReturnContext', () => {
