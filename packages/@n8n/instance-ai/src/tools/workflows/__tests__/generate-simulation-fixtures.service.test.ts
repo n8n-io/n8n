@@ -6,7 +6,7 @@ vi.mock('../../../utils/eval-agents', async () => {
 	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
-import { createEvalAgent, extractText } from '../../../utils/eval-agents';
+import { SONNET_MODEL, createEvalAgent, extractText } from '../../../utils/eval-agents';
 import type { NodeSimulationVerdict } from '../../../workflow-loop/workflow-loop-state';
 import { generateSimulationFixtures } from '../generate-simulation-fixtures.service';
 
@@ -80,6 +80,10 @@ describe('generateSimulationFixtures', () => {
 		});
 		expect(Object.keys(result)).toEqual(['Send Slack']);
 		expect(result['Send Slack'][0]).toMatchObject({ ok: true });
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'verification-simulation-fixtures',
+			expect.objectContaining({ model: SONNET_MODEL }),
+		);
 	});
 
 	it('fills empty fixtures for nodes the LLM omitted', async () => {

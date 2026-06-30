@@ -1,8 +1,9 @@
+import type { Mock } from 'vitest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { CommitResult, PullResult, PushResult } from 'simple-git';
 
@@ -25,17 +26,19 @@ import type { ExportResult } from '../types/export-result';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {
-	getStatus: jest.fn(),
+	getStatus: vi.fn(),
 };
 
-jest.mock('@n8n/backend-common', () => ({
-	...jest.requireActual('@n8n/backend-common'),
-	isContainedWithin: jest.fn(() => true),
+vi.mock('@n8n/backend-common', async () => ({
+	...(await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common')),
+	isContainedWithin: vi.fn(() => true),
 }));
 
-jest.mock('../source-control-helper.ee', () => ({
-	...jest.requireActual('../source-control-helper.ee'),
-	sourceControlFoldersExistCheck: jest.fn(() => true),
+vi.mock('../source-control-helper.ee', async () => ({
+	...(await vi.importActual<typeof import('../source-control-helper.ee')>(
+		'../source-control-helper.ee',
+	)),
+	sourceControlFoldersExistCheck: vi.fn(() => true),
 }));
 
 // Reuse typed user mocks at module scope to avoid performance issues related to recreating nested proxy mocks per test
@@ -71,8 +74,8 @@ describe('SourceControlService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		jest.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
+		vi.resetAllMocks();
+		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
 	});
@@ -223,7 +226,7 @@ describe('SourceControlService', () => {
 			);
 			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
 
-			(isContainedWithin as jest.Mock).mockReturnValue(true);
+			(isContainedWithin as Mock).mockReturnValue(true);
 
 			gitService.push.mockResolvedValueOnce(mockPushResult);
 
@@ -300,7 +303,7 @@ describe('SourceControlService', () => {
 
 		it('should throw an error if file path validation fails', async () => {
 			const user = mock<User>();
-			(isContainedWithin as jest.Mock).mockReturnValueOnce(false);
+			(isContainedWithin as Mock).mockReturnValueOnce(false);
 
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
@@ -351,7 +354,7 @@ describe('SourceControlService', () => {
 			const mockPushResult = mock<PushResult>();
 			gitService.push.mockResolvedValueOnce(mockPushResult);
 
-			(isContainedWithin as jest.Mock).mockReturnValueOnce(true);
+			(isContainedWithin as Mock).mockReturnValueOnce(true);
 
 			const expectedTagsPath = `${preferencesService.gitFolder}/tags.json`;
 			const expectedFilePath = `${preferencesService.gitFolder}/some-workflow.json`;
@@ -392,7 +395,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
 
-			(isContainedWithin as jest.Mock).mockReturnValue(true);
+			(isContainedWithin as Mock).mockReturnValue(true);
 
 			// Mock workflow export to fail
 			const exportError = new Error('Failed to export workflows');
@@ -437,7 +440,7 @@ describe('SourceControlService', () => {
 				files: [],
 			});
 
-			(isContainedWithin as jest.Mock).mockReturnValue(true);
+			(isContainedWithin as Mock).mockReturnValue(true);
 
 			const pushError = new Error(
 				'To github.com:test/n8n.git ! refs/heads/test:refs/heads/test [remote rejected] (push declined due to repository rule violations)',
@@ -486,7 +489,7 @@ describe('SourceControlService', () => {
 				files: [],
 			});
 
-			(isContainedWithin as jest.Mock).mockReturnValue(true);
+			(isContainedWithin as Mock).mockReturnValue(true);
 
 			// Mock commit to fail
 			const commitError = new Error('Git commit failed');
@@ -596,7 +599,7 @@ describe('SourceControlService', () => {
 			});
 
 			if (!Array.isArray(pushResult)) {
-				fail('Expected pushResult to be an array.');
+				expect.fail('Expected pushResult to be an array.');
 			}
 
 			expect(pushResult).toHaveLength(1);
@@ -638,7 +641,7 @@ describe('SourceControlService', () => {
 			});
 
 			if (!Array.isArray(pushResult)) {
-				fail('Expected pushResult to be an array.');
+				expect.fail('Expected pushResult to be an array.');
 			}
 
 			expect(pushResult).toHaveLength(1);
@@ -696,10 +699,10 @@ describe('SourceControlService', () => {
 			});
 
 			if (!Array.isArray(pullResult)) {
-				fail('Expected pullResult to be an array.');
+				expect.fail('Expected pullResult to be an array.');
 			}
 			if (!Array.isArray(pushResult)) {
-				fail('Expected pushResult to be an array.');
+				expect.fail('Expected pushResult to be an array.');
 			}
 
 			expect(pullResult).toHaveLength(5);
@@ -751,7 +754,7 @@ describe('SourceControlService', () => {
 		it.each([{ type: 'workflow' as SourceControlledFile['type'], id: '1234', content: '{}' }])(
 			'should return file content for $type',
 			async ({ type, id, content }) => {
-				jest.spyOn(gitService, 'getFileContent').mockResolvedValue(content);
+				vi.mocked(gitService.getFileContent).mockResolvedValue(content);
 				const user = globalAdminUserWithId;
 
 				const result = await sourceControlService.getRemoteFileEntity({ user, type, id });
@@ -771,7 +774,7 @@ describe('SourceControlService', () => {
 		);
 
 		it('should fail if the git service fails to get the file content', async () => {
-			jest.spyOn(gitService, 'getFileContent').mockRejectedValue(new Error('Git service error'));
+			vi.mocked(gitService.getFileContent).mockRejectedValue(new Error('Git service error'));
 			const user = globalAdminUserWithId;
 
 			await expect(
@@ -781,9 +784,9 @@ describe('SourceControlService', () => {
 
 		it('should throw an error if the user does not have access to the project', async () => {
 			const user = globalMemberUserWithId;
-			jest
-				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
-				.mockResolvedValue([]);
+			vi.mocked(
+				sourceControlScopedService.getWorkflowsInAdminProjectsFromContext,
+			).mockResolvedValue([]);
 
 			await expect(
 				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
@@ -792,10 +795,10 @@ describe('SourceControlService', () => {
 
 		it('should return content for an authorized workflow', async () => {
 			const user = globalMemberUserWithId;
-			jest
-				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
-				.mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
-			jest.spyOn(gitService, 'getFileContent').mockResolvedValue('{}');
+			vi.mocked(
+				sourceControlScopedService.getWorkflowsInAdminProjectsFromContext,
+			).mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
+			vi.mocked(gitService.getFileContent).mockResolvedValue('{}');
 			const result = await sourceControlService.getRemoteFileEntity({
 				user,
 				type: 'workflow',
@@ -808,11 +811,11 @@ describe('SourceControlService', () => {
 	describe('disconnect', () => {
 		beforeEach(() => {
 			// Common mock setup
-			preferencesService.setPreferences = jest.fn().mockResolvedValue(undefined);
+			preferencesService.setPreferences = vi.fn().mockResolvedValue(undefined);
 			sourceControlExportService.deleteRepositoryFolder.mockResolvedValue(undefined);
-			preferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
-			preferencesService.deleteKeyPair = jest.fn().mockResolvedValue(undefined);
-			preferencesService.resetKnownHosts = jest.fn().mockResolvedValue(undefined);
+			preferencesService.deleteHttpsCredentials = vi.fn().mockResolvedValue(undefined);
+			preferencesService.deleteKeyPair = vi.fn().mockResolvedValue(undefined);
+			preferencesService.resetKnownHosts = vi.fn().mockResolvedValue(undefined);
 			gitService.resetService.mockReturnValue(undefined);
 		});
 
@@ -825,7 +828,7 @@ describe('SourceControlService', () => {
 				branchColor: '#ff0000',
 				connectionType: 'https' as const,
 			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
 
 			const result = await sourceControlService.disconnect();
 
@@ -847,7 +850,7 @@ describe('SourceControlService', () => {
 				repositoryUrl: 'https://github.com/test/repo.git',
 				connectionType: 'https' as const,
 			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
 
 			await sourceControlService.disconnect();
 
@@ -861,7 +864,7 @@ describe('SourceControlService', () => {
 				repositoryUrl: 'https://github.com/test/repo.git',
 				connectionType: 'https' as const,
 			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
 
 			await sourceControlService.disconnect();
 
@@ -875,7 +878,7 @@ describe('SourceControlService', () => {
 				repositoryUrl: 'git@github.com:test/repo.git',
 				connectionType: 'ssh' as const,
 			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
 
 			await sourceControlService.disconnect({ keepKeyPair: false });
 
@@ -889,7 +892,7 @@ describe('SourceControlService', () => {
 				repositoryUrl: 'git@github.com:test/repo.git',
 				connectionType: 'ssh' as const,
 			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
 
 			await sourceControlService.disconnect({ keepKeyPair: true });
 
@@ -903,7 +906,7 @@ describe('SourceControlService', () => {
 				repositoryUrl: 'git@github.com:test/repo.git',
 				connectionType: 'ssh' as const,
 			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
 
 			await sourceControlService.disconnect();
 
@@ -917,7 +920,7 @@ describe('SourceControlService', () => {
 				repositoryUrl: 'https://github.com/test/repo.git',
 				connectionType: 'https' as const,
 			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
 
 			// ACT
 			await sourceControlService.disconnect();
@@ -937,11 +940,11 @@ describe('SourceControlService', () => {
 
 		it('should reload configuration from database when triggered by pubsub', async () => {
 			// ARRANGE
-			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
 				.fn()
 				.mockResolvedValue(undefined);
-			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
-			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
 
 			// ACT
 			await sourceControlService.reloadConfiguration();
@@ -952,15 +955,15 @@ describe('SourceControlService', () => {
 
 		it('should delete git folder when source control was connected but is now disconnected', async () => {
 			// ARRANGE
-			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
 				.fn()
 				.mockResolvedValue(undefined);
 			// Simulate: was connected, now disconnected
-			preferencesService.isSourceControlConnected = jest
+			preferencesService.isSourceControlConnected = vi
 				.fn()
 				.mockReturnValueOnce(true) // wasConnected check
 				.mockReturnValueOnce(false); // isNowConnected check
-			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
 
 			// ACT
 			await sourceControlService.reloadConfiguration();
@@ -971,12 +974,12 @@ describe('SourceControlService', () => {
 
 		it('should not delete git folder when source control remains connected', async () => {
 			// ARRANGE
-			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
 				.fn()
 				.mockResolvedValue(undefined);
 			// Simulate: was connected, still connected
-			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
-			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(true);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(true);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(true);
 
 			// ACT
 			await sourceControlService.reloadConfiguration();
@@ -987,12 +990,12 @@ describe('SourceControlService', () => {
 
 		it('should not delete git folder when source control was not connected before', async () => {
 			// ARRANGE
-			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
 				.fn()
 				.mockResolvedValue(undefined);
 			// Simulate: was not connected, still not connected
-			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
-			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
 
 			// ACT
 			await sourceControlService.reloadConfiguration();
@@ -1008,14 +1011,14 @@ describe('SourceControlService', () => {
 				resolveFirstReload = resolve;
 			});
 
-			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
 				.fn()
 				.mockImplementationOnce(async () => {
 					await firstReloadPromise;
 				})
 				.mockResolvedValue(undefined);
-			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
-			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
 
 			// ACT - Start first reload (will block)
 			const firstReload = sourceControlService.reloadConfiguration();
@@ -1035,11 +1038,11 @@ describe('SourceControlService', () => {
 
 		it('should allow reload after previous reload completes', async () => {
 			// ARRANGE
-			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
 				.fn()
 				.mockResolvedValue(undefined);
-			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
-			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
 
 			// ACT - Run two reloads sequentially
 			await sourceControlService.reloadConfiguration();
@@ -1056,7 +1059,7 @@ describe('SourceControlService', () => {
 		beforeEach(() => {
 			gitService.initRepository.mockResolvedValue(undefined);
 			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
-			preferencesService.setPreferences = jest.fn().mockResolvedValue(undefined);
+			preferencesService.setPreferences = vi.fn().mockResolvedValue(undefined);
 		});
 
 		it('should throw UserError for host key verification failure', async () => {
@@ -1118,12 +1121,12 @@ describe('SourceControlService', () => {
 	describe('sanityCheck', () => {
 		beforeEach(() => {
 			// Restore the actual sanityCheck implementation for these tests
-			jest.spyOn(sourceControlService, 'sanityCheck').mockRestore();
+			vi.spyOn(sourceControlService, 'sanityCheck').mockRestore();
 		});
 
 		it('should throw error when folders do not exist', async () => {
 			// ARRANGE
-			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(false);
+			(sourceControlFoldersExistCheck as Mock).mockReturnValue(false);
 
 			// ACT & ASSERT
 			await expect(sourceControlService.sanityCheck()).rejects.toThrow(
@@ -1134,7 +1137,7 @@ describe('SourceControlService', () => {
 
 		it('should initialize git service when folders exist but git service is not initialized', async () => {
 			// ARRANGE
-			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			(sourceControlFoldersExistCheck as Mock).mockReturnValue(true);
 			gitService.git = null as any;
 			gitService.initService.mockResolvedValue(undefined);
 			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
@@ -1149,7 +1152,7 @@ describe('SourceControlService', () => {
 
 		it('should pass when folders exist and branch matches', async () => {
 			// ARRANGE
-			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			(sourceControlFoldersExistCheck as Mock).mockReturnValue(true);
 			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
 			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
 
@@ -1210,7 +1213,7 @@ describe('SourceControlService', () => {
 		};
 
 		const arrangeSuccessfulPushMocks = () => {
-			(isContainedWithin as jest.Mock).mockReturnValue(true);
+			(isContainedWithin as Mock).mockReturnValue(true);
 			gitService.git = {} as any;
 			gitService.push.mockResolvedValue(mock<PushResult>());
 			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValue(new Set());

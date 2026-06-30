@@ -9,8 +9,8 @@ import { SalesforceJwtApi } from '../SalesforceJwtApi.credentials';
 vi.mock('jsonwebtoken', () => ({
 	default: { sign: vi.fn(() => 'signed-jwt') },
 }));
-vi.mock('@utils/utilities', () => ({
-	formatPrivateKey: (key: string) => key,
+vi.mock('@n8n/utils', () => ({
+	formatPemBlock: (key: string) => key,
 }));
 
 interface CapturedRequest {

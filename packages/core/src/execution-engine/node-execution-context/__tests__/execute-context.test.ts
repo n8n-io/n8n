@@ -407,4 +407,285 @@ describe('ExecuteContext', () => {
 			expect(result).toBeUndefined();
 		});
 	});
+
+	describe('executeAgent', () => {
+		const webhookNode: INode = {
+			id: 'webhook-node-id',
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const agentWorkflow = mock<Workflow>({
+			id: 'wf-id',
+			name: 'My workflow',
+			expression,
+			nodeTypes,
+		});
+		agentWorkflow.nodes = { [node.name]: node, [webhookNode.name]: webhookNode } as never;
+		const agentAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+			rootExecutionMode: undefined,
+		});
+
+		const agentExecuteContext = new ExecuteContext(
+			agentWorkflow,
+			node,
+			agentAdditionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[closeFn],
+			abortSignal,
+		);
+
+		it('passes the workflow context to additionalData.executeAgent', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				agentAdditionalData,
+				'manual',
+				undefined,
+				{
+					workflowId: 'wf-id',
+					workflowName: 'My workflow',
+					callingNodeName: node.name,
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'item',
+					exposeWorkflowData: false,
+					nodes: [
+						{ name: node.name, type: node.type },
+						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					],
+					runExecutionData,
+				},
+			);
+		});
+
+		it('passes all input items when inputDataScope is all', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: true },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				agentAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'all',
+					exposeWorkflowData: true,
+				}),
+			);
+		});
+
+		it('scopes to only the indexed item when scope is item, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				1,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-1',
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+			);
+		});
+
+		it('includes every input item when scope is all, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
+					inputDataScope: 'all',
+				}),
+			);
+		});
+
+		it('flattens every main branch when scope is all', async () => {
+			const multiBranchInput: ITaskDataConnections = {
+				main: [[{ json: { branch: 0 } }], null, [{ json: { branch: 2 } }]],
+			};
+			const multiBranchAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			multiBranchAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const multiBranchContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				multiBranchAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				multiBranchInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await multiBranchContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(multiBranchAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				multiBranchAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
+					inputDataScope: 'all',
+				}),
+			);
+		});
+
+		it('scopes to an empty array when itemIndex is out of range', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const outOfRangeAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			outOfRangeAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const outOfRangeContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				outOfRangeAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await outOfRangeContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				5,
+			);
+
+			expect(outOfRangeAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-5',
+				outOfRangeAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+			);
+		});
+	});
 });

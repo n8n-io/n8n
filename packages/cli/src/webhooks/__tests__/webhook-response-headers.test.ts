@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
 

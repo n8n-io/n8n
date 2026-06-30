@@ -2,21 +2,23 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
-const mockListMessages = jest.fn();
-const mockGetThread = jest.fn();
-const mockSaveThread = jest.fn();
-const mockDeleteThread = jest.fn();
-const mockDeleteThreadsByResourceIdPrefix = jest.fn();
-const mockListThreads = jest.fn();
-const mockSaveThreadWithProject = jest.fn();
-const mockGetThreadProjectId = jest.fn();
-const mockSaveMessages = jest.fn();
+const mockListMessages = vi.fn();
+const mockGetThread = vi.fn();
+const mockSaveThread = vi.fn();
+const mockDeleteThread = vi.fn();
+const mockDeleteThreadsByResourceIdPrefix = vi.fn();
+const mockDeleteThreadsByResourceId = vi.fn();
+const mockListThreads = vi.fn();
+const mockSaveThreadWithProject = vi.fn();
+const mockGetThreadProjectId = vi.fn();
+const mockSaveMessages = vi.fn();
 const mockAgentMemory = {
 	listMessages: mockListMessages,
 	getThread: mockGetThread,
 	saveThread: mockSaveThread,
 	deleteThread: mockDeleteThread,
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
+	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
 	listThreads: mockListThreads,
 	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
@@ -24,8 +26,8 @@ const mockAgentMemory = {
 };
 
 // Mock GlobalConfig
-const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
-const mockCheckpointRepository = { findActiveByThreadId: jest.fn().mockResolvedValue([]) };
+const mockDbSnapshotStorage = { getAll: vi.fn().mockResolvedValue([]) };
+const mockCheckpointRepository = { findActiveByThreadId: vi.fn().mockResolvedValue([]) };
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
@@ -43,7 +45,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 			},
 		},
 	};
-	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
@@ -55,7 +57,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 }
 
 const mockPendingConfirmationRepository = {
-	findLiveRequestIds: jest.fn(async () => new Set<string>()),
+	findLiveRequestIds: vi.fn(async () => new Set<string>()),
 };
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
@@ -85,7 +87,7 @@ function makeThread(id: string, updatedAt: string) {
 
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
 		mockListMessages.mockResolvedValue({ messages: [] });
 	});
@@ -298,7 +300,7 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 
 describe('InstanceAiMemoryService.ensureThread', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('creates a thread bound to the project in a single atomic call', async () => {
@@ -348,7 +350,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 
 describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('preserves message ids and content verbatim, coercing createdAt back to a Date', async () => {
@@ -429,7 +431,7 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 
 describe('InstanceAiMemoryService.deleteThread', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('deletes hidden sub-agent threads before deleting the parent thread', async () => {
@@ -447,13 +449,29 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 	});
 });
 
+describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('delegates to the agent memory and returns the number of deleted threads', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+		const service = createService();
+
+		const deleted = await service.deleteThreadsForUser('user-1');
+
+		expect(deleted).toBe(3);
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
+	});
+});
+
 describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('queries oldest threads first so fresh threads do not hide expired ones', async () => {
-		const dateNow = jest
+		const dateNow = vi
 			.spyOn(Date, 'now')
 			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
 		const expiredThread = makeThread('expired-thread', '2026-05-01T00:00:00.000Z');

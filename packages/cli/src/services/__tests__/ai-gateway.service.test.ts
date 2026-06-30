@@ -1,7 +1,8 @@
+import type { Mock, Mocked } from 'vitest';
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
@@ -43,27 +44,27 @@ function fail(statusCode: number) {
 	return { statusCode, body: {} };
 }
 
-let outboundHttp: jest.Mocked<OutboundHttp>;
-let requestMock: jest.Mock;
+let outboundHttp: Mocked<OutboundHttp>;
+let requestMock: Mock;
 
 function makeService({
 	baseUrl = BASE_URL as string | null,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
-	userRepository = mock<UserRepository>({ findOneBy: jest.fn().mockResolvedValue(null) }),
+	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
 	urlService = mock<UrlService>({
-		getInstanceBaseUrl: jest.fn().mockReturnValue(INSTANCE_BASE_URL),
+		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
-		loadCertStr: jest.fn().mockResolvedValue(LICENSE_CERT),
-		getConsumerId: jest.fn().mockReturnValue(CONSUMER_ID),
+		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
+		getConsumerId: vi.fn().mockReturnValue(CONSUMER_ID),
 	});
 	const licenseState = mock<LicenseState>({
-		isAiGatewayLicensed: jest.fn().mockReturnValue(isAiGatewayLicensed),
+		isAiGatewayLicensed: vi.fn().mockReturnValue(isAiGatewayLicensed),
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId: INSTANCE_ID });
 	return new AiGatewayService(
@@ -88,13 +89,13 @@ function mockConfigThenToken(token = 'mock-jwt-token') {
 describe('AiGatewayService', () => {
 	beforeEach(() => {
 		const httpClient = mock<HttpRequestClient>();
-		requestMock = httpClient.request as jest.Mock;
+		requestMock = httpClient.request as Mock;
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(httpClient);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getGatewayConfig()', () => {
@@ -213,7 +214,7 @@ describe('AiGatewayService', () => {
 
 		it('includes userEmail and userName in token body when user exists', async () => {
 			const userRepository = mock<UserRepository>({
-				findOneBy: jest
+				findOneBy: vi
 					.fn()
 					.mockResolvedValue(
 						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
@@ -240,7 +241,7 @@ describe('AiGatewayService', () => {
 
 		it('omits userName from token body when user has no first or last name', async () => {
 			const userRepository = mock<UserRepository>({
-				findOneBy: jest
+				findOneBy: vi
 					.fn()
 					.mockResolvedValue(
 						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
@@ -701,7 +702,7 @@ describe('AiGatewayService', () => {
 		it('re-fetches config after TTL expires', async () => {
 			requestMock.mockResolvedValue(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
-			const dateSpy = jest.spyOn(Date, 'now');
+			const dateSpy = vi.spyOn(Date, 'now');
 
 			dateSpy.mockReturnValue(0);
 			await service.getGatewayConfig();

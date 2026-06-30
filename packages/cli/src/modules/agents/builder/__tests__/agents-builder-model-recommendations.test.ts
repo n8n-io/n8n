@@ -1,7 +1,7 @@
 import type { ProviderCatalog } from '@n8n/agents';
 
-import { buildBuilderPrompt } from '../agents-builder-prompts';
 import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
+import { buildBuilderPrompt } from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
 
 const catalog: ProviderCatalog = {
@@ -202,6 +202,7 @@ describe('builder model recommendations', () => {
 
 	it('registers only optional builder runtime skills', () => {
 		const skills = getBuilderRuntimeSkills();
+		const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
 
 		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
@@ -211,6 +212,7 @@ describe('builder model recommendations', () => {
 			'agent-builder-target-skills',
 			'agent-builder-target-tasks',
 		]);
+		expect(skillsById.has('agent-builder-research')).toBe(false);
 		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
 		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');
 		expect(skills[0].instructions).toContain('Linear node tools');

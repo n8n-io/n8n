@@ -1,3 +1,5 @@
+import { formatPemBlock } from '@n8n/utils';
+import jwt from 'jsonwebtoken';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -6,10 +8,6 @@ import type {
 	IHttpRequestHelper,
 	INodeProperties,
 } from 'n8n-workflow';
-
-import jwt from 'jsonwebtoken';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 export class GithubAppApi implements ICredentialType {
 	name = 'githubAppApi';
@@ -66,7 +64,7 @@ export class GithubAppApi implements ICredentialType {
 	): Promise<ICredentialDataDecryptedObject> {
 		const now = Math.floor(Date.now() / 1000);
 		const baseUrl = String(credentials.server ?? 'https://api.github.com').replace(/\/$/, '');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 
 		let appJwt: string;
 		try {

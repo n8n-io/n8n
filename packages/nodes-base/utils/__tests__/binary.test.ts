@@ -19,7 +19,7 @@ vi.mock('xlsx', () => ({
 
 vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
 	getDocument: vi.fn(),
-	version: '5.3.31',
+	version: '5.4.296',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {

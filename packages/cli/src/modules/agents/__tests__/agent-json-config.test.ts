@@ -299,6 +299,24 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 		expect(parsed.success).toBe(true);
 	});
 
+	it('accepts managed episodic memory credentials', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: { enabled: true, credential: 'managed' },
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+
+		expect(parsed.data.memory?.episodicMemory).toMatchObject({
+			enabled: true,
+			credential: 'managed',
+		});
+	});
+
 	it('accepts whitespace-only episodic memory credentials after trim', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
