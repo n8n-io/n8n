@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { renderComponent } from '@/__tests__/render';
@@ -13,6 +13,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
 
@@ -39,13 +40,14 @@ function makeStatus(
 	};
 }
 
-async function mountComposable(documentId = TEST_DOCUMENT_ID) {
+async function mountComposable(documentId: WorkflowDocumentId = TEST_DOCUMENT_ID) {
 	let composable!: ReturnType<typeof useWorkflowPublicationStatusSync>;
 
 	renderComponent(
 		defineComponent({
 			setup() {
-				composable = useWorkflowPublicationStatusSync(documentId);
+				// Pass a getter so we exercise the MaybeRefOrGetter code path.
+				composable = useWorkflowPublicationStatusSync(() => documentId);
 				return () => h('div');
 			},
 		}),
@@ -116,7 +118,7 @@ describe('useWorkflowPublicationStatusSync', () => {
 			renderComponent(
 				defineComponent({
 					setup() {
-						useWorkflowPublicationStatusSync(documentId);
+						useWorkflowPublicationStatusSync(() => documentId);
 						return () => h('div');
 					},
 				}),
@@ -183,5 +185,47 @@ describe('useWorkflowPublicationStatusSync', () => {
 
 		expect(workflowDocumentStore.publicationFailures).toHaveLength(1);
 		expect(workflowDocumentStore.publicationFailures[0].nodeName).toBe('FailNode');
+	});
+
+	it('should re-sync when documentId changes (workflow switch without remount)', async () => {
+		const WF_A_ID = 'wf-react-a';
+		const WF_B_ID = 'wf-react-b';
+		const docIdA = createWorkflowDocumentId(WF_A_ID);
+		const docIdB = createWorkflowDocumentId(WF_B_ID);
+
+		const storeA = useWorkflowDocumentStore(docIdA);
+		const storeB = useWorkflowDocumentStore(docIdB);
+
+		vi.spyOn(workflowsStore, 'fetchPublicationStatus')
+			.mockResolvedValueOnce(makeStatus('published')) // initial mount → workflow A
+			.mockResolvedValueOnce(makeStatus('failed')); // after switch → workflow B
+
+		const documentIdRef = ref<WorkflowDocumentId>(docIdA);
+
+		renderComponent(
+			defineComponent({
+				setup() {
+					useWorkflowPublicationStatusSync(documentIdRef);
+					return () => h('div');
+				},
+			}),
+		);
+
+		// Let onMounted refetch resolve for workflow A
+		await nextTick();
+		await nextTick();
+
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenLastCalledWith(WF_A_ID);
+		expect(storeA.publicationStatus).toBe('published');
+
+		// Switch to workflow B
+		documentIdRef.value = docIdB;
+		await nextTick();
+		await nextTick();
+
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(2);
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenLastCalledWith(WF_B_ID);
+		expect(storeB.publicationStatus).toBe('failed');
 	});
 });

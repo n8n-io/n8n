@@ -1,4 +1,5 @@
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, toValue, watch } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -19,15 +20,18 @@ const API_TO_LIFECYCLE: Record<string, PublicationLifecycle> = {
 	not_published: 'idle',
 };
 
-export function useWorkflowPublicationStatusSync(documentId: WorkflowDocumentId) {
+export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<WorkflowDocumentId>) {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	const { onDocumentVisible } = useDocumentVisibility();
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	async function refetch() {
 		if (!settingsStore.isWorkflowPublicationServiceEnabled) return;
+
+		// Resolve the store from the current documentId on every call so a
+		// workflow switch is immediately reflected without remounting.
+		const workflowDocumentStore = useWorkflowDocumentStore(toValue(documentId));
 		const workflowId = workflowDocumentStore.workflowId;
 		if (!workflowId) return;
 
@@ -51,6 +55,12 @@ export function useWorkflowPublicationStatusSync(documentId: WorkflowDocumentId)
 			timer = setTimeout(() => void refetch(), PUBLICATION_STATUS_POLL_INTERVAL_MS);
 		}
 	}
+
+	// Re-sync whenever the document switches (component is not keyed per workflow).
+	watch(
+		() => toValue(documentId),
+		() => void refetch(),
+	);
 
 	onMounted(() => void refetch());
 	onDocumentVisible(() => void refetch());
