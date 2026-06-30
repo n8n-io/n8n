@@ -151,6 +151,13 @@ onBeforeUnmount(() => {
 	<div :class="$style.projects">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
 			<N8nMenuItem
+				v-if="isInstanceAiNavVisible"
+				:item="instanceAi"
+				:compact="props.collapsed"
+				:active="activeTabId === 'instance-ai'"
+				data-test-id="project-instance-ai-menu-item"
+			/>
+			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
 				:active="activeTabId === 'home'"
@@ -172,13 +179,6 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="isInstanceAiNavVisible"
-				:item="instanceAi"
-				:compact="props.collapsed"
-				:active="activeTabId === 'instance-ai'"
-				data-test-id="project-instance-ai-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

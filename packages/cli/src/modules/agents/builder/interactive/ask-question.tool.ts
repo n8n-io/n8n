@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import {
 	ASK_QUESTION_TOOL_NAME,
 	askQuestionInputSchema,

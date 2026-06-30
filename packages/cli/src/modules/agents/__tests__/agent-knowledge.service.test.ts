@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { access, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -19,14 +20,16 @@ import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-jest.unmock('node:fs');
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs');
+vi.unmock('node:fs/promises');
 
-const loadMock = jest.fn();
-jest.mock('@n8n/ai-utilities', () => ({
-	N8nPdfLoader: jest.fn().mockImplementation(() => ({
-		load: loadMock,
-	})),
+const loadMock = vi.fn();
+vi.mock('@n8n/ai-utilities', () => ({
+	N8nPdfLoader: vi.fn().mockImplementation(function () {
+		return {
+			load: loadMock,
+		};
+	}),
 }));
 
 const agentId = 'agent-1';
@@ -135,15 +138,15 @@ class InMemoryAgentFileRepository {
 }
 
 describe('AgentKnowledgeService', () => {
-	let agentRepository: jest.Mocked<AgentRepository>;
+	let agentRepository: Mocked<AgentRepository>;
 	let agentFileRepository: InMemoryAgentFileRepository;
-	let agentKnowledgeSandboxService: jest.Mocked<AgentKnowledgeSandboxService>;
+	let agentKnowledgeSandboxService: Mocked<AgentKnowledgeSandboxService>;
 	let filesystem: InMemoryKnowledgeFilesystem;
-	let logger: jest.Mocked<Logger>;
+	let logger: Mocked<Logger>;
 	let service: AgentKnowledgeService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		filesystem = new InMemoryKnowledgeFilesystem();
 		agentRepository = mock<AgentRepository>();
 		agentFileRepository = new InMemoryAgentFileRepository();
@@ -239,7 +242,7 @@ describe('AgentKnowledgeService', () => {
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 		const tempFilePath = path.join(tempDirectory, 'notes.txt');
 		await writeFile(tempFilePath, 'hello world');
-		filesystem.uploadFiles = jest.fn().mockRejectedValue(new Error('volume write failed'));
+		filesystem.uploadFiles = vi.fn().mockRejectedValue(new Error('volume write failed'));
 
 		await expect(
 			service.uploadFiles(
@@ -413,7 +416,7 @@ describe('AgentKnowledgeService', () => {
 				binaryDataId: toVolumeStorageReference('file-1.txt'),
 			}),
 		);
-		filesystem.deleteFile = jest.fn().mockRejectedValue(new Error('volume delete failed'));
+		filesystem.deleteFile = vi.fn().mockRejectedValue(new Error('volume delete failed'));
 
 		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
 		await Promise.resolve();

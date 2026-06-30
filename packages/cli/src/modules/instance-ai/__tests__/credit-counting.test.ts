@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
 
@@ -5,9 +6,9 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // Skip the real backoff sleeps so retry tests run instantly.
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn().mockResolvedValue(undefined),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------
@@ -16,12 +17,12 @@ jest.mock('n8n-workflow', () => ({
 
 function createService(deps: {
 	threadRepo: Partial<InstanceAiThreadRepository>;
-	aiService: { isProxyEnabled: jest.Mock; getClient: jest.Mock };
-	push: { sendToUsers: jest.Mock };
-	telemetry: { track: jest.Mock };
+	aiService: { isProxyEnabled: Mock; getClient: Mock };
+	push: { sendToUsers: Mock };
+	telemetry: { track: Mock };
 }) {
-	const scopedLogger = { warn: jest.fn(), debug: jest.fn() };
-	const logger = { scoped: jest.fn().mockReturnValue(scopedLogger) };
+	const scopedLogger = { warn: vi.fn(), debug: vi.fn() };
+	const logger = { scoped: vi.fn().mockReturnValue(scopedLogger) };
 	return new InstanceAiCreditService(
 		logger as never,
 		deps.aiService as never,
@@ -40,8 +41,8 @@ function createMockThreadRepo(
 	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
 ) {
 	return {
-		findOneBy: jest.fn().mockResolvedValue(thread ?? null),
-		save: jest.fn().mockImplementation(async (entity: unknown) => entity),
+		findOneBy: vi.fn().mockResolvedValue(thread ?? null),
+		save: vi.fn().mockImplementation(async (entity: unknown) => entity),
 	};
 }
 
@@ -59,23 +60,23 @@ function createMockAiService(
 		claimError,
 		failuresBeforeSuccess = 0,
 	} = opts;
-	let markBuilderTokenUsage: jest.Mock;
+	let markBuilderTokenUsage: Mock;
 	if (claimError) {
-		markBuilderTokenUsage = jest.fn().mockRejectedValue(claimError);
+		markBuilderTokenUsage = vi.fn().mockRejectedValue(claimError);
 	} else if (failuresBeforeSuccess > 0) {
 		let calls = 0;
-		markBuilderTokenUsage = jest.fn().mockImplementation(async () => {
+		markBuilderTokenUsage = vi.fn().mockImplementation(async () => {
 			calls += 1;
 			if (calls <= failuresBeforeSuccess) throw new Error('transient');
 			return claimResult;
 		});
 	} else {
-		markBuilderTokenUsage = jest.fn().mockResolvedValue(claimResult);
+		markBuilderTokenUsage = vi.fn().mockResolvedValue(claimResult);
 	}
 	return {
-		isProxyEnabled: jest.fn().mockReturnValue(proxyEnabled),
-		getClient: jest.fn().mockResolvedValue({
-			getBuilderApiProxyToken: jest
+		isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled),
+		getClient: vi.fn().mockResolvedValue({
+			getBuilderApiProxyToken: vi
 				.fn()
 				.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
 			markBuilderTokenUsage,
@@ -124,8 +125,8 @@ describe('claimRunUsage', () => {
 		const ai = createMockAiService({
 			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
 		});
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
@@ -155,8 +156,8 @@ describe('claimRunUsage', () => {
 	it('fires the "Builder credits claimed" event with success true on the happy path', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service, { status: 'completed' });
@@ -178,8 +179,8 @@ describe('claimRunUsage', () => {
 	it('bills on a cancelled run and records the status', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service, { status: 'cancelled' });
@@ -194,8 +195,8 @@ describe('claimRunUsage', () => {
 	it('is idempotent per dedupeId within the process', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service, { dedupeId: 'run-1' });
@@ -207,8 +208,8 @@ describe('claimRunUsage', () => {
 	it('caps the in-memory dedup guard, evicting the oldest run ids', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const cap = InstanceAiCreditService.CLAIM_DEDUPE_CACHE_SIZE;
@@ -225,8 +226,8 @@ describe('claimRunUsage', () => {
 	it('releases the in-memory lock when the claim ultimately fails', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ claimError: new Error('network') });
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service, { dedupeId: 'run-1' });
@@ -241,8 +242,8 @@ describe('claimRunUsage', () => {
 			failuresBeforeSuccess: 1,
 			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
 		});
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
@@ -258,8 +259,8 @@ describe('claimRunUsage', () => {
 	it('gives up after the maximum number of attempts', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ claimError: new Error('network') });
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
@@ -275,12 +276,12 @@ describe('claimRunUsage', () => {
 
 	it('keeps the claim successful when persisting the thread total fails', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
-		threadRepo.save = jest.fn().mockRejectedValue(new Error('db down'));
+		threadRepo.save = vi.fn().mockRejectedValue(new Error('db down'));
 		const ai = createMockAiService({
 			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
 		});
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
@@ -309,8 +310,8 @@ describe('claimRunUsage', () => {
 	it('fires the "Builder credits claimed" event with success false when the claim throws', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ claimError: new Error('network') });
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service);
@@ -325,8 +326,8 @@ describe('claimRunUsage', () => {
 	it('does nothing when the usage array is empty', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service, { usage: [] });
@@ -338,8 +339,8 @@ describe('claimRunUsage', () => {
 	it('does nothing when the proxy is disabled', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ proxyEnabled: false });
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service);
@@ -350,8 +351,8 @@ describe('claimRunUsage', () => {
 	it('ignores a malformed claim response with a non-numeric delta', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ claimResult: { creditsClaimed: 5, creditsQuota: 100 } });
-		const push = { sendToUsers: jest.fn() };
-		const telemetry = { track: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const result = await callClaim(service);
@@ -368,8 +369,8 @@ describe('claimRunUsage', () => {
 			const ai = createMockAiService({
 				claimResult: { delta: 0.5, creditsClaimed: 100, creditsQuota: 100 },
 			});
-			const push = { sendToUsers: jest.fn() };
-			const telemetry = { track: jest.fn() };
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
 
 			const service = createService({ threadRepo, aiService: ai, push, telemetry });
 			await callClaim(service);
@@ -386,8 +387,8 @@ describe('claimRunUsage', () => {
 			const ai = createMockAiService({
 				claimResult: { delta: 0.5, creditsClaimed: 120, creditsQuota: 100 },
 			});
-			const push = { sendToUsers: jest.fn() };
-			const telemetry = { track: jest.fn() };
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
 
 			const service = createService({ threadRepo, aiService: ai, push, telemetry });
 			await callClaim(service);
@@ -407,8 +408,8 @@ describe('claimRunUsage', () => {
 			const ai = createMockAiService({
 				claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: -1 },
 			});
-			const push = { sendToUsers: jest.fn() };
-			const telemetry = { track: jest.fn() };
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
 
 			const service = createService({ threadRepo, aiService: ai, push, telemetry });
 

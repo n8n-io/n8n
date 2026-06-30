@@ -13,14 +13,14 @@ import {
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import type { OwnershipService } from '../ownership.service';
-
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
@@ -49,7 +49,7 @@ describe('ProjectService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getAccessibleProjectsAndCount', () => {
@@ -206,7 +206,7 @@ describe('ProjectService', () => {
 		});
 
 		describe('cleanup for orphaned credential entries', () => {
-			let mockProxy: jest.Mocked<ICredentialConnectionStatusProvider>;
+			let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
 
 			beforeEach(() => {
 				mockProxy = mock<ICredentialConnectionStatusProvider>();
@@ -299,7 +299,7 @@ describe('ProjectService', () => {
 	});
 
 	describe('deleteUserFromProject', () => {
-		let mockProxy: jest.Mocked<ICredentialConnectionStatusProvider>;
+		let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
 
 		beforeEach(() => {
 			mockProxy = mock<ICredentialConnectionStatusProvider>();
@@ -361,7 +361,7 @@ describe('ProjectService', () => {
 
 	describe('updateProject', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			ownershipService.invalidateWorkflowProjectCacheForProject.mockResolvedValue(undefined);
 		});
 
@@ -443,7 +443,7 @@ describe('ProjectService', () => {
 			{ userId: 'user2', role: { slug: 'project:viewer' } },
 		];
 
-		let mockProxy: jest.Mocked<ICredentialConnectionStatusProvider>;
+		let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
 
 		beforeEach(() => {
 			mockProxy = mock<ICredentialConnectionStatusProvider>();
@@ -531,11 +531,11 @@ describe('ProjectService', () => {
 		beforeEach(() => {
 			Object.defineProperty(projectService, 'workflowService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
 			Object.defineProperty(projectService, 'credentialsService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
 		});
 

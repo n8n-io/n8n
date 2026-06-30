@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DummyProvider } from '@test/external-secrets/utils';
 
@@ -11,9 +12,9 @@ import type { SecretsProvider, SecretsProviderSettings } from '../types';
 
 describe('ExternalSecretsProviderConnectionManager', () => {
 	let manager: ExternalSecretsProviderConnectionManager;
-	let mockProviderRegistry: jest.Mocked<ExternalSecretsProviderRegistry>;
-	let mockProviderLifecycle: jest.Mocked<ExternalSecretsProviderLifecycle>;
-	let mockRetryManager: jest.Mocked<ExternalSecretsRetryManager>;
+	let mockProviderRegistry: Mocked<ExternalSecretsProviderRegistry>;
+	let mockProviderLifecycle: Mocked<ExternalSecretsProviderLifecycle>;
+	let mockRetryManager: Mocked<ExternalSecretsRetryManager>;
 	let providersMap: Map<string, SecretsProvider>;
 
 	const providerSettings: SecretsProviderSettings = {

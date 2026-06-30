@@ -3,7 +3,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -66,7 +66,7 @@ function makeService() {
 
 describe('AgentsService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {

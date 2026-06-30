@@ -1,12 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutboxRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, Span, Tracing } from 'n8n-core';
 
 import { WorkflowPublicationOutboxCleanupService } from '../workflow-publication-outbox-cleanup.service';
 
-const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const config = mock<WorkflowsConfig>({
 	useWorkflowPublicationService: true,
 	publicationOutboxCleanupIntervalSeconds: 30,
@@ -21,8 +21,8 @@ const tracing = mock<Tracing>();
 let service: WorkflowPublicationOutboxCleanupService;
 
 beforeEach(() => {
-	jest.useFakeTimers();
-	jest.clearAllMocks();
+	vi.useFakeTimers();
+	vi.clearAllMocks();
 	tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	service = new WorkflowPublicationOutboxCleanupService(
 		logger,
@@ -35,7 +35,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	service.shutdown();
-	jest.useRealTimers();
+	vi.useRealTimers();
 });
 
 describe('WorkflowPublicationOutboxCleanupService', () => {
@@ -45,7 +45,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			Object.assign(instanceSettings, { isLeader: true });
 
 			service.init();
-			jest.advanceTimersByTime(30_000);
+			vi.advanceTimersByTime(30_000);
 
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalled();
 		});
@@ -55,7 +55,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			Object.assign(instanceSettings, { isLeader: true });
 
 			service.init();
-			await jest.advanceTimersByTimeAsync(0);
+			await vi.advanceTimersByTimeAsync(0);
 
 			// Ran once at startup, before any interval elapsed.
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
@@ -66,7 +66,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			Object.assign(instanceSettings, { isLeader: false });
 
 			service.init();
-			jest.advanceTimersByTime(60_000);
+			vi.advanceTimersByTime(60_000);
 
 			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
 
@@ -82,7 +82,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 
 			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(30_000);
+			vi.advanceTimersByTime(30_000);
 
 			// 1h completed, 168h failed → seconds; batch size passed through.
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledWith(3600, 604_800, 1000);
@@ -92,7 +92,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			Object.assign(config, { useWorkflowPublicationService: false });
 
 			service.startCleanup();
-			jest.advanceTimersByTime(60_000);
+			vi.advanceTimersByTime(60_000);
 
 			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
 
@@ -103,7 +103,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			service.shutdown();
 			service.startCleanup();
 
-			jest.advanceTimersByTime(60_000);
+			vi.advanceTimersByTime(60_000);
 
 			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
 		});
@@ -117,8 +117,8 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 				.mockResolvedValueOnce(42); // partial → stop
 
 			service.startCleanup();
-			jest.advanceTimersByTime(30_000);
-			await jest.advanceTimersByTimeAsync(0);
+			vi.advanceTimersByTime(30_000);
+			await vi.advanceTimersByTimeAsync(0);
 
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(3);
 		});
@@ -127,8 +127,8 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(10);
 
 			service.startCleanup();
-			jest.advanceTimersByTime(30_000);
-			await jest.advanceTimersByTimeAsync(0);
+			vi.advanceTimersByTime(30_000);
+			await vi.advanceTimersByTimeAsync(0);
 
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
 		});
@@ -140,8 +140,8 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			});
 
 			service.startCleanup();
-			jest.advanceTimersByTime(30_000);
-			await jest.advanceTimersByTimeAsync(0);
+			vi.advanceTimersByTime(30_000);
+			await vi.advanceTimersByTimeAsync(0);
 
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
 		});
@@ -150,8 +150,8 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			outboxRepository.deleteTerminalOlderThan.mockRejectedValue(new Error('DB error'));
 
 			service.startCleanup();
-			jest.advanceTimersByTime(30_000);
-			await jest.advanceTimersByTimeAsync(0);
+			vi.advanceTimersByTime(30_000);
+			await vi.advanceTimersByTimeAsync(0);
 
 			expect(logger.error).toHaveBeenCalled();
 		});
@@ -164,7 +164,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			service.startCleanup();
 			service.stopCleanup();
 
-			jest.advanceTimersByTime(60_000);
+			vi.advanceTimersByTime(60_000);
 
 			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
 		});
@@ -177,7 +177,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			service.startCleanup();
 			service.shutdown();
 
-			jest.advanceTimersByTime(60_000);
+			vi.advanceTimersByTime(60_000);
 
 			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
 		});

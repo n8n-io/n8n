@@ -121,98 +121,180 @@ describe('Salesforce', () => {
 			});
 		});
 
-		describe('getUsers', () => {
-			it('should return users with sorted options', async () => {
-				const mockUsers = [
-					{ Id: 'user1', Name: 'John Doe' },
-					{ Id: 'user2', Name: 'Jane Smith' },
-				];
-
-				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockUsers);
-				sortOptionsSpy.mockImplementation((options) => {
-					return options.sort((a, b) => a.name.localeCompare(b.name));
+		describe('searchUsers (listSearch)', () => {
+			it('should run a filtered SOQL query with a batchSize header and map results', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [
+						{ Id: 'user1', Name: 'John Doe' },
+						{ Id: 'user2', Name: 'Jane Smith' },
+					],
+					nextRecordsUrl: '/services/data/v59.0/query/01g-2000',
 				});
 
-				const result = await node.methods.loadOptions.getUsers.call(mockLoadOptionsFunctions);
+				const result = await node.methods.listSearch.searchUsers.call(
+					mockLoadOptionsFunctions,
+					'jo',
+				);
 
-				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
-					'records',
+				expect(salesforceApiRequestAllItemsSpy).not.toHaveBeenCalled();
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
 					'/query',
 					{},
-					{ q: 'SELECT id, Name FROM User' },
+					{ q: "SELECT Id, Name FROM User WHERE Name LIKE '%jo%' ORDER BY Name" },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
+				);
+				expect(result).toEqual({
+					results: [
+						{ name: 'John Doe', value: 'user1' },
+						{ name: 'Jane Smith', value: 'user2' },
+					],
+					paginationToken: '/services/data/v59.0/query/01g-2000',
+				});
+			});
+
+			it('should omit the WHERE clause when no filter is given', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				const result = await node.methods.listSearch.searchUsers.call(mockLoadOptionsFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT Id, Name FROM User ORDER BY Name' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
+				);
+				expect(result).toEqual({ results: [], paginationToken: undefined });
+			});
+
+			it('should escape single quotes in the filter without applying a LIMIT', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				await node.methods.listSearch.searchUsers.call(mockLoadOptionsFunctions, "O'Brien");
+
+				const qs = salesforceApiRequestSpy.mock.calls[0][3] as { q: string };
+				expect(qs.q).toBe("SELECT Id, Name FROM User WHERE Name LIKE '%O\\'Brien%' ORDER BY Name");
+				expect(qs.q).not.toContain('LIMIT');
+			});
+
+			it('should follow the pagination cursor instead of re-querying', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user3', Name: 'Zoe' }] });
+
+				const result = await node.methods.listSearch.searchUsers.call(
+					mockLoadOptionsFunctions,
+					'',
+					'/services/data/v59.0/query/01g-2000',
 				);
 
-				expect(result).toEqual([
-					{ name: 'Jane Smith', value: 'user2' },
-					{ name: 'John Doe', value: 'user1' },
-				]);
+				expect(salesforceApiRequestSpy).toHaveBeenCalledTimes(1);
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/query/01g-2000');
+				expect(result).toEqual({
+					results: [{ name: 'Zoe', value: 'user3' }],
+					paginationToken: undefined,
+				});
 			});
 		});
 
-		describe('getCaseOwners', () => {
-			it('should return case owners with queues and users', async () => {
-				const mockQueues = [
+		describe('searchCaseOwners (listSearch)', () => {
+			it('should combine case queues and users with prefixed labels', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
 					{ Queue: { Id: 'queue1', Name: 'Support Queue' } },
 					{ Queue: { Id: 'queue2', Name: 'Sales Queue' } },
-				];
-				const mockUsers = [
-					{ Id: 'user1', Name: 'John Doe' },
-					{ Id: 'user2', Name: 'Jane Smith' },
-				];
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
 
-				salesforceApiRequestAllItemsSpy
-					.mockResolvedValueOnce(mockQueues)
-					.mockResolvedValueOnce(mockUsers);
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'',
+				);
 
-				const result = await node.methods.loadOptions.getCaseOwners.call(mockLoadOptionsFunctions);
-
+				// Queues are fetched in full (legacy behaviour), users via a capped search.
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
 					'/query',
 					{},
 					{
-						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Case'",
+						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = 'Case'",
 					},
 				);
-				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
-					'records',
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
 					'/query',
 					{},
-					{ q: 'SELECT id, Name FROM User' },
+					{ q: 'SELECT Id, Name FROM User ORDER BY Name' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
 				);
-
-				expect(result).toEqual([
-					{ name: 'Queue: Support Queue', value: 'queue1' },
+				// Queues are sorted by label; users follow in their SOQL order.
+				expect(result.results).toEqual([
 					{ name: 'Queue: Sales Queue', value: 'queue2' },
+					{ name: 'Queue: Support Queue', value: 'queue1' },
 					{ name: 'User: John Doe', value: 'user1' },
-					{ name: 'User: Jane Smith', value: 'user2' },
 				]);
 			});
 
-			it('should handle users without queue prefix when no queues exist', async () => {
-				salesforceApiRequestAllItemsSpy
-					.mockResolvedValueOnce([])
-					.mockResolvedValueOnce([{ Id: 'user1', Name: 'John Doe' }]);
+			it('should not prefix users when the filter matches no queues', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
+					{ Queue: { Id: 'queue1', Name: 'Support Queue' } },
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
 
-				const result = await node.methods.loadOptions.getCaseOwners.call(mockLoadOptionsFunctions);
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'doe',
+				);
 
-				expect(result).toEqual([{ name: 'John Doe', value: 'user1' }]);
+				// No queue matched 'doe', so the users render without the "User: " prefix.
+				expect(result.results).toEqual([{ name: 'John Doe', value: 'user1' }]);
+			});
+
+			it('should filter queues in-memory by the search term', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
+					{ Queue: { Id: 'queue1', Name: 'Support Queue' } },
+					{ Queue: { Id: 'queue2', Name: 'Sales Queue' } },
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'support',
+				);
+
+				expect(result.results).toEqual([{ name: 'Queue: Support Queue', value: 'queue1' }]);
+			});
+
+			it('should skip the queue query when following a pagination cursor', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
+
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'',
+					'/services/data/v59.0/query/01g-2000',
+				);
+
+				expect(salesforceApiRequestAllItemsSpy).not.toHaveBeenCalled();
+				expect(salesforceApiRequestSpy).toHaveBeenCalledTimes(1);
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/query/01g-2000');
+				// Paginated pages carry no queues, so users stay unprefixed.
+				expect(result.results).toEqual([{ name: 'John Doe', value: 'user1' }]);
 			});
 		});
 
-		describe('getLeadOwners', () => {
-			it('should return lead owners with queues and users', async () => {
-				const mockQueues = [{ Queue: { Id: 'queue1', Name: 'Lead Queue' } }];
-				const mockUsers = [{ Id: 'user1', Name: 'John Doe' }];
+		describe('searchLeadOwners (listSearch)', () => {
+			it('should query the Lead queues and prefix users', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
+					{ Queue: { Id: 'queue1', Name: 'Lead Queue' } },
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
 
-				salesforceApiRequestAllItemsSpy
-					.mockResolvedValueOnce(mockQueues)
-					.mockResolvedValueOnce(mockUsers);
-
-				const result = await node.methods.loadOptions.getLeadOwners.call(mockLoadOptionsFunctions);
+				const result = await node.methods.listSearch.searchLeadOwners.call(
+					mockLoadOptionsFunctions,
+					'',
+				);
 
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -220,11 +302,10 @@ describe('Salesforce', () => {
 					'/query',
 					{},
 					{
-						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Lead'",
+						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = 'Lead'",
 					},
 				);
-
-				expect(result).toEqual([
+				expect(result.results).toEqual([
 					{ name: 'Queue: Lead Queue', value: 'queue1' },
 					{ name: 'User: John Doe', value: 'user1' },
 				]);
@@ -1288,6 +1369,31 @@ describe('Salesforce', () => {
 						Custom_Field1__c: 'Custom Value 1',
 						Custom_Field2__c: 'Custom Value 2',
 					}),
+				);
+			});
+
+			it('should resolve a resourceLocator owner value to OwnerId', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'ACME Corp',
+						lastname: 'Doe',
+						additionalFields: {
+							owner: { __rl: true, mode: 'id', value: 'user123' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/lead',
+					expect.objectContaining({ OwnerId: 'user123' }),
 				);
 			});
 
@@ -3288,6 +3394,39 @@ describe('Salesforce', () => {
 	});
 
 	describe('Execute Method - Account Resource Extended Fields', () => {
+		describe('Account Add Note Operation', () => {
+			it('should set the note owner from the ownerId option', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'account',
+						operation: 'addNote',
+						accountId: 'acc123',
+						title: 'Important Note',
+						options: {
+							body: 'Note body',
+							ownerId: { __rl: true, mode: 'id', value: 'user789' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'note123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/note',
+					expect.objectContaining({
+						Title: 'Important Note',
+						ParentId: 'acc123',
+						Body: 'Note body',
+						OwnerId: 'user789',
+					}),
+				);
+			});
+		});
+
 		describe('Account Create Operation - Additional Fields', () => {
 			it('should handle account create with all additional fields', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
