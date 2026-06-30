@@ -52,10 +52,30 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.conversation[0].text).toBe('line 1\nline 2');
 	});
 
-	it('rejects an empty executionScenarios array', () => {
+	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
 		expect(() =>
 			WorkflowTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] }),
-		).toThrow();
+		).toThrow(/at least one executionScenario, or a process\/outcome expectation/);
+	});
+
+	it('accepts an empty executionScenarios array when an outcome expectation is present', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			executionScenarios: [],
+			outcomeExpectations: ['The workflow posts a summary to Slack #growth.'],
+		});
+		expect(parsed.executionScenarios).toEqual([]);
+		expect(parsed.outcomeExpectations).toHaveLength(1);
+	});
+
+	it('accepts an omitted executionScenarios key when a process expectation is present', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		const parsed = WorkflowTestCaseSchema.parse({
+			...rest,
+			processExpectations: ['Before building, the agent asked which Slack channel to use.'],
+		});
+		expect(parsed.executionScenarios).toBeUndefined();
+		expect(parsed.processExpectations).toHaveLength(1);
 	});
 
 	it('rejects an unknown complexity value', () => {
@@ -237,7 +257,7 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 	it('throws with the file path on a schema validation failure', () => {
 		mockedReadFile.mockReturnValue(JSON.stringify({ conversation: [] }));
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/demo\.json/);
-		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/executionScenarios/);
+		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/complexity/);
 	});
 });
 

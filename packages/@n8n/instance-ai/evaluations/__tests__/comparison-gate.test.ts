@@ -117,6 +117,35 @@ describe('evaluateGate', () => {
 		expect(gate.excluded).toHaveLength(0);
 	});
 
+	it('grades a build-only case (0 scenarios) by its expectation alone', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'build-only',
+				expectations: [{ text: 'splits the records envelope', verdicts: [true, true, true] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.units).toHaveLength(1);
+		expect(gate.units[0].kind).toBe('buildExpectation');
+		expect(gate.green).toBe(true);
+		expect(gate.excluded).toHaveLength(0);
+	});
+
+	it('fails a build-only case when its sole expectation never passes', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'build-only',
+				expectations: [{ text: 'splits the records envelope', verdicts: [false, false, false] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.units).toHaveLength(1);
+		expect(gate.failing).toHaveLength(1);
+		expect(gate.green).toBe(false);
+	});
+
 	it('is not green when a unit never passes, and records its failure categories', () => {
 		const { evaluation, slugByTestCase } = makeEval(3, [
 			{

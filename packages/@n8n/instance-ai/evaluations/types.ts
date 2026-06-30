@@ -194,7 +194,8 @@ export interface WorkflowTestCase {
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-	executionScenarios: ExecutionScenario[];
+	/** Optional — a build-only case is graded by process/outcome expectations instead. */
+	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,

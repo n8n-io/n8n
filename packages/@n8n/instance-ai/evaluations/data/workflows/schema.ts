@@ -38,7 +38,7 @@ const workflowTestCaseObjectSchema = z
 		complexity: z.enum(['simple', 'medium', 'complex']),
 		tags: z.array(z.string()),
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
-		executionScenarios: z.array(ExecutionScenarioSchema).min(1),
+		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
@@ -126,6 +126,16 @@ export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
 	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
 		message:
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
-	});
+	})
+	.refine(
+		(c) =>
+			(c.executionScenarios?.length ?? 0) > 0 ||
+			(c.processExpectations?.length ?? 0) > 0 ||
+			(c.outcomeExpectations?.length ?? 0) > 0,
+		{
+			message:
+				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
+		},
+	);
 
 export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;
