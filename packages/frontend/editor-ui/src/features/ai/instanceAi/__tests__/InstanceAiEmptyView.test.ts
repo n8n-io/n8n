@@ -33,7 +33,7 @@ const {
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
-		workflowPreviewEnabled: { value: false },
+		workflowPreviewEnabled: { value: true }, // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		splitBelowInputVariant: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
@@ -389,7 +389,7 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
-		experimentMocks.workflowPreviewEnabled.value = false;
+		experimentMocks.workflowPreviewEnabled.value = true; // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		experimentMocks.splitBelowInputVariant.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;

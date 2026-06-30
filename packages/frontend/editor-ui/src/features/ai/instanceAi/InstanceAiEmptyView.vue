@@ -297,7 +297,7 @@ useResizeObserver(emptyLayoutRef, () => {
 	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
 	const gap = parseFloat(layoutStyles.gap) || 0;
 	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
-	previewScale.value = Math.min(1, Math.max(0, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
+	previewScale.value = Math.max(0, Math.min(1, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
 });
 
 const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
@@ -448,7 +448,7 @@ function handleShelfSuggestionInsert(payload: {
 				</template>
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
-				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
+				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
 				<div ref="centeredInput" :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
