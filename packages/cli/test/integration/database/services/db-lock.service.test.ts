@@ -1,5 +1,5 @@
-import { GlobalConfig } from '@n8n/config';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { DbConnectionOptions, DbLock, DbLockService } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';

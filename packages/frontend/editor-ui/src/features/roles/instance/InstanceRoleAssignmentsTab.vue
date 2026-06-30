@@ -17,7 +17,6 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAsyncState } from '@vueuse/core';
-import { ElRadio } from 'element-plus';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -54,9 +53,14 @@ const updatingUserIds = ref(new Set<string>());
 
 // Assignable instance roles (owner already filtered out by the store) drive the dropdown,
 // so custom roles appear alongside the built-in ones.
-const roleOptions = computed<Array<ActionDropdownItem<string>>>(() =>
-	rolesStore.processedInstanceRoles.map((role) => ({ id: role.slug, label: role.displayName })),
-);
+// The currently-assigned role gets `checked: true` so the built-in trailing checkmark renders.
+function roleOptionsFor(currentRoleSlug: string): Array<ActionDropdownItem<string>> {
+	return rolesStore.processedInstanceRoles.map((role) => ({
+		id: role.slug,
+		label: role.displayName,
+		checked: role.slug === currentRoleSlug,
+	}));
+}
 
 const memberUserIds = computed(() => members.value.members.map((member) => member.userId));
 
@@ -174,7 +178,7 @@ onMounted(async () => {
 						<N8nActionDropdown
 							v-if="canEditMember(member)"
 							placement="bottom-start"
-							:items="roleOptions"
+							:items="roleOptionsFor(member.role)"
 							:disabled="updatingUserIds.has(member.userId)"
 							data-test-id="instance-role-member-dropdown"
 							@select="(slug: string) => changeRole(member.userId, slug)"
@@ -197,9 +201,7 @@ onMounted(async () => {
 								</button>
 							</template>
 							<template #menuItem="item">
-								<ElRadio :model-value="member.role" :label="item.id">
-									<N8nText color="text-dark">{{ item.label }}</N8nText>
-								</ElRadio>
+								<N8nText color="text-dark">{{ item.label }}</N8nText>
 							</template>
 						</N8nActionDropdown>
 						<N8nText v-else color="text-dark">{{ roleLabel(member.role) }}</N8nText>

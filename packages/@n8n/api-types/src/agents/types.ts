@@ -93,10 +93,17 @@ export interface SlackAgentAppManifestResponse {
 	manifest: SlackAgentAppManifest;
 }
 
+export interface AgentSkillReference {
+	path: string;
+	content: string;
+}
+
 export interface AgentSkill {
 	name: string;
 	description: string;
 	instructions: string;
+	allowedTools?: string[];
+	references?: AgentSkillReference[];
 }
 
 export interface AgentSkillMutationResponse {

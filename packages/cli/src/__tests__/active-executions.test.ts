@@ -4,7 +4,6 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import type { Response } from 'express';
-import { captor, mock } from 'jest-mock-extended';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -20,6 +19,8 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
+import type { Mock } from 'vitest';
+import { captor, mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -28,9 +29,9 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn(),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+	sleep: vi.fn(),
 }));
 
 const FAKE_EXECUTION_ID = '15';
@@ -90,15 +91,15 @@ describe('ActiveExecutions', () => {
 
 		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
 		executionPersistence.updateExistingExecution.mockResolvedValue(true);
-		executionRepository.setRunning.mockResolvedValue(Promise.resolve(new Date()));
+		executionRepository.setRunning.mockResolvedValue(new Date());
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
-		workflowExecution.cancel = jest.fn();
+		workflowExecution.cancel = vi.fn();
 		responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	test('Should initialize activeExecutions with empty list', () => {
@@ -255,7 +256,7 @@ describe('ActiveExecutions', () => {
 
 		test('does not throttle the evaluation queue', async () => {
 			const realConcurrencyControl = buildFullEvalConcurrencyControl();
-			const throttleSpy = jest.spyOn(realConcurrencyControl, 'throttle');
+			const throttleSpy = vi.spyOn(realConcurrencyControl, 'throttle');
 
 			const evalActiveExecutions = new ActiveExecutions(
 				mock(),
@@ -337,7 +338,7 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
-			const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecutionOrFail');
+			const getExecutionSpy = vi.spyOn(activeExecutions, 'getExecutionOrFail');
 
 			activeExecutions.finalizeExecution('inactive-execution-id', fullRunData);
 
@@ -373,7 +374,7 @@ describe('ActiveExecutions', () => {
 			);
 
 			executionData.httpResponse = mock<Response>();
-			jest.mocked(executionData.httpResponse.end).mockImplementation(() => {
+			vi.mocked(executionData.httpResponse.end).mockImplementation(() => {
 				throw new Error('Connection closed');
 			});
 
@@ -471,7 +472,7 @@ describe('ActiveExecutions', () => {
 			let i = 1000;
 			executionPersistence.create.mockImplementation(async () => `${i++}`);
 
-			(sleep as jest.Mock).mockImplementation(() => {
+			(sleep as Mock).mockImplementation(() => {
 				// @ts-expect-error private property
 				activeExecutions.activeExecutions = {};
 			});
@@ -492,7 +493,7 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should wait for all running executions including those with response promises', async () => {
-			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
+			const stopExecutionSpy = vi.spyOn(activeExecutions, 'stopExecution');
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
 
@@ -509,7 +510,7 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should cancel all executions when cancelAll is true', async () => {
-			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
+			const stopExecutionSpy = vi.spyOn(activeExecutions, 'stopExecution');
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
 

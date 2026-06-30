@@ -1,6 +1,5 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { getHtmlSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import {
@@ -9,11 +8,12 @@ import {
 	type IWorkflowBase,
 	type Workflow,
 } from 'n8n-workflow';
-
-import type { WaitingWebhookRequest } from '../webhook.types';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WaitingForms } from '@/webhooks/waiting-forms';
+
+import type { WaitingWebhookRequest } from '../webhook.types';
 
 class TestWaitingForms extends WaitingForms {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
@@ -41,13 +41,13 @@ describe('WaitingForms', () => {
 	);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('findCompletionPage', () => {
 		it('should return lastNodeExecuted if it is a non-disabled form completion node', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					Form1: {
 						disabled: undefined,
@@ -65,7 +65,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if lastNodeExecuted is disabled', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					Form1: {
 						disabled: true,
@@ -83,7 +83,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if lastNodeExecuted is not a form node', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					NonForm: {
 						disabled: undefined,
@@ -99,7 +99,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if lastNodeExecuted operation is not completion', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					Form1: {
 						disabled: undefined,
@@ -117,7 +117,7 @@ describe('WaitingForms', () => {
 
 		it('should find first valid completion form in parent nodes if lastNodeExecuted is not valid', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
+				getParentNodes: vi.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
 				nodes: {
 					LastNode: {
 						disabled: undefined,
@@ -159,7 +159,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if no valid completion form is found in parent nodes', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue(['Form1', 'Form2']),
+				getParentNodes: vi.fn().mockReturnValue(['Form1', 'Form2']),
 				nodes: {
 					LastNode: {
 						disabled: undefined,
@@ -189,7 +189,7 @@ describe('WaitingForms', () => {
 
 		it('should skip parent nodes without runData', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
+				getParentNodes: vi.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
 				nodes: {
 					LastNode: {
 						disabled: undefined,
@@ -377,7 +377,7 @@ describe('WaitingForms', () => {
 					nodes: [],
 					connections: {},
 					active: true,
-					activeVersionId: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					activeVersionId: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					settings: {},
 					staticData: {},
 					isArchived: false,
@@ -399,7 +399,7 @@ describe('WaitingForms', () => {
 					nodes: [],
 					connections: {},
 					active: false,
-					activeVersionId: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					activeVersionId: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					settings: {},
 					staticData: {},
 					isArchived: false,
@@ -420,7 +420,7 @@ describe('WaitingForms', () => {
 					name: 'Test Workflow',
 					nodes: [],
 					connections: {},
-					active: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					active: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					activeVersionId: 'version-123',
 					settings: {},
 					staticData: {},
@@ -442,7 +442,7 @@ describe('WaitingForms', () => {
 					name: 'Test Workflow',
 					nodes: [],
 					connections: {},
-					active: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					active: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					activeVersionId: null,
 					settings: {},
 					staticData: {},
@@ -467,7 +467,7 @@ describe('WaitingForms', () => {
 					resultData: {
 						lastNodeExecuted: 'LastNode',
 						runData: {},
-						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+						error: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					},
 					resumeToken: undefined, // Old execution without token
 				},
@@ -525,7 +525,7 @@ describe('WaitingForms', () => {
 					resultData: {
 						lastNodeExecuted: 'LastNode',
 						runData: {},
-						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+						error: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					},
 					resumeToken: undefined, // Old execution without token
 				},
@@ -611,8 +611,8 @@ describe('WaitingForms', () => {
 				url: '/form-waiting/123', // No token in URL
 			});
 
-			const mockRender = jest.fn();
-			const mockStatus = jest.fn().mockReturnValue({ render: mockRender });
+			const mockRender = vi.fn();
+			const mockStatus = vi.fn().mockReturnValue({ render: mockRender });
 			const res = mock<express.Response>({
 				status: mockStatus,
 			});
@@ -634,7 +634,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					resumeToken: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					resumeToken: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 				},
 				workflowData: {
 					id: 'workflow1',

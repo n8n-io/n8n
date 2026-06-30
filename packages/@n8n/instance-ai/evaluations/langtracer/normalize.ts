@@ -1,3 +1,8 @@
+import { WORKFLOW_TEST_CASE_KEYS } from '../data/workflows/schema';
+
+/** Keys n8n's `.strict()` case schema accepts — anything else must be stripped. */
+const ALLOWED_KEYS = new Set(WORKFLOW_TEST_CASE_KEYS);
+
 /** Fold lang-tracer's legacy `buildExpectations` into `outcomeExpectations` (the key
  *  n8n's schema forbids). Outcome runs in every build mode. No-ops post-split. */
 export function normalizeExportedCase(raw: unknown): unknown {
@@ -15,9 +20,14 @@ export function normalizeExportedCase(raw: unknown): unknown {
 		delete obj.buildExpectations;
 	}
 
-	// drop dispatch-only keys (not part of n8n's schema)
-	delete obj.prompt;
-	delete obj.scenarios;
-
-	return obj;
+	// Whitelist to the schema's accepted keys. LangTracer attaches export-only keys
+	// (id, name, suiteId, timestamps, the dispatch-only prompt/scenarios, …); n8n's
+	// schema is `.strict()` and the loader aggregates errors, so a single stray key
+	// fails the whole suite. Stripping to the allowed set is robust where deleting
+	// the two keys we happen to know today is not.
+	const cleaned: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(obj)) {
+		if (ALLOWED_KEYS.has(key)) cleaned[key] = value;
+	}
+	return cleaned;
 }

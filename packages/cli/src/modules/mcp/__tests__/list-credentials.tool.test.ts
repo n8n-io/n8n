@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
+import type { Mock } from 'vitest';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Telemetry } from '@/telemetry';
@@ -29,10 +30,10 @@ describe('list-credentials MCP tool', () => {
 	const createMocks = (credentials: EnrichedCredential[] | Error = []) => {
 		const getMany =
 			credentials instanceof Error
-				? jest.fn().mockRejectedValue(credentials)
-				: jest.fn().mockResolvedValue(credentials);
+				? vi.fn().mockRejectedValue(credentials)
+				: vi.fn().mockResolvedValue(credentials);
 		const credentialsService = mockInstance(CredentialsService, { getMany });
-		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		return { credentialsService, telemetry };
 	};
 
@@ -101,7 +102,7 @@ describe('list-credentials MCP tool', () => {
 				],
 			});
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg).toMatchObject({
 				includeScopes: true,
 				includeData: false,
@@ -121,7 +122,7 @@ describe('list-credentials MCP tool', () => {
 				onlySharedWithMe: true,
 			});
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg).toMatchObject({
 				listQueryOptions: {
 					take: 200,
@@ -159,7 +160,7 @@ describe('list-credentials MCP tool', () => {
 
 			await listCredentials(user, credentialsService, { onlySharedWithMe: true });
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg).toMatchObject({
 				onlySharedWithMe: true,
 				includeGlobal: false,
@@ -171,7 +172,7 @@ describe('list-credentials MCP tool', () => {
 
 			await listCredentials(user, credentialsService, { limit: 0 });
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.listQueryOptions.take).toBe(1);
 		});
 
@@ -180,7 +181,7 @@ describe('list-credentials MCP tool', () => {
 
 			await listCredentials(user, credentialsService, {});
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.listQueryOptions.filter).toBeUndefined();
 		});
 
