@@ -66,6 +66,9 @@ function readConnectionIdPayload(data: unknown): string | null {
 }
 
 const modalState = computed(() => uiStore.modalsById[props.modalName] ?? null);
+const isCredentialModalOpen = computed(
+	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
+);
 const isOpen = computed({
 	get: () => true,
 	set: (value: boolean) => {
@@ -360,6 +363,7 @@ async function handleConnect(item: ToolConnectionItem) {
 <template>
 	<ToolsConnectionModal
 		v-model:open="isOpen"
+		:modal="!isCredentialModalOpen"
 		:items="items"
 		:sections="['connected', 'built-in-services', 'nodes']"
 		:detail-item="detailItem"
