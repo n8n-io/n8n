@@ -80,13 +80,17 @@ const onSelect = (type: string): void => {
 	padding-top: var(--parameter-input-options--height, 22px);
 }
 
+.wrapper > :global(span) {
+	width: 100%;
+	height: var(--height--md);
+}
+
 .trigger {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	width: 100%;
 	height: 100%;
-	min-height: 30px;
 	padding: 0 var(--spacing--2xs);
 	border: var(--border-width) var(--border-style) var(--input--border-color, var(--border-color));
 	border-top-left-radius: var(--input--radius--top-left, var(--input--radius, 0));

@@ -5,7 +5,12 @@ import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExecutionCancelledError,
+	BaseError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 import {
@@ -353,7 +358,7 @@ export class ErrorReporter {
 
 	private wrap(e: unknown) {
 		if (e instanceof Error) return e;
-		if (typeof e === 'string') return new ApplicationError(e);
+		if (typeof e === 'string') return new UnexpectedError(e);
 		return;
 	}
 

@@ -1,20 +1,35 @@
-const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot } = vi.hoisted(() => ({
-	packWorkspaceSdkMockState: {
-		isEnabled: false,
-		packWorkspaceSdk: vi.fn(),
-	},
-	resolveMockWorkspaceRoot: async (workspace: {
-		filesystem?: { basePath?: string };
-	}): Promise<string> => {
-		await Promise.resolve();
-		const basePath = workspace.filesystem?.basePath;
-		if (typeof basePath === 'string' && basePath.length > 0) {
-			return basePath;
-		}
+const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState } = vi.hoisted(
+	() => ({
+		packWorkspaceSdkMockState: {
+			isEnabled: false,
+			packWorkspaceSdk: vi.fn(),
+		},
+		resolveMockWorkspaceRoot: async (workspace: {
+			filesystem?: { basePath?: string };
+		}): Promise<string> => {
+			await Promise.resolve();
+			const basePath = workspace.filesystem?.basePath;
+			if (typeof basePath === 'string' && basePath.length > 0) {
+				return basePath;
+			}
 
-		return '/home/daytona/workspace';
-	},
-}));
+			return '/home/daytona/workspace';
+		},
+		// Mutable mock state for `../sandbox-fs`. A top-level `vi.mock` (below)
+		// delegates to these, so each test swaps behaviour by assigning here —
+		// no per-test `vi.resetModules()` + dynamic `import`, which races and
+		// flakes when many vitest processes run concurrently (e.g. CI).
+		sandboxFsMockState: {
+			runInSandbox:
+				vi.fn<
+					(
+						...args: [SandboxWorkspace, string, string?]
+					) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+				>(),
+			readFileViaSandbox: vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>(),
+		},
+	}),
+);
 
 vi.mock('../pack-workspace-sdk', () => ({
 	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
@@ -29,6 +44,20 @@ vi.mock('@n8n/agents/sandbox', async (importOriginal) => {
 	};
 });
 
+vi.mock('../sandbox-fs', () => ({
+	runInSandbox: async (...args: [SandboxWorkspace, string, string?]) =>
+		await sandboxFsMockState.runInSandbox(...args),
+	readFileViaSandbox: async (...args: [SandboxWorkspace, string]) =>
+		await sandboxFsMockState.readFileViaSandbox(...args),
+	writeFileViaSandbox: async (workspace: SandboxWorkspace, path: string) => {
+		const result = await sandboxFsMockState.runInSandbox(workspace, `write '${path}'`);
+		if (result.exitCode !== 0) {
+			throw new Error(`Failed to write file ${path}: ${result.stderr}`);
+		}
+	},
+	escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
+}));
+
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -36,12 +65,12 @@ import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builde
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
-import type {
-	formatNodeCatalogLine as formatNodeCatalogLineFunction,
-	setupSandboxWorkspace as setupSandboxWorkspaceFunction,
+import {
+	setupSandboxWorkspace,
+	type formatNodeCatalogLine as formatNodeCatalogLineFunction,
 } from '../sandbox-setup';
 
-type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
+type SetupSandboxWorkspace = typeof setupSandboxWorkspace;
 type FormatNodeCatalogLine = typeof formatNodeCatalogLineFunction;
 type LinkWorkspaceSdkIfEnabled = (
 	workspace: SandboxWorkspace,
@@ -149,30 +178,15 @@ function createLocalWorkspace(
 	};
 }
 
-async function loadSetupSandboxWorkspaceWithFsMocks(
+function loadSetupSandboxWorkspaceWithFsMocks(
 	runInSandbox: RunInSandboxMock,
 	readFileViaSandbox: ReadFileViaSandboxMock,
-): Promise<SetupSandboxWorkspace> {
+): SetupSandboxWorkspace {
 	packWorkspaceSdkMockState.isEnabled = false;
 	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
-	vi.resetModules();
-	vi.doMock('../sandbox-fs', () => ({
-		runInSandbox,
-		readFileViaSandbox,
-		writeFileViaSandbox: async (workspace: SandboxWorkspace, path: string) => {
-			const result = await runInSandbox(workspace, `write '${path}'`);
-			if (result.exitCode !== 0) {
-				throw new Error(`Failed to write file ${path}: ${result.stderr}`);
-			}
-		},
-		escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
-	}));
-
-	const sandboxSetup = (await import('../sandbox-setup')) as {
-		setupSandboxWorkspace: SetupSandboxWorkspace;
-	};
-
-	return sandboxSetup.setupSandboxWorkspace;
+	sandboxFsMockState.runInSandbox = runInSandbox;
+	sandboxFsMockState.readFileViaSandbox = readFileViaSandbox;
+	return setupSandboxWorkspace;
 }
 
 async function loadLinkWorkspaceSdkWithMocks(
@@ -267,7 +281,7 @@ describe('setupSandboxWorkspace', () => {
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
@@ -297,7 +311,7 @@ describe('setupSandboxWorkspace', () => {
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
@@ -338,7 +352,7 @@ describe('setupSandboxWorkspace', () => {
 			}
 			return null;
 		});
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
@@ -382,7 +396,7 @@ describe('setupSandboxWorkspace', () => {
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
@@ -417,7 +431,7 @@ describe('setupSandboxWorkspace', () => {
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
@@ -448,7 +462,7 @@ describe('setupSandboxWorkspace', () => {
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
@@ -478,7 +492,7 @@ describe('setupSandboxWorkspace', () => {
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
@@ -516,7 +530,7 @@ describe('setupSandboxWorkspace', () => {
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);

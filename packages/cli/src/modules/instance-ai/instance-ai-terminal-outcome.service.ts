@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	InstanceAiTerminalResponseGuard,
+	orchestratorAgentId,
 	TerminalOutcomeStorage,
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
@@ -24,8 +25,6 @@ import type {
 	MessageTraceFinalization,
 } from './tracing/instance-ai-tracing.service';
 
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
-
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -39,7 +38,7 @@ function createTerminalOutcomeAgentTree(
 	responseId: string,
 ): InstanceAiAgentNode {
 	return {
-		agentId: ORCHESTRATOR_AGENT_ID,
+		agentId: orchestratorAgentId(outcome.runId),
 		role: 'orchestrator',
 		status:
 			outcome.status === 'cancelled'
@@ -212,7 +211,7 @@ export class InstanceAiTerminalOutcomeService {
 	): TerminalResponseDecision | undefined {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
-			rootAgentId: ORCHESTRATOR_AGENT_ID,
+			rootAgentId: orchestratorAgentId(runId),
 			messageGroupId: options.messageGroupId,
 			correlationId: options.correlationId,
 		});
@@ -237,7 +236,7 @@ export class InstanceAiTerminalOutcomeService {
 	): TerminalResponseDecision | undefined {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
-			rootAgentId: ORCHESTRATOR_AGENT_ID,
+			rootAgentId: orchestratorAgentId(runId),
 			messageGroupId: options.messageGroupId,
 			correlationId: options.correlationId,
 		});
@@ -486,7 +485,7 @@ export class InstanceAiTerminalOutcomeService {
 		this.eventBus.publish(outcome.threadId, {
 			type: 'text-delta',
 			runId: outcome.runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(outcome.runId),
 			responseId,
 			payload: { text: outcome.userFacingMessage },
 		});

@@ -1,20 +1,18 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- jest.mock factory */
-jest.mock('@n8n/backend-common', () => {
-	const actual = jest.requireActual('@n8n/backend-common');
+vi.mock('@n8n/backend-common', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common');
 	return {
 		...actual,
 		inProduction: true,
 	};
 });
-/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return */
 
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { OauthService } from '@/oauth/oauth.service';
@@ -60,13 +58,11 @@ const mockResolver: ICredentialResolver = {
 		name: 'test-resolver',
 		description: 'Test resolver for rate limit integration tests',
 	},
-	setSecret: jest.fn().mockResolvedValue(undefined),
-	getSecret: jest
-		.fn()
-		.mockResolvedValue({ token: 'test-token', refreshToken: 'test-refresh-token' }),
-	deleteSecret: jest.fn().mockResolvedValue(undefined),
-	validateIdentity: jest.fn().mockResolvedValue(undefined),
-	validateOptions: jest.fn(),
+	setSecret: vi.fn().mockResolvedValue(undefined),
+	getSecret: vi.fn().mockResolvedValue({ token: 'test-token', refreshToken: 'test-refresh-token' }),
+	deleteSecret: vi.fn().mockResolvedValue(undefined),
+	validateIdentity: vi.fn().mockResolvedValue(undefined),
+	validateOptions: vi.fn(),
 };
 
 beforeAll(async () => {
@@ -75,7 +71,7 @@ beforeAll(async () => {
 	cipher = Container.get(Cipher);
 	oauthService = Container.get(OauthService);
 
-	oauthService.generateAOauth2AuthUri = jest
+	oauthService.generateAOauth2AuthUri = vi
 		.fn()
 		.mockResolvedValue('https://oauth.example.com/authorize');
 	mockInstance(EnterpriseCredentialsService);
@@ -125,7 +121,7 @@ async function setupTestData() {
 	const registry = Container.get(DynamicCredentialResolverRegistry);
 	registry['resolverMap'].set('test-resolver', mockResolver);
 
-	jest.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([
+	vi.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([
 		{
 			credentialId: 'cred-123',
 			resolverId: 'resolver-123',

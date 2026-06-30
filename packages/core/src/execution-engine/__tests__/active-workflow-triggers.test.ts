@@ -10,7 +10,12 @@ import type {
 	TriggerTime,
 	CronExpression,
 } from 'n8n-workflow';
-import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	LoggerProxy,
+	TriggerCloseError,
+	WorkflowActivationError,
+} from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -21,6 +26,7 @@ import { Tracing } from '@/observability';
 import { ActiveWorkflowTriggers } from '../active-workflow-triggers';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
+import { PollTriggerExecutor } from '../poll-trigger-executor';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
 
@@ -74,7 +80,7 @@ describe('ActiveWorkflowTriggers', () => {
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
-			tracing,
+			new PollTriggerExecutor(logger, triggersAndPollers, tracing),
 		);
 	});
 
@@ -935,6 +941,63 @@ describe('ActiveWorkflowTriggers', () => {
 			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
+
+		it('shares workflow state across concurrent single-node registrations', async () => {
+			const responseA = mock<ITriggerResponse>();
+			const responseB = mock<ITriggerResponse>();
+			const deferredA = createDeferredPromise<ITriggerResponse>();
+			const deferredB = createDeferredPromise<ITriggerResponse>();
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockImplementation(async (_workflow, node) =>
+				node.id === 'a' ? await deferredA.promise : await deferredB.promise,
+			);
+
+			const addA = addTriggers(['a']);
+			const addB = addTriggers(['b']);
+
+			expect(activeWorkflowTriggers.get(workflowId)).toBeDefined();
+
+			deferredB.resolve(responseB);
+			deferredA.resolve(responseA);
+			await Promise.all([addA, addB]);
+
+			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
+				new Set(['a', 'b']),
+			);
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(responseA);
+			expect(activeWorkflowTriggers.get(workflowId)?.get('b')).toBe(responseB);
+		});
+
+		it('keeps the successful concurrent registration when another one fails', async () => {
+			const responseA = mock<ITriggerResponse>();
+			const deferredA = createDeferredPromise<ITriggerResponse>();
+			const deferredB = createDeferredPromise<ITriggerResponse>();
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockImplementation(async (_workflow, node) =>
+				node.id === 'a' ? await deferredA.promise : await deferredB.promise,
+			);
+
+			const addA = addTriggers(['a']);
+			const addB = addTriggers(['b']);
+
+			deferredB.reject(new Error('activation failed'));
+			await expect(addB).rejects.toThrow('activation failed');
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+
+			deferredA.resolve(responseA);
+			await addA;
+
+			expect(activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId)).toEqual(
+				new Set(['a']),
+			);
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(responseA);
+			expect(activeWorkflowTriggers.get(workflowId)?.has('b')).toBe(false);
+			expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(workflowGroup(), 'b');
+			expect(scheduledTaskManager.deregisterTarget).not.toHaveBeenCalledWith(workflowGroup(), 'a');
+		});
 	});
 
 	describe('removeTriggers()', () => {
@@ -979,6 +1042,79 @@ describe('ActiveWorkflowTriggers', () => {
 
 			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+		});
+
+		it('keeps workflow state during concurrent removals until the last trigger is gone', async () => {
+			const closeA = createDeferredPromise();
+			const closeB = createDeferredPromise();
+			const deferredResponseA = mock<ITriggerResponse>({
+				closeFunction: vi.fn(async () => await closeA.promise),
+			});
+			const deferredResponseB = mock<ITriggerResponse>({
+				closeFunction: vi.fn(async () => await closeB.promise),
+			});
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockImplementation(async (_workflow, node) =>
+				node.id === 'a' ? deferredResponseA : deferredResponseB,
+			);
+
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				['a', 'b'],
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+			const removeA = activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
+			const removeB = activeWorkflowTriggers.removeTriggers(workflowId, new Set(['b']));
+			await flushPromises();
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+
+			closeA.resolve(undefined);
+			await flushPromises();
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+
+			closeB.resolve(undefined);
+			await Promise.all([removeA, removeB]);
+
+			expect(deferredResponseA.closeFunction).toHaveBeenCalledTimes(1);
+			expect(deferredResponseB.closeFunction).toHaveBeenCalledTimes(1);
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+		});
+
+		it('keeps the workflow entry until the last trigger or cron is gone', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(responseA);
+			scheduledTaskManager.hasGroup.mockReturnValueOnce(true).mockReturnValueOnce(false);
+
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				['a'],
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['cron-a']));
+
+			expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(workflowGroup(), 'a');
+			expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(workflowGroup(), 'cron-a');
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
 
@@ -1067,7 +1203,7 @@ describe('ActiveWorkflowTriggers', () => {
 				realScheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				tracing,
+				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing),
 			);
 		});
 

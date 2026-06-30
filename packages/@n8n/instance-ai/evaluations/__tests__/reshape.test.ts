@@ -2,6 +2,7 @@ import type { Run } from 'langsmith/schemas';
 
 import { reshapeLangSmithRuns } from '../cli/reshape';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -40,7 +41,7 @@ const turn: TranscriptTurn = { steps: [{ kind: 'agent-text', text: 'building...'
 const verdict: BuildExpectationResult = { expectation: 'asked first', pass: true, reason: 'did' };
 
 describe('reshapeLangSmithRuns', () => {
-	it('reattaches transcript + build-expectation verdicts to the test case by threadId', () => {
+	it('reattaches transcript by threadId and build-expectation verdicts by iteration:fileSlug', () => {
 		const cases = [withFile('airtable', [scenario('s1'), scenario('s2')])];
 		const rows = [
 			row(
@@ -58,7 +59,7 @@ describe('reshapeLangSmithRuns', () => {
 			cases,
 			1,
 			new Map([['tid-1', [turn]]]),
-			new Map([['tid-1', [verdict]]]),
+			new Map([['0:airtable', [verdict]]]),
 			'http://localhost:5678',
 		);
 
@@ -72,24 +73,82 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults.map((r) => r.success)).toEqual([true, true]);
 	});
 
-	it('leaves transcript + verdicts undefined when the run output carries no threadId (regression: dropped threadId)', () => {
-		// Models the exec-error return that omitted threadId: build succeeded, but
-		// with no threadId on the output the join can't find the maps' entries.
+	it('grades a build-only case (0 scenarios) from the sentinel row without a scenario unit', () => {
+		const cases = [withFile('build-only', [])];
+		const rows = [
+			row(
+				{ testCaseFile: 'build-only', scenarioName: BUILD_ONLY_SCENARIO_NAME, _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: false,
+					score: 0,
+					reasoning: 'Build-only case — graded by process/outcome expectations',
+					workflowId: 'wf-1',
+					threadId: 'tid-1',
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(
+			rows,
+			cases,
+			1,
+			new Map([['tid-1', [turn]]]),
+			new Map([['0:build-only', [verdict]]]),
+			undefined,
+		);
+
+		const tc = result[0][0];
+		expect(tc.executionScenarioResults).toEqual([]); // no phantom scenario unit
+		expect(tc.workflowBuildSuccess).toBe(true);
+		expect(tc.workflowId).toBe('wf-1');
+		expect(tc.threadId).toBe('tid-1');
+		expect(tc.transcript).toEqual([turn]);
+		expect(tc.buildExpectationResults).toEqual([verdict]);
+	});
+
+	it('reports a build-only case whose build failed as not built, surfacing the build error', () => {
+		const cases = [withFile('build-only', [])];
+		// The sentinel row carries the build-failure output the target returns before the
+		// build-only branch — reshape must report it as not built, not mask it as success.
+		const rows = [
+			row(
+				{ testCaseFile: 'build-only', scenarioName: BUILD_ONLY_SCENARIO_NAME, _iteration: 0 },
+				{
+					buildSuccess: false,
+					passed: false,
+					score: 0,
+					reasoning: 'Build failed: agent produced no workflow',
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		const tc = result[0][0];
+		expect(tc.executionScenarioResults).toEqual([]); // no phantom scenario unit
+		expect(tc.workflowBuildSuccess).toBe(false);
+		expect(tc.buildError).toBe('Build failed: agent produced no workflow');
+	});
+
+	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {
+		// Prebuilt/MCP builds have no threadId. Transcript stays threadId-gated (so it
+		// remains undefined here), but outcome-expectation verdicts must still attach via
+		// the build-cache key, so LangSmith prebuilt runs match the direct-loop path.
 		const cases = [withFile('airtable', [scenario('s1')])];
 		const rows = [
 			row(
 				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: 0 },
-				{ buildSuccess: true, passed: false, score: 0, reasoning: 'exec error' },
+				{ buildSuccess: true, passed: true, score: 1, reasoning: 'ok' },
 			),
 		];
 
-		// Maps DO hold data under a real threadId — proving we don't misattach it.
 		const result = reshapeLangSmithRuns(
 			rows,
 			cases,
 			1,
 			new Map([['tid-real', [turn]]]),
-			new Map([['tid-real', [verdict]]]),
+			new Map([['0:airtable', [verdict]]]),
 			undefined,
 		);
 
@@ -97,7 +156,7 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.workflowBuildSuccess).toBe(true);
 		expect(tc.threadId).toBeUndefined();
 		expect(tc.transcript).toBeUndefined();
-		expect(tc.buildExpectationResults).toBeUndefined();
+		expect(tc.buildExpectationResults).toEqual([verdict]);
 	});
 
 	it('stubs a build_failure for a scenario with no matching run', () => {

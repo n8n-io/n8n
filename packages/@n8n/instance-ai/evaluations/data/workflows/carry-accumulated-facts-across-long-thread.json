@@ -41,10 +41,12 @@
 		}
 	],
 	"description": "Across an iterative multi-turn build, the agent must keep carrying the workflow and the facts established earlier in the thread. When the user sends a terse final follow-up that only resolves against earlier context (the onboarding validation project and its agreed counts, established a few turns earlier and deliberately not restated), the agent must recall those facts and keep working the SAME workflow — not cold-start ('this appears to be the start of our conversation'), ask an unrelated or already-answered clarifying question, re-ask details already given, or build a fresh workflow from scratch.",
-	"buildExpectations": [
+	"processExpectations": [
 		"On the final turn the user referred back to the onboarding project's agreed numbers without restating them; the agent treated that target (established earlier in the thread as 45 active / 41 completed / 86 total) as already-known and did not ask the user to repeat it or to re-identify the onboarding project.",
 		"The agent never cold-started or claimed it lacked prior context — it did not respond as if the latest message were the beginning of the conversation, and did not ask an unrelated or already-answered clarifying question in place of engaging with the terse, context-dependent follow-up.",
-		"Across the refinement turns the agent kept working the single workflow it had been building throughout the thread; it never created a new workflow or restarted the build from scratch.",
+		"Across the refinement turns the agent kept working the single workflow it had been building throughout the thread; it never created a new workflow or restarted the build from scratch."
+	],
+	"outcomeExpectations": [
 		"Every refinement added earlier in the thread is still present in the final workflow — fail if ANY is missing: the active/completed split derived from task.status, the fields[tasks] parameter requesting at least projectId, and page[size]=500. The agent did not silently drop an earlier-agreed setting while handling the final follow-up."
 	],
 	"triggerType": "schedule",

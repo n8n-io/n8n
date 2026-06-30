@@ -1,6 +1,8 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import type { AiService } from '@/services/ai.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentValidationService } from '../agent-validation.service';
@@ -30,25 +32,29 @@ function makeAgent(config: AgentJsonConfig | null = runnableConfig, skills = {})
 
 function makeCredentialProvider(credentials: Array<{ id: string; type: string }> = []) {
 	return {
-		list: jest.fn().mockResolvedValue(credentials),
+		list: vi.fn().mockResolvedValue(credentials),
 	} as unknown as CredentialProvider;
 }
 
-function makeService() {
+function makeAiService(proxyEnabled = false) {
+	return { isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled) } as unknown as AiService;
+}
+
+function makeService(aiService = makeAiService()) {
 	const agentRepository = mock<AgentRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
-	agentSkillsService.getMissingSkillIds.mockReturnValue([]);
 
 	return {
-		service: new AgentValidationService(agentRepository, agentSkillsService),
+		service: new AgentValidationService(agentRepository, aiService),
 		agentRepository,
 		agentSkillsService,
+		aiService,
 	};
 }
 
 describe('AgentValidationService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('reports missing essentials when the agent or runnable config is absent', async () => {
@@ -85,8 +91,7 @@ describe('AgentValidationService', () => {
 	});
 
 	it('consolidates missing optional credential-backed features', async () => {
-		const { service, agentRepository, agentSkillsService } = makeService();
-		agentSkillsService.getMissingSkillIds.mockReturnValue(['skill-1']);
+		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
@@ -163,7 +168,7 @@ describe('AgentValidationService', () => {
 		});
 	});
 
-	it('reports malformed episodic memory credentials without skipping worker model checks', async () => {
+	it('reports missing episodic memory credentials without skipping worker model checks', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -173,7 +178,7 @@ describe('AgentValidationService', () => {
 					storage: 'n8n',
 					episodicMemory: {
 						enabled: true,
-						credential: { id: 'not-a-string' } as unknown as string,
+						credential: null as unknown as string,
 						extractorModel: { model: 'openai/gpt-4o', credential: 'missing-extractor' },
 					},
 				},
@@ -192,5 +197,56 @@ describe('AgentValidationService', () => {
 				'memory.episodicMemory.extractorModel.credential',
 			]),
 		);
+	});
+
+	it('accepts managed episodic memory credential when the assistant proxy is enabled', async () => {
+		const { service, agentRepository } = makeService(makeAiService(true));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: 'managed',
+					},
+				},
+			} as AgentJsonConfig),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).not.toContain('credential');
+		expect(result.missing).not.toContain('episodicMemory.credential');
+	});
+
+	it('rejects managed episodic memory credential when the assistant proxy is disabled', async () => {
+		const { service, agentRepository } = makeService(makeAiService(false));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: 'managed',
+					},
+				},
+			} as AgentJsonConfig),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).toContain('episodicMemory.credential');
 	});
 });

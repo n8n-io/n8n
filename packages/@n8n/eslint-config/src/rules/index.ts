@@ -20,6 +20,7 @@ import { NoTypeOnlyImportInDiRule } from './no-type-only-import-in-di.js';
 import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js';
 import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
 import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
+import { NoApplicationErrorRule } from './no-application-error.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -43,4 +44,5 @@ export const rules = {
 	'no-error-instance-in-to-throw': NoErrorInstanceInToThrowRule,
 	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
 	'no-uncentralized-http': NoUncentralizedHttpRule,
+	'no-application-error': NoApplicationErrorRule,
 } satisfies Record<string, AnyRuleModule>;

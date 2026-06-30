@@ -136,11 +136,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async clickDestinationCardDropdown(index: number): Promise<void> {
-		await this.getDestinationCards()
-			.nth(index)
-			.getByTestId('action-toggle')
-			.getByRole('button')
-			.click();
+		await this.actionToggle.open(this.getDestinationCards().nth(index));
 	}
 
 	async clickDropdownMenuItem(index: number): Promise<void> {
