@@ -95,10 +95,6 @@ export class AgentsService {
 				case 'workflow':
 					return [{ type: 'workflow', name: tool.name ?? tool.workflow }];
 				case 'node':
-					// `node` is required by the schema, but `entity.schema` is a raw JSON
-					// column that isn't re-validated on read (same unvalidated-config caveat
-					// as the `default` branch below). Guard the access so a malformed
-					// persisted node tool degrades to a name-only chip instead of throwing.
 					return [
 						{
 							type: 'node',

@@ -3,25 +3,21 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentCapabilitySummary } from '@n8n/api-types';
 import { getAgentCapabilitySummary } from './useAgentApi';
 
-// Shared across all agent cards. v1 chips are static (no live updates), so the
-// same agent referenced by multiple nodes is fetched once. Keyed by project +
-// agent because the endpoint is project-scoped.
+// Shared across all agent cards. Capability chips are static (no live updates), so the
+// same agent referenced by multiple nodes is fetched once.
 const summaryCache = new Map<string, AgentCapabilitySummary>();
 
 function cacheKey(projectId: string, agentId: string) {
 	return `${projectId}:${agentId}`;
 }
 
-/** Test-only: drop cached summaries so cases don't leak state into each other. */
 export function clearAgentCapabilitySummaryCache() {
 	summaryCache.clear();
 }
 
 /**
- * Fetches the capability summary (model + chip labels) for the agent rendered on
- * a canvas card. Re-fetches when the selected agent or project scope changes and
- * gates post-await writes behind a monotonic generation so a slow request for a
- * superseded agent can't clobber a newer one's result.
+ * Fetches the capability summary (model + capability chip labels) for the agent rendered on
+ * a canvas card. Re-fetches when the selected agent or project scope changes.
  */
 export function useAgentCapabilitySummary(projectId: Ref<string>, agentId: Ref<string>) {
 	const rootStore = useRootStore();
@@ -29,6 +25,9 @@ export function useAgentCapabilitySummary(projectId: Ref<string>, agentId: Ref<s
 	const summary = ref<AgentCapabilitySummary | null>(null);
 	const isLoading = ref(false);
 	const error = ref<unknown | null>(null);
+
+	// A monotonic generation number so a slow request for a
+	// superseded agent can't clobber a newer one's result.
 	let loadGeneration = 0;
 
 	async function fetch() {
@@ -63,7 +62,9 @@ export function useAgentCapabilitySummary(projectId: Ref<string>, agentId: Ref<s
 				currentProjectId,
 				currentAgentId,
 			);
+
 			if (generation !== loadGeneration) return;
+
 			summaryCache.set(cacheKey(currentProjectId, currentAgentId), result);
 			summary.value = result;
 		} catch (e) {

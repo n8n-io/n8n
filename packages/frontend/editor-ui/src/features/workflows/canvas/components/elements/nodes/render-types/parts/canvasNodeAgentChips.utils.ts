@@ -24,8 +24,7 @@ export interface AgentCardChip {
 
 /**
  * Resolves a node tool's friendly node-type display name (with the " Tool"
- * suffix stripped), or `undefined` when the node type isn't loaded. Backed by
- * the node-types store in the component so this module stays pure.
+ * suffix stripped), or `undefined` when the node type isn't loaded.
  */
 export type ResolveNodeTypeLabel = (nodeType: string, version?: number) => string | undefined;
 
@@ -46,8 +45,7 @@ function individualToolChip(tool: AgentCapabilityTool, index: number): AgentCard
 	return {
 		key: `tool:${tool.type}:${tool.name}:${index}`,
 		icon: TOOL_ICONS[tool.type],
-		// Mirror the agent edit page, which humanizes every tool name (raw node
-		// tool ids like `get_available_dates` → "Get available dates").
+		// Mirror the agent edit page, which humanizes every tool name.
 		label: formatToolNameForDisplay(tool.name),
 		// Node tools carry their node type so the chip renders the node's icon;
 		// undefined for workflow/custom tools.
@@ -115,8 +113,7 @@ function buildToolChips(
 
 /**
  * Flattens an agent's capability summary into the ordered chip list shown on the
- * canvas card: channels (grouped by integration type with a count prefix when
- * repeated), then tools, skills and tasks. Channel labels/icons resolve from the
+ * canvas card: channels, then tools, skills and tasks. Channel labels/icons resolve from the
  * integrations catalog when loaded, falling back to the raw type + a generic icon.
  * Node tools resolve their friendly node-type names (and group) via
  * {@link resolveNodeTypeLabel}.

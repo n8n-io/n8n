@@ -157,7 +157,7 @@ export interface AgentCapabilityTool {
 	name: string;
 	/**
 	 * Node type + version for `type: 'node'` tools. Lets the card resolve the
-	 * node's display name and group same-node-type tools like the edit page.
+	 * node's display name and group same-node-type tools.
 	 * Absent for custom/workflow tools.
 	 */
 	nodeType?: string;

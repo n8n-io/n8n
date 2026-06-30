@@ -130,7 +130,7 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDrop
 );
 
 // Show "Create agent" only when the user can create one in the scoped project
-// (project/global agent:create scope, and not a read-only source-control branch).
+// (project/global agent:create scope).
 const { canCreate } = useAgentPermissions(projectId);
 
 const currentProjectName = computed(() => {
@@ -238,8 +238,7 @@ function onKeyDown(e: KeyboardEvent) {
 function onAddResourceClicked() {
 	hideDropdown();
 	emit('agentCreateRequested');
-	// Open the standalone new-agent flow scoped to the picker's project. The
-	// seamless inline-create round-trip back to the node is AGENT-277.
+	// Open the standalone new-agent flow scoped to the picker's project
 	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
 }
 

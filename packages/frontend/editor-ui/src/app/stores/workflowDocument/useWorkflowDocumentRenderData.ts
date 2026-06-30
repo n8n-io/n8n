@@ -320,8 +320,8 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			case `${CanvasNodeRenderType.ChoicePrompt}`:
 				return createChoicePromptRenderType();
 			case `${CanvasNodeRenderType.Agent}`:
-				// The rich card targets the v2 node (agentSelector picker). v1 keeps
-				// its legacy resourceLocator picker and the default node rendering.
+				// The rich agent card targets the v2 node.
+				// v1 keeps its legacy default node rendering.
 				return (node.typeVersion ?? 0) >= 2
 					? createAgentRenderType(node)
 					: createDefaultNodeRenderType(node);

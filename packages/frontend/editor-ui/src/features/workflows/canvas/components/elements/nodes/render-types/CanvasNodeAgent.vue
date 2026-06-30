@@ -144,7 +144,9 @@ function onPickAgent(value: INodeParameterResourceLocator) {
 }
 
 function onActivate(event: MouseEvent) {
-	emit('activate', id.value, event);
+	if (isConfigured.value) {
+		emit('activate', id.value, event);
+	}
 }
 
 function onOpenContextMenu(event: MouseEvent) {
@@ -232,9 +234,7 @@ watch(
 							<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
 						</template>
 					</template>
-					<!-- Stop dbl-click bubbling so interacting with the picker doesn't trip
-					the card's double-click-to-open-NDV. -->
-					<div v-else :class="[$style.picker, 'nodrag', 'nowheel']" @dblclick.stop>
+					<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">
 						<AgentSelectorParameterInput
 							:parameter="agentSelectorParameter"
 							:model-value="agentResourceLocator"
