@@ -440,13 +440,15 @@ describe('claimRunUsage', () => {
 			const license = { isInstanceAiEnabled: vi.fn().mockReturnValue(true) };
 
 			const service = createService({ threadRepo, aiService: ai, push, telemetry, license });
-			await callClaim(service);
+			await callClaim(service, { threadId: 'thread-9', dedupeId: 'run-1' });
 
 			expect(ai.__getInstanceAiApiProxyToken).toHaveBeenCalledTimes(1);
+			// The threadId in scope is forwarded into the IA claim payload so the
+			// service can attach it to the claim telemetry.
 			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
 				{ id: 'user-1' },
 				{ Authorization: 'Bearer ia-tok' },
-				{ dedupeId: 'run-1', usage },
+				{ dedupeId: 'run-1', usage, threadId: 'thread-9' },
 			);
 			expect(ai.__getBuilderApiProxyToken).not.toHaveBeenCalled();
 			expect(ai.__markBuilderTokenUsage).not.toHaveBeenCalled();
