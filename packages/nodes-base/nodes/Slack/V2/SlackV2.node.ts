@@ -43,6 +43,7 @@ import {
 	userRLC,
 } from './MessageDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
+import { slackSendAndWaitWebhook } from './SlackHitlWebhook';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
@@ -51,7 +52,6 @@ import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descr
 import {
 	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
-	sendAndWaitWebhook,
 } from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
@@ -366,7 +366,7 @@ export class SlackV2 implements INodeType {
 		},
 	};
 
-	webhook = sendAndWaitWebhook;
+	webhook = slackSendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -966,7 +966,7 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/chat.scheduledMessages.list
 					if (operation === 'getManyScheduled') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.channelId) {
 							qs.channel = this.getNodeParameter('filters.channelId', i, '', {
 								extractValue: true,
@@ -1644,7 +1644,7 @@ export class SlackV2 implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });

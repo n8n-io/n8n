@@ -24,8 +24,6 @@ describe('Send and Wait utils tests', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
 		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
-		// Real getContext always returns an object; default to one with no persisted responder.
-		mockWebhookFunctions.getContext.mockReturnValue({});
 	});
 
 	describe('getSendAndWaitProperties', () => {
@@ -249,30 +247,6 @@ describe('Send and Wait utils tests', () => {
 				webhookResponse: expect.any(String),
 				workflowData: [[{ json: { data: { approved: false } } }]],
 			});
-		});
-
-		it('includes the responder identity persisted with the execution', async () => {
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				query: { approved: 'true' },
-			} as any);
-			mockWebhookFunctions.getContext.mockReturnValue({
-				responder: { id: 'U123', name: 'Ada', email: 'ada@example.com', source: 'slack' },
-			});
-
-			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-			expect(result.workflowData).toEqual([
-				[
-					{
-						json: {
-							data: {
-								approved: true,
-								responder: { id: 'U123', name: 'Ada', email: 'ada@example.com', source: 'slack' },
-							},
-						},
-					},
-				],
-			]);
 		});
 
 		it('should handle freeText GET webhook', async () => {

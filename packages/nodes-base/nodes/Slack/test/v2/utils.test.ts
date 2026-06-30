@@ -1,11 +1,68 @@
+import type { IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
 import { type MockProxy, mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { verifySignature } from '../../SlackTriggerHelpers';
 import {
 	getTarget,
 	createSendAndWaitMessageBody,
 	toMultiOptionsCsv,
 } from '../../V2/GenericFunctions';
+import { slackSendAndWaitWebhook } from '../../V2/SlackHitlWebhook';
+
+vi.mock('../../SlackTriggerHelpers', () => ({ verifySignature: vi.fn() }));
+
+describe('slackSendAndWaitWebhook', () => {
+	let webhookFns: MockProxy<IWebhookFunctions>;
+
+	beforeEach(() => {
+		webhookFns = mock<IWebhookFunctions>();
+		vi.mocked(verifySignature).mockReset();
+	});
+
+	it('returns approved + responder for a valid Slack interaction', async () => {
+		vi.mocked(verifySignature).mockResolvedValue(true);
+		webhookFns.getRequestObject.mockReturnValue({
+			method: 'POST',
+			headers: { 'x-slack-signature': 'v0=abc' },
+		} as any);
+		webhookFns.getBodyData.mockReturnValue({
+			actions: [{ action_id: 'n8n_hitl_approve' }],
+			user: { id: 'U1', name: 'Ada' },
+		} as any);
+
+		const result = await slackSendAndWaitWebhook.call(webhookFns);
+
+		// users.info fails under the mock, so email is degraded out (id + name only).
+		expect(result).toEqual({
+			webhookResponse: '',
+			workflowData: [
+				[
+					{
+						json: {
+							data: { approved: true, responder: { id: 'U1', name: 'Ada', source: 'slack' } },
+						},
+					},
+				],
+			],
+		});
+	});
+
+	it('refuses with 401 and no resume when the Slack signature is invalid', async () => {
+		vi.mocked(verifySignature).mockResolvedValue(false);
+		const status = vi.fn().mockReturnThis();
+		const send = vi.fn();
+		webhookFns.getRequestObject.mockReturnValue({
+			method: 'POST',
+			headers: { 'x-slack-signature': 'v0=bad' },
+		} as any);
+		webhookFns.getResponseObject.mockReturnValue({ status, send } as any);
+
+		const result = await slackSendAndWaitWebhook.call(webhookFns);
+
+		expect(status).toHaveBeenCalledWith(401);
+		expect(result).toEqual({ noWebhookResponse: true });
+	});
+});
 
 describe('Slack Utility Functions', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
@@ -136,7 +193,7 @@ describe('Slack Utility Functions', () => {
 				'http://localhost/waiting-webhook/exec-1/node-1?approved=true&signature=abc',
 			);
 			mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
-				const params: Record<string, unknown> = {
+				const params: Record<string, any> = {
 					select: 'channel',
 					channelId: 'channelID',
 					message: 'message',
