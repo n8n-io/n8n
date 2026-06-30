@@ -18,6 +18,8 @@ import {
 	SentryTracing,
 	buildBeforeSendTransaction,
 	buildTracesSampler,
+	shouldIgnoreIncomingRequest,
+	shouldIgnoreOutgoingRequest,
 	DEFAULT_SLOW_SPAN_THRESHOLD_MS,
 } from '@/observability';
 
@@ -196,6 +198,7 @@ export class ErrorReporter {
 			setUser,
 			requestDataIntegration,
 			rewriteFramesIntegration,
+			httpIntegration,
 		} = sentry;
 
 		// Most of the integrations are listed here:
@@ -255,7 +258,17 @@ export class ErrorReporter {
 			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
-				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
+				...integrations.filter(({ name }) => enabledIntegrations.has(name) && name !== 'Http'),
+				// Replace the default Http integration with one that skips noise paths
+				// (static source maps, telemetry/posthog proxies, outbound telemetry).
+				...(enabledIntegrations.has('Http')
+					? [
+							httpIntegration({
+								ignoreIncomingRequests: shouldIgnoreIncomingRequest,
+								ignoreOutgoingRequests: shouldIgnoreOutgoingRequest,
+							}),
+						]
+					: []),
 				rewriteFramesIntegration({
 					root: '/',
 					iteratee: (frame) => {
