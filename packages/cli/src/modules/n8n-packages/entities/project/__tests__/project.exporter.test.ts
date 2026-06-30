@@ -1,6 +1,7 @@
 import type { Project, ProjectRepository, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Readable } from 'node:stream';
+import { UserError } from 'n8n-workflow';
 
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -17,6 +18,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 		type: 'team',
 		description: null,
 		icon: null,
+		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 		...overrides,
 	} as Project;
 }
@@ -52,7 +54,19 @@ function makeExporter({
 	projectService.getProjectIdsWithScope.mockImplementation(async (_user, _scopes, projectIds) =>
 		(projectIds ?? []).filter((id) => accessibleProjectIds.includes(id)),
 	);
-	projectRepository.find.mockImplementation(async () => projects);
+	projectRepository.find.mockImplementation(async (options) => {
+		const result = [...projects];
+		const order = options?.order;
+
+		if (order?.createdAt === 'ASC') {
+			result.sort((left, right) => {
+				const createdAtDiff = left.createdAt.getTime() - right.createdAt.getTime();
+				return createdAtDiff !== 0 ? createdAtDiff : left.id.localeCompare(right.id);
+			});
+		}
+
+		return result;
+	});
 
 	const exporter = new ProjectExporter(projectService, projectRepository, new ProjectSerializer());
 	return { exporter, projectService, projectRepository };
@@ -97,25 +111,62 @@ describe('ProjectExporter', () => {
 			{
 				id: project.id,
 				name: project.name,
-				target: 'projects/billing-550e84',
+				target: 'projects/billing',
 			},
 		]);
-		expect(writer.directories).toEqual(['projects/billing-550e84']);
+		expect(writer.directories).toEqual(['projects/billing']);
 		expect(writer.files).toEqual([
 			{
-				path: 'projects/billing-550e84/project.json',
+				path: 'projects/billing/project.json',
 				content: expect.stringContaining('"name": "billing"'),
 			},
 		]);
 	});
 
-	it('throws BadRequestError for personal projects', async () => {
+	it('suffixes duplicate project names and sorts by createdAt for stable targets', async () => {
+		const olderProject = makeProject({
+			id: 'project-older',
+			name: 'Billing',
+			createdAt: new Date('2024-01-01T00:00:00.000Z'),
+		});
+		const newerProject = makeProject({
+			id: 'project-newer',
+			name: 'Billing',
+			createdAt: new Date('2024-02-01T00:00:00.000Z'),
+		});
+		const { exporter } = makeExporter({
+			projects: [newerProject, olderProject],
+			accessibleProjectIds: [olderProject.id, newerProject.id],
+		});
+		const writer = new CapturingWriter();
+
+		const { entries } = await exporter.export({
+			user,
+			projectIds: [newerProject.id, olderProject.id],
+			writer,
+		});
+
+		expect(entries).toEqual([
+			{
+				id: olderProject.id,
+				name: olderProject.name,
+				target: 'projects/billing',
+			},
+			{
+				id: newerProject.id,
+				name: newerProject.name,
+				target: 'projects/billing-2',
+			},
+		]);
+	});
+
+	it('throws UserError for personal projects', async () => {
 		const project = makeProject({ id: 'personal-1', name: 'Personal', type: 'personal' });
 		const { exporter } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
 		await expect(exporter.export({ user, projectIds: [project.id], writer })).rejects.toThrow(
-			'personal project and cannot be exported',
+			UserError,
 		);
 	});
 });

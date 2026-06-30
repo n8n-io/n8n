@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 import { PassThrough } from 'node:stream';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -175,6 +176,22 @@ describe('n8n-packages handler', () => {
 			user: { id: 'user-1' },
 			workflowIds: [],
 			projectIds: ['project-1'],
+		});
+	});
+
+	it('propagates UserError when export targets a personal project', async () => {
+		mockService.exportPackage.mockRejectedValue(
+			new UserError('Project "Personal" is a personal project and cannot be exported'),
+		);
+
+		const caught = await run(
+			makeRequest({ projectIds: ['personal-1'] }, ['project:export']),
+			makeResponse(),
+		);
+
+		expect(caught).toBeInstanceOf(UserError);
+		expect(caught).toMatchObject({
+			message: 'Project "Personal" is a personal project and cannot be exported',
 		});
 	});
 });

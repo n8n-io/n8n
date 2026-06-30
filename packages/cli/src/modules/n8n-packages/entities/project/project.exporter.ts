@@ -4,13 +4,12 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ProjectService } from '@/services/project.service.ee';
-
 import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
-import { generateProjectSlug } from '../../io/project-slug.utils';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+
+import { ProjectService } from '@/services/project.service.ee';
 
 export interface ProjectExportRequest {
 	user: User;
@@ -34,16 +33,16 @@ export class ProjectExporter {
 		const projects = await this.getAccessibleProjects(request.user, request.projectIds);
 
 		const entries: ManifestEntry[] = [];
+		const targets = new UniqueFilenameAllocator('projects', 'project');
 
 		for (const project of projects) {
 			if (project.type !== 'team') {
-				throw new BadRequestError(
+				throw new UserError(
 					`Project "${project.name}" is a personal project and cannot be exported`,
 				);
 			}
 
-			const slug = generateProjectSlug(project.name, project.id);
-			const target = `projects/${slug}`;
+			const target = targets.allocate(project.name);
 			const serialized = this.projectSerializer.serialize(project);
 
 			request.writer.writeDirectory(target);
@@ -80,6 +79,9 @@ export class ProjectExporter {
 			);
 		}
 
-		return await this.projectRepository.find({ where: { id: In(projectIds) } });
+		return await this.projectRepository.find({
+			where: { id: In(projectIds) },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
 	}
 }
