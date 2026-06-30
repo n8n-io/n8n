@@ -490,10 +490,9 @@ watch(
 
 .searchRequired {
 	height: 50px;
-	margin-top: 40px;
 	padding-left: var(--spacing--xs);
 	font-size: var(--font-size--xs);
-	color: var(--color--text);
+	color: var(--color--text--tint-1);
 	display: flex;
 	align-items: center;
 }
