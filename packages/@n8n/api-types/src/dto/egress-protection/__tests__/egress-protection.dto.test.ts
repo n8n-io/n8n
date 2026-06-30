@@ -1,6 +1,7 @@
 import { UpdateEgressPolicyDto } from '../egress-protection.dto';
 
 const base = {
+	mode: 'log' as const,
 	blockedIpRanges: [] as string[],
 	allowedIpRanges: [] as string[],
 	allowedHostnames: [] as string[],
@@ -9,7 +10,7 @@ const base = {
 
 describe('UpdateEgressPolicyDto', () => {
 	describe('valid requests', () => {
-		test('accepts empty lists and an optional mode', () => {
+		test('accepts empty lists with a mode', () => {
 			expect(UpdateEgressPolicyDto.safeParse({ ...base }).success).toBe(true);
 			expect(UpdateEgressPolicyDto.safeParse({ ...base, mode: 'enforce' }).success).toBe(true);
 		});
@@ -29,6 +30,11 @@ describe('UpdateEgressPolicyDto', () => {
 	describe('invalid mode', () => {
 		test('rejects an unknown mode', () => {
 			expect(UpdateEgressPolicyDto.safeParse({ ...base, mode: 'block' }).success).toBe(false);
+		});
+
+		test('requires a mode', () => {
+			const { mode: _mode, ...withoutMode } = base;
+			expect(UpdateEgressPolicyDto.safeParse(withoutMode).success).toBe(false);
 		});
 	});
 

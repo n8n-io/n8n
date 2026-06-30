@@ -120,6 +120,19 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_MCP_ACCESS_ENABLED')
 	mcpAccessEnabled: boolean = false;
 
+	// --- Egress protection ---
+
+	/**
+	 * When true, the egress protection policy (mode + allow/block lists) is read
+	 * from the `N8N_EGRESS_*` env vars and written to the settings table on every
+	 * startup, and the egress protection UI is locked. When false (default), the
+	 * env vars only seed the policy once (on first boot, when no policy row exists
+	 * yet); after that the settings table — edited via the UI — is the source of
+	 * truth.
+	 */
+	@Env('N8N_EGRESS_PROTECTION_MANAGED_BY_ENV')
+	egressProtectionManagedByEnv: boolean = false;
+
 	// --- Community packages ---
 
 	/**

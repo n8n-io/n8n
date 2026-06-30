@@ -247,7 +247,6 @@ export {
 export type {
 	EgressProtectionModeDto,
 	EgressDecision,
-	EgressPolicyListResponse,
 	EgressPolicyStateResponse,
 	EgressBlockedDestinationResponse,
 	EgressCalibrationResponse,

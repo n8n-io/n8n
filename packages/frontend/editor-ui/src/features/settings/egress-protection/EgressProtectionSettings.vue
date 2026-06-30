@@ -13,11 +13,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type {
-	EgressDecision,
-	EgressPolicyListResponse,
-	EgressProtectionModeDto,
-} from '@n8n/api-types';
+import type { EgressDecision, EgressProtectionModeDto } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useEgressProtectionStore } from './egressProtection.store';
@@ -48,8 +44,9 @@ const newEntry = ref<Record<EgressListField, string>>({
 
 const editable = computed(() => store.editable);
 
-// Baseline entries come from env vars and are read-only. The default blocklist
-// alone is ~14 ranges, so they're collapsed by default to keep each cell compact.
+// The built-in default blocked IP ranges are always enforced and read-only. They
+// only apply to the blocked IP ranges cell; the ~14 ranges are collapsed by
+// default to keep the cell compact.
 const expandedBaseline = ref<Record<EgressListField, boolean>>({
 	blockedIpRanges: false,
 	allowedIpRanges: false,
@@ -61,8 +58,10 @@ function toggleBaseline(field: EgressListField): void {
 	expandedBaseline.value[field] = !expandedBaseline.value[field];
 }
 
-function baselineFor(field: EgressListField): EgressPolicyListResponse['baseline'] {
-	return store.policy?.[field].baseline ?? [];
+// Only blocked IP ranges have a non-removable built-in floor; the other lists
+// are fully editable and have no locked entries.
+function baselineFor(field: EgressListField): string[] {
+	return field === 'blockedIpRanges' ? (store.policy?.defaultBlockedIpRanges ?? []) : [];
 }
 
 function overrideFor(field: EgressListField): string[] {
@@ -230,7 +229,13 @@ onMounted(async () => {
 			<N8nNotice
 				v-if="!editable"
 				class="mb-l"
-				:content="i18n.baseText('settings.egressProtection.managedByPlatform')"
+				:content="
+					i18n.baseText(
+						store.policy?.managedByEnv
+							? 'settings.egressProtection.managedByEnv'
+							: 'settings.egressProtection.managedByPlatform',
+					)
+				"
 				data-test-id="egress-managed-notice"
 			/>
 

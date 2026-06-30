@@ -598,6 +598,7 @@ describe('GlobalConfig', () => {
 			logStreamingDestinations: '',
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
+			egressProtectionManagedByEnv: false,
 			communityPackagesManagedByEnv: false,
 			communityPackages: '',
 		},

@@ -15,7 +15,7 @@ import {
 } from '@n8n/rest-api-client/api/egress-protection';
 import { EGRESS_PROTECTION_STORE } from './egressProtection.constants';
 
-/** The admin-editable slice of the policy: mode plus the override lists. */
+/** The admin-editable slice of the policy: mode plus the editable lists. */
 export type EgressPolicyDraft = {
 	mode: EgressProtectionModeDto;
 	blockedIpRanges: string[];
@@ -37,10 +37,10 @@ export type EgressSaveState = 'idle' | 'saving' | 'saved' | 'error';
 function draftFromState(state: EgressPolicyStateResponse): EgressPolicyDraft {
 	return {
 		mode: state.mode,
-		blockedIpRanges: [...state.blockedIpRanges.override],
-		allowedIpRanges: [...state.allowedIpRanges.override],
-		allowedHostnames: [...state.allowedHostnames.override],
-		blockedHostnames: [...state.blockedHostnames.override],
+		blockedIpRanges: [...state.blockedIpRanges],
+		allowedIpRanges: [...state.allowedIpRanges],
+		allowedHostnames: [...state.allowedHostnames],
+		blockedHostnames: [...state.blockedHostnames],
 	};
 }
 
@@ -78,12 +78,10 @@ export const useEgressProtectionStore = defineStore(EGRESS_PROTECTION_STORE, () 
 	async function persist(): Promise<void> {
 		if (!draft.value) return;
 		saveState.value = 'saving';
-		// Only persist a mode override when it actually differs from the env
-		// baseline. Otherwise a list-only edit would silently pin the mode as a
-		// DB override and decouple it from the baseline going forward.
-		const baselineMode = policy.value?.baselineMode;
+		// The settings row is the source of truth, so we persist the full policy
+		// (mode plus every list) on each change.
 		const payload: UpdateEgressPolicyDto = {
-			mode: draft.value.mode === baselineMode ? undefined : draft.value.mode,
+			mode: draft.value.mode,
 			blockedIpRanges: draft.value.blockedIpRanges,
 			allowedIpRanges: draft.value.allowedIpRanges,
 			allowedHostnames: draft.value.allowedHostnames,
@@ -111,7 +109,7 @@ export const useEgressProtectionStore = defineStore(EGRESS_PROTECTION_STORE, () 
 		}
 	}
 
-	/** Add an override entry and persist, rolling back the optimistic add on failure. */
+	/** Add a list entry and persist, rolling back the optimistic add on failure. */
 	async function addEntry(field: EgressListField, value: string): Promise<void> {
 		const trimmed = value.trim();
 		if (!trimmed || !draft.value || draft.value[field].includes(trimmed)) return;
@@ -125,7 +123,7 @@ export const useEgressProtectionStore = defineStore(EGRESS_PROTECTION_STORE, () 
 		}
 	}
 
-	/** Remove an override entry and persist, restoring it on failure. */
+	/** Remove a list entry and persist, restoring it on failure. */
 	async function removeEntry(field: EgressListField, index: number): Promise<void> {
 		if (!draft.value) return;
 		const [removed] = draft.value[field].splice(index, 1);

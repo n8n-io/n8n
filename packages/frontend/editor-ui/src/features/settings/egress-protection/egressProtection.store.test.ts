@@ -26,12 +26,13 @@ const makePolicy = (
 	overrides: Partial<EgressPolicyStateResponse> = {},
 ): EgressPolicyStateResponse => ({
 	mode: 'log',
-	baselineMode: 'log',
 	editable: true,
-	blockedIpRanges: { baseline: ['10.0.0.0/8'], override: [] },
-	allowedIpRanges: { baseline: [], override: [] },
-	allowedHostnames: { baseline: [], override: [] },
-	blockedHostnames: { baseline: [], override: [] },
+	managedByEnv: false,
+	defaultBlockedIpRanges: ['10.0.0.0/8'],
+	blockedIpRanges: [],
+	allowedIpRanges: [],
+	allowedHostnames: [],
+	blockedHostnames: [],
 	...overrides,
 });
 
@@ -53,11 +54,11 @@ describe('useEgressProtectionStore', () => {
 	});
 
 	describe('fetchPolicy', () => {
-		it('populates policy and draft override lists from the response', async () => {
+		it('populates policy and draft lists from the response', async () => {
 			fetchMock.mockResolvedValueOnce(
 				makePolicy({
 					mode: 'enforce',
-					blockedIpRanges: { baseline: ['10.0.0.0/8'], override: ['192.168.0.0/16'] },
+					blockedIpRanges: ['192.168.0.0/16'],
 				}),
 			);
 
@@ -91,9 +92,7 @@ describe('useEgressProtectionStore', () => {
 	describe('addEntry (auto-save)', () => {
 		it('persists the new entry immediately and refreshes from the response', async () => {
 			fetchMock.mockResolvedValueOnce(makePolicy());
-			saveMock.mockResolvedValueOnce(
-				makePolicy({ allowedHostnames: { baseline: [], override: ['api.example.com'] } }),
-			);
+			saveMock.mockResolvedValueOnce(makePolicy({ allowedHostnames: ['api.example.com'] }));
 
 			const store = useEgressProtectionStore();
 			await store.fetchPolicy();
@@ -108,9 +107,7 @@ describe('useEgressProtectionStore', () => {
 		});
 
 		it('ignores a duplicate entry without calling the API', async () => {
-			fetchMock.mockResolvedValueOnce(
-				makePolicy({ allowedHostnames: { baseline: [], override: ['api.example.com'] } }),
-			);
+			fetchMock.mockResolvedValueOnce(makePolicy({ allowedHostnames: ['api.example.com'] }));
 
 			const store = useEgressProtectionStore();
 			await store.fetchPolicy();
@@ -136,9 +133,7 @@ describe('useEgressProtectionStore', () => {
 
 	describe('removeEntry (auto-save)', () => {
 		it('persists the removal immediately', async () => {
-			fetchMock.mockResolvedValueOnce(
-				makePolicy({ allowedHostnames: { baseline: [], override: ['api.example.com'] } }),
-			);
+			fetchMock.mockResolvedValueOnce(makePolicy({ allowedHostnames: ['api.example.com'] }));
 			saveMock.mockResolvedValueOnce(makePolicy());
 
 			const store = useEgressProtectionStore();
@@ -152,9 +147,7 @@ describe('useEgressProtectionStore', () => {
 		});
 
 		it('restores the removed entry when the API throws', async () => {
-			fetchMock.mockResolvedValueOnce(
-				makePolicy({ allowedHostnames: { baseline: [], override: ['api.example.com'] } }),
-			);
+			fetchMock.mockResolvedValueOnce(makePolicy({ allowedHostnames: ['api.example.com'] }));
 			saveMock.mockRejectedValueOnce(new Error('save failed'));
 
 			const store = useEgressProtectionStore();
@@ -166,9 +159,9 @@ describe('useEgressProtectionStore', () => {
 	});
 
 	describe('updateMode (auto-save)', () => {
-		it('persists a mode change, sending the mode when it differs from the baseline', async () => {
-			fetchMock.mockResolvedValueOnce(makePolicy({ mode: 'log', baselineMode: 'log' }));
-			saveMock.mockResolvedValueOnce(makePolicy({ mode: 'enforce', baselineMode: 'log' }));
+		it('persists a mode change, sending the full policy', async () => {
+			fetchMock.mockResolvedValueOnce(makePolicy({ mode: 'log' }));
+			saveMock.mockResolvedValueOnce(makePolicy({ mode: 'enforce' }));
 
 			const store = useEgressProtectionStore();
 			await store.fetchPolicy();
@@ -182,7 +175,7 @@ describe('useEgressProtectionStore', () => {
 		});
 
 		it('rolls back the mode when the API throws', async () => {
-			fetchMock.mockResolvedValueOnce(makePolicy({ mode: 'log', baselineMode: 'log' }));
+			fetchMock.mockResolvedValueOnce(makePolicy({ mode: 'log' }));
 			saveMock.mockRejectedValueOnce(new Error('save failed'));
 
 			const store = useEgressProtectionStore();

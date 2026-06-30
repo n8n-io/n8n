@@ -40,19 +40,20 @@ const getPolicyMock = vi.mocked(egressApi.getEgressPolicy);
 const updatePolicyMock = vi.mocked(egressApi.updateEgressPolicy);
 const getCalibrationMock = vi.mocked(egressApi.getEgressCalibration);
 
-// The default blocklist is long; this is what used to bury the Save button.
-const BASELINE_BLOCKED = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8'];
+// The built-in default blocklist is long; this is what used to bury the Save button.
+const DEFAULT_BLOCKED = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8'];
 
 const makePolicy = (
 	overrides: Partial<EgressPolicyStateResponse> = {},
 ): EgressPolicyStateResponse => ({
 	mode: 'log',
-	baselineMode: 'log',
 	editable: true,
-	blockedIpRanges: { baseline: BASELINE_BLOCKED, override: [] },
-	allowedIpRanges: { baseline: [], override: [] },
-	allowedHostnames: { baseline: [], override: [] },
-	blockedHostnames: { baseline: [], override: [] },
+	managedByEnv: false,
+	defaultBlockedIpRanges: DEFAULT_BLOCKED,
+	blockedIpRanges: [],
+	allowedIpRanges: [],
+	allowedHostnames: [],
+	blockedHostnames: [],
 	...overrides,
 });
 
@@ -67,7 +68,7 @@ describe('EgressProtectionSettings', () => {
 		getCalibrationMock.mockResolvedValue({ mode: 'log', destinations: [] });
 	});
 
-	it('collapses read-only baseline entries by default', async () => {
+	it('collapses read-only built-in default blocked ranges by default', async () => {
 		getPolicyMock.mockResolvedValue(makePolicy());
 
 		renderComponent();
@@ -104,9 +105,7 @@ describe('EgressProtectionSettings', () => {
 
 	it('auto-saves when an entry is added through the UI', async () => {
 		getPolicyMock.mockResolvedValue(makePolicy());
-		updatePolicyMock.mockResolvedValue(
-			makePolicy({ allowedHostnames: { baseline: [], override: ['api.example.com'] } }),
-		);
+		updatePolicyMock.mockResolvedValue(makePolicy({ allowedHostnames: ['api.example.com'] }));
 
 		renderComponent();
 		const input = await screen.findByTestId('egress-input-allowedHostnames');

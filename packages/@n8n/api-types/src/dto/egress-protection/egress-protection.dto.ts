@@ -55,34 +55,40 @@ const hostnameList = z
 	});
 
 /**
- * Admin-editable egress protection override. The lists are *additive* on top of
- * the environment baseline (they cannot remove a baseline entry); `mode`, if set,
- * replaces the baseline mode. Entries are shape-validated and allow-all ranges
- * are rejected so an override can never silently disable protection.
+ * The full egress protection policy an admin submits from the UI. The settings
+ * table row is the source of truth for the policy, so this payload replaces it
+ * wholesale (mode + every list). `blockedIpRanges` carries only the admin's
+ * additions on top of the built-in default blocked ranges, which are always
+ * enforced and cannot be removed. Entries are shape-validated and allow-all
+ * ranges are rejected so the policy can never silently disable protection.
  */
 export class UpdateEgressPolicyDto extends Z.class({
-	mode: egressProtectionModeSchema.optional(),
+	mode: egressProtectionModeSchema,
 	blockedIpRanges: ipRangeList({ isAllowList: false }),
 	allowedIpRanges: ipRangeList({ isAllowList: true }),
 	allowedHostnames: hostnameList,
 	blockedHostnames: hostnameList,
 }) {}
 
-/** A single policy list, split into the read-only env baseline and the admin's override. */
-export interface EgressPolicyListResponse {
-	baseline: string[];
-	override: string[];
-}
-
-/** Full egress protection state for the admin settings page. */
+/**
+ * Full egress protection state for the admin settings page.
+ *
+ * The lists are the effective policy held in the settings table (the source of
+ * truth). `defaultBlockedIpRanges` is the built-in blocked-range floor that is
+ * always enforced on top of `blockedIpRanges` and is shown read-only in the UI.
+ */
 export interface EgressPolicyStateResponse {
 	mode: EgressProtectionModeDto;
-	baselineMode: EgressProtectionModeDto;
+	/** Whether the policy can be edited at runtime (false e.g. on Cloud or when managed by env). */
 	editable: boolean;
-	blockedIpRanges: EgressPolicyListResponse;
-	allowedIpRanges: EgressPolicyListResponse;
-	allowedHostnames: EgressPolicyListResponse;
-	blockedHostnames: EgressPolicyListResponse;
+	/** Whether env vars own the policy and re-seed it on every startup, locking the UI. */
+	managedByEnv: boolean;
+	/** Built-in blocked IP ranges that are always enforced and cannot be removed. */
+	defaultBlockedIpRanges: string[];
+	blockedIpRanges: string[];
+	allowedIpRanges: string[];
+	allowedHostnames: string[];
+	blockedHostnames: string[];
 	updatedAt?: string;
 }
 

@@ -1,6 +1,11 @@
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { SsrfProtectionService } from '@n8n/backend-network';
-import type { GlobalConfig, SecurityConfig, SsrfProtectionConfig } from '@n8n/config';
+import type {
+	GlobalConfig,
+	InstanceSettingsLoaderConfig,
+	SecurityConfig,
+	SsrfProtectionConfig,
+} from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -197,6 +202,10 @@ describe('FrontendService', () => {
 		editable: true,
 	});
 
+	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
+		egressProtectionManagedByEnv: false,
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -227,6 +236,7 @@ describe('FrontendService', () => {
 				workflowRepository,
 				ssrfProtectionService,
 				ssrfProtectionConfig,
+				instanceSettingsLoaderConfig,
 			),
 			license,
 		};

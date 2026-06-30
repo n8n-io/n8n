@@ -205,10 +205,11 @@ export abstract class BaseCommand<F = never> {
 			observability: Container.get(ExpressionObservabilityProvider),
 		});
 
-		// Compose the effective egress protection policy (env baseline ⊕ DB override)
-		// and push it into the in-memory engine, then start aggregating block events
-		// for the admin calibration view. Runs after migrations so the settings and
-		// aggregation tables exist.
+		// Load the egress protection policy from the settings table (the source of
+		// truth) and push it into the in-memory engine, then start aggregating block
+		// events for the admin calibration view. Runs after migrations so the settings
+		// and aggregation tables exist. On main, the instance settings loader later
+		// seeds/re-seeds the row from env and reloads the engine.
 		await Container.get(EgressPolicyService).init();
 		Container.get(EgressCalibrationService).start();
 	}

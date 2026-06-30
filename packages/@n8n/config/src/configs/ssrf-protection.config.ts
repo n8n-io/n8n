@@ -135,8 +135,9 @@ const readLegacyDnsCacheMaxSize = (): number => {
 /**
  * Configuration for egress (SSRF) protection.
  *
- * This config is the *environment baseline* of the layered policy
- * (`effective = baseline ⊕ DB overrides`). It sets:
+ * These env vars *seed* the egress policy: on first boot (or on every boot when
+ * `N8N_EGRESS_PROTECTION_MANAGED_BY_ENV` is set) they are written into the
+ * settings table, which is the runtime source of truth. They set:
  * - the {@link mode} (Off / Log / Enforce),
  * - which IPs and hostnames are blocked or allowed,
  * - and how large the DNS cache may grow.
@@ -172,8 +173,9 @@ export class SsrfProtectionConfig {
 	 * Replaces the previous binary `N8N_SSRF_PROTECTION_ENABLED` flag, which is
 	 * still honored as a deprecated alias (`true` → `enforce`, `false` → `off`).
 	 *
-	 * This is the *baseline*; an admin can override it at runtime via the egress
-	 * protection settings (stored in the database) when editing is allowed.
+	 * This is the *seed value*; once seeded, the mode lives in the settings table
+	 * and an admin can change it at runtime via the egress protection UI (unless
+	 * editing is disabled or the policy is managed by env).
 	 */
 	@Env('N8N_EGRESS_PROTECTION_MODE', modeSchema)
 	mode: EgressProtectionMode = readLegacyMode();
@@ -181,8 +183,9 @@ export class SsrfProtectionConfig {
 	/**
 	 * Whether the egress protection policy can be edited at runtime through the
 	 * admin UI. When `false` (e.g. on Cloud, where the platform owns the policy),
-	 * the database override layer is ignored and the environment baseline is the
-	 * whole policy; the admin page is still shown read-only. Defaults to `true`.
+	 * the admin page is shown read-only and writes are rejected. Independent of
+	 * `N8N_EGRESS_PROTECTION_MANAGED_BY_ENV`, which also locks the UI but, in
+	 * addition, re-seeds the policy from env on every startup. Defaults to `true`.
 	 */
 	@Env('N8N_EGRESS_PROTECTION_EDITABLE')
 	editable: boolean = true;
@@ -242,8 +245,8 @@ export class SsrfProtectionConfig {
 	 * rebinding). The robust SSRF guarantees stay IP-based and post-resolution; to
 	 * block a destination reliably, use {@link blockedIpRanges}.
 	 *
-	 * This is the *baseline*; an admin can add more entries at runtime via the
-	 * egress protection settings (stored in the database) when editing is allowed.
+	 * This is a *seed value*; an admin can add or remove entries at runtime via
+	 * the egress protection settings (stored in the database) when editing is allowed.
 	 */
 	@Env('N8N_EGRESS_BLOCKED_HOSTNAMES')
 	blockedHostnames: CommaSeparatedStringArray<string> = readLegacyCsv(
@@ -261,13 +264,13 @@ export class SsrfProtectionConfig {
 	dnsCacheMaxSize: number = readLegacyDnsCacheMaxSize();
 
 	/**
-	 * Whether the protection validation path runs at all for the *baseline*
+	 * Whether the protection validation path runs at all for the env *seed*
 	 * policy. True for `log` and `enforce`, false for `off`. Derived from
 	 * {@link mode} in {@link sanitize} after env resolution.
 	 *
 	 * @deprecated Prefer reading the effective mode from the engine
-	 * (`SsrfProtectionService.isActive()`), which reflects runtime overrides.
-	 * This field only reflects the environment baseline.
+	 * (`SsrfProtectionService.isActive()`), which reflects the runtime policy.
+	 * This field only reflects the environment seed value.
 	 */
 	enabled: boolean = true;
 

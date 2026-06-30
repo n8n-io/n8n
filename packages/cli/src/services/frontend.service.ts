@@ -1,7 +1,12 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { GlobalConfig, SecurityConfig, SsrfProtectionConfig } from '@n8n/config';
+import {
+	GlobalConfig,
+	InstanceSettingsLoaderConfig,
+	SecurityConfig,
+	SsrfProtectionConfig,
+} from '@n8n/config';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -140,6 +145,7 @@ export class FrontendService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -151,6 +157,17 @@ export class FrontendService {
 				},
 			);
 		}
+	}
+
+	/**
+	 * Whether an admin can edit the egress protection policy: only when editing is
+	 * allowed and the policy is not managed by env (which re-seeds on every boot).
+	 */
+	private get egressProtectionEditable(): boolean {
+		return (
+			this.ssrfProtectionConfig.editable &&
+			!this.instanceSettingsLoaderConfig.egressProtectionManagedByEnv
+		);
 	}
 
 	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
@@ -408,7 +425,7 @@ export class FrontendService {
 			},
 			egressProtection: {
 				mode: this.ssrfProtectionService.mode,
-				editable: this.ssrfProtectionConfig.editable,
+				editable: this.egressProtectionEditable,
 			},
 			chatTrigger: {
 				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
@@ -614,7 +631,7 @@ export class FrontendService {
 		// Re-resolve so runtime overrides to the egress protection mode surface
 		// to the FE without an instance restart.
 		this.settings.egressProtection.mode = this.ssrfProtectionService.mode;
-		this.settings.egressProtection.editable = this.ssrfProtectionConfig.editable;
+		this.settings.egressProtection.editable = this.egressProtectionEditable;
 
 		return this.settings;
 	}

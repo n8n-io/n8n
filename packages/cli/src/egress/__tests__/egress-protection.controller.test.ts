@@ -22,12 +22,13 @@ describe('EgressProtectionController', () => {
 
 	const state: EgressPolicyStateResponse = {
 		mode: 'log',
-		baselineMode: 'log',
 		editable: true,
-		blockedIpRanges: { baseline: ['10.0.0.0/8'], override: [] },
-		allowedIpRanges: { baseline: [], override: [] },
-		allowedHostnames: { baseline: [], override: [] },
-		blockedHostnames: { baseline: [], override: [] },
+		managedByEnv: false,
+		defaultBlockedIpRanges: ['10.0.0.0/8'],
+		blockedIpRanges: [],
+		allowedIpRanges: [],
+		allowedHostnames: [],
+		blockedHostnames: [],
 	};
 
 	beforeEach(() => {
@@ -56,15 +57,15 @@ describe('EgressProtectionController', () => {
 			Object.defineProperty(egressPolicyService, 'editable', { value: false, configurable: true });
 
 			await expect(controller.updatePolicy(req, res, dto)).rejects.toThrow(ForbiddenError);
-			expect(egressPolicyService.updateOverride).not.toHaveBeenCalled();
+			expect(egressPolicyService.updatePolicy).not.toHaveBeenCalled();
 		});
 
-		it('persists the override and returns the new state when editable', async () => {
+		it('persists the policy and returns the new state when editable', async () => {
 			Object.defineProperty(egressPolicyService, 'editable', { value: true, configurable: true });
 
 			const result = await controller.updatePolicy(req, res, dto);
 
-			expect(egressPolicyService.updateOverride).toHaveBeenCalledWith(
+			expect(egressPolicyService.updatePolicy).toHaveBeenCalledWith(
 				{
 					mode: 'enforce',
 					blockedIpRanges: ['172.16.0.0/12'],

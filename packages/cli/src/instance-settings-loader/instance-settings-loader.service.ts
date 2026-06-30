@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { CommunityPackagesInstanceSettingsLoader } from './loaders/community-packages.instance-settings-loader';
+import { EgressProtectionInstanceSettingsLoader } from './loaders/egress-protection.instance-settings-loader';
 import { LogStreamingInstanceSettingsLoader } from './loaders/log-streaming.instance-settings-loader';
 import { McpSettingsLoader } from './loaders/mcp-settings.loader';
 import { OwnerInstanceSettingsLoader } from './loaders/owner.instance-settings-loader';
@@ -20,6 +21,7 @@ export class InstanceSettingsLoaderService {
 		private readonly logStreamingLoader: LogStreamingInstanceSettingsLoader,
 		private readonly mcpLoader: McpSettingsLoader,
 		private readonly communityPackagesLoader: CommunityPackagesInstanceSettingsLoader,
+		private readonly egressProtectionLoader: EgressProtectionInstanceSettingsLoader,
 	) {
 		this.logger = this.logger.scoped('instance-settings-loader');
 	}
@@ -31,6 +33,7 @@ export class InstanceSettingsLoaderService {
 		await this.run('log-streaming', async () => await this.logStreamingLoader.run());
 		await this.run('mcp', async () => await this.mcpLoader.run());
 		await this.run('community-packages', async () => await this.communityPackagesLoader.run());
+		await this.run('egress-protection', async () => await this.egressProtectionLoader.run());
 	}
 
 	private async run(name: string, fn: () => Promise<LoaderResult>): Promise<void> {

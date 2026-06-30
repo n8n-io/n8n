@@ -16,8 +16,10 @@ import { EgressPolicyService } from './egress-policy.service';
  * - read the calibration view (the worklist of blocked / would-block destinations).
  *
  * Visibility is gated on `egressProtection:manage` (admin). *Editing* is
- * additionally gated on `N8N_EGRESS_PROTECTION_EDITABLE`: when false (e.g. Cloud),
- * GET still works (read-only page) but writes are rejected.
+ * additionally gated on whether the policy is editable: when it is not (e.g. on
+ * Cloud via `N8N_EGRESS_PROTECTION_EDITABLE=false`, or when the policy is managed
+ * by env via `N8N_EGRESS_PROTECTION_MANAGED_BY_ENV`), GET still works (read-only
+ * page) but writes are rejected.
  */
 @RestController('/egress-protection')
 export class EgressProtectionController {
@@ -46,7 +48,7 @@ export class EgressProtectionController {
 			);
 		}
 
-		await this.egressPolicyService.updateOverride(
+		await this.egressPolicyService.updatePolicy(
 			{
 				mode: dto.mode,
 				blockedIpRanges: dto.blockedIpRanges,
