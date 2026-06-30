@@ -133,6 +133,7 @@ export async function runDiscoveryScenario(
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
 			disableDeferredTools: true,
+			thinkingEnabled: false,
 		});
 
 		const streamSource = normalizeStreamSource(

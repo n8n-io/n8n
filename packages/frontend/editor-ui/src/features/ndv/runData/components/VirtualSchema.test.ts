@@ -41,6 +41,16 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
 	type: MANUAL_TRIGGER_NODE_TYPE,

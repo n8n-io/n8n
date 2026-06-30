@@ -22,6 +22,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -1121,7 +1122,7 @@ describe('ImportPipeline event emission', () => {
 	it('emits workflow-created per workflow plus one workflows-imported on success', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		try {
 			await importPackage({
@@ -1141,12 +1142,116 @@ describe('ImportPipeline event emission', () => {
 			).toBe(true);
 			expect(importedEvents).toHaveLength(1);
 
-			const importedPayload = importedEvents[0][1] as {
-				workflowIds: string[];
-				matchedCredentialIds: string[];
-			};
+			const importedPayload = importedEvents[0][1] as RelayEventMap['workflows-imported'];
 			expect(importedPayload.workflowIds).toHaveLength(2);
-			expect(importedPayload.matchedCredentialIds).toEqual([]);
+			expect(importedPayload.credentialIds).toEqual({
+				matched: [],
+				created: [],
+				updated: [],
+			});
+			expect(importedPayload.folderId).toBeNull();
+			expect(importedPayload.options.workflowConflictPolicy).toBe(WorkflowConflictPolicy.Fail);
+			expect(importedPayload.options.workflowIdPolicy).toBe(WorkflowIdPolicy.New);
+			expect(importedPayload.options.credentialMatchingMode).toBe('id-only');
+			expect(importedPayload.options.credentialMissingMode).toBe('must-preexist');
+			expect(importedPayload.options.workflowPublishingPolicy).toBe(
+				WorkflowPublishingPolicy.PreservePublishedState,
+			);
+			expect(importedPayload.packageSourceId).toBeDefined();
+			expect(importedPayload.packageVersion).toBe(FORMAT_VERSION);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('records matched and created credential ids on workflows-imported', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const firstCredential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'First GitHub' }),
+			{ project: personalProject },
+		);
+		const secondCredential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'Second GitHub' }),
+			{ project: personalProject },
+		);
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		try {
+			await importPackage({
+				user: owner,
+				credentialMissingMode: 'create-stub',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-first-cred',
+							name: 'First credential workflow',
+							credentialId: firstCredential.id,
+							credentialName: firstCredential.name,
+						}),
+						serializedWorkflowWithCredential({
+							id: 'wf-second-cred',
+							name: 'Second credential workflow',
+							credentialId: secondCredential.id,
+							credentialName: secondCredential.name,
+						}),
+						serializedWorkflowWithCredential({
+							id: 'wf-stub-cred',
+							name: 'Stub credential workflow',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+					],
+					{ sourceId: 'credential-audit-test' },
+				),
+			});
+
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflows-imported');
+			expect(importedEvents).toHaveLength(1);
+
+			const importedPayload = importedEvents[0][1] as RelayEventMap['workflows-imported'];
+			expect(importedPayload.credentialIds.matched).toEqual(
+				expect.arrayContaining([firstCredential.id, secondCredential.id]),
+			);
+			expect(importedPayload.credentialIds.matched).toHaveLength(2);
+			expect(importedPayload.credentialIds.created).toHaveLength(1);
+			expect(importedPayload.credentialIds.created[0]).toEqual(expect.any(String));
+			expect(importedPayload.credentialIds.created[0]).not.toBe('missing-cred');
+			expect(importedPayload.credentialIds.updated).toEqual([]);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('excludes skipped workflow ids from workflows-imported payload', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		await seedExistingWorkflow(personalProject, 'Existing workflow', 'wf-existing-skip');
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		try {
+			const result = await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-existing-skip', name: 'Skipped duplicate' }),
+					serializedWorkflow({ id: 'wf-new-only', name: 'Fresh workflow' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
+			});
+
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflows-imported');
+			expect(importedEvents).toHaveLength(1);
+
+			const { workflowIds } = importedEvents[0][1] as RelayEventMap['workflows-imported'];
+			const createdWorkflow = result.workflows.find(({ status }) => status === 'created');
+			expect(workflowIds).toEqual([createdWorkflow!.localId]);
+			expect(result.workflows.find(({ status }) => status === 'skipped')).toBeDefined();
 		} finally {
 			emitSpy.mockRestore();
 		}
@@ -1155,7 +1260,7 @@ describe('ImportPipeline event emission', () => {
 	it('emits no events when the prepare-phase validation rejects the package', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		try {
 			await expect(

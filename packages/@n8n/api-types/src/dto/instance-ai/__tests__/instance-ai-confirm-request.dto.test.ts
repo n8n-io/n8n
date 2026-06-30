@@ -26,6 +26,12 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'approval deny with userInput (plan feedback)',
 				{ kind: 'approval', approved: false, userInput: 'please revise step 3' },
 			],
+			// InstanceAiConfirmationPanel: handleAlwaysAllow ("allow for rest of session")
+			[
+				'approval approve with session scope',
+				{ kind: 'approval', approved: true, scope: 'session' },
+			],
+			['approval approve with once scope', { kind: 'approval', approved: true, scope: 'once' }],
 			// InstanceAiConfirmationPanel: handlePlanDeny (hard-reject the plan)
 			['planDeny', { kind: 'planDeny' }],
 			// InstanceAiConfirmationPanel: handleQuestionsSubmit
@@ -114,6 +120,15 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('unknown kind', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'bogus', approved: true });
+			expect(result.success).toBe(false);
+		});
+
+		test('approval with an unknown scope', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'approval',
+				approved: true,
+				scope: 'forever',
+			});
 			expect(result.success).toBe(false);
 		});
 

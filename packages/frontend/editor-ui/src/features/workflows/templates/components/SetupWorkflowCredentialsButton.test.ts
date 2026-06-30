@@ -300,6 +300,47 @@ describe('SetupWorkflowCredentialsButton', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('setup-credentials-button')).toBeVisible();
 		});
+
+		it('ignores disabled nodes when deciding whether all credentials are filled', () => {
+			const nodes = [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Disabled Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [200, 0] as [number, number],
+					parameters: {},
+					disabled: true,
+				},
+			];
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(
+				{ templateId: '2722', templateCredsSetupCompleted: false },
+				nodes,
+			);
+			setupPanelStore.isFeatureEnabled = true;
+			// The enabled node has its credentials filled; the disabled node does not.
+			mockDoesNodeHaveAllCredentialsFilled.mockImplementation(
+				(_provider: unknown, node: { id: string }) => node.id === '1',
+			);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('setup-credentials-button')).toBeNull();
+			// The disabled node must never be checked for credentials.
+			expect(mockDoesNodeHaveAllCredentialsFilled).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ id: '2' }),
+			);
+		});
 	});
 
 	describe('modal auto-open on mount', () => {

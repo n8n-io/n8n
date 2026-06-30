@@ -717,6 +717,8 @@ export class HttpRequestV3 implements INodeType {
 						paginationData.binaryResult = true;
 					}
 
+					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
 					const requestPromise = this.helpers.requestWithAuthenticationPaginated
 						.call(
 							this,
@@ -724,6 +726,8 @@ export class HttpRequestV3 implements INodeType {
 							itemIndex,
 							paginationData,
 							nodeCredentialType ?? genericCredentialType,
+							undefined,
+							sanitizedRequest,
 						)
 						.catch((error) => {
 							if (error instanceof NodeOperationError && error.type === 'invalid_url') {

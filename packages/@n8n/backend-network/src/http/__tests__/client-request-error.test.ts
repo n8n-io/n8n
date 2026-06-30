@@ -1,5 +1,6 @@
 import {
 	httpStatusFromError,
+	isAxiosError,
 	isConnectionRefusedError,
 	isHttpRequestError,
 	markHttpRequestError,
@@ -80,6 +81,20 @@ describe('isConnectionRefusedError', () => {
 		expect(isConnectionRefusedError(new Error('boom'))).toBe(false);
 		expect(isConnectionRefusedError('ECONNREFUSED')).toBe(false);
 		expect(isConnectionRefusedError(null)).toBe(false);
+	});
+});
+
+describe('isAxiosError', () => {
+	it('is true for an error carrying the axios brand', () => {
+		expect(isAxiosError(Object.assign(new Error('boom'), { isAxiosError: true }))).toBe(true);
+	});
+
+	it('is false for non-axios errors and non-error values', () => {
+		expect(isAxiosError(new Error('boom'))).toBe(false);
+		expect(isAxiosError(Object.assign(new Error('boom'), { isAxiosError: false }))).toBe(false);
+		expect(isAxiosError({ isAxiosError: true })).toBe(true);
+		expect(isAxiosError(null)).toBe(false);
+		expect(isAxiosError('isAxiosError')).toBe(false);
 	});
 });
 

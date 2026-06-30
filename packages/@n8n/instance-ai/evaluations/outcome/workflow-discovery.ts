@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
@@ -180,10 +181,6 @@ function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
 	for (const child of node.children) {
 		collectWorkflowIds(child, ids);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function extractIdFromResult(result: unknown): string | undefined {

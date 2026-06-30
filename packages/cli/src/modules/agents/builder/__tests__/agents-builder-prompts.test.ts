@@ -44,6 +44,13 @@ describe('sub-agent skill availability', () => {
 		expect(skill?.instructions).toContain('subAgentId: "inline"');
 		expect(skill?.instructions).toContain('`subAgents.maxChildren`');
 		expect(skill?.instructions).toContain(
+			'{ "agentId": "<returned-agent-id>", "useWhen": "Use for ..." }',
+		);
+		expect(skill?.instructions).toContain(
+			'If it is unclear when a selected saved subagent should be used, ask the user',
+		);
+		expect(skill?.instructions).toContain('Do not write vague values');
+		expect(skill?.instructions).toContain(
 			`from ${SUB_AGENT_MAX_CHILDREN_MIN} to ${SUB_AGENT_MAX_CHILDREN_MAX}`,
 		);
 	});

@@ -65,6 +65,7 @@ export {
 	suggestedPromptsSchema,
 	type MessageChunk,
 	UpdateChatSettingsRequest,
+	UpdateChatEnabledRequest,
 	ChatHubSemanticSearchSettings,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
@@ -269,6 +270,7 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	buildRunWorkflowSessionGrantKey,
 	instanceAiEventTypeSchema,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -306,6 +308,8 @@ export {
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	instanceAiCredentialHandoffContextSchema,
+	instanceAiHandoffContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -314,6 +318,9 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
+	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+	InstanceAiEvalRestoreThreadRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -385,6 +392,9 @@ export type {
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiRichMessagesResponse,
+	InstanceAiMemoryTaskKind,
+	InstanceAiMemoryTaskStatus,
+	InstanceAiMemoryTaskSnapshot,
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
@@ -400,9 +410,13 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialHandoffContext,
+	InstanceAiHandoffContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,
+	InstanceAiBrowserCreateLinkResponse,
+	InstanceAiBrowserStatusResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	PlannedTaskArg,
@@ -413,6 +427,8 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedWorkflow,
+	InstanceAiEvalSeedDataTable,
 } from './schemas/instance-ai.schema';
 
 export type {

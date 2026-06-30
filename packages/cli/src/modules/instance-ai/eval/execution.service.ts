@@ -5,6 +5,7 @@ import {
 	type InstanceAiEvalExecutionResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -48,7 +49,6 @@ import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
 import { generatePinData } from './pin-data-generator';
-import { patchNoProxyForLoopback } from './proxy-loopback';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
@@ -335,7 +335,7 @@ export class EvalExecutionService {
 					logger: this.logger,
 				});
 				serverUrl = await wireServer.start();
-				restoreNoProxy = patchNoProxyForLoopback();
+				restoreNoProxy = ensureHostsBypassProxy(['127.0.0.1', 'localhost']);
 				this.logger.debug(`[EvalMock] Wire server listening at ${serverUrl}`);
 			}
 

@@ -1,3 +1,5 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { isRecord } from '@n8n/utils';
 import type {
 	FilePart,
 	ModelMessage,
@@ -96,10 +98,6 @@ function toToolInputObject(value: JSONValue): JSONObject {
 	return normalizeToolInputForModel(value).input;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isJsonObject(value: unknown): value is JSONObject {
 	return isRecord(value);
 }
@@ -108,10 +106,57 @@ function getRecord(value: unknown): Record<string, unknown> | undefined {
 	return isRecord(value) ? value : undefined;
 }
 
+function hasEntries(value: Record<string, unknown>): boolean {
+	return Object.keys(value).length > 0;
+}
+
+function hasReplayableReasoningProviderOptions(
+	providerOptions: ProviderOptions | undefined,
+): boolean {
+	if (!providerOptions) return false;
+
+	const anthropicOptions = getRecord(providerOptions.anthropic);
+	if (
+		typeof anthropicOptions?.signature === 'string' ||
+		typeof anthropicOptions?.redactedData === 'string'
+	) {
+		return true;
+	}
+
+	return Object.entries(providerOptions).some(
+		([provider, options]) =>
+			provider !== 'anthropic' && provider !== 'openai' && hasEntries(options),
+	);
+}
+
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
 	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
+}
+
+/**
+ * Anthropic replays reasoning from `providerOptions`, but the AI SDK exposes the
+ * replay `signature`/`redactedData` in `providerMetadata`. Copy them across so
+ * the next request can replay the reasoning block. Existing `providerOptions`
+ * values win.
+ */
+function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
+	const metadata = getRecord(block.providerMetadata?.anthropic);
+	const signature = metadata?.signature;
+	const redactedData = metadata?.redactedData;
+	if (typeof signature !== 'string' && typeof redactedData !== 'string') {
+		return block.providerOptions;
+	}
+
+	return {
+		...block.providerOptions,
+		anthropic: {
+			...(typeof signature === 'string' && { signature }),
+			...(typeof redactedData === 'string' && { redactedData }),
+			...getRecord(block.providerOptions?.anthropic),
+		},
+	};
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -141,10 +186,17 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		// Provider metadata can be required for replay. Gemini attaches
 		// `google.thoughtSignature` to function-call parts, and the next request
 		// is rejected if that signature is dropped from conversation history.
+		const providerOptions = isReasoning(block)
+			? toReasoningProviderOptions(block)
+			: block.providerOptions;
+		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+			return undefined;
+		}
+
 		return {
 			...base,
 			...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
-			...(block.providerOptions && { providerOptions: block.providerOptions }),
+			...(providerOptions && { providerOptions }),
 		} as AiContentPart;
 	}
 	return base;

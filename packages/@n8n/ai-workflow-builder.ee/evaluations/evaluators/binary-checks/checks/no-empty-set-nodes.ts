@@ -1,8 +1,6 @@
-import type { BinaryCheck, SimpleWorkflow } from '../types';
+import { isRecord } from '@n8n/utils';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import type { BinaryCheck, SimpleWorkflow } from '../types';
 
 /**
  * Check if a Set node has values configured in either format:

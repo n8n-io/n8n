@@ -1,6 +1,7 @@
 import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
+	BoundingBox,
 	CanvasConnection,
 	CanvasGroupNode,
 	CanvasGroupNodeData,
@@ -10,7 +11,6 @@ import type {
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	CANVAS_NODE_GROUP_ID_PREFIX,
 	CANVAS_NODE_GROUP_TYPE,
 	createCanvasGroupNodeId,
 } from '../canvas.types';
@@ -18,9 +18,10 @@ import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
+	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
-import { createCanvasConnectionId } from '../canvas.utils';
+import { applyOffset, createCanvasConnectionId } from '../canvas.utils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
@@ -60,14 +61,31 @@ function resolveNodeDimensions(
 }
 
 /**
- * Title bar layout (position + width) derived from the group's nodes-bounding
- * rect. Snaps the position to the canvas grid; if it didn't, VueFlow's
- * `snap-to-grid` would shift the title bar on the first drag.
- *
- * A collapsed title bar is a fixed-size chip ({@link GROUP_HEADER_WIDTH_COLLAPSED}).
- * An expanded one spans the member cluster (rect width + horizontal padding),
- * floored at the collapsed width so a tight cluster never shrinks the header
- * below the chip size.
+ * Collapsed (chip) and expanded frame rects for a group, in unsnapped store
+ * space. Expanded width is floored at the chip width so a tight cluster never
+ * shrinks the frame below it.
+ */
+export function computeGroupFrameRects(nodesRect: NodesRect): {
+	collapsed: BoundingBox;
+	expanded: BoundingBox;
+} {
+	const x = nodesRect.x - GROUP_PADDING_X;
+	const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
+	return {
+		collapsed: { x, y, width: GROUP_HEADER_WIDTH_COLLAPSED, height: GROUP_HEADER_HEIGHT },
+		expanded: {
+			x,
+			y,
+			width: Math.max(nodesRect.width + 2 * GROUP_PADDING_X, GROUP_HEADER_WIDTH_COLLAPSED),
+			height: GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
+		},
+	};
+}
+
+/**
+ * Title bar layout (position + width) for the VueFlow group node. Snaps the
+ * position to the canvas grid, otherwise VueFlow's `snap-to-grid`
+ * would shift the title bar on the first drag.
  */
 export function titleBarFromNodesRect(
 	nodesRect: NodesRect,
@@ -77,15 +95,11 @@ export function titleBarFromNodesRect(
 	width: number;
 } {
 	const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
-	const contentWidth = nodesRect.width + 2 * GROUP_PADDING_X;
+	const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect);
+	const rect = collapsed ? collapsedRect : expandedRect;
 	return {
-		position: {
-			x: snap(nodesRect.x - GROUP_PADDING_X),
-			y: snap(nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
-		},
-		width: collapsed
-			? GROUP_HEADER_WIDTH_COLLAPSED
-			: Math.max(contentWidth, GROUP_HEADER_WIDTH_COLLAPSED),
+		position: { x: snap(rect.x), y: snap(rect.y) },
+		width: rect.width,
 	};
 }
 
@@ -228,10 +242,7 @@ export function mapGroupsToVueFlowNodes({
 		out.push({
 			id,
 			type: CANVAS_NODE_GROUP_TYPE,
-			position: {
-				x: titleBar.position.x + offset.x,
-				y: titleBar.position.y + offset.y,
-			},
+			position: applyOffset(titleBar.position, offset),
 			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
@@ -301,9 +312,9 @@ export function remapCollapsedGroupConnections(
 		}
 
 		const remapped = {
-			source: sourceGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${sourceGroup.id}` : conn.source,
+			source: sourceGroup ? createCanvasGroupNodeId(sourceGroup.id) : conn.source,
 			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
-			target: targetGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${targetGroup.id}` : conn.target,
+			target: targetGroup ? createCanvasGroupNodeId(targetGroup.id) : conn.target,
 			targetHandle: targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
 		};
 

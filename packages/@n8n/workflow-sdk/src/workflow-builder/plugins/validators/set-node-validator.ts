@@ -5,6 +5,8 @@
  * credential-like field names.
  */
 
+import { isRecord } from '@n8n/utils';
+
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import { parseVersion } from '../../string-utils';
 import { isCredentialFieldName } from '../../validation-helpers';
@@ -24,10 +26,6 @@ const SUPPORTED_MODES = new Set(['manual', 'raw']);
 // `parameters.values.*`; v3.0-3.2 use `parameters.fields.values[]`.
 const MIN_MODE_VERSION = 3;
 const MIN_ASSIGNMENT_VERSION = 3.3;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isNonEmptyString(value: unknown): value is string {
 	return typeof value === 'string' && value.trim() !== '';

@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 
 import { ExternalSecretsConfig } from '../../external-secrets.config';
 import { VaultProvider } from '../vault';
-import { createFakeOutboundHttp, type Route } from './fake-outbound-http';
 
 const VAULT_BASE_URL = 'https://vault.test.com';
 const VAULT_URL = `${VAULT_BASE_URL}/v1/`;
@@ -75,7 +75,10 @@ describe('VaultProvider', () => {
 	mockInstance(ExternalSecretsConfig, { preferGet: true });
 
 	function createProvider(routes: Route[], settings = vaultSettings) {
-		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(routes);
+		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(
+			routes,
+			vi.fn as unknown as Parameters<typeof createFakeOutboundHttp>[1],
+		);
 		const provider = new VaultProvider(logger, outboundHttp);
 		return { provider, httpRequest, requests, outboundHttp, settings };
 	}
@@ -95,6 +98,16 @@ describe('VaultProvider', () => {
 				headers: expect.any(Function),
 				ssrf: 'disabled',
 			});
+		});
+
+		it('rejects a malformed URL at init time', async () => {
+			const settings = {
+				...vaultSettings,
+				settings: { ...vaultSettings.settings, url: 'not-a-valid-url' },
+			};
+			const ctx = createProvider([], settings);
+
+			await expect(ctx.provider.init(settings)).rejects.toThrow();
 		});
 
 		it('sends the token header and resolves paths against the configured URL', async () => {

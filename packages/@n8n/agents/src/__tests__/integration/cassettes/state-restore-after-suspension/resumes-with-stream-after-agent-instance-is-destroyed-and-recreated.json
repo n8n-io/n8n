@@ -1,0 +1,196 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete a file, use the delete_file tool. After the tool result, confirm what happened concisely."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Delete the file /tmp/data.csv"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a file at the given path",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c5544d8fd33010bdefaf88e69cb2e9d276b5be2d208110bd20812a5164cdc6b3ad5bc7ceda93c252e5bf23b74d9bf403b800b9f9bd19cfbc37ced08a2c8ba4a010704632307abe52c8289235f0734920a04342da9c41aca1708a0c08c80d568a7a73d4cbaa37e80d7b37d9cdb09f657d4841ab784798c9acfffe75fe3c5ce0b79c17efee3fdc1703fef4768c901e558214bc3311c0107460b4b16cee2c9365105fbea610d895d213066741d8ca981d14e8a9229b530754c4a84d68b0aae95edbb262c96e49368018bd1ca590633e27997b42d6ceca6e44d6f09e505de29adc5880ca3915e4d1c861711a7f60fbf363b64ec155dc8686772904f22b9d93644d1e044467147a154db68fe4a37039230702ac63892bd4061f0c415d27497d7545db61ef8c940fc6e5cbf3233f13b229a2e8fb566a9b8f4a7779ec9c9155a066ecf15cc9ac3f5efeb8bd1d4cde4c5e8d3f3f8d66859bdf7df41348c16211f3141962928fda6c52a31720d675f4d498a8755f41694f396f146dbf83ae52dbd9919004220897b42b328cbfd6be09e968df22878eb6935b0467f7c1257ad668362008803ab9ecff3fea613d8512793e05914ce19a8bf23a967c918715d4274efe970ea750ef5ab9fc545df9bb97eaca561b878b9a1d76564b878456ef9d2dd37edc7fb86beabfb76c4eb6c3fe87e83a7858dea7deb53968a5fe04a967249d15060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:16Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:16Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:16Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:16Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103721daae55aa2-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:19 GMT",
+			"request-id": "req_011CcLBSdhm1jpc9M8reDgjp",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=EDY.42CiX1lkyHIJMFXzo8RmKTZiM53Hy1up4upLRvs-1782217215.6270597-1.0.1.1-TjyTGjo.zC.Wf0pcTusU597R8Lf3nPT9TbJfG1k6CHU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-8128e5589b8d9ef79e089ec5add94b67-40c7260384115b07-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete a file, use the delete_file tool. After the tool result, confirm what happened concisely."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Delete the file /tmp/data.csv"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01Mkz774XDXBMVq6gmoh9RrX",
+							"name": "delete_file",
+							"input": {
+								"path": "/tmp/data.csv"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01Mkz774XDXBMVq6gmoh9RrX",
+							"content": "{\"deleted\":true,\"path\":\"/tmp/data.csv\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a file at the given path",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013b553b16edb3010ddfd15c4cd7222b9751370ebdea10532b528983379b618d3a4429edca481febda06d35922bb75da285d07b47be77ef70b427cf52ec2825dc904a8c91670619a578017e6e08248c4828fa7f902fb00b861c48d00e5b43f31aedb69dbf9f2fe78b72b1accab28202acc96fa48d2aab4ff163b3b677b7eff0f1e1c34ffe425f1f163f3e4371a60405c4e0328029d9c4e8b3ac0e9ec933c86fdf0b481c1a150953f0207debdc094af4d892d734020d315a977aaceddd5bdfb4ac386cc92790378baa008dba26a52321dbe0d5b8a2ecf948682e71fddd2c404d4d3b8ae8d472f767fd2b5bd5e76c5740687908dd169028eead26c5962248c8c1188c2667ecd71473df6a430124f8c00af7681dae1c41d70921bad98c8ec33e05a9562ee8edf4c8274a0e2a869e8ead0ef9dce9e91ed3532e3c1c12a01ba836d66fce640464102e3933e418ffeeec5032727644c68e7e979d7cddd524d6d691b8bfe65d739d15ae74da438ee9624e6fe6e65ed498c48ac88bd46a4d29ad5be79e8521474ce60abacba30bcdbf26179a8121d17faf2ff6cb3dd9de8884413ba3f503f246711b3dfcf712766fb785676b53dd74d30d4f8537e4a00fea17ab2a447c23050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:19Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10372365da85aa2-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:20 GMT",
+			"request-id": "req_011CcLBSvXHtKrehE2cYjczH",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=B2bb_I0.cd73h8JgMWDcZOUKDBYhXUqLEsjJR0q_0Qg-1782217219.5767205-1.0.1.1-_4Hj.uk.emZaJC6bQl3koRElWOAQx5FgaREOlq49p5A; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e010b4aa7e67c48552080d649f0e0d3f-2957b307b057a720-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

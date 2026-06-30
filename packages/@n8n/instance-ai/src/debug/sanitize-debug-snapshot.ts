@@ -1,6 +1,4 @@
-import { scrubSecretsInText } from '@n8n/utils';
-
-import { isRecord } from '../utils/stream-helpers';
+import { isRecord, scrubSecretsInText } from '@n8n/utils';
 
 const OMIT_KEYS = new Set(['abortSignal']);
 const SENSITIVE_KEY_PATTERN =

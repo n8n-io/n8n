@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils';
+
 import type { WorkflowNodeResponse } from '../../clients/n8n-client';
 import type { BinaryCheck, BinaryCheckContext } from '../types';
 import { extractExpressionsFromParams } from '../utils';
@@ -36,10 +38,6 @@ const FIRST_ITEM_REFERENCE_PATTERNS = [
 ] as const;
 
 const CURRENT_JSON_EVENT_ID = /\$json\.(?:calendarEventId|eventId|eventID|calendar_event_id)\b/;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 function getItemFlowAnnotations(ctx: BinaryCheckContext): Record<string, unknown> {
 	const itemFlow = ctx.annotations?.itemFlow;

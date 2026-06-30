@@ -174,28 +174,55 @@ export interface ConversationTurn {
 	text: string;
 }
 
+export interface TestCaseCredential {
+	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
+	type: string;
+	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
+	name?: string;
+}
+
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
 	/**
-	 * Hand-authored conversation that drives the build. Must have ≥1 turn,
-	 * and the first turn must be `user`.
-	 *
-	 * - One user turn, no assistant turns → auto-approve mode (single-prompt build).
-	 * - Anything else → multi-turn UserProxyLlm engages (answers clarifications,
-	 *   sends follow-ups consuming `messageBudget`).
+	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
+	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
+	 * Required unless `seedThread` is set, in which case it's optional and
+	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
-	conversation: ConversationTurn[];
+	conversation?: ConversationTurn[];
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-	executionScenarios: ExecutionScenario[];
+	/** Optional — a build-only case is graded by process/outcome expectations instead. */
+	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Optional NL assertions about the build conversation; LLM-judged and counted toward the
-	 *  per-case + headline pass rate alongside execution scenarios (baseline-regression folding
-	 *  tracked separately in TRUST-158). */
-	buildExpectations?: string[];
+	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
+	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
+	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
+	processExpectations?: string[];
+	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
+	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
+	outcomeExpectations?: string[];
+	/**
+	 * Credentials visible to this case's build. Created for real before the build
+	 * and pinned as the thread's entire credential view — cases without this
+	 * field build with an empty view (everything mocks).
+	 */
+	credentials?: TestCaseCredential[];
+	/** Synthetic seed file (messages + workflows) restored before the live turn.
+	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
+	seedFile?: string;
+	/** Prose turns seeded as plain-text history (no tool calls/workflows).
+	 *  Mutually exclusive with `seedFile`. */
+	priorConversation?: ConversationTurn[];
+	/** Reproduce a real conversation from its LangSmith trace at run time: restore
+	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
+	 *  and send that live. Commits only the thread id (workspace auto-discovered;
+	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
+	 *  turn, so `conversation` is optional. Transient (~14d). */
+	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -258,6 +285,9 @@ export interface TranscriptTurn {
 	userMessage?: string;
 	/** Agent narration and tool interactions, interleaved in the order they occurred. */
 	steps: TranscriptStep[];
+	/** True for turns restored from a conversation seed — context that predates
+	 *  the evaluated run, as opposed to behaviour captured live. */
+	seeded?: boolean;
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

@@ -72,7 +72,6 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		resourceType: 'agent',
 		id: 'agent-1',
 		name: 'My Agent',
-		description: null,
 		projectId: 'project-1',
 		isCompiled: false,
 		createdAt: '2026-01-01T00:00:00Z',

@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils';
 import { createHash } from 'crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'fs';
 import { basename, dirname, join, posix, relative } from 'path';
@@ -439,8 +440,4 @@ function stableRecord<T extends object>(value: T): T {
 
 function toPosixPath(path: string): string {
 	return path.replaceAll('\\', '/');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

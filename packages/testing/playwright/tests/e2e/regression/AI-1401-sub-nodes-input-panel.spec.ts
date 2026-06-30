@@ -24,11 +24,9 @@ test.describe(
 				const inputNodeSelect = n8n.ndv.inputPanel.getNodeInputOptions();
 				await expect(inputNodeSelect).toBeVisible();
 				await inputNodeSelect.click();
-				await expect(n8n.page.getByRole('option', { name: 'Edit Fields' })).toBeVisible();
-				await expect(n8n.page.getByRole('option', { name: 'Manual Trigger' })).toBeVisible();
-				await expect(
-					n8n.page.getByRole('option', { name: 'No Operation, do nothing' }),
-				).toBeHidden();
+				await expect(n8n.ndv.getVisiblePopoverOption('Edit Fields')).toBeVisible();
+				await expect(n8n.ndv.getVisiblePopoverOption('Manual Trigger')).toBeVisible();
+				await expect(n8n.ndv.getVisiblePopoverOption('No Operation, do nothing')).toBeHidden();
 
 				await n8n.ndv.clickBackToCanvasButton();
 			}

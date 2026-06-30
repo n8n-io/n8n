@@ -84,6 +84,7 @@ secrets; never ask the user to paste secret values into chat.
 
 #### When browser tools fail at runtime
 
+The browser_navigate tool requires a connected tab to already be open. For fresh browser connection or when browser_navigate fails use browser_tab_open to open the url in a new tab.
 If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 					} else {
 						promptParts.push(`
@@ -101,17 +102,15 @@ Browser tools are not enabled in the user's Computer Use configuration. If the u
 			case 'disconnected':
 				promptParts.push(
 					`Computer Use is not connected. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-1. open the right sidebar
-2. click on the "..." button next to "Computer Use"
-3. click on "Connect" and follow the instructions in the dialog`,
+- For browser automation only (no other software needed): open the right sidebar, click the "..." button next to "Browser Use", click "Connect", and follow the dialog to install the n8n Browser Use Chrome extension and connect it.
+- For filesystem/shell/other capabilities: open the right sidebar, click the "..." button next to "Computer Use", click "Connect", and follow the instructions in the dialog.`,
 				);
 				break;
 			case 'disabled':
 				promptParts.push(
 					`Computer Use is not connected and not set-up. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-1. open the right sidebar
-2. click on "Setup computer use"
-3. follow the instructions in the dialog`,
+- For browser automation only (no other software needed): open the right sidebar, click the "..." button next to "Browser Use", click "Connect", and follow the dialog to install the n8n Browser Use Chrome extension and connect it.
+- For filesystem/shell/other capabilities: open the right sidebar, click on "Setup computer use", and follow the instructions in the dialog.`,
 				);
 				break;
 			default:

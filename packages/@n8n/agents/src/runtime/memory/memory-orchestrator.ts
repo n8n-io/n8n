@@ -79,7 +79,12 @@ export class MemoryOrchestrator {
 		if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
 			const cursor = await memory.getCursor(threadId);
 
-			if (cursor) {
+			// Trust the cursor only when an observation log actually stands in for
+			// the pre-cursor messages. If the cursor advanced without observations
+			// being persisted (cursor/observation desync), loading only
+			// post-cursor messages would silently drop the entire prior
+			// conversation, so we fall back to the full history instead.
+			if (cursor && (await this.hasActiveObservations(memory, threadId))) {
 				return await memory.getMessagesForObservationScope(threadId, {
 					since: {
 						sinceCreatedAt: cursor.lastObservedAt,
@@ -92,6 +97,18 @@ export class MemoryOrchestrator {
 		return await memory.getMessages(threadId, {
 			resourceId,
 		});
+	}
+
+	private async hasActiveObservations(
+		memory: ObservationLogObserverMemory,
+		threadId: string,
+	): Promise<boolean> {
+		const observations = await memory.getActiveObservationLog({
+			observationScopeId: threadId,
+			limit: 1,
+			order: 'desc',
+		});
+		return observations.length > 0;
 	}
 
 	/**
@@ -137,6 +154,84 @@ export class MemoryOrchestrator {
 		// (e.g. resources sharing a thread on fast back-to-back runs).
 		if (observations.length > 0) {
 			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
+		}
+	}
+
+	/**
+	 * Eagerly persist just this turn's input messages, before the turn completes.
+	 * Skips the observation-log / episodic-memory jobs that `saveToMemory` schedules —
+	 * those stay at end-of-turn. Idempotent with the end-of-turn save: both write the
+	 * same message id, so TypeORM upserts a single row.
+	 */
+	async persistInputMessages(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		if (!this.config.memory || !options?.persistence) return;
+		const input = list.inputDelta();
+		if (input.length === 0) return;
+		try {
+			await saveMessagesToThread(
+				this.config.memory,
+				options.persistence.threadId,
+				options.persistence.resourceId,
+				input,
+			);
+		} catch (error) {
+			// Best-effort: the end-of-turn save still persists the input on a
+			// completed turn, so a transient failure here must not abort the turn.
+			// Only an uncompleted turn whose eager save also failed loses the input.
+			logger.warn('Failed to eagerly persist input messages', {
+				error,
+				threadId: options.persistence.threadId,
+			});
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Failed to eagerly persist input messages',
+				error,
+				source: 'input-persistence',
+			});
+		}
+	}
+
+	/**
+	 * Persist the turn-so-far when the run suspends (HITL), before the turn completes.
+	 * Saves the full `turnDelta()` (input + accumulated response) so a suspended turn that
+	 * is later cancelled or abandoned still leaves its assistant work — the built workflow,
+	 * resolved tool results — in memory. Like `persistInputMessages`, it skips the
+	 * observation-log / episodic-memory / title jobs that `saveToMemory` schedules; those
+	 * stay at end-of-turn. Idempotent with the end-of-turn save: the message list is
+	 * serialized into the checkpoint and deserialized on resume preserving ids, so both
+	 * writes target the same rows and TypeORM upserts (pending tool-call → resolved in place).
+	 */
+	async persistTurnOnSuspend(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		if (!this.config.memory || !options?.persistence) return;
+		const delta = list.turnDelta();
+		if (delta.length === 0) return;
+		try {
+			await saveMessagesToThread(
+				this.config.memory,
+				options.persistence.threadId,
+				options.persistence.resourceId,
+				delta,
+			);
+		} catch (error) {
+			// Best-effort: a completed turn's end-of-turn save still persists this delta,
+			// so a transient failure here must not abort the suspend flow. Only a turn that
+			// suspends and is then abandoned, whose save here also failed, loses its output.
+			logger.warn('Failed to persist turn on suspend', {
+				error,
+				threadId: options.persistence.threadId,
+			});
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Failed to persist turn on suspend',
+				error,
+				source: 'turn-suspend-persistence',
+			});
 		}
 	}
 
@@ -331,13 +426,18 @@ export class MemoryOrchestrator {
 			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
 			lockTtlMs,
 			onEvent: (event) => {
+				this.config.onMemoryTaskEvent?.(event);
+
 				if (event.type !== 'failed') return;
+
 				const source = event.task.taskKind;
 				const message = `Observation log ${source} task failed`;
+
 				logger.warn(message, {
 					error: event.error,
 					observationScopeId: event.task.observationScopeId,
 				});
+
 				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
 			},
 		});

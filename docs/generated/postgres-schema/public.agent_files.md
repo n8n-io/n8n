@@ -33,6 +33,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_45dafc48fe2ce95eac30fc8ffd | CREATE INDEX "IDX_45dafc48fe2ce95eac30fc8ffd" ON public.agent_files USING btree ("agentId", "createdAt") |
+| IDX_agent_files_agentId_binaryDataId | CREATE UNIQUE INDEX "IDX_agent_files_agentId_binaryDataId" ON public.agent_files USING btree ("agentId", "binaryDataId") |
+| IDX_agent_files_agentId_fileName | CREATE UNIQUE INDEX "IDX_agent_files_agentId_fileName" ON public.agent_files USING btree ("agentId", "fileName") |
 | PK_692920e59217af7d124cd95106f | CREATE UNIQUE INDEX "PK_692920e59217af7d124cd95106f" ON public.agent_files USING btree (id) |
 
 ## Relations
@@ -55,7 +57,6 @@ erDiagram
 "public.agents" {
   varchar_36_ activeVersionId FK
   timestamp_3__with_time_zone createdAt
-  varchar_512_ description
   varchar_36_ id
   json integrations
   varchar_128_ name

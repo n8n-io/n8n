@@ -10,7 +10,11 @@ export function toTokenUsage(
 				inputTokens?: number;
 				outputTokens?: number;
 				totalTokens?: number;
-				inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number };
+				inputTokenDetails?: {
+					noCacheTokens?: number;
+					cacheReadTokens?: number;
+					cacheWriteTokens?: number;
+				};
 				outputTokenDetails?: { reasoningTokens?: number };
 		  }
 		| undefined,
@@ -23,10 +27,12 @@ export function toTokenUsage(
 		totalTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
 	};
 
+	const noCache = usage.inputTokenDetails?.noCacheTokens;
 	const cacheRead = usage.inputTokenDetails?.cacheReadTokens;
 	const cacheWrite = usage.inputTokenDetails?.cacheWriteTokens;
-	if (cacheRead || cacheWrite) {
+	if (noCache || cacheRead || cacheWrite) {
 		result.inputTokenDetails = {
+			...(noCache && { noCache }),
 			...(cacheRead && { cacheRead }),
 			...(cacheWrite && { cacheWrite }),
 		};
