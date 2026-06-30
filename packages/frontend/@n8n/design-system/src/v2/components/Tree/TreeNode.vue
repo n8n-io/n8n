@@ -4,9 +4,8 @@ import type { Component } from 'vue';
 import { computed, useCssModule } from 'vue';
 
 import type { TreeDefaultSlotProps, TreeGetNodeProps, TreeNodeDefaultSlots } from './Tree.types';
-
-import TreeNodeDefault from './TreeNodeDefault.vue';
 import treeVariables from './Tree.variables.module.css';
+import TreeNodeDefault from './TreeNodeDefault.vue';
 
 const $style = useCssModule();
 

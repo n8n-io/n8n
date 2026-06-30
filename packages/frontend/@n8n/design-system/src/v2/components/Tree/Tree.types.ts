@@ -1,7 +1,7 @@
-import type { Component } from 'vue';
 import type { FlattenedItem, TreeRootEmits, TreeRootProps } from 'reka-ui';
+import type { Component } from 'vue';
 
-import { IconName } from '@n8n/design-system/components';
+import type { IconName } from '@n8n/design-system/components';
 
 export type TreeItem = {
 	id: string;
@@ -40,6 +40,10 @@ export type TreeProps = Omit<
 	modelValue?: string[];
 	defaultValue?: string[];
 	showExpandArrow?: boolean;
+	virtualized?: boolean;
+	estimateSize?: number;
+	overscan?: number;
+	textContent?: (item: TreeBranch) => string;
 	node?: Component;
 	getNodeProps?: TreeGetNodeProps;
 };

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { TreeRoot, useForwardPropsEmits } from 'reka-ui';
-import { computed, useAttrs } from 'vue';
+import { TreeRoot, TreeVirtualizer, useForwardPropsEmits } from 'reka-ui';
+import type { FlattenedItem } from 'reka-ui';
+import { computed, useAttrs, useCssModule } from 'vue';
 
 import type {
 	TreeBranch,
@@ -11,8 +12,8 @@ import type {
 	TreeProps,
 	TreeSlots,
 } from './Tree.types';
-import TreeNode from './TreeNode.vue';
 import treeVariables from './Tree.variables.module.css';
+import TreeNode from './TreeNode.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -20,10 +21,14 @@ const attrs = useAttrs();
 const rootClass = computed(() => attrs.class);
 const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 
+const $style = useCssModule();
+
 const props = withDefaults(defineProps<TreeProps>(), {
 	disabled: false,
 	multiple: false,
 	showExpandArrow: true,
+	virtualized: false,
+	estimateSize: 32,
 });
 
 const emit = defineEmits<TreeEmits>();
@@ -81,7 +86,13 @@ const rekaDefaultValue = computed(() => {
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(props, 'disabled', 'multiple', 'expanded', 'defaultExpanded'),
-	emit,
+	(event, ...args) => {
+		if (event === 'update:modelValue') {
+			return;
+		}
+
+		emit(event as 'update:expanded', ...(args as TreeEmits['update:expanded']));
+	},
 );
 
 function handleModelValueUpdate(value: TreeBranch | TreeBranch[] | undefined) {
@@ -111,13 +122,68 @@ function getSharedTreeNodeProps() {
 		node: props.node,
 	};
 }
+
+const resolvedTextContent = computed(
+	() =>
+		props.textContent ??
+		((item: TreeBranch) => {
+			if ('label' in item && typeof item.label === 'string') {
+				return item.label;
+			}
+
+			return resolvedGetKey.value(item);
+		}),
+);
+
+function isTreeBranch(value: unknown): value is TreeBranch {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'id' in value &&
+		typeof value.id === 'string' &&
+		'label' in value &&
+		typeof value.label === 'string'
+	);
+}
+
+const virtualTextContent = computed(() => {
+	const resolve = resolvedTextContent.value;
+
+	return (item: Record<string, unknown>) => {
+		if (!isTreeBranch(item)) {
+			return '';
+		}
+
+		return resolve(item);
+	};
+});
+
+function mapVirtualFlattenedItem(
+	item: FlattenedItem<Record<string, unknown>>,
+): FlattenedItem<TreeBranch> {
+	if (!isTreeBranch(item.value)) {
+		throw new Error('Tree received an invalid virtualized item');
+	}
+
+	const parentItem = item.parentItem && isTreeBranch(item.parentItem) ? item.parentItem : undefined;
+
+	return {
+		...item,
+		value: item.value,
+		parentItem,
+		bind: {
+			...item.bind,
+			value: item.value,
+		},
+	};
+}
 </script>
 
 <template>
 	<TreeRoot
 		v-slot="{ flattenItems }"
 		v-bind="{ ...rootProps, ...rootAttrs }"
-		:class="['n8n-tree', treeVariables.root, rootClass]"
+		:class="['n8n-tree', treeVariables.root, rootClass, { [$style.virtualized]: virtualized }]"
 		:items="items"
 		:get-key="resolvedGetKey"
 		:get-children="resolvedGetChildren"
@@ -125,26 +191,60 @@ function getSharedTreeNodeProps() {
 		:default-value="rekaDefaultValue"
 		@update:model-value="handleModelValueUpdate"
 	>
-		<TreeNode
-			v-for="(flattenedItem, index) in flattenItems"
-			:key="flattenedItem._id"
-			:flattened-item="flattenedItem"
-			v-bind="getSharedTreeNodeProps()"
-			:flatten-items="flattenItems"
-			:flat-index="index"
+		<TreeVirtualizer
+			v-if="virtualized"
+			:estimate-size="estimateSize"
+			:overscan="overscan"
+			:text-content="virtualTextContent"
+			v-slot="{ item: flattenedItem }"
 		>
-			<template v-if="slots.default" #default="slotProps">
-				<slot v-bind="slotProps" />
-			</template>
-			<template v-if="slots.icon" #icon="iconProps">
-				<slot name="icon" v-bind="iconProps" />
-			</template>
-			<template v-if="slots.label" #label="labelProps">
-				<slot name="label" v-bind="labelProps" />
-			</template>
-			<template v-if="slots.toggle" #toggle="toggleProps">
-				<slot name="toggle" v-bind="toggleProps" />
-			</template>
-		</TreeNode>
+			<TreeNode
+				:key="flattenedItem._id"
+				:flattened-item="mapVirtualFlattenedItem(flattenedItem)"
+				v-bind="getSharedTreeNodeProps()"
+			>
+				<template v-if="slots.default" #default="slotProps">
+					<slot v-bind="slotProps" />
+				</template>
+				<template v-if="slots.icon" #icon="iconProps">
+					<slot name="icon" v-bind="iconProps" />
+				</template>
+				<template v-if="slots.label" #label="labelProps">
+					<slot name="label" v-bind="labelProps" />
+				</template>
+				<template v-if="slots.toggle" #toggle="toggleProps">
+					<slot name="toggle" v-bind="toggleProps" />
+				</template>
+			</TreeNode>
+		</TreeVirtualizer>
+
+		<template v-else>
+			<TreeNode
+				v-for="flattenedItem in flattenItems"
+				:key="flattenedItem._id"
+				:flattened-item="flattenedItem"
+				v-bind="getSharedTreeNodeProps()"
+			>
+				<template v-if="slots.default" #default="slotProps">
+					<slot v-bind="slotProps" />
+				</template>
+				<template v-if="slots.icon" #icon="iconProps">
+					<slot name="icon" v-bind="iconProps" />
+				</template>
+				<template v-if="slots.label" #label="labelProps">
+					<slot name="label" v-bind="labelProps" />
+				</template>
+				<template v-if="slots.toggle" #toggle="toggleProps">
+					<slot name="toggle" v-bind="toggleProps" />
+				</template>
+			</TreeNode>
+		</template>
 	</TreeRoot>
 </template>
+
+<style lang="css" module>
+.virtualized {
+	overflow: auto;
+	height: 100%;
+}
+</style>

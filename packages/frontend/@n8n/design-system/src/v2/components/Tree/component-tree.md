@@ -48,6 +48,10 @@ Use `getKey` and `getChildren` when item keys or nesting are not stored on `id` 
 - `multiple?: boolean` — Allow selecting multiple items | `default: false`
 - `disabled?: boolean` — Disable the entire tree | `default: false`
 - `showExpandArrow?: boolean` — Show chevron toggle on expandable rows | `default: true`
+- `virtualized?: boolean` — Virtualize the flattened list for large trees | `default: false`
+- `estimateSize?: number` — Estimated row height in px when virtualized | `default: 32`
+- `overscan?: number` — Number of rows rendered outside the visible area when virtualized
+- `textContent?: (item: TreeBranch) => string` — Label text for type-ahead when virtualized | `default: item.label`
 - `node?: Component` — Custom Vue component for each row (replaces `TreeNodeDefault`)
 - `getNodeProps?: (context: TreeNodeContext) => Record<string, unknown>` — Maps tree context to props for `node`. Defaults to `{ label: item.label }`
 

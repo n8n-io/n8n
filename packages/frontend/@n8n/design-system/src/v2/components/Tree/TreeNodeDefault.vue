@@ -47,7 +47,7 @@ const toggleUi = computed(() => ({
 		]"
 		:data-disabled="disabled ? '' : undefined"
 		:data-has-toggle="showExpandArrow && hasChildren ? '' : undefined"
-		@click="!disabled && handleSelect()"
+		@click.stop="!disabled && handleSelect()"
 	>
 		<slot name="icon" :icon="icon" :disabled="disabled" :is-selected="isSelected" :ui="iconUi">
 			<span v-if="icon" :class="$style.treeItemIcon" data-test-id="tree-node-icon">

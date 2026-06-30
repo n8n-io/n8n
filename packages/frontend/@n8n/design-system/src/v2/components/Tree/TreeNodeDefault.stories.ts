@@ -3,10 +3,9 @@ import { ref } from 'vue';
 
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
-import Checkbox from '../Checkbox/Checkbox.vue';
-
-import TreeNodeDefault from './TreeNodeDefault.vue';
 import treeVariables from './Tree.variables.module.css';
+import TreeNodeDefault from './TreeNodeDefault.vue';
+import Checkbox from '../Checkbox/Checkbox.vue';
 
 const noop = () => undefined;
 
@@ -22,7 +21,7 @@ type VariantProps = {
 	hasChildren: boolean;
 };
 
-const variants: { name: string; props: VariantProps }[] = [
+const variants: Array<{ name: string; props: VariantProps }> = [
 	{
 		name: 'Default',
 		props: {

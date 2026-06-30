@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { defineComponent, type PropType, ref } from 'vue';
-
-import Checkbox from '../Checkbox/Checkbox.vue';
 
 import type { TreeBranch, TreeNodeContext } from './Tree.types';
 import Tree from './Tree.vue';
@@ -139,6 +135,14 @@ const meta = {
 			control: 'boolean',
 			description: 'Show chevron toggle for expandable items',
 		},
+		virtualized: {
+			control: 'boolean',
+			description: 'Virtualize the flattened list for large trees',
+		},
+		estimateSize: {
+			control: 'number',
+			description: 'Estimated row height in px when virtualized',
+		},
 	},
 } satisfies GenericMeta<typeof Tree>;
 
@@ -174,7 +178,107 @@ export const Default: Story = {
 	},
 };
 
-export const ControlledUncontrolled: Story = {
+const VIRTUAL_TREE_BRANCHES = 5;
+const VIRTUAL_TREE_CATEGORIES = 12;
+const VIRTUAL_TREE_ITEMS = 10;
+
+function createNestedVirtualTree(): {
+	items: TreeBranch[];
+	nodeCount: number;
+	defaultExpanded: string[];
+} {
+	let nodeCount = 0;
+	const defaultExpanded: string[] = [];
+
+	const items = Array.from({ length: VIRTUAL_TREE_BRANCHES }, (_, branchIndex) => {
+		const branchId = `branch-${branchIndex}`;
+		defaultExpanded.push(branchId);
+		nodeCount++;
+
+		return {
+			id: branchId,
+			label: `Department ${branchIndex + 1}`,
+			icon: 'list-tree' as const,
+			children: Array.from({ length: VIRTUAL_TREE_CATEGORIES }, (_, categoryIndex) => {
+				const categoryId = `${branchId}-category-${categoryIndex}`;
+				defaultExpanded.push(categoryId);
+				nodeCount++;
+
+				return {
+					id: categoryId,
+					label: `Category ${categoryIndex + 1}`,
+					icon: 'layout-template' as const,
+					children: Array.from({ length: VIRTUAL_TREE_ITEMS }, (_, itemIndex) => {
+						nodeCount++;
+
+						return {
+							id: `${categoryId}-item-${itemIndex}`,
+							label: `Item ${itemIndex + 1}`,
+							icon: 'file-text' as const,
+						};
+					}),
+				};
+			}),
+		};
+	});
+
+	return { items, nodeCount, defaultExpanded };
+}
+
+const {
+	items: nestedVirtualTreeItems,
+	nodeCount: nestedVirtualTreeNodeCount,
+	defaultExpanded: nestedVirtualTreeExpanded,
+} = createNestedVirtualTree();
+
+export const Virtualized: Story = {
+	render: (args) => ({
+		components: { Tree },
+		setup() {
+			const selected = ref<string[]>([]);
+			const expanded = ref<string[]>([...nestedVirtualTreeExpanded]);
+
+			return {
+				args,
+				selected,
+				expanded,
+				nestedVirtualTreeItems,
+				nestedVirtualTreeNodeCount,
+				VIRTUAL_TREE_BRANCHES,
+				VIRTUAL_TREE_CATEGORIES,
+				VIRTUAL_TREE_ITEMS,
+			};
+		},
+		template: `
+			<div style="width: 320px; height: 480px; display: flex; flex-direction: column; gap: var(--spacing--2xs);">
+				<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					{{ nestedVirtualTreeNodeCount }} nodes across
+					{{ VIRTUAL_TREE_BRANCHES }} departments,
+					{{ VIRTUAL_TREE_CATEGORIES }} categories each,
+					{{ VIRTUAL_TREE_ITEMS }} items per category
+				</p>
+				<Tree
+					style="flex: 1; min-height: 0;"
+					v-bind="args"
+					:items="nestedVirtualTreeItems"
+					virtualized
+					v-model="selected"
+					v-model:expanded="expanded"
+				/>
+			</div>
+		`,
+	}),
+	args: {
+		items: nestedVirtualTreeItems,
+		virtualized: true,
+		estimateSize: 32,
+		disabled: false,
+		multiple: false,
+		showExpandArrow: true,
+	},
+};
+
+export const Controlled: Story = {
 	render: () => ({
 		components: { Tree },
 		setup() {
@@ -277,20 +381,79 @@ export const ControlledUncontrolled: Story = {
 	},
 };
 
-function getCustomNodeProps({ item }: TreeNodeContext): {
+type EmojiTreeBranch = Omit<TreeBranch, 'children'> & {
+	emoji?: string;
+	children?: EmojiTreeBranch[];
+};
+
+const customNodeItems: EmojiTreeBranch[] = [
+	{
+		id: 'planets',
+		label: 'Planets',
+		emoji: '🪐',
+		children: [
+			{
+				id: 'inner',
+				label: 'Inner solar system',
+				emoji: '☀️',
+				children: [
+					{ id: 'mercury', label: 'Mercury', emoji: '☿️' },
+					{ id: 'venus', label: 'Venus', emoji: '♀️' },
+					{ id: 'earth', label: 'Earth', emoji: '🌍' },
+					{ id: 'mars', label: 'Mars', emoji: '🔴' },
+				],
+			},
+			{
+				id: 'outer',
+				label: 'Outer solar system',
+				emoji: '🌌',
+				children: [
+					{ id: 'jupiter', label: 'Jupiter', emoji: '🟠' },
+					{ id: 'saturn', label: 'Saturn', emoji: '🪐' },
+					{ id: 'uranus', label: 'Uranus', emoji: '🔵' },
+					{ id: 'neptune', label: 'Neptune', emoji: '🌀' },
+				],
+			},
+		],
+	},
+	{
+		id: 'animals',
+		label: 'Animals',
+		emoji: '🦁',
+		children: [
+			{ id: 'mammals', label: 'Mammals', emoji: '🐻' },
+			{ id: 'birds', label: 'Birds', emoji: '🦅' },
+			{ id: 'fish', label: 'Fish', emoji: '🐠' },
+		],
+	},
+	{
+		id: 'weather',
+		label: 'Weather',
+		emoji: '🌤️',
+		children: [
+			{ id: 'sunny', label: 'Sunny', emoji: '☀️' },
+			{ id: 'rainy', label: 'Rainy', emoji: '🌧️' },
+			{ id: 'snowy', label: 'Snowy', emoji: '❄️' },
+		],
+	},
+];
+
+const customNodeDefaultExpanded = ['planets', 'inner', 'outer'];
+
+function getCustomNodeProps({ item }: TreeNodeContext<EmojiTreeBranch>): {
 	label: string;
-	icon?: IconName;
+	emoji?: string;
 } {
 	const treeItem = item.value;
 
-	return { label: treeItem.label, icon: treeItem.icon };
+	return { label: treeItem.label, emoji: treeItem.emoji };
 }
 
 const customNodeClass = {
 	treeItem: 'sb-tree-custom-item',
 	treeItemSelected: 'sb-tree-custom-item--selected',
 	treeItemDisabled: 'sb-tree-custom-item--disabled',
-	treeItemIcon: 'sb-tree-custom-item__icon',
+	treeItemEmoji: 'sb-tree-custom-item__emoji',
 	treeItemLabel: 'sb-tree-custom-item__label',
 	treeItemToggle: 'sb-tree-custom-item__toggle',
 	treeItemToggleIcon: 'sb-tree-custom-item__toggle-icon',
@@ -350,8 +513,7 @@ const customNodeStyles = `
 	background-color: light-dark(var(--color--primary--tint-3), var(--color--primary--shade-3));
 }
 
-.${customNodeClass.treeItemSelected} .${customNodeClass.treeItemIcon} {
-	color: var(--color--primary);
+.${customNodeClass.treeItemSelected} .${customNodeClass.treeItemEmoji} {
 	background-color: light-dark(var(--color--background--light-1), var(--color--background--dark-1));
 }
 
@@ -360,7 +522,7 @@ const customNodeStyles = `
 	opacity: 0.5;
 }
 
-.${customNodeClass.treeItemIcon} {
+.${customNodeClass.treeItemEmoji} {
 	display: inline-flex;
 	flex-shrink: 0;
 	align-items: center;
@@ -368,7 +530,8 @@ const customNodeStyles = `
 	width: var(--tree-icon-size);
 	height: var(--tree-icon-size);
 	border-radius: var(--radius--full);
-	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	line-height: 1;
 	background-color: light-dark(var(--color--background--light-1), var(--color--background--dark-1));
 }
 
@@ -389,6 +552,8 @@ const customNodeStyles = `
 }
 
 .${customNodeClass.treeItemToggleIcon} {
+	font-size: var(--font-size--2xs);
+	line-height: 1;
 	transition: transform var(--duration--snappy) var(--easing--ease-out);
 }
 
@@ -430,10 +595,9 @@ function ensureCustomNodeStyles() {
 
 const TreeNodeCustom = defineComponent({
 	name: 'TreeNodeCustom',
-	components: { N8nIcon },
 	props: {
 		label: { type: String, required: true },
-		icon: { type: String as PropType<IconName>, required: false },
+		emoji: { type: String, required: false },
 		disabled: { type: Boolean, default: false },
 		showExpandArrow: { type: Boolean, default: true },
 		isExpanded: { type: Boolean, required: true },
@@ -460,8 +624,8 @@ const TreeNodeCustom = defineComponent({
 			:data-has-toggle="showExpandArrow && hasChildren ? '' : undefined"
 			@click="!disabled && handleSelect()"
 		>
-			<span v-if="icon" :class="customNodeClass.treeItemIcon">
-				<N8nIcon :icon="icon" size="small" />
+			<span v-if="emoji" :class="customNodeClass.treeItemEmoji" aria-hidden="true">
+				{{ emoji }}
 			</span>
 
 			<span
@@ -480,14 +644,15 @@ const TreeNodeCustom = defineComponent({
 				:disabled="disabled"
 				@click.stop="handleToggle()"
 			>
-				<N8nIcon
-					icon="chevron-right"
-					size="small"
+				<span
 					:class="[
 						customNodeClass.treeItemToggleIcon,
 						{ [customNodeClass.treeItemToggleIconExpanded]: isExpanded },
 					]"
-				/>
+					aria-hidden="true"
+				>
+					▶
+				</span>
 			</button>
 		</div>
 	`,
@@ -497,16 +662,23 @@ export const CustomNode: Story = {
 	render: (args) => ({
 		components: { Tree, TreeNodeCustom },
 		setup() {
-			const selected = ref<string[]>(['all-workflows']);
-			const expanded = ref<string[]>([...defaultExpanded]);
+			const selected = ref<string[]>(['earth']);
+			const expanded = ref<string[]>([...customNodeDefaultExpanded]);
 
-			return { args, selected, expanded, menuItems, getCustomNodeProps, TreeNodeCustom };
+			return {
+				args,
+				selected,
+				expanded,
+				customNodeItems,
+				getCustomNodeProps,
+				TreeNodeCustom,
+			};
 		},
 		template: `
 			<div style="width: 320px; height: 480px;">
 				<Tree
 					v-bind="args"
-					:items="menuItems"
+					:items="customNodeItems"
 					:node="TreeNodeCustom"
 					:get-node-props="getCustomNodeProps"
 					v-model="selected"
@@ -516,49 +688,9 @@ export const CustomNode: Story = {
 		`,
 	}),
 	args: {
-		items: menuItems,
+		items: customNodeItems,
 		disabled: false,
 		multiple: false,
-		showExpandArrow: true,
-	},
-};
-
-export const WithCheckboxIcon: Story = {
-	render: (args) => ({
-		components: { Tree, Checkbox },
-		setup() {
-			const selected = ref<string[]>(['all-workflows', 'credentials']);
-			const expanded = ref<string[]>([...defaultExpanded]);
-
-			return { args, selected, expanded, menuItems };
-		},
-		template: `
-			<div style="width: 320px; height: 480px;">
-				<Tree
-					v-bind="args"
-					:items="menuItems"
-					multiple
-					v-model="selected"
-					v-model:expanded="expanded"
-				>
-					<template #icon="{ isSelected, disabled, handleSelect, ui }">
-						<span v-bind="ui">
-							<Checkbox
-								:model-value="isSelected"
-								:disabled="disabled"
-								@click.stop
-								@update:model-value="handleSelect"
-							/>
-						</span>
-					</template>
-				</Tree>
-			</div>
-		`,
-	}),
-	args: {
-		items: menuItems,
-		disabled: false,
-		multiple: true,
 		showExpandArrow: true,
 	},
 };
