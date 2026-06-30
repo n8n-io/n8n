@@ -75,6 +75,18 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === undefined,
 		},
 		{
+			envVar: 'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES',
+			message:
+				'The default for this variable will be reduced from 2 GiB to 256 MiB in a future version. Set it explicitly to keep your current limit.',
+			checkValue: (value?: string) => value === undefined,
+		},
+		{
+			envVar: 'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES',
+			message:
+				'The default for this variable will be reduced from 5000 to 1000 in a future version. Set it explicitly to keep your current limit.',
+			checkValue: (value?: string) => value === undefined,
+		},
+		{
 			envVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			message:
 				'In-memory binary data storage (`default` mode) will be removed in a future version. Switch to `filesystem`, `s3`, or `database`.',

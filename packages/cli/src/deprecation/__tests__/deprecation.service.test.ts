@@ -166,18 +166,22 @@ describe('DeprecationService', () => {
 	});
 
 	describe('default-flip warnings', () => {
-		test.each(['N8N_UNVERIFIED_PACKAGES_ENABLED', 'N8N_RUNNERS_TASK_TIMEOUT'])(
-			'should warn when %s is unset',
-			(envVar) => {
-				delete process.env[envVar];
-				deprecationService.warn();
-				expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
-			},
-		);
+		test.each([
+			'N8N_UNVERIFIED_PACKAGES_ENABLED',
+			'N8N_RUNNERS_TASK_TIMEOUT',
+			'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES',
+			'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES',
+		])('should warn when %s is unset', (envVar) => {
+			delete process.env[envVar];
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
+		});
 
 		test.each([
 			['N8N_UNVERIFIED_PACKAGES_ENABLED', 'false'],
 			['N8N_RUNNERS_TASK_TIMEOUT', '120'],
+			['N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES', '1048576'],
+			['N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES', '100'],
 		])('should not warn when %s is set explicitly', (envVar, value) => {
 			process.env[envVar] = value;
 			deprecationService.warn();
