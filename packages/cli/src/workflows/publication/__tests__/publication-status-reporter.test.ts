@@ -18,7 +18,9 @@ describe('PublicationStatusReporter', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	const errorReporter = mock<ErrorReporter>();
-	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
+	const outboxRepository = mock<WorkflowPublicationOutboxRepository>({
+		manager: mock<EntityManager>(),
+	});
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const push = mock<Push>();
 	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
