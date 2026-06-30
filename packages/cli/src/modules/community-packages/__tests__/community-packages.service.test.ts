@@ -607,6 +607,30 @@ describe('CommunityPackagesService', () => {
 			);
 		});
 
+		test('should still succeed when removing the backup directory fails after the update', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
+
+			// Fail only the backup cleanup, which runs after the DB update has committed
+			vi.mocked(rm).mockImplementation(async (target) => {
+				if (target === backupDirectory) throw new Error('cleanup failed');
+				return undefined;
+			});
+
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).resolves.toBe(installedPackageForUpdateTest);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to remove community package backup directory',
+				expect.objectContaining({ backupDirectory }),
+			);
+		});
+
 		test('should not roll back when a post-save step fails after the database is updated', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 

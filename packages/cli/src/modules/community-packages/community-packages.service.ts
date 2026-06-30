@@ -505,8 +505,17 @@ export class CommunityPackagesService {
 
 			// The new version is now authoritative; later failures must not roll back,
 			// or the DB record would end up inconsistent with the restored files.
+			// Removing the backup is housekeeping — a failure here must not fail the update.
 			if (backupDirectory) {
-				await rm(backupDirectory, { recursive: true, force: true });
+				try {
+					await rm(backupDirectory, { recursive: true, force: true });
+				} catch (error) {
+					this.logger.warn('Failed to remove community package backup directory', {
+						error: ensureError(error),
+						packageName,
+						backupDirectory,
+					});
+				}
 			}
 			void this.publisher.publishCommand({
 				command: isUpdate ? 'community-package-update' : 'community-package-install',
