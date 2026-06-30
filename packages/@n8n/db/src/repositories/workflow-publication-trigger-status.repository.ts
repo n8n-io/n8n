@@ -33,11 +33,6 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 		await (trx ? run(trx) : this.manager.transaction(run));
 	}
 
-	async deleteForWorkflow(workflowId: string, trx?: EntityManager): Promise<void> {
-		const em = trx ?? this.manager;
-		await em.delete(WorkflowPublicationTriggerStatus, { workflowId });
-	}
-
 	async findByWorkflowId(workflowId: string): Promise<WorkflowPublicationTriggerStatus[]> {
 		return await this.findBy({ workflowId });
 	}

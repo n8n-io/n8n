@@ -52,11 +52,11 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		expect(rows[0]).toMatchObject({ nodeId: 'n1', versionId: 'v2', status: 'activated' });
 	});
 
-	it('deleteForWorkflow clears rows', async () => {
+	it('replaceForWorkflow with an empty list clears all rows', async () => {
 		await repo.replaceForWorkflow(workflow.id, [
 			{ nodeId: 'n1', versionId: 'v1', status: 'activated', errorMessage: null },
 		]);
-		await repo.deleteForWorkflow(workflow.id);
+		await repo.replaceForWorkflow(workflow.id, []);
 		expect(await repo.findByWorkflowId(workflow.id)).toHaveLength(0);
 	});
 

@@ -57,7 +57,6 @@ describe('PublicationStatusReporter', () => {
 		activationErrorsService.deregister.mockResolvedValue(undefined);
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
-		triggerStatusRepository.deleteForWorkflow.mockResolvedValue(undefined);
 		dataSource.transaction.mockImplementation(
 			async (cb: (trx: EntityManager) => Promise<unknown>) => await cb(entityManager),
 		);
@@ -95,10 +94,10 @@ describe('PublicationStatusReporter', () => {
 		});
 	});
 
-	test('unpublished deletes trigger rows, marks the record completed, clears errors, and pushes deactivation', async () => {
+	test('unpublished clears trigger rows, marks the record completed, clears errors, and pushes deactivation', async () => {
 		await reporter.report(makeRecord(), { type: 'unpublished' });
 
-		expect(triggerStatusRepository.deleteForWorkflow).toHaveBeenCalledWith('wf-1', entityManager);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith('wf-1', [], entityManager);
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();

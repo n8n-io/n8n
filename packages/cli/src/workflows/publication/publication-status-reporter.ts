@@ -41,13 +41,7 @@ export class PublicationStatusReporter {
 	async report(record: WorkflowPublicationOutbox, result: PublicationResult): Promise<void> {
 		switch (result.type) {
 			case 'completed': {
-				await this.complete(record, (trx) =>
-					this.triggerStatusRepository.replaceForWorkflow(
-						record.workflowId,
-						this.toRows(record, result.triggerStatuses),
-						trx,
-					),
-				);
+				await this.complete(record, this.toRows(record, result.triggerStatuses));
 				this.push.broadcast({
 					type: 'workflowActivated',
 					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
@@ -56,9 +50,7 @@ export class PublicationStatusReporter {
 			}
 
 			case 'unpublished': {
-				await this.complete(record, (trx) =>
-					this.triggerStatusRepository.deleteForWorkflow(record.workflowId, trx),
-				);
+				await this.complete(record, /*triggerStatuses=*/ []);
 				this.push.broadcast({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },
@@ -186,16 +178,20 @@ export class PublicationStatusReporter {
 
 	/**
 	 * Marks the record completed and clears any activation errors for the workflow.
-	 * The optional per-trigger status write and the outbox status update run in a
-	 * single transaction; the cache deregister runs after commit (it is not
-	 * transactional and must not fire if the transaction rolls back).
+	 * If there are any per-trigger statuses passed in, they are persisted in the same transaction.
 	 */
 	private async complete(
 		record: WorkflowPublicationOutbox,
-		writeTriggerStatus?: (trx: EntityManager) => Promise<void>,
+		triggerStatuses?: TriggerStatusRow[],
 	): Promise<void> {
 		await this.dataSource.transaction(async (trx) => {
-			await writeTriggerStatus?.(trx);
+			if (triggerStatuses !== undefined) {
+				await this.triggerStatusRepository.replaceForWorkflow(
+					record.workflowId,
+					triggerStatuses,
+					trx,
+				);
+			}
 			await this.outboxRepository.markCompleted(record.id, trx);
 		});
 		await this.activationErrorsService.deregister(record.workflowId);
