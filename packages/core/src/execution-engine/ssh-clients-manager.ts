@@ -58,12 +58,22 @@ export class SSHClientsManager {
 
 	private cleanupTimer: NodeJS.Timeout;
 
+	/**
+	 * Bound `exit` handler kept as a stable reference so it can be removed on
+	 * shutdown. A new arrow per instance would leak a listener per manager
+	 * (one is created per workflow execution), accumulating across a process
+	 * and firing for every dead instance on exit.
+	 */
+	private readonly onProcessExit = () => this.onShutdown();
+
 	constructor(
 		private readonly config: SSHClientsConfig,
 		private readonly logger: Logger,
 	) {
+		this.logger = logger?.scoped('ssh-client') ?? logger;
+
 		// Close all SSH connections when the process exits
-		process.on('exit', () => this.onShutdown());
+		process.on('exit', this.onProcessExit);
 
 		// Regularly close stale SSH connections. Unref'd so this housekeeping
 		// timer never keeps the process alive on its own: the manager is created
@@ -71,8 +81,6 @@ export class SSHClientsManager {
 		// process exit until SIGKILL (e.g. single-file integration test runs
 		// hang after the run completes).
 		this.cleanupTimer = setInterval(() => this.cleanupStaleConnections(), 60 * 1000).unref();
-
-		this.logger = logger.scoped('ssh-client');
 	}
 
 	updateLastUsed(client: Client) {
@@ -179,8 +187,11 @@ export class SSHClientsManager {
 	}
 
 	onShutdown() {
-		this.logger.debug('Shutting down. Cleaning up all clients');
+		this.logger?.debug('Shutting down. Cleaning up all clients');
 		clearInterval(this.cleanupTimer);
+		// Drop the exit listener so a torn-down instance doesn't linger on the
+		// process (and can't fire again after cleanup).
+		process.removeListener('exit', this.onProcessExit);
 		for (const key of this.clients.keys()) {
 			this.cleanupClient(key);
 		}

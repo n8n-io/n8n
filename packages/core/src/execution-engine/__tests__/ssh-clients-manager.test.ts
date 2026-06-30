@@ -115,6 +115,33 @@ describe('onShutdown', () => {
 		// ASSERT
 		expect(endSpy).toHaveBeenCalledTimes(1);
 	});
+
+	it('should not throw when shutting down with a missing logger', () => {
+		// ARRANGE
+		const manager = new SSHClientsManager(
+			mock({ idleTimeout }),
+			undefined as unknown as Logger,
+		);
+
+		// ACT & ASSERT
+		expect(() => manager.onShutdown()).not.toThrow();
+	});
+
+	it('should remove its process exit listener on shutdown', () => {
+		// ARRANGE
+		const before = process.listenerCount('exit');
+		const manager = new SSHClientsManager(
+			mock({ idleTimeout }),
+			mock<Logger>({ scoped: () => mock<Logger>() }),
+		);
+		expect(process.listenerCount('exit')).toBe(before + 1);
+
+		// ACT
+		manager.onShutdown();
+
+		// ASSERT
+		expect(process.listenerCount('exit')).toBe(before);
+	});
 });
 
 describe('cleanup', () => {
